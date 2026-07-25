@@ -55,10 +55,12 @@ export interface SignatureFunctionView {
 	readonly callees:    readonly string[];
 	readonly file?:      string;
 	readonly line?:      number;
-	/** deep link into the read-only CRAN GitHub mirror, when the definition location + a CRAN version are known */
+	/** deep link to the definition on the read-only GitHub mirror of the sources (CRAN, or R's own for a base package) */
 	readonly sourceUrl?: string;
 	/** best-effort rdrr.io documentation link, when the function name maps to a documentable topic */
 	readonly docUrl?:    string;
+	/** link to the `.Rd` help source *at the queried version*, which {@link docUrl} cannot offer (rdrr.io only serves the current release) */
+	readonly manUrl?:    string;
 	/** whether the function looks like an S3 generic (has `<generic>.<class>` dispatch targets in the same package) */
 	readonly s3generic?: boolean;
 	/** the `<generic>.<class>` dispatch targets found in the same package */
@@ -113,6 +115,8 @@ export interface SignatureMatchView {
 	readonly sourceUrl?:         string;
 	/** best-effort rdrr.io documentation link, when the function name maps to a documentable topic */
 	readonly docUrl?:            string;
+	/** link to the `.Rd` help source at the queried version, see {@link SignatureFunctionView.manUrl} */
+	readonly manUrl?:            string;
 	/** a preview of the function's parameters (the ones a parameter/required filter matched first), when such a filter is active */
 	readonly parameters?:        readonly string[];
 	/** the subset of {@link parameters} that the `--param` filter actually matched, so the renderer can highlight them */
@@ -185,7 +189,7 @@ function signatureQueryLineParser(output: ReplOutput, line: readonly string[], _
 			positional.push(tok);
 		}
 	}
-	// help only when it is the leading word or an explicit flag -- never for a package/function literally named `help`
+	// help only when it is the leading word or an explicit flag, never for a package/function literally named `help`
 	if(positional[0] === 'help' || line.includes('--help') || line.includes('-h')) {
 		printSignatureHelp(output);
 		return { query: [] };

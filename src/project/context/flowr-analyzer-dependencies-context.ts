@@ -38,20 +38,26 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	getDependency(name: string, version?: string | Range): Readonly<Package> | undefined;
 
 	/**
-	 * The versions a dependency can possibly have, combining everything declared for it (a `DESCRIPTION` range,
-	 * an `rproject.toml` entry, a lockfile pin, ...). `undefined` if the dependency is unknown, if nothing
-	 * constrains it, or if the sources contradict each other -- then no version is possible at all.
+	 * The versions a dependency can possibly have: its {@link Package.derivedRange|derived range}, but only once
+	 * some version can satisfy it. `undefined` if the dependency is unknown, if nothing constrains it, or if the
+	 * sources contradict each other, since then no version is possible at all.
 	 *
 	 * For *why* it is what it is (the individual constraints, or the version the database resolved to), take the
 	 * {@link Package} from {@link getDependency}.
 	 * @param name - The name of the dependency.
 	 */
-	inferredVersion(name: string): Range | undefined;
+	inferredRange(name: string): Range | undefined;
 
 	/**
 	 * Get all dependencies known to this context.
 	 */
 	getDependencies(): readonly Readonly<Package>[];
+
+	/**
+	 * Every package name the project *declares* (`Depends`/`Imports`/`Suggests`/`LinkingTo`/`Enhances`), whether or
+	 * not it became a loadable dependency here. `Suggests` do not, yet they still name packages the project may install.
+	 */
+	declaredPackageNames(): readonly string[];
 
 	/**
 	 * Metadata of the signature databases the version plugins currently have loaded.
@@ -267,7 +273,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 
 	/** Resolve `name` constrained to `range` via the plugins (uncached); falls back to the cached dependency. */
 	private resolvePinnedDependency(name: string, range: Range | undefined): Package | undefined {
-		const pin = new Package({ name, derivedVersion: range });
+		const pin = new Package({ name, versionConstraints: range ? [range] : [] });
 		for(const resolve of this.lazyResolvers) {
 			const resolved = resolve(name, pin);
 			if(resolved) {
@@ -277,9 +283,9 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		return this.getDependency(name);
 	}
 
-	public inferredVersion(name: string): Range | undefined {
+	public inferredRange(name: string): Range | undefined {
 		const pkg = this.getDependency(name);
-		return pkg?.hasSatisfiableVersion() ? pkg.derivedVersion : undefined;
+		return pkg?.hasSatisfiableVersion() ? pkg.derivedRange : undefined;
 	}
 
 	public getDependencies(): Package[] {
@@ -287,5 +293,11 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 			this.resolveStaticDependencies();
 		}
 		return Array.from(this.dependencies.values());
+	}
+
+	public declaredPackageNames(): string[] {
+		this.ensureStaticsLoaded();
+		const declared: readonly (readonly Package[] | undefined)[] = Object.values(this.ctx.meta.getDeclaredPackages());
+		return [...new Set(declared.flatMap(group => group?.map(p => p.name) ?? []))];
 	}
 }

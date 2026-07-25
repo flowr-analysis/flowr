@@ -1131,6 +1131,17 @@ The guess can be narrowed further:
 Packages can also be tied to one shared version (the base/R packages always are), and ${ctx.linkConfig('solver.versionManagement.linkedVersionGroups', true)}
 declares further groups. Such a package reports its partners in \`linkedWith\`, because its range is then no longer independent of theirs.
 
+What one dependency requires of another (\`transitive\` evidence) is read from *every* version of it still in play:
+
+* all of them require it: the guess is narrowed, by the weakest of their bounds,
+* only some do: the evidence carries \`partial: true\` and never narrows, as another version avoids it.
+
+A partial requirement still ties the two together. \`A 0.2.5\` needing \`B 0.2.1\` and \`A 0.3.0\` needing \`B 0.3.2\`
+shrinks neither range, yet the versions are not free. Each package lists its \`coupledWith\` partners, and
+\`runnableCombinations\` counts the tuples those couplings admit, against the plain product \`possibleCombinations\`
+and, where the project declares constraints, against \`declaredCombinations\` (what those alone leave, so the share
+says how much the guess added).
+
 ${
 	block({
 		type:    'NOTE',

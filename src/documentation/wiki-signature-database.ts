@@ -146,7 +146,7 @@ function measureLoad(file: string): number | undefined {
 }
 
 /**
- * A table of the databases the default bundle actually ships, read -- at generation time, never hardcoded --
+ * A table of the databases the default bundle actually ships, read at generation time, never hardcoded,
  * from the manifests. Each shard becomes a row (contents, retained history, package and version counts, its
  * on-disk size, and the measured cost of decompressing it on first touch). Every bundled manifest is unioned
  * (deduped by shard/dictionary id), so the separate `history` manifest's shards show up alongside `current`,
@@ -244,10 +244,11 @@ Every function is a ${ctx.link('DecodedFunction')}:
 
 Per version the source also answers declared dependencies (${ctx.link('ResolvedDependency')}), release dates, the plain export view (${ctx.link('LibraryExports')}), and the versions it carries (${ctx.link('AvailableVersion')}).
 
-Beyond the flags above, ${ctx.link('DecodedFunction::props')} also carry ${ctx.linkE<typeof FnProp>('FnProp', 'NoDoc')} (a documented package has no help page for this name), ${ctx.linkE<typeof FnProp>('FnProp', 'S3Method')} (a registered S3 method, from the package NAMESPACE or base R's method table), and ${ctx.linkE<typeof FnProp>('FnProp', 'S3Owner')} (an exported constructor for an S3 class this package OWNS: it also registers at least one S3 method for that class). The owned classes of a version are ${ctx.link('LibraryExports::s3Classes')}, and ${ctx.linkM(SigDatabase, 'classOwner')} answers, for a class name, which package owns it (backed by a reverse index built once). This lets ${ctx.linkPage('wiki/Query API', 'version guessing')} mark a package used when the analyzed project's own NAMESPACE registers an S3 method for a class it owns, even with no direct call -- e.g. tseries's \`S3method("as.irts","zoo")\` marks \`zoo\` used.
+Beyond the flags above, ${ctx.link('DecodedFunction::props')} also carry ${ctx.linkE<typeof FnProp>('FnProp', 'NoDoc')} (a documented package has no help page for this name), ${ctx.linkE<typeof FnProp>('FnProp', 'S3Method')} (a registered S3 method, from the package NAMESPACE or base R's method table), and ${ctx.linkE<typeof FnProp>('FnProp', 'S3Owner')} (an exported constructor for an S3 class this package OWNS: it also registers at least one S3 method for that class). The owned classes of a version are ${ctx.link('LibraryExports::s3Classes')}, and ${ctx.linkM(SigDatabase, 'classOwner')} answers, for a class name, which package owns it (backed by a reverse index built once). This lets ${ctx.linkPage('wiki/Query API', 'version guessing')} mark a package used when the analyzed project's own NAMESPACE registers an S3 method for a class it owns, even with no direct call, e.g. tseries's \`S3method("as.irts","zoo")\` marks \`zoo\` used.
 
 These are derived on demand by the ${ctx.linkPage('wiki/Query API', 'signature query')}, not stored:
 - the rdrr.io documentation link ${ctx.link('SignatureFunctionView::docUrl')} (base R \`/r/<pkg>/<topic>\`, CRAN \`/cran/<pkg>/man/<topic>\`), omitted for a ${ctx.linkE<typeof FnProp>('FnProp', 'NoDoc')} function
+- ${ctx.link('SignatureFunctionView::sourceUrl')} and ${ctx.link('SignatureFunctionView::manUrl')}: the definition and its \`.Rd\` help page at the queried version, on \`github.com/cran/<pkg>\` (CRAN) or \`github.com/wch/r-source\` (base R)
 - the S3 method to generic backlink ${ctx.link('SignatureFunctionView::s3method')}, for a ${ctx.linkE<typeof FnProp>('FnProp', 'S3Method')} function, resolving its generic
 - the transitive call graph ${ctx.linkM(SigDatabase, 'transitiveCallees')}, expanding the stored local callees inside one version
 

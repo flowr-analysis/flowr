@@ -135,7 +135,7 @@ export const SourceRange = {
 	},
 	/**
 	 * Merges multiple source ranges into a single source range that spans from the earliest start to the latest end.
-	 * If you are interested in combining overlapping ranges into a minimal set of ranges, see {@link combineRanges}.
+	 * If you are interested in reducing a set of ranges to those none of the others contains, see {@link combineRanges}.
 	 * @throws if no ranges are provided
 	 */
 	merge(this: void, rs: (SourceRange | undefined)[]): SourceRange {
@@ -209,11 +209,13 @@ export const SourceRange = {
 		return SourceRange.isSubsetOf(r1, r2) && !SourceRange.equals(r1, r2);
 	},
 	/**
-	 * Combines overlapping or subset ranges into a minimal set of ranges.
+	 * Reduces the ranges to those no other one contains, keeping the first of any duplicates. Ranges that merely
+	 * overlap are both kept, as neither contains the other. A non-empty input always yields a non-empty result.
 	 * @see {@link SourceRange.merge} for merging multiple ranges into a single range.
 	 */
 	combineRanges(this: void, ...ranges: SourceRange[]): SourceRange[] {
-		return ranges.filter(range => !ranges.some(other => range !== other && SourceRange.isSubsetOf(range, other)));
+		return ranges.filter((range, i) => !ranges.some((other, j) => i !== j
+			&& (SourceRange.isStrictSubsetOf(range, other) || (j < i && SourceRange.equals(range, other)))));
 	},
 	fromNode<OtherInfo>(this: void, node: RNode<OtherInfo> | undefined): SourceRange | undefined {
 		return node?.info.fullRange ?? node?.location;
@@ -237,24 +239,51 @@ export const SourceRange = {
 	 * Nodes may share a range (a function call and the symbol naming it do), so `treatChildAsInner` decides that
 	 * tie: with it, a node sharing its parent's range counts as the inner one and the parent drops out; without
 	 * it, both are kept and the caller may pick between them (e.g. by node type).
+	 *
+	 * A non-empty input always yields a non-empty result: enclosure is a strict order so some node is always minimal,
+	 * and a node carrying no range at all is kept rather than dropped.
 	 * @see {@link SourceRange.nodesContaining} which this usually narrows down
 	 */
 	innermostNodes<OtherInfo>(this: void, nodes: readonly RNodeWithParent<OtherInfo>[], treatChildAsInner = true): RNodeWithParent<OtherInfo>[] {
-		if(nodes.length <= 1) {
-			return [...nodes];
-		}
-		return nodes.filter(node => {
+		const result: RNodeWithParent<OtherInfo>[] = [];
+
+		for(const node of nodes) {
 			const range = SourceRange.fromNode(node);
-			return range !== undefined && !nodes.some(other => {
+			if(!range) {
+				result.push(node);
+				continue;
+			}
+
+			let inner = false;
+
+			for(const other of nodes) {
 				if(other === node) {
-					return false;
-				} else if(treatChildAsInner && other.info.parent === node.info.id) {
-					return true;
+					continue;
 				}
+
 				const otherRange = SourceRange.fromNode(other);
-				return otherRange !== undefined && SourceRange.isStrictSubsetOf(otherRange, range);
-			});
-		});
+				if(!otherRange) {
+					continue;
+				}
+
+				if(SourceRange.isStrictSubsetOf(otherRange, range) ||
+					(
+						treatChildAsInner &&
+						other.info.parent === node.info.id &&
+						SourceRange.equals(otherRange, range)
+					)
+				) {
+					inner = true;
+					break;
+				}
+			}
+
+			if(!inner) {
+				result.push(node);
+			}
+		}
+
+		return result.length > 0 ? result : nodes.slice();
 	}
 } as const;
 

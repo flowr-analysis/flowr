@@ -14,7 +14,7 @@ function collectDependencyStats(declared: DeclaredPackages, deps: ReadOnlyFlowrA
 	const imports = declared.imports ?? [];
 	const dependsAll = declared.depends ?? [];
 	const rEntry = dependsAll.find(d => d.name === 'R');
-	const rVersion = rEntry?.derivedVersion?.raw;
+	const rVersion = rEntry?.derivedRange?.raw;
 	const depends = dependsAll.filter(d => d.name !== 'R');
 	const suggests = declared.suggests ?? [];
 	const linkingTo = declared.linkingTo ?? [];

@@ -122,6 +122,13 @@ export function processMakeConstructor<OtherInfo>(
 	return info;
 }
 
+/**
+ * Node-id suffix of the `fun = function(...) S7_dispatch()` argument flowR synthesizes for S7 calls that do not
+ * carry one (`new_class`, `new_generic`, ...). It stands for no argument in the source, so consumers that reason
+ * about how the *code* calls a function (e.g. matching a call against a package's signature history) must skip it.
+ */
+export const S7SyntheticFunArgSuffix = '-s7-new-generic-fun-arg';
+
 // 'function([dispatch_args],...) S7_dispatch()'; returns the value id
 function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: (string | undefined)[], rootId: NodeId, args: number, idMap: AstIdMap): [RArgument<OtherInfo & ParentInformation>, NodeId] {
 	const argNameId = rootId + '-s7-new-generic-fun-arg-name';
@@ -158,7 +165,7 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 			index:     0
 		},
 		location: r,
-		content:  Identifier.make('S7_dispatch', 's7'),
+		content:  Identifier.make('S7_dispatch', 'S7'),
 	} satisfies RSymbol<ParentInformation>;
 	const funcBody = {
 		type:         RType.FunctionCall,
@@ -239,7 +246,7 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 	idMap.set(funcNameId, funcName);
 	idMap.set(funcBody.info.id, funcBody);
 	idMap.set(fdefId, argValue);
-	const argId = rootId + '-s7-new-generic-fun-arg';
+	const argId = rootId + S7SyntheticFunArgSuffix;
 	const argument: RArgument<ParentInformation> = {
 		type:     RType.Argument,
 		lexeme:   'fun',

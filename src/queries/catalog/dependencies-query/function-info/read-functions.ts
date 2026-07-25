@@ -77,7 +77,7 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ package: 'readxl', name: 'read_excel', argIdx: 0, argName: 'path', resolveValue: true },
 	{ package: 'readxl', name: 'read_xls',   argIdx: 0, argName: 'path', resolveValue: true },
 	{ package: 'readxl', name: 'read_xlsx',  argIdx: 0, argName: 'path', resolveValue: true },
-	{ package: 'sf', name: 'read.sf', argIdx: 0, argName: 'dsn', resolveValue: true },
+	{ package: 'sf', name: 'read_sf', argIdx: 0, argName: 'dsn', resolveValue: true },
 	{ package: 'sf', name: 'st_read', argIdx: 0, argName: 'dsn', resolveValue: true },
 	{ package: 'rgdal', name: 'readOGR',       argIdx: 0, argName: 'dsn',   resolveValue: true },
 	{ package: 'rgdal', name: 'ogrInfo',       argIdx: 0, argName: 'dsn',   resolveValue: true },

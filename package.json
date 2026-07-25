@@ -252,6 +252,7 @@
     "@davisvaughan/tree-sitter-r@1.2.0": true,
     "core-js-pure@3.40.0": true,
     "esbuild@0.28.1": true,
-    "plantuml-pipe@1.6.0": true
+    "plantuml-pipe@1.6.0": true,
+    "unrs-resolver@1.12.2": true
   }
 }

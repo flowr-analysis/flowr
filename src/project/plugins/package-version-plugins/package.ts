@@ -8,24 +8,55 @@ import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id'
 
 export type PackageType = 'package' | 'system' | 'r';
 
+/** what a source can contribute about a package; everything else a {@link Package} exposes is derived from these */
 export type PackageOptions = {
-	derivedVersion?:     Range;
 	type?:               PackageType;
 	dependencies?:       Package[];
 	namespaceInfo?:      NamespaceInfo;
+	/** what this source declared for the package (a `DESCRIPTION` range, a lockfile pin, ...) */
 	versionConstraints?: Range[];
 	/** the concrete version the exports were resolved from (e.g. the package database entry), for information only */
 	resolvedVersion?:    string;
 };
 
+/**
+ * A package as the sources describe it, accumulated with {@link addInfo}/{@link mergeInPlace}: only those may
+ * change it, everything else reads. Its three version views run from the rawest to the most concrete:
+ * - {@link versionConstraints}: what each source declared, unmerged.
+ * - {@link derivedRange}: their intersection, whether or not a version can satisfy it (see
+ *   {@link hasSatisfiableVersion}, and `inferredRange` on the dependencies context for the range that is only
+ *   handed out once it is).
+ * - {@link resolvedVersion}: the one concrete version the exports were read from.
+ */
 export class Package {
-	public name:               string;
-	public derivedVersion?:    Range;
-	public type?:              PackageType;
-	public dependencies?:      Package[];
-	public namespaceInfo?:     NamespaceInfo;
-	public versionConstraints: Range[] = [];
-	public resolvedVersion?:   string;
+	public readonly name:                 string;
+	private _type?:                       PackageType;
+	private _dependencies?:               Package[];
+	private _namespaceInfo?:              NamespaceInfo;
+	private _resolvedVersion?:            string;
+	private readonly _versionConstraints: Range[] = [];
+	/** the intersection of {@link versionConstraints}, computed on demand and dropped whenever one is added */
+	private _derivedRange?:               Range;
+
+	public get type(): PackageType | undefined {
+		return this._type;
+	}
+	public get dependencies(): readonly Package[] | undefined {
+		return this._dependencies;
+	}
+	public get namespaceInfo(): NamespaceInfo | undefined {
+		return this._namespaceInfo;
+	}
+	public get resolvedVersion(): string | undefined {
+		return this._resolvedVersion;
+	}
+	public get versionConstraints(): readonly Range[] {
+		return this._versionConstraints;
+	}
+	public get derivedRange(): Range | undefined {
+		this._derivedRange ??= this.deriveRange();
+		return this._derivedRange;
+	}
 
 	constructor(info: { name: string } & PackageOptions) {
 		this.name = info.name;
@@ -73,50 +104,36 @@ export class Package {
 
 	public mergeInPlace(other: Package): void {
 		guard(this.name === other.name, 'Can only merge packages with the same name');
-		this.addInfo(
-			{
-				type:               other.type,
-				dependencies:       other.dependencies,
-				namespaceInfo:      other.namespaceInfo,
-				versionConstraints: other.versionConstraints,
-				resolvedVersion:    other.resolvedVersion
-			}
-		);
+		this.addInfo({
+			type:               other.type,
+			dependencies:       other._dependencies,
+			namespaceInfo:      other.namespaceInfo,
+			versionConstraints: other._versionConstraints,
+			resolvedVersion:    other.resolvedVersion
+		});
 	}
 
-	public addInfo(info: PackageOptions): void {
-		const {
-			type,
-			dependencies,
-			namespaceInfo,
-			versionConstraints,
-			resolvedVersion
-		} = info;
-
-		this.resolvedVersion = resolvedVersion ?? this.resolvedVersion;
-		this.type = type ?? this.type;
-		this.dependencies = dependencies ?? this.dependencies;
-		this.namespaceInfo = namespaceInfo ?? this.namespaceInfo;
-
-		if(versionConstraints !== undefined) {
-			for(const constraint of versionConstraints) {
-				this.versionConstraints.push(constraint);
-			}
-			// sources may disagree, which `hasSatisfiableVersion` reports rather than this failing
-			this.derivedVersion = this.deriveVersion() ?? this.derivedVersion;
+	public addInfo({ type, dependencies, namespaceInfo, versionConstraints, resolvedVersion }: PackageOptions): void {
+		this._resolvedVersion = resolvedVersion ?? this._resolvedVersion;
+		this._type = type ?? this._type;
+		this._dependencies = dependencies ?? this._dependencies;
+		this._namespaceInfo = namespaceInfo ?? this._namespaceInfo;
+		if(versionConstraints !== undefined && versionConstraints.length > 0) {
+			this._versionConstraints.push(...versionConstraints);
+			this._derivedRange = undefined;   // re-derived on the next read, once every source has had its say
 		}
 	}
 
 	/** The combined (intersected) range of all recorded constraints, or `undefined` if none were given. */
-	public deriveVersion(): Range | undefined {
-		return this.versionConstraints.length > 0
-			? RRange.parse(this.versionConstraints.map(c => c.raw).join(' '))
-			: undefined;
+	private deriveRange(): Range | undefined {
+		// sources may disagree, which `hasSatisfiableVersion` reports rather than this failing
+		return RRange.intersect(this._versionConstraints);
 	}
 
 	/** Whether some concrete version can satisfy every recorded constraint at once. */
 	public hasSatisfiableVersion(): boolean {
-		return this.derivedVersion !== undefined && minVersion(this.derivedVersion) !== null;
+		const range = this.derivedRange;
+		return range !== undefined && minVersion(range) !== null;
 	}
 
 	public static parsePkgVersionRange(constraint?: string, version?: string): Range | undefined {

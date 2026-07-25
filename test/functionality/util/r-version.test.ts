@@ -123,6 +123,37 @@ describe('R Version Utility', () => {
 			['>=0.6.0-00', '>=0.6.0-0']
 		);
 
+		describe('combining ranges', () => {
+			/** parse `raw`, failing the test rather than the type checker if it somehow does not */
+			function r(raw: string): Range {
+				const parsed = RRange.parse(raw);
+				assert.isDefined(parsed, `${raw} must parse`);
+				return parsed;
+			}
+			test('intersect requires every range at once', () => {
+				const both = r('>= 1.0.0 <= 2.0.0');
+				assert.deepStrictEqual(RRange.intersect([r('>= 1.0.0'), r('<= 2.0.0')])?.range, both.range);
+			});
+			test('intersect of nothing is undefined, of one is that one', () => {
+				assert.isUndefined(RRange.intersect([]));
+				assert.equal(RRange.intersect([r('>= 1.0.0')])?.raw, '>= 1.0.0');
+			});
+			test('contradicting ranges still combine, they are just satisfied by nothing', () => {
+				const none = RRange.intersect([r('>= 2.0.0'), r('<= 1.0.0')]);
+				assert.isDefined(none);
+				assert.isFalse(RRange.satisfies('1.5.0', none));
+			});
+			test('satisfiesAny takes a version any alternative allows, and anything without alternatives', () => {
+				assert.isTrue(RRange.satisfiesAny('1.5.0', [r('>= 3.0.0'), r('<= 2.0.0')]));
+				assert.isFalse(RRange.satisfiesAny('2.5.0', [r('>= 3.0.0'), r('<= 2.0.0')]));
+				assert.isTrue(RRange.satisfiesAny('2.5.0', []));
+			});
+			test('formatAlternatives reads them back in semver `||` form', () => {
+				assert.equal(RRange.formatAlternatives([r('>= 3.5.0'), r('>= 4.0.0')]), '>= 3.5.0 || >= 4.0.0');
+				assert.equal(RRange.formatAlternatives([]), '');
+			});
+		});
+
 		describe('unparseable constraints yield undefined (never throw)', () => {
 			test.each([
 				'>= abc',            // a non-numeric bound (e.g. a typo'd DESCRIPTION constraint)

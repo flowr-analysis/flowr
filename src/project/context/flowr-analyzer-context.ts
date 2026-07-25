@@ -68,8 +68,8 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	readonly rVersionKnown:    boolean;
 	/** Classify the {@link ProjectKind} of the project, see {@link ReadOnlyFlowrAnalyzerFilesContext#projectKind}. */
 	projectKind(): ProjectKind;
-	/** The versions a dependency can possibly have, see {@link ReadOnlyFlowrAnalyzerDependenciesContext#inferredVersion}. */
-	inferredVersion(name: string): Range | undefined;
+	/** The versions a dependency can possibly have, see {@link ReadOnlyFlowrAnalyzerDependenciesContext#inferredRange}. */
+	inferredRange(name: string): Range | undefined;
 	/**
 	 * Resource-usage guard (gas).
 	 * Call `ctx.gas.checkGas(key)` at expensive analysis sites to obtain the current pressure level.
@@ -257,9 +257,9 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		return this.files.projectKind();
 	}
 
-	/** The versions a dependency can possibly have (delegates to {@link FlowrAnalyzerDependenciesContext#inferredVersion}). */
-	public inferredVersion(name: string): Range | undefined {
-		return this.deps.inferredVersion(name);
+	/** The versions a dependency can possibly have (delegates to {@link FlowrAnalyzerDependenciesContext#inferredRange}). */
+	public inferredRange(name: string): Range | undefined {
+		return this.deps.inferredRange(name);
 	}
 
 	/** delegate request addition */

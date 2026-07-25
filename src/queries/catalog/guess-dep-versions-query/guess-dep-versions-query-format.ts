@@ -93,6 +93,12 @@ export interface GuessedDependency {
 	/** the other packages this one shares a version with, so its range is not independent of theirs */
 	readonly linkedWith?:         readonly string[];
 	/**
+	 * The other packages whose version requirements this one's version choice interacts with, so the two cannot be
+	 * picked independently (`A 0.2.5` requiring `B == 0.2.1` while `A 0.3.0` requires `B == 0.3.2`). A partner marked
+	 * `(partial)` only requires (or is required by) this package in some of their versions.
+	 */
+	readonly coupledWith?:        readonly string[];
+	/**
 	 * Whether the analyzed code actually uses this package (a declared-but-never-used dependency is unconstrained):
 	 * either a direct call, or the project's own NAMESPACE registering an S3 method for a class this package OWNS
 	 * (see `PackageSignatureSource.classOwner`), e.g. tseries's `S3method("as.irts","zoo")` marks `zoo` used with
@@ -113,6 +119,12 @@ export interface GuessDepVersionsQueryResult extends BaseQueryResult {
 	readonly runnableCombinations?: number;
 	/** the whole version space those tuples are drawn from (product of each counted factor's total versions) */
 	readonly possibleCombinations?: number;
+	/**
+	 * The tuples the *declared* constraints alone leave, i.e. what the project already pins down before code usage and
+	 * interdependencies are taken into account. Set only when something is declared and the `declared` source is active,
+	 * so `runnableCombinations` relative to it says how much the guess added.
+	 */
+	readonly declaredCombinations?: number;
 	/** groups of packages interlinked to one shared version (the base/R group plus any configured groups), so their versions are not independent */
 	readonly linkedGroups?:         readonly (readonly string[])[];
 	/** concrete version assignments, present when {@link GuessDepVersionsQuery.explode} was requested (most-preferred first) */
@@ -135,7 +147,7 @@ function guessDepVersionsLineParser(_output: ReplOutput, line: readonly string[]
 	const prefer: Record<string, string> = {};
 	const disabled = new Set<GuessEvidenceSource>();
 	// an optional parenthesised clause `(clean)`, `(<=2025)`, or `(clean:<=2025)`: `clean` drops declared constraints, a (`<=`-prefixed) date caps the window
-	const tokens = [...line];
+	const tokens = line.slice();
 	const open = tokens.findIndex(t => t.startsWith('('));
 	const close = open < 0 ? -1 : tokens.findIndex((t, i) => i >= open && t.endsWith(')'));
 	if(open >= 0 && close >= open) {
@@ -183,8 +195,8 @@ function guessDepVersionsLineParser(_output: ReplOutput, line: readonly string[]
 				}
 			}
 		} else if(!tok.startsWith('--')) {
-			// every bare token is the code to analyse (a `file://`/`watch://` target, a bare path -- auto-prepended to
-			// `file://` by the repl -- or inline R code); package filters are the explicit `--only` flag, so nothing is guessed
+			// every bare token is the code to analyse (a `file://`/`watch://` target, a bare path the repl
+			// auto-prepends `file://` to, or inline R code); package filters are the explicit `--only` flag, so nothing is guessed
 			codeParts.push(tok);
 		}
 	}
@@ -272,6 +284,24 @@ function versionBound(bound: string | undefined): { op: '>=' | '<=', ver: string
 	return { op: m[1] === '>=' ? '>=' : '<=', ver: m[2] };
 }
 
+/**
+ * Order the bounds the way they are read: enforced before partial (which narrow nothing), lower bounds before upper
+ * ones, and the tightest of each first, so the bound that actually decides the range heads its group.
+ */
+function compareBounds(a: DerivedConstraint, b: DerivedConstraint): number {
+	if(Boolean(a.partial) !== Boolean(b.partial)) {
+		return a.partial ? 1 : -1;
+	}
+	const va = versionBound(a.bound), vb = versionBound(b.bound);
+	if(va === undefined || vb === undefined) {
+		return va === vb ? 0 : va === undefined ? 1 : -1;   // a non-version bound (a date, `*`) sorts last
+	}
+	if(va.op !== vb.op) {
+		return va.op === '>=' ? -1 : 1;
+	}
+	return va.op === '>=' ? RVersion.compare(vb.ver, va.ver) : RVersion.compare(va.ver, vb.ver);
+}
+
 /** whether a dependency's version is actually narrowed (not every database version survives); a fully redundant one is unconstrained */
 function isConstrained(dep: GuessedDependency): boolean {
 	return dep.totalVersions !== undefined && dep.candidateCount !== dep.totalVersions;
@@ -282,22 +312,23 @@ function formatCombinations(n: number): string {
 	return n >= 1e12 ? n.toExponential(1) : String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-/** a parameter list, truncated with `...` once it gets long so a many-argument function stays on one readable line */
-function formatParams(params: readonly string[]): string {
-	const shown = 4;
-	return params.length > shown ? `${params.slice(0, shown).join(', ')} (+${params.length - shown})` : params.join(', ');
+/** a list, truncated with a `(+n)` tail once it gets long, so it stays on one readable line */
+function truncatedList(items: readonly string[], shown = 4): string {
+	return items.length > shown ? `${items.slice(0, shown).join(', ')} (+${items.length - shown})` : items.join(', ');
 }
 
 /** a short, readable phrase for one non-signature bound, its origin(s) folded in (so several packages sharing a bound collapse to one line) */
-function nonSignaturePhrase(source: GuessEvidenceSource, bound: string | undefined, origins: readonly string[]): string {
-	const b = bound ? bound.replace(/([<>]=?)\s+/g, '$1') + ' ' : '';
-	switch(source) {
+function nonSignaturePhrase(ev: DerivedConstraint, origins: readonly string[]): string {
+	const b = ev.bound ? ev.bound.replace(/([<>]=?)\s+/g, '$1') + ' ' : '';
+	// a partial bound holds for only some versions of its origin, so it never narrows: say so instead of implying it did
+	const some = ev.partial ? 'some ' : '', not = ev.partial ? ' (not applied)' : '';
+	switch(ev.source) {
 		case 'declared':   return `${b}declared`;
-		case 'transitive': return `${b}required by ${origins.join(', ')}`;
+		case 'transitive': return `${b}required by ${some}${origins.join(', ')}${ev.partial ? ' versions' : ''}${not}`;
 		case 'date':       return `releases up to ${origins[0]}`;
 		case 'base-r':     return `${b}bounded by ${origins[0]}`;
 		case 'available':  return `${b}available in database`;
-		case 'indirect':   return `${b}via ${origins.join(', ')}`;
+		case 'indirect':   return `${b}via ${origins.join(', ')}${not}`;
 		default:           return b.trim();
 	}
 }
@@ -349,8 +380,14 @@ export const GuessDepVersionsQueryDefinition = {
 			result.push(`   ${color('▶', Colors.Green, formatter)} ${bold('sample', formatter)} ${faint(`(${selection})`, formatter)}: ${sample.join(', ')}${latestSuffix}`);
 			const runnable = out.runnableCombinations, possible = out.possibleCombinations;
 			if(runnable !== undefined && possible !== undefined && possible > 0) {
-				const pct = runnable / possible * 100;
-				result.push(`     ${italic('runnable combinations', formatter)}: ${bold(formatCombinations(runnable), formatter)} ${faint(`(${pct < 10 ? pct.toFixed(1) : Math.round(pct)}%)`, formatter)}`);
+				const share = (of: number) => {
+					const pct = runnable / of * 100;
+					return pct < 10 ? pct.toFixed(1) : String(Math.round(pct));
+				};
+				// against the whole database, and against what the project already declares (so: what the guess added)
+				const declared = out.declaredCombinations;
+				const ofDeclared = declared !== undefined && declared > 0 ? `, ${share(declared)}% of declared` : '';
+				result.push(`     ${italic('runnable combinations', formatter)}: ${bold(formatCombinations(runnable), formatter)} ${faint(`(${share(possible)}%${ofDeclared})`, formatter)}`);
 			}
 		}
 		// the packages locked to one shared version
@@ -359,9 +396,12 @@ export const GuessDepVersionsQueryDefinition = {
 			result.push(`   ${italic('linked', formatter)}: ${group.join(' + ')}${rep?.maxVersion ? faint(' @ ' + rep.maxVersion, formatter) : ''}`);
 		}
 		for(const dep of out.dependencies) {
-			const groupTag = dep.base ? ' ' + italic('[base]', formatter)
-				: dep.linkedWith ? ' ' + italic(`[linked: ${dep.linkedWith.join(', ')}]`, formatter) : '';
-			const note = dep.base ? '' : dep.used === false ? ' ' + faint('(not called)', formatter) : !isConstrained(dep) && dep.totalVersions ? ' ' + faint('(any version)', formatter) : '';
+			const coupled = dep.coupledWith ?? [];
+			const groupTag = (dep.base ? ' ' + italic('[base]', formatter)
+				: dep.linkedWith ? ' ' + italic(`[linked: ${dep.linkedWith.join(', ')}]`, formatter) : '')
+				+ (coupled.length > 0 ? ' ' + italic(`[coupled: ${truncatedList(coupled, 3)}]`, formatter) : '');
+			const anyVersion = coupled.length > 0 ? '(any version on its own)' : '(any version)';
+			const note = dep.base ? '' : dep.used === false ? ' ' + faint('(not called)', formatter) : !isConstrained(dep) && dep.totalVersions ? ' ' + faint(anyVersion, formatter) : '';
 			const tag = groupTag + note;
 			const range = dep.unsatisfiable ? color('unsatisfiable', Colors.Red, formatter) : bold(dep.range, formatter);
 			const count = dep.totalVersions !== undefined ? `${dep.candidateCount}/${dep.totalVersions} versions` : `${dep.candidateCount} candidate${dep.candidateCount === 1 ? '' : 's'}`;
@@ -369,11 +409,14 @@ export const GuessDepVersionsQueryDefinition = {
 			const dbGe = versionBound(tightestBound(avail, '>='))?.ver, dbLe = versionBound(tightestBound(avail, '<='))?.ver;
 			const dbRange = dbGe !== undefined && dbLe !== undefined ? `, db ${dbGe} - ${dbLe}` : '';
 			result.push(`   ${bold('━ ' + dep.package, formatter)}${tag}  ${range}  ${faint('(' + count + dbRange + ')', formatter)}`);
-			const tightestGe = versionBound(tightestBound(dep.evidence, '>='))?.ver;
-			const tightestLe = versionBound(tightestBound(dep.evidence.filter(e => versionBound(e.bound)), '<='))?.ver;
+			// only enforced evidence sets the tightest bound; a partial one narrows nothing and must not hide a real bound
+			const enforced = dep.evidence.filter(e => !e.partial);
+			const tightestGe = versionBound(tightestBound(enforced, '>='))?.ver;
+			const tightestLe = versionBound(tightestBound(enforced.filter(e => versionBound(e.bound)), '<='))?.ver;
 			const active: string[] = [], dominated: string[] = [];
-			const nonSig = [...arraysGroupBy(dep.evidence.filter(e => e.source !== 'signature' && e.source !== 'available'), e => `${e.source}|${e.bound ?? ''}`)]
-				.map(([, evs]) => ({ ev: evs[0], origins: [...new Set(evs.map(e => e.origin))] }));
+			const nonSig = [...arraysGroupBy(dep.evidence.filter(e => e.source !== 'signature' && e.source !== 'available'), e => `${e.source}|${e.bound ?? ''}|${e.partial ? 'p' : ''}`)]
+				.map(([, evs]) => ({ ev: evs[0], origins: [...new Set(evs.map(e => e.origin))] }))
+				.sort((x, y) => compareBounds(x.ev, y.ev));
 			const bestRankByBound = new Map<string, number>();
 			for(const { ev } of nonSig) {
 				const vb = versionBound(ev.bound);
@@ -387,7 +430,7 @@ export const GuessDepVersionsQueryDefinition = {
 				}
 			}
 			for(const { ev, origins } of nonSig) {
-				const phrase = nonSignaturePhrase(ev.source, ev.bound, origins);
+				const phrase = nonSignaturePhrase(ev, origins);
 				const vb = versionBound(ev.bound);
 				const best = vb === undefined ? undefined : bestRankByBound.get(vb.op + vb.ver);
 				const redundant = best !== undefined && sourceRank[ev.source] > best;
@@ -403,7 +446,7 @@ export const GuessDepVersionsQueryDefinition = {
 				const ge = tightestBound(evs, '>='), le = tightestBound(evs, '<=');
 				const geVer = versionBound(ge)?.ver, leVer = versionBound(le)?.ver;
 				const params = [...new Set(evs.map(e => e.parameter).filter((pm): pm is string => pm !== undefined))];
-				const reasons = [evs.some(e => !e.parameter) ? 'new' : undefined, params.length > 0 ? `params: [${formatParams(params)}]` : undefined].filter(Boolean).join(', ');
+				const reasons = [evs.some(e => !e.parameter) ? 'new' : undefined, params.length > 0 ? `params: [${truncatedList(params)}]` : undefined].filter(Boolean).join(', ');
 				const name = Identifier.getName(Identifier.parse(fn));
 				const url = rdrrDocUrl(dep.package, name, { base: dep.base, cran: !dep.base });
 				const label = (url ? formatter.hyperlink(name, url, true) : name) + (reasons ? ` (${reasons})` : '');

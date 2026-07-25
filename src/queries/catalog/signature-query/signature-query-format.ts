@@ -189,7 +189,7 @@ function signatureQueryLineParser(output: ReplOutput, line: readonly string[], _
 			positional.push(tok);
 		}
 	}
-	// help only when it is the leading word or an explicit flag -- never for a package/function literally named `help`
+	// help only when it is the leading word or an explicit flag, never for a package/function literally named `help`
 	if(positional[0] === 'help' || line.includes('--help') || line.includes('-h')) {
 		printSignatureHelp(output);
 		return { query: [] };

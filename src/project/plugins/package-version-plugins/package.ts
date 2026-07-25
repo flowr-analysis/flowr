@@ -127,9 +127,7 @@ export class Package {
 	/** The combined (intersected) range of all recorded constraints, or `undefined` if none were given. */
 	private deriveRange(): Range | undefined {
 		// sources may disagree, which `hasSatisfiableVersion` reports rather than this failing
-		return this._versionConstraints.length > 0
-			? RRange.parse(this._versionConstraints.map(c => c.raw).join(' '))
-			: undefined;
+		return RRange.intersect(this._versionConstraints);
 	}
 
 	/** Whether some concrete version can satisfy every recorded constraint at once. */

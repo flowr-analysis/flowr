@@ -125,7 +125,7 @@ export function rSourceRef(version: string | undefined): string {
 }
 
 /** deep-link a base-R definition into the R sources mirror at the release series of `version` */
-export function rSourceUrl(pkg: string, version: string | undefined, file: string, line?: number): string {
+function rSourceUrl(pkg: string, version: string | undefined, file: string, line?: number): string {
 	const anchor = line !== undefined && line >= 0 ? `#L${line}` : '';
 	return `${RSourceMirror}/blob/${rSourceRef(version)}/src/library/${encodeURIComponent(pkg)}/${file}${anchor}`;
 }
@@ -151,7 +151,7 @@ export function rdrrDocUrl(pkg: string, fn: string, opts: { base: boolean, cran:
  * serves a package's current release, so {@link rdrrDocUrl} silently answers for the wrong version whenever an older
  * one was asked for; this link cannot drift.
  */
-export function manPageUrl(pkg: string, topic: string, version: string | undefined, opts: { base: boolean, cran: boolean }): string | undefined {
+function manPageUrl(pkg: string, topic: string, version: string | undefined, opts: { base: boolean, cran: boolean }): string | undefined {
 	if(!RdrrTopicName.test(topic)) {
 		return undefined;
 	}
@@ -215,7 +215,7 @@ function decodedToView(pkg: string, fn: DecodedFunction, version: string | undef
 
 /**
  * The detailed view of a single function within a package: its signature (parameters, forced/optional,
- * defaults), properties, definition location, call graph, and -- for a CRAN package -- a deep link into the
+ * defaults), properties, definition location, call graph, and for a CRAN package a deep link into the
  * read-only CRAN GitHub mirror. `version` defaults to the source's latest; `undefined` when the source does
  * not carry that function.
  */
@@ -276,24 +276,23 @@ function isKnownS3Class(src: PackageSignatureSource, pkg: string, cls: string): 
 	return false;
 }
 
+/** the `generic.class` readings of a dotted name, longest generic first (`as.data.frame.matrix` before `as.data`) */
+function* dottedSplits(name: string): Generator<readonly [generic: string, cls: string]> {
+	for(let dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.', dot - 1)) {
+		yield [name.slice(0, dot), name.slice(dot + 1)];
+	}
+}
+
 /**
- * The generic and dispatch class of an S3 method named `generic.class`, or `undefined` when `fn` is not a method.
- * The longest dotted prefix that names the generic wins (`as.data.frame.matrix` splits at `as.data.frame`, not `as`).
+ * The generic and dispatch class of an S3 method named `generic.class`, or `undefined` when `fn` is not one.
  *
- * A split is accepted when the crawled `s3-method` property is set -- authoritative, present for CRAN methods and
- * for base methods whose generic lives in the same package. When it is absent (a base method for a generic owned by
- * ANOTHER package, e.g. `print.acf`: the `print` generic is in `base`, so `stats` never recorded the flag) the split
- * is confirmed against the live database instead: the prefix must name a *dispatching* generic (`UseMethod` in its
- * callees) AND the suffix must name a *registered* S3 class. Both guards are required -- the generic check alone
- * would take `data.frame` (`data` is no generic); the class check alone would take `t.test` (`t` dispatches, but
- * `test` is no class).
+ * The crawled `s3-method` property settles it when present. It is missing for a base method whose generic lives in
+ * another package (`stats` never flags `print.acf`, since `print` is in `base`), so then the prefix must name a
+ * dispatching generic and the suffix a registered class. Dropping either check would split `data.frame` or `t.test`.
  */
 function s3MethodParts(src: PackageSignatureSource, pkg: string, fns: readonly DecodedFunction[] | undefined, fn: DecodedFunction): { generic: string, class: string, package: string } | undefined {
-	const name = fn.name;
 	const flagged = fn.props.includes('s3-method');
-	for(let dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.', dot - 1)) {
-		const generic = name.slice(0, dot);
-		const cls = name.slice(dot + 1);
+	for(const [generic, cls] of dottedSplits(fn.name)) {
 		const g = resolveGeneric(src, pkg, fns, generic);
 		if(g && (flagged || (dispatchesGeneric(g.fn) && isKnownS3Class(src, pkg, cls)))) {
 			return { generic, class: cls, package: g.package };
@@ -367,7 +366,7 @@ function signatureCallGraphUrl(src: PackageSignatureSource, pkg: string, version
 		for(const callee of src.functionByName(cur.owner, cur.name, cur.ver)?.callees ?? []) {
 			const r = resolve(cur.owner, cur.ver, callee);
 			edges.push(`  ${cur.id} --> ${node(r?.owner, r ? r.name : callee)}`);
-			// expand into a resolved same/other CRAN package (not base R -- its internals explode the graph), avoiding cycles
+			// expand into a resolved same/other CRAN package (not base R, whose internals explode the graph), avoiding cycles
 			if(r && !bases.has(r.owner) && !seen.has(`${r.owner}::${r.name}`) && nodes.size < CallGraphMaxNodes) {
 				queue.push({ owner: r.owner, ver: r.owner === cur.owner ? cur.ver : src.latestVersion(r.owner)?.str, name: r.name, id: node(r.owner, r.name) });
 			}
@@ -501,7 +500,7 @@ function allAvailableVersions(sources: readonly PackageSignatureSource[], pkg: s
 }
 
 /**
- * The owning source that actually carries `version` -- `current` is checked before `history`, so a
+ * The owning source that actually carries `version`: `current` is checked before `history`, so a
  * latest-version query never decompresses the (large) history shard. Returns the first owner when no version
  * was asked, or `undefined` when an explicit version is carried by none of them.
  */
@@ -564,7 +563,7 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 
 	const fnMatch = q.function ? nameMatcher(q.function) : () => true;
 	// an exact function name lets us seek that one record (decoding only it) instead of decoding every function of
-	// every package -- the difference between a fast `* ggplot` and one that decodes the whole database
+	// every package, the difference between a fast `* ggplot` and one that decodes the whole database
 	const exactName = q.function !== undefined && !hasGlob(q.function);
 	const matches: SignatureMatchView[] = [];
 	let searched = 0;

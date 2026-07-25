@@ -369,8 +369,8 @@ function isCompatible(getFn: FnResolver, version: string, usage: PackageUsage, t
 
 /**
  * Whether a named argument would bind to a parameter of `decoded` under R's matching (exact, pmatch, or `...`).
- * `undefined` (the function is absent) is a no; an empty capture -- a generic like `seq` whose formals became
- * `UseMethod`, or a data gap -- is uninformative and treated as accepting (so it never reports a false removal).
+ * `undefined` (the function is absent) is a no; an empty capture (a generic like `seq` whose formals became
+ * `UseMethod`, or a data gap) is uninformative and treated as accepting (so it never reports a false removal).
  */
 function argumentSupported(decoded: DecodedFunction | undefined, arg: string): boolean {
 	if(decoded === undefined) {
@@ -428,7 +428,7 @@ function addSignatureEvidence(observe: ConstraintObserver, src: PackageSignature
 	}
 }
 
-/** intersection of multiple survivor sets -- versions that survive in every set */
+/** intersection of multiple survivor sets: versions that survive in every set */
 export function intersectSurvivors(survivorSets: readonly (readonly TimelineEntry[])[]): TimelineEntry[] {
 	if(survivorSets.length === 0) {
 		return [];
@@ -514,16 +514,6 @@ export function collectTransitiveConstraints(deps: ReadOnlyFlowrAnalyzerDependen
 		}
 	}
 	return out;
-}
-
-/** whether a version satisfies a transitive constraint, i.e. any one of its alternative requirements */
-function meetsTransitive(version: VersionString, constraint: TransitiveConstraint): boolean {
-	return constraint.ranges.some(r => RRange.satisfies(version, r));
-}
-
-/** the bound a transitive constraint reports, the alternatives joined with semver's `||` */
-function transitiveBound(constraint: TransitiveConstraint): string {
-	return constraint.ranges.map(r => r.raw).join(' || ');
 }
 
 /** the default bound for the fixpoint loops, overridable per query with {@link GuessDepVersionsQuery.maxIterations} */
@@ -859,14 +849,24 @@ function versionMeetsPartners(src: PackageSignatureSource, pkg: string, ver: str
 /** an empty set, shared so callers that do not disable anything need not allocate one */
 export const NoDisabledSources: ReadonlySet<ConstraintSource> = new Set();
 
+/** what {@link applyConstraints} filters a package's timeline by, beyond the date and R bounds it takes from the space */
+interface ConstraintInputs {
+	readonly declaredRange:       Range | undefined;
+	readonly declaredConstraints: readonly string[];
+	readonly transitive:          readonly TransitiveConstraint[];
+	/** whether the package is an R-core / base package, so its version *is* an R version */
+	readonly base:                boolean;
+}
+
 /**
  * Filter a version timeline by the declared range, transitive constraints, base-R version bound, and date cutoff,
- * emitting each constraint to `observe` (when given) as it is applied -- so the filtering and its explanation cannot
+ * emitting each constraint to `observe` (when given) as it is applied, so the filtering and its explanation cannot
  * drift apart. A source disabled on `space` is skipped entirely: neither filtered on nor reported as evidence.
  */
-function applyConstraints(space: VersionSpace, timeline: readonly TimelineEntry[], name: string, declaredRange: Range | undefined, declaredConstraints: readonly string[], transitive: readonly TransitiveConstraint[], base: boolean, observe?: ConstraintObserver): TimelineEntry[] {
+function applyConstraints(space: VersionSpace, name: string, timeline: readonly TimelineEntry[], inputs: ConstraintInputs, observe?: ConstraintObserver): TimelineEntry[] {
 	const { disabled, rVersion, cutoff } = space;
-	let t = [...timeline];
+	const { declaredRange, declaredConstraints, transitive, base } = inputs;
+	let t = timeline.slice();
 	if(!disabled.has('declared')) {
 		for(const c of declaredConstraints) {
 			observe?.({ source: 'declared', origin: 'project metadata', detail: `declared as ${c}`, bound: c });
@@ -875,12 +875,12 @@ function applyConstraints(space: VersionSpace, timeline: readonly TimelineEntry[
 	}
 	if(!disabled.has('transitive')) {
 		for(const c of transitive) {
-			const bound = transitiveBound(c);
+			const bound = RRange.formatAlternatives(c.ranges);
 			// a constraint only some versions of the origin declare cannot filter: another of its versions avoids it
 			const detail = c.universal ? `${c.from} requires ${name} ${bound}` : `some versions of ${c.from} require ${name} ${bound}`;
 			observe?.({ source: 'transitive', origin: c.from, detail, bound, ...(c.universal ? {} : { partial: true }) });
 			if(c.universal) {
-				t = t.filter(e => meetsTransitive(e.ver, c));
+				t = t.filter(e => RRange.satisfiesAny(e.ver, c.ranges));
 			}
 		}
 	}
@@ -893,7 +893,7 @@ function applyConstraints(space: VersionSpace, timeline: readonly TimelineEntry[
 	if(cutoff && !disabled.has('date')) {
 		observe?.({ source: 'date', origin: isoDay(cutoff), detail: `only releases up to ${isoDay(cutoff)}`, bound: `<=${isoDay(cutoff)}` });
 		// base R is stored undated, so fall back to its R release date; a dated release must predate the cutoff, and an
-		// undated one is dropped -- except base R older than the release table (kept, as it predates any real cutoff)
+		// undated one is dropped, except base R older than the release table (kept, as it predates any real cutoff)
 		t = t.filter(e => {
 			const date = e.date ?? (base ? rReleaseDate(e.ver) : undefined);
 			return date !== undefined ? date.getTime() <= cutoff.getTime() : base;
@@ -927,7 +927,7 @@ export function survivingEntries(space: VersionSpace, name: string, transitive: 
 		observe({ source: 'available', origin: 'signature database', detail: `data available from ${timeline[0].ver}`, bound: `>=${timeline[0].ver}` });
 		observe({ source: 'available', origin: 'signature database', detail: `data available up to ${timeline[timeline.length - 1].ver}`, bound: `<=${timeline[timeline.length - 1].ver}` });
 	}
-	const preSignature = applyConstraints(space, timeline, name, declaredRange, declaredConstraints, effectiveTransitive, base, observe);
+	const preSignature = applyConstraints(space, name, timeline, { declaredRange, declaredConstraints, transitive: effectiveTransitive, base }, observe);
 	if(!usage || disabled.has('signature')) {
 		return { survivors: preSignature, preSignature, getFn, declaredRange, declaredConstraints, base, unsatisfiable, total, declared };
 	}
@@ -954,7 +954,7 @@ function constraintsContradict(declaredConstraints: readonly string[], declaredR
 	if(ranges.length === 0) {
 		return false;
 	}
-	const combined = RRange.parse(ranges.map(r => r.raw).join(' '));
+	const combined = RRange.intersect(ranges);
 	return combined === undefined || minVersion(combined) === null;
 }
 

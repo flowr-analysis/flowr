@@ -147,7 +147,7 @@ function guessDepVersionsLineParser(_output: ReplOutput, line: readonly string[]
 	const prefer: Record<string, string> = {};
 	const disabled = new Set<GuessEvidenceSource>();
 	// an optional parenthesised clause `(clean)`, `(<=2025)`, or `(clean:<=2025)`: `clean` drops declared constraints, a (`<=`-prefixed) date caps the window
-	const tokens = [...line];
+	const tokens = line.slice();
 	const open = tokens.findIndex(t => t.startsWith('('));
 	const close = open < 0 ? -1 : tokens.findIndex((t, i) => i >= open && t.endsWith(')'));
 	if(open >= 0 && close >= open) {
@@ -195,8 +195,8 @@ function guessDepVersionsLineParser(_output: ReplOutput, line: readonly string[]
 				}
 			}
 		} else if(!tok.startsWith('--')) {
-			// every bare token is the code to analyse (a `file://`/`watch://` target, a bare path -- auto-prepended to
-			// `file://` by the repl -- or inline R code); package filters are the explicit `--only` flag, so nothing is guessed
+			// every bare token is the code to analyse (a `file://`/`watch://` target, a bare path the repl
+			// auto-prepends `file://` to, or inline R code); package filters are the explicit `--only` flag, so nothing is guessed
 			codeParts.push(tok);
 		}
 	}

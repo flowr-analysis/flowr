@@ -93,7 +93,7 @@ export interface PackageSignatureSource {
 	/** the export view of a package version (defaults to its latest) */
 	lookup(pkg: string, version?: string): LibraryExports | undefined;
 	/**
-	 * The package that OWNS the class `className` -- an S3 class (a same-named constructor plus a registered method,
+	 * The package that OWNS the class `className`: an S3 class (a same-named constructor plus a registered method,
 	 * see {@link LibraryExports.s3Classes}) or an S4 class (exported via `exportClasses`, see
 	 * {@link LibraryExports.s4Classes}); S3 ownership wins a tie. `undefined` if none does. Without `version`, backed
 	 * by a reverse index over every package's latest version, built once and cached.
@@ -323,7 +323,7 @@ export interface OpenSyncFromOptions extends SigDbOpenOptions, OpenSyncOptions {
 
 /**
  * Fast, partial reader for a single bundle. `open()`/`openSync()` load the string dictionary + `.idx`
- * once (a single ranged read of the dictionary section -- no full parse), then every query seeks straight
+ * once (a single ranged read of the dictionary section, no full parse), then every query seeks straight
  * to one package blob on demand. `open()` additionally decompresses a `.br`/`.gz` source into a
  * hash-keyed cache and reuses it on later startups. Implements {@link PackageSignatureSource}.
  */
@@ -365,7 +365,7 @@ export class SigDatabase implements PackageSignatureSource {
 	/**
 	 * Open a plain, seekable `.sigs.ndjson` synchronously. Pass `index` to skip reading the `.idx`,
 	 * and `strings` to use an already-loaded shared dictionary instead of the file's own `d` section (for a
-	 * blob-only shard). One ranged read loads the dictionary -- no readline overhead.
+	 * blob-only shard). One ranged read loads the dictionary, no readline overhead.
 	 */
 	public static openSync(plainFile: string, opts: OpenSyncOptions = {}): SigDatabase {
 		if(isCompressed(plainFile)) {
@@ -451,12 +451,15 @@ export class SigDatabase implements PackageSignatureSource {
 
 	/** read every unique package blob in index order (used to re-hash a whole shard during verification) */
 	public allBlobs(): PkgBlob[] {
-		return this.index.blobs.map(range => this.readBlobAt(range));
+		// an in-memory database has no byte ranges to re-read: its blobs are the cached ones, in blob-index order
+		return this.fd === NoFile
+			? [...this.blobCache.entries()].sort(([a], [b]) => a - b).map(([, blob]) => blob)
+			: this.index.blobs.map(range => this.readBlobAt(range));
 	}
 
 	/** recompute this bundle's self-contained content hash from its re-read data (matches {@link writeSignatureDb}) */
 	public contentHash(blobs = this.allBlobs()): string {
-		// use only this bundle's own package metadata, in package-index order -- a shared manifest may hoist a
+		// use only this bundle's own package metadata, in package-index order, since a shared manifest may hoist a
 		// superset of metadata that the self-contained bundle was NOT hashed over
 		const meta: Record<string, SigDbPkgMeta> = {};
 		for(const pkg of Object.keys(this.index.pkgs)) {
@@ -590,7 +593,7 @@ function tierRank(ref: SigDbShardRef): number {
 	return ref.tier === 'current' ? 0 : 1;
 }
 
-/** options for {@link SigDatabaseSet.openManifest} -- the base cache options plus per-shard enable/disable */
+/** options for {@link SigDatabaseSet.openManifest}: the base cache options plus per-shard enable/disable */
 export interface SigDbSetOpenOptions extends SigDbOpenOptions {
 	/** only load these shard ids (e.g. `['base-current','current-top']`); omit to load all */
 	includeShards?: readonly string[];
@@ -684,14 +687,14 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	}
 
 	/**
-	 * Synchronous {@link openManifest} -- needs every shard to embed its index (the default for the bundles
+	 * Synchronous {@link openManifest}, needing every shard to embed its index (the default for the bundles
 	 * flowR ships). Shards and dictionaries still decompress lazily.
 	 */
 	public static openManifestSync(manifestFile: string, opts: SigDbSetOpenOptions = {}): SigDatabaseSet {
 		const { baseDir, manifest } = SigDatabaseSet.prepManifest(manifestFile, opts);
 		const indices = manifest.shards.map(s => {
 			if(!s.idx) {
-				throw new Error(`openManifestSync needs every shard to embed its index; shard '${s.id}' does not -- use openManifest`);
+				throw new Error(`openManifestSync needs every shard to embed its index; shard '${s.id}' does not, use openManifest`);
 			}
 			return decodeIndex(s.idx, manifest.meta);
 		});
@@ -726,7 +729,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		return strings;
 	}
 
-	/** lazily open a shard -- decompressing its `.br` (and its shared dictionary) into the cache on first access */
+	/** lazily open a shard, decompressing its `.br` (and its shared dictionary) into the cache on first access */
 	private shard(i: number): SigDatabase {
 		const existing = this.opened[i];
 		if(existing) {
@@ -789,7 +792,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		});
 		await Promise.all([...shardJobs, ...dictJobs]);
 		// open each shard from the now-decompressed cache (cheap; parses each shared dictionary once) so later
-		// synchronous queries -- including historical, pinned-version lookups -- never block
+		// synchronous queries, including historical pinned-version lookups, never block
 		for(const i of need) {
 			this.shard(i);
 		}
@@ -805,7 +808,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		return candidates.filter(i => this.shard(i).hasVersion(pkg, version));
 	}
 
-	/** read (once) the blob from the shard with the most complete history -- a `full` or `history` tier if present */
+	/** read (once) the blob from the shard with the most complete history: a `full` or `history` tier if present */
 	private historyBlob(pkg: string): PkgBlob | undefined {
 		const candidates = this.routes.get(pkg);
 		if(!candidates || candidates.length === 0) {
@@ -846,12 +849,12 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		});
 	}
 
-	/** open (blocking) and return every shard database with its manifest ref -- used for whole-set verification */
+	/** open (blocking) and return every shard database with its manifest ref, for whole-set verification */
 	public allShards(): MountedShard[] {
 		return this.manifest.shards.map((ref, i) => ({ ref, db: this.shard(i) }));
 	}
 
-	/** load (and cache) a shared dictionary's strings by id -- for verification/inspection */
+	/** load (and cache) a shared dictionary's strings by id, for verification/inspection */
 	public sharedDictionary(id: string): string[] {
 		return this.dictionaryStrings(id);
 	}
@@ -913,7 +916,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		return Object.keys(this.historyBlob(pkg)?.versions ?? {}).map(RVersion.parseOrZero).sort((a, b) => RVersion.compare(a.str, b.str));
 	}
 
-	/** every known release of a package (version + date), ascending -- read once from the most complete shard */
+	/** every known release of a package (version + date), ascending, read once from the most complete shard */
 	public releaseDates(pkg: string): VersionRelease[] {
 		return releasesOf(this.historyBlob(pkg));
 	}
@@ -959,7 +962,7 @@ function isSyncOpenable(source: string): boolean {
 
 /**
  * Open a path-based source once, process-wide, synchronously. Returns the shared instance (opening it on the
- * first call), or `undefined` if the path needs async opening (a `.br`/`.gz` bundle -- use {@link getSharedSigSource}).
+ * first call), or `undefined` if the path needs async opening (a `.br`/`.gz` bundle, use {@link getSharedSigSource}).
  * Throws only if a sync-openable source fails to open.
  */
 export function getSharedSigSourceSync(source: string): PackageSignatureSource | undefined {

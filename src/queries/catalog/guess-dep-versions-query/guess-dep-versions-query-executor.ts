@@ -127,8 +127,15 @@ function rangeString(survivors: readonly string[], nonContiguous: boolean, unsat
 	return survivors.length <= cap ? survivors.join(', ') : `${min}...${max} (${survivors.length} discrete)`;
 }
 
+/** what a guessed package is related to: the packages it shares a version with, and those its choice interacts with */
+interface PackageRelations {
+	readonly used:         boolean;
+	readonly linkedWith?:  readonly string[];
+	readonly coupledWith?: readonly string[];
+}
+
 /** build the reported guess for one package from its already-computed surviving versions and provenance */
-function guessPackage(name: string, cap: number, surviving: SurvivingEntries, evidence: EvidenceCollector, used: boolean, linkedWith?: readonly string[], coupledWith?: readonly string[]): GuessedDependency {
+function guessPackage(name: string, cap: number, surviving: SurvivingEntries, evidence: EvidenceCollector, { used, linkedWith, coupledWith }: PackageRelations): GuessedDependency {
 	const { declaredRange, declaredConstraints, unsatisfiable } = surviving;
 	const survivors = surviving.survivors.map(e => e.ver);
 	const preSignature = surviving.preSignature.map(e => e.ver);
@@ -270,7 +277,11 @@ export async function executeGuessDepVersionsQuery(
 	const dependencies: GuessedDependency[] = [];
 	const ordered: OrderedCandidates[] = [];
 	for(const g of guessedAll) {
-		dependencies.push(guessPackage(g.name, cap, g.surviving, g.evidence, usage.has(g.name), linkedWith.get(g.name), coupledWith.get(g.name)));
+		dependencies.push(guessPackage(g.name, cap, g.surviving, g.evidence, {
+			used:        usage.has(g.name),
+			linkedWith:  linkedWith.get(g.name),
+			coupledWith: coupledWith.get(g.name)
+		}));
 		const oc = query.explode ? orderedCandidatesOf(space.resolve(g.name).src, g.name, g.surviving, query.explode.prefer?.[g.name], explodeOrder) : undefined;
 		if(oc) {
 			ordered.push(oc);

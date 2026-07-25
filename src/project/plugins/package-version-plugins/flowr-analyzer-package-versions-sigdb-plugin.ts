@@ -163,7 +163,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 			if(!dl.sigDbNeedsSync()) {
 				return;
 			}
-			sigDbLog.info('sigdb: committed link file changed -- re-syncing shards in the background');
+			sigDbLog.info('sigdb: committed link file changed, re-syncing shards in the background');
 			const { files } = await dl.downloadFullSigDb({
 				repo:       ctx.config.solver.sigdb.downloadRepo,
 				onProgress: msg => sigDbLog.info(`sigdb sync: ${msg}`)
@@ -275,7 +275,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 
 	/**
 	 * The raw sources in priority order: explicit constructor sources, `$FLOWR_SIGDB`, then **every** bundled
-	 * database discovered in the data dirs (see {@link defaultSigDbPaths}) -- so an extra bundle dropped next to
+	 * database discovered in the data dirs (see {@link defaultSigDbPaths}), so an extra bundle dropped next to
 	 * the default (e.g. a downloaded full-history one) is mounted automatically. All bundled defaults are skipped
 	 * when `$FLOWR_DISABLE_DEFAULT_SIGDB` is set; explicit sources are always honored.
 	 */
@@ -295,7 +295,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	private loadSources(config?: FlowrConfig): PackageSignatureSource[] {
 		const cfg = config ?? this.analyzerCtx?.config;
 		// `solver.sigdb.enabled: false` disables the database for this analyzer only: drop any loaded sources so it
-		// frees memory and every consumer (resolve, base-R link, queries) sees nothing -- other analyzers are untouched.
+		// frees memory and every consumer (resolve, base-R link, queries) sees nothing; other analyzers are untouched.
 		// An absent config is the pre-analysis query path (default enabled), so only an explicit `false` disables.
 		if(cfg !== undefined && !isSigDbEnabled(cfg)) {
 			if(this.sources !== undefined) {

@@ -409,6 +409,124 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		expect(guessed(res, 'B')?.candidates).toContain('1.0.0');
 	});
 
+	test('a transitive requirement only some versions of the depending package declare does not filter', async() => {
+		const res = await runGuess(ts, {
+			code:     'library(A)\nlibrary(B)\naf()\nbf()',
+			declared: { A: '*' },
+			packages: {
+				A: { latest:   '2.0.0', versions: {
+					'1.0.0': { date: '2019-01-01', fns: { af: [] } },
+					'2.0.0': { date: '2021-01-01', fns: { af: [] }, deps: { B: '>= 1.0.0' } }
+				} },
+				B: { versions: {
+					'0.9.0': { date: '2018-01-01', fns: { bf: [] } },
+					'1.0.0': { date: '2019-01-01', fns: { bf: [] } }
+				} }
+			}
+		});
+		expect(guessed(res, 'B')?.candidates).toEqual(['0.9.0', '1.0.0']);
+		const transitive = guessed(res, 'B')?.evidence.find(e => e.source === 'transitive');
+		expect(transitive?.partial).toBe(true);
+		expect(transitive?.bound).toBe('>= 1.0.0');
+	});
+
+	test('a transitive requirement every version declares filters with the weakest of them', async() => {
+		const res = await runGuess(ts, {
+			code:     'library(A)\nlibrary(B)\naf()\nbf()',
+			declared: { A: '*' },
+			packages: {
+				A: { latest:   '2.0.0', versions: {
+					'1.0.0': { date: '2019-01-01', fns: { af: [] }, deps: { B: '>= 1.0.0' } },
+					'2.0.0': { date: '2021-01-01', fns: { af: [] }, deps: { B: '>= 2.0.0' } }
+				} },
+				B: { versions: {
+					'0.9.0': { date: '2018-01-01', fns: { bf: [] } },
+					'1.0.0': { date: '2019-01-01', fns: { bf: [] } },
+					'2.0.0': { date: '2021-01-01', fns: { bf: [] } }
+				} }
+			}
+		});
+		expect(guessed(res, 'B')?.candidates).toEqual(['1.0.0', '2.0.0']);
+		const transitive = guessed(res, 'B')?.evidence.find(e => e.source === 'transitive');
+		expect(transitive?.partial).toBeUndefined();
+		expect(transitive?.bound).toBe('>= 1.0.0');
+	});
+
+	test('two packages whose versions pin each other are counted as coupled, not as independent factors', async() => {
+		// each version of A admits exactly one version of B, so only 2 of the 2x2 tuples actually run
+		const res = await runGuess(ts, {
+			code:     'library(A)\nlibrary(B)\naf()\nbf()',
+			declared: { A: '*' },
+			packages: {
+				A: { latest:   '2.0.0', versions: {
+					'1.0.0': { date: '2019-01-01', fns: { af: [] }, deps: { B: '<= 1.0.0' } },
+					'2.0.0': { date: '2021-01-01', fns: { af: [] }, deps: { B: '>= 2.0.0' } }
+				} },
+				B: { versions: {
+					'1.0.0': { date: '2019-01-01', fns: { bf: [] } },
+					'2.0.0': { date: '2021-01-01', fns: { bf: [] } }
+				} }
+			}
+		});
+		expect(guessed(res, 'B')?.candidates).toEqual(['1.0.0', '2.0.0']);
+		expect(res.possibleCombinations).toBe(4);
+		expect(res.runnableCombinations).toBe(2);
+		expect(guessed(res, 'A')?.coupledWith).toEqual(['B']);
+		expect(guessed(res, 'B')?.coupledWith).toEqual(['A']);
+	});
+
+	test('a coupling only some versions impose is reported as partial', async() => {
+		const res = await runGuess(ts, {
+			code:     'library(A)\nlibrary(B)\naf()\nbf()',
+			declared: { A: '*' },
+			packages: {
+				A: { latest:   '2.0.0', versions: {
+					'1.0.0': { date: '2019-01-01', fns: { af: [] } },
+					'2.0.0': { date: '2021-01-01', fns: { af: [] }, deps: { B: '>= 2.0.0' } }
+				} },
+				B: { versions: {
+					'1.0.0': { date: '2019-01-01', fns: { bf: [] } },
+					'2.0.0': { date: '2021-01-01', fns: { bf: [] } }
+				} }
+			}
+		});
+		expect(guessed(res, 'A')?.coupledWith).toEqual(['B (partial)']);
+		// A 1.0.0 runs with either B, A 2.0.0 only with B 2.0.0
+		expect(res.runnableCombinations).toBe(3);
+	});
+
+	test('the declared constraints give the baseline the runnable count is also reported against', async() => {
+		const scenario: GuessScenario = {
+			code:     'library(pkg)\nf(x, extra = 1)',
+			declared: { pkg: '>= 2.0.0' },
+			packages: { pkg: { versions: {
+				'1.0.0': { date: '2019-01-01', fns: { f: ['x'] } },
+				'2.0.0': { date: '2020-01-01', fns: { f: ['x'] } },
+				'3.0.0': { date: '2021-01-01', fns: { f: ['x', 'extra'] } },
+				'4.0.0': { date: '2022-01-01', fns: { f: ['x', 'extra'] } }
+			} } }
+		};
+		const res = await runGuess(ts, scenario);
+		expect(res.possibleCombinations).toBe(4);    // every release in the database
+		expect(res.declaredCombinations).toBe(3);    // what `>= 2.0.0` alone leaves
+		expect(res.runnableCombinations).toBe(2);    // plus the `extra` argument, so 3.0.0 and 4.0.0
+		const q = [{ type: 'guess-dep-versions' as const }];
+		const analyzer = await buildGuessAnalyzer(ts, scenario);
+		const ascii = await asciiSummaryOfQueryResult(ansiFormatter, 0, await executeQueries({ analyzer }, q), analyzer, q);
+		expect(ascii).toContain('67% of declared');
+	});
+
+	test('nothing declared reports no declared baseline', async() => {
+		const res = await runGuess(ts, {
+			code:     'library(pkg)\nf(x)',
+			packages: { pkg: { versions: {
+				'1.0.0': { date: '2019-01-01', fns: { f: ['x'] } },
+				'2.0.0': { date: '2020-01-01', fns: { f: ['x'] } }
+			} } }
+		});
+		expect(res.declaredCombinations).toBeUndefined();
+	});
+
 	test('the `fun` argument flowR synthesizes for an S7 constructor is not held against a version', async() => {
 		// `new_class` has no `fun` parameter in any release; counting the synthetic one would reject every version
 		const dep = await guessDep(ts, {

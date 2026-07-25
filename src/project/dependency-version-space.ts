@@ -18,6 +18,7 @@ import { VertexType } from '../dataflow/graph/vertex';
 import { FunctionArgument, type DataflowGraph } from '../dataflow/graph/graph';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import { S7SyntheticFunArgSuffix } from '../dataflow/internal/process/functions/call/built-in/built-in-s-seven-new-generic';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from './context/flowr-analyzer-dependencies-context';
 import type { ReadonlyFlowrAnalysisProvider } from './flowr-analyzer';
 
@@ -246,6 +247,15 @@ function addClassOwnershipUsage(usage: Map<string, PackageUsage>, deps: ReadOnly
 	}
 }
 
+/**
+ * Whether an argument was synthesized by flowR rather than written in the code. Such an argument is not evidence of
+ * how the package is called, so a signature that lacks its parameter must not reject the version (S7's `new_class`
+ * has no `fun` parameter, yet flowR appends one to model the constructor it returns).
+ */
+function isSyntheticArgument(arg: FunctionArgument): boolean {
+	return !FunctionArgument.isEmpty(arg) && String(arg.nodeId).endsWith(S7SyntheticFunArgSuffix);
+}
+
 /** scan the dataflow graph for every call that resolves (via {@link Dataflow.qualify}) to a package export */
 export function collectUsage(graph: DataflowGraph, deps?: ReadOnlyFlowrAnalyzerDependenciesContext): Map<string, PackageUsage> {
 	const usage = new Map<string, PackageUsage>();
@@ -270,9 +280,10 @@ export function collectUsage(graph: DataflowGraph, deps?: ReadOnlyFlowrAnalyzerD
 			entry = { named: new Set(), calls: new Map() };
 			pkgUsage.set(fn, entry);
 		}
+		const args = vertex.args.some(isSyntheticArgument) ? vertex.args.filter(a => !isSyntheticArgument(a)) : vertex.args;
 		const named: string[] = [];
 		let positional = 0;
-		for(const arg of vertex.args) {
+		for(const arg of args) {
 			if(FunctionArgument.isNamed(arg)) {
 				entry.named.add(arg.name);
 				named.push(arg.name);
@@ -283,7 +294,7 @@ export function collectUsage(graph: DataflowGraph, deps?: ReadOnlyFlowrAnalyzerD
 		// dedupe by call shape: named names + positional count
 		const key = named.sort().join(',') + '#' + positional;
 		if(!entry.calls.has(key)) {
-			entry.calls.set(key, [...vertex.args]);
+			entry.calls.set(key, [...args]);
 		}
 	}
 	if(deps) {

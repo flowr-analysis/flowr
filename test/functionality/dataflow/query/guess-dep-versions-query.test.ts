@@ -390,6 +390,18 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		expect(guessed(res, 'B')?.candidates).toContain('1.0.0');
 	});
 
+	test('the `fun` argument flowR synthesizes for an S7 constructor is not held against a version', async() => {
+		// `new_class` has no `fun` parameter in any release; counting the synthetic one would reject every version
+		const dep = await guessDep(ts, {
+			code:     'cls <- S7::new_class("gg", abstract = TRUE)',
+			packages: { S7: { versions: {
+				'0.1.0': { date: '2023-01-01', fns: { new_class: ['name', 'parent', 'package', 'properties', 'abstract', 'constructor', 'validator'] } },
+				'0.2.0': { date: '2024-01-01', fns: { new_class: ['name', 'parent', 'package', 'properties', 'abstract', 'constructor', 'validator'] } }
+			} } }
+		}, 'S7');
+		expect(dep?.candidates).toEqual(['0.1.0', '0.2.0']);
+	});
+
 	test('the data-coverage envelope is reported as explicit `available` evidence', async() => {
 		// the guess can never fall outside the versions the database has data for; that outer bound is stated, not silently applied
 		const dep = await guessDep(ts, {

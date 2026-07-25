@@ -66,6 +66,13 @@ describe('Implicit sources', () => {
 		);
 	});
 
+	test('a shiny app loads global.R before its supporting R/ files, as shiny does', () => {
+		assert.deepStrictEqual(
+			orderOf(FlowrConfig.default(), '/app/server.R', '/app/R/mod.R', '/app/ui.R', '/app/global.R'),
+			['/app/global.R', '/app/R/mod.R', '/app/ui.R', '/app/server.R']
+		);
+	});
+
 	test('an explicitly configured order wins over the one of the project kind', () => {
 		assert.deepStrictEqual(
 			orderOf(withImplicit('app.R', 'global.R'), '/app/global.R', '/app/ui.R', '/app/app.R'),

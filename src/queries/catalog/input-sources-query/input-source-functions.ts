@@ -1,4 +1,44 @@
 import { Identifier } from '../../../dataflow/environments/identifier';
+import type { LinkedInputDeclaration, LinkedInputEntryPoint, LinkedInputObject } from './simple-input-classifier';
+import { InputType } from './simple-input-classifier';
+
+/** shiny's ui-side control widgets, all taking the id of the `input` entry they feed as their first argument */
+const ShinyInputWidgets: LinkedInputDeclaration = {
+	argName: 'inputId',
+	argIdx:  0,
+	calls:   [
+		'actionButton', 'actionLink', 'checkboxInput', 'checkboxGroupInput', 'dateInput', 'dateRangeInput',
+		'fileInput', 'numericInput', 'passwordInput', 'radioButtons', 'selectInput', 'selectizeInput',
+		'sliderInput', 'submitButton', 'textAreaInput', 'textInput', 'varSelectInput', 'varSelectizeInput'
+	].map(n => Identifier.make(n, 'shiny'))
+};
+
+/**
+ * Objects that a framework binds for its users, without a definition visible in the code.
+ * The `withParams` and `requires` guards keep ordinary functions that happen to have a parameter of the same
+ * name out of this; where the framework is handed the function, {@link LinkedInputEntryPoints} is exact instead.
+ * @see {@link LinkedInputObject}
+ */
+export const LinkedInputObjects: readonly LinkedInputObject[] = [
+	/* shiny hands the server function its reactive `input` and `session` objects */
+	{ name: 'input', type: InputType.User, withParams: ['output'], requires: 'shiny', declaredBy: ShinyInputWidgets },
+	/* of the session only what the browser sends is user input, `userData` and `token` are the app's own */
+	{ name: 'session', type: InputType.User, withParams: ['input', 'output'], requires: 'shiny', fields: ['clientData', 'request'] }
+];
+
+/** shiny binds `input`, `output`, and `session` positionally, so their names are up to whoever writes the server */
+const ShinyServerParams = ['input', undefined, 'session'];
+
+/**
+ * Calls that hand a function to a framework which binds its parameters by position.
+ * @see {@link LinkedInputEntryPoint}
+ */
+export const LinkedInputEntryPoints: readonly LinkedInputEntryPoint[] = [
+	{ call: Identifier.make('shinyApp',     'shiny'), argName: 'server', argIdx: 1, params: ShinyServerParams },
+	{ call: Identifier.make('shinyServer',  'shiny'), argName: 'func',   argIdx: 0, params: ShinyServerParams },
+	{ call: Identifier.make('moduleServer', 'shiny'), argName: 'module', argIdx: 1, params: ShinyServerParams },
+	{ call: Identifier.make('callModule',   'shiny'), argName: 'module', argIdx: 0, params: ShinyServerParams }
+];
 
 export const PureFunctions: Identifier[] = [
 	/* operators - syntax elements, impossible to call with :: in practice */
@@ -210,6 +250,40 @@ export const PureFunctions: Identifier[] = [
 	Identifier.make('cov',      'stats'),
 	Identifier.make('na.omit',  'stats'),
 	Identifier.make('xtabs',    'stats'),
+	/* shiny - wrappers that hand their expression on; the reactives among them do so through a call (`r()`).
+	   `observe`/`observeEvent`/`render*` are left out on purpose: they return an observer or render handle,
+	   not the value of their expression. */
+	Identifier.make('reactive',             'shiny'),
+	Identifier.make('eventReactive',        'shiny'),
+	Identifier.make('bindEvent',            'shiny'),
+	Identifier.make('bindCache',            'shiny'),
+	Identifier.make('isolate',              'shiny'),
+	Identifier.make('req',                  'shiny'),
+	Identifier.make('debounce',             'shiny'),
+	Identifier.make('throttle',             'shiny'),
+	Identifier.make('reactiveVal',          'shiny'),
+	Identifier.make('reactiveValues',       'shiny'),
+	Identifier.make('reactiveValuesToList', 'shiny'),
+	Identifier.make('freezeReactiveVal',    'shiny'),
+	/* cohortBuilder - assembling a cohort keeps the data of its source */
+	Identifier.make('cohort',        'cohortBuilder'),
+	Identifier.make('set_source',    'cohortBuilder'),
+	Identifier.make('add_source',    'cohortBuilder'),
+	Identifier.make('update_source', 'cohortBuilder'),
+	Identifier.make('add_filter',    'cohortBuilder'),
+	Identifier.make('update_filter', 'cohortBuilder'),
+	Identifier.make('rm_filter',     'cohortBuilder'),
+	Identifier.make('bind_key',      'cohortBuilder'),
+	Identifier.make('bind_keys',     'cohortBuilder'),
+	Identifier.make('as.tblist',     'cohortBuilder'),
+	Identifier.make('tblist',        'cohortBuilder'),
+	/* generic names, only matched bare while cohortBuilder is attached */
+	Identifier.make('filter',        'cohortBuilder'),
+	Identifier.make('step',          'cohortBuilder'),
+	Identifier.make('add_step',      'cohortBuilder'),
+	Identifier.make('rm_step',       'cohortBuilder'),
+	Identifier.make('run',           'cohortBuilder'),
+	Identifier.make('restore',       'cohortBuilder'),
 ];
 
 export const SystemFunctions: Identifier[] = [
@@ -324,6 +398,32 @@ export const UserFunctions: Identifier[] = [
 	/* tcltk */
 	Identifier.make('tk_choose.files', 'tcltk'),
 	Identifier.make('tk_choose.dir',   'tcltk'),
+	/* shiny - everything the browser sends along with a request */
+	Identifier.make('parseQueryString', 'shiny'),
+	Identifier.make('getQueryString',   'shiny'),
+	Identifier.make('getUrlHash',       'shiny'),
+	Identifier.make('restoreInput',     'shiny'),
+	/* shinyFiles - paths the user picks in the browser */
+	Identifier.make('parseFilePaths',   'shinyFiles'),
+	Identifier.make('parseDirPath',     'shinyFiles'),
+	Identifier.make('parseSavePath',    'shinyFiles'),
+	Identifier.make('shinyFileChoose',  'shinyFiles'),
+	Identifier.make('shinyDirChoose',   'shinyFiles'),
+	Identifier.make('shinyFileSave',    'shinyFiles'),
+	/* cohortBuilder - the data that comes out of a cohort depends on the filters the user set */
+	Identifier.make('get_data',  'cohortBuilder'),
+	Identifier.make('sum_up',    'cohortBuilder'),
+	Identifier.make('attrition', 'cohortBuilder'),
+	Identifier.make('get_state', 'cohortBuilder'),
+	Identifier.make('code',      'cohortBuilder'),
+	Identifier.make('stat',      'cohortBuilder'),
+	/* shinyCohortBuilder - the gui that lets the user set those filters */
+	Identifier.make('cb_server',      'shinyCohortBuilder'),
+	Identifier.make('cb_ui',          'shinyCohortBuilder'),
+	Identifier.make('cb_chat_server', 'shinyCohortBuilder'),
+	Identifier.make('cb_chat_ui',     'shinyCohortBuilder'),
+	Identifier.make('gui',            'shinyCohortBuilder'),
+	Identifier.make('demo_app',       'shinyCohortBuilder'),
 ];
 
 /** R functions that produce temporary file/directory paths (sub-type of {@link InputType.File}). */

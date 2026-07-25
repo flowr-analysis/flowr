@@ -16,7 +16,8 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 			for(const [key, value] of Object.entries(expectedOutput)) {
 				expectedOutput[key] = value.map(v => ({
 					...v,
-					id: SlicingCriterion.tryParse(v.id, nast) ?? v.id
+					id: SlicingCriterion.tryParse(v.id, nast) ?? v.id,
+					...(v.declaredAt ? { declaredAt: v.declaredAt.map(d => SlicingCriterion.tryParse(d as SlicingCriterion, nast) ?? d) } : {})
 				}));
 			}
 			return {
@@ -165,6 +166,12 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 		testQuery('Reading from the closure with call', 'x <- 1\nf <- function() { eval(x) }\nf()', [{ type: 'input-sources', criterion: '2@eval' }], {
 			'2@eval': [{ id: '2@x', types: [InputType.Scope], trace: InputTraceType.Unknown }]
 		});
+		testQuery('A parameter takes the type of what the caller passes', 'f <- function(cmd) {\n  foo(cmd)\n}\nf(read.csv("a.csv"))', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@cmd', types: [InputType.File], trace: InputTraceType.Alias }]
+		});
+		testQuery('Without a call it stays a parameter', 'f <- function(cmd) {\n  foo(cmd)\n}', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@cmd', types: [InputType.Parameter], trace: InputTraceType.Pure }]
+		});
 	});
 
 	describe('Temporary files', () => {
@@ -275,6 +282,72 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 		});
 		testQuery('NULL named arg carries name and null value', 'foo(connection=NULL)', [{ type: 'input-sources', criterion: '1@foo' }], {
 			'1@foo': [{ id: '1@NULL', types: [InputType.Constant], trace: InputTraceType.Unknown, name: 'connection', value: null }]
+		});
+	});
+
+	describe('Shiny (issue #2625)', () => {
+		testQuery('a read of input$n links to the widget declaring it', 'library(shiny)\nui <- fluidPage(textInput("n", "Name"))\nserver <- function(input, output, session) {\n  foo(input$n)\n}', [{ type: 'input-sources', criterion: '4@foo' }], {
+			'4@foo': [{ id: '4@$', types: [InputType.User], trace: InputTraceType.Unknown, name: 'n', declaredAt: ['2@textInput'] }]
+		});
+		testQuery('input$n is user input', 'library(shiny)\nserver <- function(input, output, session) {\n  foo(input$n)\n}', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@$', types: [InputType.User], trace: InputTraceType.Unknown, name: 'n' }]
+		});
+		testQuery('input[["n"]] is user input', 'library(shiny)\nserver <- function(input, output, session) {\n  foo(input[["n"]])\n}', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@[[', types: [InputType.User], trace: InputTraceType.Unknown, name: 'n' }]
+		});
+		testQuery('the input object itself is user input', 'library(shiny)\nserver <- function(input, output) {\n  foo(input)\n}', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@input', types: [InputType.User], trace: InputTraceType.Unknown }]
+		});
+		testQuery('the parameters are bound by position, so their names do not matter', 'library(shiny)\nshinyApp(fluidPage(), function(inp, out, sess) {\n  foo(inp$n)\n})', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@$', types: [InputType.User], trace: InputTraceType.Unknown, name: 'n' }]
+		});
+		testQuery('the same for a module server', 'library(shiny)\nmoduleServer("id", function(i, o, s) {\n  foo(i$cmd)\n})', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@$', types: [InputType.User], trace: InputTraceType.Unknown, name: 'cmd' }]
+		});
+		testQuery('what the browser sends with the session is user input', 'library(shiny)\nserver <- function(input, output, session) {\n  foo(session$clientData)\n}', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@$', types: [InputType.User], trace: InputTraceType.Unknown, name: 'clientData' }]
+		});
+		testQuery('the rest of the session is not', 'library(shiny)\nserver <- function(input, output, session) {\n  foo(session$userData)\n}', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@$', types: [InputType.Parameter, InputType.Unknown, InputType.DerivedConstant], trace: InputTraceType.Known }]
+		});
+		testQuery('traces through the reactive wrappers', 'library(shiny)\nserver <- function(input, output, session) {\n  output$txt <- renderText({ foo(isolate(input$n)) })\n}', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@isolate', types: [InputType.User, InputType.DerivedConstant], trace: InputTraceType.Known }]
+		});
+		testQuery('calling a reactive yields what it computes', 'library(shiny)\nserver <- function(input, output, session) {\n  n <- reactive({ input$n })\n  foo(n())\n}', [{ type: 'input-sources', criterion: '4@foo' }], {
+			'4@foo': [{ id: '4@n', types: [InputType.User, InputType.DerivedConstant], trace: InputTraceType.Alias }]
+		});
+		testQuery('an ordinary input parameter stays a parameter', 'convert <- function(input, mode) {\n  foo(input)\n}', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@input', types: [InputType.Parameter], trace: InputTraceType.Pure }]
+		});
+		testQuery('without shiny even an input/output pair is no framework object', 'copyIt <- function(input, output) {\n  foo(input)\n}', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@input', types: [InputType.Parameter], trace: InputTraceType.Pure }]
+		});
+		testQuery('a locally defined input shadows the framework object', 'library(shiny)\nserver <- function(input, output, session) {\n  helper <- function(input) {\n    foo(input)\n  }\n}', [{ type: 'input-sources', criterion: '4@foo' }], {
+			'4@foo': [{ id: '4@input', types: [InputType.Parameter], trace: InputTraceType.Pure }]
+		});
+		testQuery('query string is user input', 'library(shiny)\nserver <- function(input, output, session) {\n  foo(parseQueryString(session$clientData$url_search))\n}', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@parseQueryString', types: [InputType.User], trace: InputTraceType.Unknown }]
+		});
+		testQuery('input handed to a helper keeps being user input', 'library(shiny)\nhelper <- function(input) {\n  foo(input$cmd)\n}\nsrv <- function(input, output, session) {\n  helper(input)\n}\nsrv(1, 2, 3)', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@$', types: [InputType.User, InputType.Unknown, InputType.DerivedConstant], trace: InputTraceType.Known }]
+		});
+	});
+
+	describe('cohortBuilder (issue #2625)', () => {
+		testQuery('get_data yields user-filtered data', 'library(cohortBuilder)\ncoh <- cohort(set_source(as.tblist(x)))\nfoo(get_data(coh))', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@get_data', types: [InputType.User], trace: InputTraceType.Unknown }]
+		});
+		testQuery('the cohort itself keeps the source of its data', 'library(cohortBuilder)\ncoh <- cohort(set_source(as.tblist(read.csv("a.csv"))))\nfoo(coh)', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@coh', types: [InputType.File, InputType.DerivedConstant], trace: InputTraceType.Alias }]
+		});
+		testQuery('a filter specification does not blur the trace', 'library(cohortBuilder)\ncoh <- cohort(set_source(as.tblist(read.csv("a.csv"))), filter("discrete", dataset = "d"))\nfoo(coh)', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@coh', types: [InputType.File, InputType.DerivedConstant], trace: InputTraceType.Alias }]
+		});
+		testQuery('a bare filter() is dplyr\'s without cohortBuilder', 'coh <- filter(read.csv("a.csv"), x > 1)\nfoo(coh)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@coh', types: [InputType.Unknown], trace: InputTraceType.Alias }]
+		});
+		testQuery('the shiny gui is a user entry point', 'library(shinyCohortBuilder)\nfoo(gui(coh))', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@gui', types: [InputType.User], trace: InputTraceType.Unknown }]
 		});
 	});
 }));

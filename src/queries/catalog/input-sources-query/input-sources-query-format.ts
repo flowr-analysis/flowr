@@ -13,8 +13,9 @@ import { executeInputSourcesQuery } from './input-sources-query-executor';
 import { SourceLocation } from '../../../util/range';
 import { Q } from '../../../search/flowr-search-builder';
 import { LintingResultCertainty } from '../../../linter/linter-format';
+import { Record } from '../../../util/record';
 import { ReadFunctions } from '../dependencies-query/function-info/read-functions';
-import { FfiFunctions, LangFunctions, OptionsFunctions, PureFunctions, SystemFunctions, TempFileFunctions, UserFunctions } from './input-source-functions';
+import { FfiFunctions, LangFunctions, LinkedInputEntryPoints, LinkedInputObjects, OptionsFunctions, PureFunctions, SystemFunctions, TempFileFunctions, UserFunctions } from './input-source-functions';
 
 export type InputSourcesQueryConfig = InputClassifierConfig;
 /**
@@ -43,7 +44,9 @@ export const DefaultInputClassifierConfig: InputClassifierConfig = {
 	[InputType.Ffi]:       FfiFunctions,
 	[InputType.Lang]:      LangFunctions,
 	[InputType.Options]:   OptionsFunctions,
-	[InputType.User]:      UserFunctions
+	[InputType.User]:      UserFunctions,
+	linkedObjects:         LinkedInputObjects,
+	linkedEntryPoints:     LinkedInputEntryPoints
 };
 
 export interface InputSourcesQueryResult extends BaseQueryResult {
@@ -74,13 +77,17 @@ export const InputSourcesDefinition = {
 		const nast = (await analyzer.normalize()).idMap;
 		for(const [key, sources] of Object.entries(out.results)) {
 			result.push(`   ╰ Input Sources for ${key}`);
-			for(const { id, trace, types, name, value } of sources) {
+			for(const { id, trace, types, name, value, declaredAt } of sources) {
 				const kNode = nast.get(id);
 				const kLoc = kNode ? SourceLocation.format(SourceLocation.fromNode(kNode)) : 'unknown location';
 				const nameStr  = name  !== undefined ? `, name: ${name}` : '';
 				const valueStr = value !== undefined ? `, value: ${JSON.stringify(value)}` : '';
+				const declStr  = declaredAt ? `, declared at: ${declaredAt.map(d => {
+					const dNode = nast.get(d);
+					return dNode ? SourceLocation.format(SourceLocation.fromNode(dNode)) : String(d);
+				}).join(', ')}` : '';
 				result.push(
-					`           ╰ ${kLoc} (id: ${id}), type: ${JSON.stringify(types)}, trace: ${trace}${nameStr}${valueStr}`
+					`           ╰ ${kLoc} (id: ${id}), type: ${JSON.stringify(types)}, trace: ${trace}${nameStr}${valueStr}${declStr}`
 				);
 			}
 		}
@@ -103,6 +110,17 @@ export const InputSourcesDefinition = {
 			[InputType.Lang]:      Joi.array().items(Joi.string()).optional().description('Functions that produce language objects (e.g., substitute, quote, bquote, expression).'),
 			[InputType.Options]:   Joi.array().items(Joi.string()).optional().description('Functions that access or set global options (e.g., options, getOption).'),
 			[InputType.User]:      Joi.array().items(Joi.string()).optional().description('Functions that read interactive user input (e.g., file.choose, readline, menu, askYesNo).'),
+			linkedObjects:         Joi.array().items(Joi.object({
+				name:       Joi.string().required().description('Name of the object, e.g. input.'),
+				type:       Joi.string().valid(...Record.values<string>(InputType)).required().description('How reads of the object (or of its fields) are classified.'),
+				withParams: Joi.array().items(Joi.string()).optional().description('Only link the object if the function binding it declares all of these parameters as well.')
+			})).optional().description('Objects a framework provides without a definition in the code, e.g. shiny\'s input.'),
+			linkedEntryPoints: Joi.array().items(Joi.object({
+				call:    Joi.string().required().description('The call taking the function, e.g. shiny::shinyApp.'),
+				argName: Joi.string().required().description('Name of the argument holding the function.'),
+				argIdx:  Joi.number().required().description('Index of that argument when it is passed positionally.'),
+				params:  Joi.array().items(Joi.string().allow(null)).required().description('Which linkedObject the framework binds to each parameter, by position.')
+			})).optional().description('Calls that hand a function to a framework, which binds its objects to the parameters by position.')
 		}).optional()
 	}).description('Input Sources query definition'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult) => {

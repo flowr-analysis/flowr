@@ -1,4 +1,4 @@
-import { type REnvironmentInformation  } from './environment';
+import type { REnvironmentInformation } from './environment';
 import type { IdentifierDefinition } from './identifier';
 import { padToCommonScope } from './scoping';
 

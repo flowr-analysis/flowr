@@ -894,7 +894,7 @@ export class RDAParser{
 				const info = this.readItem() as RObjectData;
 				const state = this.readItem() as RObjectData;
 				const attr = this.readItem() as RObjectData;
-				s.type = (((info.cdr as RObjectData).cdr as RObjectData).car as RObjectData).type as SexpType;
+				s.type = (((info.cdr as RObjectData).cdr as RObjectData).car as RObjectData).type;
 				s = this.AltRepUnserializeEx(info, state, attr, object, levels);
 				this.currentDepth--;
 				return s;
@@ -945,7 +945,7 @@ export class RDAParser{
 						value:  RValues.BaseEnv,
 						type:   SexpType.EnvSxp,
 						enClos: RValues.NilValue
-					} as RObjectData);
+					});
 				}
 				return s;
 			}
@@ -969,9 +969,9 @@ export class RDAParser{
 					}
 					case SexpType.WeakRefSxp:
 						s.value = this.R_MakeWeakRef(
-							{ type: SexpType.NilSxp, value: RValues.NilValue } as RObjectData,
+							{ type: SexpType.NilSxp, value: RValues.NilValue },
 							RValues.NilValue,
-							{ type: SexpType.NilSxp, value: RValues.NilValue } as RObjectData,
+							{ type: SexpType.NilSxp, value: RValues.NilValue },
 							false);
 						this.addReadRef(s);
 						break;
@@ -1134,7 +1134,7 @@ export class RDAParser{
 				const _state = this.skipItem();
 				const _attr = this.skipItem();
 
-				s.type = (((info.cdr as RObjectData).cdr as RObjectData).car as RObjectData).type as SexpType;
+				s.type = (((info.cdr as RObjectData).cdr as RObjectData).car as RObjectData).type;
 				this.currentDepth--;
 				return s;
 			}
@@ -1165,7 +1165,7 @@ export class RDAParser{
 						value:  RValues.BaseEnv,
 						type:   SexpType.EnvSxp,
 						enClos: RValues.NilValue
-					} as RObjectData);
+					});
 				}
 				return s;
 			}
@@ -1188,9 +1188,9 @@ export class RDAParser{
 					}
 					case SexpType.WeakRefSxp:
 						s.value = this.R_MakeWeakRef(
-							{ type: SexpType.NilSxp, value: RValues.NilValue } as RObjectData,
+							{ type: SexpType.NilSxp, value: RValues.NilValue },
 							RValues.NilValue,
-							{ type: SexpType.NilSxp, value: RValues.NilValue } as RObjectData,
+							{ type: SexpType.NilSxp, value: RValues.NilValue },
 							false);
 						this.addReadRef(s);
 						break;
@@ -1302,13 +1302,13 @@ export class RDAParser{
 				}
 				break;
 			default: {
-				let t = 0;
-				for(let done = 0; done < len; done += t) {
-					t = Math.min(RDAParser.CHUNK_SIZE, len - done);
+				for(let done = 0; done < len;) {
+					const t = Math.min(RDAParser.CHUNK_SIZE, len - done);
 					for(let i = 0; i < t; i++) {
 						result[done + i] = this.buffer[this.offset];
 						this.offset += 1;
 					}
+					done += t;
 				}
 			}
 		}
@@ -1327,12 +1327,12 @@ export class RDAParser{
 				this.skipWord();
 			}
 		} else {
-			let t = 0;
-			for(let done = 0; done < len; done += t) {
-				t = Math.min(RDAParser.CHUNK_SIZE, len - done);
+			for(let done = 0; done < len;) {
+				const t = Math.min(RDAParser.CHUNK_SIZE, len - done);
 				for(let i = 0; i < t; i++) {
 					this.offset += 1;
 				}
+				done += t;
 			}
 		}
 	}
@@ -1498,7 +1498,7 @@ export class RDAParser{
 
 		while(validIterativeTypes.has(type)) {
 			const unpackedFlags = this.unpackFlags(flags);
-			type = unpackedFlags[0] as SexpType;
+			type = unpackedFlags[0];
 			const levels = unpackedFlags[1];
 			const isObject = unpackedFlags[2];
 			const hasAttr = unpackedFlags[3];
@@ -1721,10 +1721,9 @@ export class RDAParser{
 		switch(this.format) {
 			case SerializationFormat.Xdr:
 			{
-				let t = 0;
 				const result: number[] = [];
-				for(let done = 0; done < len; done += t) {
-					t = Math.min(RDAParser.CHUNK_SIZE, len - done);
+				for(let done = 0; done < len;) {
+					const t = Math.min(RDAParser.CHUNK_SIZE, len - done);
 					for(let cnt = 0; cnt < t; cnt++) {
 						if(this.offset + 4 > this.buffer.length) {
 							throw new Error('XDR read failed');
@@ -1732,6 +1731,7 @@ export class RDAParser{
 						result[done + cnt] = this.buffer.readInt32BE(this.offset);
 						this.offset += 4;
 					}
+					done += t;
 				}
 				return result;
 			}
@@ -1761,15 +1761,15 @@ export class RDAParser{
 		switch(this.format) {
 			case SerializationFormat.Xdr:
 			{
-				let t = 0;
-				for(let done = 0; done < len; done += t) {
-					t = Math.min(RDAParser.CHUNK_SIZE, len - done);
+				for(let done = 0; done < len;) {
+					const t = Math.min(RDAParser.CHUNK_SIZE, len - done);
 					for(let cnt = 0; cnt < t; cnt++) {
 						if(this.offset + 4 > this.buffer.length) {
 							throw new Error('XDR read failed');
 						}
 						this.offset += 4;
 					}
+					done += t;
 				}
 				break;
 			}
@@ -1797,9 +1797,8 @@ export class RDAParser{
 		switch(this.format) {
 			case SerializationFormat.Xdr: {
 				const result = [];
-				let t = 0;
-				for(let done = 0; done < len; done += t) {
-					t = Math.min(RDAParser.CHUNK_SIZE, len - done);
+				for(let done = 0; done < len;) {
+					const t = Math.min(RDAParser.CHUNK_SIZE, len - done);
 
 					const chunkBytes = t * RDAParser.SIZE_OF_DOUBLE;
 					const chunk = this.buffer.subarray(this.offset, this.offset + chunkBytes);
@@ -1809,6 +1808,7 @@ export class RDAParser{
 						const value = chunk.readDoubleBE(i * RDAParser.SIZE_OF_DOUBLE);
 						result.push(value);
 					}
+					done += t;
 				}
 				return result;
 			}
@@ -1837,11 +1837,11 @@ export class RDAParser{
 	skipRealVec(len: number): (number | RValues)[] | null[] {
 		switch(this.format) {
 			case SerializationFormat.Xdr: {
-				let t = 0;
-				for(let done = 0; done < len; done += t) {
-					t = Math.min(RDAParser.CHUNK_SIZE, len - done);
+				for(let done = 0; done < len;) {
+					const t = Math.min(RDAParser.CHUNK_SIZE, len - done);
 					const chunkBytes = t * RDAParser.SIZE_OF_DOUBLE;
 					this.offset += chunkBytes;
+					done += t;
 				}
 				break;
 			}
@@ -1929,12 +1929,12 @@ export class RDAParser{
 		switch(this.format) {
 			case SerializationFormat.Xdr: {
 				const result: Complex[] = [];
-				let t = 0;
-				for(let done = 0; done < len; done += t) {
-					t = Math.min(RDAParser.CHUNK_SIZE, len - done);
+				for(let done = 0; done < len;) {
+					const t = Math.min(RDAParser.CHUNK_SIZE, len - done);
 					for(let cnt = 0; cnt < t; cnt++) {
 						result[done] = this.inComplex();
 					}
+					done += t;
 				}
 				return result;
 			}
@@ -1961,12 +1961,12 @@ export class RDAParser{
 	skipComplexVec(len: number): void {
 		switch(this.format) {
 			case SerializationFormat.Xdr: {
-				let t = 0;
-				for(let done = 0; done < len; done += t) {
-					t = Math.min(RDAParser.CHUNK_SIZE, len - done);
+				for(let done = 0; done < len;) {
+					const t = Math.min(RDAParser.CHUNK_SIZE, len - done);
 					for(let cnt = 0; cnt < t; cnt++) {
 						this.skipComplex();
 					}
+					done += t;
 				}
 				break;
 			}
@@ -2267,10 +2267,12 @@ export class RDAParser{
 					this.skipInteger();
 					type = this.assertInteger(this.inInteger());
 				}
+				/* eslint-disable no-useless-assignment -- mirrors the read path */
 				switch(type) {
 					case SexpType.AltLangSxp: type = SexpType.LangSxp; hasAttr = true; break;
 					case SexpType.AttrListSxp: type = SexpType.ListSxp; hasAttr = true; break;
 				}
+				/* eslint-enable no-useless-assignment */
 
 				this.currentDepth++;
 				if(hasAttr) {
@@ -2395,7 +2397,7 @@ export class RDAParser{
 					throw new Error('cannot unserialize this ALTREP object');
 			}
 		}
-		return {} as RObjectData;
+		return {};
 	}
 
 	/**
@@ -2505,7 +2507,7 @@ export class RDAParser{
 			const name = (n.tag as RObjectData)?.name;
 
 			if(name !== undefined) {
-				let copy: RObjectData = {};
+				let copy: RObjectData;
 				if(shortcut) {
 					copy = {
 						name: (n.tag as RObjectData).name,

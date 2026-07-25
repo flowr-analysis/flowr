@@ -9,7 +9,7 @@ import { getAllFunctionCallTargets, linkArgumentsOnCall, pMatch } from '../../..
 import { Dataflow } from '../../../../../graph/df-helper';
 import { VertexType } from '../../../../../graph/vertex';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import type { Identifier, InGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { convertFnArguments } from '../common';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -51,7 +51,7 @@ interface BuiltInPurrrFormulaConfiguration {
 function linkOnSymbol<OtherInfo>(rootId: NodeId, filteredArgs: readonly FunctionArgument[], node: RSymbol<OtherInfo & ParentInformation>, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	// If the formula is a symbol naming a function, try to resolve it in the call environment.
 	try {
-		const defs = resolveByName(node.content as unknown as Identifier, data.environment, ReferenceType.Function) ?? [];
+		const defs = resolveByName(node.content, data.environment, ReferenceType.Function) ?? [];
 		graph.addEdge(rootId, node.info.id, EdgeType.Calls);
 		for(const def of defs) {
 			// Mark the call as calling this target
@@ -178,7 +178,7 @@ export function processPurrrFormula<OtherInfo>(
 	const ignore = new Set(config.ignore ?? []);
 	RNode.visitAst<ParentInformation & OtherInfo>(formulaNode, (node) => {
 		if(node.type === RType.Symbol) {
-			const sym = node as RSymbol<ParentInformation & OtherInfo>;
+			const sym = node;
 			const name = sym.content as unknown as string;
 			if(ignore.has(name)) {
 				return false;

@@ -692,7 +692,7 @@ function envFromJson(json: IEnvironmentJson): Environment {
 	const parent = json.parent ? envFromJson(json.parent) : undefined;
 	const memory: BuiltInMemory = new Map();
 	for(const [key, value] of Object.entries(json.memory)) {
-		memory.set(key as BrandedIdentifier, value);
+		memory.set(key, value);
 	}
 	const obj: Writable<IEnvironment> = new Environment(parent as Environment, json.builtInEnv);
 	(obj as { id: NodeId }).id = json.id;

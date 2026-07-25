@@ -102,14 +102,12 @@ function skipWhitespace({ remInput, position }: ParserInfo): ParserInfo {
 function consumeLicenseName(info: ParserInfo): ParserResult<string>  {
 	info = skipWhitespace(info);
 	let licenseName = '';
-	let isAtWhitespace = false;
 	for(let i = 0; i < info.remInput.length; i++) {
 		const char = info.remInput[i];
 		if(/[()<>~!=,&|+]/.test(char)) {
 			break;
-		} else {
-			isAtWhitespace = /\s/.test(char);
 		}
+		const isAtWhitespace = /\s/.test(char);
 		if(isAtWhitespace) {
 			if(/^\s*(with|and|or)\s+/i.test(info.remInput.slice(i))) {
 				break;

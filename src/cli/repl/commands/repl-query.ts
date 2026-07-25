@@ -56,7 +56,7 @@ interface QuerySchemaDescription {
 
 /** the single boundary cast for Joi's untyped {@link Joi.Description}, shared by the doc and template renderers */
 function describeSchema(schema: SupportedQuery['schema']): QuerySchemaDescription {
-	return schema.describe() as unknown as QuerySchemaDescription;
+	return schema.describe();
 }
 
 /** Print documentation for one query type from its Joi schema (description + each parameter), or list all when no name is given. */

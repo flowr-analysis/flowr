@@ -102,7 +102,7 @@ export function splitOnNestingSensitive(
 		} else if(nestStack.length > 0) {
 			if(!openCloseSame.has(c) && c in closes) {
 				// opening a new nest
-				nestStack.push(c as keyof typeof MatchingClose);
+				nestStack.push(c);
 			} else {
 				const top = nestStack[nestStack.length - 1];
 				if(c === closes[top]) {
@@ -112,7 +112,7 @@ export function splitOnNestingSensitive(
 			current += c;
 		} else {
 			if(c in closes) {
-				nestStack.push(c as keyof typeof MatchingClose);
+				nestStack.push(c);
 				current += c;
 				continue;
 			}

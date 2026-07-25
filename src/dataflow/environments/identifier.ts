@@ -47,7 +47,7 @@ export const Identifier = {
 	 */
 	make(this: void, name: BrandedIdentifier, namespace?: BrandedNamespace, internal: boolean = false): Identifier {
 		if(startAndEndsWith(name, '`')) {
-			name = name.substring(1, name.length - 1) as BrandedIdentifier;
+			name = name.substring(1, name.length - 1);
 		}
 		if(namespace) {
 			return [name, namespace, internal];
@@ -92,9 +92,9 @@ export const Identifier = {
 		const internal = str.includes(':::');
 		const parts = str.split(internal ? ':::' : '::');
 		if(parts.length === 2) {
-			return [parts[1] as BrandedIdentifier, parts[0] as BrandedNamespace, internal];
+			return [parts[1], parts[0], internal];
 		}
-		return parts[0] as BrandedIdentifier;
+		return parts[0];
 	},
 	/**
 	 * Get the name part of the identifier
@@ -168,7 +168,7 @@ export const Identifier = {
 	},
 	/** Special identifier for the `...` argument */
 	dotdotdot(this: void): BrandedIdentifier {
-		return '...' as BrandedIdentifier;
+		return '...';
 	},
 	/**
 	 * Check if the identifier is the special `...` argument / or one of its accesses like `..1`, `..2`, etc.
@@ -243,7 +243,7 @@ export const Identifier = {
 			const bare = Identifier.getName(name);
 			const owner = baseRExportOwner(bare);
 			if(owner !== undefined) {
-				return Identifier.make(bare, owner as BrandedNamespace);
+				return Identifier.make(bare, owner);
 			}
 		}
 		return undefined;

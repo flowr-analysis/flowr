@@ -31,7 +31,7 @@ export const NodeId = {
 			/* typescript is a beautiful converter */
 			const num = +id;
 			if(!Number.isNaN(num)) {
-				return num as NodeId;
+				return num;
 			}
 		}
 		return id;

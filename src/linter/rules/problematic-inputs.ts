@@ -5,7 +5,6 @@ import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
 import type { InputClassifierConfig, InputSource, InputSources } from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { InputType } from '../../queries/catalog/input-sources-query/simple-input-classifier';
-import type { InputSourcesQuery } from '../../queries/catalog/input-sources-query/input-sources-query-format';
 import { SlicingCriterion } from '../../slicing/criterion/parse';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { FunctionArgument } from '../../dataflow/graph/graph';
@@ -147,7 +146,7 @@ export const PROBLEMATIC_INPUTS = {
 				const fileArgId = resolveFileArgId(vertex, pipeSpec.argIdx, pipeSpec.argName);
 				if(fileArgId !== undefined) {
 					const criterion = SlicingCriterion.fromId(fileArgId);
-					const all       = await data.query([{ type: 'input-sources', criterion, config: config.inputFns } as InputSourcesQuery]);
+					const all       = await data.query([{ type: 'input-sources', criterion, config: config.inputFns }]);
 					const sources   = all['input-sources']?.results?.[criterion] ?? [];
 					const r         = checkPipeInjection(nid, loc, name, sources);
 					if(r !== undefined) {
@@ -157,7 +156,7 @@ export const PROBLEMATIC_INPUTS = {
 				}
 			} else {
 				const criterion = SlicingCriterion.fromId(nid);
-				const all       = await data.query([{ type: 'input-sources', criterion, config: config.inputFns } as InputSourcesQuery]);
+				const all       = await data.query([{ type: 'input-sources', criterion, config: config.inputFns }]);
 				const sources   = all['input-sources']?.results?.[criterion] ?? [];
 				if(isProblematicForAllowed(sources, defaultAccept)) {
 					seen.add(nid);

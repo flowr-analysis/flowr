@@ -43,12 +43,12 @@ function findings(results: LintResultsByRule): Finding[] {
 		const perRule = perRuleResults as LintingResults<LintingRuleNames>;
 		/* staying silent about a rule that threw would claim it passed */
 		if(LintingResults.isError(perRule)) {
-			return [{ rule, message: `the linting rule failed: ${LintingResults.stringifyError(perRule)}`, level: 'error' as Level, loc: undefined }];
+			return [{ rule, message: `the linting rule failed: ${LintingResults.stringifyError(perRule)}`, level: 'error', loc: undefined }];
 		}
 		return (perRule.results as readonly LintingResult[]).map(result => ({
 			rule,
 			message: LintingRules[rule].prettyPrint[LintingPrettyPrintContext.Query](result as never, perRule['.meta']),
-			level:   (result.certainty === LintingResultCertainty.Certain ? 'warning' : 'note') as Level,
+			level:   (result.certainty === LintingResultCertainty.Certain ? 'warning' : 'note'),
 			loc:     result.loc
 		}));
 	});

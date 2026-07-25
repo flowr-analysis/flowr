@@ -1,7 +1,7 @@
 import { createNormalizePipeline } from '../../core/steps/pipeline/default-pipelines';
-import {
-	type ParentInformation,
-	type RNodeWithParent
+import type {
+	ParentInformation,
+	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { normalizedAstToMermaid } from '../../util/mermaid/ast';
 import { printAsMs } from '../../util/text/time';

@@ -96,7 +96,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				adToks:    [],
 				tsId:      -1,
 			}
-		} as RNode<TreeSitterInfo>;
+		};
 	}
 	try {
 		// generally, the grammar source file dictates what children a node has in what order:
@@ -652,7 +652,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 			adToks:    [],
 			tsId:      -1,
 		}
-	} as RNode<TreeSitterInfo>;
+	};
 }
 
 function makeSourceRange(node: SyntaxNode | undefined): SourceRange {

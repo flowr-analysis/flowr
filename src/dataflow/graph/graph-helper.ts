@@ -77,7 +77,7 @@ export const GraphHelper = {
 			if(cached !== undefined) {
 				return cached;
 			}
-			const resolved = SlicingCriterion.tryParse(id, resolveMap) ?? id as NodeId;
+			const resolved = SlicingCriterion.tryParse(id, resolveMap) ?? id;
 
 			cache.set(id as string, resolved);
 			return resolved;
@@ -90,7 +90,7 @@ export const GraphHelper = {
 		for(const [id, vertex] of graph.vertices(true)) {
 			resultGraph.addVertex({
 				...vertex,
-				id: resolve(id as string)
+				id: resolve(id)
 			}, ctx.env.makeCleanEnv(), roots.has(id));
 		}
 		/* recreate edges */

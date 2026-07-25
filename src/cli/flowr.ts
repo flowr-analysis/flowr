@@ -142,7 +142,7 @@ function createConfig(): FlowrConfig {
 		}
 
 		if(options['default-engine']) {
-			(c.defaultEngine as string) = options['default-engine'] as EngineConfig['type'];
+			(c.defaultEngine as string) = options['default-engine'];
 		}
 
 		if(options['no-fs']) {

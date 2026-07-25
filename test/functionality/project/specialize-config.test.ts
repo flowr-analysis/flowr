@@ -2,7 +2,6 @@ import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerContext } from '../../../src/project/context/flowr-analyzer-context';
 import { ProjectKind } from '../../../src/project/context/project-kind';
 import { FlowrConfig, VariableResolve } from '../../../src/config';
-import type { RParseRequest } from '../../../src/r-bridge/retriever';
 import type { DeepWritable } from 'ts-essentials';
 
 /** a config specializing `overwrite` for the given `kind` */
@@ -16,7 +15,7 @@ function specializing(kind: ProjectKind, overwrite: (c: DeepWritable<FlowrConfig
 /** a context of a shiny app (`app.R` alone suffices), analyzed with the given `config` */
 function shinyContext(config: FlowrConfig): FlowrAnalyzerContext {
 	const ctx = new FlowrAnalyzerContext(config, new Map());
-	ctx.addRequests([{ request: 'file', content: '/app/app.R' } as RParseRequest]);
+	ctx.addRequests([{ request: 'file', content: '/app/app.R' }]);
 	return ctx;
 }
 
@@ -138,7 +137,7 @@ describe('The config of an analysis', () => {
 		});
 		const ctx = new FlowrAnalyzerContext(config, new Map());
 		assert.isFalse(ctx.config.ignoreSourceCalls, 'nothing marks this a shiny app yet');
-		ctx.addRequests([{ request: 'file', content: '/app/app.R' } as RParseRequest]);
+		ctx.addRequests([{ request: 'file', content: '/app/app.R' }]);
 		assert.isTrue(ctx.config.ignoreSourceCalls);
 	});
 

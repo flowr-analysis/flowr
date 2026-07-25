@@ -281,7 +281,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	 * the available methods.
 	 */
 	public inspect(): ReadOnlyFlowrAnalyzerContext {
-		return this as ReadOnlyFlowrAnalyzerContext;
+		return this;
 	}
 
 	/**

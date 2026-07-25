@@ -92,7 +92,7 @@ export const RFunctionCall = {
 			if(used.has(i) || arg === EmptyArgument || arg.name === undefined) {
 				continue;
 			}
-			const matched = findByPrefixIfUnique(arg.name.content as string, paramNames);
+			const matched = findByPrefixIfUnique(arg.name.content, paramNames);
 			if(matched !== undefined && !bound.has(matched)) {
 				bound.set(matched, arg);
 				used.add(i);

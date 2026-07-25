@@ -61,7 +61,7 @@ export class FakeSocket implements Socket {
 		if(event === 'close') {
 			this.closeHandler = listener as () => void;
 		} else if(event === 'data') {
-			this.dataHandler = listener as (data: Buffer) => void;
+			this.dataHandler = listener;
 		}
 	}
 

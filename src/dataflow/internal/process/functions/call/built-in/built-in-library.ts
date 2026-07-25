@@ -1,4 +1,4 @@
-import { type DataflowProcessorInformation } from '../../../../../processor';
+import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation, ControlDependency } from '../../../../../info';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { processKnownFunctionCall } from '../known-call-handling';

@@ -53,5 +53,5 @@ export async function executeLinterQuery({ analyzer }: BasicQueryData, queries: 
 		'.meta': {
 			timing: Date.now() - start
 		}
-	} as LinterQueryResult;
+	};
 }

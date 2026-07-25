@@ -3,7 +3,7 @@ import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeDoesCallQuery } from './does-call-query-executor';
-import { type NodeId  } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';

@@ -112,7 +112,7 @@ export class FlowrAnalyzerPackageVersionsRvPlugin extends FlowrAnalyzerPackageVe
 		for(const file of virtualEnvFiles(ctx, 'rv.lock')) {
 			let lock: RvLock;
 			try {
-				lock = parseToml(file.content().toString()) as RvLock;
+				lock = parseToml(file.content().toString());
 			} catch(e) {
 				lockfileLog.warn(`Could not parse rv.lock: ${(e as Error).message}`);
 				continue;

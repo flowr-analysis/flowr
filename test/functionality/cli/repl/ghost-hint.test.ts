@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { EventEmitter } from 'events';
 import type readline from 'readline';
 import { FlowrConfig } from '../../../../src/config';
-import { type GhostHintIO, ghostHintClearSequence, ghostHintEnabled, installGhostHint, ghostHintShowSequence } from '../../../../src/cli/repl/ghost-hint';
+import { ghostHintClearSequence, ghostHintEnabled, installGhostHint, ghostHintShowSequence } from '../../../../src/cli/repl/ghost-hint';
 import { completionSuggestion, replCompleter } from '../../../../src/cli/repl/core';
 import { label } from '../../_helper/label';
 
@@ -19,7 +19,7 @@ describe('REPL ghost hint', () => {
 		const stdout = { isTTY: true, columns, write: (s: string) => (writes.push(s), true) };
 		const rl = { line: '' };
 		const cfg = config(true);
-		const controller = installGhostHint(rl as unknown as readline.Interface, cfg, { hint: 'HINT', suggest }, { stdin, stdout } as unknown as GhostHintIO);
+		const controller = installGhostHint(rl as unknown as readline.Interface, cfg, { hint: 'HINT', suggest }, { stdin, stdout });
 		return { stdin, writes, rl, controller, cfg };
 	}
 

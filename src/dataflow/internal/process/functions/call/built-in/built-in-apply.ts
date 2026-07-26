@@ -14,6 +14,7 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { VertexType } from '../../../../../graph/vertex';
 import type { FunctionArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import {
 	type Identifier,
 	type IdentifierReference,
@@ -123,6 +124,7 @@ export function processApply<OtherInfo>(
 
 	if(arg === EmptyArgument || !arg.value || (!unquoteFunction && arg.value.type !== RType.Symbol && arg.value.type !== RType.FunctionDefinition)) {
 		dataflowLogger.warn(`Expected symbol as argument at index ${index}, but got ${JSON.stringify(arg)} instead.`);
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
 	}
 
@@ -130,6 +132,8 @@ export function processApply<OtherInfo>(
 	const resolvedFn = resolveFunctionArgument(val, data, { unquoteFunction, resolveValue });
 	if(resolvedFn === undefined) {
 		dataflowLogger.warn(`Expected symbol or string as function argument at index ${index}, but got ${JSON.stringify(val)} instead.`);
+		// the called function is dynamic and unresolvable: reached-but-unknown rather than dropped
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
 	}
 	const { functionName, anonymous, asString } = resolvedFn;

@@ -68,7 +68,8 @@ export function processGet<OtherInfo>(
 
 	if(treatTargetAsSymbol === undefined) {
 		dataflowLogger.warn(`symbol access with ${Identifier.toString(name.content)} has not 1 string argument, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
+		// dynamic, unresolvable name: reached-but-unknown rather than dropped
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default', hasUnknownSideEffect: true }).information;
 	}
 
 	/* resolve in the custom environment if one was found, else the global one.

@@ -187,6 +187,22 @@ fn(5)`,
 		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
+	assertDataflow(label('unresolved get is reached-but-unknown, not dropped', ['function-calls', 'resolution', 'built-in']),
+		ts,
+		'nm <- 5\nget(nm)',
+		emptyGraph()
+			.markIdForUnknownSideEffects('2@get')
+		, { resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
+
+	assertDataflow(label('unresolved do.call target is reached-but-unknown, not dropped', ['function-calls', 'resolve-arguments', 'built-in']),
+		ts,
+		'f <- function(x) do.call(paste0("h_", x), list(5))',
+		emptyGraph()
+			.markIdForUnknownSideEffects('1@do.call')
+		, { resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
+
 	assertDataflow(label('dispatch on an opaque object is reached-but-unknown, not dropped', ['function-calls', 'built-in', 'named-arguments']),
 		ts,
 		'f <- function(obj) obj$method(5)',

@@ -93,6 +93,27 @@ print(2)
 			assertLinter('empty fall-through arms are not dead', parser, 'f <- function(k) {\n  switch(k, a =, b = 2, c = 3)\n  after <- 1\n  after\n}', 'dead-code', []);
 		});
 
+		describe('switch with a constant selector', () => {
+			assertLinter('constant selector kills the other arms', parser, 'f <- function() {\n  x <- switch("b", a = 1, b = 2, c = 3)\n  x\n}', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [2, 20, 2, 20] },
+				{ certainty: LintingResultCertainty.Certain, loc: [2, 24, 2, 24] },
+				{ certainty: LintingResultCertainty.Certain, loc: [2, 34, 2, 34] },
+				{ certainty: LintingResultCertainty.Certain, loc: [2, 38, 2, 38] }
+			]);
+			assertLinter('no match no default kills all arms', parser, 'f <- function() {\n  switch("z", a = 1, b = 2)\n  after <- 1\n  after\n}', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [2, 15, 2, 15] },
+				{ certainty: LintingResultCertainty.Certain, loc: [2, 19, 2, 19] },
+				{ certainty: LintingResultCertainty.Certain, loc: [2, 22, 2, 22] },
+				{ certainty: LintingResultCertainty.Certain, loc: [2, 26, 2, 26] }
+			]);
+			assertLinter('no match selects the default', parser, 'f <- function() {\n  x <- switch("z", a = 1, 99)\n  x\n}', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [2, 20, 2, 20] },
+				{ certainty: LintingResultCertainty.Certain, loc: [2, 24, 2, 24] }
+			]);
+			assertLinter('constant selector into an empty fall-through arm', parser, 'f <- function() {\n  x <- switch("a", a =, b = 2)\n  x\n}', 'dead-code', []);
+			assertLinter('non-constant selector prunes nothing', parser, 'f <- function(k) {\n  x <- switch(k, a = 1, b = 2)\n  x\n}', 'dead-code', []);
+		});
+
 		describe('short-circuit guards evaluate their rhs conditionally', () => {
 			assertLinter('|| return guard', parser, 'f <- function(x) {\n  x || return()\n  after <- 1\n  after\n}', 'dead-code', []);
 			assertLinter('&& stop guard', parser, 'f <- function(x) {\n  x && stop("no")\n  after <- 1\n  after\n}', 'dead-code', []);
@@ -103,7 +124,6 @@ print(2)
 			assertLinter('code after an early return', parser, 'f <- function(x) {\n  if (x < 0) return(NA)\n  y <- sqrt(x)\n  return(y)\n  cat("done\\n")\n}', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, loc: [5, 3, 5, 15] }
 			]);
-			// a live switch (arms + tail reachable) but a genuine dead statement after the final return
 			assertLinter('live switch but dead tail', parser, 'classify <- function(type, value) {\n  scale <- switch(type, small = 1, large = 100, stop("unknown"))\n  adjusted <- value * scale\n  return(adjusted)\n  message("unreachable")\n}', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, loc: [5, 3, 5, 24] }
 			]);

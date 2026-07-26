@@ -462,8 +462,6 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 	return info;
 }
 
-// switch(selector, arm1, ...) selects one mutually-exclusive arm; each arm hangs off the (forced) selector via a
-// control dependency and converges its exit back to the switch exit, so a jump in one arm prunes only that arm
 function cfgSwitch(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[]): ControlFlowInformation {
 	const callId = call.info.id;
 	const exitId = CfgVertex.toExitId(callId);
@@ -518,7 +516,6 @@ function cfgSwitch(call: RFunctionCall<ParentInformation>, name: ControlFlowInfo
 		}
 	}
 
-	// without an unnamed default arm the selector may match nothing and switch falls through to NULL, so the exit stays reachable
 	const hasDefault = call.arguments.slice(1).some(a => a !== EmptyArgument && a.name === undefined);
 	if(!hasDefault) {
 		for(const exit of selectorExits) {

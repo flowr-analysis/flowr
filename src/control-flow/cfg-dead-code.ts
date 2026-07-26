@@ -5,9 +5,11 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Ternary } from '../util/logic';
 import type { CfgPassInfo } from './cfg-simplification';
 import { SemanticCfgGuidedVisitor } from './semantic-cfg-guided-visitor';
-import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
-import type { FunctionArgument } from '../dataflow/graph/graph';
+import { VertexType, type DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
+import { FunctionArgument } from '../dataflow/graph/graph';
 import { resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
+import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
+import { Identifier } from '../dataflow/environments/identifier';
 import { log } from '../util/log';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { valueSetGuard } from '../dataflow/eval/values/general';
@@ -21,7 +23,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 
 	private readonly cachedConditions: CachedValues<Ternary> = new Map();
 	private readonly cachedStatements: CachedValues<boolean> = new Map();
-	// nodes whose jump status must not propagate: a try/tryCatch body
+	private readonly cachedSwitch:     Map<NodeId, { id: NodeId | undefined } | 'unknown'> = new Map();
 	private readonly jumpIsolated:     Set<NodeId> = new Set<NodeId>();
 
 	private getValue(id: NodeId): Ternary {
@@ -58,7 +60,12 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		for(const [from, targets] of cfg.edges()) {
 			for(const [target, edge] of targets) {
 				if(CfgEdge.isControlDependency(edge)) {
-					const og = this.getValue(CfgEdge.unpackCause(edge));
+					const cause = CfgEdge.unpackCause(edge);
+					if(this.switchArmDefinitelyNotTaken(cause, from)) {
+						cfg.removeEdge(from, target);
+						continue;
+					}
+					const og = this.getValue(cause);
 					const w = CfgEdge.unpackWhen(edge);
 					if(og === Ternary.Always && w === RFalse) {
 						cfg.removeEdge(from, target);
@@ -166,6 +173,67 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 			return;
 		}
 		this.protectSubgraph(data.call.args[0].nodeId);
+	}
+
+	private switchArmDefinitelyNotTaken(cause: NodeId, from: NodeId): boolean {
+		const v = this.config.dfg.getVertex(cause);
+		if(v === undefined || v.tag !== VertexType.FunctionCall || !v.origin.includes(BuiltInProcName.Default) || Identifier.getName(v.name) !== 'switch') {
+			return false;
+		}
+		const selected = this.selectedSwitchArm(v);
+		if(selected === 'unknown') {
+			return false;
+		}
+		const isArm = v.args.slice(1).some(a => FunctionArgument.getReference(a) !== undefined && FunctionArgument.getId(a) === from);
+		return isArm && from !== selected.id;
+	}
+
+	private selectedSwitchArm(v: DataflowGraphVertexFunctionCall): { id: NodeId | undefined } | 'unknown' {
+		const cached = this.cachedSwitch.get(v.id);
+		if(cached !== undefined) {
+			return cached;
+		}
+		const result = this.computeSelectedSwitchArm(v);
+		this.cachedSwitch.set(v.id, result);
+		return result;
+	}
+
+	private computeSelectedSwitchArm(v: DataflowGraphVertexFunctionCall): { id: NodeId | undefined } | 'unknown' {
+		const selectorRef = FunctionArgument.getReference(v.args[0]);
+		if(selectorRef === undefined) {
+			return 'unknown';
+		}
+		const values = valueSetGuard(resolveIdToValue(selectorRef, {
+			graph:   this.config.dfg,
+			full:    true,
+			idMap:   this.config.normalizedAst.idMap,
+			resolve: this.config.ctx.config.solver.variables,
+			ctx:     this.config.ctx,
+		}));
+		if(values === undefined || values.elements.length !== 1 || values.elements[0].type !== 'string' || !isValue(values.elements[0].value)) {
+			return 'unknown';
+		}
+		const target = values.elements[0].value.str;
+		const arms = v.args.slice(1);
+		for(let i = 0; i < arms.length; i++) {
+			if(FunctionArgument.getName(arms[i]) === target) {
+				for(let j = i; j < arms.length; j++) {
+					if(FunctionArgument.getReference(arms[j]) !== undefined) {
+						return { id: FunctionArgument.getId(arms[j]) };
+					}
+				}
+				return { id: undefined };
+			}
+		}
+		let defaultId: NodeId | undefined;
+		let defaults = 0;
+		for(const arm of arms) {
+			if(arm !== EmptyArgument && !FunctionArgument.isNamed(arm) && FunctionArgument.getReference(arm) !== undefined) {
+				defaults++;
+				defaultId = FunctionArgument.getId(arm);
+			}
+		}
+		return defaults > 1 ? 'unknown' : { id: defaultId };
 	}
 
 }

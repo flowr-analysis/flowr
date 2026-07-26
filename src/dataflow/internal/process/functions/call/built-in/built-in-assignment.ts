@@ -205,8 +205,30 @@ export function processAssignment<OtherInfo>(
 	}
 	const { type, named } = target;
 
-	if(type === RType.Symbol) {
-		if(!config.targetVariable) {
+	if(type === RType.Symbol && !config.targetVariable) {
+		const res = processKnownFunctionCall({
+			name,
+			args,
+			rootId,
+			data,
+			reverseOrder: !config.swapSourceAndTarget,
+			forceArgs:    config.forceArgs,
+			origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
+		});
+		return processAssignmentToSymbol<OtherInfo & ParentInformation>({
+			...config,
+			nameOfAssignmentFunction: name.content,
+			source,
+			targetId:                 target.info.id,
+			args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
+			rootId,
+			data,
+			information:              res.information,
+		});
+	} else if(config.targetVariable && (type === RType.Symbol || type === RType.FunctionCall)) {
+		// the target expression (`assign(x, v)` / `assign(paste0("cfg_", k), v)`) resolving to a constant name defines that name, keeping the reads that produced it; a dynamic name falls through to the unknown-target handling below
+		const resolvedName = resolveConstantString(target, data);
+		if(resolvedName !== undefined) {
 			const res = processKnownFunctionCall({
 				name,
 				args,
@@ -221,36 +243,12 @@ export function processAssignment<OtherInfo>(
 				nameOfAssignmentFunction: name.content,
 				source,
 				targetId:                 target.info.id,
+				targetName:               resolvedName,
 				args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
 				rootId,
 				data,
 				information:              res.information,
 			});
-		}  else {
-			/* an assign target given as a constant-built name (`assign(paste0("cfg_", k), v)` with `k` known) resolves like a literal name */
-			const resolvedName = resolveConstantString(target, data);
-			if(resolvedName !== undefined) {
-				const res = processKnownFunctionCall({
-					name,
-					args,
-					rootId,
-					data,
-					reverseOrder: !config.swapSourceAndTarget,
-					forceArgs:    config.forceArgs,
-					origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
-				});
-				return processAssignmentToSymbol<OtherInfo & ParentInformation>({
-					...config,
-					nameOfAssignmentFunction: name.content,
-					source,
-					targetId:                 target.info.id,
-					targetName:               resolvedName,
-					args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
-					rootId,
-					data,
-					information:              res.information,
-				});
-			}
 		}
 	} else if(config.canBeReplacement && type === RType.FunctionCall && named) {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */

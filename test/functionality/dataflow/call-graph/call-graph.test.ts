@@ -369,6 +369,7 @@ f.numeric <- function(x) {
 
 	for(const { name, code, call } of [
 		{ name: 'R6Class',     code: 'Cls <- R6Class("C", public = list(greet = function() 5))\ng <- Cls$new()\ng$greet()',    call: '3@g$greet' },
+		{ name: 'R6 via [[',   code: 'Cls <- R6Class("C", public = list(greet = function() 5))\ng <- Cls[["new"]]()\ng$greet()', call: '3@g$greet' },
 		{ name: 'setRefClass', code: 'Cls <- setRefClass("C", methods = list(greet = function() 5))\ng <- Cls$new()\ng$greet()', call: '3@g$greet' }
 	]) {
 		assertDataflow(label(`class dispatch ${name}`, ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),

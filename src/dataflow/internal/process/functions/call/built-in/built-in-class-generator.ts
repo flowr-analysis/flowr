@@ -14,13 +14,10 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { ReferenceType } from '../../../../../environments/identifier';
 
-/** The arguments that carry a class generator's methods: R6's `public`, Reference Class's `methods`. */
+/** R6's `public` / Reference Class's `methods` argument carrying the class generator's methods. */
 const MethodListArguments = ['public', 'methods'];
 
-/**
- * Processes an `R6Class(...)` / `setRefClass(...)` generator call. It stays an ordinary call; the origin lets the
- * assignment layer record its `public`/`methods` list as the `returnsEnvState` an eventual `$new()` instance carries.
- */
+/** Processes an `R6Class`/`setRefClass` generator call, tagging it so the assignment layer can record its method list. */
 export function processClassGenerator<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -30,11 +27,7 @@ export function processClassGenerator<OtherInfo>(
 	return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.ClassGenerator }).information;
 }
 
-/**
- * The method environment a class generator's `$new()` instances expose: the named function entries of its
- * `public`/`methods` `list(...)` argument, recorded as a resolvable pseudo-env (reusing {@link resolveListToEnvState}).
- * `undefined` when no method list is present.
- */
+/** The method env of a class generator's `public`/`methods` `list(...)` (via {@link resolveListToEnvState}); `undefined` if absent. */
 export function resolveClassMethodsToEnvState<OtherInfo>(
 	source: RNode<OtherInfo & ParentInformation>,
 	data:   Pick<DataflowProcessorInformation<never>, 'environment'>
@@ -46,11 +39,9 @@ export function resolveClassMethodsToEnvState<OtherInfo>(
 	return methodList && methodList !== EmptyArgument && methodList.value !== undefined ? resolveListToEnvState(methodList.value, data) : undefined;
 }
 
-/**
- * The method environment an instance from `<Cls>$new(...)` carries: if `source` is such a constructor call and the
- * generator `<Cls>` was recorded with a method `returnsEnvState` (see {@link resolveClassMethodsToEnvState}), that env;
- * else `undefined`. Lets a later `instance$method()` resolve to the generator's method definition.
- */
+const ConstructorField = 'new';
+
+/** The method env an instance from `<Cls>$new(...)`/`<Cls>[["new"]](...)` carries, from the generator's recorded `returnsEnvState`; `undefined` otherwise. */
 export function resolveConstructorInstanceEnvState<OtherInfo>(
 	source: RNode<OtherInfo & ParentInformation>,
 	data:   Pick<DataflowProcessorInformation<never>, 'environment'>
@@ -59,11 +50,12 @@ export function resolveConstructorInstanceEnvState<OtherInfo>(
 		return undefined;
 	}
 	const callee = source.calledFunction;
-	if(callee.type !== RType.Access || callee.operator !== '$' || callee.accessed.type !== RType.Symbol) {
+	if(callee.type !== RType.Access || (callee.operator !== '$' && callee.operator !== '[[') || callee.accessed.type !== RType.Symbol) {
 		return undefined;
 	}
-	const field = callee.access[0]?.value;
-	if(field === undefined || field.lexeme !== 'new') {
+	const field = callee.access[0] === EmptyArgument ? undefined : callee.access[0]?.value;
+	const fieldName = field?.type === RType.String ? field.content.str : field?.lexeme;
+	if(fieldName !== ConstructorField) {
 		return undefined;
 	}
 	return findReturnsEnvState(resolveByName(callee.accessed.content, data.environment, ReferenceType.Variable));

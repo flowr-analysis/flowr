@@ -107,31 +107,33 @@ export function signatureParamNames<OtherInfo>(
 	return names.length > 0 ? names : fallback;
 }
 
-/**
- * The constant string a name-position node denotes at construction time (no dataflow graph yet): a string literal, a
- * variable aliased to one, or a `paste`/`paste0` of such parts (e.g. `paste0("cfg_", k)` with `k` a known string).
- * `undefined` when any part is dynamic. Lets `get`/`assign` resolve a constant-built name the same way a literal name works.
- */
+/** The constant string a name-position node denotes at construction time (string literal, aliased variable, or `paste`/`paste0` of such); `undefined` if any part is dynamic or the paste builtin is user-shadowed. */
 export function resolveConstantString<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): string | undefined {
-	if(RFunctionCall.isNamed(node)) {
-		const fnName = Identifier.getName(node.functionName.content);
+	const info = { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx, full: true };
+	const unshadowed = new Map<string, boolean>();
+	const fold = (n: RNode<OtherInfo & ParentInformation>): string | undefined => {
+		if(!RFunctionCall.isNamed(n)) {
+			return resolveIdToSingleString(n.info.id, info);
+		}
+		const fnName = Identifier.getName(n.functionName.content);
 		if(fnName !== 'paste0' && fnName !== 'paste') {
 			return undefined;
 		}
-		// sound only while the paste builtin is not user-shadowed
-		const fnDefs = resolveByName(node.functionName.content, data.environment, ReferenceType.Function);
-		if(fnDefs !== undefined && !fnDefs.every(d => isReferenceType(d.type, ReferenceType.BuiltInFunction))) {
-			return undefined;
+		let ok = unshadowed.get(fnName);
+		if(ok === undefined) {
+			const defs = resolveByName(n.functionName.content, data.environment, ReferenceType.Function);
+			ok = defs === undefined || defs.every(d => isReferenceType(d.type, ReferenceType.BuiltInFunction));
+			unshadowed.set(fnName, ok);
 		}
-		return foldPasteCall(node, arg => resolveConstantString(arg, data));
-	}
-	return resolveIdToSingleString(node.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx, full: true });
+		return ok ? foldPasteCall(n, fold) : undefined;
+	};
+	return fold(node);
 }
 
-/** The `returnsEnvState` of the first reaching definition that carries one (a factory function or class generator), else `undefined`. */
+/** The `returnsEnvState` of the first reaching definition that carries one, else `undefined`. */
 export function findReturnsEnvState(defs: readonly IdentifierDefinition[] | undefined): REnvironmentInformation | undefined {
 	return defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).returnsEnvState !== undefined)?.returnsEnvState;
 }

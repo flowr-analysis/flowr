@@ -1,4 +1,4 @@
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { InputTraceType, InputType } from './input-types';
 export { InputTraceType, InputType } from './input-types';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
@@ -401,6 +401,13 @@ class InputClassifier {
 				if(vtx) {
 					return this.classifyCdsAndReturn(call, this.classifyEntry(vtx));
 				}
+			}
+		} else if(call.origin.includes(BuiltInProcName.Get) && !(this.fullDfg ?? this.dfg).unknownSideEffects.has(NodeId.normalize(call.id))) {
+			// a statically resolved `get("x")` yields the value of the retrieved variable, read via its first argument
+			const ref = FunctionArgument.getReference(call.args[0]);
+			const vtx = ref === undefined ? undefined : this.dfg.getVertex(ref);
+			if(vtx) {
+				return this.classifyCdsAndReturn(call, { ...this.classifyEntry(vtx), id: call.id });
 			}
 		}
 		// a narrowing function returns a bounded value: either one of a specific argument's values (e.g. `match.arg`

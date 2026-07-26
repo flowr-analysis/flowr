@@ -187,6 +187,14 @@ fn(5)`,
 		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
+	assertDataflow(label('dispatch on an opaque object is reached-but-unknown, not dropped', ['function-calls', 'built-in', 'named-arguments']),
+		ts,
+		'f <- function(obj) obj$method(5)',
+		emptyGraph()
+			.markIdForUnknownSideEffects('1@obj$method')
+		, { resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
+
 	assertDataflow(label('ping-pong-rec', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'recursion']),
 		ts,
 		`a <- function(n) {

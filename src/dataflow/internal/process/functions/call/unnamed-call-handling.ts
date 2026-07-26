@@ -4,15 +4,36 @@ import { processAllArguments } from './common';
 import { linkArgumentsOnCall } from '../../../linker';
 import type { RUnnamedFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EdgeType } from '../../../../graph/edge';
+import { DfEdge, EdgeType } from '../../../../graph/edge';
 import { DataflowGraph } from '../../../../graph/graph';
+import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
 import { VertexType } from '../../../../graph/vertex';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import { dataflowLogger } from '../../../../logger';
 import { ReferenceType } from '../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
+import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export const UnnamedFunctionCallPrefix = 'unnamed-fc-';
+
+/**
+ * Whether a `$`/`[[` access callee resolved a field to a stored function: a resolved dispatch (`dispatch$foo()`)
+ * carries a `Returns` edge from the access node to the field target (in addition to the base `Returns` to `accessedId`),
+ * while an opaque object (`g$greet()` on an untracked `g`) only carries the base `Returns`.
+ */
+function accessResolvesToField(graph: DataflowGraph, accessId: NodeId, accessedId: NodeId): boolean {
+	const outgoing = graph.outgoingEdges(accessId);
+	if(outgoing === undefined) {
+		return false;
+	}
+	const base = NodeId.normalize(accessedId);
+	for(const [target, edge] of outgoing) {
+		if(NodeId.normalize(target) !== base && DfEdge.includesType(edge, EdgeType.Returns)) {
+			return true;
+		}
+	}
+	return false;
+}
 
 /**
  * Processes an unnamed function call.
@@ -62,6 +83,9 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	// if we just call a nested fdef
 	if(functionCall.calledFunction.type === RType.FunctionDefinition) {
 		linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph);
+	} else if(functionCall.calledFunction.type === RType.Access && !accessResolvesToField(finalGraph, calledRootId, functionCall.calledFunction.accessed.info.id)) {
+		// `obj$method()` whose callee did not resolve to a stored function: reached-but-unknown rather than dropped
+		handleUnknownSideEffect(finalGraph, data.environment, functionRootId);
 	}
 
 	// push the called function to the ids:

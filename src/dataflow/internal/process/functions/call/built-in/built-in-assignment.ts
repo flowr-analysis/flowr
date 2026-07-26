@@ -36,7 +36,7 @@ import type { ForceArguments } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import { resolveConstantString, resolveEnvirArg, resolveSymbolToEnvir, routeWrittenToCustomEnv } from './built-in-envir-utils';
+import { findReturnsEnvState, resolveConstantString, resolveEnvirArg, resolveSymbolToEnvir, routeWrittenToCustomEnv } from './built-in-envir-utils';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -44,6 +44,7 @@ import { getAliases } from '../../../../../eval/resolve/alias-tracking';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { createFreshEnvState } from './built-in-new-env';
 import { resolveListToEnvState } from './built-in-list';
+import { resolveClassMethodsToEnvState, resolveConstructorInstanceEnvState } from './built-in-class-generator';
 import { stackEnvStateFromSource } from './built-in-stack-env';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & RAstNodeBase<OtherInfo> & Location, prefix: Identifier, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
@@ -243,7 +244,7 @@ export function processAssignment<OtherInfo>(
 					nameOfAssignmentFunction: name.content,
 					source,
 					targetId:                 target.info.id,
-					targetName:               resolvedName as Identifier,
+					targetName:               resolvedName,
 					args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
 					rootId,
 					data,
@@ -605,27 +606,20 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 			envState = stackEnv;
 		} else if(source.type === RType.Symbol) {
 			const defs = resolveByName(source.content, data.environment, ReferenceType.Variable);
-			const def = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined);
-			envState = def?.envState;
-			if(!envState) {
-				const fnDef = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).returnsEnvState !== undefined);
-				if(fnDef?.returnsEnvState) {
-					envState = fnDef.returnsEnvState;
-				}
-			}
+			envState = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined)?.envState
+				?? findReturnsEnvState(defs);
 		} else {
 			const entryVertex = sourceArg.graph.getVertex(sourceArg.entryPoint);
 			if(FunctionCallVertex.hasOrigin(entryVertex, BuiltInProcName.List)) {
 				envState = resolveListToEnvState(source, data);
+			} else if(FunctionCallVertex.hasOrigin(entryVertex, BuiltInProcName.ClassGenerator)) {
+				returnsEnvState = resolveClassMethodsToEnvState(source, data);
 			} else if(FunctionDefinitionVertex.is(entryVertex) && entryVertex.returnEnvState !== undefined) {
 				returnsEnvState = entryVertex.returnEnvState;
 			} else if(FunctionCallVertex.is(entryVertex) && entryVertex.name) {
-				const fnDefs = resolveByName(entryVertex.name, data.environment, ReferenceType.Function);
-				const fnDef = fnDefs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).returnsEnvState !== undefined);
-				if(fnDef?.returnsEnvState) {
-					envState = fnDef.returnsEnvState;
-				}
+				envState = findReturnsEnvState(resolveByName(entryVertex.name, data.environment, ReferenceType.Function));
 			}
+			envState ??= resolveConstructorInstanceEnvState(source, data);
 		}
 		if(envState) {
 			for(let i = 0; i < writeNodes.length; i++) {

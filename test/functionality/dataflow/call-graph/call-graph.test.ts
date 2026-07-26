@@ -367,6 +367,16 @@ f.numeric <- function(x) {
 		);
 	}
 
+	for(const { name, code, call } of [
+		{ name: 'R6Class',     code: 'Cls <- R6Class("C", public = list(greet = function() 5))\ng <- Cls$new()\ng$greet()',    call: '3@g$greet' },
+		{ name: 'setRefClass', code: 'Cls <- setRefClass("C", methods = list(greet = function() 5))\ng <- Cls$new()\ng$greet()', call: '3@g$greet' }
+	]) {
+		assertDataflow(label(`class dispatch ${name}`, ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
+			ts, code, emptyGraph().calls(call, '1@function'),
+			{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+		);
+	}
+
 	for(const { name, code, edge } of [
 		{ name: 'ignores non-function entries', code: 'handler_foo <- function(x) x * 2\ndispatch <- list(foo = handler_foo, n = 5)\ndispatch$n(5)',    edge: ['3@dispatch$n', '1@function'] as [NodeId, NodeId] },
 		{ name: 'drops a stale target on reassignment', code: 'handler_foo <- function(x) x * 2\ndispatch <- list(foo = handler_foo)\ndispatch <- 5\ndispatch$foo(5)', edge: ['4@dispatch$foo', '1@function'] as [NodeId, NodeId] }

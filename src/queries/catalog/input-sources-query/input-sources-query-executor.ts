@@ -85,17 +85,23 @@ function addAll(base: InputClassifierConfig<InputClassifierFunctionIdentifiers>,
 	return result;
 }
 
+/** Config fields that hold structured values (not function searches) and are carried over verbatim. */
+const StructuredConfigKeys = ['linkedObjects', 'linkedEntryPoints', 'narrowing'] as const;
+function isStructuredConfigKey(key: PropertyKey): key is typeof StructuredConfigKeys[number] {
+	return (StructuredConfigKeys as readonly PropertyKey[]).includes(key);
+}
+
 async function resolveSearches(analyzer: ReadonlyFlowrAnalysisProvider, config: InputClassifierConfig): Promise<InputClassifierConfig<InputClassifierFunctionIdentifiers>> {
+	/* structured (non-search) fields are carried over as-is; everything else is a resolvable function search */
 	const result: InputClassifierConfig<InputClassifierFunctionIdentifiers> = {};
-	if(config.linkedObjects !== undefined) {
-		result.linkedObjects = config.linkedObjects;
-	}
-	if(config.linkedEntryPoints !== undefined) {
-		result.linkedEntryPoints = config.linkedEntryPoints;
+	for(const key of StructuredConfigKeys) {
+		if(config[key] !== undefined) {
+			result[key] = config[key] as never;
+		}
 	}
 
 	for(const [key, value] of Record.entries(config)) {
-		if(key === 'linkedObjects' || key === 'linkedEntryPoints') {
+		if(isStructuredConfigKey(key)) {
 			continue;
 		} else if(value === undefined || Array.isArray(value)) {
 			// entries may be written as `pkg::fn` strings in the configuration, which only mean the namespaced function once parsed

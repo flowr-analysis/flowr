@@ -15,7 +15,7 @@ import { Q } from '../../../search/flowr-search-builder';
 import { LintingResultCertainty } from '../../../linter/linter-format';
 import { Record } from '../../../util/record';
 import { ReadFunctions } from '../dependencies-query/function-info/read-functions';
-import { FfiFunctions, LangFunctions, LinkedInputEntryPoints, LinkedInputObjects, OptionsFunctions, PureFunctions, SystemFunctions, TempFileFunctions, UserFunctions } from './input-source-functions';
+import { FfiFunctions, LangFunctions, LinkedInputEntryPoints, LinkedInputObjects, NarrowingFunctions, OptionsFunctions, PureFunctions, SystemFunctions, TempFileFunctions, UserFunctions } from './input-source-functions';
 
 export type InputSourcesQueryConfig = InputClassifierConfig;
 /**
@@ -46,7 +46,8 @@ export const DefaultInputClassifierConfig: InputClassifierConfig = {
 	[InputType.Options]:   OptionsFunctions,
 	[InputType.User]:      UserFunctions,
 	linkedObjects:         LinkedInputObjects,
-	linkedEntryPoints:     LinkedInputEntryPoints
+	linkedEntryPoints:     LinkedInputEntryPoints,
+	narrowing:             NarrowingFunctions
 };
 
 export interface InputSourcesQueryResult extends BaseQueryResult {

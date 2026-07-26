@@ -67,6 +67,48 @@ print(2)
 			]);
 		});
 
+		describe('ifelse family is eager (never dead)', () => {
+			assertLinter('ifelse constant', parser, 'ifelse(TRUE, 1, 2)', 'dead-code', []);
+			assertLinter('ifelse non-constant', parser, 'x <- 1\nifelse(x > 0, x, -x)', 'dead-code', []);
+			assertLinter('fifelse constant', parser, 'fifelse(TRUE, 1, 2)', 'dead-code', []);
+			assertLinter('if_else constant', parser, 'if_else(TRUE, 1, 2)', 'dead-code', []);
+		});
+
+		describe('on.exit defers its expression', () => {
+			// on.exit(expr) registers expr to run at function exit
+			assertLinter('on.exit(return) does not poison enclosing function', parser, 'f <- function() {\n  on.exit(return(3))\n  x <- 1\n  x\n}', 'dead-code', []);
+		});
+
+		describe('switch arms are mutually exclusive', () => {
+			assertLinter('sibling arms after a stop arm stay live', parser, 'f <- function(k) {\n  switch(k, a = stop("x"), b = 2, c = 3)\n  after <- 1\n  after\n}', 'dead-code', []);
+			assertLinter('code after a switch with a stop arm stays live', parser, 'f <- function(k) {\n  r <- switch(k, a = stop("x"), b = 2)\n  r\n}', 'dead-code', []);
+			assertLinter('in-arm code after a stop is dead', parser, 'f <- function(k) {\n  switch(k, a = { stop("x"); y <- 1 }, b = 2)\n}', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [2, 30, 2, 35] }
+			]);
+			assertLinter('stop in the default arm keeps siblings and after live', parser, 'f <- function(k) {\n  switch(k, a = 1, b = 2, stop("x"))\n  after <- 1\n  after\n}', 'dead-code', []);
+			assertLinter('all arms return makes the tail dead', parser, 'f <- function(k) {\n  switch(k, a = return(1), b = return(2), return(3))\n  after <- 1\n  after\n}', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [3, 3, 3, 12] },
+				{ certainty: LintingResultCertainty.Certain, loc: [4, 3, 4, 7] }
+			]);
+			assertLinter('empty fall-through arms are not dead', parser, 'f <- function(k) {\n  switch(k, a =, b = 2, c = 3)\n  after <- 1\n  after\n}', 'dead-code', []);
+		});
+
+		describe('short-circuit guards evaluate their rhs conditionally', () => {
+			assertLinter('|| return guard', parser, 'f <- function(x) {\n  x || return()\n  after <- 1\n  after\n}', 'dead-code', []);
+			assertLinter('&& stop guard', parser, 'f <- function(x) {\n  x && stop("no")\n  after <- 1\n  after\n}', 'dead-code', []);
+		});
+
+		describe('realistic', () => {
+			// leftover statement after the function's own return
+			assertLinter('code after an early return', parser, 'f <- function(x) {\n  if (x < 0) return(NA)\n  y <- sqrt(x)\n  return(y)\n  cat("done\\n")\n}', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [5, 3, 5, 15] }
+			]);
+			// a live switch (arms + tail reachable) but a genuine dead statement after the final return
+			assertLinter('live switch but dead tail', parser, 'classify <- function(type, value) {\n  scale <- switch(type, small = 1, large = 100, stop("unknown"))\n  adjusted <- value * scale\n  return(adjusted)\n  message("unreachable")\n}', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [5, 3, 5, 24] }
+			]);
+		});
+
 		describe('loops', () => {
 			assertLinter('after infinite repeat', parser, 'repeat{ foo }; 2', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, loc: [1, 16, 1, 16] }

@@ -21,7 +21,8 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 
 	private readonly cachedConditions: CachedValues<Ternary> = new Map();
 	private readonly cachedStatements: CachedValues<boolean> = new Map();
-	private readonly inTry:            Set<NodeId> = new Set<NodeId>();
+	// nodes whose jump status must not propagate: a try/tryCatch body
+	private readonly jumpIsolated:     Set<NodeId> = new Set<NodeId>();
 
 	private getValue(id: NodeId): Ternary {
 		const has = this.cachedConditions.get(id);
@@ -33,7 +34,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	private isUnconditionalJump(id: NodeId): boolean {
-		if(this.inTry.has(id)) {
+		if(this.jumpIsolated.has(id)) {
 			return false;
 		}
 		const has = this.cachedStatements.get(id);
@@ -146,22 +147,27 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		}
 	}
 
+	private protectSubgraph(nodeId: NodeId): void {
+		const start = this.getCfgVertex(nodeId);
+		if(!start) {
+			return;
+		}
+		visitCfgInOrder(this.config.controlFlow.graph, [CfgVertex.getId(start)], n => {
+			if(CfgVertex.getEnd(start)?.includes(n)) {
+				return true;
+			}
+			this.jumpIsolated.add(n);
+			return false;
+		});
+	}
+
 	protected onTryCall(data: { call: DataflowGraphVertexFunctionCall }): void {
 		if(data.call.args.length < 1 || data.call.args[0] === EmptyArgument) {
 			return;
 		}
-		const body = this.getCfgVertex(data.call.args[0].nodeId);
-		if(!body) {
-			return;
-		}
-		visitCfgInOrder(this.config.controlFlow.graph, [CfgVertex.getId(body)], n => {
-			if(CfgVertex.getEnd(body)?.includes(n)) {
-				return true;
-			}
-			this.inTry.add(n);
-			return false;
-		});
+		this.protectSubgraph(data.call.args[0].nodeId);
 	}
+
 }
 
 

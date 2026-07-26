@@ -15,8 +15,8 @@ import type { DataflowGraph } from '../../graph/graph';
 import { onReplacementOperator, type ReplacementOperatorHandlerArgs } from '../../graph/unknown-replacement';
 import { onUnknownSideEffect } from '../../graph/unknown-side-effect';
 import { isValueVertex, VertexType } from '../../graph/vertex';
-import { valueFromRNodeConstant, valueFromTsValue } from '../values/general';
-import { Bottom, isTop, type Lift, Top, type Value, type ValueSet } from '../values/r-value';
+import { valueFromRNodeConstant, valueFromTsValue, valueSetGuard } from '../values/general';
+import { Bottom, isTop, isValue, type Lift, Top, type Value, type ValueSet } from '../values/r-value';
 import { setFrom } from '../values/sets/set-constants';
 import { resolveNode } from './resolve';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
@@ -197,6 +197,13 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 		default:
 			return Top;
 	}
+}
+
+/** Resolves an id to a single constant string value, or `undefined` if it is not a unique string constant. */
+export function resolveIdToSingleString(id: NodeId | RNodeWithParent | undefined, info: ResolveInfo): string | undefined {
+	const resolved = valueSetGuard(resolveIdToValue(id, info));
+	const element = resolved?.elements.length === 1 ? resolved.elements[0] : undefined;
+	return element?.type === 'string' && isValue(element.value) ? element.value.str : undefined;
 }
 
 /**

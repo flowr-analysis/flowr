@@ -22,12 +22,40 @@ import {
 } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
-import { valueSetGuard } from '../../../../../eval/values/general';
-import { isValue } from '../../../../../eval/values/r-value';
 import { expensiveTrace } from '../../../../../../util/log';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { resolveIdToSingleString } from '../../../../../eval/resolve/alias-tracking';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+
+/** the function reference extracted from an argument passed to a higher-order call */
+export interface ResolvedFunctionArgument {
+	readonly functionId:   NodeId
+	readonly functionName: Identifier
+	readonly anonymous:    boolean
+	readonly asString:     boolean
+}
+
+/** Resolve the function an argument stands for: a string literal, a symbol, or an inline definition; `undefined` if none. */
+export function resolveFunctionArgument<OtherInfo>(
+	val:  RNode<OtherInfo & ParentInformation>,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	opts: { readonly unquoteFunction?: boolean, readonly resolveValue?: boolean }
+): ResolvedFunctionArgument | undefined {
+	if(opts.unquoteFunction && RString.is(val)) {
+		return { functionId: val.info.id, functionName: val.content.str, anonymous: false, asString: true };
+	}
+	if(val.type === RType.FunctionDefinition) {
+		return { functionId: val.info.id, functionName: `${UnnamedFunctionCallPrefix}${val.info.id}`, anonymous: true, asString: false };
+	}
+	if(val.type !== RType.Symbol) {
+		return undefined;
+	}
+	const functionName = opts.resolveValue
+		? resolveIdToSingleString(val.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx })
+		: val.content;
+	return functionName === undefined ? undefined : { functionId: val.info.id, functionName, anonymous: false, asString: false };
+}
 
 export interface BuiltInApplyConfiguration extends MergeableRecord {
 	/** the 0-based index of the argument which is the actual function passed, defaults to 1 */
@@ -98,35 +126,16 @@ export function processApply<OtherInfo>(
 		return information;
 	}
 
-	let functionId: NodeId | undefined = undefined;
-	let functionName: Identifier | undefined = undefined;
-	let anonymous: boolean = false;
-
 	const val = arg.value;
-	if(unquoteFunction && RString.is(val)) {
-		functionId = val.info.id;
-		functionName = val.content.str;
-		information.in = [...information.in, { type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }];
-	} else if(val.type === RType.Symbol) {
-		functionId = val.info.id;
-		if(resolveValue) {
-			const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx }));
-			if(resolved?.elements.length === 1 && resolved.elements[0].type === 'string') {
-				const r = resolved.elements[0];
-				functionName = isValue(r.value) ? r.value.str : undefined;
-			}
-		} else {
-			functionName = val.content;
-		}
-	} else if(val.type === RType.FunctionDefinition) {
-		anonymous = true;
-		functionId = val.info.id;
-		functionName = `${UnnamedFunctionCallPrefix}${functionId}`;
-	}
-
-	if(functionName === undefined || functionId === undefined) {
+	const resolvedFn = resolveFunctionArgument(val, data, { unquoteFunction, resolveValue });
+	if(resolvedFn === undefined) {
 		dataflowLogger.warn(`Expected symbol or string as function argument at index ${index}, but got ${JSON.stringify(val)} instead.`);
 		return information;
+	}
+	const { functionName, anonymous, asString } = resolvedFn;
+	let functionId: NodeId = resolvedFn.functionId;
+	if(asString) {
+		information.in = [...information.in, { type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }];
 	}
 
 	const allOtherArguments: FunctionArgument[] = processedArguments.map((arg, i) => {

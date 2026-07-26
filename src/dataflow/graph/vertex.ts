@@ -211,6 +211,11 @@ export function isFunctionCallVertex(vertex?: DataflowGraphVertexBase): vertex i
 	return vertex?.tag === VertexType.FunctionCall;
 }
 
+/** Check if the given vertex is a function call carrying the given built-in origin. */
+export function isBuiltInCallVertex(vertex: DataflowGraphVertexBase | undefined, origin: BuiltInProcName): boolean {
+	return isFunctionCallVertex(vertex) && vertex.origin.includes(origin);
+}
+
 /**
  * Check if the given vertex is a {@link DataflowGraphVertexVariableDefinition|variable definition vertex}.
  */

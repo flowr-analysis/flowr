@@ -40,14 +40,14 @@ class ThrowingVersionsPlugin extends FlowrAnalyzerPackageVersionsPlugin {
 }
 
 /**
- * A tiny in-memory signature database: base R (`paste` — a registered built-in — and `Reduce`), the base package
+ * A tiny in-memory signature database: base R (`paste` — a registered built-in — and `qr`, which is not), the base package
  * `stats` shipped across two R releases with different export sets, and a plain CRAN package. Written to a temp
  * file and opened as a real {@link SigDatabase}.
  */
 function buildDb(): SigDatabase {
 	const b = new SigDbBuilder();
 	b.addPackage('base', { latest: '4.5.0', core: true });
-	b.addVersion('base', '4.5.0', ver([expFn('paste'), expFn('Reduce')]));
+	b.addVersion('base', '4.5.0', ver([expFn('paste'), expFn('qr')]));
 	b.addPackage('stats', { latest: '4.5.0', core: true });
 	b.addVersion('stats', '4.4.0', ver([expFn('arima')]));                 // R 4.4: only arima
 	b.addVersion('stats', '4.5.0', ver([expFn('arima'), expFn('newfn')])); // R 4.5: arima + newfn
@@ -123,9 +123,9 @@ describe('Link libraries from a signature database (sigdb)', withTreeSitter(ts =
 
 	test(label('a bare base call not in the built-in config resolves to the base package export', ['library-loading', 'search-path'], ['dataflow']), async() => {
 		// eager base attach is opt-in (solver.sigdb.linkBaseR); no library() call needed once enabled
-		const { df } = await analyze(ts, 'Reduce(f, xs)', buildDb(), linkBaseRConfig());
-		expect(hasBuiltIn(df, 'base', 'Reduce')).toBe(true);
-		expect(callResolvesTo(df, 'Reduce', 'base', 'Reduce')).toBe(true);
+		const { df } = await analyze(ts, 'qr(m)', buildDb(), linkBaseRConfig());
+		expect(hasBuiltIn(df, 'base', 'qr')).toBe(true);
+		expect(callResolvesTo(df, 'qr', 'base', 'qr')).toBe(true);
 	});
 
 	test(label('pinning an older assumedRVersion selects that R release\'s exports', ['library-loading', 'search-path'], ['dataflow']), async() => {
@@ -146,9 +146,9 @@ describe('Link libraries from a signature database (sigdb)', withTreeSitter(ts =
 	});
 
 	test(label('a name that is a registered built-in (paste) is not shadowed by a base export', ['library-loading', 'search-path'], ['dataflow']), async() => {
-		const { df } = await analyze(ts, 'paste("a", "b")\nReduce(f, xs)', buildDb(), linkBaseRConfig());
-		// Reduce (no built-in) is attached from base; paste (a built-in) is skipped, so it stays the built-in
-		expect(namespaceEnv(df, 'base')?.memory.has('Reduce')).toBe(true);
+		const { df } = await analyze(ts, 'paste("a", "b")\nqr(m)', buildDb(), linkBaseRConfig());
+		// qr (no built-in) is attached from base; paste (a built-in) is skipped, so it stays the built-in
+		expect(namespaceEnv(df, 'base')?.memory.has('qr')).toBe(true);
 		expect(namespaceEnv(df, 'base')?.memory.has('paste')).toBe(false);
 		expect(hasBuiltIn(df, 'base', 'paste')).toBe(false);
 		expect(callResolvesTo(df, 'paste', 'base', 'paste')).toBe(false);

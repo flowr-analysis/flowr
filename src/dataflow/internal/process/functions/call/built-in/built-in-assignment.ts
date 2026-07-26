@@ -29,7 +29,7 @@ import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
-import { isFunctionCallVertex, isFunctionDefinitionVertex, VertexType } from '../../../../../graph/vertex';
+import { isBuiltInCallVertex, isFunctionCallVertex, isFunctionDefinitionVertex, VertexType } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
@@ -44,6 +44,7 @@ import { getAliases, resolveIdToValue } from '../../../../../eval/resolve/alias-
 import { isValue } from '../../../../../eval/values/r-value';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { createFreshEnvState } from './built-in-new-env';
+import { resolveListToEnvState } from './built-in-list';
 import { stackEnvStateFromSource } from './built-in-stack-env';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & RAstNodeBase<OtherInfo> & Location, prefix: Identifier, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
@@ -403,7 +404,7 @@ function checkTargetReferenceType(sourceInfo: DataflowInformation, fnModes: Data
  */
 function isEnvCreatorSource(sourceInfo: DataflowInformation): boolean {
 	const vert = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
-	return isFunctionCallVertex(vert) && vert.origin.includes(BuiltInProcName.NewEnv);
+	return isBuiltInCallVertex(vert, BuiltInProcName.NewEnv);
 }
 
 /**
@@ -618,7 +619,9 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 			}
 		} else {
 			const entryVertex = sourceArg.graph.getVertex(sourceArg.entryPoint);
-			if(isFunctionDefinitionVertex(entryVertex) && entryVertex.returnEnvState !== undefined) {
+			if(isBuiltInCallVertex(entryVertex, BuiltInProcName.List)) {
+				envState = resolveListToEnvState(source, data);
+			} else if(isFunctionDefinitionVertex(entryVertex) && entryVertex.returnEnvState !== undefined) {
 				returnsEnvState = entryVertex.returnEnvState;
 			} else if(isFunctionCallVertex(entryVertex) && entryVertex.name) {
 				const fnDefs = resolveByName(entryVertex.name, data.environment, ReferenceType.Function);

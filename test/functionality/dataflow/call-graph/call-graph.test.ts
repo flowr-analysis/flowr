@@ -187,6 +187,14 @@ fn(5)`,
 		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
+	assertDataflow(label('get resolves a name built from constants', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
+		ts,
+		'handler_foo <- function(a) { a + 1 }\nfn <- get(paste0("handler_", "foo"))\nfn(5)',
+		emptyGraph()
+			.calls('3@fn', '1@function')
+		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
+
 	assertDataflow(label('unresolved get is reached-but-unknown, not dropped', ['function-calls', 'resolution', 'built-in']),
 		ts,
 		'nm <- 5\nget(nm)',

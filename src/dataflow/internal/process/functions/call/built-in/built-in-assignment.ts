@@ -36,12 +36,11 @@ import type { ForceArguments } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import { resolveEnvirArg, resolveSymbolToEnvir, routeWrittenToCustomEnv } from './built-in-envir-utils';
+import { resolveConstantString, resolveEnvirArg, resolveSymbolToEnvir, routeWrittenToCustomEnv } from './built-in-envir-utils';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { getAliases, resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
-import { isValue } from '../../../../../eval/values/r-value';
+import { getAliases } from '../../../../../eval/resolve/alias-tracking';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { createFreshEnvState } from './built-in-new-env';
 import { resolveListToEnvState } from './built-in-list';
@@ -227,32 +226,29 @@ export function processAssignment<OtherInfo>(
 				information:              res.information,
 			});
 		}  else {
-			// try to resolve the variable first
-			const n = resolveIdToValue(target.info.id, { environment: data.environment, resolve: data.ctx.config.solver.variables, idMap: data.completeAst.idMap, full: true, ctx: data.ctx });
-			if(n.type === 'set' && n.elements.length === 1 && n.elements[0].type === 'string') {
-				const val = n.elements[0].value;
-				if(isValue(val)) {
-					const res = processKnownFunctionCall({
-						name,
-						args,
-						rootId,
-						data,
-						reverseOrder: !config.swapSourceAndTarget,
-						forceArgs:    config.forceArgs,
-						origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
-					});
-					return processAssignmentToSymbol<OtherInfo & ParentInformation>({
-						...config,
-						nameOfAssignmentFunction: name.content,
-						source,
-						targetId:                 target.info.id,
-						targetName:               val.str,
-						args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
-						rootId,
-						data,
-						information:              res.information,
-					});
-				}
+			/* an assign target given as a constant-built name (`assign(paste0("cfg_", k), v)` with `k` known) resolves like a literal name */
+			const resolvedName = resolveConstantString(target, data);
+			if(resolvedName !== undefined) {
+				const res = processKnownFunctionCall({
+					name,
+					args,
+					rootId,
+					data,
+					reverseOrder: !config.swapSourceAndTarget,
+					forceArgs:    config.forceArgs,
+					origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
+				});
+				return processAssignmentToSymbol<OtherInfo & ParentInformation>({
+					...config,
+					nameOfAssignmentFunction: name.content,
+					source,
+					targetId:                 target.info.id,
+					targetName:               resolvedName as Identifier,
+					args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
+					rootId,
+					data,
+					information:              res.information,
+				});
 			}
 		}
 	} else if(config.canBeReplacement && type === RType.FunctionCall && named) {

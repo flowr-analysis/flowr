@@ -45,7 +45,7 @@ import { VertexType } from '../graph/vertex';
 import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
-import { resolveAsMinus, resolveAsPlus, resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
+import { resolveAsMinus, resolveAsPaste, resolveAsPlus, resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
 import type { DataflowGraph } from '../graph/graph';
 import type { VariableResolve } from '../../config';
 import type {
@@ -268,10 +268,12 @@ export const BuiltInProcessorMapper = {
 } as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<never>>;
 
 export const BuiltInEvalHandlerMapper = {
-	'built-in:c': resolveAsVector,
-	'built-in::': resolveAsSeq,
-	'built-in:+': resolveAsPlus,
-	'built-in:-': resolveAsMinus
+	'built-in:c':      resolveAsVector,
+	'built-in::':      resolveAsSeq,
+	'built-in:+':      resolveAsPlus,
+	'built-in:-':      resolveAsMinus,
+	'built-in:paste':  resolveAsPaste,
+	'built-in:paste0': resolveAsPaste
 } as const satisfies Record<string, BuiltInEvalHandler>;
 
 export type ConfigOfBuiltInMappingName<N extends keyof typeof BuiltInProcessorMapper> = Parameters<typeof BuiltInProcessorMapper[N]>[4];

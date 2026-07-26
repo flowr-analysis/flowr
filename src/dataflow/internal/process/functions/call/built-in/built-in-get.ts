@@ -14,8 +14,7 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
 import { Identifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { resolveEnvirArg } from './built-in-envir-utils';
-import { resolveIdToSingleString } from '../../../../../eval/resolve/alias-tracking';
+import { resolveConstantString, resolveEnvirArg } from './built-in-envir-utils';
 import { SourceRange } from '../../../../../../util/range';
 
 /**
@@ -51,7 +50,7 @@ export function processGet<OtherInfo>(
 			location: retrieve.location
 		};
 	} else if(retrieve !== undefined) {
-		const resolvedName = resolveIdToSingleString(retrieve.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx, full: true });
+		const resolvedName = resolveConstantString(retrieve, data);
 		if(resolvedName !== undefined) {
 			const synthId = rootId + '-get-name';
 			const synthSymbol: RSymbol<OtherInfo & ParentInformation> = {

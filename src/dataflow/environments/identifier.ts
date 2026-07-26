@@ -285,6 +285,7 @@ export const enum PkgName {
 	Plyr         = 'plyr',
 	Purrr        = 'purrr',
 	Ragg         = 'ragg',
+	R6           = 'R6',
 	RasterPdf    = 'rasterpdf',
 	Remotes      = 'remotes',
 	Rlang        = 'rlang',

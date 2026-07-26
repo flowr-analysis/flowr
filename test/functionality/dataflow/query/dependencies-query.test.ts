@@ -307,6 +307,17 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery(`${writeFn}`, `${writeFn}("a")`, { write: [{ nodeId: `1@${writeFn}`, functionName: writeFn, value: 'a' }] });
 		}
 
+		// regression: once the owning library is loaded the call resolves to that origin namespace, so a wrong
+		// `package` attribution makes the namespace check drop the call (e.g. ggsave was attributed to `ggplot`)
+		testQuery('ggsave after library', 'library(ggplot2)\nggsave("a")', {
+			library: [{ nodeId: '1@library', functionName: 'library', value: 'ggplot2' }],
+			write:   [{ nodeId: '2@ggsave', functionName: 'ggsave', value: 'a' }]
+		});
+		testQuery('write_dta after library', 'library(haven)\nwrite_dta(d, "a")', {
+			library: [{ nodeId: '1@library', functionName: 'library', value: 'haven' }],
+			write:   [{ nodeId: '2@write_dta', functionName: 'write_dta', value: 'a' }]
+		});
+
 		testQuery('visSave', 'visSave(obj, "a")', { write: [{ nodeId: '1@visSave', functionName: 'visSave', value: 'a' }] });
 		testQuery('save_graph', 'save_graph(obj, "a")', { write: [{ nodeId: '1@save_graph', functionName: 'save_graph', value: 'a' }] });
 		testQuery('export_graph', 'export_graph(file_name = "a")', { write: [{ nodeId: '1@export_graph', functionName: 'export_graph', value: 'a' }] });

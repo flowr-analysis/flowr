@@ -1,7 +1,7 @@
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph, FunctionArgument } from '../../../dataflow/graph/graph';
 import { visitCfgInReverseOrder } from '../../../control-flow/simple-visitor';
-import { type DataflowGraphVertexFunctionCall, isFunctionCallVertex } from '../../../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, FunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
 import { Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
@@ -165,7 +165,7 @@ export function identifyLinkToLastCallRelationSync(
 		(node: NodeId) => knownCalls.get(node) :
 		(node: NodeId) => {
 			const v = graph.getVertex(node);
-			return isFunctionCallVertex(v) ? v : undefined;
+			return FunctionCallVertex.is(v) ? v : undefined;
 		};
 
 	visitCfgInReverseOrder(cfg, [from], node => {

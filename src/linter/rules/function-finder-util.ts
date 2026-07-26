@@ -8,7 +8,7 @@ import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/proces
 import type { MergeableRecord } from '../../util/objects';
 import { isNotUndefined } from '../../util/assert';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
-import { isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
+import { FunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { BrandedIdentifier, Identifier } from '../../dataflow/environments/identifier';
@@ -108,7 +108,7 @@ export const functionFinderUtil = {
 		}
 		const dataflow = await analyzer.dataflow();
 		const vert = dataflow.graph.getVertex(element.node.info.id);
-		if(isFunctionCallVertex(vert)){
+		if(FunctionCallVertex.is(vert)){
 			const args = getArgumentStringValue(
 				analyzer.flowrConfig.solver.variables,
 				dataflow.graph,

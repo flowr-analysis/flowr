@@ -17,7 +17,7 @@ import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
 import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
-import { isFunctionCallVertex, isFunctionDefinitionVertex, VertexType } from '../dataflow/graph/vertex';
+import { FunctionCallVertex, FunctionDefinitionVertex, VertexType } from '../dataflow/graph/vertex';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { type CfgExpressionVertex,
 	CfgEdge, CfgVertex,
@@ -31,6 +31,7 @@ import { guard } from '../util/assert';
 import type { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
+import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
@@ -131,7 +132,7 @@ export function getCallsInCfg(cfg: ControlFlowInformation, graph: DataflowGraph)
 	const calls = new Map<NodeId, Required<DataflowGraphVertexFunctionCall>>();
 	for(const vertexId of cfg.graph.vertices().keys()) {
 		const vertex = graph.getVertex(vertexId);
-		if(isFunctionCallVertex(vertex)) {
+		if(FunctionCallVertex.is(vertex)) {
 			calls.set(vertexId, vertex);
 		}
 	}
@@ -407,15 +408,6 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 }
 
 function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState): ControlFlowInformation {
-	if(call.named && call.functionName.content === 'ifelse' && args.length > 1) {
-		// special built-in handling for ifelse as it is an expression that does not short-circuit
-		return cfgIfThenElse(
-			call,
-			args[0] === EmptyArgument ? emptyControlFlowInformation() : args[0],
-			args[1] === EmptyArgument ? emptyControlFlowInformation() : args[1],
-			args[2] === EmptyArgument ? emptyControlFlowInformation() : args[2]
-		);
-	}
 	const callId = call.info.id;
 	const graph = name.graph;
 	const info = {
@@ -470,6 +462,80 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 	return info;
 }
 
+function cfgSwitch(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[]): ControlFlowInformation {
+	const callId = call.info.id;
+	const exitId = CfgVertex.toExitId(callId);
+	const graph = name.graph;
+	const info: ControlFlowInformation = {
+		graph,
+		breaks:      Array.from(name.breaks),
+		nexts:       Array.from(name.nexts),
+		returns:     Array.from(name.returns),
+		exitPoints:  [exitId],
+		entryPoints: [callId]
+	};
+
+	graph.addVertex(CfgVertex.makeExprOrStm(callId, identifyMayStatementType(call), { mid: name.exitPoints, end: [exitId] }));
+	graph.addVertex(CfgVertex.makeExitMarker(callId));
+
+	for(const entry of name.entryPoints) {
+		graph.addEdge(entry, callId, CfgEdge.makeFd());
+	}
+
+	let selectorExits = name.exitPoints;
+	const selector = args[0];
+	if(selector !== undefined && selector !== EmptyArgument) {
+		graph.mergeWith(selector.graph);
+		info.breaks = info.breaks.concat(selector.breaks);
+		info.nexts = info.nexts.concat(selector.nexts);
+		info.returns = info.returns.concat(selector.returns);
+		for(const entry of selector.entryPoints) {
+			for(const exit of name.exitPoints) {
+				graph.addEdge(entry, exit, CfgEdge.makeFd());
+			}
+		}
+		selectorExits = selector.exitPoints;
+	}
+
+	const cd = CfgEdge.makeCdTrue(callId);
+	for(const arm of args.slice(1)) {
+		if(arm === EmptyArgument) {
+			continue;
+		}
+		graph.mergeWith(arm.graph);
+		info.breaks = info.breaks.concat(arm.breaks);
+		info.nexts = info.nexts.concat(arm.nexts);
+		info.returns = info.returns.concat(arm.returns);
+		for(const entry of arm.entryPoints) {
+			for(const exit of selectorExits) {
+				graph.addEdge(entry, exit, cd);
+			}
+		}
+		for(const exit of arm.exitPoints) {
+			graph.addEdge(exitId, exit, CfgEdge.makeFd());
+		}
+	}
+
+	const hasDefault = call.arguments.slice(1).some(a => a !== EmptyArgument && a.name === undefined);
+	if(!hasDefault) {
+		for(const exit of selectorExits) {
+			graph.addEdge(exitId, exit, CfgEdge.makeCdFalse(callId));
+		}
+	}
+
+	return info;
+}
+
+// on.exit defers its expr, so seal a return/break/next inside it from escaping into enclosing control flow
+function cfgRegisterHook(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState): ControlFlowInformation {
+	const base = cfgFunctionCall(call, name, args, down);
+	const exitId = CfgVertex.toExitId(call.info.id);
+	for(const escape of base.returns.concat(base.breaks, base.nexts)) {
+		base.graph.addEdge(exitId, escape, CfgEdge.makeFd());
+	}
+	return { ...base, returns: [], breaks: [], nexts: [], exitPoints: base.exitPoints.length > 0 ? base.exitPoints : [exitId] };
+}
+
 export const ResolvedCallSuffix = CfgVertex.toExitId('-resolved-call');
 
 const OriginToFoldTypeMap: Partial<Record<BuiltInProcName, (folds: StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFlowInformation>, call: RFunctionCall<ParentInformation>, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState, callVtx: DataflowGraphVertexFunctionCall) => ControlFlowInformation>> = {
@@ -488,11 +554,20 @@ function cfgFunctionCallWithDataflow(graph: DataflowGraph, folds: StatefulFoldFu
 	return (call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState): ControlFlowInformation => {
 		const vtx = graph.getVertex(call.info.id);
 		if(vtx?.tag === VertexType.FunctionCall && vtx.onlyBuiltin && vtx.origin.length === 1) {
-			const mayMap = OriginToFoldTypeMap[vtx.origin[0] as BuiltInProcName];
-			if(mayMap) {
+			const origin = vtx.origin[0];
+			const mayMap = OriginToFoldTypeMap[origin as BuiltInProcName];
+			// ifelse/fifelse/if_else share the IfThenElse origin but are eager calls, so only fold a real `if` node
+			if(mayMap && (call as RNodeWithParent).type === RType.IfThenElse) {
 				return mayMap(folds, call, args, down, vtx);
 			}
+			if(origin === BuiltInProcName.Switch) {
+				return cfgSwitch(call, name, args);
+			}
+			if(origin === BuiltInProcName.RegisterHook) {
+				return cfgRegisterHook(call, name, args, down);
+			}
 		}
+
 		const baseCfg = cfgFunctionCall(call, name, args, down);
 
 		/* try to resolve the call and link the target definitions */
@@ -503,7 +578,7 @@ function cfgFunctionCallWithDataflow(graph: DataflowGraph, folds: StatefulFoldFu
 		guard(callVertex !== undefined, 'cfgFunctionCallWithDataflow: call vertex not found');
 		for(const target of targets) {
 			// we have to filter out non-func-call targets as the call targets contains names and call ids
-			if(isFunctionDefinitionVertex(graph.getVertex(target))) {
+			if(FunctionDefinitionVertex.is(graph.getVertex(target))) {
 				const ct = CfgVertex.getCallTargets(callVertex);
 				if(!ct) {
 					CfgVertex.setCallTargets(callVertex as CfgExpressionVertex, new Set([target]));
@@ -597,6 +672,12 @@ function cfgBinaryOp(binOp: RBinaryOp<ParentInformation> | RPipe<ParentInformati
 	}
 	for(const exitPoint of rhs.exitPoints) {
 		graph.addEdge(binExit, exitPoint, fd);
+	}
+	// `&&`/`||` short-circuit: the exit stays reachable via the lhs even when the rhs jumps
+	if(binOp.type === RType.BinaryOp && (binOp.operator === '&&' || binOp.operator === '||')) {
+		for(const exitPoint of lhs.exitPoints) {
+			graph.addEdge(binExit, exitPoint, fd);
+		}
 	}
 	return result;
 }

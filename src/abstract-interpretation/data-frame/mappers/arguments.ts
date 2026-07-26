@@ -1,6 +1,6 @@
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import { FunctionArgument, type DataflowGraph } from '../../../dataflow/graph/graph';
-import { isFunctionCallVertex, isUseVertex } from '../../../dataflow/graph/vertex';
+import { FunctionCallVertex, UseVertex } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -158,7 +158,7 @@ export function getFunctionArguments(
 ): readonly PotentiallyEmptyRArgument<ParentInformation>[] {
 	const vertex = dfg.getVertex(node.info.id);
 
-	if(isFunctionCallVertex(vertex) && dfg.idMap !== undefined) {
+	if(FunctionCallVertex.is(vertex) && dfg.idMap !== undefined) {
 		const idMap = dfg.idMap;
 
 		return vertex.args
@@ -189,7 +189,7 @@ export function getUnresolvedSymbolsInExpression(
 			const symbolName = Identifier.mapName(node.content, unquoteArgument);
 
 			// ignore symbols named ".", as they are used as argument placeholder in magrittr pipe operations
-			if(isUseVertex(vertex?.[0]) && vertex[1].size === 0 && symbolName !== '.') {
+			if(UseVertex.is(vertex?.[0]) && vertex[1].size === 0 && symbolName !== '.') {
 				unresolvedSymbols.push(symbolName);
 			}
 		}

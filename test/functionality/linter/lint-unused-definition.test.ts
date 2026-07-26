@@ -45,7 +45,11 @@ print(x)`,
 				/* S3 method for a project-local generic that is dispatched somewhere - not unused */
 				'myg <- function(x) UseMethod("myg")\nmyg.foo <- function(x) x\nz <- structure(1, class = "foo")\nmyg(z)',
 				/* R package lifecycle hook called by package machinery - not unused */
-				'.onAttach <- function(libname, pkgname) { cat(libname, pkgname) }'
+				'.onAttach <- function(libname, pkgname) { cat(libname, pkgname) }',
+				/* S4/S7 generic dispatcher passed to setGeneric - runs on every dispatch, so not unused */
+				'setGeneric("replaceEntries", function(x, map, ...) standardGeneric("replaceEntries"))',
+				/* same, with a braced dispatcher body */
+				'setGeneric("bar", function(obj) { standardGeneric("bar") })'
 			]) {
 				/* @ignore-in-wiki */
 				assertLinter(program, parser, program, 'unused-definitions', []);

@@ -1,4 +1,4 @@
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { InputTraceType, InputType } from './input-types';
 export { InputTraceType, InputType } from './input-types';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
@@ -402,7 +402,30 @@ class InputClassifier {
 					return this.classifyCdsAndReturn(call, this.classifyEntry(vtx));
 				}
 			}
+		} else if(call.origin.includes(BuiltInProcName.Get) && !(this.fullDfg ?? this.dfg).unknownSideEffects.has(NodeId.normalize(call.id))) {
+			// a statically resolved `get("x")` yields the value of the retrieved variable, read via its first argument
+			const ref = FunctionArgument.getReference(call.args[0]);
+			const vtx = ref === undefined ? undefined : this.dfg.getVertex(ref);
+			if(vtx) {
+				return this.classifyCdsAndReturn(call, { ...this.classifyEntry(vtx), id: call.id });
+			}
 		}
+		// a narrowing function returns a bounded value: either one of a specific argument's values (e.g. `match.arg`
+		// -> its `choices`), or - with no bounding argument - a content-independent value like a count/index/logical
+		for(const narrow of this.config.narrowing ?? []) {
+			if(!this.matches(call, [narrow.call])) {
+				continue;
+			}
+			if(narrow.argIdx === undefined) {
+				return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, types: [InputType.DerivedConstant], trace: InputTraceType.Pure }));
+			}
+			const ref = this.argumentReference(call, narrow.argIdx, narrow.argName ?? '');
+			const vtx = ref === undefined ? undefined : this.dfg.getVertex(ref);
+			if(vtx) {
+				return this.classifyCdsAndReturn(call, { ...this.classifyEntry(vtx), id: call.id });
+			}
+		}
+
 		if(!this.matches(call, this.config.pure)) {
 			const types: InputType[] = [];
 
@@ -663,6 +686,15 @@ export interface LinkedInputEntryPoint {
 	readonly params:  readonly (string | undefined)[]
 }
 
+/** A function whose result is bounded by one argument (e.g. `match.arg` by its `choices`), classified by that argument alone. */
+export interface NarrowingFunction {
+	readonly call:     Identifier,
+	/** the name of the bounding argument; omit (with `argIdx`) for a result that is always a bounded, content-independent value */
+	readonly argName?: string,
+	/** the index of the bounding argument; omit (with `argName`) for an always-`DerivedConstant` result */
+	readonly argIdx?:  number
+}
+
 /** the function definitions the given node is nested in, innermost first */
 function* enclosingFunctions(node: RNode<ParentInformation>, idMap: AstIdMap): Generator<RFunctionDefinition<ParentInformation>> {
 	for(const parent of RNode.iterateParents(node, idMap)) {
@@ -771,6 +803,11 @@ export interface InputClassifierConfig<Functions extends InputClassifierFunction
 	 * @see {@link LinkedInputEntryPoint}
 	 */
 	linkedEntryPoints?:     readonly LinkedInputEntryPoint[]
+	/**
+	 * Functions whose result is bounded by one of their arguments (classified by that argument alone).
+	 * @see {@link NarrowingFunction}
+	 */
+	narrowing?:             readonly NarrowingFunction[]
 }
 
 /**

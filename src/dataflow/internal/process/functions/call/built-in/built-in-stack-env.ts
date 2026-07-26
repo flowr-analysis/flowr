@@ -7,7 +7,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { EnvType, REnvironment, SearchPathPackagePrefix, type Environment, type REnvironmentInformation } from '../../../../../environments/environment';
-import { isFunctionCallVertex } from '../../../../../graph/vertex';
+import { FunctionCallVertex } from '../../../../../graph/vertex';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -69,6 +69,8 @@ export function resolveNodeToStackEnv<Info>(node: RNode<Info> | undefined, data:
 	switch(kind) {
 		case StackEnvKind.Global: case StackEnvKind.Base: case StackEnvKind.Empty:
 			return fixedStackEnv(kind, data);
+		case StackEnvKind.CallerFrame: // parent.frame(): the caller's frame, over-approximated to global (exact at a top-level call)
+			return fixedStackEnv(StackEnvKind.Global, data);
 		case StackEnvKind.Current: // environment() with no argument is the current environment
 			return firstArg === undefined ? { current: data.environment.current, level: data.environment.level } : undefined;
 		case StackEnvKind.Parent: {
@@ -100,7 +102,7 @@ function asSearchPathEnv(name: string, data: StackEnvContext): REnvironmentInfor
 /** If `sourceInfo`'s entry is a {@link BuiltInProcName.StackEnv} call, the stack environment it refers to; else `undefined`. */
 export function stackEnvStateFromSource(sourceInfo: DataflowInformation, data: StackEnvContext): REnvironmentInformation | undefined {
 	const vertex = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
-	if(!isFunctionCallVertex(vertex) || vertex.name === undefined || !vertex.origin.includes(BuiltInProcName.StackEnv)) {
+	if(!FunctionCallVertex.is(vertex) || vertex.name === undefined || !vertex.origin.includes(BuiltInProcName.StackEnv)) {
 		return undefined;
 	}
 	return fixedStackEnv(stackEnvKind(String(vertex.name)), data);

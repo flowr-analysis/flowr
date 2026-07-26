@@ -9,14 +9,16 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { unpackArg } from '../argument/unpack-argument';
 import { signatureParameterNames } from '../../../../../../project/sigdb/decode';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import type { Identifier, IdentifierDefinition, InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { ReferenceType } from '../../../../../environments/identifier';
+import type { IdentifierDefinition, InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import { Identifier, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { define } from '../../../../../environments/define';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { DefaultAttachPosition, REnvironment } from '../../../../../environments/environment';
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
 import { resolveNodeToStackEnv } from './built-in-stack-env';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { resolveIdToValue, resolveIdToSingleString } from '../../../../../eval/resolve/alias-tracking';
+import { foldPasteCall } from '../../../../../eval/resolve/resolve';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import type { Value } from '../../../../../eval/values/r-value';
 import { dataflowLogger } from '../../../../../logger';
@@ -103,6 +105,37 @@ export function signatureParamNames<OtherInfo>(
 	const sig = data.ctx.deps.signatureOf(id)?.signature;
 	const names = sig ? signatureParameterNames(sig) : [];
 	return names.length > 0 ? names : fallback;
+}
+
+/** The constant string a name-position node denotes at construction time (string literal, aliased variable, or `paste`/`paste0` of such); `undefined` if any part is dynamic or the paste builtin is user-shadowed. */
+export function resolveConstantString<OtherInfo>(
+	node: RNode<OtherInfo & ParentInformation>,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+): string | undefined {
+	const info = { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx, full: true };
+	const unshadowed = new Map<string, boolean>();
+	const fold = (n: RNode<OtherInfo & ParentInformation>): string | undefined => {
+		if(!RFunctionCall.isNamed(n)) {
+			return resolveIdToSingleString(n.info.id, info);
+		}
+		const fnName = Identifier.getName(n.functionName.content);
+		if(fnName !== 'paste0' && fnName !== 'paste') {
+			return undefined;
+		}
+		let ok = unshadowed.get(fnName);
+		if(ok === undefined) {
+			const defs = resolveByName(n.functionName.content, data.environment, ReferenceType.Function);
+			ok = defs === undefined || defs.every(d => isReferenceType(d.type, ReferenceType.BuiltInFunction));
+			unshadowed.set(fnName, ok);
+		}
+		return ok ? foldPasteCall(n, fold) : undefined;
+	};
+	return fold(node);
+}
+
+/** The `returnsEnvState` of the first reaching definition that carries one, else `undefined`. */
+export function findReturnsEnvState(defs: readonly IdentifierDefinition[] | undefined): REnvironmentInformation | undefined {
+	return defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).returnsEnvState !== undefined)?.returnsEnvState;
 }
 
 /** Resolves a single already-found argument (e.g. from {@link bindArgs}) to an {@link EnvirResolution} when it is a symbol holding a tracked envState. */

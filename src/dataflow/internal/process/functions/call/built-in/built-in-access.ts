@@ -52,7 +52,7 @@ export function processAccess<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { treatIndicesAsString: boolean } & ForceArguments
+	config: { treatIndicesAsString: boolean, resolveField?: boolean } & ForceArguments
 ): DataflowInformation {
 	if(args.length < 1) {
 		dataflowLogger.warn(`Access ${Identifier.getName(name.content)} has less than 1 argument, skipping`);
@@ -86,18 +86,21 @@ export function processAccess<OtherInfo>(
 		/* we include the read edges to the constant arguments as well so that they are included if necessary */
 	}
 
-	/* for $ access on a tracked env variable or a stack env (globalenv()/.GlobalEnv), add Reads edges to the field definition */
-	if(config.treatIndicesAsString && Identifier.getName(name.content) === '$'
+	if(config.resolveField
 			&& head !== EmptyArgument && head.value !== undefined
 			&& args.length >= 2 && args[1] !== EmptyArgument) {
-		const envState = resolveNodeToStackEnv(head.value, data)
+		const stackEnvState = resolveNodeToStackEnv(head.value, data);
+		const envState = stackEnvState
 			?? (head.value.type === RType.Symbol ? resolveSymbolToEnvir(head.value.content, head.value.info.id, data)?.envDef.envState : undefined);
 		if(envState) {
 			const fieldNode = unpackArg(args[1]);
-			const fieldName = fieldNode?.type === RType.String ? fieldNode.content.str : fieldNode?.lexeme;
+			const fieldName = fieldNode?.type === RType.String ? fieldNode.content.str : (config.treatIndicesAsString ? fieldNode?.lexeme : undefined);
 			const fieldDefs = fieldName ? envState.current.memory.get(fieldName) : undefined;
 			for(const fd of fieldDefs ?? []) {
 				info.graph.addEdge(name.info.id, fd.nodeId, EdgeType.Reads);
+				if(stackEnvState === undefined && fd.type === ReferenceType.Function) {
+					info.graph.addEdge(name.info.id, fd.nodeId, EdgeType.Returns);
+				}
 			}
 		}
 	}
@@ -215,7 +218,7 @@ function processStringBasedAccess<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	name: RSymbol<OtherInfo & ParentInformation>,
 	rootId: NodeId,
-	config: { treatIndicesAsString: boolean } & ForceArguments
+	config: { treatIndicesAsString: boolean, resolveField?: boolean } & ForceArguments
 ) {
 	return processKnownFunctionCall({
 		name,

@@ -3,7 +3,7 @@ import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration } 
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, isFunctionCallVertex, VertexType } from '../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, FunctionCallVertex, VertexType } from '../dataflow/graph/vertex';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
 import { type NoInfo, RLoopConstructs, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -77,7 +77,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 			return state.get(node.info.id) as ValueDomain<StateDomain>;
 		}
 		const vertex = this.getDataflowGraph(node.info.id);
-		const call = isFunctionCallVertex(vertex) ? vertex : undefined;
+		const call = FunctionCallVertex.is(vertex) ? vertex : undefined;
 		const origins = Array.isArray(call?.origin) ? call.origin : [];
 
 		if(node.type === RType.Symbol) {
@@ -223,7 +223,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 			for(const replacement of replacements) {
 				const call = this.getDataflowGraph(replacement);
 
-				if(isFunctionCallVertex(call)) {
+				if(FunctionCallVertex.is(call)) {
 					this.onReplacementCall({ call, ...this.getSourceAndTarget(call) });
 				}
 			}

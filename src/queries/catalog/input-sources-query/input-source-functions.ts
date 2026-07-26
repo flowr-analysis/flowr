@@ -1,5 +1,5 @@
 import { Identifier } from '../../../dataflow/environments/identifier';
-import type { LinkedInputDeclaration, LinkedInputEntryPoint, LinkedInputObject } from './simple-input-classifier';
+import type { LinkedInputDeclaration, LinkedInputEntryPoint, LinkedInputObject, NarrowingFunction } from './simple-input-classifier';
 import { InputType } from './simple-input-classifier';
 
 /** shiny's ui-side control widgets, all taking the id of the `input` entry they feed as their first argument */
@@ -24,6 +24,19 @@ export const LinkedInputObjects: readonly LinkedInputObject[] = [
 	{ name: 'input', type: InputType.User, withParams: ['output'], requires: 'shiny', declaredBy: ShinyInputWidgets },
 	/* of the session only what the browser sends is user input, `userData` and `token` are the app's own */
 	{ name: 'session', type: InputType.User, withParams: ['input', 'output'], requires: 'shiny', fields: ['clientData', 'request'] }
+];
+
+export const NarrowingFunctions: readonly NarrowingFunction[] = [
+	/* bounded by an argument: the result is one element of that argument */
+	{ call: Identifier.make('match.arg', 'base'), argName: 'choices', argIdx: 1 },
+	/* bounded content-independent results (counts, indices, logicals): the subject's taint cannot flow through */
+	...[
+		'nchar', 'length', 'lengths', 'nrow', 'ncol', 'NROW', 'NCOL',
+		'which', 'which.max', 'which.min', 'match', 'pmatch', 'charmatch',
+		'seq_along', 'seq_len',
+		'is.na', 'is.null', 'is.numeric', 'is.character', 'is.logical', 'is.function', 'is.list', 'is.element',
+		'nzchar', 'grepl', 'startsWith', 'endsWith'
+	].map(name => ({ call: Identifier.make(name, 'base') }))
 ];
 
 /** shiny binds `input`, `output`, and `session` positionally, so their names are up to whoever writes the server */
@@ -54,22 +67,19 @@ export const PureFunctions: Identifier[] = [
 	Identifier.make('substr',     'base'),
 	Identifier.make('substring',  'base'),
 	Identifier.make('strsplit',   'base'),
-	Identifier.make('startsWith', 'base'),
-	Identifier.make('endsWith',   'base'),
 	Identifier.make('strrep',     'base'),
 	Identifier.make('chartr',     'base'),
 	Identifier.make('strtoi',     'base'),
 	Identifier.make('tolower',    'base'),
 	Identifier.make('toupper',    'base'),
-	Identifier.make('nchar',      'base'),
 	Identifier.make('trimws',     'base'),
 	Identifier.make('grep',       'base'),
-	Identifier.make('grepl',      'base'),
 	Identifier.make('sub',        'base'),
 	Identifier.make('gsub',       'base'),
 	Identifier.make('regexpr',    'base'),
 	Identifier.make('gregexpr',   'base'),
 	Identifier.make('regexec',    'base'),
+	// regmatches yields a substring of x, so x's taint propagates soundly - kept pure deliberately
 	Identifier.make('regmatches', 'base'),
 	Identifier.make('format',     'base'),
 	Identifier.make('sprintf',    'base'),
@@ -126,18 +136,12 @@ export const PureFunctions: Identifier[] = [
 	Identifier.make('diff',       'base'),
 	Identifier.make('pmin',       'base'),
 	Identifier.make('pmax',       'base'),
-	Identifier.make('which',      'base'),
-	Identifier.make('which.min',  'base'),
-	Identifier.make('which.max',  'base'),
-	Identifier.make('match',      'base'),
 	Identifier.make('order',      'base'),
 	Identifier.make('sort',       'base'),
 	Identifier.make('unique',     'base'),
 	Identifier.make('duplicated', 'base'),
 	Identifier.make('seq',        'base'),
 	Identifier.make('rep',        'base'),
-	Identifier.make('seq_len',    'base'),
-	Identifier.make('seq_along',  'base'),
 	Identifier.make('rep.int',    'base'),
 	/* base - data structures */
 	Identifier.make('c',          'base'),
@@ -159,10 +163,7 @@ export const PureFunctions: Identifier[] = [
 	Identifier.make('prop.table', 'base'),
 	Identifier.make('rownames',   'base'),
 	Identifier.make('colnames',   'base'),
-	Identifier.make('length',     'base'),
 	Identifier.make('dim',        'base'),
-	Identifier.make('nrow',       'base'),
-	Identifier.make('ncol',       'base'),
 	Identifier.make('colSums',    'base'),
 	Identifier.make('rowSums',    'base'),
 	Identifier.make('colMeans',   'base'),
@@ -210,15 +211,10 @@ export const PureFunctions: Identifier[] = [
 	Identifier.make('raw',            'base'),
 	Identifier.make('complex',        'base'),
 	/* base - type predicates */
-	Identifier.make('is.na',          'base'),
-	Identifier.make('is.null',        'base'),
-	Identifier.make('is.numeric',     'base'),
-	Identifier.make('is.character',   'base'),
 	Identifier.make('is.finite',      'base'),
 	Identifier.make('is.infinite',    'base'),
 	Identifier.make('is.nan',         'base'),
 	Identifier.make('is.factor',      'base'),
-	Identifier.make('is.logical',     'base'),
 	Identifier.make('is.vector',      'base'),
 	Identifier.make('is.matrix',      'base'),
 	Identifier.make('is.data.frame',  'base'),
@@ -230,7 +226,6 @@ export const PureFunctions: Identifier[] = [
 	Identifier.make('return',     'base'),
 	Identifier.make('force',      'base'),
 	Identifier.make('missing',    'base'),
-	Identifier.make('match.arg',  'base'),
 	Identifier.make('print',      'base'),
 	Identifier.make('cat',        'base'),
 	Identifier.make('message',    'base'),

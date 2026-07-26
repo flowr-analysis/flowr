@@ -134,6 +134,19 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 		});
 	});
 
+	describe('Narrowing functions', () => {
+		testQuery('match.arg narrows to constant choices', 'function(fmt) eval(parse(text=match.arg(fmt, c("a","b","c"))))', [{ type: 'input-sources', criterion: '1@eval' }], {
+			'1@eval': [{
+				id:    '1@parse',
+				types: [InputType.DerivedConstant], trace: InputTraceType.Pure
+			}]
+		});
+		// a count/index/logical is content-independent, so the subject's taint must not carry through
+		testQuery('nchar narrows away the subject taint', 'function(x) eval(parse(text=nchar(x)))', [{ type: 'input-sources', criterion: '1@eval' }], {
+			'1@eval': [{ id: '1@parse', types: [InputType.DerivedConstant], trace: InputTraceType.Pure }]
+		});
+	});
+
 	describe('Other categories', () => {
 		testQuery('System call source', 'x <- system("echo hi")\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
 			'2@foo': [{ id: '2@x', types: [InputType.System], trace: InputTraceType.Alias }]
@@ -149,6 +162,14 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 
 		testQuery('Options / getOption source', "x <- getOption('digits')\nfoo(x)", [{ type: 'input-sources', criterion: '2@foo' }], {
 			'2@foo': [{ id: '2@x', types: [InputType.Options], trace: InputTraceType.Alias }]
+		});
+		// taint flows through a resolved assign/get channel: `assign("cfg", val); get("cfg")` passes val's source through
+		testQuery('taint through a resolved assign/get channel', "key <- readline()\nassign('cfg', key)\nv <- get('cfg')\nfoo(v)", [{ type: 'input-sources', criterion: '4@foo' }], {
+			'4@foo': [{ id: '4@v', types: [InputType.User], trace: InputTraceType.Alias }]
+		});
+		// the same channel with a constant-built (`paste0`) name on both sides
+		testQuery('taint through a constant-built assign/get channel', "key <- readline()\nassign(paste0('c','fg'), key)\nv <- get(paste0('c','fg'))\nfoo(v)", [{ type: 'input-sources', criterion: '4@foo' }], {
+			'4@foo': [{ id: '4@v', types: [InputType.User], trace: InputTraceType.Alias }]
 		});
 	});
 

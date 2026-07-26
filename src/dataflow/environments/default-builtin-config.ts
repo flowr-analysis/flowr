@@ -20,6 +20,8 @@ export enum StackEnvKind {
 	Empty,
 	Current,
 	Parent,
+	/** `parent.frame()`: the dynamic caller's frame, over-approximated to the global env (exact at a top-level call). */
+	CallerFrame,
 	Named
 }
 
@@ -30,6 +32,7 @@ export const StackEnvBuiltins = {
 	emptyenv:            StackEnvKind.Empty,
 	environment:         StackEnvKind.Current,
 	'parent.env':        StackEnvKind.Parent,
+	'parent.frame':      StackEnvKind.CallerFrame,
 	'as.environment':    StackEnvKind.Named,
 	'.GlobalEnv':        StackEnvKind.Global,
 	'.BaseEnv':          StackEnvKind.Base,

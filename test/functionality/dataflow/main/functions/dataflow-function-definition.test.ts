@@ -141,6 +141,13 @@ describe.sequential('Function Definition', withShell(shell => {
 				.reads('4@g', '2@g'),
 			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 		);
+		// `assign(..., envir=parent.frame())` writes the caller's frame; at a top-level call that is the global
+		// binding, so the final read of `g` after `f()` must see the assign, not `g <- 0`
+		assertDataflow(label('assign to parent.frame escapes', ['normal-definition', 'name-normal', 'unnamed-arguments', 'strings', 'side-effects-in-function-call']),
+			shell, 'g <- 0\nf <- function() assign("g", 5, envir=parent.frame())\nf()\nr <- g', emptyGraph()
+				.reads('4@g', '2@"g"'),
+			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
+		);
 		// a `<<-` escaping through two levels of ordinary call nesting still reaches the outer read: `inner()`'s
 		// `counter <<- 99` mutates the global binding, so the final `counter` after `f()` must see it, not `counter <- 0`
 		assertDataflow(label('`<<-` escapes through nested calls', ['normal-definition', 'name-normal', ...OperatorDatabase['<<-'].capabilities, 'side-effects-in-function-call']),

@@ -69,6 +69,8 @@ export function resolveNodeToStackEnv<Info>(node: RNode<Info> | undefined, data:
 	switch(kind) {
 		case StackEnvKind.Global: case StackEnvKind.Base: case StackEnvKind.Empty:
 			return fixedStackEnv(kind, data);
+		case StackEnvKind.CallerFrame: // parent.frame(): the caller's frame, over-approximated to global (exact at a top-level call)
+			return fixedStackEnv(StackEnvKind.Global, data);
 		case StackEnvKind.Current: // environment() with no argument is the current environment
 			return firstArg === undefined ? { current: data.environment.current, level: data.environment.level } : undefined;
 		case StackEnvKind.Parent: {

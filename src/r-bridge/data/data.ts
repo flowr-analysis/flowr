@@ -800,7 +800,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 								{ name: AdvancedR('R6'), href: 'https://adv-r.hadley.nz/r6.html' }
 							],
 							supported:   'partially',
-							description: '_Handle R6 classes and methods as one unit. Including Dispatch and Inheritance, as well as its Reference Semantics, Access Control, Finalizers, and Introspection._ We resolve public-method dispatch: a `Cls$new()` instance of an `R6Class`/`setRefClass` generator carries the generator\'s `public`/`methods` list, so `instance$method()` links to the method definition. We do not support typing, inheritance, private/active bindings, or handling objects fully "as units."'
+							description: '_Handle R6 classes and methods as one unit. We do not support typing, inheritance, private/active bindings, or handling objects fully "as units."'
 						},
 						{
 							name: 'R7/S7',

@@ -141,8 +141,7 @@ describe.sequential('Function Definition', withShell(shell => {
 				.reads('4@g', '2@g'),
 			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 		);
-		// `assign(..., envir=parent.frame())` writes the caller's frame; at a top-level call that is the global
-		// binding, so the final read of `g` after `f()` must see the assign, not `g <- 0`
+		// `assign(..., envir=parent.frame())` writes the caller's frame
 		assertDataflow(label('assign to parent.frame escapes', ['normal-definition', 'name-normal', 'unnamed-arguments', 'strings', 'side-effects-in-function-call']),
 			shell, 'g <- 0\nf <- function() assign("g", 5, envir=parent.frame())\nf()\nr <- g', emptyGraph()
 				.reads('4@g', '2@"g"'),

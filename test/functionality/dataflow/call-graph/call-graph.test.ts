@@ -163,51 +163,18 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
-	assertDataflow(label('Map higher-order builtin', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
-		ts,
-		`myHelper <- function(a, b) { a + b }
-result <- Map(myHelper, 1:3, 4:6)`,
-		emptyGraph()
-			.calls('2@myHelper', '1@function')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
-	);
-
-	assertDataflow(label('Filter higher-order builtin', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
-		ts,
-		`pred <- function(x) { x > 0 }
-result <- Filter(pred, 1:3)`,
-		emptyGraph()
-			.calls('2@pred', '1@function')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
-	);
-
-	assertDataflow(label('Reduce higher-order builtin', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
-		ts,
-		`red <- function(a, b) { a + b }
-result <- Reduce(red, 1:3)`,
-		emptyGraph()
-			.calls('2@red', '1@function')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
-	);
-
-	assertDataflow(label('sapply with string function name', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
-		ts,
-		`myFn <- function(x) { x + 1 }
-result <- sapply(1:3, "myFn")`,
-		emptyGraph()
-			.calls('2@"myFn"', '1@function')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
-	);
-
-	assertDataflow(label('Vectorize wraps a static target', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
-		ts,
-		`myScalarFn <- function(x, y) { if(x > y) x else y }
-vecFn <- Vectorize(myScalarFn)
-vecFn(1:3, 3:1)`,
-		emptyGraph()
-			.calls('2@myScalarFn', '1@function')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
-	);
+	for(const { name, code, call } of [
+		{ name: 'Map',                          code: 'myHelper <- function(a, b) { a + b }\nresult <- Map(myHelper, 1:3, 4:6)',                          call: '2@myHelper' },
+		{ name: 'Filter',                       code: 'pred <- function(x) { x > 0 }\nresult <- Filter(pred, 1:3)',                                 call: '2@pred' },
+		{ name: 'Reduce',                       code: 'red <- function(a, b) { a + b }\nresult <- Reduce(red, 1:3)',                                 call: '2@red' },
+		{ name: 'sapply with a string name',    code: 'myFn <- function(x) { x + 1 }\nresult <- sapply(1:3, "myFn")',                               call: '2@"myFn"' },
+		{ name: 'Vectorize wraps a target',     code: 'myScalarFn <- function(x, y) { if(x > y) x else y }\nvecFn <- Vectorize(myScalarFn)\nvecFn(1:3, 3:1)', call: '2@myScalarFn' }
+	]) {
+		assertDataflow(label(`higher-order builtin: ${name}`, ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
+			ts, code, emptyGraph().calls(call, '1@function'),
+			{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+		);
+	}
 
 	assertDataflow(label('get resolves a name aliased to a constant string', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
 		ts,
@@ -356,53 +323,25 @@ f.numeric <- function(x) {
 		, { context: 'call-graph', resolveIdsAsCriterion: true }
 	);
 
-	assertDataflow(label('list dispatch table via $', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
-		ts,
-		`handler_foo <- function(x) x * 2
-dispatch <- list(foo = handler_foo)
-dispatch$foo(5)`,
-		emptyGraph()
-			.calls('3@dispatch$foo', '1@function')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
-	);
+	for(const { name, code, call } of [
+		{ name: 'via $',                code: 'handler_foo <- function(x) x * 2\ndispatch <- list(foo = handler_foo)\ndispatch$foo(5)',          call: '3@dispatch$foo' },
+		{ name: 'via [[',               code: 'handler_foo <- function(x) x * 2\ndispatch <- list(foo = handler_foo)\ndispatch[["foo"]](5)',      call: '3@dispatch[["foo"]]' },
+		{ name: 'inline function',      code: 'dispatch <- list(foo = function(x) x * 2)\ndispatch$foo(5)',                                        call: '2@dispatch$foo' },
+		{ name: 'through an alias',     code: 'handler_foo <- function(x) x * 2\ndispatch <- list(foo = handler_foo)\nd <- dispatch\nd$foo(5)',    call: '4@d$foo' }
+	]) {
+		assertDataflow(label(`list dispatch table ${name}`, ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
+			ts, code, emptyGraph().calls(call, '1@function'),
+			{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+		);
+	}
 
-	assertDataflow(label('list dispatch table via [[', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
-		ts,
-		`handler_foo <- function(x) x * 2
-dispatch <- list(foo = handler_foo)
-dispatch[["foo"]](5)`,
-		emptyGraph()
-			.calls('3@dispatch[["foo"]]', '1@function')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
-	);
-
-	assertDataflow(label('list dispatch table with inline function', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
-		ts,
-		`dispatch <- list(foo = function(x) x * 2)
-dispatch$foo(5)`,
-		emptyGraph()
-			.calls('2@dispatch$foo', '1@function')
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
-	);
-
-	/* a non-function entry must not create a spurious call edge */
-	assertDataflow(label('list dispatch table ignores non-function entries', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
-		ts,
-		`handler_foo <- function(x) x * 2
-dispatch <- list(foo = handler_foo, n = 5)
-dispatch$n(5)`,
-		emptyGraph()
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true, mustNotHaveEdges: [['3@dispatch$n', '1@function']] }
-	);
-
-	/* reassigning the holder to a non-list must not link the stale target */
-	assertDataflow(label('list dispatch table reassignment drops stale target', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
-		ts,
-		`handler_foo <- function(x) x * 2
-dispatch <- list(foo = handler_foo)
-dispatch <- 5
-dispatch$foo(5)`,
-		emptyGraph()
-		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true, mustNotHaveEdges: [['4@dispatch$foo', '1@function']] }
-	);
+	for(const { name, code, edge } of [
+		{ name: 'ignores non-function entries', code: 'handler_foo <- function(x) x * 2\ndispatch <- list(foo = handler_foo, n = 5)\ndispatch$n(5)',    edge: ['3@dispatch$n', '1@function'] as [NodeId, NodeId] },
+		{ name: 'drops a stale target on reassignment', code: 'handler_foo <- function(x) x * 2\ndispatch <- list(foo = handler_foo)\ndispatch <- 5\ndispatch$foo(5)', edge: ['4@dispatch$foo', '1@function'] as [NodeId, NodeId] }
+	]) {
+		assertDataflow(label(`list dispatch table ${name}`, ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
+			ts, code, emptyGraph(),
+			{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true, mustNotHaveEdges: [edge] }
+		);
+	}
 }));

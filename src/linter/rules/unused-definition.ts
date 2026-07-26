@@ -4,7 +4,7 @@ import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
 import { isNotUndefined } from '../../util/assert';
-import { isFunctionDefinitionVertex, isVariableDefinitionVertex, VertexType } from '../../dataflow/graph/vertex';
+import { FunctionDefinitionVertex, VariableDefinitionVertex, VertexType } from '../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { F } from '../../search/flowr-search-filters';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -97,17 +97,19 @@ function collectCalledNames(dfg: DataflowGraph): ReadonlySet<string> {
 	return names;
 }
 
-/** Checks if a function body is a single call to UseMethod. */
-function isUseMethodOnlyBody(node: RNode<ParentInformation>): boolean {
-	// Direct call to UseMethod
-	if(RFunctionCall.isNamed(node) && Identifier.getName(node.functionName.content) === 'UseMethod') {
+/** S3 (`UseMethod`) and S4/S7 (`standardGeneric`) generic dispatchers, invoked indirectly by R's dispatch. */
+const GenericDispatchers = new Set<string>(['UseMethod', 'standardGeneric']);
+
+/** Whether a function body is a single call to a generic dispatcher. */
+function isGenericDispatcherOnlyBody(node: RNode<ParentInformation>): boolean {
+	if(RFunctionCall.isNamed(node) && GenericDispatchers.has(Identifier.getName(node.functionName.content))) {
 		return true;
 	}
 
 	const nodeWithChildren = node as Record<string, unknown>;
 	if(Array.isArray(nodeWithChildren.children) && nodeWithChildren.children.length === 1) {
 		const child = nodeWithChildren.children[0] as RNode<ParentInformation> | undefined;
-		if(child && RFunctionCall.isNamed(child) && Identifier.getName(child.functionName.content) === 'UseMethod') {
+		if(child && RFunctionCall.isNamed(child) && GenericDispatchers.has(Identifier.getName(child.functionName.content))) {
 			return true;
 		}
 	}
@@ -115,14 +117,14 @@ function isUseMethodOnlyBody(node: RNode<ParentInformation>): boolean {
 	return false;
 }
 
-/** Collects the parameter IDs of S3 generic functions (functions whose body is just UseMethod). */
+/** Collects the parameter IDs of generic dispatcher functions. */
 function collectS3GenericParameterIds(ast: NormalizedAst): ReadonlySet<NodeId> {
 	const paramIds = new Set<NodeId>();
 	for(const [, node] of ast.idMap) {
 		if(!RFunctionDefinition.is(node)) {
 			continue;
 		}
-		if(isUseMethodOnlyBody(node.body)) {
+		if(isGenericDispatcherOnlyBody(node.body)) {
 			for(const param of node.parameters) {
 				paramIds.add(param.name.info.id);
 			}
@@ -270,13 +272,18 @@ export const UNUSED_DEFINITION = {
 
 				const dfgVertex = dataflow.graph.getVertex(element.node.info.id);
 				if(!dfgVertex || (
-					!isVariableDefinitionVertex(dfgVertex)
-					&& isFunctionDefinitionVertex(dfgVertex) && !config.includeFunctionDefinitions
+					!VariableDefinitionVertex.is(dfgVertex)
+					&& FunctionDefinitionVertex.is(dfgVertex) && !config.includeFunctionDefinitions
 				)) {
 					return undefined;
 				}
 
 				if(s3GenericParams.has(element.node.info.id)) {
+					return undefined;
+				}
+
+				// an anonymous dispatcher passed to setGeneric()/new_generic() runs on every dispatch, so it is used
+				if(FunctionDefinitionVertex.is(dfgVertex) && RFunctionDefinition.is(element.node) && isGenericDispatcherOnlyBody(element.node.body)) {
 					return undefined;
 				}
 
@@ -286,7 +293,7 @@ export const UNUSED_DEFINITION = {
 
 				const ingoingEdges = dataflow.graph.ingoingEdges(dfgVertex.id);
 
-				const interestedIn = isVariableDefinitionVertex(dfgVertex) ? InterestingEdgesVariable : InterestingEdgesFunction;
+				const interestedIn = VariableDefinitionVertex.is(dfgVertex) ? InterestingEdgesVariable : InterestingEdgesFunction;
 				const ingoingInteresting = ingoingEdges?.values().some(e => DfEdge.includesType(e, interestedIn));
 
 				if(ingoingInteresting) {

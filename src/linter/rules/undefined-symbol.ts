@@ -1,4 +1,4 @@
-import { VertexType, isFunctionCallVertex } from '../../dataflow/graph/vertex';
+import { VertexType, FunctionCallVertex } from '../../dataflow/graph/vertex';
 import { UnknownSideEffect } from '../../dataflow/graph/graph';
 import { getOriginInDfg } from '../../dataflow/origin/dfg-get-origin';
 import { Identifier } from '../../dataflow/environments/identifier';
@@ -161,7 +161,7 @@ export const UNDEFINED_SYMBOL = {
 			}
 			const inInstalledFile = isInstalledFile(element.node.info.file);
 
-			if(isFunctionCallVertex(vtx)) {
+			if(FunctionCallVertex.is(vtx)) {
 				if(vtx.origin === 'unnamed' || !config.checkFunctions) {
 					return undefined;
 				}

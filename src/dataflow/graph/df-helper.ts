@@ -8,7 +8,7 @@ import { computeCallGraphSummaries, propagateTransitiveSideEffects } from '../in
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { DataflowGraphVertexInfo } from './vertex';
-import { isFunctionCallVertex } from './vertex';
+import { FunctionCallVertex } from './vertex';
 import { Identifier } from '../environments/identifier';
 
 /**
@@ -72,7 +72,7 @@ export const Dataflow = {
 		const vertex = graph.getVertex(id);
 		return Identifier.toQualified(
 			getOriginInDfg(graph, id),
-			isFunctionCallVertex(vertex) ? vertex.name : undefined,
+			FunctionCallVertex.is(vertex) ? vertex.name : undefined,
 			qualifyBaseR
 		);
 	},

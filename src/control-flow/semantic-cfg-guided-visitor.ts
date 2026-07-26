@@ -304,6 +304,7 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.FunctionDefinition:
 			case BuiltInProcName.S7MakeConstructor:
 			case BuiltInProcName.DefineArgument:
+			case BuiltInProcName.Switch:
 				return this.onDefaultFunctionCall({ call });
 			case BuiltInProcName.Load:
 				return this.onLoadCall({ call });

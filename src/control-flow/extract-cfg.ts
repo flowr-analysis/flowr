@@ -17,7 +17,7 @@ import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
 import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
-import { isFunctionCallVertex, isFunctionDefinitionVertex, VertexType } from '../dataflow/graph/vertex';
+import { FunctionCallVertex, FunctionDefinitionVertex, VertexType } from '../dataflow/graph/vertex';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { type CfgExpressionVertex,
 	CfgEdge, CfgVertex,
@@ -132,7 +132,7 @@ export function getCallsInCfg(cfg: ControlFlowInformation, graph: DataflowGraph)
 	const calls = new Map<NodeId, Required<DataflowGraphVertexFunctionCall>>();
 	for(const vertexId of cfg.graph.vertices().keys()) {
 		const vertex = graph.getVertex(vertexId);
-		if(isFunctionCallVertex(vertex)) {
+		if(FunctionCallVertex.is(vertex)) {
 			calls.set(vertexId, vertex);
 		}
 	}
@@ -554,17 +554,18 @@ function cfgFunctionCallWithDataflow(graph: DataflowGraph, folds: StatefulFoldFu
 	return (call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState): ControlFlowInformation => {
 		const vtx = graph.getVertex(call.info.id);
 		if(vtx?.tag === VertexType.FunctionCall && vtx.onlyBuiltin && vtx.origin.length === 1) {
-			const mayMap = OriginToFoldTypeMap[vtx.origin[0] as BuiltInProcName];
+			const origin = vtx.origin[0];
+			const mayMap = OriginToFoldTypeMap[origin as BuiltInProcName];
 			// ifelse/fifelse/if_else share the IfThenElse origin but are eager calls, so only fold a real `if` node
 			if(mayMap && (call as RNodeWithParent).type === RType.IfThenElse) {
 				return mayMap(folds, call, args, down, vtx);
 			}
-		}
-		if(call.named && call.functionName.content === 'switch' && vtx?.tag === VertexType.FunctionCall && vtx.onlyBuiltin && vtx.origin.length === 1 && vtx.origin[0] === BuiltInProcName.Default) {
-			return cfgSwitch(call, name, args);
-		}
-		if(vtx?.tag === VertexType.FunctionCall && vtx.onlyBuiltin && vtx.origin.length === 1 && vtx.origin[0] === BuiltInProcName.RegisterHook) {
-			return cfgRegisterHook(call, name, args, down);
+			if(origin === BuiltInProcName.Switch) {
+				return cfgSwitch(call, name, args);
+			}
+			if(origin === BuiltInProcName.RegisterHook) {
+				return cfgRegisterHook(call, name, args, down);
+			}
 		}
 
 		const baseCfg = cfgFunctionCall(call, name, args, down);
@@ -577,7 +578,7 @@ function cfgFunctionCallWithDataflow(graph: DataflowGraph, folds: StatefulFoldFu
 		guard(callVertex !== undefined, 'cfgFunctionCallWithDataflow: call vertex not found');
 		for(const target of targets) {
 			// we have to filter out non-func-call targets as the call targets contains names and call ids
-			if(isFunctionDefinitionVertex(graph.getVertex(target))) {
+			if(FunctionDefinitionVertex.is(graph.getVertex(target))) {
 				const ct = CfgVertex.getCallTargets(callVertex);
 				if(!ct) {
 					CfgVertex.setCallTargets(callVertex as CfgExpressionVertex, new Set([target]));

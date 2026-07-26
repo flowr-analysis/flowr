@@ -29,7 +29,7 @@ import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
-import { isBuiltInCallVertex, isFunctionCallVertex, isFunctionDefinitionVertex, VertexType } from '../../../../../graph/vertex';
+import { FunctionCallVertex, FunctionDefinitionVertex, VertexType } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
@@ -404,7 +404,7 @@ function checkTargetReferenceType(sourceInfo: DataflowInformation, fnModes: Data
  */
 function isEnvCreatorSource(sourceInfo: DataflowInformation): boolean {
 	const vert = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
-	return isBuiltInCallVertex(vert, BuiltInProcName.NewEnv);
+	return FunctionCallVertex.hasOrigin(vert, BuiltInProcName.NewEnv);
 }
 
 /**
@@ -619,11 +619,11 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 			}
 		} else {
 			const entryVertex = sourceArg.graph.getVertex(sourceArg.entryPoint);
-			if(isBuiltInCallVertex(entryVertex, BuiltInProcName.List)) {
+			if(FunctionCallVertex.hasOrigin(entryVertex, BuiltInProcName.List)) {
 				envState = resolveListToEnvState(source, data);
-			} else if(isFunctionDefinitionVertex(entryVertex) && entryVertex.returnEnvState !== undefined) {
+			} else if(FunctionDefinitionVertex.is(entryVertex) && entryVertex.returnEnvState !== undefined) {
 				returnsEnvState = entryVertex.returnEnvState;
-			} else if(isFunctionCallVertex(entryVertex) && entryVertex.name) {
+			} else if(FunctionCallVertex.is(entryVertex) && entryVertex.name) {
 				const fnDefs = resolveByName(entryVertex.name, data.environment, ReferenceType.Function);
 				const fnDef = fnDefs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).returnsEnvState !== undefined);
 				if(fnDef?.returnsEnvState) {

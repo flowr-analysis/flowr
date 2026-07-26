@@ -7,7 +7,7 @@ import { SigDbBuilder } from '../../../../../src/project/sigdb/build';
 import { FnProp } from '../../../../../src/project/sigdb/schema';
 import { executeLintingRule } from '../../../../../src/linter/linter-executor';
 import { LintingResults } from '../../../../../src/linter/linter-format';
-import { isFunctionCallVertex } from '../../../../../src/dataflow/graph/vertex';
+import { FunctionCallVertex } from '../../../../../src/dataflow/graph/vertex';
 import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 
 /**
@@ -74,7 +74,7 @@ describe('sigdb system: multi-file, multi-library project', withTreeSitter(ts =>
 		// find the actual `greet("bob")` call and match its arguments against that recorded signature
 		let greetCall: { args: readonly unknown[] } | undefined;
 		for(const [, v] of dfg.vertices(true)) {
-			if(isFunctionCallVertex(v) && Identifier.getName(v.name) === 'greet') {
+			if(FunctionCallVertex.is(v) && Identifier.getName(v.name) === 'greet') {
 				greetCall = v;
 			}
 		}

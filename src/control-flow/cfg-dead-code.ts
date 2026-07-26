@@ -5,11 +5,10 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Ternary } from '../util/logic';
 import type { CfgPassInfo } from './cfg-simplification';
 import { SemanticCfgGuidedVisitor } from './semantic-cfg-guided-visitor';
-import { VertexType, type DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
+import { FunctionCallVertex, type DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import { FunctionArgument } from '../dataflow/graph/graph';
-import { resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
+import { resolveIdToSingleString, resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
-import { Identifier } from '../dataflow/environments/identifier';
 import { log } from '../util/log';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { valueSetGuard } from '../dataflow/eval/values/general';
@@ -177,7 +176,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 
 	private switchArmDefinitelyNotTaken(cause: NodeId, from: NodeId): boolean {
 		const v = this.config.dfg.getVertex(cause);
-		if(v === undefined || v.tag !== VertexType.FunctionCall || !v.origin.includes(BuiltInProcName.Default) || Identifier.getName(v.name) !== 'switch') {
+		if(!FunctionCallVertex.is(v) || !v.origin.includes(BuiltInProcName.Switch)) {
 			return false;
 		}
 		const selected = this.selectedSwitchArm(v);
@@ -199,21 +198,12 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	private computeSelectedSwitchArm(v: DataflowGraphVertexFunctionCall): { id: NodeId | undefined } | 'unknown' {
-		const selectorRef = FunctionArgument.getReference(v.args[0]);
-		if(selectorRef === undefined) {
+		const target = resolveIdToSingleString(FunctionArgument.getReference(v.args[0]), {
+			graph: this.config.dfg, full: true, idMap: this.config.normalizedAst.idMap, resolve: this.config.ctx.config.solver.variables, ctx: this.config.ctx
+		});
+		if(target === undefined) {
 			return 'unknown';
 		}
-		const values = valueSetGuard(resolveIdToValue(selectorRef, {
-			graph:   this.config.dfg,
-			full:    true,
-			idMap:   this.config.normalizedAst.idMap,
-			resolve: this.config.ctx.config.solver.variables,
-			ctx:     this.config.ctx,
-		}));
-		if(values === undefined || values.elements.length !== 1 || values.elements[0].type !== 'string' || !isValue(values.elements[0].value)) {
-			return 'unknown';
-		}
-		const target = values.elements[0].value.str;
 		const arms = v.args.slice(1);
 		for(let i = 0; i < arms.length; i++) {
 			if(FunctionArgument.getName(arms[i]) === target) {

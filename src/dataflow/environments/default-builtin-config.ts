@@ -387,7 +387,7 @@ export const DefaultBuiltinConfig = [
 	{ type:            'function', names:           [Identifier.from(['cat', PkgName.Base])],
 		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['switch', PkgName.Base])],
-		processor:       BuiltInProcName.Default, config:          { forceArgs: [true] }, assumePrimitive: false },
+		processor:       BuiltInProcName.Default, config:          { forceArgs: [true], useAsProcessor: BuiltInProcName.Switch }, assumePrimitive: false },
 	{ type:            'function', names:           ['return'],
 		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, cfg: ExitPointType.Return, keepArgumentOut: true, useAsProcessor: BuiltInProcName.Return }, assumePrimitive: true },
 	{

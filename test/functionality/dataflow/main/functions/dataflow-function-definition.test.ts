@@ -117,6 +117,38 @@ describe.sequential('Function Definition', withShell(shell => {
 				.reads('6', '2')
 		);
 	});
+	describe('Default argument promises', () => {
+		// a default `y = x` is a promise forced in the function frame, so a later `x <- 99` in the body is a
+		// possible value for `y`: the default read of `x` (col 22) must also read the reassignment `x <- 99`
+		assertDataflow(label('sibling parameter default sees later body reassignment', ['formals-default', 'name-normal', ...OperatorDatabase['<-'].capabilities]),
+			shell, 'f <- function(x, y = x) {\n  x <- 99\n  y\n}', emptyGraph()
+				.reads('1:22', '2@x'),
+			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
+		);
+	});
+	describe('Escaping super-assignment side effects', () => {
+		// a default is a promise forced in the callee frame, so its `<<-` mutates the enclosing binding: the final
+		// read of `counter` after `f()` must see the default's `counter <<- counter + 1`
+		assertDataflow(label('default-argument promise `<<-` escapes', ['formals-default', 'name-normal', ...OperatorDatabase['<<-'].capabilities, 'side-effects-in-function-call']),
+			shell, 'counter <- 0\nf <- function(x = (counter <<- counter + 1)) { x }\nf()\nr <- counter', emptyGraph()
+				.reads('4@counter', '2@counter'),
+			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
+		);
+		// an `on.exit` hook runs at exit, so its `<<-` mutates the enclosing binding like a body `<<-`: the final
+		// read of `g` after `f()` must see the hook's `g <<- 1`
+		assertDataflow(label('on.exit `<<-` escapes', ['normal-definition', 'name-normal', ...OperatorDatabase['<<-'].capabilities, 'side-effects-in-function-call', 'hooks']),
+			shell, 'g <- 0\nf <- function() { on.exit(g <<- 1) }\nf()\nh <- g', emptyGraph()
+				.reads('4@g', '2@g'),
+			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
+		);
+		// a `<<-` escaping through two levels of ordinary call nesting still reaches the outer read: `inner()`'s
+		// `counter <<- 99` mutates the global binding, so the final `counter` after `f()` must see it, not `counter <- 0`
+		assertDataflow(label('`<<-` escapes through nested calls', ['normal-definition', 'name-normal', ...OperatorDatabase['<<-'].capabilities, 'side-effects-in-function-call']),
+			shell, 'counter <- 0\ninner <- function(){ counter <<- 99 }\nf <- function(){ inner() }\nf()\ncounter', emptyGraph()
+				.reads('5@counter', '2@counter'),
+			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
+		);
+	});
 	describe('Scoping of body', () => {
 		assertDataflow(label('previously defined read in function', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'normal-definition', 'implicit-return']),
 			shell, 'x <- 3; function() { x }', emptyGraph()

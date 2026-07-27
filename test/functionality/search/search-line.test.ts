@@ -45,7 +45,7 @@ describe('flowR search', withTreeSitter(parser => {
 				Q.all().filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
 					test:       {
-						targets: /print/
+						targets: /^print$/
 					}
 				} })
 			);
@@ -53,7 +53,7 @@ describe('flowR search', withTreeSitter(parser => {
 				Q.all().with(Enrichment.CallTargets).filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
 					test:       {
-						targets: /library/
+						targets: /^library$/
 					}
 				} })
 			);
@@ -224,8 +224,12 @@ describe('flowR search', withTreeSitter(parser => {
 					}
 				} }).map(Mapper.Enrichment, Enrichment.CallTargets)
 			);
-			assertSearchEnrichment('global', parser, 'cat("hello")', [{ [Enrichment.CallTargets]: { targets: ['cat'] } }], 'some', Q.all().with(Enrichment.CallTargets));
-			assertSearchEnrichment('global specific', parser, 'cat("hello")', [{ [Enrichment.CallTargets]: { targets: ['cat'] } }], 'every', Q.all().with(Enrichment.CallTargets).select(1));
+			assertSearchEnrichment('global', parser, 'cat("hello")',
+				[{ [Enrichment.CallTargets]: { targets: ['base::cat'] } }], 'some',
+				Q.all().with(Enrichment.CallTargets));
+			assertSearchEnrichment('global specific', parser, 'cat("hello")',
+				[{ [Enrichment.CallTargets]: { targets: ['base::cat'] } }], 'every',
+				Q.all().with(Enrichment.CallTargets).select(1));
 			// as built-in call target enrichments are not nodes, we don't return them as part of the mapper!
 			assertSearch('global mapper', parser, 'cat("hello")', [],
 				Q.all().with(Enrichment.CallTargets).map(Mapper.Enrichment, Enrichment.CallTargets),

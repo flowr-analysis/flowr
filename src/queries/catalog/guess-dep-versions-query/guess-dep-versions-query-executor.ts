@@ -9,8 +9,10 @@ import {
 } from './guess-dep-versions-query-format';
 import { RVersion } from '../../../util/r-version';
 import { compactRecord } from '../../../util/objects';
+import { VisualizeFunctions } from '../dependencies-query/function-info/visualize-functions';
 import {
 	assignmentsOf,
+	collectOrphanUsage,
 	collectUsage,
 	dateCutoff,
 	DefaultExplodeLimit,
@@ -29,6 +31,11 @@ import {
 	type OrderedCandidates,
 	type SurvivingEntries
 } from '../../../project/dependency-version-space';
+
+/** flowR's curated builtin-library function to package map (e.g. `ggplot` to `ggplot2`), disambiguating an orphan call several packages re-export */
+const BuiltinLibraryByFunction: ReadonlyMap<string, string> = new Map(
+	VisualizeFunctions.filter(f => f.package !== undefined).map(f => [f.name, f.package as string])
+);
 
 /** the sources `query` disables: `clean` is sugar for disabling `declared`+`transitive`, `disabled` adds any others by name */
 function disabledSources(query: GuessDepVersionsQuery): ReadonlySet<ConstraintSource> {
@@ -129,13 +136,15 @@ function rangeString(survivors: readonly string[], nonContiguous: boolean, unsat
 
 /** what a guessed package is related to: the packages it shares a version with, and those its choice interacts with */
 interface PackageRelations {
-	readonly used:         boolean;
-	readonly linkedWith?:  readonly string[];
-	readonly coupledWith?: readonly string[];
+	readonly used:             boolean;
+	readonly linkedWith?:      readonly string[];
+	readonly coupledWith?:     readonly string[];
+	/** the undefined orphan functions that inferred this package (e.g. `ggplot()` inferring `ggplot2`), if any */
+	readonly orphanFunctions?: readonly string[];
 }
 
 /** build the reported guess for one package from its already-computed surviving versions and provenance */
-function guessPackage(name: string, cap: number, surviving: SurvivingEntries, evidence: EvidenceCollector, { used, linkedWith, coupledWith }: PackageRelations): GuessedDependency {
+function guessPackage(name: string, cap: number, surviving: SurvivingEntries, evidence: EvidenceCollector, { used, linkedWith, coupledWith, orphanFunctions }: PackageRelations): GuessedDependency {
 	const { declaredRange, declaredConstraints, unsatisfiable } = surviving;
 	const survivors = surviving.survivors.map(e => e.ver);
 	const preSignature = surviving.preSignature.map(e => e.ver);
@@ -145,20 +154,22 @@ function guessPackage(name: string, cap: number, surviving: SurvivingEntries, ev
 	const candidates = survivors.slice(0, cap);
 
 	return compactRecord({
-		package:        name,
-		base:           surviving.base,
+		package:         name,
+		base:            surviving.base,
 		declaredConstraints,
-		range:          rangeString(survivors, nonContiguous, unsatisfiable, declaredRange, declaredConstraints, cap),
-		minVersion:     survivors.length > 0 ? survivors[0] : undefined,
-		maxVersion:     survivors.length > 0 ? survivors[survivors.length - 1] : undefined,
-		candidateCount: survivors.length,
-		totalVersions:  surviving.total,
-		candidates:     candidates.length > 0 ? candidates : undefined,
-		truncated:      survivors.length > cap ? true : undefined,
-		evidence:       evidence.list,
-		unsatisfiable:  unsatisfiable ? true : undefined,
-		linkedWith:     linkedWith && linkedWith.length > 0 ? linkedWith : undefined,
-		coupledWith:    coupledWith && coupledWith.length > 0 ? coupledWith : undefined,
+		range:           rangeString(survivors, nonContiguous, unsatisfiable, declaredRange, declaredConstraints, cap),
+		minVersion:      survivors.length > 0 ? survivors[0] : undefined,
+		maxVersion:      survivors.length > 0 ? survivors[survivors.length - 1] : undefined,
+		candidateCount:  survivors.length,
+		totalVersions:   surviving.total,
+		candidates:      candidates.length > 0 ? candidates : undefined,
+		truncated:       survivors.length > cap ? true : undefined,
+		evidence:        evidence.list,
+		unsatisfiable:   unsatisfiable ? true : undefined,
+		linkedWith:      linkedWith && linkedWith.length > 0 ? linkedWith : undefined,
+		coupledWith:     coupledWith && coupledWith.length > 0 ? coupledWith : undefined,
+		orphan:          orphanFunctions && orphanFunctions.length > 0 ? true : undefined,
+		orphanFunctions: orphanFunctions && orphanFunctions.length > 0 ? orphanFunctions : undefined,
 		used
 	});
 }
@@ -194,9 +205,14 @@ export async function executeGuessDepVersionsQuery(
 	// bound base packages by R only when the version is genuinely known; in `auto` mode with nothing detected, base tries every R release
 	const rVersion = ctx.rVersionKnown ? (ctx.meta.getRVersion() ?? ctx.resolvedRVersion) : undefined;
 
-	const usage = collectUsage((await analyzer.dataflow()).graph, deps);
 	// the analyzed package guesses versions for its dependencies, not for itself
 	const self = ctx.meta.getNamespace();
+	const graph = (await analyzer.dataflow()).graph;
+	const usage = collectUsage(graph, deps);
+	// fold orphan calls (`ggplot()` with ggplot2 neither declared nor loaded) into usage; a package the project does
+	// not already know is flagged for downstream attachment (see collectOrphanUsage)
+	const known = new Set<string>([...deps.getDependencies().map(d => d.name), ...deps.declaredPackageNames()]);
+	const orphanFunctions = collectOrphanUsage(graph, deps, usage, pkg => known.has(pkg), { self, builtinLibraryOf: name => BuiltinLibraryByFunction.get(name) });
 	const sorted = (query.packages && query.packages.length > 0 ? [...query.packages] : defaultTargets(deps, usage)).filter(name => name !== self).sort();
 
 	const disabled = disabledSources(query);
@@ -278,9 +294,10 @@ export async function executeGuessDepVersionsQuery(
 	const ordered: OrderedCandidates[] = [];
 	for(const g of guessedAll) {
 		dependencies.push(guessPackage(g.name, cap, g.surviving, g.evidence, {
-			used:        usage.has(g.name),
-			linkedWith:  linkedWith.get(g.name),
-			coupledWith: coupledWith.get(g.name)
+			used:            usage.has(g.name),
+			linkedWith:      linkedWith.get(g.name),
+			coupledWith:     coupledWith.get(g.name),
+			orphanFunctions: [...orphanFunctions.get(g.name) ?? []].sort()
 		}));
 		const oc = query.explode ? orderedCandidatesOf(space.resolve(g.name).src, g.name, g.surviving, query.explode.prefer?.[g.name], explodeOrder) : undefined;
 		if(oc) {

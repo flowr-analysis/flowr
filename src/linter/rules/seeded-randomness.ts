@@ -11,7 +11,7 @@ import { Q } from '../../search/flowr-search-builder';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
-import { FlowrFilter, testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
+import { FlowrFilter } from '../../search/flowr-search-filters';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
 import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
@@ -57,13 +57,16 @@ export interface SeededRandomnessMeta extends MergeableRecord {
 
 export const SEEDED_RANDOMNESS = {
 	createSearch: (config) => Q.all().filter(VertexType.FunctionCall)
-		.with(Enrichment.CallTargets, { onlyBuiltin: true })
+		.with(Enrichment.CallTargets, {
+			onlyBuiltin:  true,
+			qualifyNames: false // we don't use qualified names for this rule yet
+		})
 		.filter({
 			name: FlowrFilter.MatchesEnrichment,
 			args: {
 				enrichment: Enrichment.CallTargets,
 				test:       {
-					targets: testFunctionsIgnoringPackage(config.randomnessConsumers)
+					targets: Identifier.regex(...config.randomnessConsumers)
 				}
 			}
 		})
@@ -186,7 +189,7 @@ export const SEEDED_RANDOMNESS = {
 } as const satisfies LintingRule<SeededRandomnessResult, SeededRandomnessMeta, SeededRandomnessConfig>;
 
 function getDefaultAssignments(): BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike>[] {
-	return DefaultBuiltinConfig.filter(b => b.type === 'function' && (b.processor === BuiltInProcName.Assignment || b.processor === BuiltInProcName.AssignmentLike)) as BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike>[];
+	return DefaultBuiltinConfig.filter(b => b.type === 'function' && (b.processor === BuiltInProcName.Assignment || b.processor === BuiltInProcName.AssignmentLike));
 }
 
 function isConstantArgument(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, argIndex: number, ctx: ReadOnlyFlowrAnalyzerContext): boolean {

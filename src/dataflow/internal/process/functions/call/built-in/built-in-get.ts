@@ -14,7 +14,8 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
 import { Identifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { resolveEnvirArg } from './built-in-envir-utils';
+import { resolveConstantString, resolveEnvirArg } from './built-in-envir-utils';
+import { SourceRange } from '../../../../../../util/range';
 
 /**
  * Processes a built-in 'get' function call.
@@ -39,18 +40,36 @@ export function processGet<OtherInfo>(
 		? unpackNonameArg(firstArg)
 		: undefined;
 
-	if(retrieve === undefined || retrieve.type !== RType.String) {
-		dataflowLogger.warn(`symbol access with ${Identifier.toString(name.content)} has not 1 string argument, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
+	let treatTargetAsSymbol: RSymbol<OtherInfo & ParentInformation> | undefined = undefined;
+	if(retrieve !== undefined && retrieve.type === RType.String) {
+		treatTargetAsSymbol = {
+			type:     RType.Symbol,
+			info:     retrieve.info,
+			content:  removeRQuotes(retrieve.lexeme),
+			lexeme:   retrieve.lexeme,
+			location: retrieve.location
+		};
+	} else if(retrieve !== undefined) {
+		const resolvedName = resolveConstantString(retrieve, data);
+		if(resolvedName !== undefined) {
+			const synthId = rootId + '-get-name';
+			const synthSymbol: RSymbol<OtherInfo & ParentInformation> = {
+				type:     RType.Symbol,
+				info:     { ...retrieve.info, id: synthId },
+				content:  resolvedName,
+				lexeme:   resolvedName,
+				location: retrieve.location ?? name.location ?? SourceRange.invalid()
+			};
+			data.completeAst.idMap.set(synthId, synthSymbol);
+			treatTargetAsSymbol = synthSymbol;
+		}
 	}
 
-	const treatTargetAsSymbol: RSymbol<OtherInfo & ParentInformation> = {
-		type:     RType.Symbol,
-		info:     retrieve.info,
-		content:  removeRQuotes(retrieve.lexeme),
-		lexeme:   retrieve.lexeme,
-		location: retrieve.location
-	};
+	if(treatTargetAsSymbol === undefined) {
+		dataflowLogger.warn(`symbol access with ${Identifier.toString(name.content)} has not 1 string argument, skipping`);
+		// dynamic, unresolvable name: reached-but-unknown rather than dropped
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default', hasUnknownSideEffect: true }).information;
+	}
 
 	/* resolve in the custom environment if one was found, else the global one.
 	 * Pass remaining original args (e.g. envir=e) so they appear as Use vertices in the graph. */

@@ -10,7 +10,7 @@ import type {
 	IdentifierDefinition,
 	InGraphIdentifierDefinition
 } from './identifier';
-import { Identifier } from './identifier';
+import { Identifier, PkgName } from './identifier';
 import { guard } from '../../util/assert';
 import type { ControlDependency } from '../info';
 import { happensInEveryBranch } from '../info';
@@ -426,30 +426,90 @@ function findGlobalEnvironment(this: void, env: Environment): Environment {
 	return current;
 }
 
+/** The `search()` position directly below the global environment; where R attaches by default. */
+export const DefaultAttachPosition = 2;
+
+/** Prefix of a package's entry in R's `search()` list. */
+export const SearchPathPackagePrefix = 'package:';
+
+/** Name of the global environment in R's `search()` list. */
+export const GlobalEnvEntryName = '.GlobalEnv';
+
 /**
- * Splices a package block (`blockTop`..`blockBottom`) directly below the global environment. Returns a fresh `current`, cloning only the path down to global.
+ * Splices a package block (`blockTop`..`blockBottom`) into the search path at the 1-based `search()` position `pos`
+ * ({@link DefaultAttachPosition|2} being directly below the global environment, the default). A position past the end
+ * of the search path attaches directly above the built-in environment, mirroring R's clamping. Returns a fresh
+ * `current`, cloning only the path down to the insertion point.
  */
-function attachPackageBelowGlobal(this: void, current: Environment, blockTop: Environment, blockBottom: Environment): Environment {
+function attachPackageAt(this: void, current: Environment, blockTop: Environment, blockBottom: Environment, pos: number = DefaultAttachPosition): Environment {
 	const clonedCurrent = current.clone(false);
-	let global = clonedCurrent;
-	while(!global.globalEnv && !global.parent.builtInEnv) {
-		global.parent = global.parent.clone(false);
-		global = global.parent;
+	let anchor = clonedCurrent;
+	while(!anchor.globalEnv && !anchor.parent.builtInEnv) {
+		anchor.parent = anchor.parent.clone(false);
+		anchor = anchor.parent;
 	}
-	blockBottom.parent = global.parent; // the built-in env, or the previously attached packages
-	global.parent = blockTop;
+	/* walk past the `pos - 2` search entries below the global; an imports layer belongs to the entry above it and is never one itself */
+	for(let skip = pos - DefaultAttachPosition; skip > 0 && !anchor.parent.builtInEnv; skip--) {
+		do{
+			anchor.parent = anchor.parent.clone(false);
+			anchor = anchor.parent;
+		} while(anchor.parent.t === EnvType.Imports);
+	}
+	blockBottom.parent = anchor.parent; // the built-in env, or the packages attached further down
+	anchor.parent = blockTop;
 	return clonedCurrent;
+}
+
+/**
+ * The 1-based `search()` position of the entry called `name` (`.GlobalEnv`, `package:x`, or a bare package name),
+ * or `undefined` if no such entry is on the search path. `package:base` resolves to the built-in environment at the
+ * very bottom if base R is not attached as its own layer.
+ */
+function searchPositionOf(this: void, env: Environment, name: string): number | undefined {
+	const target = name.startsWith(SearchPathPackagePrefix) ? name.slice(SearchPathPackagePrefix.length) : name;
+	if(target === GlobalEnvEntryName) {
+		return 1;
+	}
+	let pos = 1;
+	for(let e = findGlobalEnvironment(env).parent; !e.builtInEnv; e = e.parent) {
+		if(e.t === EnvType.Imports) {
+			continue; // internal layer, not a search-path entry
+		}
+		pos++;
+		if(e.n === target) {
+			return pos;
+		}
+	}
+	return target === PkgName.Base ? pos + 1 : undefined; // base is the built-in env when it is not attached as a layer
+}
+
+/**
+ * The packages attached below the global environment, i.e. those whose exports R resolves without a namespace.
+ * Base is always among them, as it backs the built-in environment even when it is no layer of its own.
+ */
+function attachedPackagesOf(this: void, env: Environment): Set<string> {
+	const attached = new Set<string>([PkgName.Base]);
+	for(let e = findGlobalEnvironment(env).parent; !e.builtInEnv; e = e.parent) {
+		if(e.t !== EnvType.Imports && e.n !== undefined) {
+			attached.add(e.n);
+		}
+	}
+	return attached;
 }
 
 /**
  * Helpers for navigating and manipulating {@link REnvironmentInformation|environments} around the global environment and attached-package search path.
  */
 export const REnvironment = {
-	name:              'REnvironment',
+	name:             'REnvironment',
 	/** Walks up to the global environment (`.GlobalEnv`); see {@link findGlobalEnvironment}. */
-	findGlobal:        findGlobalEnvironment,
-	/** Attaches a package block below the global environment; see {@link attachPackageBelowGlobal}. */
-	attachBelowGlobal: attachPackageBelowGlobal,
+	findGlobal:       findGlobalEnvironment,
+	/** Attaches a package block at a `search()` position, below the global by default; see {@link attachPackageAt}. */
+	attachAt:         attachPackageAt,
+	/** The `search()` position of a named entry; see {@link searchPositionOf}. */
+	searchPosition:   searchPositionOf,
+	/** The packages on the search path; see {@link attachedPackagesOf}. */
+	attachedPackages: attachedPackagesOf,
 } as const;
 
 /** Splits a package block (a contiguous run of attached-package layers, see {@link EnvType}) into its layers and the env below them. */

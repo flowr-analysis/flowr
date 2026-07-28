@@ -181,6 +181,15 @@ describe.sequential('Resolve', withShell(shell => {
 		testResolve('simple', '2@x', 'x <- c(1,2,3) \n x$b <- 1', Top);
 	});
 
+	describe('Resolve (paste)', () => {
+		testResolve('paste0 constants',      '2@x', 'x <- paste0("handler_", "foo") \n x', set(['handler_foo']));
+		testResolve('paste default sep',     '2@x', 'x <- paste("a", "b") \n x',           set(['a b']));
+		testResolve('paste explicit sep',    '2@x', 'x <- paste("a", "b", sep="-") \n x',  set(['a-b']));
+		testResolve('paste0 with alias',     '3@x', 'k <- "b" \n x <- paste0("cfg_", k) \n x', set(['cfg_b']));
+		// a non-constant part keeps the result unknown
+		testResolve('paste0 unresolved part', '2@x', 'x <- paste0("cfg_", Sys.getenv("K")) \n x', Top);
+	});
+
 	describe('ByName', () => {
 		test(label('Locally without distracting elements', ['global-scope', 'lexicographic-scope'], ['other']), () => {
 			const xVar = variable('x', '_1');

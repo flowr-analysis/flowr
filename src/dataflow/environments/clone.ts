@@ -1,4 +1,4 @@
-import { type REnvironmentInformation  } from './environment';
+import type { REnvironmentInformation } from './environment';
 
 /**
  * Produce a clone of the given environment information.

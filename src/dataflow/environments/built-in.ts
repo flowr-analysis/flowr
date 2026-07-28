@@ -45,7 +45,7 @@ import { VertexType } from '../graph/vertex';
 import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
-import { resolveAsMinus, resolveAsPlus, resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
+import { resolveAsMinus, resolveAsPaste, resolveAsPlus, resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
 import type { DataflowGraph } from '../graph/graph';
 import type { VariableResolve } from '../../config';
 import type {
@@ -67,6 +67,7 @@ import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { BuiltInProcName } from './built-in-proc-name';
 import { processPurrrFormula } from '../internal/process/functions/call/built-in/built-in-purrr-formula';
 import { processNewEnv } from '../internal/process/functions/call/built-in/built-in-new-env';
+import { processClassGenerator } from '../internal/process/functions/call/built-in/built-in-class-generator';
 import { processStackEnv } from '../internal/process/functions/call/built-in/built-in-stack-env';
 import { processAttach } from '../internal/process/functions/call/built-in/built-in-attach';
 import { processWithEnv } from '../internal/process/functions/call/built-in/built-in-with';
@@ -261,6 +262,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Try]:                processTryCatch,
 	[BuiltInProcName.Attach]:             processAttach,
 	[BuiltInProcName.NewEnv]:             processNewEnv,
+	[BuiltInProcName.ClassGenerator]:     processClassGenerator,
 	[BuiltInProcName.StackEnv]:           processStackEnv,
 	[BuiltInProcName.With]:               processWithEnv,
 	[BuiltInProcName.Vector]:             processVector,
@@ -268,10 +270,12 @@ export const BuiltInProcessorMapper = {
 } as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<never>>;
 
 export const BuiltInEvalHandlerMapper = {
-	'built-in:c': resolveAsVector,
-	'built-in::': resolveAsSeq,
-	'built-in:+': resolveAsPlus,
-	'built-in:-': resolveAsMinus
+	'built-in:c':      resolveAsVector,
+	'built-in::':      resolveAsSeq,
+	'built-in:+':      resolveAsPlus,
+	'built-in:-':      resolveAsMinus,
+	'built-in:paste':  resolveAsPaste,
+	'built-in:paste0': resolveAsPaste
 } as const satisfies Record<string, BuiltInEvalHandler>;
 
 export type ConfigOfBuiltInMappingName<N extends keyof typeof BuiltInProcessorMapper> = Parameters<typeof BuiltInProcessorMapper[N]>[4];

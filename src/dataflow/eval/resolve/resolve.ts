@@ -1,4 +1,6 @@
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { RNamedFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RNumberValue } from '../../../r-bridge/lang-4.x/convert-values';
 import { isRNumberValue, unliftRValue } from '../../../util/r-value';
@@ -11,7 +13,7 @@ import { type Lift, Top, type Value, type ValueNumber, type ValueVector } from '
 import { stringFrom } from '../values/string/string-constants';
 import { flattenVectorElements, vectorFrom } from '../values/vectors/vector-constants';
 import type { ResolveInfo } from './alias-tracking';
-import { resolveIdToValue } from './alias-tracking';
+import { resolveIdToSingleString, resolveIdToValue } from './alias-tracking';
 import { liftScalar } from '../values/scalar/scalar-constants';
 import { Identifier } from '../../environments/identifier';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -147,6 +149,52 @@ export function resolveAsMinus({ node: operator, environment, resolve, ctx, grap
 		return vectorFrom(argValue.map(element => liftScalar({ ...element, num: -element.num })));
 	}
 	return Top;
+}
+
+/**
+ * Resolves a `paste`/`paste0` call to a {@link Value} string when every non-`sep`/`collapse` argument
+ * resolves to a single string constant (e.g. `paste0("cfg_", k)` with `k` a known string). `sep` defaults to
+ * `""` for `paste0` and `" "` for `paste`, or the constant `sep=` argument when given; any unresolved part yields Top.
+ */
+export function resolveAsPaste({ resolve, node, ctx, blocked, environment, graph, idMap }: BuiltInEvalHandlerArgs): Value {
+	if(node.type !== RType.FunctionCall || !node.named) {
+		return Top;
+	}
+	const resolveInfo: ResolveInfo = { environment, graph, idMap, full: true, resolve, ctx, blocked };
+	const folded = foldPasteCall(node, arg => resolveIdToSingleString(arg.info.id, resolveInfo));
+	return folded === undefined ? Top : stringFrom(folded);
+}
+
+/**
+ * Folds a named `paste`/`paste0` call to its concatenated string, resolving each non-`sep`/`collapse` argument via
+ * `resolveArg`; `sep` defaults to `""` (paste0) or `" "` (paste), overridden by a resolvable `sep=`. `undefined` if any
+ * part (or `sep`) does not resolve. Shared by the value solver ({@link resolveAsPaste}) and construction-time name resolution.
+ */
+export function foldPasteCall<Info>(node: RNamedFunctionCall<Info>, resolveArg: (arg: RNode<Info>) => string | undefined): string | undefined {
+	let sep = Identifier.getName(node.functionName.content) === 'paste0' ? '' : ' ';
+	const parts: string[] = [];
+	for(const arg of node.arguments) {
+		if(arg === EmptyArgument || arg.value === undefined) {
+			continue;
+		}
+		const argName = arg.name?.content;
+		if(argName === 'collapse') {
+			continue;
+		} else if(argName === 'sep') {
+			const s = resolveArg(arg.value);
+			if(s === undefined) {
+				return undefined;
+			}
+			sep = s;
+			continue;
+		}
+		const part = resolveArg(arg.value);
+		if(part === undefined) {
+			return undefined;
+		}
+		parts.push(part);
+	}
+	return parts.join(sep);
 }
 
 function createNumberSequence(start: RNumberValue, end: RNumberValue): RNumberValue[] {

@@ -9,10 +9,8 @@ import {
 } from './guess-dep-versions-query-format';
 import { RVersion } from '../../../util/r-version';
 import { compactRecord } from '../../../util/objects';
-import { sourceForPackage, type PackageSignatureSource } from '../../../project/sigdb/reader';
 import {
 	assignmentsOf,
-	collectTransitiveConstraints,
 	collectUsage,
 	dateCutoff,
 	DefaultExplodeLimit,
@@ -22,14 +20,11 @@ import {
 	countRunnableCombinations,
 	DefaultFixpointIterations,
 	enforceArcConsistency,
-	iterateToFixpoint,
 	NoDisabledSources,
 	orderedCandidatesOf,
-	survivingEntries,
-	timelinePackageKey,
+	VersionSpace,
 	type ConstraintSource,
 	type CountFactor,
-	type TransitiveConstraint,
 	type DerivedConstraint,
 	type OrderedCandidates,
 	type SurvivingEntries
@@ -54,7 +49,7 @@ class EvidenceCollector {
 			return;
 		}
 		this.seen.add(key);
-		this.list.push(compactRecord({ ...c }) as GuessVersionEvidence);
+		this.list.push(compactRecord({ ...c }));
 	};
 }
 
@@ -132,8 +127,15 @@ function rangeString(survivors: readonly string[], nonContiguous: boolean, unsat
 	return survivors.length <= cap ? survivors.join(', ') : `${min}...${max} (${survivors.length} discrete)`;
 }
 
+/** what a guessed package is related to: the packages it shares a version with, and those its choice interacts with */
+interface PackageRelations {
+	readonly used:         boolean;
+	readonly linkedWith?:  readonly string[];
+	readonly coupledWith?: readonly string[];
+}
+
 /** build the reported guess for one package from its already-computed surviving versions and provenance */
-function guessPackage(name: string, cap: number, surviving: SurvivingEntries, evidence: EvidenceCollector, used: boolean, linkedWith?: readonly string[]): GuessedDependency {
+function guessPackage(name: string, cap: number, surviving: SurvivingEntries, evidence: EvidenceCollector, { used, linkedWith, coupledWith }: PackageRelations): GuessedDependency {
 	const { declaredRange, declaredConstraints, unsatisfiable } = surviving;
 	const survivors = surviving.survivors.map(e => e.ver);
 	const preSignature = surviving.preSignature.map(e => e.ver);
@@ -156,8 +158,9 @@ function guessPackage(name: string, cap: number, surviving: SurvivingEntries, ev
 		evidence:       evidence.list,
 		unsatisfiable:  unsatisfiable ? true : undefined,
 		linkedWith:     linkedWith && linkedWith.length > 0 ? linkedWith : undefined,
+		coupledWith:    coupledWith && coupledWith.length > 0 ? coupledWith : undefined,
 		used
-	}) as GuessedDependency;
+	});
 }
 
 /**
@@ -196,63 +199,26 @@ export async function executeGuessDepVersionsQuery(
 	const self = ctx.meta.getNamespace();
 	const sorted = (query.packages && query.packages.length > 0 ? [...query.packages] : defaultTargets(deps, usage)).filter(name => name !== self).sort();
 
-	// resolve (and cache) each target's timeline package key + merged source once, reused across both guess passes
-	const sourceByName = new Map<string, { readonly key: string, readonly src: PackageSignatureSource | undefined }>();
-	const sourceFor = (name: string): { readonly key: string, readonly src: PackageSignatureSource | undefined } => {
-		let entry = sourceByName.get(name);
-		if(entry === undefined) {
-			const key = timelinePackageKey(name, sources);
-			entry = { key, src: sourceForPackage(sources, key) };
-			sourceByName.set(name, entry);
-		}
-		return entry;
-	};
-
 	const disabled = disabledSources(query);
-
-	// the guessed lower bound of every target under a set of transitive constraints (drives the mutual-constraint refinement)
-	const guessLowerBounds = (trans: Map<string, TransitiveConstraint[]>): Map<string, string> => {
-		const out = new Map<string, string>();
-		for(const name of sorted) {
-			const { key, src } = sourceFor(name);
-			const s = survivingEntries(name, src, deps, usage.get(name), trans.get(name) ?? [], cutoff, rVersion, undefined, disabled, key);
-			if(s.survivors.length > 0) {
-				out.set(name, s.survivors[0].ver);
-			}
-		}
-		return out;
-	};
-
+	const space = new VersionSpace({ deps, usage, cutoff, rVersion, disabled });
 	const maxIterations = query.maxIterations ?? DefaultFixpointIterations;
-	let transitive = collectTransitiveConstraints(deps, sources);
-	if(!disabled.has('transitive')) {
-		let prev = '';
-		iterateToFixpoint(maxIterations, () => {
-			const pass = guessLowerBounds(transitive);
-			const signature = Array.from(pass, ([k, v]) => `${k}=${v}`).sort().join(',');
-			if(signature === prev) {
-				return false;
-			}
-			prev = signature;
-			transitive = collectTransitiveConstraints(deps, sources, name => pass.get(name));
-			return true;
-		});
-	}
+	const transitive = space.refineTransitive(sorted, maxIterations);
 
 	const cap = query.maxCandidates ?? DefaultCandidateCap;
 	const explodeOrder = query.explode?.order ?? 'newest';
 
 	const guessedAll = sorted.map(name => {
-		const { key, src } = sourceFor(name);
 		const evidence = new EvidenceCollector();
-		const surviving = survivingEntries(name, src, deps, usage.get(name), transitive.get(name) ?? [], cutoff, rVersion, evidence.add, disabled, key);
-		return { name, src, key, evidence, surviving };
+		const surviving = space.survivors(name, transitive.get(name) ?? [], evidence.add);
+		return { name, evidence, surviving };
 	});
 
-	const arcEntries = guessedAll.map(g => ({ name: g.name, src: g.src, key: g.key, survivors: g.surviving.survivors }));
-	const blockers = query.clean || disabled.has('indirect') ? new Map<string, Map<string, string>>() : enforceArcConsistency(arcEntries, maxIterations);
-	guessedAll.forEach((g, i) => {
-		g.surviving = { ...g.surviving, survivors: arcEntries[i].survivors };
+	const initial = new Map(guessedAll.map(g => [g.name, g.surviving.survivors]));
+	const { survivors: pruned, blockers } = query.clean || disabled.has('indirect')
+		? { survivors: initial, blockers: new Map<string, Map<string, string>>() }
+		: enforceArcConsistency(space, initial, maxIterations);
+	guessedAll.forEach(g => {
+		g.surviving = { ...g.surviving, survivors: pruned.get(g.name) ?? g.surviving.survivors };
 		const max = g.surviving.survivors.at(-1)?.ver;
 		for(const [partner, constraint] of blockers.get(g.name) ?? []) {
 			if(max !== undefined) {
@@ -282,45 +248,41 @@ export async function executeGuessDepVersionsQuery(
 		}
 	}
 
-	// runnable combinations: the base/R group is the shared hub every other constrained package is counted against
-	const grouped = new Set(linkedGroups.flat());
-	const factorOf = (g: typeof guessedAll[number]): CountFactor => ({ name: g.name, src: g.src, key: g.key, survivors: g.surviving.survivors.map(e => e.ver) });
-	let hub: CountFactor | undefined, hubTotal = 1, othersTotal = 1;
-	const others: CountFactor[] = [];
-	for(const group of linkedGroups) {
-		const rep = guessedAll.find(g => group.includes(g.name));
-		if(rep === undefined) {
-			continue;
-		}
-		if(rep.surviving.base && hub === undefined) {
-			hub = factorOf(rep);
-			hubTotal = rep.surviving.total ?? 1;
-		} else {
-			others.push(factorOf(rep));
-			othersTotal *= rep.surviving.total ?? 1;
-		}
-	}
-	// a package is a counted factor only when a *real* constraint narrows it (declared/transitive/signature/indirect);
+	// a package is a counted factor only when a *real* constraint bears on it (declared/transitive/signature/indirect);
 	// date/available narrowing alone must not promote an otherwise any-version package into the product, or a tighter
-	// date cutoff could paradoxically grow the count by turning more packages into factors
+	// date cutoff could paradoxically grow the count by turning more packages into factors. A partial constraint does
+	// count: it does not narrow the package on its own, but it does couple it to the package that declares it
 	const reallyConstrained = (g: typeof guessedAll[number]): boolean =>
 		g.evidence.list.some(e => e.source === 'declared' || e.source === 'transitive' || e.source === 'signature' || e.source === 'indirect');
-	for(const g of guessedAll) {
-		const total = g.surviving.total ?? 0;
-		if(grouped.has(g.name) || total === 0 || !reallyConstrained(g)) {
-			continue;
+	// one factor per linked group (its members share a version) plus every other constrained package
+	const grouped = new Set(linkedGroups.flat());
+	const representatives = [
+		...linkedGroups.map(group => guessedAll.find(g => group.includes(g.name))).filter(g => g !== undefined),
+		...guessedAll.filter(g => !grouped.has(g.name) && (g.surviving.total ?? 0) > 0 && reallyConstrained(g))
+	];
+	const factors: CountFactor[] = representatives.map(g => ({ name: g.name, survivors: g.surviving.survivors.map(e => e.ver) }));
+	const { total: runnableCombinations, couplings } = countRunnableCombinations(space, factors);
+	const possibleCombinations = representatives.reduce((p, g) => p * (g.surviving.total ?? 1), 1);
+	// the baseline the guess narrows down from: what the project already declares, before usage and interdependencies
+	const anyDeclared = !disabled.has('declared') && representatives.some(g => g.surviving.declaredConstraints.length > 0);
+	const declaredCombinations = anyDeclared ? representatives.reduce((p, g) => p * g.surviving.declared, 1) : undefined;
+	// a coupled package's version is not free: report the partners, flagging one that only some versions impose
+	const coupledWith = new Map<string, string[]>();
+	for(const c of couplings) {
+		for(const [pkg, partner] of [[c.a, c.b], [c.b, c.a]]) {
+			coupledWith.set(pkg, [...coupledWith.get(pkg) ?? [], c.always ? partner : `${partner} (partial)`]);
 		}
-		others.push(factorOf(g));
-		othersTotal *= total;
 	}
-	const runnableCombinations = countRunnableCombinations(hub, others);
-	const possibleCombinations = hubTotal * othersTotal;
 
 	const dependencies: GuessedDependency[] = [];
 	const ordered: OrderedCandidates[] = [];
 	for(const g of guessedAll) {
-		dependencies.push(guessPackage(g.name, cap, g.surviving, g.evidence, usage.has(g.name), linkedWith.get(g.name)));
-		const oc = query.explode ? orderedCandidatesOf(g.src, g.name, g.surviving, query.explode.prefer?.[g.name], explodeOrder) : undefined;
+		dependencies.push(guessPackage(g.name, cap, g.surviving, g.evidence, {
+			used:        usage.has(g.name),
+			linkedWith:  linkedWith.get(g.name),
+			coupledWith: coupledWith.get(g.name)
+		}));
+		const oc = query.explode ? orderedCandidatesOf(space.resolve(g.name).src, g.name, g.surviving, query.explode.prefer?.[g.name], explodeOrder) : undefined;
 		if(oc) {
 			ordered.push(oc);
 		}
@@ -338,8 +300,9 @@ export async function executeGuessDepVersionsQuery(
 		versionSelection: ctx.config.solver.sigdb.versionSelection,
 		runnableCombinations,
 		possibleCombinations,
+		declaredCombinations,
 		linkedGroups:     linkedGroups.length > 0 ? linkedGroups : undefined,
 		assignments,
 		message
-	}) as GuessDepVersionsQueryResult;
+	});
 }

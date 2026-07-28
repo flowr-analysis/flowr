@@ -8,7 +8,6 @@ import { PluginType } from '../../../src/project/plugins/flowr-analyzer-plugin';
 import {
 	FlowrAnalyzerLoadingOrderImplicitSourcesPlugin, implicitSourcesLog
 } from '../../../src/project/plugins/loading-order-plugins/flowr-analyzer-loading-order-implicit-sources-plugin';
-import type { RParseRequest } from '../../../src/r-bridge/retriever';
 import { FlowrAnalyzerLoadingOrderDescriptionFilePlugin } from '../../../src/project/plugins/loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
 import { FlowrDescriptionFile } from '../../../src/project/plugins/file-plugins/files/flowr-description-file';
 import { FileRole, FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
@@ -18,7 +17,7 @@ function orderOf(config: FlowrConfig, ...files: string[]): string[] {
 	const ctx = new FlowrAnalyzerContext(config, new Map([
 		[PluginType.LoadingOrder, [new FlowrAnalyzerLoadingOrderImplicitSourcesPlugin()]]
 	]));
-	ctx.addRequests(files.map(content => ({ request: 'file', content }) as RParseRequest));
+	ctx.addRequests(files.map(content => ({ request: 'file', content })));
 	return ctx.files.loadingOrder.getLoadingOrder().map(r => r.request === 'file' ? r.content : '<text>');
 }
 
@@ -64,6 +63,13 @@ describe('Implicit sources', () => {
 		assert.deepStrictEqual(
 			orderOf(FlowrConfig.default(), '/app/app.R', '/app/server.R', '/app/ui.R', '/app/global.R'),
 			['/app/global.R', '/app/ui.R', '/app/server.R', '/app/app.R']
+		);
+	});
+
+	test('a shiny app loads global.R before its supporting R/ files, as shiny does', () => {
+		assert.deepStrictEqual(
+			orderOf(FlowrConfig.default(), '/app/server.R', '/app/R/mod.R', '/app/ui.R', '/app/global.R'),
+			['/app/global.R', '/app/R/mod.R', '/app/ui.R', '/app/server.R']
 		);
 	});
 
@@ -158,7 +164,7 @@ describe('Implicit sources', () => {
 			]]
 		]));
 		ctx.addFile(FlowrDescriptionFile.from(new FlowrInlineTextFile('DESCRIPTION', 'Package: a\nCollate: global.R a.R\n'), FileRole.Description));
-		ctx.addRequests(['a.R', 'global.R'].map(content => ({ request: 'file', content }) as RParseRequest));
+		ctx.addRequests(['a.R', 'global.R'].map(content => ({ request: 'file', content })));
 		assert.deepStrictEqual(
 			ctx.files.loadingOrder.getLoadingOrder().map(r => r.request === 'file' ? r.content : '<text>'),
 			['global.R', 'a.R'],

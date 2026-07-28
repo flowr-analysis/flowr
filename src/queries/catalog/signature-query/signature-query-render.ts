@@ -73,8 +73,12 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 		const loc = `${fn.file}${fn.line !== undefined ? `:${fn.line}` : ''}`;
 		result.push(`      ╰ ${italic('source', f)}  ${fn.sourceUrl ? `${loc}  ${f.hyperlink(fn.sourceUrl, fn.sourceUrl)}` : loc}`);
 	}
-	if(fn.docUrl) {
-		result.push(`      ╰ ${italic('docs', f)}    ${f.hyperlink(fn.docUrl, fn.docUrl)}`);
+	if(fn.docUrl || fn.manUrl) {
+		const links = [
+			...(fn.docUrl ? [f.hyperlink('rdrr.io', fn.docUrl)] : []),
+			...(fn.manUrl ? [f.hyperlink(fn.version ? `man v${fn.version}` : 'man', fn.manUrl)] : [])
+		];
+		result.push(`      ╰ ${italic('docs', f)}    ${links.join('  ')}`);
 	}
 	if(fn.s3method) {
 		result.push(`      ╰ ${italic('S3 method of', f)} ${color(`${fn.s3method.package}::${fn.s3method.generic}`, Colors.Magenta, f)} ${italic(`(class ${fn.s3method.class})`, f)}`);
@@ -159,7 +163,8 @@ export function pushMatches(result: string[], f: OutputFormatter, out: Signature
 			? `${italic('(', f)}${m.parameters.map(p => matched.has(p) ? color(p, Colors.Yellow, f, { style: FontStyles.Bold }) : italic(p, f)).join(italic(', ', f))}${italic(')', f)}`
 			: '';
 		const loc = m.file ? `  ${linkLocation(m.file, m.line, m.sourceUrl, f)}` : '';
-		const doc = m.docUrl ? `  ${f.hyperlink('docs', m.docUrl)}` : '';
+		// one link on a search hit: the version-exact help page when there is one, else the rdrr.io page
+		const doc = m.manUrl ? `  ${f.hyperlink('man', m.manUrl)}` : (m.docUrl ? `  ${f.hyperlink('docs', m.docUrl)}` : '');
 		result.push(`      ╰ ${color(m.package, Colors.Cyan, f)}::${bold(m.name, f)}${params}${m.version ? italic(` v${m.version}`, f) : ''}${loc}${doc}`);
 	}
 }

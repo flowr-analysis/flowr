@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.13.2",
+  "version": "2.13.4",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {
@@ -36,8 +36,9 @@
     "build-dev": "npm run build && npm run build:copy-wasm",
     "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --tree-shaking=true --minify --external:clipboardy --target=node22 --outfile=dist/src/cli/flowr.min.js && npm run build:copy-wasm",
     "build:copy-wasm": "mkdir -p dist/node_modules/@davisvaughan/tree-sitter-r/ && mkdir -p dist/node_modules/web-tree-sitter && cp node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.wasm dist/node_modules/@davisvaughan/tree-sitter-r/ && cp node_modules/web-tree-sitter/tree-sitter.wasm dist/node_modules/web-tree-sitter/",
-    "lint-local": "npx eslint --version && npx eslint src/ test/ scripts/ --rule \"no-warning-comments: off\"",
-    "lint": "npm run license-compat -- --summary && npx eslint --version && npx eslint src/ test/ scripts/",
+    "typecheck": "tsc --noEmit --project .",
+    "lint-local": "npm run typecheck && npx eslint --version && npx eslint src/ test/ scripts/ --concurrency=auto --cache --cache-location node_modules/.cache/eslint-local --rule \"no-warning-comments: off\"",
+    "lint": "npm run license-compat -- --summary && npm run typecheck && npx eslint --version && npx eslint src/ test/ scripts/ --concurrency=auto --cache --cache-location node_modules/.cache/eslint",
     "license-compat": "license-checker-rseidelsohn --onlyAllow 'MIT;MPL-2.0;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;BlueOak-1.0.0;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'  --clarificationsFile license-clarifications.json",
     "doc": "typedoc",
     "test": "vitest --exclude \"test/system-tests/**\" --config test/vitest.config.mts",
@@ -181,10 +182,9 @@
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-angular": "^20.5.0",
-    "@eagleoutice/eslint-config-flowr": "^1.0.43",
-    "@eslint/eslintrc": "^3.3.3",
-    "@eslint/js": "^9.39.2",
+    "@eagleoutice/eslint-config-flowr": "^2.0.1",
     "@j-ulrich/release-it-regex-bumper": "^5.4.0",
+    "@stylistic/eslint-plugin": "^5.10.0",
     "@types/command-line-args": "^5.2.3",
     "@types/command-line-usage": "^5.0.4",
     "@types/commonmark": "^0.27.10",
@@ -198,11 +198,16 @@
     "@types/tmp": "^0.2.6",
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.40.0",
+    "@typescript-eslint/parser": "^8.65.0",
     "@vitest/coverage-v8": "^4.1.8",
     "esbuild": "^0.28.1",
-    "eslint": "^9.39.2",
-    "license-checker-rseidelsohn": "^4.4.2",
-    "npm-run-all": "^4.1.5",
+    "eslint": "^10.8.0",
+    "eslint-plugin-check-file": "^3.3.2",
+    "eslint-plugin-import-x": "^4.17.1",
+    "eslint-plugin-jsdoc": "^62.9.0",
+    "eslint-plugin-tsdoc": "^0.5.2",
+    "eslint-plugin-unused-imports": "^4.4.1",
+    "license-checker-rseidelsohn": "^5.0.1",
     "release-it": "^20.0.0",
     "ts-node": "^10.9.2",
     "typedoc": "^0.28.17",
@@ -248,6 +253,7 @@
     "@davisvaughan/tree-sitter-r@1.2.0": true,
     "core-js-pure@3.40.0": true,
     "esbuild@0.28.1": true,
-    "plantuml-pipe@1.6.0": true
+    "plantuml-pipe@1.6.0": true,
+    "unrs-resolver@1.12.2": true
   }
 }

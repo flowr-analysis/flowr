@@ -20,6 +20,8 @@ export enum StackEnvKind {
 	Empty,
 	Current,
 	Parent,
+	/** `parent.frame()`: the dynamic caller's frame, over-approximated to the global env (exact at a top-level call). */
+	CallerFrame,
 	Named
 }
 
@@ -30,6 +32,7 @@ export const StackEnvBuiltins = {
 	emptyenv:            StackEnvKind.Empty,
 	environment:         StackEnvKind.Current,
 	'parent.env':        StackEnvKind.Parent,
+	'parent.frame':      StackEnvKind.CallerFrame,
 	'as.environment':    StackEnvKind.Named,
 	'.GlobalEnv':        StackEnvKind.Global,
 	'.BaseEnv':          StackEnvKind.Base,
@@ -254,13 +257,17 @@ export const DefaultBuiltinConfig = [
 	{ type:            'function', names:           [Identifier.from(['options', PkgName.Base])],
 		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true, forceArgs: 'all' }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['mapply', PkgName.Base]), Identifier.from(['Mapply', PkgName.Functools])],
-		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, nameOfFunctionArgument: 'FUN' }, assumePrimitive: false },
+		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, nameOfFunctionArgument: 'FUN', unquoteFunction: true }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['lapply', PkgName.Base]), Identifier.from(['sapply', PkgName.Base]), Identifier.from(['vapply', PkgName.Base])],
-		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' }, assumePrimitive: false },
+		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['Lapply', PkgName.Functools]), Identifier.from(['Sapply', PkgName.Functools]), Identifier.from(['Vapply', PkgName.Functools])],
-		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' }, assumePrimitive: false },
+		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['apply', PkgName.Base]), Identifier.from(['tapply', PkgName.Base]), Identifier.from(['Tapply', PkgName.Functools])],
-		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 2, nameOfFunctionArgument: 'FUN' }, assumePrimitive: false },
+		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 2, nameOfFunctionArgument: 'FUN', unquoteFunction: true }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['Map', PkgName.Base]), Identifier.from(['Filter', PkgName.Base])],
+		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['Reduce', PkgName.Base])],
+		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['print', PkgName.Base]), Identifier.from(['message', PkgName.Base]), Identifier.from(['warning', PkgName.Base]), Identifier.from(['warn', PkgName.Rlang]), Identifier.from(['warn', PkgName.Rutils]), Identifier.from(['info', PkgName.Msgr])],
 		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, forceArgs: 'all', keepArgumentOut: true, hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['invisible', PkgName.Base])],
@@ -383,7 +390,7 @@ export const DefaultBuiltinConfig = [
 	{ type:            'function', names:           [Identifier.from(['cat', PkgName.Base])],
 		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['switch', PkgName.Base])],
-		processor:       BuiltInProcName.Default, config:          { forceArgs: [true] }, assumePrimitive: false },
+		processor:       BuiltInProcName.Default, config:          { forceArgs: [true], useAsProcessor: BuiltInProcName.Switch }, assumePrimitive: false },
 	{ type:            'function', names:           ['return'],
 		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, cfg: ExitPointType.Return, keepArgumentOut: true, useAsProcessor: BuiltInProcName.Return }, assumePrimitive: true },
 	{
@@ -412,10 +419,12 @@ export const DefaultBuiltinConfig = [
 		processor:       BuiltInProcName.ExpressionList, config:          {}, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['source', PkgName.Base])],
 		processor:       BuiltInProcName.Source, config:          { includeFunctionCall: true, forceFollow: false }, assumePrimitive: false },
-	{ type:            'function', names:           ['[', '[['],
+	{ type:            'function', names:           ['['],
 		processor:       BuiltInProcName.Access, config:          { treatIndicesAsString: false }, assumePrimitive: true },
+	{ type:            'function', names:           ['[['],
+		processor:       BuiltInProcName.Access, config:          { treatIndicesAsString: false, resolveField: true }, assumePrimitive: true },
 	{ type:            'function', names:           ['$', '@'],
-		processor:       BuiltInProcName.Access, config:          { treatIndicesAsString: true }, assumePrimitive: true },
+		processor:       BuiltInProcName.Access, config:          { treatIndicesAsString: true, resolveField: true }, assumePrimitive: true },
 	{ type:            'function', names:           ['::'],
 		processor:       BuiltInProcName.NamespaceAccess, config:          { internal: false }, assumePrimitive: true },
 	{ type:            'function', names:           [':::'],
@@ -619,6 +628,8 @@ export const DefaultBuiltinConfig = [
 		processor:       BuiltInProcName.With, config:          {}, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['new.env', PkgName.Base]), Identifier.from(['new_environment', PkgName.Rlang])],
 		processor:       BuiltInProcName.NewEnv, config:          {}, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['R6Class', PkgName.R6]), Identifier.from(['setRefClass', PkgName.Methods])],
+		processor:       BuiltInProcName.ClassGenerator, config:          {}, assumePrimitive: false },
 	/* env-returning builtins pointing into the current search-path stack (`e <- globalenv(); e$x`) */
 	{ type:  'function', names: Object.entries(StackEnvBuiltins)
 		.filter(([n, kind]) => !n.startsWith('.') && (kind === StackEnvKind.Global || kind === StackEnvKind.Base || kind === StackEnvKind.Empty))
@@ -658,9 +669,10 @@ export const DefaultBuiltinConfig = [
 	{ type:            'function', names:           [Identifier.from(['setClass', PkgName.Methods])],
 		processor:       BuiltInProcName.S7MakeConstructor, config:          { mode: ['s4'] }, assumePrimitive: true },
 	{ type:  'function', names: [
-		Identifier.from(['Negate', PkgName.Base]), Identifier.from(['Vectorize', PkgName.Base]),
-		Identifier.from(['partial', PkgName.Purrr])
-	], processor: BuiltInProcName.S7MakeConstructor, config: {}, assumePrimitive: true },
+		Identifier.from(['Negate', PkgName.Base]), Identifier.from(['Vectorize', PkgName.Base])
+	], processor: BuiltInProcName.S7MakeConstructor, config: { wrapIndex: 0 }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['partial', PkgName.Purrr])],
+		processor:       BuiltInProcName.S7MakeConstructor, config:          { wrapIndex: 0, wrapName: '.f' }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['.Primitive', PkgName.Base]), Identifier.from(['.Internal', PkgName.Base])],
 		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, unquoteFunction: true, resolveInEnvironment: 'global' }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['interference', PkgName.Inferference])],
@@ -789,10 +801,10 @@ export function getDefaultProcessor(name: string): BuiltInProcName | undefined {
 	}
 	const fn = DefaultBuiltinConfig.find(def =>
 		((def.names as readonly Identifier[]).some(n => Identifier.getName(n) === name) && def.type !== 'constant')
-		|| (def.type === 'replacement' && def.suffixes.flatMap(d => def.names.map(n => `${Identifier.getName(n as Identifier)}${d}`)).includes(name))
+		|| (def.type === 'replacement' && def.suffixes.flatMap(d => def.names.map(n => `${Identifier.getName(n)}${d}`)).includes(name))
 	) as BuiltInFunctionDefinition<BuiltInProcName.Default | BuiltInProcName.DefaultReadAllArgs> | BuiltInReplacementDefinition | undefined;
 	if(fn?.type === 'replacement') {
 		return BuiltInProcName.Replacement;
 	}
-	return fn?.processor === BuiltInProcName.DefaultReadAllArgs ? BuiltInProcName.Default : fn?.processor as BuiltInProcName;
+	return fn?.processor === BuiltInProcName.DefaultReadAllArgs ? BuiltInProcName.Default : fn?.processor;
 }

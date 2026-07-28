@@ -55,7 +55,7 @@ export function processAttach<OtherInfo>(
 
 	/* R attaches below `.GlobalEnv`, so existing global bindings shadow the attached ones */
 	return { ...result, environment: {
-		current: REnvironment.attachBelowGlobal(result.environment.current, attachedLayer, attachedLayer),
+		current: REnvironment.attachAt(result.environment.current, attachedLayer, attachedLayer),
 		level:   result.environment.level
 	} };
 }

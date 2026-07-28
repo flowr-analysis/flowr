@@ -23,7 +23,6 @@ import type { FlowrFileProvider } from '../../../src/project/context/flowr-file'
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
-import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { DropPathsOption } from '../../../src/config';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
@@ -103,7 +102,7 @@ export function assertLinterWithIds<Name extends LintingRuleNames>(
 			try {
 				return SlicingCriterion.parse(s as SlicingCriterion, ast.idMap);
 			} catch{
-				return s as NodeId;
+				return s;
 			}
 		}).sort()
 	}) as LintingRuleResult<Name>);

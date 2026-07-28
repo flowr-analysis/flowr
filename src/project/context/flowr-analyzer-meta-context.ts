@@ -29,6 +29,7 @@ export interface DeclaredPackages {
 	depends?:   readonly Package[];
 	suggests?:  readonly Package[];
 	linkingTo?: readonly Package[];
+	enhances?:  readonly Package[];
 }
 
 /** The project metadata a plugin may contribute, see {@link FlowrAnalyzerMetaContext#contribute}. */

@@ -105,6 +105,12 @@ export interface GuessedDependency {
 	 * no direct `zoo::`/`library(zoo)` call.
 	 */
 	readonly used?:               boolean;
+	/**
+	 * Set to `false` when the signature database has no record of the package at all (e.g. a Bioconductor package),
+	 * distinguishing it from one the database carries but cannot constrain. Such a package has no `minVersion`/`maxVersion`
+	 * and never appears in {@link GuessDepVersionsQueryResult.assignments}, so a consumer should resolve it by other means.
+	 */
+	readonly known?:              boolean;
 }
 
 export interface GuessDepVersionsQueryResult extends BaseQueryResult {
@@ -401,7 +407,8 @@ export const GuessDepVersionsQueryDefinition = {
 				: dep.linkedWith ? ' ' + italic(`[linked: ${dep.linkedWith.join(', ')}]`, formatter) : '')
 				+ (coupled.length > 0 ? ' ' + italic(`[coupled: ${truncatedList(coupled, 3)}]`, formatter) : '');
 			const anyVersion = coupled.length > 0 ? '(any version on its own)' : '(any version)';
-			const note = dep.base ? '' : dep.used === false ? ' ' + faint('(not called)', formatter) : !isConstrained(dep) && dep.totalVersions ? ' ' + faint(anyVersion, formatter) : '';
+			const note = dep.known === false ? ' ' + color('(not in database)', Colors.Red, formatter)
+				: dep.base ? '' : dep.used === false ? ' ' + faint('(not called)', formatter) : !isConstrained(dep) && dep.totalVersions ? ' ' + faint(anyVersion, formatter) : '';
 			const tag = groupTag + note;
 			const range = dep.unsatisfiable ? color('unsatisfiable', Colors.Red, formatter) : bold(dep.range, formatter);
 			const count = dep.totalVersions !== undefined ? `${dep.candidateCount}/${dep.totalVersions} versions` : `${dep.candidateCount} candidate${dep.candidateCount === 1 ? '' : 's'}`;

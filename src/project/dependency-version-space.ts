@@ -108,6 +108,8 @@ export interface SurvivingEntries {
 	readonly unsatisfiable:       boolean;
 	/** the total number of versions the database carries for the package (the full history the candidates are drawn from) */
 	readonly total:               number;
+	/** whether the database carries the package at all: `false` means "no record", not "no constraint" */
+	readonly known:               boolean;
 	/** how many of those versions the *declared* constraints alone allow, the baseline the guess narrows down from */
 	readonly declared:            number;
 }
@@ -917,10 +919,11 @@ export function survivingEntries(space: VersionSpace, name: string, transitive: 
 	// contradiction is a constraint property, not an empty database
 	const unsatisfiable = constraintsContradict(declaredConstraints, declaredRange, effectiveTransitive);
 	if(!src) {
-		return { survivors: [], preSignature: [], getFn, declaredRange, declaredConstraints, base: false, unsatisfiable, total: 0, declared: 0 };
+		return { survivors: [], preSignature: [], getFn, declaredRange, declaredConstraints, base: false, unsatisfiable, total: 0, declared: 0, known: false };
 	}
 	const base = src.isBaseR(packageKey);
 	const total = timeline.length;
+	const known = total > 0;
 	const declared = declaredRange ? timeline.filter(e => RRange.satisfies(e.ver, declaredRange)).length : total;
 	// emit database coverage envelope as outer bounds
 	if(observe && timeline.length > 0 && !disabled.has('available')) {
@@ -929,13 +932,13 @@ export function survivingEntries(space: VersionSpace, name: string, transitive: 
 	}
 	const preSignature = applyConstraints(space, name, timeline, { declaredRange, declaredConstraints, transitive: effectiveTransitive, base }, observe);
 	if(!usage || disabled.has('signature')) {
-		return { survivors: preSignature, preSignature, getFn, declaredRange, declaredConstraints, base, unsatisfiable, total, declared };
+		return { survivors: preSignature, preSignature, getFn, declaredRange, declaredConstraints, base, unsatisfiable, total, declared, known };
 	}
 	if(observe) {
 		addSignatureEvidence(observe, src, getFn, packageKey, usage, preSignature);
 	}
 	const survivors = preSignature.filter(e => signatureOk(e.ver));
-	return { survivors, preSignature, getFn, declaredRange, declaredConstraints, base, unsatisfiable, total, declared };
+	return { survivors, preSignature, getFn, declaredRange, declaredConstraints, base, unsatisfiable, total, declared, known };
 }
 
 /** the sigdb package a target's version history is drawn from: `R` reuses `base` (their releases coincide), everything else is itself */

@@ -201,6 +201,7 @@ export const DefaultBuiltinConfig = [
 			/* string (base) */
 			Identifier.from(['gsub', PkgName.Base]),   Identifier.from(['paste', PkgName.Base]),
 			Identifier.from(['paste0', PkgName.Base]), Identifier.from(['nchar', PkgName.Base]),
+			Identifier.from(['file.path', PkgName.Base]),
 			/* numeric math (base) */
 			Identifier.from(['sqrt', PkgName.Base]),    Identifier.from(['abs', PkgName.Base]),
 			Identifier.from(['round', PkgName.Base]),   Identifier.from(['floor', PkgName.Base]),

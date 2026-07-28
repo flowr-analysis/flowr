@@ -188,6 +188,9 @@ describe.sequential('Resolve', withShell(shell => {
 		testResolve('paste0 with alias',     '3@x', 'k <- "b" \n x <- paste0("cfg_", k) \n x', set(['cfg_b']));
 		// a non-constant part keeps the result unknown
 		testResolve('paste0 unresolved part', '2@x', 'x <- paste0("cfg_", Sys.getenv("K")) \n x', Top);
+		testResolve('file.path constants',   '2@x', 'x <- file.path("data", "in.csv") \n x', set(['data/in.csv']));
+		testResolve('file.path with alias',  '3@x', 'd <- "data" \n x <- file.path(d, "in.csv") \n x', set(['data/in.csv']));
+		testResolve('file.path explicit fsep', '2@x', 'x <- file.path("a", "b", fsep="|") \n x', set(['a|b']));
 	});
 
 	describe('ByName', () => {

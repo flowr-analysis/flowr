@@ -15,6 +15,7 @@ import { valueSetGuard } from '../dataflow/eval/values/general';
 import { isValue } from '../dataflow/eval/values/r-value';
 import { visitCfgInOrder } from './simple-visitor';
 import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
+import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 
 type CachedValues<Val> = Map<NodeId, Val>;
 
@@ -39,11 +40,25 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 			return false;
 		}
 		const has = this.cachedStatements.get(id);
-		if(has) {
-			return has;
+		if(!has) {
+			this.visitNode(id);
+			if(!this.cachedStatements.get(id)) {
+				return false;
+			}
 		}
-		this.visitNode(id);
-		return this.cachedStatements.get(id) ?? false;
+		return !this.inParameterDefault(id);
+	}
+
+	/** a parameter default is forced on access if at all, so a jump within it must not cut the function body */
+	private inParameterDefault(id: NodeId): boolean {
+		for(let node = this.getNormalizedAst(id); node !== undefined; node = this.getNormalizedAst(node.info.parent)) {
+			if(node.type === RType.Parameter) {
+				return true;
+			} else if(node.type === RType.FunctionDefinition) {
+				return false;
+			}
+		}
+		return false;
 	}
 
 	private unableToCalculateValue(id: NodeId): void {

@@ -42,6 +42,16 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		expect(dep?.evidence.some(e => e.source === 'signature' && e.parameter === '.by')).toBe(true);
 	});
 
+	test('a package the database has no record of is flagged as unknown, not as unconstrained', async() => {
+		const scenario = {
+			code:     'library(dplyr)\nlibrary(qpgraph)\nfilter(x)\nqpAnyGraph(y)',
+			packages: { dplyr: { versions: { '1.0.0': { date: '2020-01-01', fns: { filter: ['.data'] } } } } },
+			query:    { packages: ['dplyr', 'qpgraph'] }
+		};
+		expect((await guessDep(ts, scenario, 'qpgraph'))?.known).toBe(false);
+		expect((await guessDep(ts, scenario, 'dplyr'))?.known).toBeUndefined();
+	});
+
 	test('a partially-spelled argument (R pmatch) is matched against the signature', async() => {
 		// `.d` uniquely abbreviates `.data`, so only a version whose `foo` has `.data` accepts the call
 		const dep = await guessDep(ts, {

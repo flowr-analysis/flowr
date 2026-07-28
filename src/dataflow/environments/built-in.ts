@@ -270,12 +270,13 @@ export const BuiltInProcessorMapper = {
 } as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<never>>;
 
 export const BuiltInEvalHandlerMapper = {
-	'built-in:c':      resolveAsVector,
-	'built-in::':      resolveAsSeq,
-	'built-in:+':      resolveAsPlus,
-	'built-in:-':      resolveAsMinus,
-	'built-in:paste':  resolveAsPaste,
-	'built-in:paste0': resolveAsPaste
+	'built-in:c':         resolveAsVector,
+	'built-in::':         resolveAsSeq,
+	'built-in:+':         resolveAsPlus,
+	'built-in:-':         resolveAsMinus,
+	'built-in:paste':     resolveAsPaste,
+	'built-in:paste0':    resolveAsPaste,
+	'built-in:file.path': resolveAsPaste
 } as const satisfies Record<string, BuiltInEvalHandler>;
 
 export type ConfigOfBuiltInMappingName<N extends keyof typeof BuiltInProcessorMapper> = Parameters<typeof BuiltInProcessorMapper[N]>[4];

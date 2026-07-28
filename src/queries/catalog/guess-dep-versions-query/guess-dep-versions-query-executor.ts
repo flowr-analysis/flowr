@@ -159,6 +159,7 @@ function guessPackage(name: string, cap: number, surviving: SurvivingEntries, ev
 		unsatisfiable:  unsatisfiable ? true : undefined,
 		linkedWith:     linkedWith && linkedWith.length > 0 ? linkedWith : undefined,
 		coupledWith:    coupledWith && coupledWith.length > 0 ? coupledWith : undefined,
+		known:          surviving.known ? undefined : false,
 		used
 	});
 }

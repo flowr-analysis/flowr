@@ -9,8 +9,14 @@ import { SlicingCriterion } from '../../slicing/criterion/parse';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
+import { CallProp } from '../../dataflow/environments/built-in-props';
+import { builtInsWith } from '../../dataflow/environments/query-fn-props';
+import { Identifier } from '../../dataflow/environments/identifier';
 
-const defaultConsider = ['^eval$', '^system$', '^system2$', '^shell$'] as const;
+const defaultConsider: readonly string[] = [
+	'^eval$',
+	...builtInsWith(CallProp.Process).map(n => `^${Identifier.getName(n)}$`)
+];
 
 export interface PipeCommandFunctionSpec {
 	pattern: string

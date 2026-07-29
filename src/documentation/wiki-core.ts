@@ -38,6 +38,11 @@ import { contextFromInput } from '../project/context/flowr-analyzer-context';
 import { FlowrAnalyzerGasContext } from '../project/context/flowr-analyzer-gas-context';
 import { FlowrAnalyzerGasPlugin } from '../project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { GasFeatureKey, GasLevel } from '../gas';
+import { DefaultBuiltinConfig } from '../dataflow/environments/default-builtin-config';
+import type { BuiltInDefinition } from '../dataflow/environments/built-in-config';
+import { ArgProp, type BuiltInFnInfo, CallProp, SigDbInferable } from '../dataflow/environments/built-in-props';
+import { builtInNames, builtInsWith, inferFnProps } from '../dataflow/environments/query-fn-props';
+import type { GeneralDocContext } from './wiki-mk/doc-context';
 import { SemVer } from 'semver';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
@@ -49,8 +54,6 @@ import { getCliLongOptionOf, getReplCommand } from './doc-util/doc-cli-option';
 import { RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 import { block, details } from './doc-util/doc-structure';
 import { RShell } from '../r-bridge/shell';
-import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
-import { expensiveTrace, FlowrLogger } from '../util/log';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 
 async function makeAnalyzerExample() {
@@ -115,6 +118,38 @@ async function gasPluginExample() {
 		.build();
 }
 
+/** Counts how many built-ins carry each {@link CallProp} and each {@link ArgProp}, straight from the config. */
+function builtInPropsSummary(ctx: GeneralDocContext): string {
+	const fns = DefaultBuiltinConfig.filter(d => d.type !== 'constant');
+	const infoOf = (d: BuiltInDefinition) => (d as { config?: BuiltInFnInfo }).config;
+	const count = (ds: readonly BuiltInDefinition[]) => ds.reduce((n, d) => n + builtInNames(d).length, 0);
+	const sigs = fns.filter(d => infoOf(d)?.sig !== undefined);
+	/* what a bit means is a hover, and bits nothing carries yet are left out */
+	const list = (type: 'CallProp' | 'ArgProp', of: (bit: number) => number) =>
+		Object.entries(type === 'CallProp' ? CallProp : ArgProp)
+			.filter(([, bit]) => typeof bit === 'number' && of(bit) > 0)
+			.map(([name, bit]) => {
+				const doc = ctx.doc(`${type}::${name}`).replaceAll(/<[^>]*>/g, '').replaceAll(/\s+/g, ' ').replaceAll('"', "'").trim();
+				const db = type === 'CallProp' && ((bit as number) & SigDbInferable) !== 0 ? '<sup>db</sup>' : '';
+				return `<span title="${doc}">\`${name}\`${db} ${of(bit as number)}</span>`;
+			})
+			.join(' &middot; ');
+
+	return `Hover a name for what it means, <sup>db</sup> marks the ones the ${ctx.linkPage('wiki/Signature Database', 'signature database')} states for
+any package function (${ctx.link(inferFnProps.name)} reads them off, and carries what a function calls over to it):
+
+* ${ctx.link('CallProp')}: ${list('CallProp', bit => builtInsWith(bit).length)}
+* ${ctx.link('ArgProp')}: ${list('ArgProp', bit => count(sigs.filter(d => infoOf(d)?.sig?.some(([, p]) => (p & bit) !== 0))))}
+
+So \`lapply\` is pure on its own but runs what it is handed, and says which argument that is:
+
+${codeBlock('ts', `{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['lapply', 'sapply', 'vapply']),
+  processor: BuiltInProcName.Apply,
+  config:    { indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true,
+               props: CallProp.MayPure, sig: [['X', ArgProp.Value], ['FUN', ArgProp.Callee]] } }`)}
+`;
+}
+
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Core
  */
@@ -147,7 +182,7 @@ ${await documentReplSession(shell, [{
 }])}
 	
 If you are brave (or desperate) enough, you can also try to use the ${getCliLongOptionOf('flowr', 'verbose')} option to be dumped with information about flowR's internals (please, never use this for benchmarking).
-See the [Getting flowR to Talk](#getting-flowr-to-talk) section below for more information.
+See the ${ctx.linkPage('wiki/FAQ', 'FAQ')} (*How to get flowR to talk?*) for more information.
 `
 })}
 	
@@ -161,7 +196,6 @@ See the [Getting flowR to Talk](#getting-flowr-to-talk) section below for more i
 * [Beyond the Dataflow Graph](#beyond-the-dataflow-graph)
   * [Static Backward Slicing](#static-backward-slicing)
 * [Gas (Resource Guard)](#gas-resource-guard)
-* [Getting flowR to Talk](#getting-flowr-to-talk)
 
 ## Creating and Using a flowR Analyzer Instance
 
@@ -444,8 +478,15 @@ But where are all the interesting things handled then?
 For that, we want to have a look at the built-in environment, which can be freely configured using flowR's ${ctx.linkPage('wiki/Interface', 'configuration system', 'configuring-flowr')}.
 FlowR's heart and soul resides in the ${ctx.link('DefaultBuiltinConfig')} object, which is used to configure the built-in environment
 by mapping function names to ${ctx.link('BuiltInProcessorMapper')} functions.
-There you can find functions like ${ctx.link(processAccess)} which handles the (subset) access to a variable, 
+There you can find functions like ${ctx.link(processAccess)} which handles the (subset) access to a variable,
 or ${ctx.link(processForLoop)} which handles the primitive for loop construct (whenever it is not overwritten).
+
+Besides the processor, an entry states what the function does with ${ctx.link('BuiltInFnInfo')}: its ${ctx.link('CallProp')} bits
+say what the call as a whole does, its ${ctx.link('FnSig')} says what each argument is used for (in the order R declares them,
+with \`...\` covering every position from where it appears). Anything you add there is picked up by ${ctx.link(builtInsWith.name)},
+which is how the ${ctx.linkPage('wiki/Query API', 'input-sources query')} learns which functions bring in data of their own.
+
+${builtInPropsSummary(ctx)}
 
 Just as an example, we want to have a look at the ${ctx.link(processRepeatLoop)} function, as it is one of the simplest built-in processors
 we have:
@@ -550,17 +591,6 @@ You can search for \`ctx.gas.checkGas(\` in the source to locate every active ch
 ${ctx.doc(FlowrAnalyzerGasPlugin)}
 
 ${ctx.code(gasPluginExample, { dropLinesStart: 1, dropLinesEnd: 1, hideDefinedAt: true })}
-
-## Helpful Things
-
-### Getting flowR to Talk
-
-When using flowR from the CLI, you can use the ${getCliLongOptionOf('flowr', 'verbose')} option to get more information about what flowR is doing.
-While coding, however, you can use the ${ctx.link(setMinLevelOfAllLogs)} function to set the minimum level of logs to be displayed (this works with the ${ctx.link(FlowrLogger)} abstraction).
-In general, you can configure the levels of individual logs, such as the general \`log\` (obtained with ${ctx.link('getActiveLog')}) or the ${ctx.link('parseLog')}.
-Please note that flowR makes no guarantees that log outputs are persistent across versions, and it is up to the implementors to provide sensible logging.
-If you are an implementor and want to add logging, please make sure there are no larger runtime impliciations when logging is disabled. 
-Have a look at the ${ctx.link(expensiveTrace)} function for example, which uses a function to generate the log message only when the log level is reached.
 
 `;
 	}

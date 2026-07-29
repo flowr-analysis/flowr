@@ -182,7 +182,7 @@
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-angular": "^20.5.0",
-    "@eagleoutice/eslint-config-flowr": "^2.0.1",
+    "@eagleoutice/eslint-config-flowr": "^2.0.2",
     "@j-ulrich/release-it-regex-bumper": "^5.4.0",
     "@stylistic/eslint-plugin": "^5.10.0",
     "@types/command-line-args": "^5.2.3",

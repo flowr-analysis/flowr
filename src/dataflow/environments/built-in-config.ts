@@ -3,6 +3,7 @@ import type { BuiltInEvalName } from './built-in-eval-name';
 import { BuiltIns } from './built-in';
 import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { Identifier } from './identifier';
+import type { BuiltInFnInfo } from './built-in-props';
 
 export interface BaseBuiltInDefinition {
 	/** The type of the built-in configuration */
@@ -30,7 +31,7 @@ export interface BuiltInConstantDefinition<Value> extends BaseBuiltInDefinition 
 export interface BuiltInFunctionDefinition<BuiltInProcessor extends keyof typeof BuiltInProcessorMapper> extends BaseBuiltInDefinition {
 	readonly type:         'function';
 	readonly processor:    BuiltInProcessor;
-	readonly config?:      ConfigOfBuiltInMappingName<BuiltInProcessor> & { libFn?: boolean };
+	readonly config?:      ConfigOfBuiltInMappingName<BuiltInProcessor> & BuiltInFnInfo & { libFn?: boolean };
 	/** the value solver to use when folding a call to this function to a constant, see {@link BuiltInEvalHandlerMapper} */
 	readonly evalHandler?: BuiltInEvalName
 }
@@ -42,7 +43,7 @@ export interface BuiltInFunctionDefinition<BuiltInProcessor extends keyof typeof
 export interface BuiltInReplacementDefinition extends BaseBuiltInDefinition {
 	readonly type:     'replacement';
 	readonly suffixes: ('<<-' | '<-')[];
-	readonly config:   { readIndices: boolean, constructName?: 's7' };
+	readonly config:   BuiltInFnInfo & { readIndices: boolean, constructName?: 's7' };
 }
 
 export type BuiltInDefinition<T extends keyof typeof BuiltInProcessorMapper = keyof typeof BuiltInProcessorMapper> = BuiltInConstantDefinition<unknown> | BuiltInFunctionDefinition<T> | BuiltInReplacementDefinition;

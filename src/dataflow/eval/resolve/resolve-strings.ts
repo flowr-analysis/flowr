@@ -86,7 +86,7 @@ function dirname(path: string): string {
 }
 
 /** the one-string-argument builtins {@link resolveAsStringFn} folds, together with the name R gives that argument */
-const StringFns = {
+export const StringFns = {
 	basename: { arg: 'path', fold: basename },
 	dirname:  { arg: 'path', fold: dirname },
 	toupper:  { arg: 'x', fold: (s: string) => s.toUpperCase() },

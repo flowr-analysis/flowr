@@ -17,6 +17,9 @@ import { Identifier } from '../dataflow/environments/identifier';
 import { VertexType } from '../dataflow/graph/vertex';
 import { FunctionArgument, type DataflowGraph } from '../dataflow/graph/graph';
 import { Dataflow } from '../dataflow/graph/df-helper';
+import { getOriginInDfg, OriginType } from '../dataflow/origin/dfg-get-origin';
+import { AttachedBasePackages, baseRExportOwner } from '../util/r-base-packages';
+import { collectScopeDefinedNames, isDefinedInEnclosingScope, isNonStandardEvaluated } from '../linter/rules/undefined-symbol-util';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { S7SyntheticFunArgSuffix } from '../dataflow/internal/process/functions/call/built-in/built-in-s-seven-new-generic';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from './context/flowr-analyzer-dependencies-context';
@@ -284,6 +287,31 @@ function isSyntheticArgument(arg: FunctionArgument): boolean {
 	return !FunctionArgument.isEmpty(arg) && String(arg.nodeId).endsWith(S7SyntheticFunArgSuffix);
 }
 
+/** record one call of `fn` into `pkgUsage`: union its named argument names and keep one representative per call shape */
+function recordCallUsage(pkgUsage: PackageUsage, fn: string, rawArgs: readonly FunctionArgument[]): void {
+	let entry = pkgUsage.get(fn);
+	if(entry === undefined) {
+		entry = { named: new Set(), calls: new Map() };
+		pkgUsage.set(fn, entry);
+	}
+	const args = rawArgs.some(isSyntheticArgument) ? rawArgs.filter(a => !isSyntheticArgument(a)) : rawArgs;
+	const named: string[] = [];
+	let positional = 0;
+	for(const arg of args) {
+		if(FunctionArgument.isNamed(arg)) {
+			entry.named.add(arg.name);
+			named.push(arg.name);
+		} else if(FunctionArgument.isPositional(arg)) {
+			positional++;
+		}
+	}
+	// dedupe by call shape: named names + positional count
+	const key = named.sort().join(',') + '#' + positional;
+	if(!entry.calls.has(key)) {
+		entry.calls.set(key, [...args]);
+	}
+}
+
 /** scan the dataflow graph for every call that resolves (via {@link Dataflow.qualify}) to a package export */
 export function collectUsage(graph: DataflowGraph, deps?: ReadOnlyFlowrAnalyzerDependenciesContext): Map<string, PackageUsage> {
 	const usage = new Map<string, PackageUsage>();
@@ -297,38 +325,90 @@ export function collectUsage(graph: DataflowGraph, deps?: ReadOnlyFlowrAnalyzerD
 		if(pkg === undefined) {
 			continue;
 		}
-		const fn = Identifier.getName(qualified);
 		let pkgUsage = usage.get(pkg);
 		if(pkgUsage === undefined) {
 			pkgUsage = new Map();
 			usage.set(pkg, pkgUsage);
 		}
-		let entry = pkgUsage.get(fn);
-		if(entry === undefined) {
-			entry = { named: new Set(), calls: new Map() };
-			pkgUsage.set(fn, entry);
-		}
-		const args = vertex.args.some(isSyntheticArgument) ? vertex.args.filter(a => !isSyntheticArgument(a)) : vertex.args;
-		const named: string[] = [];
-		let positional = 0;
-		for(const arg of args) {
-			if(FunctionArgument.isNamed(arg)) {
-				entry.named.add(arg.name);
-				named.push(arg.name);
-			} else if(FunctionArgument.isPositional(arg)) {
-				positional++;
-			}
-		}
-		// dedupe by call shape: named names + positional count
-		const key = named.sort().join(',') + '#' + positional;
-		if(!entry.calls.has(key)) {
-			entry.calls.set(key, [...args]);
-		}
+		recordCallUsage(pkgUsage, Identifier.getName(qualified), vertex.args);
 	}
 	if(deps) {
 		addClassOwnershipUsage(usage, deps, graph);
 	}
 	return usage;
+}
+
+/** options for {@link collectOrphanUsage} */
+export interface OrphanUsageOptions {
+	/** the analyzed project's own namespace, never inferred as one of its own orphan dependencies */
+	readonly self?:             string;
+	/** flowR's curated map of a builtin-modeled library function to its package (e.g. `ggplot` to `ggplot2`), the authoritative disambiguator when several packages export the name */
+	readonly builtinLibraryOf?: (name: string) => string | undefined;
+}
+
+/**
+ * Fold the analyzed code's *orphan* calls into `usage` and report which functions implicated each **unknown**
+ * package. An orphan is a bare call (`ggplot()`) whose name is not bound to a local/parameter/closure/import
+ * definition and is not a default-attached base export, but is exported by exactly one signature-database package.
+ * Such a call never qualifies to `pkg::fn`, so {@link collectUsage} is blind to it (even when flowR models the
+ * function as a builtin, as it does for `ggplot`), yet it pins the package's version just as a qualified call
+ * would; folding it into `usage` makes the package a guess target. The returned map lists, per package the project
+ * does not already declare or load (`isKnown` is `false`), the orphan function names that pointed at it (e.g.
+ * `ggplot2` from `ggplot()`) -- a note for a downstream handler to attach the library, since the symbol would be
+ * undefined were the package not loaded. Disambiguation is `options.builtinLibraryOf` (flowR's curated map, e.g.
+ * `ggplot` to `ggplot2`, authoritative even when several packages re-export the name), else the sole database
+ * exporter; a still-ambiguous name would explode the guess and is skipped, as are quoted (NSE) uses and
+ * forward-referenced closures.
+ */
+export function collectOrphanUsage(graph: DataflowGraph, deps: ReadOnlyFlowrAnalyzerDependenciesContext, usage: Map<string, PackageUsage>, isKnown: (pkg: string) => boolean, options: OrphanUsageOptions = {}): Map<string, Set<string>> {
+	const { self, builtinLibraryOf } = options;
+	const orphanFunctions = new Map<string, Set<string>>();
+	const scopeDefined = collectScopeDefinedNames(graph);
+	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
+		// an anonymous callee, or an already-qualified `pkg::fn` (handled by collectUsage)
+		if(vertex.origin === 'unnamed' || Identifier.getNamespace(vertex.name) !== undefined) {
+			continue;
+		}
+		const name = Identifier.getName(vertex.name);
+		// a call bound to a real definition (local, parameter, closure, or import) *is* that definition, not a package
+		// export; only an unresolved or builtin-modeled call can be an orphan (flowR models e.g. `ggplot` as a builtin)
+		if(getOriginInDfg(graph, id)?.some(o => o.type === OriginType.FunctionCallOrigin) === true) {
+			continue;
+		}
+		// a bare name from a default-attached base package (or a base primitive) is defined without a library() call
+		const baseOwner = baseRExportOwner(name);
+		if(baseOwner !== undefined && AttachedBasePackages.includes(baseOwner)) {
+			continue;
+		}
+		// a quoted use, or a forward-referenced closure binding flowR did not statically link, is not a real orphan call
+		if(isNonStandardEvaluated(graph, id) || isDefinedInEnclosingScope(graph, scopeDefined, id, name)) {
+			continue;
+		}
+		// flowR's curated map disambiguates a name several packages export (ggplot to ggplot2); otherwise attribute only
+		// when exactly one database package exports the name (a still-ambiguous name would explode the guess)
+		const mapped = builtinLibraryOf?.(name);
+		const providers = deps.packagesExporting(name).filter(p => p !== self);
+		const pkg = mapped !== undefined && mapped !== self ? mapped : providers.length === 1 ? providers[0] : undefined;
+		if(pkg === undefined) {
+			continue;
+		}
+		let pkgUsage = usage.get(pkg);
+		if(pkgUsage === undefined) {
+			pkgUsage = new Map();
+			usage.set(pkg, pkgUsage);
+		}
+		recordCallUsage(pkgUsage, name, vertex.args);
+		// a package the project already declares or loads is a normal target, not an orphan needing attachment
+		if(!isKnown(pkg)) {
+			let fns = orphanFunctions.get(pkg);
+			if(fns === undefined) {
+				fns = new Set();
+				orphanFunctions.set(pkg, fns);
+			}
+			fns.add(name);
+		}
+	}
+	return orphanFunctions;
 }
 
 /** the dated releases + base-R core releases + latest of a package, ascending by R-version order */

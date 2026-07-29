@@ -51,7 +51,7 @@ function logicalValue(value: boolean): Value {
 }
 
 /** R rounds `%%` and `%/%` towards `-Inf`, unlike the JS `%` */
-const ArithmeticOps = {
+export const ArithmeticOps = {
 	'+':   (a: number, b: number) => a + b,
 	'-':   (a: number, b: number) => a - b,
 	'*':   (a: number, b: number) => a * b,
@@ -103,7 +103,7 @@ function roundHalfEven(x: number): number {
 }
 
 /** the one-argument math builtins {@link resolveAsMath} folds, all of which R names their argument `x` */
-const MathFns = {
+export const MathFns = {
 	abs:     Math.abs,
 	sqrt:    Math.sqrt,
 	floor:   Math.floor,
@@ -131,7 +131,7 @@ export function resolveAsMath(args: BuiltInEvalHandlerArgs): Value {
 }
 
 /** `strings` marks the operators that also fold for two strings; the ordering ones do not, as R compares them by locale collation */
-const ComparisonOps = {
+export const ComparisonOps = {
 	'==': { apply: (a: number | string, b: number | string) => a === b, strings: true },
 	'!=': { apply: (a: number | string, b: number | string) => a !== b, strings: true },
 	'<':  { apply: (a: number | string, b: number | string) => a < b, strings: false },
@@ -158,7 +158,7 @@ export function resolveAsComparison(args: BuiltInEvalHandlerArgs): Value {
 }
 
 /** `decidedBy` is the lhs that fixes the result of the short-circuiting `&&`/`||` on its own; `&`/`|` vectorize, so they need both sides */
-const LogicalOps = {
+export const LogicalOps = {
 	'&&': { apply: (a: boolean, b: boolean) => a && b, decidedBy: false },
 	'||': { apply: (a: boolean, b: boolean) => a || b, decidedBy: true },
 	'&':  { apply: (a: boolean, b: boolean) => a && b, decidedBy: undefined },

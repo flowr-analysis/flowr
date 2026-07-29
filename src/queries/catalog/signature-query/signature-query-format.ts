@@ -69,6 +69,22 @@ export interface SignatureFunctionView {
 	readonly s3method?:  { readonly generic: string, readonly class: string, readonly package: string };
 	/** a mermaid.live link visualizing the transitive call graph from this function (only when requested with `--cg`) */
 	readonly callGraph?: string;
+	/** what flowR itself states about the function, from the built-in environment of the analysis */
+	readonly flowr?:     SignatureFlowrView;
+}
+
+/**
+ * What flowR knows about a function on its own, next to what the database records: the properties of the
+ * call and what it uses each argument for. Read from the built-in environment of the analysis, so a
+ * configured or overwritten built-in is what shows up here.
+ */
+export interface SignatureFlowrView {
+	/** the {@link CallProp} names the built-in definition carries, like `pure` or `reads` */
+	readonly props:       readonly string[];
+	/** the {@link ArgProp} names per parameter, for the parameters flowR says something about */
+	readonly args?:       readonly { readonly name: string, readonly roles: readonly string[] }[];
+	/** flowR's own parameter names, only present when they disagree with the ones the database records */
+	readonly parameters?: readonly string[];
 }
 
 /** one declared dependency of a package */

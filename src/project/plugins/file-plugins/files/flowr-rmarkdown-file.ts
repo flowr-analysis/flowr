@@ -9,10 +9,10 @@ import type { FlowrAnalyzerContext } from '../../../context/flowr-analyzer-conte
 import { findSource } from '../../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 
 /**
- * This decorates a text file and parses its contents as a R Markdown file.
+ * This decorates a text file and parses its contents as an R Markdown file.
  * Finally, it provides access to the single cells, and all cells fused together as one R file.
  */
-export class FlowrRMarkdownFile extends FlowrFile<string> {
+export class FlowrRMarkdownFile extends FlowrFile {
 	private data?:       RmdInfo;
 	private mergedCode?: string;
 
@@ -92,7 +92,7 @@ export class FlowrRMarkdownFile extends FlowrFile<string> {
 
 			const rawChildFile = this.context.files.getFileByPath(childPath[0]) as FlowrFileProvider<string>;
 			if(rawChildFile !== undefined) {
-				block.code = FlowrRMarkdownFile.from(rawChildFile, this.context).content();
+				block.code = FlowrRMarkdownFile.from(rawChildFile, this.context).content().toString();
 			} else {
 				log.warn(`Child file '${childPath[0]}' of '${this.path()}' did not load as RMD.`);
 			}

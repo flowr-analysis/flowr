@@ -4,7 +4,7 @@ import type {
 	RParseRequest,
 	RParseRequestFromFile } from '../../r-bridge/retriever';
 import { isParseRequest } from '../../r-bridge/retriever';
-import { guard } from '../../util/assert';
+import { assertUnreachable, guard } from '../../util/assert';
 import type {
 	FlowrAnalyzerLoadingOrderContext,
 	ReadOnlyFlowrAnalyzerLoadingOrderContext
@@ -25,6 +25,11 @@ import type { FlowrNamespaceFile } from '../plugins/file-plugins/files/flowr-nam
 import type { FlowrRProjectFile } from '../plugins/file-plugins/files/flowr-rproject-file';
 import type { ProjectKind } from './project-kind';
 import { classifyProjectKind, resolveClassifyOptions, type ContentReader } from './classify-project-kind';
+import { FlowrAnalyzer } from '../flowr-analyzer';
+import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
+import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
+import { InvalidationEventType } from '../cache/flowr-cache';
+
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
 
@@ -158,7 +163,7 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
  * If you are interested in inspecting these files, refer to {@link ReadOnlyFlowrAnalyzerFilesContext}.
  * Plugins, however, can use this context directly to modify files.
  */
-export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RProjectAnalysisRequest, (RParseRequest | FlowrFile<string>)[], FlowrAnalyzerProjectDiscoveryPlugin> implements ReadOnlyFlowrAnalyzerFilesContext {
+export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RProjectAnalysisRequest, (RParseRequest | FlowrFile<string>)[], FlowrAnalyzerProjectDiscoveryPlugin> implements ReadOnlyFlowrAnalyzerFilesContext, InvalidationEventReceiver {
 	public readonly name = 'flowr-analyzer-files-context';
 
 	public readonly loadingOrder:      FlowrAnalyzerLoadingOrderContext;
@@ -166,6 +171,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	private files:                     Map<FilePath, FlowrFileProvider> = new Map<FilePath, FlowrFileProvider>();
 	private inlineFiles:               FlowrFileProvider[] = [];
 	private readonly fileLoaders:      readonly FlowrAnalyzerFilePlugin[];
+	private readonly context:          FlowrAnalyzerContext;
 	/** these are all the paths of files that have been considered by the dataflow graph (even if not added) */
 	private readonly consideredFiles:  string[] = [];
 	/** User-registered project discovery plugins; if non-empty, they replace the default. */
@@ -183,12 +189,14 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	private rootResolved      = false;
 
 	constructor(
+		context: FlowrAnalyzerContext,
 		loadingOrder: FlowrAnalyzerLoadingOrderContext,
 		plugins: readonly FlowrAnalyzerProjectDiscoveryPlugin[],
 		fileLoaders: readonly FlowrAnalyzerFilePlugin[]
 	) {
 		super(loadingOrder.getAttachedContext(), FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin(), []);
 		this.discoveryPlugins = plugins;
+		this.context = context;
 		this.fileLoaders = [...fileLoaders, FlowrAnalyzerFilePlugin.defaultPlugin()];
 		this.loadingOrder = loadingOrder;
 	}
@@ -218,6 +226,21 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	public relativePath(filePath: string): string {
 		const root = this.root();
 		return root === undefined ? filePath : relativeTo(root, filePath);
+	}
+
+	receive(event: InvalidationEvent): void {
+		const type = event.type;
+		switch(type) {
+			case InvalidationEventType.Full:
+				this.reset();
+				break;
+			case InvalidationEventType.SingleFileInvalidate:
+				// only the content of a known file changed, so the file set stays valid -> nothing to do.
+				// revisit once we add dedicated FileAdded / FileRemoved events.
+				break;
+			default:
+				assertUnreachable(type);
+		}
 	}
 
 	/**
@@ -368,6 +391,10 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 */
 	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile, roles?: readonly FileRole[]) {
 		const f = this.fileLoadPlugins(wrapFile(file, roles));
+
+		f.addOnInvalidate(c => {
+			this.context.analyzer?.receive(c);
+		});
 
 		if(f.path() === FlowrFile.INLINE_PATH) {
 			this.inlineFiles.push(f);

@@ -36,6 +36,18 @@ import { FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-co
 import type { ReadOnlyFlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
 import { FlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
 import type { FlowrAnalyzer } from '../flowr-analyzer';
+import type {
+	ReadOnlyFlowrAnalyzerIncrementalAnalysisContext
+} from './flowr-analyzer-incremental-analysis-context';
+import {
+	FlowrAnalyzerIncrementalAnalysisContext
+} from './flowr-analyzer-incremental-analysis-context';
+import type {
+	InvalidationEvent,
+	InvalidationEventReceiver } from '../cache/flowr-cache';
+import {
+	InvalidationEventType
+} from '../cache/flowr-cache';
 import {
 	FlowrAnalyzerGasContext,
 	type ReadOnlyFlowrAnalyzerGasContext
@@ -56,6 +68,8 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	readonly deps:             ReadOnlyFlowrAnalyzerDependenciesContext;
 	/** Environment information used during analysis. */
 	readonly env:              ReadOnlyFlowrAnalyzerEnvironmentContext;
+	/** The incremental context provides potential information for the next incremental analysis run */
+	readonly inc:              ReadOnlyFlowrAnalyzerIncrementalAnalysisContext;
 	/** The configuration options used by the analyzer. */
 	readonly config:           FlowrConfig;
 	/** class names of plugins that activated (produced a result) since the last reset; only filled when `config.repl.showPlugins` is set */
@@ -90,11 +104,12 @@ export interface ReadOnlyFlowrAnalyzerContext {
  * {@link deps.getDependency}.
  * If you are just interested in inspecting the context, you can use {@link ReadOnlyFlowrAnalyzerContext} instead (e.g., via {@link inspect}).
  */
-export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
+export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, InvalidationEventReceiver {
 	public readonly meta:  FlowrAnalyzerMetaContext;
 	public readonly files: FlowrAnalyzerFilesContext;
 	public readonly deps:  FlowrAnalyzerDependenciesContext;
 	public readonly env:   FlowrAnalyzerEnvironmentContext;
+	public readonly inc:   FlowrAnalyzerIncrementalAnalysisContext;
 	/** class names of plugins that activated since the last reset; only filled when `config.repl.showPlugins` is set */
 	public readonly activatedPlugins = new Set<string>();
 	public readonly gas:   FlowrAnalyzerGasContext;
@@ -211,9 +226,10 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		this.baseConfig = config;
 		this._config = config;
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
-		this.files = new FlowrAnalyzerFilesContext(loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
+		this.files = new FlowrAnalyzerFilesContext(this, loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
 			(plugins.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
-		this.env   = new FlowrAnalyzerEnvironmentContext(this);
+		this.env = new FlowrAnalyzerEnvironmentContext(this);
+		this.inc = new FlowrAnalyzerIncrementalAnalysisContext(this);
 		const functions = new FlowrAnalyzerFunctionsContext(this);
 		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 		// the plugins contributing the metadata are the ones the dependency context runs on demand
@@ -293,6 +309,14 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		this.meta.reset();
 		this.gas.reset();
 		this.activatedPlugins.clear();
+		this.receive( { type: InvalidationEventType.Full });
+	}
+
+	receive(event: InvalidationEvent): void {
+		this.meta.receive(event);
+		this.files.receive(event);
+		this.deps.receive(event);
+		this.inc.receive(event);
 	}
 }
 

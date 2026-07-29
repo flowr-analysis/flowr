@@ -1,13 +1,38 @@
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
 import { withTreeSitter } from '../../_helper/shell';
-import { describe } from 'vitest';
+import { assert, describe, test } from 'vitest';
 import type {
 	InputSourcesQuery,
 	InputSourcesQueryResult
 } from '../../../../src/queries/catalog/input-sources-query/input-sources-query-format';
+import { DefaultInputClassifierConfig } from '../../../../src/queries/catalog/input-sources-query/input-sources-query-format';
 import { InputTraceType, InputType } from '../../../../src/queries/catalog/input-sources-query/simple-input-classifier';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { BuiltInIndex } from '../../../../src/dataflow/environments/query-fn-props';
+import { ArgProp, CallProp } from '../../../../src/dataflow/environments/built-in-props';
+import { Identifier } from '../../../../src/dataflow/environments/identifier';
+
+describe('The default classifier configuration follows the built-in labels', () => {
+	const builtIns = BuiltInIndex.default();
+	test(label('everything flowR calls pure derives its result from its arguments', ['name-normal'], ['other']), () => {
+		const derived = new Set((DefaultInputClassifierConfig[InputTraceType.Pure] as readonly Identifier[]).map(Identifier.toString));
+		for(const pure of builtIns.pure) {
+			assert.isTrue(derived.has(Identifier.toString(pure)), `${Identifier.toString(pure)} is pure but not classified as deriving from its arguments`);
+		}
+	});
+	test(label('the narrowing functions are the ones labelled `Narrows`', ['name-normal'], ['other']), () => {
+		const narrowing = DefaultInputClassifierConfig.narrowing ?? [];
+		assert.deepStrictEqual(narrowing.map(n => Identifier.toString(n.call)).sort(),
+			builtIns.with(CallProp.Narrows).map(Identifier.toString).sort());
+		const matchArg = narrowing.find(n => Identifier.getName(n.call) === 'match.arg');
+		assert.deepStrictEqual(matchArg, { call: Identifier.from(['match.arg', 'base']), argName: 'choices', argIdx: 1 },
+			'the `Bounds` parameter is what bounds the result');
+		assert.isUndefined(narrowing.find(n => Identifier.getName(n.call) === 'length')?.argIdx,
+			'a narrowing call without a `Bounds` parameter is bounded on its own');
+		assert.deepStrictEqual(builtIns.params(ArgProp.Bounds).map(p => Identifier.getName(p.call)), ['match.arg']);
+	});
+});
 
 describe.sequential('Input Source Test', withTreeSitter(parser => {
 	function testQuery(name: string, code: string, query: readonly InputSourcesQuery[], expectedOutput: InputSourcesQueryResult['results']) {

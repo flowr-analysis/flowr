@@ -38,10 +38,8 @@ import { contextFromInput } from '../project/context/flowr-analyzer-context';
 import { FlowrAnalyzerGasContext } from '../project/context/flowr-analyzer-gas-context';
 import { FlowrAnalyzerGasPlugin } from '../project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { GasFeatureKey, GasLevel } from '../gas';
-import { DefaultBuiltinConfig } from '../dataflow/environments/default-builtin-config';
-import type { BuiltInDefinition } from '../dataflow/environments/built-in-config';
-import { ArgProp, type BuiltInFnInfo, CallProp, SigDbInferable } from '../dataflow/environments/built-in-props';
-import { builtInNames, builtInsWith, inferFnProps } from '../dataflow/environments/query-fn-props';
+import { ArgProp, CallProp, ExclusiveCallProps, SigDbInferable } from '../dataflow/environments/built-in-props';
+import { BuiltInIndex, inferFnProps } from '../dataflow/environments/query-fn-props';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import { SemVer } from 'semver';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
@@ -118,28 +116,53 @@ async function gasPluginExample() {
 		.build();
 }
 
-/** Counts how many built-ins carry each {@link CallProp} and each {@link ArgProp}, straight from the config. */
-function builtInPropsSummary(ctx: GeneralDocContext): string {
-	const fns = DefaultBuiltinConfig.filter(d => d.type !== 'constant');
-	const infoOf = (d: BuiltInDefinition) => (d as { config?: BuiltInFnInfo }).config;
-	const count = (ds: readonly BuiltInDefinition[]) => ds.reduce((n, d) => n + builtInNames(d).length, 0);
-	const sigs = fns.filter(d => infoOf(d)?.sig !== undefined);
-	/* what a bit means is a hover, and bits nothing carries yet are left out */
-	const list = (type: 'CallProp' | 'ArgProp', of: (bit: number) => number) =>
-		Object.entries(type === 'CallProp' ? CallProp : ArgProp)
+/** the names of the {@link CallProp} bits that make up a mask, as inline code */
+function propNames(mask: number): string {
+	return Object.entries(CallProp).filter(([, b]) => typeof b === 'number' && (b & mask) !== 0)
+		.map(([n]) => `\`${n}\``).join(', ');
+}
+
+/**
+ * A table per property enum, taken straight from the configuration: what each bit means (its own doc comment),
+ * how many built-ins carry it, and which of them the signature database can state on its own.
+ */
+function builtInPropsTables(ctx: GeneralDocContext): string {
+	const index = BuiltInIndex.default();
+	/* the doc comment of a bit is its explanation, flattened to fit a table cell; bits nothing carries are left out */
+	const table = (type: 'CallProp' | 'ArgProp', of: (bit: number) => number) => [
+		`| ${type === 'CallProp' ? 'Call property' : 'Argument role'} | Built-ins | Meaning |`,
+		'| :-- | --: | :-- |',
+		...Object.entries(type === 'CallProp' ? CallProp : ArgProp)
 			.filter(([, bit]) => typeof bit === 'number' && of(bit) > 0)
 			.map(([name, bit]) => {
-				const doc = ctx.doc(`${type}::${name}`).replaceAll(/<[^>]*>/g, '').replaceAll(/\s+/g, ' ').replaceAll('"', "'").trim();
+				/* a `{@link}` has already become an anchor, so dropping the tags leaves the bare name and a stray space */
+				const doc = ctx.doc(`${type}::${name}`).replaceAll(/<[^>]*>/g, '').replaceAll(/\s+/g, ' ')
+					.replaceAll(/ ([),.;])/g, '$1').replaceAll('|', '\\|').trim();
 				const db = type === 'CallProp' && ((bit as number) & SigDbInferable) !== 0 ? '<sup>db</sup>' : '';
-				return `<span title="${doc}">\`${name}\`${db} ${of(bit as number)}</span>`;
+				return `| \`${name}\`${db} | ${of(bit as number)} | ${doc} |`;
 			})
-			.join(' &middot; ');
+	].join('\n');
 
-	return `Hover a name for what it means, <sup>db</sup> marks the ones the ${ctx.linkPage('wiki/Signature Database', 'signature database')} states for
-any package function (${ctx.link(inferFnProps.name)} reads them off, and carries what a function calls over to it):
+	return `${details('What each call property means', `<sup>db</sup> marks the bits the ${ctx.linkPage('wiki/Signature Database', 'signature database')}
+states for any package function on its own (${ctx.link(inferFnProps.name)} reads them off an entry and carries what a
+function calls over to the function calling it).
 
-* ${ctx.link('CallProp')}: ${list('CallProp', bit => builtInsWith(bit).length)}
-* ${ctx.link('ArgProp')}: ${list('ArgProp', bit => count(sigs.filter(d => infoOf(d)?.sig?.some(([, p]) => (p & bit) !== 0))))}
+${table('CallProp', bit => index.with(bit).length)}
+
+Most of these combine freely. The exceptions are ${ctx.link('ExclusiveCallProps')}, which a test checks the whole
+configuration against:
+
+${ExclusiveCallProps.map(([bit, forbidden]) => `* \`${CallProp[bit]}\` rules out ${propNames(forbidden)}`).join('\n')}
+
+Two pairs read like refinements but are not: \`TempFile\` does not imply \`File\` (making up a path touches no file
+system, so a call doing both states both), and \`Reads\`/\`Writes\` say what happens to the resource an
+\`ArgProp.Resource\` argument names, so they only ever appear next to a resource bit.`)}
+
+${details('What each argument role means', `A role is stated per parameter in the ${ctx.link('FnSig')} of a built-in, in the order R declares
+them, with \`...\` covering every position from where it appears. The count is how many built-ins have at least one
+parameter in that role.
+
+${table('ArgProp', bit => new Set(index.params(bit).map(p => p.call)).size)}`)}
 
 So \`lapply\` is pure on its own but runs what it is handed, and says which argument that is:
 
@@ -483,10 +506,10 @@ or ${ctx.link(processForLoop)} which handles the primitive for loop construct (w
 
 Besides the processor, an entry states what the function does with ${ctx.link('BuiltInFnInfo')}: its ${ctx.link('CallProp')} bits
 say what the call as a whole does, its ${ctx.link('FnSig')} says what each argument is used for (in the order R declares them,
-with \`...\` covering every position from where it appears). Anything you add there is picked up by ${ctx.link(builtInsWith.name)},
+with \`...\` covering every position from where it appears). Anything you add there is picked up by ${ctx.link(BuiltInIndex.name)},
 which is how the ${ctx.linkPage('wiki/Query API', 'input-sources query')} learns which functions bring in data of their own.
 
-${builtInPropsSummary(ctx)}
+${builtInPropsTables(ctx)}
 
 Just as an example, we want to have a look at the ${ctx.link(processRepeatLoop)} function, as it is one of the simplest built-in processors
 we have:

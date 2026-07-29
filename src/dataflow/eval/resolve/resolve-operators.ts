@@ -6,9 +6,6 @@ import { isRNumberValue, unliftRValue } from '../../../util/r-value';
 import type { BuiltInEvalHandlerArgs } from '../../environments/built-in';
 import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-constants';
 import { Top, type Value } from '../values/r-value';
-import { liftScalar } from '../values/scalar/scalar-constants';
-import { intervalFrom } from '../values/intervals/interval-constants';
-import { vectorFrom } from '../values/vectors/vector-constants';
 import { valueSetGuard } from '../values/general';
 import { resolveIdToValue } from './alias-tracking';
 
@@ -48,86 +45,6 @@ function binary<T>(node: RNodeWithParent, ops: Record<string, T>): { op: T, lhs:
 
 function logicalValue(value: boolean): Value {
 	return value ? ValueLogicalTrue : ValueLogicalFalse;
-}
-
-/** R rounds `%%` and `%/%` towards `-Inf`, unlike the JS `%` */
-export const ArithmeticOps = {
-	'+':   (a: number, b: number) => a + b,
-	'-':   (a: number, b: number) => a - b,
-	'*':   (a: number, b: number) => a * b,
-	'/':   (a: number, b: number) => a / b,
-	'^':   (a: number, b: number) => a ** b,
-	'**':  (a: number, b: number) => a ** b,
-	'%%':  (a: number, b: number) => a - Math.floor(a / b) * b,
-	'%/%': (a: number, b: number) => Math.floor(a / b)
-} as const satisfies Record<string, (a: number, b: number) => number>;
-
-/**
- * Resolves an arithmetic operator to a {@link Value} number: the unary `+`/`-` on a number or number vector, and the
- * binary {@link ArithmeticOps} on two number scalars. Anything else (a vector operand, `NA`, a non-finite result) is Top.
- */
-export function resolveAsArithmetic(args: BuiltInEvalHandlerArgs): Value {
-	const node = args.node;
-	if(node.type === RType.UnaryOp) {
-		if(node.operator !== '-' && node.operator !== '+') {
-			return Top;
-		}
-		const sign = node.operator === '-' ? -1 : 1;
-		const value = unliftRValue(resolveIdToValue(node.operand, args));
-		if(isRNumberValue(value)) {
-			return value.complexNumber ? Top : intervalFrom(value.num * sign, value.num * sign);
-		}
-		return Array.isArray(value) && value.every(isRNumberValue) ?
-			vectorFrom(value.map(e => liftScalar({ ...e, num: e.num * sign }))) : Top;
-	}
-	const bin = binary(node, ArithmeticOps);
-	if(bin === undefined) {
-		return Top;
-	}
-	const lhs = unliftRValue(resolveIdToValue(bin.lhs, args));
-	const rhs = unliftRValue(resolveIdToValue(bin.rhs, args));
-	if(!isRNumberValue(lhs) || !isRNumberValue(rhs) || lhs.complexNumber || rhs.complexNumber) {
-		return Top;
-	}
-	const num = bin.op(lhs.num, rhs.num);
-	return Number.isFinite(num) ? intervalFrom(num, num) : Top;
-}
-
-/** R breaks a tie to the even neighbor, unlike `Math.round`, which always goes up */
-function roundHalfEven(x: number): number {
-	const below = Math.floor(x);
-	if(x - below !== 0.5) {
-		return Math.round(x);
-	}
-	return below % 2 === 0 ? below : below + 1;
-}
-
-/** the one-argument math builtins {@link resolveAsMath} folds, all of which R names their argument `x` */
-export const MathFns = {
-	abs:     Math.abs,
-	sqrt:    Math.sqrt,
-	floor:   Math.floor,
-	ceiling: Math.ceil,
-	round:   roundHalfEven
-} as const satisfies Record<string, (x: number) => number>;
-
-/**
- * Resolves a {@link MathFns} call on a single number scalar, with a logical counting as its `0`/`1`.
- * A further argument (as in `round(x, digits)`) or a non-finite result (`sqrt(-1)`) stays Top.
- */
-export function resolveAsMath(args: BuiltInEvalHandlerArgs): Value {
-	const node = args.node;
-	if(node.type !== RType.FunctionCall || !node.named || node.arguments.length !== 1) {
-		return Top;
-	}
-	const [arg] = node.arguments;
-	const fold = MathFns[Identifier.getName(node.functionName.content) as keyof typeof MathFns];
-	if(fold === undefined || arg === EmptyArgument || arg.value === undefined || (arg.name !== undefined && arg.name.content !== 'x')) {
-		return Top;
-	}
-	const value = operand(arg.value, args);
-	const num = typeof value === 'number' ? fold(value) : undefined;
-	return num !== undefined && Number.isFinite(num) ? intervalFrom(num, num) : Top;
 }
 
 /** `strings` marks the operators that also fold for two strings; the ordering ones do not, as R compares them by locale collation */

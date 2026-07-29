@@ -71,6 +71,13 @@ export interface SignatureFunctionView {
 	readonly callGraph?: string;
 	/** what flowR itself states about the function, from the built-in environment of the analysis */
 	readonly flowr?:     SignatureFlowrView;
+	/**
+	 * whether the whole view comes from flowR's built-in definition because the database has no entry: the
+	 * primitives and operators (`+`, `[`, `if`) that appear in no package's sources, and anything a flowR
+	 * configuration adds. Everything the database would contribute (defaults, callees, location) is then empty,
+	 * and since flowR records no defaults, every {@link SignatureParameterView.required} reads `false`.
+	 */
+	readonly flowrOnly?: boolean;
 }
 
 /**
@@ -81,8 +88,10 @@ export interface SignatureFunctionView {
 export interface SignatureFlowrView {
 	/** the {@link CallProp} names the built-in definition carries, like `pure` or `reads` */
 	readonly props:       readonly string[];
-	/** the {@link ArgProp} names per parameter, for the parameters flowR says something about */
+	/** the {@link ArgProp} names of every parameter flowR declares, in order; a parameter it says nothing about has no roles */
 	readonly args?:       readonly { readonly name: string, readonly roles: readonly string[] }[];
+	/** the parameter handed back as the result ({@link ArgProp.Alias}), which is what draws the `Returns` edge */
+	readonly returns?:    string;
 	/** flowR's own parameter names, only present when they disagree with the ones the database records */
 	readonly parameters?: readonly string[];
 }

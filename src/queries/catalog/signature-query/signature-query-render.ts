@@ -66,9 +66,14 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 	const generic = fn.s3generic ? `  ${color('S3 generic', Colors.Magenta, f, { style: FontStyles.Bold })}` : '';
 	result.push(`   ╰ ${color(fn.package, Colors.Cyan, f, { style: FontStyles.Bold })}::${bold(fn.name, f)}${fn.version ? ` ${color('v' + fn.version, Colors.Green, f)}` : ''}${generic}`);
 	result.push(`      ╰ ${renderSignature(f, fn)}`);
-	const tags = [fn.exported ? color('exported', Colors.Green, f) : color('internal', Colors.Yellow, f),
-		...fn.properties.filter(p => p !== 'exported').map(p => italic(p, f))];
-	result.push(`      ╰ ${tags.join('  ')}`);
+	if(fn.flowrOnly) {
+		// nothing below comes from the database, so say so instead of rendering its empty fields as facts
+		result.push(`      ╰ ${italic('only flowR knows this one, the signature database has no entry', f)}`);
+	} else {
+		const tags = [fn.exported ? color('exported', Colors.Green, f) : color('internal', Colors.Yellow, f),
+			...fn.properties.filter(p => p !== 'exported').map(p => italic(p, f))];
+		result.push(`      ╰ ${tags.join('  ')}`);
+	}
 	if(fn.file) {
 		const loc = `${fn.file}${fn.line !== undefined ? `:${fn.line}` : ''}`;
 		result.push(`      ╰ ${italic('source', f)}  ${fn.sourceUrl ? `${loc}  ${f.hyperlink(fn.sourceUrl, fn.sourceUrl)}` : loc}`);
@@ -84,13 +89,14 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 		result.push(`      ╰ ${italic('S3 method of', f)} ${color(`${fn.s3method.package}::${fn.s3method.generic}`, Colors.Magenta, f)} ${italic(`(class ${fn.s3method.class})`, f)}`);
 	}
 	if(fn.flowr) {
-		const args = (fn.flowr.args ?? []).map(a => `${a.name}: ${a.roles.join('+')}`);
+		const args = (fn.flowr.args ?? []).map(a => `${a.name}${a.roles.length > 0 ? `: ${a.roles.join('+')}` : ''}`);
 		const props = fn.flowr.props.map(p => color(p, Colors.Blue, f)).join(', ');
-		const line = [props, args.length > 0 ? italic(`(${args.join(', ')})`, f) : ''].filter(s => s !== '').join('  ');
+		const returns = fn.flowr.returns ? italic(`returns ${fn.flowr.returns}`, f) : '';
+		const line = [props, args.length > 0 ? italic(`(${args.join(', ')})`, f) : '', returns].filter(s => s !== '').join('  ');
 		if(line !== '') {
 			result.push(`      ╰ ${italic('flowR', f)}   ${line}`);
 		}
-		if(fn.flowr.parameters) {
+		if(fn.flowr.parameters && !fn.flowrOnly) {
 			result.push(`      ╰ ${italic('flowR', f)}   ${italic('reads it as', f)} ${bold(fn.name, f)}(${fn.flowr.parameters.join(', ')})`);
 		}
 	}

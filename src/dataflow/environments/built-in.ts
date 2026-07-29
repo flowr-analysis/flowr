@@ -47,8 +47,9 @@ import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
 import type { ResolveInfo } from '../eval/resolve/alias-tracking';
 import { resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
-import { resolveAsPaste, resolveAsStringFn } from '../eval/resolve/resolve-strings';
-import { resolveAsArithmetic, resolveAsComparison, resolveAsGroup, resolveAsLogical, resolveAsMath } from '../eval/resolve/resolve-operators';
+import { resolveAsStringFn } from '../eval/resolve/resolve-strings';
+import { resolveAsComparison, resolveAsGroup, resolveAsLogical } from '../eval/resolve/resolve-operators';
+import { resolveAsNumeric } from '../eval/resolve/resolve-numbers';
 import { BuiltInEvalName } from './built-in-eval-name';
 import type { VariableResolve } from '../../config';
 import type {
@@ -108,7 +109,6 @@ export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierRefere
 }
 
 export interface DefaultBuiltInProcessorConfiguration extends ForceArguments, BuiltInFnInfo {
-	readonly returnsNthArgument?:    number | 'last',
 	readonly cfg?:                   ExitPointType,
 	readonly readAllArguments?:      boolean,
 	/**
@@ -139,14 +139,13 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ returnsNthArgument, useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
+	{ useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	/* a signature states per argument what the individual options state for all of them at once */
 	const layout = sig !== undefined ? sigLayout(sig) : undefined;
 	if(layout !== undefined) {
 		forceArgs ??= (layout.any & ArgProp.Forced) !== 0 ? args.map((_, i) => (argProp(layout, i) & ArgProp.Forced) !== 0) : undefined;
 		nse ??= (layout.any & ArgProp.Nse) !== 0 ? argsWith(layout, args.length, ArgProp.Nse) : undefined;
-		returnsNthArgument ??= layout.alias >= 0 ? layout.alias : undefined;
 	}
 	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: useAsProcessor });
 	if(nse !== undefined) {
@@ -155,8 +154,8 @@ function defaultBuiltInProcessor<OtherInfo>(
 	if(keepArgumentOut) {
 		res.out = [...res.out, ...processedArguments.flatMap(arg => arg?.out ?? [])];
 	}
-	if(returnsNthArgument !== undefined) {
-		const arg = returnsNthArgument === 'last' ? processedArguments.at(-1) : processedArguments[returnsNthArgument];
+	if(layout !== undefined && layout.alias >= 0) {
+		const arg = processedArguments[layout.alias];
 		if(arg !== undefined) {
 			res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Returns);
 		}
@@ -291,11 +290,9 @@ export const BuiltInProcessorMapper = {
 export const BuiltInEvalHandlerMapper = {
 	[BuiltInEvalName.Vector]:     resolveAsVector,
 	[BuiltInEvalName.Seq]:        resolveAsSeq,
-	[BuiltInEvalName.Arithmetic]: resolveAsArithmetic,
+	[BuiltInEvalName.Numeric]:    resolveAsNumeric,
 	[BuiltInEvalName.Comparison]: resolveAsComparison,
 	[BuiltInEvalName.Logical]:    resolveAsLogical,
-	[BuiltInEvalName.Math]:       resolveAsMath,
-	[BuiltInEvalName.Paste]:      resolveAsPaste,
 	[BuiltInEvalName.StringFn]:   resolveAsStringFn,
 	[BuiltInEvalName.Group]:      resolveAsGroup
 } as const satisfies Record<BuiltInEvalName, BuiltInEvalHandler>;

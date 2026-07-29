@@ -7,17 +7,13 @@ export enum BuiltInEvalName {
 	Vector = 'eval:vector',
 	/** the sequence operator `:`, see {@link resolveAsSeq} */
 	Seq = 'eval:seq',
-	/** the unary and binary arithmetic operators, see {@link resolveAsArithmetic} */
-	Arithmetic = 'eval:arith',
+	/** every numeric operator and function, from `+` to `sqrt`, see {@link resolveAsNumeric} */
+	Numeric = 'eval:numeric',
 	/** the comparison operators, see {@link resolveAsComparison} */
 	Comparison = 'eval:cmp',
 	/** `!` and the binary logical operators, see {@link resolveAsLogical} */
 	Logical = 'eval:logical',
-	/** the one-argument math functions, see {@link resolveAsMath} */
-	Math = 'eval:math',
-	/** the string-joining calls, see {@link resolveAsPaste} */
-	Paste = 'eval:paste',
-	/** the one-string-argument functions like `basename` or `toupper`, see {@link resolveAsStringFn} */
+	/** every string function, from `paste` to `basename`, see {@link resolveAsStringFn} */
 	StringFn = 'eval:string-fn',
 	/** the grouping `(`, see {@link resolveAsGroup} */
 	Group = 'eval:group'

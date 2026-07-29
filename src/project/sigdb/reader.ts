@@ -111,6 +111,8 @@ export interface PackageSignatureSource {
 	packageNames(): string[];
 	/** whether the package is an R-core / base package (its versions are the R releases it shipped with) */
 	isBaseR(pkg: string): boolean;
+	/** how often the package was downloaded when the database was built, the popularity {@link SigDbPkgMeta} records */
+	downloads(pkg: string): number;
 	/** for a base package, the R versions it was part of core (ascending); `undefined` otherwise */
 	coreVersions(pkg: string): RVersion[] | undefined;
 	/** the release date of a package version (defaulting to the newest release), or `undefined` if unknown */
@@ -263,6 +265,9 @@ export class MergedSignatureSource implements PackageSignatureSource {
 	}
 	public isBaseR(pkg: string): boolean {
 		return this.sources.some(s => s.has(pkg) && s.isBaseR(pkg));
+	}
+	public downloads(pkg: string): number {
+		return Math.max(0, ...this.sources.map(s => s.downloads(pkg)));
 	}
 	public coreVersions(pkg: string): RVersion[] | undefined {
 		return this.sources.find(s => s.has(pkg))?.coreVersions(pkg);
@@ -537,6 +542,11 @@ export class SigDatabase implements PackageSignatureSource {
 	/** whether this is an R-core / base package (its versions are the R releases it shipped with; see {@link SigDbPkgMeta}) */
 	public isBaseR(pkg: string): boolean {
 		return this.index.meta[pkg]?.[3] === 1;
+	}
+
+	/** the download count recorded for the package, `0` when this source does not carry it */
+	public downloads(pkg: string): number {
+		return this.index.meta[pkg]?.[2] ?? 0;
 	}
 
 	/**
@@ -906,6 +916,12 @@ export class SigDatabaseSet implements PackageSignatureSource {
 			return meta[3] === 1;
 		}
 		return this.route(pkg).some(i => this.shard(i).isBaseR(pkg));
+	}
+
+	/** the download count of the package; O(1) via the hoisted metadata, so no shard has to be unpacked for it */
+	public downloads(pkg: string): number {
+		const meta = this.manifest.meta?.[pkg];
+		return meta ? meta[2] : Math.max(0, ...this.route(pkg).map(i => this.shard(i).downloads(pkg)));
 	}
 
 	/** the R versions a base package was part of core (ascending); `undefined` if not a base package */

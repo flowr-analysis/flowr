@@ -4,8 +4,9 @@ import { BuiltInEvalHandlerMapper } from '../../../../src/dataflow/environments/
 import { BuiltInEvalName } from '../../../../src/dataflow/environments/built-in-eval-name';
 import type { BuiltInFnInfo } from '../../../../src/dataflow/environments/built-in-props';
 import { CallProp, InputProps } from '../../../../src/dataflow/environments/built-in-props';
-import { ArithmeticOps, ComparisonOps, LogicalOps, MathFns } from '../../../../src/dataflow/eval/resolve/resolve-operators';
-import { PasteLikeCalls, StringFns } from '../../../../src/dataflow/eval/resolve/resolve-strings';
+import { ComparisonOps, LogicalOps } from '../../../../src/dataflow/eval/resolve/resolve-operators';
+import { NumericFns } from '../../../../src/dataflow/eval/resolve/resolve-numbers';
+import { StringFns } from '../../../../src/dataflow/eval/resolve/resolve-strings';
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import { label } from '../../_helper/label';
 
@@ -14,12 +15,10 @@ import { label } from '../../_helper/label';
  * name one it would silently answer `Top` for (or miss one it could have folded).
  */
 const FoldedBy: Record<BuiltInEvalName, readonly string[]> = {
-	[BuiltInEvalName.Arithmetic]: Object.keys(ArithmeticOps),
+	[BuiltInEvalName.Numeric]:    Object.keys(NumericFns),
 	[BuiltInEvalName.Comparison]: Object.keys(ComparisonOps),
 	/* `!` is the unary case the handler covers besides the binary operators */
 	[BuiltInEvalName.Logical]:    [...Object.keys(LogicalOps), '!'],
-	[BuiltInEvalName.Math]:       Object.keys(MathFns),
-	[BuiltInEvalName.Paste]:      Object.keys(PasteLikeCalls),
 	[BuiltInEvalName.StringFn]:   Object.keys(StringFns),
 	[BuiltInEvalName.Seq]:        [':'],
 	[BuiltInEvalName.Vector]:     ['c'],
@@ -42,9 +41,12 @@ describe('Built-in value folding', () => {
 		for(const { name, info } of folded) {
 			assert.notStrictEqual((info.props ?? 0) & CallProp.Pure, 0, `${name} is folded but does not claim to be pure`);
 			assert.strictEqual((info.props ?? 0) & InputProps, 0, `${name} is folded but brings in data of its own`);
-			const arg = StringFns[name as keyof typeof StringFns]?.arg ?? (name in MathFns ? 'x' : undefined);
-			if(arg !== undefined) {
-				assert.strictEqual(info.sig?.[0]?.[0], arg, `${name} declares another first parameter than its handler matches`);
+			/* the handlers match arguments by the parameter names they declare, so the signature has to use the same ones */
+			/* the handlers match arguments by the parameter names they declare, so the signature has to use the same ones */
+			const params: readonly string[] | undefined = StringFns[name as keyof typeof StringFns]?.params
+				?? NumericFns[name as keyof typeof NumericFns]?.params;
+			for(const [at, param] of (params ?? []).entries()) {
+				assert.strictEqual(info.sig?.[at]?.[0], param, `${name} declares another parameter ${at} than its handler matches`);
 			}
 		}
 	});

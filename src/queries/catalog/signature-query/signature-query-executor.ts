@@ -2,13 +2,17 @@ import { satisfies as semverSatisfies, validRange } from 'semver';
 import type { BasicQueryData } from '../../base-query-format';
 import type {
 	SignatureQuery, SignatureQueryResult, SignaturePackageView, SignatureFunctionView, SignatureDatabaseView,
-	SignatureMatchView, SignaturePackageMatch
+	SignatureMatchView, SignaturePackageMatch, SignatureFlowrView
 } from './signature-query-format';
 import { availableVersionEntries, getSharedSigSourceSync, SigDatabaseSet, type AvailableVersion, type PackageSignatureSource, type ShardStatus } from '../../../project/sigdb/reader';
 import { isDateBound, releaseDateBound } from '../../../project/sigdb/sigdb-version';
 import { DepType, DepTypeNames, type LibraryExports } from '../../../project/sigdb/schema';
 import { defaultSigDbPaths } from '../../../project/sigdb/manifest';
 import type { DecodedFunction } from '../../../project/sigdb/decode';
+import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
+import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
+import { ArgProp, CallProp } from '../../../dataflow/environments/built-in-props';
+import { Identifier } from '../../../dataflow/environments/identifier';
 import { RVersion } from '../../../util/r-version';
 import { baseRPackages, baseRExportOwner } from '../../../util/r-base-packages';
 import { Mermaid } from '../../../util/mermaid/mermaid';
@@ -194,6 +198,31 @@ function locationFields(pkg: string, fn: DecodedFunction, version: string | unde
 	};
 }
 
+/** the {@link CallProp}/{@link ArgProp} bits of `props`, lowercased, as the names to print */
+function propNames(props: number, of: Record<string, string | number>): string[] {
+	return Object.entries(of).filter(([, v]) => typeof v === 'number' && (props & v) !== 0).map(([k]) => k.toLowerCase());
+}
+
+/**
+ * What flowR states about `pkg::name` itself, resolved in `env` so that a configured built-in wins over the
+ * default one. The parameter names are only reported when they differ from the ones `sigParams` records.
+ */
+function flowrView(env: REnvironmentInformation | undefined, pkg: string, name: string, sigParams: readonly string[]): SignatureFlowrView | undefined {
+	const info = env === undefined ? undefined : queryFnProps(Identifier.make(name, pkg), { environment: env });
+	if(info === undefined || (info.props === undefined && info.sig === undefined)) {
+		return undefined;
+	}
+	const args = (info.sig ?? []).map(([n, p]) => ({ name: n, roles: propNames(p, ArgProp) })).filter(a => a.roles.length > 0);
+	const params = (info.sig ?? []).map(([n]) => n);
+	/* flowR usually declares only the parameters it models, which is no disagreement as long as they line up */
+	const same = params.every((n, i) => n === sigParams[i]);
+	return {
+		props: propNames(info.props ?? 0, CallProp),
+		...(args.length > 0 ? { args } : {}),
+		...(params.length > 0 && !same ? { parameters: params } : {})
+	};
+}
+
 /** the decoded view of one function, adding the CRAN-mirror source link */
 function decodedToView(pkg: string, fn: DecodedFunction, version: string | undefined, opts: { cran: boolean, base: boolean }): SignatureFunctionView {
 	return {
@@ -219,7 +248,7 @@ function decodedToView(pkg: string, fn: DecodedFunction, version: string | undef
  * read-only CRAN GitHub mirror. `version` defaults to the source's latest; `undefined` when the source does
  * not carry that function.
  */
-export function signatureFunctionInfo(src: PackageSignatureSource, pkg: string, fnName: string, version?: string): SignatureFunctionView | undefined {
+export function signatureFunctionInfo(src: PackageSignatureSource, pkg: string, fnName: string, version?: string, env?: REnvironmentInformation): SignatureFunctionView | undefined {
 	const fns = src.functions(pkg, version) ?? src.functions(pkg);
 	const fn = fns?.find(f => f.name === fnName);
 	if(fn === undefined) {
@@ -234,8 +263,10 @@ export function signatureFunctionInfo(src: PackageSignatureSource, pkg: string, 
 		.map(f => f.name)
 		.sort();
 	const s3method = s3MethodParts(src, pkg, fns, fn);
+	const flowr = flowrView(env, pkg, fnName, view.parameters.map(p => p.name));
 	return {
 		...view,
+		...(flowr ? { flowr } : {}),
 		...(methods.length > 0 ? { s3generic: true, s3methods: methods } : {}),
 		...(s3method ? { s3method } : {})
 	};
@@ -776,7 +807,7 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	}
 	const resolvedSrc = src ?? owning[0];
 	if(q.function) {
-		const fn = signatureFunctionInfo(resolvedSrc, q.package, q.function, version);
+		const fn = signatureFunctionInfo(resolvedSrc, q.package, q.function, version, analyzer.inspectContext().env.makeCleanEnv());
 		if(fn) {
 			const cg = q.callGraph ? signatureCallGraphUrl(resolvedSrc, q.package, version, fn.name) : undefined;
 			return { ...meta(), function: cg ? { ...fn, callGraph: cg } : fn };

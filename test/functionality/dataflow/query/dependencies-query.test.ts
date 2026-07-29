@@ -8,10 +8,17 @@ import {
 	Unknown
 } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { describe } from 'vitest';
+import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
+import { DefaultBuiltinConfig } from '../../../../src/dataflow/environments/default-builtin-config';
+import { builtInNames } from '../../../../src/dataflow/environments/query-fn-props';
+import type { BuiltInFnInfo, FnSig } from '../../../../src/dataflow/environments/built-in-props';
+import { ArgProp } from '../../../../src/dataflow/environments/built-in-props';
+import { ReadFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/read-functions';
+import { WriteFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/write-functions';
+import { OtherPathFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/other-path-functions';
 
 const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], source: [], read: [], write: [], visualize: [], test: [] };
 
@@ -267,8 +274,9 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 		testQuery('read.table', "read.table('test.csv')", { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }] });
 		testQuery('read_csv', "read_csv('test.csv')", { read: [{ nodeId: '1@read_csv', functionName: 'read_csv', value: 'test.csv' }] });
-		testQuery('gzfile', 'gzfile("this is my gzip file :)", "test.gz")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
-		testQuery('With Argument', 'gzfile(open="test.gz",description="this is my gzip file :)")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
+		testQuery('gzfile', 'gzfile("test.gz", "rb")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
+		testQuery('With Argument', 'gzfile(open="rb",description="test.gz")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
+		testQuery('write mode only', 'gzfile("test.gz", "wb")', { read: [] });
 
 		testQuery('unknown read', 'read.table(x)', { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'unknown', lexemeOfArgument: 'x' }] });
 
@@ -538,4 +546,32 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		});
 	});
 
+
+	describe('The categories agree with the built-in configuration', () => {
+		const resources = new Map<string, { idx: number, name: string }>();
+		for(const d of DefaultBuiltinConfig) {
+			const info = d.type !== 'constant' ? (d as { config?: BuiltInFnInfo }).config : undefined;
+			const idx = info?.sig?.findIndex(([, p]) => (p & ArgProp.Resource) !== 0) ?? -1;
+			if(idx >= 0) {
+				for(const n of builtInNames(d)) {
+					resources.set(Identifier.getName(n), { idx, name: (info?.sig as FnSig)[idx][0] });
+				}
+			}
+		}
+		test.each([['read', ReadFunctions], ['write', WriteFunctions], ['other paths', OtherPathFunctions]] as const)(
+			'%s', (_name, list) => {
+				for(const f of list) {
+					const declared = resources.get(f.name);
+					if(declared === undefined) {
+						continue;
+					}
+					if(f.argIdx !== undefined && f.argIdx !== 'unnamed') {
+						assert.strictEqual(f.argIdx, declared.idx, `${f.package}::${f.name} takes its resource from another position than the built-in states`);
+					}
+					if(f.argName !== undefined) {
+						assert.strictEqual(f.argName, declared.name, `${f.package}::${f.name} names its resource differently than the built-in states`);
+					}
+				}
+			});
+	});
 }));

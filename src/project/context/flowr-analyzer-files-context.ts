@@ -22,7 +22,7 @@ import { commonDirectory, relativeTo } from '../../util/files';
 import { globMatcher } from '../../util/glob';
 import type { FlowrNewsFile } from '../plugins/file-plugins/files/flowr-news-file';
 import type { FlowrNamespaceFile } from '../plugins/file-plugins/files/flowr-namespace-file';
-import type { FlowrRProjectFile } from '../plugins/file-plugins/files/flowr-rproject-file';
+import type { FlowrManifestFile } from '../plugins/file-plugins/files/flowr-manifest-files';
 import type { ProjectKind } from './project-kind';
 import { classifyProjectKind, resolveClassifyOptions, type ContentReader } from './classify-project-kind';
 import { FlowrAnalyzer } from '../flowr-analyzer';
@@ -50,7 +50,7 @@ export type RoleBasedFiles = {
 	[FileRole.Description]: FlowrDescriptionFile[];
 	[FileRole.News]:        FlowrNewsFile[];
 	[FileRole.Namespace]:   FlowrNamespaceFile[];
-	[FileRole.Manifest]:    FlowrRProjectFile[];
+	[FileRole.Manifest]:    FlowrManifestFile[];
 	/* currently no special support */
 	[FileRole.Vignette]:    FlowrFileProvider[];
 	[FileRole.Test]:        FlowrFileProvider[];

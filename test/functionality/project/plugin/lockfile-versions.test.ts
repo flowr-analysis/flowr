@@ -14,7 +14,8 @@ import {
 import {
 	FlowrAnalyzerPackageVersionsPackratPlugin,
 	FlowrAnalyzerPackageVersionsRenvPlugin,
-	FlowrAnalyzerPackageVersionsRvPlugin
+	FlowrAnalyzerPackageVersionsRvPlugin,
+	FlowrAnalyzerPackageVersionsUvrPlugin
 } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin';
 
 /** an rv.lock as rv generates it, see https://a2-ai.github.io/rv-docs/ */
@@ -46,6 +47,30 @@ dependencies = [
     "cli",
     "glue",
 ]
+`;
+
+/** a uvr.lock as uvr generates it, see https://github.com/nbafrank/uvr */
+const uvrLock = `[r]
+version = "4.3.2"
+
+[[package]]
+name = "ggplot2"
+version = "3.4.4"
+source = "cran"
+checksum = "md5:abc123def456"
+requires = ["dplyr", "scales"]
+
+[[package]]
+name = "dplyr"
+version = "1.1.4"
+source = "cran"
+requires = ["rlang"]
+
+[[package]]
+name = "testthat"
+version = "3.2.1"
+source = "cran"
+dev = true
 `;
 
 const renvLock = `{
@@ -81,6 +106,7 @@ function ctxWith(name: string, content: string): FlowrAnalyzerContext {
 			new FlowrAnalyzerVirtualEnvFilePlugin(),
 			new FlowrAnalyzerPackageVersionsRvPlugin(),
 			new FlowrAnalyzerPackageVersionsRenvPlugin(),
+			new FlowrAnalyzerPackageVersionsUvrPlugin(),
 			new FlowrAnalyzerPackageVersionsPackratPlugin()
 		], p => p.type)
 	);
@@ -98,6 +124,22 @@ describe('Lockfile versions', () => {
 
 	test('rv.lock contributes its r_version', () => {
 		assert.strictEqual(ctxWith('rv.lock', rvLock).meta.getRVersion(), '4.5');
+	});
+
+	test('uvr.lock pins every package, including the dev ones', () => {
+		const ctx = ctxWith('uvr.lock', uvrLock);
+		const got = ctx.deps.getDependencies().map(d => [d.name, d.versionConstraints[0]?.raw]);
+		assert.sameDeepMembers(got, [['ggplot2', '3.4.4'], ['dplyr', '1.1.4'], ['testthat', '3.2.1']]);
+	});
+
+	test('uvr.lock contributes the version of its [r] table', () => {
+		assert.strictEqual(ctxWith('uvr.lock', uvrLock).meta.getRVersion(), '4.3.2');
+	});
+
+	test('a lockfile is read whatever its name is capitalized like', () => {
+		// the file plugin assigns the role case-insensitively, so the readers must match it the same way
+		assert.isNotEmpty(ctxWith('UVR.lock', uvrLock).deps.getDependencies());
+		assert.isNotEmpty(ctxWith('Renv.lock', renvLock).deps.getDependencies());
 	});
 
 	test('renv.lock pins every package', () => {
@@ -119,6 +161,35 @@ describe('Lockfile versions', () => {
 	test('a broken lockfile is skipped rather than throwing', () => {
 		assert.deepStrictEqual(ctxWith('rv.lock', '[[packages]\nname = ').deps.getDependencies(), []);
 		assert.deepStrictEqual(ctxWith('renv.lock', '{not json').deps.getDependencies(), []);
+		assert.deepStrictEqual(ctxWith('uvr.lock', '[[package]\nname = ').deps.getDependencies(), []);
+	});
+});
+
+describe('uvr within a discovered project', () => {
+	let root: string;
+	beforeAll(() => {
+		root = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-uvr-'));
+		fs.mkdirSync(path.join(root, '.uvr', 'library', 'ggplot2', 'R'), { recursive: true });
+		fs.writeFileSync(path.join(root, 'uvr.lock'), uvrLock);
+		fs.writeFileSync(path.join(root, 'uvr.toml'), '[project]\nname = "sample"\nr_version = ">=4.0.0"\n\n[dependencies]\nggplot2 = ">=3.0.0"\n');
+		fs.writeFileSync(path.join(root, 'main.R'), 'library(ggplot2)');
+		fs.writeFileSync(path.join(root, '.uvr', 'library', 'ggplot2', 'R', 'installed.R'), 'junk <- 1');
+	});
+	afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
+
+	test('the manifest and the lockfile are read, the project library is not', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
+		analyzer.addRequest({ request: 'project', content: root });
+		const ctx = analyzer.inspectContext();
+		assert.deepStrictEqual(ctx.files.getFilesByRole(FileRole.VirtualEnv).map(f => path.basename(f.path())), ['uvr.lock']);
+		assert.deepStrictEqual(ctx.files.getFilesByRole(FileRole.Manifest).map(f => path.basename(f.path())), ['uvr.toml']);
+		assert.strictEqual(ctx.meta.getProjectName(), 'sample');
+		// the manifest states a `>=4.0.0` requirement, the lockfile the version it resolved to
+		assert.strictEqual(ctx.meta.getRVersion(), '4.3.2');
+		assert.sameMembers(ctx.deps.getDependencies().map(d => d.name), ['ggplot2', 'dplyr', 'testthat']);
+		const loaded = ctx.files.loadingOrder.getLoadingOrder().map(r => r.request === 'file' ? path.basename(r.content) : '<inline>');
+		assert.include(loaded, 'main.R');
+		assert.notInclude(loaded, 'installed.R', '.uvr/library holds installed sources and is ignored');
 	});
 });
 

@@ -30,7 +30,7 @@ export abstract class FlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerP
 // `.Rprofile`/`Rprofile.site` carry no extension but are plain R sources
 export const discoverRSourcesRegex = /(\.(r|rmd|ipynb|qmd|rnw)|(^|[\\/])\.?Rprofile(\.site)?)$/i;
 // matched against the posix path relative to the project root
-export const ignorePathsWith = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|Rtmp[^/]*|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles)[^/]*)(\/|$)/i;
+export const ignorePathsWith = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|\.uvr|Rtmp[^/]*|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles)[^/]*)(\/|$)/i;
 export const excludeRequestsForPaths = /vignettes?|tests?|revdep|inst|data/i;
 
 /** Options for {@link collectRequests}; unset fields fall back to the module defaults. */
@@ -124,7 +124,7 @@ export class FlowrAnalyzerFullProjectDiscoveryPlugin extends FlowrAnalyzerProjec
 }
 
 // noise directories pruned from the scoped walk on top of `ignorePathsWith`: build output, checks, rendered docs and packaged data
-const noiseDirs = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|[^/]*\.Rcheck|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles|cache)[^/]*|build|dist|_build|_site|_book|\.quarto|\.cache|Rtmp[^/]*|man|inst\/(extdata|doc))(\/|$)/i;
+const noiseDirs = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|\.uvr|[^/]*\.Rcheck|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles|cache)[^/]*|build|dist|_build|_site|_book|\.quarto|\.cache|Rtmp[^/]*|man|inst\/(extdata|doc))(\/|$)/i;
 // binary/data blobs, dropped even inside an otherwise kept directory
 const noiseFiles = /\.(rds|rda|rdata|rd|png|jpe?g|gif|svg|pdf|ico|zip|tar|t?gz|bz2|xz|so|o|a|dll|dylib|exe|jar|woff2?|ttf|eot|feather|parquet|xls[xm]?|docx?|pptx?)$/i;
 const descriptionFilePattern = /^DESCRIPTION(\.(txt|in))?$/i;
@@ -133,8 +133,8 @@ const metadataFilePatterns = [
 	descriptionFilePattern,
 	/^NAMESPACE(\.txt)?$/i,
 	/^NEWS(\.(rd|md))?$/i,
-	/^(renv|rv|packrat)\.lock$/i,
-	/^rproject\.toml$/i,
+	/^(renv|rv|uvr|packrat)\.lock$/i,
+	/^(rproject|uvr)\.toml$/i,
 	/license(\.md|\.txt)?$/i,
 	RprofileFilePattern,
 	RenvironFilePattern

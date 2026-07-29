@@ -258,7 +258,7 @@ export interface FlowrConfig extends MergeableRecord {
 		readonly sigdb: {
 			/** Resolve library exports from a signature database (default `true`); when `false` no database is consulted. */
 			readonly enabled:                     boolean
-			/** Load the project's declared dependencies from its metadata files (`DESCRIPTION` Imports/Depends, `rproject.toml`, `renv.lock`, `rv.lock`) into the dependency context (default `true`); when `false` these files are not read, so neither the undefined-symbol linter nor {@link linkDescriptionDependencies} sees any project-declared dependency. */
+			/** Load the project's declared dependencies from its metadata files (`DESCRIPTION` Imports/Depends, `rproject.toml`, `uvr.toml`, `renv.lock`, `rv.lock`, `uvr.lock`) into the dependency context (default `true`); when `false` these files are not read, so neither the undefined-symbol linter nor {@link linkDescriptionDependencies} sees any project-declared dependency. */
 			readonly loadProjectDependencies:     boolean
 			/** Parse the database up front rather than on the first package load (default `false`, ignored if disabled). */
 			readonly eagerlyLoad:                 boolean
@@ -440,6 +440,7 @@ export const FlowrDefaultPlugins = [
 	'versions:namespace',
 	'versions:renv',
 	'versions:rv',
+	'versions:uvr',
 	'versions:packrat',
 	'versions:session-info',
 	'loading-order:description',
@@ -447,6 +448,7 @@ export const FlowrDefaultPlugins = [
 	'loading-order:rprofile',
 	'meta:description',
 	'meta:rproject',
+	'meta:uvr',
 	'file-roles:vignette',
 	'file-roles:test',
 	'file-roles:inst',
@@ -460,6 +462,7 @@ export const FlowrDefaultPlugins = [
 	'file:license',
 	'file:virtualenv',
 	'file:rproject',
+	'file:uvr',
 	'file:rprofile',
 ] satisfies ConfigPlugin<string>[];
 
@@ -695,7 +698,7 @@ export const FlowrConfig = {
 			trackEnvironments: Joi.boolean().optional().description('Track user-created environments (new.env, assign/get/local with envir=, dollar-assign, attach). When false, all envir-style calls fall through conservatively.'),
 			sigdb:             Joi.object({
 				enabled:                     Joi.boolean().optional().description('Resolve library()/use() exports from a signature database (default true); when false no database is consulted.'),
-				loadProjectDependencies:     Joi.boolean().optional().description('Load the project\'s declared dependencies from its metadata files (DESCRIPTION Imports/Depends, rproject.toml, renv.lock, rv.lock) (default true); when false these files are not read for dependencies.'),
+				loadProjectDependencies:     Joi.boolean().optional().description('Load the project\'s declared dependencies from its metadata files (DESCRIPTION Imports/Depends, rproject.toml, uvr.toml, renv.lock, rv.lock, uvr.lock) (default true); when false these files are not read for dependencies.'),
 				eagerlyLoad:                 Joi.boolean().optional().description('Parse the database up front rather than on the first package load (default false, ignored if disabled).'),
 				eagerlyLoadExports:          Joi.boolean().optional().description('Add a vertex for every export on load rather than on demand (default false); keeps the dataflow graph small.'),
 				assumedRVersion:             Joi.string().optional().description('R version assumed when resolving versioned (base-R) exports: a pin like "4.5" or "auto" to detect the installed R (default "auto").'),

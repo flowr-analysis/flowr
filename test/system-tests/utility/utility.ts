@@ -1,6 +1,12 @@
 import { exec } from 'child_process';
 
 /**
+ * How long a command may take. `npm run flowr` builds and bundles first, which is slow on a cold `dist/`
+ * and slower still when the other checkup jobs run alongside it.
+ */
+const DefaultTimeout = 5 * 60 * 1000;
+
+/**
  * Runs the flowr repl and feeds input to the repl
  * @param input - input to feed
  * @returns Repl Output
@@ -12,7 +18,7 @@ import { exec } from 'child_process';
  */
 export async function flowrRepl(input: string[]): Promise<string> {
 	const process = new Promise<string>((resolve, reject) => {
-		const child = exec('npm run flowr', { timeout: 60 * 1000 }, (error, stdout, _) => {
+		const child = exec('npm run flowr', { timeout: DefaultTimeout }, (error, stdout, _) => {
 			if(error) {
 				reject(new Error(`${error.name}: ${error.message}\n${stdout}`));
 			}
@@ -42,7 +48,7 @@ export async function flowrRepl(input: string[]): Promise<string> {
  * @param command - Command to run
  * @param timeout - (optional) timeout in milliseconds
  */
-export async function runCaptureAll(command: string, timeout = 60 * 1000): Promise<string> {
+export async function runCaptureAll(command: string, timeout = DefaultTimeout): Promise<string> {
 	return new Promise<string>((resolve, reject) => {
 		exec(command, { timeout }, (error, stdout, stderr) => {
 			const output = `${stdout}${stderr}`;
@@ -63,7 +69,7 @@ export async function runCaptureAll(command: string, timeout = 60 * 1000): Promi
  * @param timeout - (optional) timeout in milliseconds
  * @returns output of command
  */
-export async function run(command: string, terminateOn?: string, timeout = 60 * 1000): Promise<string> {
+export async function run(command: string, terminateOn?: string, timeout = DefaultTimeout): Promise<string> {
 	const process = new Promise<string>((resolve, reject) => {
 		const child = exec(command, { timeout }, (error, stdout, _) => {
 			if(error) {

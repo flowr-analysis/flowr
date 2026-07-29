@@ -73,6 +73,7 @@ import { processAttach } from '../internal/process/functions/call/built-in/built
 import { processWithEnv } from '../internal/process/functions/call/built-in/built-in-with';
 import { processNamespaceAccess } from '../internal/process/functions/call/built-in/built-in-namespace-access';
 import { processLoadCall } from '../internal/process/functions/call/built-in/built-in-load';
+import { ArgProp, argProp, argsWith, sigLayout, type BuiltInFnInfo } from './built-in-props';
 
 export type BuiltInIdentifierProcessor = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -102,7 +103,7 @@ export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierRefere
 	value:     T
 }
 
-export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
+export interface DefaultBuiltInProcessorConfiguration extends ForceArguments, BuiltInFnInfo {
 	readonly returnsNthArgument?:    number | 'last',
 	readonly cfg?:                   ExitPointType,
 	readonly readAllArguments?:      boolean,
@@ -115,7 +116,7 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 	/** record mapping the actual function name called to the arguments that should be treated as function calls */
 	readonly treatAsFnCall?:         Record<string, readonly string[]>,
 	/** Mark the given arguments as {@link EdgeType.NonStandardEvaluation|non-standard-evaluated}, like `quote`. */
-	readonly markArgsAsNSE?:         NseArguments,
+	readonly markArgsAsNSE?:         NseArguments | readonly number[],
 	/**
 	 * Name that should be used for the origin (useful when needing to differentiate between
 	 * functions like 'return' that use the default builtin processor)
@@ -138,8 +139,15 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ returnsNthArgument, useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, keepArgumentOut }: DefaultBuiltInProcessorConfiguration
+	{ returnsNthArgument, useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
+	/* a signature states per argument what the individual options state for all of them at once */
+	const layout = sig !== undefined ? sigLayout(sig) : undefined;
+	if(layout !== undefined) {
+		forceArgs ??= (layout.any & ArgProp.Forced) !== 0 ? args.map((_, i) => (argProp(layout, i) & ArgProp.Forced) !== 0) : undefined;
+		nse ??= (layout.any & ArgProp.Nse) !== 0 ? argsWith(layout, args.length, ArgProp.Nse) : undefined;
+		returnsNthArgument ??= layout.alias >= 0 ? layout.alias : undefined;
+	}
 	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: useAsProcessor });
 	if(nse !== undefined) {
 		markArgumentsAsNonStandardEvaluation(res.graph, rootId, processedArguments, nse);
@@ -155,6 +163,13 @@ function defaultBuiltInProcessor<OtherInfo>(
 	}
 	if(readAllArguments) {
 		for(const arg of processedArguments) {
+			if(arg) {
+				res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Reads);
+			}
+		}
+	} else if(layout !== undefined && (layout.any & (ArgProp.Value | ArgProp.Shape)) !== 0) {
+		for(const i of argsWith(layout, processedArguments.length, ArgProp.Value | ArgProp.Shape)) {
+			const arg = processedArguments[i];
 			if(arg) {
 				res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Reads);
 			}

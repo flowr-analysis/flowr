@@ -15,7 +15,9 @@ import { Q } from '../../../search/flowr-search-builder';
 import { LintingResultCertainty } from '../../../linter/linter-format';
 import { Record } from '../../../util/record';
 import { ReadFunctions } from '../dependencies-query/function-info/read-functions';
-import { FfiFunctions, LangFunctions, LinkedInputEntryPoints, LinkedInputObjects, NarrowingFunctions, OptionsFunctions, PureFunctions, SystemFunctions, TempFileFunctions, UserFunctions } from './input-source-functions';
+import { LinkedInputEntryPoints, LinkedInputObjects, NarrowingFunctions } from './input-source-functions';
+import { CallProp, InputProps } from '../../../dataflow/environments/built-in-props';
+import { builtInsWith, builtInsWithout } from '../../../dataflow/environments/query-fn-props';
 
 export type InputSourcesQueryConfig = InputClassifierConfig;
 /**
@@ -34,17 +36,23 @@ export interface InputSourcesQuery extends BaseQueryFormat {
 	readonly config?:   InputSourcesQueryConfig
 }
 
+/**
+ * Which functions belong to which input type is stated with the functions themselves, in the
+ * {@link DefaultBuiltinConfig|built-in configuration}: a function that states its props and carries none of the
+ * {@link InputProps} derives its result from its arguments, the others bring in data of their own.
+ * Add a function there (or override its props with your own built-in definitions) and it shows up here.
+ */
 export const DefaultInputClassifierConfig: InputClassifierConfig = {
-	[InputTraceType.Pure]: PureFunctions,
-	[InputType.File]:      ReadFunctions.map(readFunction => readFunction.name),
-	[InputType.TempFile]:  TempFileFunctions,
+	[InputTraceType.Pure]: builtInsWithout(InputProps),
+	[InputType.File]:      [...ReadFunctions.map(readFunction => readFunction.name), ...builtInsWith(CallProp.File)],
+	[InputType.TempFile]:  builtInsWith(CallProp.TempFile),
 	[InputType.Network]:   Q.fromQuery({ type: 'linter', rules: ['network-functions'] }, LintingResultCertainty.Certain),
 	[InputType.Random]:    Q.fromQuery({ type: 'linter', rules: ['seeded-randomness'] }),
-	[InputType.System]:    SystemFunctions,
-	[InputType.Ffi]:       FfiFunctions,
-	[InputType.Lang]:      LangFunctions,
-	[InputType.Options]:   OptionsFunctions,
-	[InputType.User]:      UserFunctions,
+	[InputType.System]:    builtInsWith(CallProp.Process),
+	[InputType.Ffi]:       builtInsWith(CallProp.Ffi),
+	[InputType.Lang]:      builtInsWith(CallProp.Lang),
+	[InputType.Options]:   builtInsWith(CallProp.Ambient),
+	[InputType.User]:      builtInsWith(CallProp.User),
 	linkedObjects:         LinkedInputObjects,
 	linkedEntryPoints:     LinkedInputEntryPoints,
 	narrowing:             NarrowingFunctions

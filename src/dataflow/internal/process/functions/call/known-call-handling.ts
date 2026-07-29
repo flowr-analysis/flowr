@@ -69,17 +69,18 @@ export enum NseArguments {
 /**
  * Marks the selected arguments - and everything within them - as {@link EdgeType.NonStandardEvaluation}
  * (as `quote` does), so their nested symbols are recognised as non-standardly evaluated too.
+ * Besides the {@link NseArguments} shorthands, the positions may be listed explicitly.
  */
 export function markArgumentsAsNonStandardEvaluation(
 	graph:              DataflowGraph,
 	rootId:             NodeId,
 	processedArguments: readonly (DataflowInformation | undefined)[],
-	which:              NseArguments
+	which:              NseArguments | readonly number[]
 ): void {
 	const end = which === NseArguments.First ? 1 : processedArguments.length;
 	for(let i = which === NseArguments.AllButFirst ? 1 : 0; i < end; i++) {
 		const arg = processedArguments[i];
-		if(arg === undefined) {
+		if(arg === undefined || (typeof which !== 'string' && !which.includes(i))) {
 			continue;
 		}
 		graph.addEdge(rootId, arg.entryPoint, EdgeType.NonStandardEvaluation);

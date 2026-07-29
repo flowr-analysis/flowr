@@ -68,6 +68,21 @@ export const Identifier = {
 		return arr;
 	},
 	/**
+	 * The same fast path for many names of one package: the given array of names is cast in place,
+	 * so the literal you pass is the only array involved.
+	 * @example
+	 * ```ts
+	 * Identifier.fromAll('purrr', ['map', 'walk']) // [['map', 'purrr'], ['walk', 'purrr']]
+	 * ```
+	 */
+	fromAll(this: void, namespace: BrandedNamespace, names: BrandedIdentifier[]): Identifier[] {
+		const ids = names as unknown as Identifier[];
+		for(let i = 0; i < names.length; i++) {
+			ids[i] = [names[i], namespace];
+		}
+		return ids;
+	},
+	/**
 	 * Verify whether an unknown element has a valid identifier shape!
 	 */
 	is(this: void, id: unknown): id is Identifier {
@@ -163,8 +178,8 @@ export const Identifier = {
 		if(idInternal === true) {
 			return true;
 		}
-		const targetInternal = Identifier.accessesInternal(target);
-		return idInternal === targetInternal;
+		/* an omitted flag is the same as an explicit `false`, `pkg::fn` written either way is one identifier */
+		return (idInternal ?? false) === (Identifier.accessesInternal(target) ?? false);
 	},
 	/**
 	 * Helper to create a regular expression that matches against an array of {@link Identifier} values. If both the passed identifier and the matched identifier are namespaced, their namespaces are expected to match. If either is not namespaced, the namespace is ignored on both.
@@ -274,6 +289,7 @@ export const enum PkgName {
 	AssertThat   = 'assertthat',
 	Box          = 'box',
 	Cli          = 'cli',
+	CohortBuilder = 'cohortBuilder',
 	DataTable    = 'data.table',
 	Devtools     = 'devtools',
 	Dplyr        = 'dplyr',
@@ -294,17 +310,26 @@ export const enum PkgName {
 	Ragg         = 'ragg',
 	R6           = 'R6',
 	RasterPdf    = 'rasterpdf',
+	Rcpp         = 'Rcpp',
 	Remotes      = 'remotes',
 	Rlang        = 'rlang',
 	RmethodsS3   = 'R.methodsS3',
 	Roo          = 'R.oo',
+	RstudioApi   = 'rstudioapi',
 	Rutils       = 'R.utils',
 	S7           = 'S7',
+	Shiny        = 'shiny',
+	ShinyCohortBuilder = 'shinyCohortBuilder',
+	ShinyFiles   = 'shinyFiles',
+	ShinyJs      = 'shinyjs',
 	Soda         = 'SoDA',
+	SvDialogs    = 'svDialogs',
+	Tcltk        = 'tcltk',
 	Testthat     = 'testthat',
 	TidyR        = 'tidyr',
 	TinyPlot     = 'tinyplot',
 	TryCatchLog  = 'tryCatchLog',
+	Withr        = 'withr',
 }
 
 /**

@@ -1,6 +1,8 @@
 import { Identifier, PkgName } from '../../../dataflow/environments/identifier';
 import type { LinkedInputDeclaration, LinkedInputEntryPoint, LinkedInputObject, NarrowingFunction } from './simple-input-classifier';
 import { InputType } from './simple-input-classifier';
+import { ArgProp, CallProp } from '../../../dataflow/environments/built-in-props';
+import { BuiltInIndex } from '../../../dataflow/environments/query-fn-props';
 
 /** shiny's ui-side control widgets, all taking the id of the `input` entry they feed as their first argument */
 const ShinyInputWidgets: LinkedInputDeclaration = {
@@ -26,18 +28,19 @@ export const LinkedInputObjects: readonly LinkedInputObject[] = [
 	{ name: 'session', type: InputType.User, withParams: ['input', 'output'], requires: 'shiny', fields: ['clientData', 'request'] }
 ];
 
-export const NarrowingFunctions: readonly NarrowingFunction[] = [
-	/* bounded by an argument: the result is one element of that argument */
-	{ call: Identifier.from(['match.arg', PkgName.Base]), argName: 'choices', argIdx: 1 },
-	/* bounded content-independent results (counts, indices, logicals): the subject's taint cannot flow through */
-	...Identifier.fromAll(PkgName.Base, [
-		'nchar', 'length', 'lengths', 'nrow', 'ncol', 'NROW', 'NCOL',
-		'which', 'which.max', 'which.min', 'match', 'pmatch', 'charmatch',
-		'seq_along', 'seq_len',
-		'is.na', 'is.null', 'is.numeric', 'is.character', 'is.logical', 'is.function', 'is.list', 'is.element',
-		'nzchar', 'grepl', 'startsWith', 'endsWith'
-	]).map(call => ({ call }))
-];
+/**
+ * The functions whose result is bounded no matter what flows in, read back from the {@link CallProp.Narrows}
+ * built-ins: with an {@link ArgProp.Bounds} parameter the result is one of that argument's values (`match.arg`
+ * and its `choices`), without one it is a count, an index, or a logical of the call's own making. Label a
+ * built-in `Narrows` (in the {@link DefaultBuiltinConfig} or your own definitions) and it shows up here.
+ */
+export function narrowingFunctions(index: BuiltInIndex = BuiltInIndex.default()): readonly NarrowingFunction[] {
+	const bounds = new Map(index.params(ArgProp.Bounds).map(p => [Identifier.getName(p.call), p]));
+	return index.with(CallProp.Narrows).map(call => {
+		const bound = bounds.get(Identifier.getName(call));
+		return bound === undefined ? { call } : { call, argName: bound.name, argIdx: bound.index };
+	});
+}
 
 /** shiny binds `input`, `output`, and `session` positionally, so their names are up to whoever writes the server */
 const ShinyServerParams = ['input', undefined, 'session'];
@@ -52,10 +55,3 @@ export const LinkedInputEntryPoints: readonly LinkedInputEntryPoint[] = [
 	{ call: Identifier.from(['moduleServer', PkgName.Shiny]), argName: 'module', argIdx: 1, params: ShinyServerParams },
 	{ call: Identifier.from(['callModule', PkgName.Shiny]),   argName: 'module', argIdx: 0, params: ShinyServerParams }
 ];
-
-/*
- * The former `PureFunctions`, `SystemFunctions`, `FfiFunctions`, `LangFunctions`, `OptionsFunctions`,
- * `UserFunctions`, and `TempFileFunctions` lists now live with the functions themselves, as the `props` of
- * their entries in the `DefaultBuiltinConfig`. `DefaultInputClassifierConfig` reads them back from there
- * with `builtInsWith`.
- */

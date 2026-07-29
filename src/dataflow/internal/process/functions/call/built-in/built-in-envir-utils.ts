@@ -17,7 +17,7 @@ import { DefaultAttachPosition, REnvironment } from '../../../../../environments
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
 import { resolveNodeToStackEnv } from './built-in-stack-env';
 import { resolveIdToValue, resolveIdToSingleString } from '../../../../../eval/resolve/alias-tracking';
-import { foldPasteCall } from '../../../../../eval/resolve/resolve';
+import { foldStringCall, PasteLikeCalls } from '../../../../../eval/resolve/resolve-strings';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import type { Value } from '../../../../../eval/values/r-value';
@@ -107,7 +107,7 @@ export function signatureParamNames<OtherInfo>(
 	return names.length > 0 ? names : fallback;
 }
 
-/** The constant string a name-position node denotes at construction time (string literal, aliased variable, or `paste`/`paste0` of such); `undefined` if any part is dynamic or the paste builtin is user-shadowed. */
+/** The constant string a name-position node denotes at construction time (string literal, aliased variable, or a paste-like join of such); `undefined` if any part is dynamic or the paste builtin is user-shadowed. */
 export function resolveConstantString<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
@@ -119,7 +119,7 @@ export function resolveConstantString<OtherInfo>(
 			return resolveIdToSingleString(n.info.id, info);
 		}
 		const fnName = Identifier.getName(n.functionName.content);
-		if(fnName !== 'paste0' && fnName !== 'paste') {
+		if(!PasteLikeCalls.has(fnName)) {
 			return undefined;
 		}
 		let ok = unshadowed.get(fnName);
@@ -128,7 +128,8 @@ export function resolveConstantString<OtherInfo>(
 			ok = defs === undefined || defs.every(d => isReferenceType(d.type, ReferenceType.BuiltInFunction));
 			unshadowed.set(fnName, ok);
 		}
-		return ok ? foldPasteCall(n, fold) : undefined;
+		const folded = ok ? foldStringCall(n, fold) : undefined;
+		return typeof folded === 'string' ? folded : undefined;
 	};
 	return fold(node);
 }

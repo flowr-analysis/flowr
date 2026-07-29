@@ -11,8 +11,10 @@ import { defaultSigDbPaths } from '../../../project/sigdb/manifest';
 import type { DecodedFunction } from '../../../project/sigdb/decode';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
 import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
+import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
+import type { BuiltInFnInfo } from '../../../dataflow/environments/built-in-props';
 import { ArgProp, CallProp } from '../../../dataflow/environments/built-in-props';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
 import { RVersion } from '../../../util/r-version';
 import { baseRPackages, baseRExportOwner } from '../../../util/r-base-packages';
 import { Mermaid } from '../../../util/mermaid/mermaid';
@@ -203,6 +205,22 @@ function propNames(props: number, of: Record<string, string | number>): string[]
 	return Object.entries(of).filter(([, v]) => typeof v === 'number' && (props & v) !== 0).map(([k]) => k.toLowerCase());
 }
 
+/** the view of one {@link BuiltInFnInfo}: every declared parameter with what it is used for, and what comes back */
+function flowrViewOf(info: BuiltInFnInfo, sigParams: readonly string[]): SignatureFlowrView {
+	/* every declared parameter, even one flowR says nothing about, so the answer is the whole signature */
+	const args = (info.sig ?? []).map(([n, p]) => ({ name: n, roles: propNames(p, ArgProp) }));
+	const params = args.map(a => a.name);
+	const returns = info.sig?.find(([, p]) => (p & ArgProp.Alias) !== 0)?.[0];
+	/* flowR usually declares only the parameters it models, which is no disagreement as long as they line up */
+	const same = params.every((n, i) => n === sigParams[i]);
+	return {
+		props: propNames(info.props ?? 0, CallProp),
+		...(args.length > 0 ? { args } : {}),
+		...(returns !== undefined ? { returns } : {}),
+		...(params.length > 0 && !same ? { parameters: params } : {})
+	};
+}
+
 /**
  * What flowR states about `pkg::name` itself, resolved in `env` so that a configured built-in wins over the
  * default one. The parameter names are only reported when they differ from the ones `sigParams` records.
@@ -212,14 +230,37 @@ function flowrView(env: REnvironmentInformation | undefined, pkg: string, name: 
 	if(info === undefined || (info.props === undefined && info.sig === undefined)) {
 		return undefined;
 	}
-	const args = (info.sig ?? []).map(([n, p]) => ({ name: n, roles: propNames(p, ArgProp) })).filter(a => a.roles.length > 0);
-	const params = (info.sig ?? []).map(([n]) => n);
-	/* flowR usually declares only the parameters it models, which is no disagreement as long as they line up */
-	const same = params.every((n, i) => n === sigParams[i]);
+	return flowrViewOf(info, sigParams);
+}
+
+/**
+ * The view of a call flowR models itself but the signature database has no entry for: the primitives and
+ * operators (`+`, `[`, `if`) that never appear in a package's sources, and anything a flowR configuration
+ * adds. `pkg` narrows the lookup when the query named one, otherwise the built-in's own namespace is reported.
+ */
+function flowrOnlyFunctionInfo(env: REnvironmentInformation | undefined, pkg: string | undefined, name: string): SignatureFunctionView | undefined {
+	if(env === undefined) {
+		return undefined;
+	}
+	const resolved = resolveByName(pkg === undefined ? name : Identifier.make(name, pkg), env, ReferenceType.Function);
+	const definition = resolved?.find(d => d.type === ReferenceType.BuiltInFunction);
+	if(definition === undefined) {
+		return undefined;
+	}
+	const info = queryFnProps(definition.name ?? name, { environment: env });
+	if(info === undefined || (info.props === undefined && info.sig === undefined)) {
+		return undefined;
+	}
 	return {
-		props: propNames(info.props ?? 0, CallProp),
-		...(args.length > 0 ? { args } : {}),
-		...(params.length > 0 && !same ? { parameters: params } : {})
+		name,
+		package:    pkg ?? (definition.name === undefined ? undefined : Identifier.getNamespace(definition.name)) ?? 'base',
+		flowrOnly:  true,
+		exported:   true,
+		properties: [],
+		/* flowR states no defaults, so `required` stays `false` throughout; whether R forces a parameter it does know */
+		parameters: (info.sig ?? []).map(([n, p]) => ({ name: n, required: false, forced: (p & ArgProp.Forced) !== 0 })),
+		callees:    [],
+		flowr:      flowrViewOf(info, [])
 	};
 }
 
@@ -766,6 +807,8 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 		}
 	}
 	const meta = (): SignatureQueryResult => ({ '.meta': { timing: Date.now() - start }, databases, packageCount: packages.size, sourceCount: sources.length });
+	/* the built-in environment answers for the primitives no package's sources contain, see flowrOnlyFunctionInfo */
+	const builtIn = (pkg: string | undefined, name: string) => flowrOnlyFunctionInfo(analyzer.inspectContext().env.makeCleanEnv(), pkg, name);
 
 	if(!q.package) {
 		// shard load-state is only shown in the summary, so it is only worth its filesystem probes here
@@ -795,7 +838,10 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	// version must be looked up in whichever source actually has it (not just the first one found)
 	const owning = sources.filter(s => s.has(q.package as string));
 	if(owning.length === 0) {
-		return { ...meta(), message: `The signature database does not know the package '${q.package}'.`, suggestions: suggest(packages, q.package) };
+		// `@signature +` names no package but a call flowR models itself, so answer for that instead of not-found
+		const own = q.function === undefined ? builtIn(undefined, q.package) : undefined;
+		return own ? { ...meta(), function: own }
+			: { ...meta(), message: `The signature database does not know the package '${q.package}'.`, suggestions: suggest(packages, q.package) };
 	}
 	// the version to resolve against: an explicit `@version`, else the version flowR inferred for the script's
 	// dependency (which may be an older release that only `history` carries)
@@ -811,6 +857,11 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 		if(fn) {
 			const cg = q.callGraph ? signatureCallGraphUrl(resolvedSrc, q.package, version, fn.name) : undefined;
 			return { ...meta(), function: cg ? { ...fn, callGraph: cg } : fn };
+		}
+		// a primitive like `base::+` has no entry in the package's sources, but flowR models it itself
+		const own = builtIn(q.package, q.function);
+		if(own) {
+			return { ...meta(), function: own };
 		}
 		const exports = resolvedSrc.lookup(q.package, version) ?? resolvedSrc.lookup(q.package);
 		const universe = new Set<string>([

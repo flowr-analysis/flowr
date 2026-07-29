@@ -1,4 +1,5 @@
 import type { BuiltInProcessorMapper, ConfigOfBuiltInMappingName } from './built-in';
+import type { BuiltInEvalName } from './built-in-eval-name';
 import { BuiltIns } from './built-in';
 import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { Identifier } from './identifier';
@@ -31,7 +32,8 @@ export interface BuiltInFunctionDefinition<BuiltInProcessor extends keyof typeof
 	readonly type:         'function';
 	readonly processor:    BuiltInProcessor;
 	readonly config?:      ConfigOfBuiltInMappingName<BuiltInProcessor> & BuiltInFnInfo & { libFn?: boolean };
-	readonly evalHandler?: string
+	/** the value solver to use when folding a call to this function to a constant, see {@link BuiltInEvalHandlerMapper} */
+	readonly evalHandler?: BuiltInEvalName
 }
 
 /**

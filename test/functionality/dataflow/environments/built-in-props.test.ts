@@ -9,11 +9,12 @@ import {
 	argProp,
 	argsWith,
 	CallProp,
+	ExclusiveCallProps,
 	fnInfoFromSignature,
 	InputProps,
 	sigLayout
 } from '../../../../src/dataflow/environments/built-in-props';
-import { builtInNames, builtInsWith, builtInsWithout, inferFnProps, queryFnProps } from '../../../../src/dataflow/environments/query-fn-props';
+import { builtInNames, BuiltInIndex, inferFnProps, queryFnProps } from '../../../../src/dataflow/environments/query-fn-props';
 import { DefaultBuiltinConfig } from '../../../../src/dataflow/environments/default-builtin-config';
 import { Identifier, PkgName } from '../../../../src/dataflow/environments/identifier';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
@@ -48,7 +49,7 @@ const TestSignatures = {
 /** what the configuration is expected to say about these, checked below */
 const ExpectedLabels: readonly (readonly [Identifier, CallProps])[] = [
 	[Identifier.from(['sum', PkgName.Base]), CallProp.Pure],
-	[Identifier.from(['nchar', PkgName.Base]), CallProp.Pure],
+	[Identifier.from(['nchar', PkgName.Base]), CallProp.Pure | CallProp.Narrows],
 	[Identifier.from(['lapply', PkgName.Base]), CallProp.MayPure],
 	[Identifier.from(['do.call', PkgName.Base]), CallProp.MayPure],
 	[Identifier.from(['print', PkgName.Base]), CallProp.Invisible | CallProp.Generic | CallProp.Prints],
@@ -77,7 +78,11 @@ const ExpectedSigs: readonly (readonly [Identifier, FnSig])[] = [
 	[Identifier.from(['nrow', PkgName.Base]), [['x', ArgProp.Shape]]],
 	[Identifier.from(['sum', PkgName.Base]), [['...', ArgProp.Value]]],
 	[Identifier.from(['missing', PkgName.Base]), [['x', ArgProp.Presence]]],
+	/* `Alias` is what states the argument handed back, so these have to keep declaring it */
 	[Identifier.from(['identity', PkgName.Base]), [['x', ArgProp.Alias | ArgProp.Forced]]],
+	[Identifier.from(['print', PkgName.Base]), [['x', ArgProp.Alias | ArgProp.Forced]]],
+	[Identifier.from(['return', PkgName.Base]), [['value', ArgProp.Alias]]],
+	[Identifier.from(['match.arg', PkgName.Base]), [['arg', ArgProp.Value], ['choices', ArgProp.Bounds]]],
 	[Identifier.from(['lapply', PkgName.Base]), [['X', ArgProp.Value], ['FUN', ArgProp.Callee]]],
 	[Identifier.from(['quote', PkgName.Base]), [['expr', ArgProp.Nse]]],
 	[Identifier.from(['read.csv', PkgName.Utils]), [['file', ArgProp.Resource]]]
@@ -110,24 +115,45 @@ describe('Built-in properties', () => {
 	});
 
 	describe('Querying the definitions', () => {
+		const custom = BuiltInIndex.of(TestDefinitions);
 		test(label('by the props they carry', ['name-normal'], ['other']), () => {
-			assert.deepStrictEqual(builtInsWith(CallProp.Network, TestDefinitions).map(Identifier.toString), ['base::fetch']);
-			assert.deepStrictEqual(builtInsWith(CallProp.Pure | CallProp.Scope, TestDefinitions).map(Identifier.toString),
+			assert.deepStrictEqual(custom.with(CallProp.Network).map(Identifier.toString), ['base::fetch']);
+			assert.deepStrictEqual(custom.with(CallProp.Pure | CallProp.Scope).map(Identifier.toString),
 				['base::tally', 'base::dim<-']);
+			assert.deepStrictEqual(custom.withAll(CallProp.Network | CallProp.Writes).map(Identifier.toString), ['base::fetch']);
+			assert.deepStrictEqual(custom.withAll(CallProp.Network | CallProp.Pure).map(Identifier.toString), []);
 		});
 		test(label('by the props they do not carry', ['name-normal'], ['other']), () => {
 			/* `plain` states no props at all, so it is in neither answer */
-			assert.deepStrictEqual(builtInsWithout(InputProps, TestDefinitions).map(Identifier.toString),
+			assert.deepStrictEqual(custom.without(InputProps).map(Identifier.toString),
 				['base::tally', 'base::dim<-']);
+		});
+		test(label('by what an argument is used for', ['name-normal'], ['other']), () => {
+			assert.deepStrictEqual(custom.params(ArgProp.Resource),
+				[{ call: Identifier.from(['fetch', PkgName.Base]), index: 0, name: 'url', props: ArgProp.Resource }]);
+			assert.deepStrictEqual(custom.params(ArgProp.Flag).map(p => p.name), ['na.rm']);
 		});
 		test(label('a replacement is asked for under its suffixed name', ['name-normal'], ['other']), () => {
 			assert.deepStrictEqual(builtInNames(TestDefinitions[3]).map(Identifier.toString), ['base::dim<-']);
 		});
 		test(label('the default configuration answers for its own entries', ['name-normal'], ['other']), () => {
-			const pure = new Set(builtInsWith(CallProp.Pure).map(Identifier.toString));
+			const index = BuiltInIndex.default();
+			const pure = new Set(index.pure.map(Identifier.toString));
 			assert.isTrue(pure.has('base::sum'), 'sum is pure');
 			assert.isFalse(pure.has('base::tempfile'), 'tempfile is not');
-			assert.isTrue(builtInsWith(CallProp.TempFile).some(i => Identifier.getName(i) === 'tempfile'));
+			assert.isTrue(index.with(CallProp.TempFile).some(i => Identifier.getName(i) === 'tempfile'));
+			assert.strictEqual(index.propsOf('nchar'), CallProp.Pure | CallProp.Narrows);
+		});
+		test(label('the value solver folds what the definitions hand it', ['name-normal'], ['other']), () => {
+			const folding = new Set(BuiltInIndex.default().folding.map(Identifier.getName));
+			assert.isTrue(folding.has('+'), 'arithmetic is folded');
+			assert.isTrue(folding.has('paste'));
+			assert.isFalse(folding.has('read.csv'), 'reading a file is not');
+		});
+		test(label('the registered built-ins answer just as their definitions do', ['name-normal'], ['other']), () => {
+			const registered = BuiltInIndex.ofEnvironment(getDefaultBuiltInDefinitions());
+			assert.strictEqual(registered.propsOf('nchar'), CallProp.Pure | CallProp.Narrows);
+			assert.isTrue(registered.with(CallProp.Process).some(i => Identifier.getName(i) === 'system'));
 		});
 	});
 
@@ -199,10 +225,14 @@ describe('Built-in properties', () => {
 					`${names.map(Identifier.toString).join(', ')} claims both`);
 			}
 		});
-		test(label('a temporary path is not also reported as a file', ['name-normal'], ['other']), () => {
+		test(label('no entry states two props that rule each other out', ['name-normal'], ['other']), () => {
 			for(const [names, { props = 0 }] of withInfo) {
-				assert.isFalse((props & CallProp.TempFile) !== 0 && (props & CallProp.File) !== 0,
-					`${names.map(Identifier.toString).join(', ')} claims both`);
+				for(const [bit, forbidden] of ExclusiveCallProps) {
+					if((props & bit) !== 0) {
+						assert.strictEqual(props & forbidden, 0,
+							`${names.map(Identifier.toString).join(', ')} states ${CallProp[bit]} together with what it rules out`);
+					}
+				}
 			}
 		});
 		test(label('a named resource comes with an effect that uses it', ['name-normal'], ['other']), () => {

@@ -5,7 +5,8 @@ import {
 	type GuessDepVersionsQuery,
 	type GuessDepVersionsQueryResult,
 	type GuessedDependency,
-	type GuessVersionEvidence
+	type GuessVersionEvidence,
+	type OrphanAlternativeView
 } from './guess-dep-versions-query-format';
 import { RVersion } from '../../../util/r-version';
 import { compactRecord } from '../../../util/objects';
@@ -136,15 +137,17 @@ function rangeString(survivors: readonly string[], nonContiguous: boolean, unsat
 
 /** what a guessed package is related to: the packages it shares a version with, and those its choice interacts with */
 interface PackageRelations {
-	readonly used:             boolean;
-	readonly linkedWith?:      readonly string[];
-	readonly coupledWith?:     readonly string[];
+	readonly used:                boolean;
+	readonly linkedWith?:         readonly string[];
+	readonly coupledWith?:        readonly string[];
 	/** the undefined orphan functions that inferred this package (e.g. `ggplot()` inferring `ggplot2`), if any */
-	readonly orphanFunctions?: readonly string[];
+	readonly orphanFunctions?:    readonly string[];
+	/** the other packages exporting those functions, each with the versions of it that would fit the calls */
+	readonly orphanAlternatives?: readonly OrphanAlternativeView[];
 }
 
 /** build the reported guess for one package from its already-computed surviving versions and provenance */
-function guessPackage(name: string, cap: number, surviving: SurvivingEntries, evidence: EvidenceCollector, { used, linkedWith, coupledWith, orphanFunctions }: PackageRelations): GuessedDependency {
+function guessPackage(name: string, cap: number, surviving: SurvivingEntries, evidence: EvidenceCollector, { used, linkedWith, coupledWith, orphanFunctions, orphanAlternatives }: PackageRelations): GuessedDependency {
 	const { declaredRange, declaredConstraints, unsatisfiable } = surviving;
 	const survivors = surviving.survivors.map(e => e.ver);
 	const preSignature = surviving.preSignature.map(e => e.ver);
@@ -154,22 +157,24 @@ function guessPackage(name: string, cap: number, surviving: SurvivingEntries, ev
 	const candidates = survivors.slice(0, cap);
 
 	return compactRecord({
-		package:         name,
-		base:            surviving.base,
+		package:            name,
+		base:               surviving.base,
 		declaredConstraints,
-		range:           rangeString(survivors, nonContiguous, unsatisfiable, declaredRange, declaredConstraints, cap),
-		minVersion:      survivors.length > 0 ? survivors[0] : undefined,
-		maxVersion:      survivors.length > 0 ? survivors[survivors.length - 1] : undefined,
-		candidateCount:  survivors.length,
-		totalVersions:   surviving.total,
-		candidates:      candidates.length > 0 ? candidates : undefined,
-		truncated:       survivors.length > cap ? true : undefined,
-		evidence:        evidence.list,
-		unsatisfiable:   unsatisfiable ? true : undefined,
-		linkedWith:      linkedWith && linkedWith.length > 0 ? linkedWith : undefined,
-		coupledWith:     coupledWith && coupledWith.length > 0 ? coupledWith : undefined,
-		orphan:          orphanFunctions && orphanFunctions.length > 0 ? true : undefined,
-		orphanFunctions: orphanFunctions && orphanFunctions.length > 0 ? orphanFunctions : undefined,
+		range:              rangeString(survivors, nonContiguous, unsatisfiable, declaredRange, declaredConstraints, cap),
+		minVersion:         survivors.length > 0 ? survivors[0] : undefined,
+		maxVersion:         survivors.length > 0 ? survivors[survivors.length - 1] : undefined,
+		candidateCount:     survivors.length,
+		totalVersions:      surviving.total,
+		candidates:         candidates.length > 0 ? candidates : undefined,
+		truncated:          survivors.length > cap ? true : undefined,
+		evidence:           evidence.list,
+		unsatisfiable:      unsatisfiable ? true : undefined,
+		linkedWith:         linkedWith && linkedWith.length > 0 ? linkedWith : undefined,
+		coupledWith:        coupledWith && coupledWith.length > 0 ? coupledWith : undefined,
+		known:              surviving.known ? undefined : false,
+		orphan:             orphanFunctions && orphanFunctions.length > 0 ? true : undefined,
+		orphanFunctions:    orphanFunctions && orphanFunctions.length > 0 ? orphanFunctions : undefined,
+		orphanAlternatives: orphanAlternatives && orphanAlternatives.length > 0 ? orphanAlternatives : undefined,
 		used
 	});
 }
@@ -212,7 +217,7 @@ export async function executeGuessDepVersionsQuery(
 	// fold orphan calls (`ggplot()` with ggplot2 neither declared nor loaded) into usage; a package the project does
 	// not already know is flagged for downstream attachment (see collectOrphanUsage)
 	const known = new Set<string>([...deps.getDependencies().map(d => d.name), ...deps.declaredPackageNames()]);
-	const orphanFunctions = collectOrphanUsage(graph, deps, usage, pkg => known.has(pkg), { self, builtinLibraryOf: name => BuiltinLibraryByFunction.get(name) });
+	const orphans = collectOrphanUsage(graph, deps, usage, pkg => known.has(pkg), { self, builtinLibraryOf: name => BuiltinLibraryByFunction.get(name) });
 	const sorted = (query.packages && query.packages.length > 0 ? [...query.packages] : defaultTargets(deps, usage)).filter(name => name !== self).sort();
 
 	const disabled = disabledSources(query);
@@ -290,14 +295,33 @@ export async function executeGuessDepVersionsQuery(
 		}
 	}
 
+	// the packages an orphan could have meant instead, resolved in a space of their own so that reporting them
+	// does not turn them into dependencies of the project; built only when an orphan actually had a choice
+	const altSpace = orphans.alternativeUsage.size > 0
+		? new VersionSpace({ deps, usage: orphans.alternativeUsage, cutoff, rVersion, disabled }) : undefined;
+	const orphanAlternatives = (pkg: string): OrphanAlternativeView[] =>
+		(orphans.alternatives.get(pkg) ?? []).map(alt => {
+			const s = (altSpace as VersionSpace).survivors(alt, []);
+			const versions = s.survivors.map(e => e.ver);
+			return compactRecord({
+				package:        alt,
+				range:          rangeString(versions, false, s.unsatisfiable, s.declaredRange, s.declaredConstraints, cap),
+				minVersion:     versions[0],
+				maxVersion:     versions[versions.length - 1],
+				candidateCount: versions.length,
+				totalVersions:  s.total
+			});
+		});
+
 	const dependencies: GuessedDependency[] = [];
 	const ordered: OrderedCandidates[] = [];
 	for(const g of guessedAll) {
 		dependencies.push(guessPackage(g.name, cap, g.surviving, g.evidence, {
-			used:            usage.has(g.name),
-			linkedWith:      linkedWith.get(g.name),
-			coupledWith:     coupledWith.get(g.name),
-			orphanFunctions: [...orphanFunctions.get(g.name) ?? []].sort()
+			used:               usage.has(g.name),
+			linkedWith:         linkedWith.get(g.name),
+			coupledWith:        coupledWith.get(g.name),
+			orphanFunctions:    [...orphans.attributed.get(g.name) ?? []].sort(),
+			orphanAlternatives: orphanAlternatives(g.name)
 		}));
 		const oc = query.explode ? orderedCandidatesOf(space.resolve(g.name).src, g.name, g.surviving, query.explode.prefer?.[g.name], explodeOrder) : undefined;
 		if(oc) {

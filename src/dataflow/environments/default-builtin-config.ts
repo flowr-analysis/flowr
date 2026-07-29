@@ -10,6 +10,7 @@ import { UnnamedFunctionCallPrefix } from '../internal/process/functions/call/un
 import { KnownHooks } from '../hooks';
 import { Identifier, PkgName } from './identifier';
 import { BuiltInProcName } from './built-in-proc-name';
+import { BuiltInEvalName } from './built-in-eval-name';
 import { NseArguments } from '../internal/process/functions/call/known-call-handling';
 import { DataMaskingFunctionIdentifiers } from './data-masking-functions';
 import { ArgProp, CallProp, type FnSig } from './built-in-props';
@@ -204,44 +205,51 @@ export const DefaultBuiltinConfig = [
 		config:          { markArgsAsNSE: NseArguments.All },
 		assumePrimitive: false
 	},
-	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['+', '-', '*', '/', '^', '**', '==', '!=', '>', '<', '>=', '<=', '%%', '%/%']),
-		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigBinOp }, assumePrimitive: true },
+	/* an {@link BuiltInEvalName} marks what the value solver folds; a test checks the names against the handler tables */
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['+', '-', '*', '/', '^', '**', '%%', '%/%']),
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigBinOp }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Numeric },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['==', '!=', '>', '<', '>=', '<=']),
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigBinOp }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Comparison },
 	{ type:            'function', names:           [Identifier.from(['%*%', PkgName.Base])],
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigXY }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['%in%', PkgName.Base])],
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigXTable }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from([':', PkgName.Base])],
-		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['from', ArgProp.Value], ['to', ArgProp.Value]] }, assumePrimitive: true },
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['from', ArgProp.Value], ['to', ArgProp.Value]] }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Seq },
 	{ type:            'function', names:           [Identifier.from(['!', PkgName.Base])],
-		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigX }, assumePrimitive: true },
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigX }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Logical },
 	{ type:            'function', names:           [Identifier.from(['?', PkgName.Utils])], /* shows the help page of what it is given */
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { sig: [['e1', ArgProp.Nse], ['e2', ArgProp.Nse]] }, assumePrimitive: true },
-	/* the result follows from how large the argument is, not from what is in it */
-	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['length', 'lengths', 'nchar', 'nrow', 'ncol', 'NROW', 'NCOL', 'dim', 'dimnames', 'names', 'rownames', 'colnames', 'class', 'is.null', 'is.factor', 'is.vector', 'is.matrix', 'is.data.frame', 'is.numeric', 'is.character', 'is.logical', 'is.function', 'is.list']),
+	/* the result follows from how large the argument is, not from what is in it, so it is bounded (`Narrows`) */
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['length', 'lengths', 'nrow', 'ncol', 'NROW', 'NCOL', 'dim', 'is.null', 'is.factor', 'is.vector', 'is.matrix', 'is.data.frame', 'is.numeric', 'is.character', 'is.logical', 'is.function', 'is.list']),
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure | CallProp.Narrows, sig: SigShape }, assumePrimitive: true },
+	/* the names and the class are read off the argument, so whatever it carries can show up in the result */
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['dimnames', 'names', 'rownames', 'colnames', 'class']),
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigShape }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['nchar', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure | CallProp.Narrows, sig: SigShape }, assumePrimitive: true, evalHandler:     BuiltInEvalName.StringFn },
 	{ type:            'function', names:           [Identifier.from(['missing', PkgName.Base])],
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['x', ArgProp.Presence]] }, assumePrimitive: true },
 	/* they fold everything they are handed into one result */
-	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['paste', 'paste0', 'sum', 'prod', 'min', 'max', 'range', 'pmin', 'pmax', 'cbind', 'rbind', 'data.frame', 'order', 'any']),
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['sum', 'prod', 'min', 'max', 'range', 'pmin', 'pmax', 'cbind', 'rbind', 'data.frame', 'order', 'any']),
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigDots }, assumePrimitive: true },
+	/* the separator sits behind the `...`, so R (and the {@link FnSig}) only ever matches it by its full name */
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['paste', 'paste0']),
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['...', ArgProp.Value], ['sep', ArgProp.Value]] }, assumePrimitive: true, evalHandler:     BuiltInEvalName.StringFn },
+	{ type:            'function', names:           [Identifier.from(['file.path', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['...', ArgProp.Value], ['fsep', ArgProp.Value]] }, assumePrimitive: true, evalHandler:     BuiltInEvalName.StringFn },
 	/* `x` carries the data, whatever follows only tunes the result */
 	{
 		type:  'function',
 		names: [
 			...Identifier.fromAll(PkgName.Base, [
-				/* math */
-				'sqrt', 'abs', 'round', 'floor', 'ceiling', 'signif', 'trunc', 'log', 'log10', 'log2', 'mean',
-				'sign', 'exp', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh',
-				'asinh', 'acosh', 'atanh',
+				/* `mean` reduces a vector, so unlike its neighbors below the value solver cannot fold it */
+				'mean',
 				/* running summaries & reordering */
 				'cumsum', 'cumprod', 'cummax', 'cummin', 'diff', 'sort', 'rev', 'unique', 'duplicated', 't',
 				/* coercion */
 				'as.character', 'as.integer', 'as.logical', 'as.numeric', 'as.matrix', 'as.data.frame',
-				'as.factor', 'as.raw', 'as.list', 'as.array', 'as.double', 'as.complex', 'factor',
-				/* string */
-				'tolower', 'toupper', 'trimws',
-				/* they answer something about the values themselves, so they do read them */
-				'is.na', 'nzchar', 'is.finite', 'is.infinite', 'is.nan'
+				'as.factor', 'as.raw', 'as.list', 'as.array', 'as.double', 'as.complex', 'factor'
 			]),
 			...Identifier.fromAll(PkgName.Utils, ['head', 'tail']),
 			...Identifier.fromAll(PkgName.Stats, ['var', 'sd', 'median', 'quantile']),
@@ -250,6 +258,21 @@ export const DefaultBuiltinConfig = [
 		config:          { props: CallProp.Pure, sig: SigX },
 		assumePrimitive: true
 	},
+	/* they read the values but answer only with a logical, so nothing those values carry reaches the result */
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['is.na', 'nzchar', 'is.finite', 'is.infinite', 'is.nan']),
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure | CallProp.Narrows, sig: SigX }, assumePrimitive: true },
+	/* the numeric functions the value solver folds; each one is an entry of `NumericFns`, which states its parameters */
+	{ type:  'function', names: Identifier.fromAll(PkgName.Base, ['sqrt', 'abs', 'floor', 'ceiling', 'trunc', 'sign', 'exp', 'expm1', 'log2', 'log10', 'log1p',
+		'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh', 'asinh', 'acosh', 'atanh']),
+	processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, sig: SigX }, assumePrimitive: true, evalHandler: BuiltInEvalName.Numeric },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['round', 'signif']),
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['x', ArgProp.Value], ['digits', ArgProp.Value]] }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Numeric },
+	{ type:            'function', names:           [Identifier.from(['log', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['x', ArgProp.Value], ['base', ArgProp.Value]] }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Numeric },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['tolower', 'toupper', 'trimws']),
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigX }, assumePrimitive: true, evalHandler:     BuiltInEvalName.StringFn },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['basename', 'dirname']),
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['path', ArgProp.Value]] }, assumePrimitive: true, evalHandler:     BuiltInEvalName.StringFn },
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['Re', 'Im', 'Mod', 'Arg', 'Conj']),
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['z', ArgProp.Value]] }, assumePrimitive: true },
 	/* the vector constructors take the length of the result, not its contents */
@@ -260,30 +283,34 @@ export const DefaultBuiltinConfig = [
 	/* two data arguments, under the names R gives them */
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['xor', 'crossprod', 'tcrossprod', 'intersect', 'union', 'setdiff']),
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigXY }, assumePrimitive: true },
-	{ type:            'function', names:           [Identifier.from(['match', PkgName.Base])],
-		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigXTable }, assumePrimitive: true },
+	/* they answer with a position or a logical, never with what they matched */
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['match', 'pmatch', 'charmatch']),
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure | CallProp.Narrows, sig: SigXTable }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['is.element', PkgName.Base])],
-		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['el', ArgProp.Value], ['set', ArgProp.Value]] }, assumePrimitive: true },
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure | CallProp.Narrows, sig: [['el', ArgProp.Value], ['set', ArgProp.Value]] }, assumePrimitive: true },
+	/* the result is one of the `choices`, so what flows in is bounded by that argument */
+	{ type:            'function', names:           [Identifier.from(['match.arg', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure | CallProp.Narrows, sig: [['arg', ArgProp.Value], ['choices', ArgProp.Bounds]] }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['atan2', PkgName.Base])],
-		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['y', ArgProp.Value], ['x', ArgProp.Value]] }, assumePrimitive: true },
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['y', ArgProp.Value], ['x', ArgProp.Value]] }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Numeric },
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['bitwAnd', 'bitwOr', 'bitwXor']),
-		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['a', ArgProp.Value], ['b', ArgProp.Value]] }, assumePrimitive: true },
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['a', ArgProp.Value], ['b', ArgProp.Value]] }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Numeric },
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['bitwShiftL', 'bitwShiftR']),
-		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['a', ArgProp.Value], ['n', ArgProp.Value]] }, assumePrimitive: true },
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['a', ArgProp.Value], ['n', ArgProp.Value]] }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Numeric },
 	{ type:            'function', names:           [Identifier.from(['bitwNot', PkgName.Base])],
-		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['a', ArgProp.Value]] }, assumePrimitive: true },
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['a', ArgProp.Value]] }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Numeric },
 	{ type:            'function', names:           [Identifier.from(['grepl', PkgName.Base])],
-		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['pattern', ArgProp.Value], ['x', ArgProp.Value]] }, assumePrimitive: true },
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure | CallProp.Narrows, sig: [['pattern', ArgProp.Value], ['x', ArgProp.Value]] }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['startsWith', PkgName.Base])],
-		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['x', ArgProp.Value], ['prefix', ArgProp.Value]] }, assumePrimitive: true },
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure | CallProp.Narrows, sig: [['x', ArgProp.Value], ['prefix', ArgProp.Value]] }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['endsWith', PkgName.Base])],
-		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['x', ArgProp.Value], ['suffix', ArgProp.Value]] }, assumePrimitive: true },
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure | CallProp.Narrows, sig: [['x', ArgProp.Value], ['suffix', ArgProp.Value]] }, assumePrimitive: true },
 	/* the rest of the pure computations, where no single shape fits */
 	{
 		type:  'function',
 		names: [
 			...Identifier.fromAll(PkgName.Base, [
-				'rep', 'rep.int', 'seq', 'seq_len', 'seq_along', 'seq.int', 'which', 'append', 'complex',
+				'rep', 'rep.int', 'seq', 'seq.int', 'append', 'complex',
 				'matrix', 'array', 'table', 'prop.table', 'colSums', 'rowSums', 'colMeans', 'rowMeans',
 				'solve', 'det', 'eigen', 'aperm',
 				/* string */
@@ -298,6 +325,9 @@ export const DefaultBuiltinConfig = [
 		config:          { props: CallProp.Pure },
 		assumePrimitive: true
 	},
+	/* indices and index sequences: bounded by the shape of what they are handed, never by its contents */
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['which', 'which.max', 'which.min', 'seq_len', 'seq_along']),
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure | CallProp.Narrows }, assumePrimitive: true },
 
 	/* they open a device that writes the plot to the file they are given, under the name each of them uses */
 	{ type:            'function', names:           [...Identifier.fromAll(PkgName.GrDevices, ['png', 'jpeg', 'bmp', 'tiff', 'svg', 'cairo_pdf']), Identifier.from(['raster_pdf', PkgName.RasterPdf]), Identifier.from(['agg_pdf', PkgName.Ragg])],
@@ -399,13 +429,13 @@ export const DefaultBuiltinConfig = [
 	{ type:            'function', names:           [Identifier.from(['rapply', PkgName.Base])],
 		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 1, nameOfFunctionArgument: 'f', unquoteFunction: true, props: CallProp.MayPure }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['print', PkgName.Base])],
-		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, forceArgs: 'all', keepArgumentOut: true, hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ }, props: CallProp.Invisible | CallProp.Generic | CallProp.Prints }, assumePrimitive: false },
+		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', keepArgumentOut: true, hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ }, props: CallProp.Invisible | CallProp.Generic | CallProp.Prints, sig: [['x', ArgProp.Alias | ArgProp.Forced]] }, assumePrimitive: false },
 	{ type:            'function', names:           [...Identifier.fromAll(PkgName.Base, ['message', 'warning']), Identifier.from(['warn', PkgName.Rlang]), Identifier.from(['warn', PkgName.Rutils]), Identifier.from(['info', PkgName.Msgr])],
-		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, forceArgs: 'all', keepArgumentOut: true, hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ }, props: CallProp.Invisible | CallProp.Prints }, assumePrimitive: false },
+		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', keepArgumentOut: true, hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ }, props: CallProp.Invisible | CallProp.Prints, sig: [['...', ArgProp.Alias | ArgProp.Forced]] }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['invisible', PkgName.Base])],
-		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, forceArgs: 'all', keepArgumentOut: true, props: CallProp.Pure | CallProp.Invisible, sig: [['x', ArgProp.Alias | ArgProp.Forced]] }, assumePrimitive: true },
+		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', keepArgumentOut: true, props: CallProp.Pure | CallProp.Invisible, sig: [['x', ArgProp.Alias | ArgProp.Forced]] }, assumePrimitive: true },
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['force', 'identity']),
-		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, forceArgs: 'all', keepArgumentOut: true, props: CallProp.Pure, sig: [['x', ArgProp.Alias | ArgProp.Forced]] }, assumePrimitive: false },
+		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', keepArgumentOut: true, props: CallProp.Pure, sig: [['x', ArgProp.Alias | ArgProp.Forced]] }, assumePrimitive: false },
 	// graphics base
 	{ type:      'function', names:     PlotCreate,
 		processor: BuiltInProcName.Default,
@@ -499,7 +529,7 @@ export const DefaultBuiltinConfig = [
 		config:          { libFn: true, forceArgs: 'all', hasUnknownSideEffects: LinkToLastPlot, props: CallProp.Graphics | CallProp.File | CallProp.Writes },
 		assumePrimitive: true },
 	{ type:            'function', names:           ['('],
-		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, keepArgumentOut: true, props: CallProp.Pure }, assumePrimitive: true },
+		processor:       BuiltInProcName.Default, config:          { keepArgumentOut: true, props: CallProp.Pure, sig: [['x', ArgProp.Alias]] }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Group },
 	{ type:            'function', names:           [Identifier.from(['load_all', PkgName.PkgLoad]), Identifier.from(['load_all', PkgName.Devtools])],
 		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true, forceArgs: [true], props: CallProp.Scope }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['setwd', PkgName.Base])],
@@ -538,7 +568,7 @@ export const DefaultBuiltinConfig = [
 	{ type:            'function', names:           [Identifier.from(['switch', PkgName.Base])],
 		processor:       BuiltInProcName.Default, config:          { forceArgs: [true], useAsProcessor: BuiltInProcName.Switch, props: CallProp.Pure }, assumePrimitive: false },
 	{ type:            'function', names:           ['return'],
-		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, cfg: ExitPointType.Return, keepArgumentOut: true, useAsProcessor: BuiltInProcName.Return, props: CallProp.Pure }, assumePrimitive: true },
+		processor:       BuiltInProcName.Default, config:          { cfg: ExitPointType.Return, keepArgumentOut: true, useAsProcessor: BuiltInProcName.Return, props: CallProp.Pure, sig: [['value', ArgProp.Alias]] }, assumePrimitive: true },
 	{
 		type:  'function',
 		names: [
@@ -616,9 +646,9 @@ export const DefaultBuiltinConfig = [
 	{ type:            'function', names:           [Identifier.from(['data', PkgName.Utils]), Identifier.from(['getHdata', PkgName.Hmisc])],
 		processor:       BuiltInProcName.DefineArgument, config:          { superAssignment: true }, assumePrimitive: false },
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['&&', '&']),
-		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: true, evalRhsWhen: true, props: CallProp.Pure }, assumePrimitive: true },
+		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: true, evalRhsWhen: true, props: CallProp.Pure }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Logical },
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['||', '|']),
-		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: true, evalRhsWhen: false, props: CallProp.Pure }, assumePrimitive: true },
+		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: true, evalRhsWhen: false, props: CallProp.Pure }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Logical },
 	{ type:            'function', names:           ['|>'],
 		processor:       BuiltInProcName.Pipe, config:          { pipePlaceholderName: '_' }, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from(['%>%', PkgName.Magrittr]), '%!>%'], processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', rhsMightBeSymbol: true }, assumePrimitive: true  },
@@ -828,8 +858,9 @@ export const DefaultBuiltinConfig = [
 	{ type:            'function', names:           [Identifier.from(['sys.function', PkgName.Base])],
 		processor:       BuiltInProcName.Recall, config:          { libFn: true, unknownOnNonZeroArg: true, props: CallProp.Lang }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['c', PkgName.Base])],
-		processor:       BuiltInProcName.Vector, config:          { props: CallProp.Pure, sig: [['...', ArgProp.Value]] }, assumePrimitive: true, evalHandler:     'built-in:c' },
-	{ type: 'function', names: Identifier.fromAll(PkgName.Compiler, ['cmpfun', 'compile']), processor: BuiltInProcName.Default, config: { returnsNthArgument: 0 } },
+		processor:       BuiltInProcName.Vector, config:          { props: CallProp.Pure, sig: [['...', ArgProp.Value]] }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Vector },
+	{ type: 'function', names: [Identifier.from(['cmpfun', PkgName.Compiler])], processor: BuiltInProcName.Default, config: { sig: [['f', ArgProp.Alias]] } },
+	{ type: 'function', names: [Identifier.from(['compile', PkgName.Compiler])], processor: BuiltInProcName.Default, config: { sig: [['e', ArgProp.Alias]] } },
 	{ type: 'function', names: [Identifier.from(['loadcmp', PkgName.Compiler])],                                                processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true } },
 	{
 		type:  'function',
@@ -980,7 +1011,7 @@ export const DefaultBuiltinConfig = [
 		config:          { forceArgs: 'all', libFn: true, props: CallProp.User },
 		assumePrimitive: false
 	},
-	/* temporary paths: TempFile is the narrower case of File, so it stands alone */
+	/* they only make up a path, they do not go near the file system, so `File` would be wrong here */
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['tempfile', 'tempdir']),
 		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', props: CallProp.TempFile }, assumePrimitive: false },
 	{

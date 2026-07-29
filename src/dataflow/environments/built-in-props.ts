@@ -5,7 +5,7 @@ import type { DecodedFunction } from '../../project/sigdb/decode';
  * @see {@link BuiltInFnInfo#sig}
  */
 export enum ArgProp {
-	/** the result is this argument, handed back unchanged, like `x` in `identity(x)` */
+	/** the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge */
 	Alias    = 1 << 0,
 	/** the result is computed from the argument's value, like `x` in `sum(x)` */
 	Value    = 1 << 1,
@@ -24,7 +24,12 @@ export enum ArgProp {
 	/** called as a function, like `FUN` in `lapply(x, FUN)` */
 	Callee   = 1 << 8,
 	/** only whether it was supplied matters, as with `missing()` */
-	Presence = 1 << 9
+	Presence = 1 << 9,
+	/**
+	 * the result is one of this argument's values, like `choices` in `match.arg(arg, choices)`. The bounding
+	 * argument of a {@link CallProp.Narrows} call; without one such a call yields a value of its own making.
+	 */
+	Bounds   = 1 << 10
 }
 
 /**
@@ -33,7 +38,7 @@ export enum ArgProp {
  * @see {@link BuiltInFnInfo#props}
  */
 export enum CallProp {
-	/** computes a result and nothing else, the positive counterpart of `hasUnknownSideEffects` */
+	/** computes a result and nothing else, the positive counterpart of `hasUnknownSideEffects` (excludes {@link ImpureProps}) */
 	Pure      = 1 << 0,
 	/**
 	 * pure on its own, but it runs code it is handed, so whatever that code does happens too.
@@ -50,15 +55,15 @@ export enum CallProp {
 	Method    = 1 << 5,
 	/** binds, rebinds, or removes names outside of its own frame, like `assign` or `library` */
 	Scope     = 1 << 6,
-	/** the result may differ between two identical calls, refined by `Random` and `Ambient` (see {@link SigDbInferable}) */
+	/** the result may differ between two identical calls for a reason neither `Random` nor `Ambient` covers (see {@link SigDbInferable}) */
 	NonDet    = 1 << 7,
-	/** draws from the random number generator, or sets its state */
+	/** draws from the random number generator, or sets its state (stated instead of `NonDet`) */
 	Random    = 1 << 8,
-	/** depends on ambient state like the clock, the locale, environment variables, or global options */
+	/** depends on ambient state like the clock, the locale, environment variables, or global options (stated instead of `NonDet`) */
 	Ambient   = 1 << 9,
 	/** touches the file system */
 	File      = 1 << 10,
-	/** produces a temporary path, the narrower case of `File` */
+	/** produces a temporary path; on its own this touches no file system, so a call that also does states `File` too */
 	TempFile  = 1 << 11,
 	/**
 	 * always reaches the network, like `curl::curl_download`. Calls that only do so for some arguments, like
@@ -82,12 +87,38 @@ export enum CallProp {
 	/** writes the resource its `Resource` arguments name */
 	Writes    = 1 << 20,
 	/** may emit to standard output, like `print` or a `cat` without a `file`, and follows a `sink` when one is active */
-	Prints    = 1 << 21
+	Prints    = 1 << 21,
+	/**
+	 * the result is bounded no matter what flows in: a count, an index, a logical, or one of the values of the
+	 * argument marked {@link ArgProp.Bounds}. So nothing an argument carries reaches the result, which is what
+	 * lets the input-sources query stop tracing at `length(x)` or `match.arg(arg, choices)`.
+	 */
+	Narrows   = 1 << 22
 }
 
 /**
+ * The {@link CallProp} bits that state an effect beyond computing a result, so no {@link CallProp.Pure}
+ * definition may carry any of them.
+ */
+export const ImpureProps = CallProp.MayPure | CallProp.Scope | CallProp.NonDet | CallProp.Random | CallProp.Ambient
+	| CallProp.File | CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang
+	| CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes | CallProp.Prints;
+
+/**
+ * Which {@link CallProp} bits rule each other out, as `[bit, everything stating it forbids]`. A definition
+ * that carries the left bit must carry none of the right ones; a test checks the {@link DefaultBuiltinConfig}
+ * (and any configured built-ins) against this. Every other pair of bits combines freely.
+ */
+export const ExclusiveCallProps: readonly (readonly [bit: CallProp, forbidden: CallProps])[] = [
+	[CallProp.Pure, ImpureProps],
+	[CallProp.NonDet, CallProp.Random | CallProp.Ambient],
+	[CallProp.Random, CallProp.Ambient]
+];
+
+/**
  * The {@link CallProp} bits of calls that bring in data of their own. A function that states its props and
- * carries none of these derives its result from its arguments, which is what {@link builtInsWithout} looks for.
+ * carries none of these derives its result from its arguments, which is what {@link BuiltInIndex#without}
+ * looks for.
  */
 export const InputProps = CallProp.NonDet | CallProp.Random | CallProp.Ambient | CallProp.File
 	| CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang | CallProp.User;
@@ -144,7 +175,7 @@ export interface SigLayout {
 	readonly rest:  number
 	/** every bit some parameter carries, so a call can skip the bits nobody uses */
 	readonly any:   ArgProps
-	/** the position of the argument handed back as the result, `-1` if there is none */
+	/** the position of the {@link ArgProp.Alias} argument, handed back as the result, `-1` if there is none */
 	readonly alias: number
 }
 

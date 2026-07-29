@@ -54,6 +54,7 @@ export function controlledSigDb(pkgOrPkgs: string | Record<string, readonly stri
 		dependencies:      () => undefined,
 		packageNames:      () => Object.keys(pkgs),
 		isBaseR:           () => false,
+		downloads:         () => 0,
 		coreVersions:      () => undefined,
 		releaseDate:       () => undefined,
 		releaseDates:      () => [],

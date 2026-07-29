@@ -36,6 +36,7 @@ import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/proce
 import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
+import { Identifier } from '../dataflow/environments/identifier';
 
 type CfgDownState = [loop: boolean, fn: boolean];
 
@@ -407,6 +408,9 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 	return { graph: graph, breaks: [], nexts: [], returns: [], exitPoints: [fnId], entryPoints: [fnId] };
 }
 
+/** operators whose rhs a driver evaluates as a per-iteration closure, so escapes stay within it */
+const ClosureBodyOperators: ReadonlySet<string> = new Set(['%do%', '%dopar%', '%dofuture%', '%dorng%', '%:%']);
+
 function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState): ControlFlowInformation {
 	const callId = call.info.id;
 	const graph = name.graph;
@@ -456,6 +460,8 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 			info.returns.push(CfgVertex.toExitId(callId));
 			info.exitPoints.length = 0;
 		}
+	} else if(call.named && ClosureBodyOperators.has(Identifier.getName(call.functionName.content))) {
+		return sealEscapes(info, CfgVertex.toExitId(callId));
 	}
 
 	// should not contain any breaks, nexts, or returns, (except for the body if something like 'break()')
@@ -526,14 +532,17 @@ function cfgSwitch(call: RFunctionCall<ParentInformation>, name: ControlFlowInfo
 	return info;
 }
 
-// on.exit defers its expr, so seal a return/break/next inside it from escaping into enclosing control flow
-function cfgRegisterHook(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState): ControlFlowInformation {
-	const base = cfgFunctionCall(call, name, args, down);
-	const exitId = CfgVertex.toExitId(call.info.id);
+/** keeps a return/break/next from escaping a deferred body into the enclosing control flow */
+function sealEscapes(base: ControlFlowInformation, exitId: NodeId): ControlFlowInformation {
 	for(const escape of base.returns.concat(base.breaks, base.nexts)) {
 		base.graph.addEdge(exitId, escape, CfgEdge.makeFd());
 	}
 	return { ...base, returns: [], breaks: [], nexts: [], exitPoints: base.exitPoints.length > 0 ? base.exitPoints : [exitId] };
+}
+
+// on.exit defers its expr, so seal a return/break/next inside it from escaping into enclosing control flow
+function cfgRegisterHook(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState): ControlFlowInformation {
+	return sealEscapes(cfgFunctionCall(call, name, args, down), CfgVertex.toExitId(call.info.id));
 }
 
 export const ResolvedCallSuffix = CfgVertex.toExitId('-resolved-call');

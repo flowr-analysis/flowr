@@ -53,7 +53,9 @@ export interface ResolveInfo {
 }
 
 function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
-	const identifier = recoverName(sourceId, dataflow.idMap);
+	const vertex = dataflow.getVertex(sourceId);
+	/* the lexeme of an infix call like `a %% b` is the whole expression, so we prefer the effective name of the vertex */
+	const identifier = vertex?.tag === VertexType.FunctionCall ? vertex.name : recoverName(sourceId, dataflow.idMap);
 	if(identifier === undefined) {
 		return undefined;
 	}
@@ -187,6 +189,7 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 		case RType.FunctionCall:
 		case RType.BinaryOp:
 		case RType.UnaryOp:
+		case RType.ExpressionList:
 			return setFrom(resolveNode({
 				resolve, node, ctx, environment, graph, idMap, blocked
 			}));

@@ -68,6 +68,17 @@ export type GuessEvidenceSource = ConstraintSource;
  */
 export type GuessVersionEvidence = DerivedConstraint;
 
+/** one package an orphan call could have meant instead, with the versions of it that fit those calls */
+export interface OrphanAlternativeView {
+	readonly package:        string;
+	/** the version range of this package that would accept the orphan calls, in the notation {@link GuessedDependency.range} uses */
+	readonly range:          string;
+	readonly minVersion?:    string;
+	readonly maxVersion?:    string;
+	readonly candidateCount: number;
+	readonly totalVersions:  number;
+}
+
 /** the guessed version range of one dependency */
 export interface GuessedDependency {
 	readonly package:             string;
@@ -106,6 +117,12 @@ export interface GuessedDependency {
 	 */
 	readonly used?:               boolean;
 	/**
+	 * Set to `false` when the signature database has no record of the package at all (e.g. a Bioconductor package),
+	 * distinguishing it from one the database carries but cannot constrain. Such a package has no `minVersion`/`maxVersion`
+	 * and never appears in {@link GuessDepVersionsQueryResult.assignments}, so a consumer should resolve it by other means.
+	 */
+	readonly known?:              boolean;
+	/**
 	 * Set when this package was inferred purely from *orphan* calls: bare calls (`ggplot()`) that flowR could not
 	 * resolve and that no loaded package defines, but whose name is exported by exactly this one package in the
 	 * signature database. The symbol would be undefined were the package not loaded, so a downstream handler may
@@ -114,6 +131,12 @@ export interface GuessedDependency {
 	readonly orphan?:             boolean;
 	/** the undefined orphan function names that inferred this package (only set when {@link orphan}), e.g. `['ggplot']` */
 	readonly orphanFunctions?:    readonly string[];
+	/**
+	 * The other packages that export the {@link orphanFunctions}, each with the versions of it that would fit the
+	 * calls. Attributing an orphan is a guess: the most downloaded exporter wins, and these are the ones it beat,
+	 * so whoever reads the result can pick another. Ordered as the guess ranked them, best first.
+	 */
+	readonly orphanAlternatives?: readonly OrphanAlternativeView[];
 }
 
 export interface GuessDepVersionsQueryResult extends BaseQueryResult {
@@ -411,7 +434,8 @@ export const GuessDepVersionsQueryDefinition = {
 				+ (coupled.length > 0 ? ' ' + italic(`[coupled: ${truncatedList(coupled, 3)}]`, formatter) : '')
 				+ (dep.orphan ? ' ' + color(`[orphan: attach library(${dep.package}) for ${truncatedList(dep.orphanFunctions ?? [], 3)}]`, Colors.Yellow, formatter) : '');
 			const anyVersion = coupled.length > 0 ? '(any version on its own)' : '(any version)';
-			const note = dep.base ? '' : dep.used === false ? ' ' + faint('(not called)', formatter) : !isConstrained(dep) && dep.totalVersions ? ' ' + faint(anyVersion, formatter) : '';
+			const note = dep.known === false ? ' ' + color('(not in database)', Colors.Red, formatter)
+				: dep.base ? '' : dep.used === false ? ' ' + faint('(not called)', formatter) : !isConstrained(dep) && dep.totalVersions ? ' ' + faint(anyVersion, formatter) : '';
 			const tag = groupTag + note;
 			const range = dep.unsatisfiable ? color('unsatisfiable', Colors.Red, formatter) : bold(dep.range, formatter);
 			const count = dep.totalVersions !== undefined ? `${dep.candidateCount}/${dep.totalVersions} versions` : `${dep.candidateCount} candidate${dep.candidateCount === 1 ? '' : 's'}`;
@@ -419,6 +443,11 @@ export const GuessDepVersionsQueryDefinition = {
 			const dbGe = versionBound(tightestBound(avail, '>='))?.ver, dbLe = versionBound(tightestBound(avail, '<='))?.ver;
 			const dbRange = dbGe !== undefined && dbLe !== undefined ? `, db ${dbGe} - ${dbLe}` : '';
 			result.push(`   ${bold('━ ' + dep.package, formatter)}${tag}  ${range}  ${faint('(' + count + dbRange + ')', formatter)}`);
+			if(dep.orphanAlternatives?.length) {
+				// attributing an orphan is a guess, so name the exporters it beat and what each of them would fit
+				const alts = dep.orphanAlternatives.map(a => `${a.package} ${a.range}`);
+				result.push(`      ${italic('or instead', formatter)}: ${truncatedList(alts, 4)}`);
+			}
 			// only enforced evidence sets the tightest bound; a partial one narrows nothing and must not hide a real bound
 			const enforced = dep.evidence.filter(e => !e.partial);
 			const tightestGe = versionBound(tightestBound(enforced, '>='))?.ver;

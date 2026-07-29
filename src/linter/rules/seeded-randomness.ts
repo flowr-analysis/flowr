@@ -30,7 +30,7 @@ import type { ControlDependency } from '../../dataflow/info';
 import { happensInEveryBranchSet } from '../../dataflow/info';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { CallProp } from '../../dataflow/environments/built-in-props';
-import { builtInsWith } from '../../dataflow/environments/query-fn-props';
+import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
@@ -175,7 +175,7 @@ export const SEEDED_RANDOMNESS = {
 		defaultConfig: {
 			randomnessProducers: RandomnessProducers,
 			randomnessConsumers: [
-				...builtInsWith(CallProp.Random).map(Identifier.getName)
+				...BuiltInIndex.default().with(CallProp.Random).map(Identifier.getName)
 					.filter(n => !RandomnessProducers.some(p => p.name === n)),
 				'princomp', 'pointLabel', 'some', 'rbernoulli', 'rdunif', 'generateSeedVectors', 'rvonmises',
 				'rxor', 'rmvnorm', 'randomForest',

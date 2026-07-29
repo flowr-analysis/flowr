@@ -42,6 +42,16 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		expect(dep?.evidence.some(e => e.source === 'signature' && e.parameter === '.by')).toBe(true);
 	});
 
+	test('a package the database has no record of is flagged as unknown, not as unconstrained', async() => {
+		const scenario = {
+			code:     'library(dplyr)\nlibrary(qpgraph)\nfilter(x)\nqpAnyGraph(y)',
+			packages: { dplyr: { versions: { '1.0.0': { date: '2020-01-01', fns: { filter: ['.data'] } } } } },
+			query:    { packages: ['dplyr', 'qpgraph'] }
+		};
+		expect((await guessDep(ts, scenario, 'qpgraph'))?.known).toBe(false);
+		expect((await guessDep(ts, scenario, 'dplyr'))?.known).toBeUndefined();
+	});
+
 	test('a partially-spelled argument (R pmatch) is matched against the signature', async() => {
 		// `.d` uniquely abbreviates `.data`, so only a version whose `foo` has `.data` accepts the call
 		const dep = await guessDep(ts, {
@@ -801,16 +811,42 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 			expect(guessed(res, 'ggtern')).toBeUndefined();
 		});
 
-		test('a name exported by several packages is left ambiguous (not attributed to any)', async() => {
+		test('the most downloaded of a few exporters gets the orphan, the rest are reported as alternatives', async() => {
 			const res = await runGuess(ts, {
 				code:     'draw(x)',
 				packages: {
-					pkgA: { versions: { '1.0.0': { date: '2020-01-01', fns: { draw: [] } } } },
-					pkgB: { versions: { '1.0.0': { date: '2020-01-01', fns: { draw: [] } } } }
+					pkgA: { downloads: 10, versions: { '1.0.0': { date: '2020-01-01', fns: { draw: [] } }, '2.0.0': { date: '2021-01-01', fns: { draw: [] } } } },
+					pkgB: { downloads: 9000, versions: { '1.0.0': { date: '2020-01-01', fns: { draw: [] } } } }
 				}
 			});
+			expect(guessed(res, 'pkgB')?.orphan).toBe(true);
 			expect(guessed(res, 'pkgA')).toBeUndefined();
+			// the loser is not a dependency, but the guess still says which versions of it would have fitted
+			expect(guessed(res, 'pkgB')?.orphanAlternatives).toEqual([
+				{ package: 'pkgA', range: '>=1.0.0 <=2.0.0', minVersion: '1.0.0', maxVersion: '2.0.0', candidateCount: 2, totalVersions: 2 }
+			]);
+		});
+
+		test('a loaded exporter explains the call, so no library is proposed for the other one', async() => {
+			// dplyr re-exports tidyselect's `everything`, so a script that loads dplyr needs no library(tidyselect)
+			const res = await runGuess(ts, {
+				code:     'library(pkgA)\ndraw(x)',
+				packages: {
+					pkgA: { downloads: 10, versions: { '1.0.0': { date: '2020-01-01', fns: { draw: [] } } } },
+					pkgB: { downloads: 9000, versions: { '1.0.0': { date: '2020-01-01', fns: { draw: [] } } } }
+				}
+			});
+			expect(guessed(res, 'pkgA')?.orphan).toBeUndefined();
 			expect(guessed(res, 'pkgB')).toBeUndefined();
+		});
+
+		test('a name too many packages export is left ambiguous (not attributed to any)', async() => {
+			const many = Object.fromEntries(['pkgA', 'pkgB', 'pkgC', 'pkgD', 'pkgE', 'pkgF'].map((n, i) =>
+				[n, { downloads: i, versions: { '1.0.0': { date: '2020-01-01', fns: { draw: [] } } } }]));
+			const res = await runGuess(ts, { code: 'draw(x)', packages: many });
+			for(const pkg of Object.keys(many)) {
+				expect(guessed(res, pkg), pkg).toBeUndefined();
+			}
 		});
 
 		test('a loaded package used by a bare call is not treated as an orphan', async() => {

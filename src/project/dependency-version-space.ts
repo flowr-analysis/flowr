@@ -111,6 +111,8 @@ export interface SurvivingEntries {
 	readonly unsatisfiable:       boolean;
 	/** the total number of versions the database carries for the package (the full history the candidates are drawn from) */
 	readonly total:               number;
+	/** whether the database carries the package at all: `false` means "no record", not "no constraint" */
+	readonly known:               boolean;
 	/** how many of those versions the *declared* constraints alone allow, the baseline the guess narrows down from */
 	readonly declared:            number;
 }
@@ -336,6 +338,24 @@ export function collectUsage(graph: DataflowGraph, deps?: ReadOnlyFlowrAnalyzerD
 	return usage;
 }
 
+/**
+ * How many packages may export an orphan's name before it is dropped as too generic. Up to this many, the most
+ * downloaded one is taken (see {@link collectOrphanUsage}); beyond it the name carries no information.
+ */
+const MaxOrphanProviders = 5;
+
+/**
+ * What the orphan calls of one analyzed program implicated, as {@link collectOrphanUsage} reports it.
+ */
+export interface OrphanUsage {
+	/** per package the project does not already know: the orphan function names that pointed at it */
+	readonly attributed:       Map<string, Set<string>>;
+	/** per such package: the other exporters of those names that lost the pick, most downloaded first */
+	readonly alternatives:     Map<string, string[]>;
+	/** the same calls recorded against every alternative, so a caller can ask which of its versions would fit */
+	readonly alternativeUsage: Map<string, PackageUsage>;
+}
+
 /** options for {@link collectOrphanUsage} */
 export interface OrphanUsageOptions {
 	/** the analyzed project's own namespace, never inferred as one of its own orphan dependencies */
@@ -354,13 +374,17 @@ export interface OrphanUsageOptions {
  * does not already declare or load (`isKnown` is `false`), the orphan function names that pointed at it (e.g.
  * `ggplot2` from `ggplot()`) -- a note for a downstream handler to attach the library, since the symbol would be
  * undefined were the package not loaded. Disambiguation is `options.builtinLibraryOf` (flowR's curated map, e.g.
- * `ggplot` to `ggplot2`, authoritative even when several packages re-export the name), else the sole database
- * exporter; a still-ambiguous name would explode the guess and is skipped, as are quoted (NSE) uses and
- * forward-referenced closures.
+ * `ggplot` to `ggplot2`, authoritative even when several packages re-export the name), then a package the project
+ * already declares or loads, and finally the most downloaded of at most {@link MaxOrphanProviders} exporters; a
+ * name beyond that many packages export says nothing about which one is meant and is skipped, as are quoted (NSE)
+ * uses and forward-referenced closures. The exporters that lost the pick are kept as
+ * {@link OrphanUsage.alternatives}, since the guess is exactly that -- a guess.
  */
-export function collectOrphanUsage(graph: DataflowGraph, deps: ReadOnlyFlowrAnalyzerDependenciesContext, usage: Map<string, PackageUsage>, isKnown: (pkg: string) => boolean, options: OrphanUsageOptions = {}): Map<string, Set<string>> {
+export function collectOrphanUsage(graph: DataflowGraph, deps: ReadOnlyFlowrAnalyzerDependenciesContext, usage: Map<string, PackageUsage>, isKnown: (pkg: string) => boolean, options: OrphanUsageOptions = {}): OrphanUsage {
 	const { self, builtinLibraryOf } = options;
-	const orphanFunctions = new Map<string, Set<string>>();
+	const attributed = new Map<string, Set<string>>();
+	const alternatives = new Map<string, string[]>();
+	const alternativeUsage = new Map<string, PackageUsage>();
 	const scopeDefined = collectScopeDefinedNames(graph);
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		// an anonymous callee, or an already-qualified `pkg::fn` (handled by collectUsage)
@@ -382,31 +406,43 @@ export function collectOrphanUsage(graph: DataflowGraph, deps: ReadOnlyFlowrAnal
 		if(isNonStandardEvaluated(graph, id) || isDefinedInEnclosingScope(graph, scopeDefined, id, name)) {
 			continue;
 		}
-		// flowR's curated map disambiguates a name several packages export (ggplot to ggplot2); otherwise attribute only
-		// when exactly one database package exports the name (a still-ambiguous name would explode the guess)
+		// flowR's curated map disambiguates a name several packages export (ggplot to ggplot2); failing that, a
+		// package the project already declares or loads explains the call and needs no library attached (dplyr
+		// re-exports tidyselect's `everything`); failing that the most downloaded exporter wins, as
+		// `packagesExporting` hands them over in that order and a script calling a bare name almost always means
+		// the popular package. A name half of CRAN exports says nothing, so it is skipped.
 		const mapped = builtinLibraryOf?.(name);
 		const providers = deps.packagesExporting(name).filter(p => p !== self);
-		const pkg = mapped !== undefined && mapped !== self ? mapped : providers.length === 1 ? providers[0] : undefined;
+		const known = providers.filter(isKnown);
+		const pkg = mapped !== undefined && mapped !== self ? mapped
+			: known.length === 1 ? known[0]
+				: known.length === 0 && providers.length > 0 && providers.length <= MaxOrphanProviders ? providers[0] : undefined;
 		if(pkg === undefined) {
 			continue;
 		}
-		let pkgUsage = usage.get(pkg);
-		if(pkgUsage === undefined) {
-			pkgUsage = new Map();
-			usage.set(pkg, pkgUsage);
-		}
-		recordCallUsage(pkgUsage, name, vertex.args);
+		recordCallUsage(atKey(usage, pkg, (): PackageUsage => new Map()), name, vertex.args);
 		// a package the project already declares or loads is a normal target, not an orphan needing attachment
-		if(!isKnown(pkg)) {
-			let fns = orphanFunctions.get(pkg);
-			if(fns === undefined) {
-				fns = new Set();
-				orphanFunctions.set(pkg, fns);
-			}
-			fns.add(name);
+		if(isKnown(pkg)) {
+			continue;
+		}
+		atKey(attributed, pkg, () => new Set<string>()).add(name);
+		// the exporters that lost, with the same calls recorded, so the guess can report what each of them would fit
+		const losers = providers.filter(p => p !== pkg);
+		alternatives.set(pkg, [...new Set([...alternatives.get(pkg) ?? [], ...losers])]);
+		for(const alt of losers) {
+			recordCallUsage(atKey(alternativeUsage, alt, (): PackageUsage => new Map()), name, vertex.args);
 		}
 	}
-	return orphanFunctions;
+	return { attributed, alternatives, alternativeUsage };
+}
+
+/** the entry of `key`, inserting what `make` builds when the map has none yet */
+function atKey<V>(map: Map<string, V>, key: string, make: () => V): V {
+	let found = map.get(key);
+	if(found === undefined) {
+		map.set(key, found = make());
+	}
+	return found;
 }
 
 /** the dated releases + base-R core releases + latest of a package, ascending by R-version order */
@@ -997,10 +1033,11 @@ export function survivingEntries(space: VersionSpace, name: string, transitive: 
 	// contradiction is a constraint property, not an empty database
 	const unsatisfiable = constraintsContradict(declaredConstraints, declaredRange, effectiveTransitive);
 	if(!src) {
-		return { survivors: [], preSignature: [], getFn, declaredRange, declaredConstraints, base: false, unsatisfiable, total: 0, declared: 0 };
+		return { survivors: [], preSignature: [], getFn, declaredRange, declaredConstraints, base: false, unsatisfiable, total: 0, declared: 0, known: false };
 	}
 	const base = src.isBaseR(packageKey);
 	const total = timeline.length;
+	const known = total > 0;
 	const declared = declaredRange ? timeline.filter(e => RRange.satisfies(e.ver, declaredRange)).length : total;
 	// emit database coverage envelope as outer bounds
 	if(observe && timeline.length > 0 && !disabled.has('available')) {
@@ -1009,13 +1046,13 @@ export function survivingEntries(space: VersionSpace, name: string, transitive: 
 	}
 	const preSignature = applyConstraints(space, name, timeline, { declaredRange, declaredConstraints, transitive: effectiveTransitive, base }, observe);
 	if(!usage || disabled.has('signature')) {
-		return { survivors: preSignature, preSignature, getFn, declaredRange, declaredConstraints, base, unsatisfiable, total, declared };
+		return { survivors: preSignature, preSignature, getFn, declaredRange, declaredConstraints, base, unsatisfiable, total, declared, known };
 	}
 	if(observe) {
 		addSignatureEvidence(observe, src, getFn, packageKey, usage, preSignature);
 	}
 	const survivors = preSignature.filter(e => signatureOk(e.ver));
-	return { survivors, preSignature, getFn, declaredRange, declaredConstraints, base, unsatisfiable, total, declared };
+	return { survivors, preSignature, getFn, declaredRange, declaredConstraints, base, unsatisfiable, total, declared, known };
 }
 
 /** the sigdb package a target's version history is drawn from: `R` reuses `base` (their releases coincide), everything else is itself */

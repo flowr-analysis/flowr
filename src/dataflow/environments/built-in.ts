@@ -27,7 +27,7 @@ import { processQuote } from '../internal/process/functions/call/built-in/built-
 import { processFunctionDefinition } from '../internal/process/functions/call/built-in/built-in-function-definition';
 import { processExpressionList } from '../internal/process/functions/call/built-in/built-in-expression-list';
 import { processGet } from '../internal/process/functions/call/built-in/built-in-get';
-import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { type BuiltIn, NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -45,8 +45,12 @@ import { VertexType } from '../graph/vertex';
 import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
-import { resolveAsMinus, resolveAsPaste, resolveAsPlus, resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
-import type { DataflowGraph } from '../graph/graph';
+import type { ResolveInfo } from '../eval/resolve/alias-tracking';
+import { resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
+import { resolveAsStringFn } from '../eval/resolve/resolve-strings';
+import { resolveAsComparison, resolveAsGroup, resolveAsLogical } from '../eval/resolve/resolve-operators';
+import { resolveAsNumeric } from '../eval/resolve/resolve-numbers';
+import { BuiltInEvalName } from './built-in-eval-name';
 import type { VariableResolve } from '../../config';
 import type {
 	BuiltInConstantDefinition,
@@ -54,7 +58,6 @@ import type {
 	BuiltInFunctionDefinition,
 	BuiltInReplacementDefinition
 } from './built-in-config';
-import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { processStopIfNot } from '../internal/process/functions/call/built-in/built-in-stop-if-not';
 import { processTryCatch } from '../internal/process/functions/call/built-in/built-in-try-catch';
 import { processRegisterHook } from '../internal/process/functions/call/built-in/built-in-register-hook';
@@ -91,10 +94,12 @@ export type BuiltInIdentifierProcessorWithConfig<Config> = <OtherInfo>(
 ) => DataflowInformation;
 
 export interface BuiltInIdentifierDefinition extends IdentifierReference {
-	type:      ReferenceType.BuiltInFunction
-	definedAt: BuiltIn
-	processor: BuiltInIdentifierProcessor
-	config?:   ConfigOfBuiltInMappingName<keyof typeof BuiltInProcessorMapper> & { libFn?: boolean }
+	type:         ReferenceType.BuiltInFunction
+	definedAt:    BuiltIn
+	processor:    BuiltInIdentifierProcessor
+	config?:      ConfigOfBuiltInMappingName<keyof typeof BuiltInProcessorMapper> & { libFn?: boolean }
+	/** folds a call to this function to a constant, see {@link BuiltInEvalHandlerMapper} */
+	evalHandler?: BuiltInEvalHandler
 }
 
 export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierReference {
@@ -104,7 +109,6 @@ export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierRefere
 }
 
 export interface DefaultBuiltInProcessorConfiguration extends ForceArguments, BuiltInFnInfo {
-	readonly returnsNthArgument?:    number | 'last',
 	readonly cfg?:                   ExitPointType,
 	readonly readAllArguments?:      boolean,
 	/**
@@ -123,14 +127,10 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments, Bu
 	 */
 	readonly useAsProcessor?:        BuiltInProcName
 }
-export interface BuiltInEvalHandlerArgs {
-	resolve:      VariableResolve,
-	node:         RNodeWithParent,
-	ctx:          ReadOnlyFlowrAnalyzerContext,
-	environment?: REnvironmentInformation,
-	graph?:       DataflowGraph,
-	idMap?:       AstIdMap
-	blocked?:     Set<NodeId>
+/** the {@link ResolveInfo} a handler continues to resolve with, plus the node it is asked to fold */
+export interface BuiltInEvalHandlerArgs extends ResolveInfo {
+	resolve: VariableResolve,
+	node:    RNodeWithParent
 }
 export type BuiltInEvalHandler = (args: BuiltInEvalHandlerArgs) => Value;
 
@@ -139,14 +139,13 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ returnsNthArgument, useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
+	{ useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	/* a signature states per argument what the individual options state for all of them at once */
 	const layout = sig !== undefined ? sigLayout(sig) : undefined;
 	if(layout !== undefined) {
 		forceArgs ??= (layout.any & ArgProp.Forced) !== 0 ? args.map((_, i) => (argProp(layout, i) & ArgProp.Forced) !== 0) : undefined;
 		nse ??= (layout.any & ArgProp.Nse) !== 0 ? argsWith(layout, args.length, ArgProp.Nse) : undefined;
-		returnsNthArgument ??= layout.alias >= 0 ? layout.alias : undefined;
 	}
 	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: useAsProcessor });
 	if(nse !== undefined) {
@@ -155,8 +154,8 @@ function defaultBuiltInProcessor<OtherInfo>(
 	if(keepArgumentOut) {
 		res.out = [...res.out, ...processedArguments.flatMap(arg => arg?.out ?? [])];
 	}
-	if(returnsNthArgument !== undefined) {
-		const arg = returnsNthArgument === 'last' ? processedArguments.at(-1) : processedArguments[returnsNthArgument];
+	if(layout !== undefined && layout.alias >= 0) {
+		const arg = processedArguments[layout.alias];
 		if(arg !== undefined) {
 			res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Returns);
 		}
@@ -284,14 +283,19 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.WhileLoop]:          processWhileLoop,
 } as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<never>>;
 
+/**
+ * The value-solver function behind every {@link BuiltInEvalName}, the counterpart of the {@link BuiltInProcessorMapper}.
+ * A built-in picks one of these by name with its serializable {@link BuiltInFunctionDefinition#evalHandler}.
+ */
 export const BuiltInEvalHandlerMapper = {
-	'built-in:c':      resolveAsVector,
-	'built-in::':      resolveAsSeq,
-	'built-in:+':      resolveAsPlus,
-	'built-in:-':      resolveAsMinus,
-	'built-in:paste':  resolveAsPaste,
-	'built-in:paste0': resolveAsPaste
-} as const satisfies Record<string, BuiltInEvalHandler>;
+	[BuiltInEvalName.Vector]:     resolveAsVector,
+	[BuiltInEvalName.Seq]:        resolveAsSeq,
+	[BuiltInEvalName.Numeric]:    resolveAsNumeric,
+	[BuiltInEvalName.Comparison]: resolveAsComparison,
+	[BuiltInEvalName.Logical]:    resolveAsLogical,
+	[BuiltInEvalName.StringFn]:   resolveAsStringFn,
+	[BuiltInEvalName.Group]:      resolveAsGroup
+} as const satisfies Record<BuiltInEvalName, BuiltInEvalHandler>;
 
 export type ConfigOfBuiltInMappingName<N extends keyof typeof BuiltInProcessorMapper> = Parameters<typeof BuiltInProcessorMapper[N]>[4];
 
@@ -320,22 +324,25 @@ export class BuiltIns {
 	/**
 	 * Register a built-in function (like `print` or `c`) to the given {@link BuiltIns}
 	 */
-	registerBuiltInFunctions<BuiltInProcessor extends keyof typeof BuiltInProcessorMapper>({ names, processor, config, assumePrimitive }: BuiltInFunctionDefinition<BuiltInProcessor> ): void {
+	registerBuiltInFunctions<BuiltInProcessor extends keyof typeof BuiltInProcessorMapper>({ names, processor, config, assumePrimitive, evalHandler }: BuiltInFunctionDefinition<BuiltInProcessor> ): void {
 		guard(processor !== undefined, () => `Processor for ${JSON.stringify(names)} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
 		const mappedProcessor = BuiltInProcessorMapper[processor];
 		guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);
+		const mappedEval = evalHandler === undefined ? undefined : BuiltInEvalHandlerMapper[evalHandler];
+		guard(evalHandler === undefined || mappedEval !== undefined, () => `Eval handler ${evalHandler} is unknown! Please pass a valid one of ${JSON.stringify(Object.keys(BuiltInEvalHandlerMapper))}!`);
 		for(const name of names) {
 			const n = Identifier.getName(name);
 			const id = NodeId.toBuiltIn(n);
 			const d: IdentifierDefinition[] = [{
-				type:      ReferenceType.BuiltInFunction,
-				definedAt: id,
-				cds:       undefined,
+				type:        ReferenceType.BuiltInFunction,
+				definedAt:   id,
+				cds:         undefined,
 				/* eslint-disable-next-line @typescript-eslint/no-explicit-any,@typescript-eslint/no-unsafe-argument */
-				processor: (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as any),
+				processor:   (name, args, rootId, data) => mappedProcessor(name, args, rootId, data, config as any),
 				config,
+				evalHandler: mappedEval,
 				name,
-				nodeId:    id
+				nodeId:      id
 			}];
 			this.set(n, d, assumePrimitive);
 		}

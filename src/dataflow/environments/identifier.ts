@@ -346,25 +346,25 @@ export const enum PkgName {
  */
 export enum ReferenceType {
 	/** The identifier type is unknown */
-	Unknown = 1,
+	Unknown = 1 << 0,
 	/** The identifier is defined by a function (includes built-in function) */
-	Function = 2,
+	Function = 1 << 1,
 	/** The identifier is defined by a variable (includes parameter and argument) */
-	Variable = 4,
+	Variable = 1 << 2,
 	/** The identifier is defined by a constant (includes built-in constant) */
-	Constant = 8,
+	Constant = 1 << 3,
 	/** The identifier is defined by a parameter (which we know nothing about at the moment) */
-	Parameter = 16,
+	Parameter = 1 << 4,
 	/** The identifier is defined by an argument (which we know nothing about at the moment) */
-	Argument = 32,
+	Argument = 1 << 5,
 	/** The identifier is defined by a built-in value/constant */
-	BuiltInConstant = 64,
+	BuiltInConstant = 1 << 6,
 	/** The identifier is defined by a built-in function */
-	BuiltInFunction = 128,
+	BuiltInFunction = 1 << 7,
 	/** Prefix to identify S3 methods, use this, to for example dispatch a call to `f` which will then link to `f.*` */
-	S3MethodPrefix = 256,
+	S3MethodPrefix = 1 << 8,
 	/** Prefix to identify S7 methods, use this, to for example dispatch a call to `f` which will then link to `f<7>*` */
-	S7MethodPrefix = 512
+	S7MethodPrefix = 1 << 9
 }
 
 /** Reverse mapping of the reference types so you can get the name from the bitmask (useful for debugging) */

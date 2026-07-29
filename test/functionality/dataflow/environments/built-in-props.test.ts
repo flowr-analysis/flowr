@@ -51,8 +51,8 @@ const ExpectedLabels: readonly (readonly [Identifier, CallProps])[] = [
 	[Identifier.from(['nchar', PkgName.Base]), CallProp.Pure],
 	[Identifier.from(['lapply', PkgName.Base]), CallProp.MayPure],
 	[Identifier.from(['do.call', PkgName.Base]), CallProp.MayPure],
-	[Identifier.from(['print', PkgName.Base]), CallProp.Generic | CallProp.Writes],
-	[Identifier.from(['warning', PkgName.Base]), CallProp.Warns | CallProp.Writes],
+	[Identifier.from(['print', PkgName.Base]), CallProp.Generic | CallProp.Prints],
+	[Identifier.from(['warning', PkgName.Base]), CallProp.Prints],
 	[Identifier.from(['stop', PkgName.Base]), CallProp.Throws],
 	[Identifier.from(['library', PkgName.Base]), CallProp.Scope],
 	[Identifier.from(['rm', PkgName.Base]), CallProp.Scope],
@@ -155,8 +155,8 @@ describe('Built-in properties', () => {
 		test(label('it fills in the parameters and the properties it knows', ['name-normal'], ['other']), () => {
 			const info = queryFnProps(Identifier.from(['known', PkgName.Base]), { signatures: TestSignatures });
 			assert.deepStrictEqual(info?.sig, [['x', ArgProp.Forced], ['...', 0]]);
-			assert.strictEqual(info?.props, CallProp.Throws | CallProp.MayPure | CallProp.Process,
-				'can-throw and higher-order are read off, `system` carries over, exported has no counterpart');
+			assert.strictEqual(info?.props, CallProp.Throws | CallProp.Process,
+				'can-throw is read off, `system` carries over, exported and higher-order have no counterpart');
 		});
 		test(label('what the built-ins state wins, the rest is filled up', ['name-normal'], ['other']), () => {
 			const info = queryFnProps(Identifier.from(['known', PkgName.Base]), {
@@ -164,7 +164,7 @@ describe('Built-in properties', () => {
 				signatures: TestSignatures
 			});
 			assert.deepStrictEqual(info?.sig, [['y', ArgProp.Value]], 'the declared signature is kept');
-			assert.strictEqual(info?.props, CallProp.Pure | CallProp.Throws | CallProp.MayPure | CallProp.Process,
+			assert.strictEqual(info?.props, CallProp.Pure | CallProp.Throws | CallProp.Process,
 				'the properties are joined');
 		});
 		test(label('a name the database does not have is left alone', ['name-normal'], ['other']), () => {
@@ -251,13 +251,13 @@ describe('Built-in properties', () => {
 		test(label('what a package function calls carries over to it', ['name-normal'], ['other']), () => {
 			const info = inferFnProps(TestSignatures, 'base', 'known');
 			/* `system` runs a command, `paste` is pure and hands nothing on */
-			assert.strictEqual(info?.props, CallProp.Throws | CallProp.MayPure | CallProp.Process);
+			assert.strictEqual(info?.props, CallProp.Throws | CallProp.Process);
 		});
 		test(label('forced parameters keep their order', ['name-normal'], ['other']), () => {
 			const fn = (TestSignatures.functionByName('base', 'known') as DecodedFunction);
 			assert.deepStrictEqual(fnInfoFromSignature(fn), {
 				sig:   [['x', ArgProp.Forced], ['...', 0]],
-				props: CallProp.Throws | CallProp.MayPure
+				props: CallProp.Throws
 			});
 		});
 	});

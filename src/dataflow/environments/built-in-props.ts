@@ -6,25 +6,25 @@ import type { DecodedFunction } from '../../project/sigdb/decode';
  */
 export enum ArgProp {
 	/** the result is this argument, handed back unchanged, like `x` in `identity(x)` */
-	Alias    = 1,
+	Alias    = 1 << 0,
 	/** the result is computed from the argument's value, like `x` in `sum(x)` */
-	Value    = 2,
+	Value    = 1 << 1,
 	/** only the shape is used (length, dimensions, names, other attributes), like `x` in `nrow(x)` */
-	Shape    = 4,
+	Shape    = 1 << 2,
 	/** selects a behavior instead of carrying data, like `na.rm` in `sum(x, na.rm = TRUE)` */
-	Flag     = 8,
+	Flag     = 1 << 3,
 	/** names the resource the call reads or writes, like `file` in `write.csv(x, file)` */
-	Resource = 16,
+	Resource = 1 << 4,
 	/** what it refers to may be modified, like `envir` in `assign(x, v, envir = e)` */
-	Written  = 32,
+	Written  = 1 << 5,
 	/** evaluated whenever the call happens, even if the result goes unused, like `x` in `force(x)` */
-	Forced   = 64,
+	Forced   = 1 << 6,
 	/** quoted or evaluated in another frame, like `expr` in `quote(expr)` */
-	Nse      = 128,
+	Nse      = 1 << 7,
 	/** called as a function, like `FUN` in `lapply(x, FUN)` */
-	Callee   = 256,
+	Callee   = 1 << 8,
 	/** only whether it was supplied matters, as with `missing()` */
-	Presence = 512
+	Presence = 1 << 9
 }
 
 /**
@@ -34,56 +34,55 @@ export enum ArgProp {
  */
 export enum CallProp {
 	/** computes a result and nothing else, the positive counterpart of `hasUnknownSideEffects` */
-	Pure      = 1,
+	Pure      = 1 << 0,
 	/**
 	 * pure on its own, but it runs code it is handed, so whatever that code does happens too.
-	 * The parameter it runs is marked {@link ArgProp.Callee} or {@link ArgProp.Nse}, as with `lapply(x, f)`
-	 * (see {@link SigDbInferable}).
+	 * The parameter it runs is marked {@link ArgProp.Callee} or {@link ArgProp.Nse}, as with `lapply(x, f)`.
 	 */
-	MayPure   = 2,
+	MayPure   = 1 << 1,
 	/** may signal an error, like `stop()` (see {@link SigDbInferable}) */
-	Throws    = 4,
-	/** may signal a warning or another condition, like `warning()` */
-	Warns     = 8,
+	Throws    = 1 << 2,
 	/** returns invisibly, so the result is not auto-printed */
-	Invisible = 16,
+	Invisible = 1 << 3,
 	/** dispatches on the class of its first argument (S3, S4, or S7) */
-	Generic   = 32,
+	Generic   = 1 << 4,
 	/** a method that is reached by dispatch, like `print.foo` (see {@link SigDbInferable}) */
-	Method    = 64,
+	Method    = 1 << 5,
 	/** binds, rebinds, or removes names outside of its own frame, like `assign` or `library` */
-	Scope     = 128,
+	Scope     = 1 << 6,
 	/** the result may differ between two identical calls, refined by `Random` and `Ambient` (see {@link SigDbInferable}) */
-	NonDet    = 256,
+	NonDet    = 1 << 7,
 	/** draws from the random number generator, or sets its state */
-	Random    = 512,
+	Random    = 1 << 8,
 	/** depends on ambient state like the clock, the locale, environment variables, or global options */
-	Ambient   = 1024,
+	Ambient   = 1 << 9,
 	/** touches the file system */
-	File      = 2048,
+	File      = 1 << 10,
 	/** produces a temporary path, the narrower case of `File` */
-	TempFile  = 4096,
+	TempFile  = 1 << 11,
 	/**
 	 * always reaches the network, like `curl::curl_download`. Calls that only do so for some arguments, like
 	 * `read.csv` of a URL, are left to the `network-functions` rule, which decides that per call site.
 	 */
-	Network   = 8192,
+	Network   = 1 << 12,
 	/** runs a system command */
-	Process   = 16384,
+	Process   = 1 << 13,
 	/** calls native code through the foreign function interface, like `.Call` */
-	Ffi       = 32768,
+	Ffi       = 1 << 14,
 	/** produces a language object, like `quote` or `deparse` */
-	Lang      = 65536,
+	Lang      = 1 << 15,
 	/** asks the user, like `readline` or a file chooser */
-	User      = 131072,
+	User      = 1 << 16,
 	/** draws on a graphics device */
-	Graphics  = 262144,
+	Graphics  = 1 << 17,
 	/** talks to a database */
-	Database  = 524288,
+	Database  = 1 << 18,
 	/** reads the resource its `Resource` arguments name */
-	Reads     = 1048576,
+	Reads     = 1 << 19,
 	/** writes the resource its `Resource` arguments name */
-	Writes    = 2097152
+	Writes    = 1 << 20,
+	/** may emit to standard output, like `print` or a `cat` without a `file`, and follows a `sink` when one is active */
+	Prints    = 1 << 21
 }
 
 /**
@@ -97,8 +96,7 @@ export const InputProps = CallProp.NonDet | CallProp.Random | CallProp.Ambient |
  * The {@link CallProp} bits the signature database states itself, so {@link fnInfoFromSignature} can read them
  * off any package function without anyone writing them down.
  */
-export const SigDbInferable = CallProp.Throws | CallProp.NonDet | CallProp.Method | CallProp.MayPure
-	| CallProp.Generic;
+export const SigDbInferable = CallProp.Throws | CallProp.NonDet | CallProp.Method | CallProp.Generic;
 
 /**
  * The {@link CallProp} bits that say a call takes its data from a file, as {@link CallProp.File} alone also
@@ -110,7 +108,7 @@ export const FileInputProps = CallProp.File | CallProp.Reads;
  * The {@link CallProp} bits that carry over from a callee to its caller: what the called function does, the
  * calling one does too. Purity does not travel this way, which is why it is not in here.
  */
-export const PropagatedProps = CallProp.Throws | CallProp.Warns | CallProp.Scope | CallProp.NonDet
+export const PropagatedProps = CallProp.Throws | CallProp.Scope | CallProp.NonDet | CallProp.Prints
 	| CallProp.Random | CallProp.Ambient | CallProp.File | CallProp.TempFile | CallProp.Network | CallProp.Process
 	| CallProp.Ffi | CallProp.Lang | CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes;
 
@@ -191,8 +189,7 @@ export function argsWith(layout: SigLayout, count: number, prop: ArgProps): numb
 const SigDbProps: Readonly<Record<string, CallProp>> = {
 	'can-throw':         CallProp.Throws,
 	'non-deterministic': CallProp.NonDet,
-	's3-method':         CallProp.Method,
-	'higher-order':      CallProp.MayPure
+	's3-method':         CallProp.Method
 };
 
 /** the callees that make the calling function itself a generic ({@link CallProp.Generic}) */
@@ -201,7 +198,7 @@ const DispatchCallees: ReadonlySet<string> = new Set(['UseMethod', 'standardGene
 /**
  * The part of a {@link BuiltInFnInfo} that the signature database already knows: the parameter names in order
  * (`...` included) with the ones R always forces, plus the properties listed in {@link SigDbProps}. Everything
- * else the database records (`deprecated`, `recursive`, `no-doc`, ...) has no counterpart here and is
+ * else the database records (`higher-order`, `deprecated`, `recursive`, ...) has no counterpart here and is
  * dropped, and anything it cannot see (purity, resources, what an argument is used for) stays unset.
  */
 export function fnInfoFromSignature(fn: DecodedFunction): BuiltInFnInfo {

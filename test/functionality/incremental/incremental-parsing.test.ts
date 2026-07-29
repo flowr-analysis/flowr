@@ -54,6 +54,7 @@ async function createAnalyzerForFiles(
 ): Promise<{ analyzer: FlowrAnalyzer; files: Map<string, FlowrInlineTextFile> }> {
 	const analyzer = await new FlowrAnalyzerBuilder()
 		.setEngine('tree-sitter')
+		.configure('incrementalParsing.activated', true)
 		.build();
 	const files = new Map<string, FlowrInlineTextFile>();
 

@@ -356,6 +356,11 @@ export interface FlowrConfig extends MergeableRecord {
 			}
 		}
 	}
+
+	readonly incrementalParsing: {
+		readonly activated: boolean;
+	}
+
 	/**
 	 * Resource-usage guard (gas) configuration.
 	 * Gas checks are disabled by default (all feature factors are `0`).
@@ -600,6 +605,9 @@ export const FlowrConfig = {
 					}
 				}
 			},
+			incrementalParsing: {
+				activated: false,
+			},
 			gas: {
 				thresholds: {
 					memory: { problematic: 0.7,       critical: 0.9 },
@@ -732,6 +740,9 @@ export const FlowrConfig = {
 				}).description('Configuration options for reading data frame shapes from loaded external data files, such as CSV files.')
 			}).description('The configuration of the shape inference for data frames.')
 		}).description('The configuration options for abstract interpretation.'),
+		incrementalParsing: Joi.object({
+			activated: Joi.boolean().description('If set, incremental parsing will be used.')
+		}),
 		gas: Joi.object({
 			thresholds: Joi.object({
 				memory: Joi.object({

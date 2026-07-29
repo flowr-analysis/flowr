@@ -312,6 +312,9 @@ ${codeBlock('json', JSON.stringify(
 					}
 				}
 			},
+			incrementalParsing: {
+				activated: false,
+			},
 			gas: {
 				thresholds: {
 					memory: { problematic: 0.7,     critical: 0.9 },

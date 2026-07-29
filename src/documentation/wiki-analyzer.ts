@@ -38,6 +38,8 @@ import { FlowrAnalyzerPlugin } from '../project/plugins/flowr-analyzer-plugin';
 import { FlowrAnalyzerEnvironmentContext } from '../project/context/flowr-analyzer-environment-context';
 import { FlowrAnalyzerFunctionsContext } from '../project/context/flowr-analyzer-functions-context';
 import { FlowrAnalyzerMetaContext } from '../project/context/flowr-analyzer-meta-context';
+import { FlowrAnalyzerGasContext } from '../project/context/flowr-analyzer-gas-context';
+import { FlowrAnalyzerGasPlugin } from '../project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { FlowrConfig } from '../config';
 
 async function analyzerQuickExample() {
@@ -103,6 +105,7 @@ ${
 			'Dependencies Context':  undefined,
 			'Environment Context':   undefined,
 			'Meta Context':          undefined,
+			'Gas Context':           undefined,
 		},
 		'Caching': undefined
 	})
@@ -477,6 +480,31 @@ ${ctx.linkM(FlowrAnalyzerMetaContext, 'getProjectVersion', { codeFont: true, rea
 and the project namespace via
 ${ctx.linkM(FlowrAnalyzerMetaContext, 'getNamespace', { codeFont: true, realNameWrapper: 'i' })}.
 
+${section('Gas Context', 3)}
+
+The ${ctx.link(FlowrAnalyzerGasContext)} (reachable as \`ctx.gas\`) acts as the resource guard of an analysis:
+
+${ctx.hierarchy(FlowrAnalyzerGasContext, { showImplSnippet: false })}
+
+Expensive analysis sites ask for the current resource pressure with
+${ctx.linkM(FlowrAnalyzerGasContext, 'checkGas', { codeFont: true, realNameWrapper: 'i' })}, passing the name of the feature they are about to run
+(see ${ctx.link('GasFeatureKey')}), and may then degrade or skip their work.
+The level combines the current heap usage and the time elapsed since the analysis started (or since the last
+${ctx.linkM(FlowrAnalyzerContext, 'reset')}, which also resets the gas clock via
+${ctx.linkM(FlowrAnalyzerGasContext, 'reset', { codeFont: true, realNameWrapper: 'i' })}),
+each scaled by the per-feature factor from \`config.gas.features\`.
+Registered ${ctx.link(FlowrAnalyzerGasPlugin)}s may escalate the level for any key.
+
+${
+	block({
+		type:    'NOTE',
+		content: `
+Gas is disabled for every feature by default, and with no gas plugins registered
+${ctx.linkM(FlowrAnalyzerGasContext, 'checkGas', { codeFont: true, realNameWrapper: 'i' })} returns \`GasLevel.Normal\` without measuring anything.
+See the ${ctx.linkPage('wiki/Core', 'gas section of the Core wiki page', 'gas-resource-guard')} for the levels, the configuration, and how to write a gas plugin.
+`.trim()
+	})
+}
 
 ${section('Caching', 2)}
 

@@ -103,17 +103,22 @@ export function builtInNames(definition: BuiltInDefinition): Identifier[] {
 		s => Identifier.make(`${Identifier.getName(n)}${s}`, Identifier.getNamespace(n))));
 }
 
-const cache = new Map<CallProps, Identifier[]>();
+const cache = new Map<string, Identifier[]>();
 
-function select(props: CallProps, definitions: BuiltInDefinitions, want: boolean): Identifier[] {
-	const key = want ? props : ~props;
+type Want = 'any' | 'all' | 'none';
+
+function select(props: CallProps, definitions: BuiltInDefinitions, want: Want): Identifier[] {
+	const key = `${want}:${props}`;
 	const cached = definitions === DefaultBuiltinConfig ? cache.get(key) : undefined;
 	if(cached !== undefined) {
 		return cached;
 	}
 	const found = definitions.filter(d => {
 		const has = d.type !== 'constant' ? (d.config as BuiltInFnInfo | undefined)?.props : undefined;
-		return has !== undefined && (((has & props) !== 0) === want);
+		if(has === undefined) {
+			return false;
+		}
+		return want === 'all' ? (has & props) === props : ((has & props) !== 0) === (want === 'any');
 	}).flatMap(builtInNames);
 	if(definitions === DefaultBuiltinConfig) {
 		cache.set(key, found);
@@ -126,7 +131,15 @@ function select(props: CallProps, definitions: BuiltInDefinitions, want: boolean
  * The answer for the {@link DefaultBuiltinConfig} is computed on first use and cached.
  */
 export function builtInsWith(props: CallProps, definitions: BuiltInDefinitions = DefaultBuiltinConfig): Identifier[] {
-	return select(props, definitions, true);
+	return select(props, definitions, 'any');
+}
+
+/**
+ * The stricter {@link builtInsWith}: every built-in that carries *all* of `props`, for the questions a single
+ * bit cannot answer, like {@link FileInputProps} for the calls that read a file rather than only write one.
+ */
+export function builtInsWithAll(props: CallProps, definitions: BuiltInDefinitions = DefaultBuiltinConfig): Identifier[] {
+	return select(props, definitions, 'all');
 }
 
 /**
@@ -134,5 +147,5 @@ export function builtInsWith(props: CallProps, definitions: BuiltInDefinitions =
  * With {@link InputProps} this yields the calls that derive their result from their arguments.
  */
 export function builtInsWithout(props: CallProps, definitions: BuiltInDefinitions = DefaultBuiltinConfig): Identifier[] {
-	return select(props, definitions, false);
+	return select(props, definitions, 'none');
 }

@@ -97,7 +97,14 @@ export const InputProps = CallProp.NonDet | CallProp.Random | CallProp.Ambient |
  * The {@link CallProp} bits the signature database states itself, so {@link fnInfoFromSignature} can read them
  * off any package function without anyone writing them down.
  */
-export const SigDbInferable = CallProp.Throws | CallProp.NonDet | CallProp.Method | CallProp.MayPure;
+export const SigDbInferable = CallProp.Throws | CallProp.NonDet | CallProp.Method | CallProp.MayPure
+	| CallProp.Generic;
+
+/**
+ * The {@link CallProp} bits that say a call takes its data from a file, as {@link CallProp.File} alone also
+ * covers the calls that only write one.
+ */
+export const FileInputProps = CallProp.File | CallProp.Reads;
 
 /**
  * The {@link CallProp} bits that carry over from a callee to its caller: what the called function does, the
@@ -188,10 +195,13 @@ const SigDbProps: Readonly<Record<string, CallProp>> = {
 	'higher-order':      CallProp.MayPure
 };
 
+/** the callees that make the calling function itself a generic ({@link CallProp.Generic}) */
+const DispatchCallees: ReadonlySet<string> = new Set(['UseMethod', 'standardGeneric', 'S7_dispatch']);
+
 /**
  * The part of a {@link BuiltInFnInfo} that the signature database already knows: the parameter names in order
  * (`...` included) with the ones R always forces, plus the properties listed in {@link SigDbProps}. Everything
- * else the database records (`higher-order`, `deprecated`, `recursive`, ...) has no counterpart here and is
+ * else the database records (`deprecated`, `recursive`, `no-doc`, ...) has no counterpart here and is
  * dropped, and anything it cannot see (purity, resources, what an argument is used for) stays unset.
  */
 export function fnInfoFromSignature(fn: DecodedFunction): BuiltInFnInfo {
@@ -199,5 +209,13 @@ export function fnInfoFromSignature(fn: DecodedFunction): BuiltInFnInfo {
 	for(const name of fn.props) {
 		props |= SigDbProps[name] ?? 0;
 	}
-	return { sig: fn.signature.map(p => [p.name, p.forced ? ArgProp.Forced : 0]), props };
+	/* a function whose own body dispatches is the generic, which no property of the database states */
+	if(fn.callees.some(c => DispatchCallees.has(c))) {
+		props |= CallProp.Generic;
+	}
+	return {
+		sig: fn.signature.map(p => [p.name,
+			(p.forced ? ArgProp.Forced : 0) | (p.default === 'TRUE' || p.default === 'FALSE' ? ArgProp.Flag : 0)]),
+		props
+	};
 }

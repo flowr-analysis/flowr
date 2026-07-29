@@ -16,8 +16,8 @@ import { LintingResultCertainty } from '../../../linter/linter-format';
 import { Record } from '../../../util/record';
 import { ReadFunctions } from '../dependencies-query/function-info/read-functions';
 import { LinkedInputEntryPoints, LinkedInputObjects, NarrowingFunctions } from './input-source-functions';
-import { CallProp, InputProps } from '../../../dataflow/environments/built-in-props';
-import { builtInsWith, builtInsWithout } from '../../../dataflow/environments/query-fn-props';
+import { CallProp, FileInputProps, InputProps } from '../../../dataflow/environments/built-in-props';
+import { builtInsWith, builtInsWithAll, builtInsWithout } from '../../../dataflow/environments/query-fn-props';
 
 export type InputSourcesQueryConfig = InputClassifierConfig;
 /**
@@ -44,7 +44,7 @@ export interface InputSourcesQuery extends BaseQueryFormat {
  */
 export const DefaultInputClassifierConfig: InputClassifierConfig = {
 	[InputTraceType.Pure]: builtInsWithout(InputProps),
-	[InputType.File]:      [...ReadFunctions.map(readFunction => readFunction.name), ...builtInsWith(CallProp.File)],
+	[InputType.File]:      [...ReadFunctions.map(readFunction => readFunction.name), ...builtInsWithAll(FileInputProps)],
 	[InputType.TempFile]:  builtInsWith(CallProp.TempFile),
 	[InputType.Network]:   Q.fromQuery({ type: 'linter', rules: ['network-functions'] }, LintingResultCertainty.Certain),
 	[InputType.Random]:    Q.fromQuery({ type: 'linter', rules: ['seeded-randomness'] }),

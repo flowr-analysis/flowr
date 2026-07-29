@@ -220,6 +220,31 @@ describe('Built-in properties', () => {
 				assert.isAtMost(declared.filter(n => n === '...').length, 1, `${names.map(Identifier.toString).join(', ')} has two dots`);
 			}
 		});
+		test(label('touching a file says in which direction', ['name-normal'], ['other']), () => {
+			for(const [names, { props = 0 }] of withInfo) {
+				if((props & CallProp.File) !== 0) {
+					assert.notStrictEqual(props & (CallProp.Reads | CallProp.Writes), 0,
+						`${names.map(Identifier.toString).join(', ')} touches a file but states neither Reads nor Writes`);
+				}
+			}
+		});
+		test(label('redefining a name does not drop its signature', ['name-normal'], ['other']), () => {
+			const declared = new Set<string>();
+			for(const d of DefaultBuiltinConfig) {
+				if(d.type === 'constant') {
+					continue;
+				}
+				const info = (d as { config?: BuiltInFnInfo }).config;
+				for(const n of builtInNames(d)) {
+					const name = Identifier.getName(n);
+					if(info?.sig !== undefined) {
+						declared.add(name);
+					} else {
+						assert.isFalse(declared.has(name), `${name} is redefined without the signature it had before`);
+					}
+				}
+			}
+		});
 	});
 
 	describe('Reading a signature-database entry', () => {

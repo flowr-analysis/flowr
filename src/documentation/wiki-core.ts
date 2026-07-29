@@ -54,8 +54,6 @@ import { getCliLongOptionOf, getReplCommand } from './doc-util/doc-cli-option';
 import { RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 import { block, details } from './doc-util/doc-structure';
 import { RShell } from '../r-bridge/shell';
-import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
-import { expensiveTrace, FlowrLogger } from '../util/log';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 
 async function makeAnalyzerExample() {
@@ -184,7 +182,7 @@ ${await documentReplSession(shell, [{
 }])}
 	
 If you are brave (or desperate) enough, you can also try to use the ${getCliLongOptionOf('flowr', 'verbose')} option to be dumped with information about flowR's internals (please, never use this for benchmarking).
-See the [Getting flowR to Talk](#getting-flowr-to-talk) section below for more information.
+See the ${ctx.linkPage('wiki/FAQ', 'FAQ')} (*How to get flowR to talk?*) for more information.
 `
 })}
 	
@@ -198,7 +196,6 @@ See the [Getting flowR to Talk](#getting-flowr-to-talk) section below for more i
 * [Beyond the Dataflow Graph](#beyond-the-dataflow-graph)
   * [Static Backward Slicing](#static-backward-slicing)
 * [Gas (Resource Guard)](#gas-resource-guard)
-* [Getting flowR to Talk](#getting-flowr-to-talk)
 
 ## Creating and Using a flowR Analyzer Instance
 
@@ -594,17 +591,6 @@ You can search for \`ctx.gas.checkGas(\` in the source to locate every active ch
 ${ctx.doc(FlowrAnalyzerGasPlugin)}
 
 ${ctx.code(gasPluginExample, { dropLinesStart: 1, dropLinesEnd: 1, hideDefinedAt: true })}
-
-## Helpful Things
-
-### Getting flowR to Talk
-
-When using flowR from the CLI, you can use the ${getCliLongOptionOf('flowr', 'verbose')} option to get more information about what flowR is doing.
-While coding, however, you can use the ${ctx.link(setMinLevelOfAllLogs)} function to set the minimum level of logs to be displayed (this works with the ${ctx.link(FlowrLogger)} abstraction).
-In general, you can configure the levels of individual logs, such as the general \`log\` (obtained with ${ctx.link('getActiveLog')}) or the ${ctx.link('parseLog')}.
-Please note that flowR makes no guarantees that log outputs are persistent across versions, and it is up to the implementors to provide sensible logging.
-If you are an implementor and want to add logging, please make sure there are no larger runtime impliciations when logging is disabled. 
-Have a look at the ${ctx.link(expensiveTrace)} function for example, which uses a function to generate the log message only when the log level is reached.
 
 `;
 	}

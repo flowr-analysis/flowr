@@ -152,7 +152,7 @@ describe.sequential('Resolve', withShell(shell => {
 			testResolve('Loop plus one',        '4@i', 'for(i in 1:10) { i \n i <- i + 1 \n i} \n i', interval(2, 11), Allow.Top, resolveWith);
 			testResolve('Loop plus x',          '5@x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', interval(2, 57), Allow.Top, resolveWith);
 
-			testResolve('Superassign Arith',    '5@x', 'y <- 4 \n x <- 1 \n f <- function() { x <<- 2 * y } \n f() \n x', interval(8), Allow.Top, resolveWith);
+			testResolve('Superassign Arith',    '5@x', 'y <- 4 \n x <- 1 \n f <- function() { x <<- 2 * y } \n f() \n x', set([8]), Allow.Top, resolveWith);
 		});
 	});
 
@@ -181,6 +181,50 @@ describe.sequential('Resolve', withShell(shell => {
 		testResolve('simple', '2@x', 'x <- c(1,2,3) \n x$b <- 1', Top);
 	});
 
+	describe('Resolve (arithmetic)', () => {
+		testResolve('times',              '2@x', 'x <- 2 * 3 \n x',        set([6]));
+		testResolve('divide',             '2@x', 'x <- 9 / 2 \n x',        set([4.5]));
+		testResolve('power',              '2@x', 'x <- 2^10 \n x',         set([1024]));
+		testResolve('modulo',             '2@x', 'x <- 7 %% 3 \n x',       set([1]));
+		// R rounds towards -Inf, so this is 1 and not the -2 of a JS remainder
+		testResolve('modulo negative',    '3@x', 'y <- -5 \n x <- y %% 3 \n x',   set([1]));
+		testResolve('integer divide',     '3@x', 'y <- -5 \n x <- y %/% 2 \n x',  set([-3]));
+		testResolve('with alias',         '3@x', 'a <- 4 \n x <- a * 2 \n x',     set([8]));
+		testResolve('nested',             '2@x', 'x <- (1 + 2) * (10 - 4) \n x',  set([18]));
+		testResolve('unary minus',        '2@x', 'x <- -3 \n x',           set([-3]));
+		testResolve('division by zero',   '2@x', 'x <- 1 / 0 \n x',        Top);
+		testResolve('unknown operand',    '2@x', 'x <- 2 * u \n x',        Top);
+		testResolve('* redefined',        '2@x', '`*` <- function(a, b) 0 \n x <- 2 * 3 \n x', Top);
+	});
+
+	describe('Resolve (comparison)', () => {
+		testResolve('less than',          '2@x', 'x <- 1 < 2 \n x',        set([true]));
+		testResolve('greater equal',      '2@x', 'x <- 2 >= 3 \n x',       set([false]));
+		testResolve('equal strings',      '2@x', 'x <- "a" == "a" \n x',   set([true]));
+		testResolve('unequal strings',    '2@x', 'x <- "a" != "b" \n x',   set([true]));
+		testResolve('with alias',         '3@x', 'n <- 5 \n x <- n > 3 \n x', set([true]));
+		// R compares strings by locale collation, so their order does not fold
+		testResolve('ordered strings',    '2@x', 'x <- "a" < "b" \n x',    Top);
+		// R would coerce the number to a string first, we stay conservative
+		testResolve('mixed kinds',        '2@x', 'x <- 1 == "1" \n x',     Top);
+		testResolve('unknown operand',    '2@x', 'x <- 1 < u \n x',        Top);
+	});
+
+	describe('Resolve (logical)', () => {
+		testResolve('and',                '2@x', 'x <- TRUE && FALSE \n x', set([false]));
+		testResolve('or',                 '2@x', 'x <- TRUE || FALSE \n x', set([true]));
+		testResolve('not',                '2@x', 'x <- !TRUE \n x',         set([false]));
+		testResolve('vectorized and',     '2@x', 'x <- TRUE & TRUE \n x',   set([true]));
+		testResolve('number as logical',  '2@x', 'x <- !0 \n x',            set([true]));
+		testResolve('with alias',         '3@x', 'b <- FALSE \n x <- !b \n x', set([true]));
+		// && and || short-circuit, so the lhs alone decides
+		testResolve('short-circuit and',  '2@x', 'x <- FALSE && u \n x',    set([false]));
+		testResolve('short-circuit or',   '2@x', 'x <- TRUE || u \n x',     set([true]));
+		// & and | vectorize, so an unknown rhs may still widen the result
+		testResolve('no short-circuit',   '2@x', 'x <- FALSE & u \n x',     Top);
+		testResolve('unknown operand',    '2@x', 'x <- TRUE && u \n x',     Top);
+	});
+
 	describe('Resolve (paste)', () => {
 		testResolve('paste0 constants',      '2@x', 'x <- paste0("handler_", "foo") \n x', set(['handler_foo']));
 		testResolve('paste default sep',     '2@x', 'x <- paste("a", "b") \n x',           set(['a b']));
@@ -191,6 +235,87 @@ describe.sequential('Resolve', withShell(shell => {
 		testResolve('file.path constants',   '2@x', 'x <- file.path("data", "in.csv") \n x', set(['data/in.csv']));
 		testResolve('file.path with alias',  '3@x', 'd <- "data" \n x <- file.path(d, "in.csv") \n x', set(['data/in.csv']));
 		testResolve('file.path explicit fsep', '2@x', 'x <- file.path("a", "b", fsep="|") \n x', set(['a|b']));
+	});
+
+	describe('Resolve (math)', () => {
+		testResolve('abs',                '2@x', 'x <- abs(-3.5) \n x',            set([3.5]));
+		testResolve('sqrt',               '2@x', 'x <- sqrt(16) \n x',             set([4]));
+		testResolve('floor negative',     '2@x', 'x <- floor(-1.2) \n x',          set([-2]));
+		testResolve('ceiling negative',   '2@x', 'x <- ceiling(-1.2) \n x',        set([-1]));
+		testResolve('round ties to even', '2@x', 'x <- round(2.5) \n x',           set([2]));
+		testResolve('round ties down',    '2@x', 'x <- round(-1.5) \n x',          set([-2]));
+		testResolve('round named arg',    '2@x', 'x <- round(x = 1.5) \n x',       set([2]));
+		testResolve('on a variable',      '3@x', 'y <- 9 \n x <- sqrt(y) \n x',    set([3]));
+		testResolve('nested in arith',    '2@x', 'x <- abs(-2) * floor(3.7) \n x', set([6]));
+		testResolve('digits not folded',  '2@x', 'x <- round(1.234, 2) \n x',      Top);
+		testResolve('not a number',       '2@x', 'x <- sqrt(-1) \n x',             Top);
+		testResolve('sqrt redefined',     '2@x', 'sqrt <- function(a) 0 \n x <- sqrt(16) \n x', Top);
+	});
+
+	describe('Resolve (string functions)', () => {
+		testResolve('toupper',            '2@x', 'x <- toupper("aBc") \n x',       set(['ABC']));
+		testResolve('tolower',            '2@x', 'x <- tolower("AbC") \n x',       set(['abc']));
+		testResolve('trimws',             '2@x', 'x <- trimws("  a b\t") \n x',    set(['a b']));
+		testResolve('nchar',              '2@x', 'x <- nchar("abcd") \n x',        set([4]));
+		testResolve('nchar named arg',    '2@x', 'x <- nchar(x = "") \n x',        set([0]));
+		testResolve('on a variable',      '3@x', 'y <- "Data" \n x <- tolower(y) \n x', set(['data']));
+		testResolve('nested with paste',  '2@x', 'x <- toupper(paste0("a", "b")) \n x', set(['AB']));
+		testResolve('unicode',            '2@x', 'x <- toupper("héllo") \n x',      set(['HÉLLO']));
+		testResolve('unicode nchar',      '2@x', 'x <- nchar("héllo") \n x',        set([5]));
+		testResolve('unresolved',         '2@x', 'x <- toupper(Sys.getenv("P")) \n x',  Top);
+		/* we see the source text, in which an escape is still a backslash and a letter */
+		testResolve('escape untouched',   '2@x', 'x <- toupper("a\\tb") \n x',      Top);
+		testResolve('escape not counted', '2@x', 'x <- nchar("a\\tb") \n x',        Top);
+		/* a second argument changes what these do, so the plain fold would be wrong */
+		testResolve('nchar in bytes',     '2@x', 'x <- nchar("ab", type = "bytes") \n x', Top);
+		testResolve('trimws one side',    '2@x', 'x <- trimws("  a  ", which = "left") \n x', Top);
+		testResolve('basename two args',  '2@x', 'x <- basename("a/b", "c") \n x',  Top);
+	});
+
+	describe('Resolve (basename/dirname)', () => {
+		testResolve('basename constant',      '2@x', 'x <- basename("a/b/c.csv") \n x',   set(['c.csv']));
+		testResolve('basename trailing sep',  '2@x', 'x <- basename("a/b/") \n x',        set(['b']));
+		testResolve('basename no sep',        '2@x', 'x <- basename("a") \n x',           set(['a']));
+		testResolve('dirname constant',       '2@x', 'x <- dirname("a/b/c.csv") \n x',    set(['a/b']));
+		testResolve('dirname no sep',         '2@x', 'x <- dirname("a") \n x',            set(['.']));
+		testResolve('dirname root',           '2@x', 'x <- dirname("/a") \n x',           set(['/']));
+		testResolve('dirname named arg',      '2@x', 'x <- dirname(path = "a/b/c") \n x', set(['a/b']));
+		testResolve('nested with file.path',  '3@x', 'd <- file.path("data", "raw") \n x <- basename(d) \n x', set(['raw']));
+		testResolve('basename unresolved',    '2@x', 'x <- basename(Sys.getenv("P")) \n x', Top);
+	});
+
+	/** everything the solver may not fold, as the value is not known statically or the built-in may not be the one called */
+	describe('Resolve (no folding)', () => {
+		testResolve('for loop',            '3@x', 'x <- 0 \n for(i in 1:3) x <- x + 1 \n x',     Top);
+		testResolve('while loop',          '3@x', 'x <- 1 \n while(u) x <- x * 2 \n x',          Top);
+		testResolve('repeat loop',         '3@x', 'x <- 1 \n repeat { x <- x + 1 } \n x',        Top);
+		testResolve('loop with paste',     '4@x', 'p <- "a" \n for(i in 1:2) p <- paste0(p, "b") \n x <- p \n x', Top);
+		testResolve('unknown function',    '2@x', 'x <- foo(1) + 1 \n x',                        Top);
+		testResolve('unknown namespace',   '2@x', 'x <- pkg::f(1) + 1 \n x',                     Top);
+		testResolve('user function',       '3@x', 'f <- function() 1 + 1 \n x <- f() \n x',      Top);
+		testResolve('undefined variable',  '2@x', 'x <- y + 1 \n x',                             Top);
+		testResolve('self reference',      '2@x', 'x <- x + 1 \n x',                             Top);
+		testResolve('mutual alias',        '3@x', 'x <- y \n y <- x \n x',                       Top);
+		testResolve('NA operand',          '2@x', 'x <- 1 + NA \n x',                            Top);
+		testResolve('NULL operand',        '2@x', 'x <- 1 + NULL \n x',                          Top);
+		testResolve('vector operand',      '2@x', 'x <- c(1, 2) + 1 \n x',                       Top);
+		testResolve('vector in math',      '2@x', 'x <- abs(c(-1, -2)) \n x',                    Top);
+		testResolve('string in arithmetic', '2@x', 'x <- "a" + 1 \n x',                          Top);
+		testResolve('missing argument',    '2@x', 'x <- toupper() \n x',                         Top);
+		testResolve('empty argument',      '2@x', 'x <- abs(,) \n x',                            Top);
+		testResolve('function argument',   '2@x', 'x <- toupper(function() 1) \n x',             Top);
+		testResolve('quoted argument',     '2@x', 'x <- abs(quote(a)) \n x',                     Top);
+		testResolve('grouping redefined',  '3@x', '`(` <- function(a) 0 \n x <- (1 + 2) \n x',   Top);
+		testResolve('conditionally redefined', '3@x', 'if(u) abs <- function(a) 0 \n x <- abs(-1) \n x', Top);
+		testResolve('brace block',         '2@x', 'x <- { 1 + 2 } \n x',                         Top);
+		testResolve('removed again',       '3@x', 'x <- 1 + 1 \n rm(x) \n x',                    Top);
+		/* `NA` and `NaN` make R answer `NA`, never a logical */
+		testResolve('NaN compared',        '2@x', 'x <- NaN > 1 \n x',                           Top);
+		testResolve('NaN equal to itself', '2@x', 'x <- NaN == NaN \n x',                        Top);
+		testResolve('NA compared',         '2@x', 'x <- NA > 1 \n x',                            Top);
+		/* a named argument may swap the operands of an infix call */
+		testResolve('infix named args',    '2@x', 'x <- `%%`(e2 = 3, e1 = 5) \n x',              Top);
+		testResolve('minus named args',    '2@x', 'x <- `-`(e2 = 1, e1 = 5) \n x',               Top);
 	});
 
 	describe('ByName', () => {

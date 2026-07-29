@@ -17,7 +17,7 @@ import { DefaultAttachPosition, REnvironment } from '../../../../../environments
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
 import { resolveNodeToStackEnv } from './built-in-stack-env';
 import { resolveIdToValue, resolveIdToSingleString } from '../../../../../eval/resolve/alias-tracking';
-import { foldPasteCall, PasteLikeCalls } from '../../../../../eval/resolve/resolve';
+import { foldPasteCall, PasteLikeCalls } from '../../../../../eval/resolve/resolve-strings';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import type { Value } from '../../../../../eval/values/r-value';

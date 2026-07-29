@@ -10,6 +10,7 @@ import { UnnamedFunctionCallPrefix } from '../internal/process/functions/call/un
 import { KnownHooks } from '../hooks';
 import { Identifier, PkgName } from './identifier';
 import { BuiltInProcName } from './built-in-proc-name';
+import { BuiltInEvalName } from './built-in-eval-name';
 import { NseArguments } from '../internal/process/functions/call/known-call-handling';
 import { DataMaskingFunctionIdentifiers } from './data-masking-functions';
 
@@ -180,32 +181,40 @@ export const DefaultBuiltinConfig = [
 		config:          { markArgsAsNSE: NseArguments.All },
 		assumePrimitive: false
 	},
+	/* the built-ins the value solver can fold to a constant, see the respective {@link BuiltInEvalName} handler */
+	{ type:            'function', assumePrimitive: true, config:          {}, processor:       BuiltInProcName.DefaultReadAllArgs, evalHandler:     BuiltInEvalName.Arithmetic,
+		names:           [Identifier.from(['+', PkgName.Base]), Identifier.from(['-', PkgName.Base]), Identifier.from(['*', PkgName.Base]), Identifier.from(['/', PkgName.Base]),
+			Identifier.from(['^', PkgName.Base]), Identifier.from(['**', PkgName.Base]), Identifier.from(['%%', PkgName.Base]), Identifier.from(['%/%', PkgName.Base])] },
+	{ type:            'function', assumePrimitive: true, config:          {}, processor:       BuiltInProcName.DefaultReadAllArgs, evalHandler:     BuiltInEvalName.Comparison,
+		names:           [Identifier.from(['==', PkgName.Base]), Identifier.from(['!=', PkgName.Base]), Identifier.from(['>', PkgName.Base]),
+			Identifier.from(['<', PkgName.Base]), Identifier.from(['>=', PkgName.Base]), Identifier.from(['<=', PkgName.Base])] },
+	{ type:            'function', assumePrimitive: true, config:          {}, processor:       BuiltInProcName.DefaultReadAllArgs, evalHandler:     BuiltInEvalName.Logical,
+		names:           [Identifier.from(['!', PkgName.Base])] },
+	{ type:            'function', assumePrimitive: true, config:          {}, processor:       BuiltInProcName.DefaultReadAllArgs, evalHandler:     BuiltInEvalName.Seq,
+		names:           [Identifier.from([':', PkgName.Base])] },
+	{ type:            'function', assumePrimitive: true, config:          {}, processor:       BuiltInProcName.DefaultReadAllArgs, evalHandler:     BuiltInEvalName.Paste,
+		names:           [Identifier.from(['paste', PkgName.Base]), Identifier.from(['paste0', PkgName.Base]), Identifier.from(['file.path', PkgName.Base])] },
+	{ type:            'function', assumePrimitive: true, config:          {}, processor:       BuiltInProcName.DefaultReadAllArgs, evalHandler:     BuiltInEvalName.StringFn,
+		names:           [Identifier.from(['basename', PkgName.Base]),  Identifier.from(['dirname', PkgName.Base]),
+			Identifier.from(['toupper', PkgName.Base]), Identifier.from(['tolower', PkgName.Base]),
+			Identifier.from(['trimws', PkgName.Base]),  Identifier.from(['nchar', PkgName.Base])] },
+	{ type:            'function', assumePrimitive: true, config:          {}, processor:       BuiltInProcName.DefaultReadAllArgs, evalHandler:     BuiltInEvalName.Math,
+		names:           [Identifier.from(['abs', PkgName.Base]),     Identifier.from(['sqrt', PkgName.Base]), Identifier.from(['floor', PkgName.Base]),
+			Identifier.from(['ceiling', PkgName.Base]), Identifier.from(['round', PkgName.Base])] },
 	{
 		type:  'function',
 		names: [
-			/* arithmetic & comparison operators (base) */
-			Identifier.from(['+', PkgName.Base]),   Identifier.from(['-', PkgName.Base]),
-			Identifier.from(['*', PkgName.Base]),   Identifier.from(['/', PkgName.Base]),
-			Identifier.from(['^', PkgName.Base]),   Identifier.from(['**', PkgName.Base]),
-			Identifier.from(['!', PkgName.Base]),   Identifier.from(['?', PkgName.Utils]),
-			Identifier.from(['==', PkgName.Base]),  Identifier.from(['!=', PkgName.Base]),
-			Identifier.from(['>', PkgName.Base]),   Identifier.from(['<', PkgName.Base]),
-			Identifier.from(['>=', PkgName.Base]),  Identifier.from(['<=', PkgName.Base]),
-			Identifier.from(['%%', PkgName.Base]),  Identifier.from(['%/%', PkgName.Base]),
+			/* operators without a value-solver handler (base) */
+			Identifier.from(['?', PkgName.Utils]),
 			Identifier.from(['%*%', PkgName.Base]), Identifier.from(['%in%', PkgName.Base]),
-			Identifier.from([':', PkgName.Base]),
 			/* sequences & repetition (base) */
 			Identifier.from(['rep', PkgName.Base]),      Identifier.from(['seq', PkgName.Base]),
 			Identifier.from(['seq_len', PkgName.Base]),  Identifier.from(['seq_along', PkgName.Base]),
 			Identifier.from(['seq.int', PkgName.Base]),  Identifier.from(['order', PkgName.Base]),
 			/* string (base) */
-			Identifier.from(['gsub', PkgName.Base]),   Identifier.from(['paste', PkgName.Base]),
-			Identifier.from(['paste0', PkgName.Base]), Identifier.from(['nchar', PkgName.Base]),
-			Identifier.from(['file.path', PkgName.Base]),
-			/* numeric math (base) */
-			Identifier.from(['sqrt', PkgName.Base]),    Identifier.from(['abs', PkgName.Base]),
-			Identifier.from(['round', PkgName.Base]),   Identifier.from(['floor', PkgName.Base]),
-			Identifier.from(['ceiling', PkgName.Base]), Identifier.from(['signif', PkgName.Base]),
+			Identifier.from(['gsub', PkgName.Base]),
+			/* numeric math without a value-solver handler (base) */
+			Identifier.from(['signif', PkgName.Base]),
 			Identifier.from(['trunc', PkgName.Base]),   Identifier.from(['log', PkgName.Base]),
 			Identifier.from(['log10', PkgName.Base]),   Identifier.from(['log2', PkgName.Base]),
 			Identifier.from(['sum', PkgName.Base]),     Identifier.from(['mean', PkgName.Base]),
@@ -361,7 +370,7 @@ export const DefaultBuiltinConfig = [
 			}
 		}, assumePrimitive: true },
 	{ type:            'function', names:           ['('],
-		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, keepArgumentOut: true }, assumePrimitive: true },
+		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, keepArgumentOut: true }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Group },
 	{ type:            'function', names:           [Identifier.from(['load_all', PkgName.PkgLoad]), Identifier.from(['load_all', PkgName.Devtools]), Identifier.from(['setwd', PkgName.Base]), Identifier.from(['set.seed', PkgName.Base])],
 		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true, forceArgs: [true] }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['body', PkgName.Base]), Identifier.from(['formals', PkgName.Base]), Identifier.from(['environment', PkgName.Base])],
@@ -469,9 +478,9 @@ export const DefaultBuiltinConfig = [
 	{ type:            'function', names:           [Identifier.from(['data', PkgName.Utils]), Identifier.from(['getHdata', PkgName.Hmisc])],
 		processor:       BuiltInProcName.DefineArgument, config:          { superAssignment: true }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['&&', PkgName.Base]), Identifier.from(['&', PkgName.Base])],
-		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: true, evalRhsWhen: true }, assumePrimitive: true },
+		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: true, evalRhsWhen: true }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Logical },
 	{ type:            'function', names:           [Identifier.from(['||', PkgName.Base]), Identifier.from(['|', PkgName.Base])],
-		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: true, evalRhsWhen: false }, assumePrimitive: true },
+		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: true, evalRhsWhen: false }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Logical },
 	{ type:            'function', names:           ['|>'],
 		processor:       BuiltInProcName.Pipe, config:          { pipePlaceholderName: '_' }, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from(['%>%', PkgName.Magrittr]), '%!>%'], processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', rhsMightBeSymbol: true }, assumePrimitive: true  },
@@ -687,7 +696,7 @@ export const DefaultBuiltinConfig = [
 	{ type:            'function', names:           [Identifier.from(['sys.function', PkgName.Base])],
 		processor:       BuiltInProcName.Recall, config:          { libFn: true, unknownOnNonZeroArg: true }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['c', PkgName.Base])],
-		processor:       BuiltInProcName.Vector, config:          {}, assumePrimitive: true, evalHandler:     'built-in:c' },
+		processor:       BuiltInProcName.Vector, config:          {}, assumePrimitive: true, evalHandler:     BuiltInEvalName.Vector },
 	{ type: 'function', names: [Identifier.from(['cmpfun', PkgName.Compiler]), Identifier.from(['compile', PkgName.Compiler])], processor: BuiltInProcName.Default, config: { returnsNthArgument: 0 } },
 	{ type: 'function', names: [Identifier.from(['loadcmp', PkgName.Compiler])],                                                processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true } },
 	{

@@ -756,4 +756,78 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		expect(res.dependencies).toHaveLength(0);
 		expect(res.message).toMatch(/signature database/);
 	});
+
+	describe('orphan calls', () => {
+		test('a bare call infers the single package that exports it, bounds its version, and flags it for attachment', async() => {
+			// `ggplot2` is neither declared nor loaded; the bare `ggplot(data = ...)` would be undefined without it.
+			// The `data` parameter only exists from 3.0.0, so the orphan usage narrows the version just like a qualified call.
+			const dep = await guessDep(ts, {
+				code:     'ggplot(data = df)',
+				packages: { ggplot2: { versions: {
+					'2.0.0': { date: '2015-01-01', fns: { ggplot: ['mapping'] } },
+					'3.0.0': { date: '2018-01-01', fns: { ggplot: ['data', 'mapping'] } }
+				} } }
+			}, 'ggplot2');
+			expect(dep).toBeDefined();
+			expect(dep?.orphan).toBe(true);
+			expect(dep?.orphanFunctions).toEqual(['ggplot']);
+			expect(dep?.used).toBe(true);
+			expect(dep?.minVersion).toBe('3.0.0');
+			expect(boundsFrom(dep, 'signature')).toContain('>=3.0.0');
+		});
+
+		test('the ascii summary tells the reader to attach the inferred library', async() => {
+			const analyzer = await buildGuessAnalyzer(ts, {
+				code:     'ggplot()',
+				packages: { ggplot2: { versions: { '3.0.0': { date: '2018-01-01', fns: { ggplot: [] } } } } }
+			});
+			const q = [{ type: 'guess-dep-versions' as const }];
+			const ascii = await asciiSummaryOfQueryResult(ansiFormatter, 0, await executeQueries({ analyzer }, q), analyzer, q);
+			expect(ascii).toContain('orphan');
+			expect(ascii).toContain('library(ggplot2)');
+		});
+
+		test('the curated map disambiguates a name several packages export (ggplot -> ggplot2)', async() => {
+			// `ggplot` is exported by ggplot2 and by extensions/re-exporters (here ggtern); the curated builtin map
+			// picks ggplot2 authoritatively rather than giving up as ambiguous
+			const res = await runGuess(ts, {
+				code:     'ggplot()',
+				packages: {
+					ggplot2: { versions: { '3.0.0': { date: '2018-01-01', fns: { ggplot: [] } } } },
+					ggtern:  { versions: { '3.0.0': { date: '2018-01-01', fns: { ggplot: [] } } } }
+				}
+			});
+			expect(guessed(res, 'ggplot2')?.orphan).toBe(true);
+			expect(guessed(res, 'ggtern')).toBeUndefined();
+		});
+
+		test('a name exported by several packages is left ambiguous (not attributed to any)', async() => {
+			const res = await runGuess(ts, {
+				code:     'draw(x)',
+				packages: {
+					pkgA: { versions: { '1.0.0': { date: '2020-01-01', fns: { draw: [] } } } },
+					pkgB: { versions: { '1.0.0': { date: '2020-01-01', fns: { draw: [] } } } }
+				}
+			});
+			expect(guessed(res, 'pkgA')).toBeUndefined();
+			expect(guessed(res, 'pkgB')).toBeUndefined();
+		});
+
+		test('a loaded package used by a bare call is not treated as an orphan', async() => {
+			const dep = await guessDep(ts, {
+				code:     'library(ggplot2)\nggplot()',
+				packages: { ggplot2: { versions: { '3.0.0': { date: '2018-01-01', fns: { ggplot: [] } } } } }
+			}, 'ggplot2');
+			expect(dep?.used).toBe(true);
+			expect(dep?.orphan).toBeUndefined();
+		});
+
+		test('a locally defined function is not inferred as an orphan even when a package exports the name', async() => {
+			const res = await runGuess(ts, {
+				code:     'ggplot <- function() 1\nggplot()',
+				packages: { ggplot2: { versions: { '3.0.0': { date: '2018-01-01', fns: { ggplot: [] } } } } }
+			});
+			expect(guessed(res, 'ggplot2')).toBeUndefined();
+		});
+	});
 }));

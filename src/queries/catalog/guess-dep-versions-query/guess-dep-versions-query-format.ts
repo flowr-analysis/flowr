@@ -105,6 +105,15 @@ export interface GuessedDependency {
 	 * no direct `zoo::`/`library(zoo)` call.
 	 */
 	readonly used?:               boolean;
+	/**
+	 * Set when this package was inferred purely from *orphan* calls: bare calls (`ggplot()`) that flowR could not
+	 * resolve and that no loaded package defines, but whose name is exported by exactly this one package in the
+	 * signature database. The symbol would be undefined were the package not loaded, so a downstream handler may
+	 * attach `library(package)`. See {@link orphanFunctions} for the calls that implicated it.
+	 */
+	readonly orphan?:             boolean;
+	/** the undefined orphan function names that inferred this package (only set when {@link orphan}), e.g. `['ggplot']` */
+	readonly orphanFunctions?:    readonly string[];
 }
 
 export interface GuessDepVersionsQueryResult extends BaseQueryResult {
@@ -399,7 +408,8 @@ export const GuessDepVersionsQueryDefinition = {
 			const coupled = dep.coupledWith ?? [];
 			const groupTag = (dep.base ? ' ' + italic('[base]', formatter)
 				: dep.linkedWith ? ' ' + italic(`[linked: ${dep.linkedWith.join(', ')}]`, formatter) : '')
-				+ (coupled.length > 0 ? ' ' + italic(`[coupled: ${truncatedList(coupled, 3)}]`, formatter) : '');
+				+ (coupled.length > 0 ? ' ' + italic(`[coupled: ${truncatedList(coupled, 3)}]`, formatter) : '')
+				+ (dep.orphan ? ' ' + color(`[orphan: attach library(${dep.package}) for ${truncatedList(dep.orphanFunctions ?? [], 3)}]`, Colors.Yellow, formatter) : '');
 			const anyVersion = coupled.length > 0 ? '(any version on its own)' : '(any version)';
 			const note = dep.base ? '' : dep.used === false ? ' ' + faint('(not called)', formatter) : !isConstrained(dep) && dep.totalVersions ? ' ' + faint(anyVersion, formatter) : '';
 			const tag = groupTag + note;

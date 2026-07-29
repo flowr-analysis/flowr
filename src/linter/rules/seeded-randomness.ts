@@ -29,6 +29,8 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import type { ControlDependency } from '../../dataflow/info';
 import { happensInEveryBranchSet } from '../../dataflow/info';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
+import { CallProp } from '../../dataflow/environments/built-in-props';
+import { builtInsWith } from '../../dataflow/environments/query-fn-props';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
@@ -46,6 +48,11 @@ export interface SeededRandomnessConfig extends MergeableRecord {
 	 */
 	randomnessConsumers: string[]
 }
+
+const RandomnessProducers: SeededRandomnessConfig['randomnessProducers'] = [
+	{ type: 'function', name: 'set.seed' },
+	{ type: 'assignment', name: '.Random.seed' }
+];
 
 export interface SeededRandomnessMeta extends MergeableRecord {
 	consumerCalls:                 number
@@ -166,14 +173,13 @@ export const SEEDED_RANDOMNESS = {
 	},
 	info: {
 		defaultConfig: {
-			randomnessProducers: [{ type: 'function', name: 'set.seed' }, { type: 'assignment', name: '.Random.seed' }],
+			randomnessProducers: RandomnessProducers,
 			randomnessConsumers: [
-				'jitter', 'sample', 'sample.int', 'arima.sim', 'kmeans', 'princomp', 'rcauchy', 'rchisq', 'rexp',
-				'rgamma', 'rgeom', 'rlnorm', 'rlogis', 'rmultinom', 'rnbinom', 'rnorm', 'rpois', 'runif', 'pointLabel',
-				'some', 'rbernoulli', 'rdunif', 'generateSeedVectors',
-				'rbeta', 'rf', 'rhyper', 'rweibull', 'rt', 'rvonmises', 'rwilcox', 'rxor', 'rhyper', 'rmvnorm',
-				'rsignrank', 'randomForest',
-				'permuted', 'permute', 'shuffle', 'shuffleSet', 'data_shuffle', 'sample_frac', 'sample_n', 'slice_sample',
+				...builtInsWith(CallProp.Random).map(Identifier.getName)
+					.filter(n => !RandomnessProducers.some(p => p.name === n)),
+				'princomp', 'pointLabel', 'some', 'rbernoulli', 'rdunif', 'generateSeedVectors', 'rvonmises',
+				'rxor', 'rmvnorm', 'randomForest',
+				'permuted', 'permute', 'shuffle', 'shuffleSet', 'data_shuffle', 'sample_frac', 'sample_n',
 			],
 		},
 		tags:        [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility],

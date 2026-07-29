@@ -12,6 +12,7 @@ import { Identifier, PkgName } from './identifier';
 import { BuiltInProcName } from './built-in-proc-name';
 import { NseArguments } from '../internal/process/functions/call/known-call-handling';
 import { DataMaskingFunctionIdentifiers } from './data-masking-functions';
+import { ArgProp, CallProp, type FnSig } from './built-in-props';
 
 /** Which stack environment an env-returning/-transforming builtin denotes (see {@link StackEnvBuiltins}). */
 export enum StackEnvKind {
@@ -96,7 +97,7 @@ export const GgPlotImplicitAddons = [
 	'coord_trans', 'coord_sf', 'coord_cartesian', 'coord_fixed', 'coord_flip', 'coord_quickmap', 'coord_equal', 'coord_map', 'coord_polar', 'coord_munch', 'coord_radial',
 	'annotate', 'annotation_custom', 'annotation_raster', 'annotation_map', 'annotation_logticks', 'borders', 'ggtitle', 'expansion', 'expand_limits', 'expand_scale', 'guides',
 	'wrap_by',
-	'theme_solid', 'theme_hc', 'theme_excel_new', 'theme_few', 'theme_clean', 'theme_wsj', 'theme_calc', 'theme_par', 'theme_tufte', 'theme_igray', 'theme_solarized_2', 'theme_excel',
+	'theme_solid', 'theme_hc', 'theme_excel_new', 'theme_few', 'theme_clean', 'theme_wsj', 'theme_calc', 'theme_par', 'theme_igray', 'theme_solarized_2', 'theme_excel',
 	'theme_economist', 'theme_stata', 'theme_map', 'theme_fivethirtyeight', 'theme_economist_white', 'theme_base', 'theme_foundation', 'theme_gdocs', 'theme_pander', 'theme_solarized',
 	'scale_shape_tableau', 'scale_fill_pander', 'scale_shape_few', 'scale_colour_excel_new', 'scale_colour_hc', 'scale_fill_ptol', 'scale_fill_gradient2_tableau', 'scale_shape_calc', 'scale_fill_stata',
 	'scale_colour_tableau', 'scale_colour_colorblind', 'scale_color_stata', 'scale_colour_economist', 'scale_fill_calc', 'scale_fill_gradient_tableau', 'scale_shape_cleveland', 'scale_color_pander',
@@ -120,6 +121,14 @@ export const GgPlotAddons = [
 ];
 const PlotAddons = GraphicsPlotAddons.concat(GgPlotImplicitAddons, ...PlotFunctionsWithAddParam);
 
+/* the argument shapes that repeat below: what the call computes its result from */
+const SigBinOp: FnSig = [['e1', ArgProp.Value], ['e2', ArgProp.Value]];
+const SigXY: FnSig    = [['x', ArgProp.Value], ['y', ArgProp.Value]];
+const SigX: FnSig     = [['x', ArgProp.Value]];
+const SigShape: FnSig  = [['x', ArgProp.Shape]];
+const SigXTable: FnSig = [['x', ArgProp.Value], ['table', ArgProp.Value]];
+const SigDots: FnSig  = [['...', ArgProp.Value]];
+
 const RegexConvIn = /[-/\\^$*+?.()|[\]{}]/g;
 /** Builds a regex from an array of plain names or namespaced {@link Identifier}s, deduplicating by name. */
 function toRegex(n: readonly Identifier[]): RegExp {
@@ -128,23 +137,21 @@ function toRegex(n: readonly Identifier[]): RegExp {
 	})$`);
 }
 
+/** what closing or exporting a device links back to: the plot calls that filled it */
+const LinkToLastPlot = {
+	type:     'link-to-last-call',
+	callName: toRegex((GraphicDeviceOpen as readonly string[]).concat(PlotCreate, PlotAddons, GgPlotAddons, TinyPlotAddons))
+} as const;
+
 /**
  * Contains the built-in definitions recognized by flowR
  */
 export const DefaultBuiltinConfig = [
-	{ type:  'constant', names: [
-		Identifier.from(['NULL', PkgName.Base]),        Identifier.from(['NA', PkgName.Base]),
-		Identifier.from(['NA_integer_', PkgName.Base]),
-		Identifier.from(['NA_real_', PkgName.Base]),    Identifier.from(['NA_complex_', PkgName.Base]),
-		Identifier.from(['NA_character_', PkgName.Base])
-	], value: null, assumePrimitive: true },
+	{ type: 'constant', names: Identifier.fromAll(PkgName.Base, ['NULL', 'NA', 'NA_integer_', 'NA_real_', 'NA_complex_', 'NA_character_']), value: null, assumePrimitive: true },
 	{ type: 'constant', names: [Identifier.from(['NaN', PkgName.Base])], value: NaN, assumePrimitive: true },
-	{ type:  'constant', names: [
-		Identifier.from(['.GlobalEnv', PkgName.Base]), Identifier.from(['.BaseNamespaceEnv', PkgName.Base]),
-		Identifier.from(['.BaseEnv', PkgName.Base])
-	], value: null, assumePrimitive: true },
-	{ type: 'constant', names: [Identifier.from(['TRUE', PkgName.Base]),  Identifier.from(['T', PkgName.Base])],  value: true,  assumePrimitive: true },
-	{ type: 'constant', names: [Identifier.from(['FALSE', PkgName.Base]), Identifier.from(['F', PkgName.Base])],  value: false, assumePrimitive: true },
+	{ type: 'constant', names: Identifier.fromAll(PkgName.Base, ['.GlobalEnv', '.BaseNamespaceEnv', '.BaseEnv']), value: null, assumePrimitive: true },
+	{ type: 'constant', names: Identifier.fromAll(PkgName.Base, ['TRUE', 'T']),  value: true,  assumePrimitive: true },
+	{ type: 'constant', names: Identifier.fromAll(PkgName.Base, ['FALSE', 'F']),  value: false, assumePrimitive: true },
 	{ type: 'constant', names: [Identifier.from(['Inf', PkgName.Base])],  value: Infinity,  assumePrimitive: true },
 	{ type: 'constant', names: [Identifier.from(['-Inf', PkgName.Base])], value: -Infinity, assumePrimitive: true },
 	{ type: 'constant', names: [Identifier.from(['pi', PkgName.Base])],   value: Math.PI,   assumePrimitive: true },
@@ -164,116 +171,241 @@ export const DefaultBuiltinConfig = [
 		config:          { markArgsAsNSE: NseArguments.All },
 		assumePrimitive: false
 	},
+	/* cohortBuilder has a `filter` too, and built-ins go by name, so dplyr's entry below wins in the environment
+	   while this one still states what cohortBuilder's does */
+	{
+		type:            'function',
+		names:           [Identifier.from(['filter', PkgName.CohortBuilder])],
+		processor:       BuiltInProcName.Default,
+		config:          { forceArgs: 'all', libFn: true, props: CallProp.Pure },
+		assumePrimitive: false
+	},
 	/* data-masking: the non-data arguments name columns of the (first) data object, not variables (NSE) */
 	{
 		type:            'function',
 		names:           DataMaskingFunctionIdentifiers,
 		processor:       BuiltInProcName.Default,
-		config:          { markArgsAsNSE: NseArguments.AllButFirst },
+		config:          { markArgsAsNSE: NseArguments.AllButFirst, props: CallProp.Pure },
+		assumePrimitive: false
+	},
+	/* slice_sample draws rows at random; registered after the block above, so this definition is the one that sticks */
+	{
+		type:            'function',
+		names:           [Identifier.from(['slice_sample', PkgName.Dplyr])],
+		processor:       BuiltInProcName.Default,
+		config:          { markArgsAsNSE: NseArguments.AllButFirst, props: CallProp.Random },
 		assumePrimitive: false
 	},
 	/* data-masking without a data argument, e.g. `aes(x, y)` */
 	{
 		type:            'function',
-		names:           [Identifier.from(['aes', PkgName.GgPlot2]), Identifier.from(['aes_string', PkgName.GgPlot2]), Identifier.from(['vars', PkgName.GgPlot2])],
+		names:           Identifier.fromAll(PkgName.GgPlot2, ['aes', 'aes_string', 'vars']),
 		processor:       BuiltInProcName.DefaultReadAllArgs,
 		config:          { markArgsAsNSE: NseArguments.All },
 		assumePrimitive: false
 	},
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['+', '-', '*', '/', '^', '**', '==', '!=', '>', '<', '>=', '<=', '%%', '%/%']),
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigBinOp }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['%*%', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigXY }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['%in%', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigXTable }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from([':', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['from', ArgProp.Value], ['to', ArgProp.Value]] }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['!', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigX }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['?', PkgName.Utils])], /* shows the help page of what it is given */
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { sig: [['e1', ArgProp.Nse], ['e2', ArgProp.Nse]] }, assumePrimitive: true },
+	/* the result follows from how large the argument is, not from what is in it */
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['length', 'lengths', 'nchar', 'nrow', 'ncol', 'NROW', 'NCOL', 'dim', 'dimnames', 'names', 'rownames', 'colnames', 'class', 'is.null', 'is.factor', 'is.vector', 'is.matrix', 'is.data.frame', 'is.numeric', 'is.character', 'is.logical', 'is.function', 'is.list']),
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigShape }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['missing', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['x', ArgProp.Presence]] }, assumePrimitive: true },
+	/* they fold everything they are handed into one result */
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['paste', 'paste0', 'sum', 'prod', 'min', 'max', 'range', 'pmin', 'pmax', 'cbind', 'rbind', 'data.frame', 'order', 'any']),
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigDots }, assumePrimitive: true },
+	/* `x` carries the data, whatever follows only tunes the result */
 	{
 		type:  'function',
 		names: [
-			/* arithmetic & comparison operators (base) */
-			Identifier.from(['+', PkgName.Base]),   Identifier.from(['-', PkgName.Base]),
-			Identifier.from(['*', PkgName.Base]),   Identifier.from(['/', PkgName.Base]),
-			Identifier.from(['^', PkgName.Base]),   Identifier.from(['**', PkgName.Base]),
-			Identifier.from(['!', PkgName.Base]),   Identifier.from(['?', PkgName.Utils]),
-			Identifier.from(['==', PkgName.Base]),  Identifier.from(['!=', PkgName.Base]),
-			Identifier.from(['>', PkgName.Base]),   Identifier.from(['<', PkgName.Base]),
-			Identifier.from(['>=', PkgName.Base]),  Identifier.from(['<=', PkgName.Base]),
-			Identifier.from(['%%', PkgName.Base]),  Identifier.from(['%/%', PkgName.Base]),
-			Identifier.from(['%*%', PkgName.Base]), Identifier.from(['%in%', PkgName.Base]),
-			Identifier.from([':', PkgName.Base]),
-			/* sequences & repetition (base) */
-			Identifier.from(['rep', PkgName.Base]),      Identifier.from(['seq', PkgName.Base]),
-			Identifier.from(['seq_len', PkgName.Base]),  Identifier.from(['seq_along', PkgName.Base]),
-			Identifier.from(['seq.int', PkgName.Base]),  Identifier.from(['order', PkgName.Base]),
-			/* string (base) */
-			Identifier.from(['gsub', PkgName.Base]),   Identifier.from(['paste', PkgName.Base]),
-			Identifier.from(['paste0', PkgName.Base]), Identifier.from(['nchar', PkgName.Base]),
-			/* numeric math (base) */
-			Identifier.from(['sqrt', PkgName.Base]),    Identifier.from(['abs', PkgName.Base]),
-			Identifier.from(['round', PkgName.Base]),   Identifier.from(['floor', PkgName.Base]),
-			Identifier.from(['ceiling', PkgName.Base]), Identifier.from(['signif', PkgName.Base]),
-			Identifier.from(['trunc', PkgName.Base]),   Identifier.from(['log', PkgName.Base]),
-			Identifier.from(['log10', PkgName.Base]),   Identifier.from(['log2', PkgName.Base]),
-			Identifier.from(['sum', PkgName.Base]),     Identifier.from(['mean', PkgName.Base]),
-			Identifier.from(['min', PkgName.Base]),     Identifier.from(['max', PkgName.Base]),
-			Identifier.from(['jitter', PkgName.Stats]),
-			/* type coercion (base) */
-			Identifier.from(['numeric', PkgName.Base]),      Identifier.from(['as.character', PkgName.Base]),
-			Identifier.from(['as.integer', PkgName.Base]),   Identifier.from(['as.logical', PkgName.Base]),
-			Identifier.from(['as.numeric', PkgName.Base]),   Identifier.from(['as.matrix', PkgName.Base]),
-			Identifier.from(['as.data.frame', PkgName.Base]),
-			/* collections & data (base) */
-			Identifier.from(['unique', PkgName.Base]),     Identifier.from(['intersect', PkgName.Base]),
-			Identifier.from(['match', PkgName.Base]),
-			Identifier.from(['which', PkgName.Base]),      Identifier.from(['any', PkgName.Base]),
-			Identifier.from(['length', PkgName.Base]),     Identifier.from(['expression', PkgName.Base]),
-			Identifier.from(['factor', PkgName.Base]),     Identifier.from(['missing', PkgName.Base]),
-			Identifier.from(['data.frame', PkgName.Base]),
-			/* matrix / data frame (base) */
-			Identifier.from(['matrix', PkgName.Base]),   Identifier.from(['cbind', PkgName.Base]),
-			Identifier.from(['rbind', PkgName.Base]),    Identifier.from(['dim', PkgName.Base]),
-			Identifier.from(['nrow', PkgName.Base]),     Identifier.from(['ncol', PkgName.Base]),
-			Identifier.from(['dimnames', PkgName.Base]), Identifier.from(['rownames', PkgName.Base]),
-			Identifier.from(['names', PkgName.Base]),
-			/* object inspection (base) */
-			Identifier.from(['class', PkgName.Base]),   Identifier.from(['is.null', PkgName.Base]),
-			/* other packages */
-			Identifier.from(['read.csv', PkgName.Utils]), Identifier.from(['na.omit', PkgName.Stats]),
-			/* graphic devices (grDevices) */
-			Identifier.from(['pdf', PkgName.GrDevices]),        Identifier.from(['jpeg', PkgName.GrDevices]),
-			Identifier.from(['png', PkgName.GrDevices]),        Identifier.from(['windows', PkgName.GrDevices]),
-			Identifier.from(['postscript', PkgName.GrDevices]), Identifier.from(['xfig', PkgName.GrDevices]),
-			Identifier.from(['bitmap', PkgName.GrDevices]),     Identifier.from(['pictex', PkgName.GrDevices]),
-			Identifier.from(['cairo_pdf', PkgName.GrDevices]),  Identifier.from(['svg', PkgName.GrDevices]),
-			Identifier.from(['bmp', PkgName.GrDevices]),        Identifier.from(['tiff', PkgName.GrDevices]),
-			Identifier.from(['X11', PkgName.GrDevices]),        Identifier.from(['quartz', PkgName.GrDevices]),
-			Identifier.from(['dev.new', PkgName.GrDevices]),
-			/* graphic devices (third-party) */
-			Identifier.from(['trellis.device', PkgName.Lattice]),
-			Identifier.from(['raster_pdf', PkgName.RasterPdf]), Identifier.from(['agg_pdf', PkgName.Ragg]),
-			Identifier.from(['image_graph', PkgName.Magick]),   Identifier.from(['image_draw', PkgName.Magick]),
+			...Identifier.fromAll(PkgName.Base, [
+				/* math */
+				'sqrt', 'abs', 'round', 'floor', 'ceiling', 'signif', 'trunc', 'log', 'log10', 'log2', 'mean',
+				'sign', 'exp', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'sinh', 'cosh', 'tanh',
+				'asinh', 'acosh', 'atanh',
+				/* running summaries & reordering */
+				'cumsum', 'cumprod', 'cummax', 'cummin', 'diff', 'sort', 'rev', 'unique', 'duplicated', 't',
+				/* coercion */
+				'as.character', 'as.integer', 'as.logical', 'as.numeric', 'as.matrix', 'as.data.frame',
+				'as.factor', 'as.raw', 'as.list', 'as.array', 'as.double', 'as.complex', 'factor',
+				/* string */
+				'tolower', 'toupper', 'trimws',
+				/* they answer something about the values themselves, so they do read them */
+				'is.na', 'nzchar', 'is.finite', 'is.infinite', 'is.nan'
+			]),
+			...Identifier.fromAll(PkgName.Utils, ['head', 'tail']),
+			...Identifier.fromAll(PkgName.Stats, ['var', 'sd', 'median', 'quantile']),
 		],
 		processor:       BuiltInProcName.DefaultReadAllArgs,
-		config:          {},
+		config:          { props: CallProp.Pure, sig: SigX },
 		assumePrimitive: true
 	},
-	{ type:            'function', names:           [Identifier.from(['t', PkgName.Base]), Identifier.from(['aperm', PkgName.Base])], /* transpose/permutation */
-		processor:       BuiltInProcName.DefaultReadAllArgs, config:          {}, assumePrimitive: false },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['Re', 'Im', 'Mod', 'Arg', 'Conj']),
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['z', ArgProp.Value]] }, assumePrimitive: true },
+	/* the vector constructors take the length of the result, not its contents */
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['numeric', 'character', 'logical', 'integer', 'double', 'raw']),
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['length', ArgProp.Value]] }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['na.omit', PkgName.Stats])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['object', ArgProp.Value]] }, assumePrimitive: true },
+	/* two data arguments, under the names R gives them */
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['xor', 'crossprod', 'tcrossprod', 'intersect', 'union', 'setdiff']),
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigXY }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['match', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigXTable }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['is.element', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['el', ArgProp.Value], ['set', ArgProp.Value]] }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['atan2', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['y', ArgProp.Value], ['x', ArgProp.Value]] }, assumePrimitive: true },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['bitwAnd', 'bitwOr', 'bitwXor']),
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['a', ArgProp.Value], ['b', ArgProp.Value]] }, assumePrimitive: true },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['bitwShiftL', 'bitwShiftR']),
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['a', ArgProp.Value], ['n', ArgProp.Value]] }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['bitwNot', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['a', ArgProp.Value]] }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['grepl', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['pattern', ArgProp.Value], ['x', ArgProp.Value]] }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['startsWith', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['x', ArgProp.Value], ['prefix', ArgProp.Value]] }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['endsWith', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['x', ArgProp.Value], ['suffix', ArgProp.Value]] }, assumePrimitive: true },
+	/* the rest of the pure computations, where no single shape fits */
+	{
+		type:  'function',
+		names: [
+			...Identifier.fromAll(PkgName.Base, [
+				'rep', 'rep.int', 'seq', 'seq_len', 'seq_along', 'seq.int', 'which', 'append', 'complex',
+				'matrix', 'array', 'table', 'prop.table', 'colSums', 'rowSums', 'colMeans', 'rowMeans',
+				'solve', 'det', 'eigen', 'aperm',
+				/* string */
+				'grep', 'sub', 'gsub', 'substr', 'substring', 'strsplit', 'strrep', 'chartr', 'strtoi',
+				'regexpr', 'gregexpr', 'regexec', 'format', 'sprintf', 'formatC',
+				/* regmatches yields a substring of its subject, so what flows in flows out */
+				'regmatches'
+			]),
+			...Identifier.fromAll(PkgName.Stats, ['cor', 'cov', 'xtabs']),
+		],
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.Pure },
+		assumePrimitive: true
+	},
+
+	/* they open a device that writes the plot to the file they are given, under the name each of them uses */
+	{ type:            'function', names:           [...Identifier.fromAll(PkgName.GrDevices, ['png', 'jpeg', 'bmp', 'tiff', 'svg', 'cairo_pdf']), Identifier.from(['raster_pdf', PkgName.RasterPdf]), Identifier.from(['agg_pdf', PkgName.Ragg])],
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.Invisible | CallProp.Graphics | CallProp.File | CallProp.Writes, sig: [['filename', ArgProp.Resource]] }, assumePrimitive: true },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.GrDevices, ['pdf', 'postscript', 'xfig', 'bitmap', 'pictex']),
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.Invisible | CallProp.Graphics | CallProp.File | CallProp.Writes, sig: [['file', ArgProp.Resource]] }, assumePrimitive: true },
+	/* devices that draw on the screen or into memory instead */
+	{ type:            'function', names:           [...Identifier.fromAll(PkgName.GrDevices, ['X11', 'windows', 'quartz', 'dev.new']), Identifier.from(['trellis.device', PkgName.Lattice]), ...Identifier.fromAll(PkgName.Magick, ['image_graph', 'image_draw'])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Graphics }, assumePrimitive: true },
+
+	{ type:            'function', names:           [Identifier.from(['read.csv', PkgName.Utils])],
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.File | CallProp.Reads, sig: [['file', ArgProp.Resource]] }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['scan', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.File | CallProp.Reads | CallProp.User, sig: [['file', ArgProp.Resource]] }, assumePrimitive: false },
+	/* the connections and the calls that move data through them, so anything reaching them inherits it */
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['file', 'gzfile', 'bzfile', 'xzfile', 'unz', 'fifo']),
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.File | CallProp.Reads | CallProp.Writes, sig: [['description', ArgProp.Resource]] }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['url', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.Network | CallProp.Reads, sig: [['description', ArgProp.Resource]] }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['socketConnection', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.Network | CallProp.Reads, sig: [['host', ArgProp.Resource]] }, assumePrimitive: false },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['readLines', 'readBin', 'readChar']),
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.File | CallProp.Reads, sig: [['con', ArgProp.Resource]] }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['readRDS', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.File | CallProp.Reads, sig: [['file', ArgProp.Resource]] }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['writeLines', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.Invisible | CallProp.File | CallProp.Writes | CallProp.Prints, sig: [['text', ArgProp.Value], ['con', ArgProp.Resource]] }, assumePrimitive: false },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['writeBin', 'writeChar']),
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.Invisible | CallProp.File | CallProp.Writes, sig: [['object', ArgProp.Value], ['con', ArgProp.Resource]] }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['saveRDS', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.Invisible | CallProp.File | CallProp.Writes, sig: [['object', ArgProp.Value], ['file', ArgProp.Resource]] }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['save', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.Invisible | CallProp.File | CallProp.Writes, sig: [['...', ArgProp.Value], ['file', ArgProp.Resource]] }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['save.image', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.Invisible | CallProp.File | CallProp.Writes, sig: [['file', ArgProp.Resource]] }, assumePrimitive: false },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['dput', 'write']),
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.Invisible | CallProp.File | CallProp.Writes | CallProp.Prints, sig: [['x', ArgProp.Value], ['file', ArgProp.Resource]] }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['write.table', PkgName.Utils])],
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.Invisible | CallProp.File | CallProp.Writes, sig: [['x', ArgProp.Value], ['file', ArgProp.Resource]] }, assumePrimitive: false },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Utils, ['write.csv', 'write.csv2']),
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.Invisible | CallProp.File | CallProp.Writes }, assumePrimitive: false },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Utils, ['read.table', 'read.delim', 'read.csv2', 'read.delim2']),
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.File | CallProp.Reads, sig: [['file', ArgProp.Resource]] }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['download.file', PkgName.Utils])],
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.Network | CallProp.File | CallProp.Writes, sig: [['url', ArgProp.Resource], ['destfile', ArgProp.Resource]] }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['jitter', PkgName.Stats])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Random }, assumePrimitive: true },
+	{
+		type:  'function',
+		names: [
+			...Identifier.fromAll(PkgName.Base, ['sample', 'sample.int']),
+			...Identifier.fromAll(PkgName.Stats, [
+				'runif', 'rnorm', 'rbinom', 'rpois', 'rexp', 'rgamma', 'rbeta', 'rcauchy', 'rchisq', 'rgeom',
+				'rhyper', 'rlnorm', 'rlogis', 'rmultinom', 'rnbinom', 'rsignrank', 'rt', 'rf', 'rweibull',
+				'rwilcox', 'arima.sim', 'simulate', 'kmeans'
+			])
+		],
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.Random },
+		assumePrimitive: false
+	},
+	{ type:            'function', names:           [Identifier.from(['expression', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Lang }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['rm', PkgName.Base])],
-		processor:       BuiltInProcName.Rm, config:          {}, assumePrimitive: true },
+		processor:       BuiltInProcName.Rm, config:          { props: CallProp.Invisible | CallProp.Scope }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['options', PkgName.Base])],
-		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true, forceArgs: 'all' }, assumePrimitive: false },
+		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true, forceArgs: 'all', props: CallProp.Invisible | CallProp.Ambient }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['mapply', PkgName.Base]), Identifier.from(['Mapply', PkgName.Functools])],
-		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, nameOfFunctionArgument: 'FUN', unquoteFunction: true }, assumePrimitive: false },
-	{ type:            'function', names:           [Identifier.from(['lapply', PkgName.Base]), Identifier.from(['sapply', PkgName.Base]), Identifier.from(['vapply', PkgName.Base])],
-		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true }, assumePrimitive: false },
-	{ type:            'function', names:           [Identifier.from(['Lapply', PkgName.Functools]), Identifier.from(['Sapply', PkgName.Functools]), Identifier.from(['Vapply', PkgName.Functools])],
-		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true }, assumePrimitive: false },
-	{ type:            'function', names:           [Identifier.from(['apply', PkgName.Base]), Identifier.from(['tapply', PkgName.Base]), Identifier.from(['Tapply', PkgName.Functools])],
-		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 2, nameOfFunctionArgument: 'FUN', unquoteFunction: true }, assumePrimitive: false },
-	{ type:            'function', names:           [Identifier.from(['Map', PkgName.Base]), Identifier.from(['Filter', PkgName.Base])],
-		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true }, assumePrimitive: false },
+		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure, sig: [['FUN', ArgProp.Callee]] }, assumePrimitive: false },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['lapply', 'sapply', 'vapply']),
+		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure, sig: [['X', ArgProp.Value], ['FUN', ArgProp.Callee]] }, assumePrimitive: false },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Functools, ['Lapply', 'Sapply', 'Vapply']),
+		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure }, assumePrimitive: false },
+	{ type:            'function', names:           [...Identifier.fromAll(PkgName.Base, ['apply', 'tapply']), Identifier.from(['Tapply', PkgName.Functools])],
+		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 2, nameOfFunctionArgument: 'FUN', unquoteFunction: true, props: CallProp.MayPure }, assumePrimitive: false },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['Map', 'Filter', 'Find', 'Position']),
+		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true, props: CallProp.MayPure, sig: [['f', ArgProp.Callee]] }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['Reduce', PkgName.Base])],
-		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true }, assumePrimitive: false },
-	{ type:            'function', names:           [Identifier.from(['print', PkgName.Base]), Identifier.from(['message', PkgName.Base]), Identifier.from(['warning', PkgName.Base]), Identifier.from(['warn', PkgName.Rlang]), Identifier.from(['warn', PkgName.Rutils]), Identifier.from(['info', PkgName.Msgr])],
-		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, forceArgs: 'all', keepArgumentOut: true, hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } }, assumePrimitive: false },
+		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, nameOfFunctionArgument: 'f', unquoteFunction: true, props: CallProp.MayPure, sig: [['f', ArgProp.Callee]] }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['rapply', PkgName.Base])],
+		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 1, nameOfFunctionArgument: 'f', unquoteFunction: true, props: CallProp.MayPure }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['print', PkgName.Base])],
+		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, forceArgs: 'all', keepArgumentOut: true, hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ }, props: CallProp.Invisible | CallProp.Generic | CallProp.Prints }, assumePrimitive: false },
+	{ type:            'function', names:           [...Identifier.fromAll(PkgName.Base, ['message', 'warning']), Identifier.from(['warn', PkgName.Rlang]), Identifier.from(['warn', PkgName.Rutils]), Identifier.from(['info', PkgName.Msgr])],
+		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, forceArgs: 'all', keepArgumentOut: true, hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ }, props: CallProp.Invisible | CallProp.Prints }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['invisible', PkgName.Base])],
-		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, forceArgs: 'all', keepArgumentOut: true }, assumePrimitive: true },
-	{ type:            'function', names:           [Identifier.from(['force', PkgName.Base]), Identifier.from(['identity', PkgName.Base])],
-		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, forceArgs: 'all', keepArgumentOut: true }, assumePrimitive: false },
+		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, forceArgs: 'all', keepArgumentOut: true, props: CallProp.Pure | CallProp.Invisible, sig: [['x', ArgProp.Alias | ArgProp.Forced]] }, assumePrimitive: true },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['force', 'identity']),
+		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, forceArgs: 'all', keepArgumentOut: true, props: CallProp.Pure, sig: [['x', ArgProp.Alias | ArgProp.Forced]] }, assumePrimitive: false },
 	// graphics base
 	{ type:      'function', names:     PlotCreate,
 		processor: BuiltInProcName.Default,
@@ -289,7 +421,8 @@ export const DefaultBuiltinConfig = [
 					}, [RType.Logical])?.content === true);
 				},
 				callName: toRegex(GraphicDeviceOpen)
-			}
+			},
+			props: CallProp.Graphics
 		}, assumePrimitive: true },
 	// graphics addons
 	{ type:      'function', names:     PlotAddons,
@@ -317,7 +450,8 @@ export const DefaultBuiltinConfig = [
 						name:  'add'
 					}, [RType.Logical])?.content === true ? CascadeAction.Continue : CascadeAction.Stop) : CascadeAction.Stop;
 				}
-			}
+			},
+			props: CallProp.Graphics
 		}, assumePrimitive: true },
 	// plot tags
 	{
@@ -330,7 +464,8 @@ export const DefaultBuiltinConfig = [
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
 				callName: toRegex((GgPlotCreate as readonly string[]).concat(GgPlotAddons))
-			}
+			},
+			props: CallProp.Graphics
 		}, assumePrimitive: true },
 	{
 		type:      'function',
@@ -342,32 +477,42 @@ export const DefaultBuiltinConfig = [
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
 				callName: toRegex([...TinyPlotCrate, ...TinyPlotAddons])
-			}
+			},
+			props: CallProp.Graphics
 		}, assumePrimitive: true },
 	{
 		type:  'function',
 		names: [
-			Identifier.from(['image_write', PkgName.Magick]), Identifier.from(['image_capture', PkgName.Magick]),
-			Identifier.from(['dev.capture', PkgName.GrDevices]), Identifier.from(['dev.off', PkgName.GrDevices])
+			...Identifier.fromAll(PkgName.Magick, ['image_capture']),
+			...Identifier.fromAll(PkgName.GrDevices, ['dev.capture'])
 		],
-		processor: BuiltInProcName.Default,
-		config:    {
-			libFn:                 true,
-			forceArgs:             'all',
-			hasUnknownSideEffects: {
-				type:     'link-to-last-call',
-				callName: toRegex((GraphicDeviceOpen as readonly string[]).concat(PlotCreate, PlotAddons, GgPlotAddons, TinyPlotAddons))
-			}
-		}, assumePrimitive: true },
+		processor:       BuiltInProcName.Default,
+		config:          { libFn: true, forceArgs: 'all', hasUnknownSideEffects: LinkToLastPlot, props: CallProp.Graphics },
+		assumePrimitive: true },
+	/* they put what the device holds on disk */
+	{ type:            'function', names:           [Identifier.from(['image_write', PkgName.Magick])],
+		processor:       BuiltInProcName.Default,
+		config:          { libFn: true, forceArgs: 'all', hasUnknownSideEffects: LinkToLastPlot, props: CallProp.Graphics | CallProp.File | CallProp.Writes, sig: [['image', ArgProp.Value], ['path', ArgProp.Resource]] },
+		assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['dev.off', PkgName.GrDevices])],
+		processor:       BuiltInProcName.Default,
+		config:          { libFn: true, forceArgs: 'all', hasUnknownSideEffects: LinkToLastPlot, props: CallProp.Graphics | CallProp.File | CallProp.Writes },
+		assumePrimitive: true },
 	{ type:            'function', names:           ['('],
-		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, keepArgumentOut: true }, assumePrimitive: true },
-	{ type:            'function', names:           [Identifier.from(['load_all', PkgName.PkgLoad]), Identifier.from(['load_all', PkgName.Devtools]), Identifier.from(['setwd', PkgName.Base]), Identifier.from(['set.seed', PkgName.Base])],
-		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true, forceArgs: [true] }, assumePrimitive: false },
-	{ type:            'function', names:           [Identifier.from(['body', PkgName.Base]), Identifier.from(['formals', PkgName.Base]), Identifier.from(['environment', PkgName.Base])],
+		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, keepArgumentOut: true, props: CallProp.Pure }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['load_all', PkgName.PkgLoad]), Identifier.from(['load_all', PkgName.Devtools])],
+		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true, forceArgs: [true], props: CallProp.Scope }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['setwd', PkgName.Base])],
+		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true, forceArgs: [true], props: CallProp.Invisible | CallProp.Ambient }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['set.seed', PkgName.Base])],
+		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true, forceArgs: [true], props: CallProp.Invisible | CallProp.Random }, assumePrimitive: false },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['body', 'formals']),
+		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true, forceArgs: [true], props: CallProp.Lang }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['environment', PkgName.Base])],
 		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true, forceArgs: [true] }, assumePrimitive: true },
 	{
 		type:      'function',
-		names:     [Identifier.from(['.Call', PkgName.Base]), Identifier.from(['.External', PkgName.Base]), Identifier.from(['.C', PkgName.Base]), Identifier.from(['.Fortran', PkgName.Base])],
+		names:     Identifier.fromAll(PkgName.Base, ['.Call', '.External', '.C', '.Fortran']),
 		processor: BuiltInProcName.Default,
 		config:    {
 			hasUnknownSideEffects: true,
@@ -379,7 +524,8 @@ export const DefaultBuiltinConfig = [
 				'.External': ['.NAME'],
 				'.C':        ['.NAME'],
 				'.Fortran':  ['.NAME']
-			}
+			},
+			props: CallProp.Ffi
 		},
 		assumePrimitive: true
 	},
@@ -388,21 +534,21 @@ export const DefaultBuiltinConfig = [
 	{ type:            'function', names:           [Identifier.from(['evalText', PkgName.Soda])],
 		processor:       BuiltInProcName.Eval, config:          { includeFunctionCall: true, supportFunctionCall: true }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['cat', PkgName.Base])],
-		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } }, assumePrimitive: false },
+		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ }, props: CallProp.Invisible | CallProp.File | CallProp.Writes | CallProp.Prints, sig: [['...', ArgProp.Value | ArgProp.Forced], ['file', ArgProp.Resource]] }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['switch', PkgName.Base])],
-		processor:       BuiltInProcName.Default, config:          { forceArgs: [true], useAsProcessor: BuiltInProcName.Switch }, assumePrimitive: false },
+		processor:       BuiltInProcName.Default, config:          { forceArgs: [true], useAsProcessor: BuiltInProcName.Switch, props: CallProp.Pure }, assumePrimitive: false },
 	{ type:            'function', names:           ['return'],
-		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, cfg: ExitPointType.Return, keepArgumentOut: true, useAsProcessor: BuiltInProcName.Return }, assumePrimitive: true },
+		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, cfg: ExitPointType.Return, keepArgumentOut: true, useAsProcessor: BuiltInProcName.Return, props: CallProp.Pure }, assumePrimitive: true },
 	{
 		type:  'function',
 		names: [
 			Identifier.from(['stop', PkgName.Base]),
 			Identifier.from(['abort', PkgName.Rlang]), Identifier.from(['cli_abort', PkgName.Cli]),
 			Identifier.from(['throw', PkgName.RmethodsS3]), Identifier.from(['throw', PkgName.Roo]), /* R.oo re-exports R.methodsS3::throw */
-			Identifier.from(['stop_bad_type', PkgName.Purrr]), Identifier.from(['stop_bad_element_type', PkgName.Purrr]), Identifier.from(['stop_bad_element_length', PkgName.Purrr])
+			...Identifier.fromAll(PkgName.Purrr, ['stop_bad_type', 'stop_bad_element_type', 'stop_bad_element_length'])
 		],
 		processor:       BuiltInProcName.Default,
-		config:          { useAsProcessor: BuiltInProcName.Stop, cfg: ExitPointType.Error, forceArgs: ['all'] },
+		config:          { useAsProcessor: BuiltInProcName.Stop, cfg: ExitPointType.Error, forceArgs: ['all'], props: CallProp.Throws },
 		assumePrimitive: false
 	},
 	{ type:            'function', names:           [Identifier.from(['try', PkgName.Base])],
@@ -410,7 +556,7 @@ export const DefaultBuiltinConfig = [
 	{ type:            'function', names:           [Identifier.from(['tryCatch', PkgName.Base]), Identifier.from(['tryCatchLog', PkgName.TryCatchLog])],
 		processor:       BuiltInProcName.Try, config:          { block: 'expr', handlers: { error: 'error', finally: 'finally' } }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['stopifnot', PkgName.Base]), Identifier.from(['assert_that', PkgName.AssertThat])],
-		processor:       BuiltInProcName.StopIfNot, config:          {}, assumePrimitive: false },
+		processor:       BuiltInProcName.StopIfNot, config:          { props: CallProp.Invisible | CallProp.Throws }, assumePrimitive: false },
 	{ type:            'function', names:           ['break'],
 		processor:       BuiltInProcName.Default, config:          { useAsProcessor: BuiltInProcName.Break, cfg: ExitPointType.Break }, assumePrimitive: false },
 	{ type:            'function', names:           ['next'],
@@ -420,11 +566,11 @@ export const DefaultBuiltinConfig = [
 	{ type:            'function', names:           [Identifier.from(['source', PkgName.Base])],
 		processor:       BuiltInProcName.Source, config:          { includeFunctionCall: true, forceFollow: false }, assumePrimitive: false },
 	{ type:            'function', names:           ['['],
-		processor:       BuiltInProcName.Access, config:          { treatIndicesAsString: false }, assumePrimitive: true },
+		processor:       BuiltInProcName.Access, config:          { treatIndicesAsString: false, props: CallProp.Pure }, assumePrimitive: true },
 	{ type:            'function', names:           ['[['],
-		processor:       BuiltInProcName.Access, config:          { treatIndicesAsString: false, resolveField: true }, assumePrimitive: true },
+		processor:       BuiltInProcName.Access, config:          { treatIndicesAsString: false, resolveField: true, props: CallProp.Pure }, assumePrimitive: true },
 	{ type:            'function', names:           ['$', '@'],
-		processor:       BuiltInProcName.Access, config:          { treatIndicesAsString: true, resolveField: true }, assumePrimitive: true },
+		processor:       BuiltInProcName.Access, config:          { treatIndicesAsString: true, resolveField: true, props: CallProp.Pure }, assumePrimitive: true },
 	{ type:            'function', names:           ['::'],
 		processor:       BuiltInProcName.NamespaceAccess, config:          { internal: false }, assumePrimitive: true },
 	{ type:            'function', names:           [':::'],
@@ -432,65 +578,67 @@ export const DefaultBuiltinConfig = [
 	{ type:            'function', names:           ['if'],
 		processor:       BuiltInProcName.IfThenElse, config:          {}, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['ifelse', PkgName.Base]), Identifier.from(['fifelse', PkgName.DataTable]), 'IfElse'],
-		processor:       BuiltInProcName.IfThenElse, config:          { args: { cond: 'test', yes: 'yes', no: 'no' } }, assumePrimitive: true },
+		processor:       BuiltInProcName.IfThenElse, config:          { args: { cond: 'test', yes: 'yes', no: 'no' }, props: CallProp.Pure }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['if_else', PkgName.Dplyr])],
-		processor:       BuiltInProcName.IfThenElse, config:          { args: { cond: 'condition', yes: 'true', no: 'false' } }, assumePrimitive: true },
+		processor:       BuiltInProcName.IfThenElse, config:          { args: { cond: 'condition', yes: 'true', no: 'false' }, props: CallProp.Pure }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['get', PkgName.Base])],
-		processor:       BuiltInProcName.Get, config:          {}, assumePrimitive: false },
-	{ type:            'function', names:           [Identifier.from(['library', PkgName.Base]), Identifier.from(['require', PkgName.Base])],
-		processor:       BuiltInProcName.Library, config:          {}, assumePrimitive: false },
+		processor:       BuiltInProcName.Get, config:          { props: CallProp.Pure, sig: [['x', ArgProp.Value], ['pos', ArgProp.Flag], ['envir', ArgProp.Value], ['mode', ArgProp.Flag], ['inherits', ArgProp.Flag]] }, assumePrimitive: false },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['library', 'require']),
+		processor:       BuiltInProcName.Library, config:          { props: CallProp.Invisible | CallProp.Scope }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['attachNamespace', PkgName.Base])],
-		processor:       BuiltInProcName.Library, config:          { characterOnly: true }, assumePrimitive: false },
-	{ type:            'function', names:           [Identifier.from(['requireNamespace', PkgName.Base]), Identifier.from(['loadNamespace', PkgName.Base])],
-		processor:       BuiltInProcName.Library, config:          { namespaceOnly: true, characterOnly: true }, assumePrimitive: false },
+		processor:       BuiltInProcName.Library, config:          { characterOnly: true, props: CallProp.Invisible | CallProp.Scope }, assumePrimitive: false },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['requireNamespace', 'loadNamespace']),
+		processor:       BuiltInProcName.Library, config:          { namespaceOnly: true, characterOnly: true, props: CallProp.Invisible | CallProp.Scope }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['from', PkgName.Import])],
-		processor:       BuiltInProcName.Library, config:          { fromImports: true }, assumePrimitive: false },
+		processor:       BuiltInProcName.Library, config:          { fromImports: true, props: CallProp.Scope }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['use', PkgName.Box]), Identifier.from(['use', PkgName.Base])],
-		processor:       BuiltInProcName.Library, config:          { boxUse: true }, assumePrimitive: false },
+		processor:       BuiltInProcName.Library, config:          { boxUse: true, props: CallProp.Scope }, assumePrimitive: false },
 	{ type:            'function', names:           ['<-', '='],
-		processor:       BuiltInProcName.Assignment, config:          { canBeReplacement: true }, assumePrimitive: true },
+		processor:       BuiltInProcName.Assignment, config:          { canBeReplacement: true, props: CallProp.Scope | CallProp.Invisible }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from([':=', PkgName.DataTable])],
-		processor:       BuiltInProcName.Assignment, config:          {}, assumePrimitive: true },
-	{ type:            'function', names:           [Identifier.from(['assign', PkgName.Base]), Identifier.from(['setValidity', PkgName.Methods])],
-		processor:       BuiltInProcName.Assignment, config:          { targetVariable: true, mayHaveMoreArgs: true, environmentArg: 'envir' }, assumePrimitive: true },
+		processor:       BuiltInProcName.Assignment, config:          { props: CallProp.Invisible | CallProp.Scope }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['assign', PkgName.Base])],
+		processor:       BuiltInProcName.Assignment, config:          { targetVariable: true, mayHaveMoreArgs: true, environmentArg: 'envir', props: CallProp.Scope | CallProp.Invisible, sig: [['x', ArgProp.Value], ['value', ArgProp.Value], ['pos', ArgProp.Flag], ['envir', ArgProp.Written], ['inherits', ArgProp.Flag]] }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['setValidity', PkgName.Methods])],
+		processor:       BuiltInProcName.Assignment, config:          { targetVariable: true, mayHaveMoreArgs: true, environmentArg: 'envir', props: CallProp.Scope | CallProp.Invisible }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['setMethod', PkgName.Methods])],
 		processor:       BuiltInProcName.AssignmentLike,
 		config:          { targetVariable: true, canBeReplacement: false, target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] },
 		assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['delayedAssign', PkgName.Base])],
-		processor:       BuiltInProcName.Assignment, config:          { quoteSource: true, targetVariable: true }, assumePrimitive: true },
+		processor:       BuiltInProcName.Assignment, config:          { quoteSource: true, targetVariable: true, props: CallProp.Invisible | CallProp.Scope }, assumePrimitive: true },
 	{ type:            'function', names:           ['<<-'],
-		processor:       BuiltInProcName.Assignment, config:          { superAssignment: true, canBeReplacement: true }, assumePrimitive: true },
+		processor:       BuiltInProcName.Assignment, config:          { superAssignment: true, canBeReplacement: true, props: CallProp.Scope | CallProp.Invisible }, assumePrimitive: true },
 	{ type:            'function', names:           ['->'],
-		processor:       BuiltInProcName.Assignment, config:          { swapSourceAndTarget: true, canBeReplacement: true }, assumePrimitive: true },
+		processor:       BuiltInProcName.Assignment, config:          { swapSourceAndTarget: true, canBeReplacement: true, props: CallProp.Scope | CallProp.Invisible }, assumePrimitive: true },
 	{ type:            'function', names:           ['->>'],
-		processor:       BuiltInProcName.Assignment, config:          { superAssignment: true, swapSourceAndTarget: true, canBeReplacement: true }, assumePrimitive: true },
+		processor:       BuiltInProcName.Assignment, config:          { superAssignment: true, swapSourceAndTarget: true, canBeReplacement: true, props: CallProp.Scope | CallProp.Invisible }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['data', PkgName.Utils]), Identifier.from(['getHdata', PkgName.Hmisc])],
 		processor:       BuiltInProcName.DefineArgument, config:          { superAssignment: true }, assumePrimitive: false },
-	{ type:            'function', names:           [Identifier.from(['&&', PkgName.Base]), Identifier.from(['&', PkgName.Base])],
-		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: true, evalRhsWhen: true }, assumePrimitive: true },
-	{ type:            'function', names:           [Identifier.from(['||', PkgName.Base]), Identifier.from(['|', PkgName.Base])],
-		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: true, evalRhsWhen: false }, assumePrimitive: true },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['&&', '&']),
+		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: true, evalRhsWhen: true, props: CallProp.Pure }, assumePrimitive: true },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['||', '|']),
+		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: true, evalRhsWhen: false, props: CallProp.Pure }, assumePrimitive: true },
 	{ type:            'function', names:           ['|>'],
 		processor:       BuiltInProcName.Pipe, config:          { pipePlaceholderName: '_' }, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from(['%>%', PkgName.Magrittr]), '%!>%'], processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', rhsMightBeSymbol: true }, assumePrimitive: true  },
 	{ type: 'function', names: [Identifier.from(['%<>%', PkgName.Magrittr])],        processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: true, rhsMightBeSymbol: true }, assumePrimitive: true  },
 	{ type: 'function', names: [Identifier.from(['%T>%', PkgName.Magrittr])],        processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', returnLhs: true, rhsMightBeSymbol: true }, assumePrimitive: true  },
-	{ type:      'function', names:     [Identifier.from(['map', PkgName.Purrr]), Identifier.from(['map_lgl', PkgName.Purrr]), Identifier.from(['map_int', PkgName.Purrr]), Identifier.from(['map_dbl', PkgName.Purrr]), Identifier.from(['map_chr', PkgName.Purrr])], processor: BuiltInProcName.PurrrFormula, config:    {
+	{ type:      'function', names:     Identifier.fromAll(PkgName.Purrr, ['map', 'map_lgl', 'map_int', 'map_dbl', 'map_chr']), processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x': { index: 0, name: '.x' }
 		},
 		'.f':   { index: 1, name: '.f' },
 		ignore: ['.progress']
 	} },
-	{ type:      'function', names:     [Identifier.from(['pmap', PkgName.Purrr]), Identifier.from(['pmap_lgl', PkgName.Purrr]), Identifier.from(['pmap_int', PkgName.Purrr]), Identifier.from(['pmap_dbl', PkgName.Purrr]), Identifier.from(['pmap_chr', PkgName.Purrr])], processor: BuiltInProcName.PurrrFormula, config:    {
+	{ type:      'function', names:     Identifier.fromAll(PkgName.Purrr, ['pmap', 'pmap_lgl', 'pmap_int', 'pmap_dbl', 'pmap_chr']), processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.l': { index: 0, name: '.l' }
 		},
 		'.f':   { index: 1, name: '.f' },
 		ignore: ['.progress']
 	} },
-	{ type:      'function', names:     [Identifier.from(['map2', PkgName.Purrr]), Identifier.from(['map2_lgl', PkgName.Purrr]), Identifier.from(['map2_int', PkgName.Purrr]), Identifier.from(['map2_dbl', PkgName.Purrr]), Identifier.from(['map2_chr', PkgName.Purrr])], processor: BuiltInProcName.PurrrFormula, config:    {
+	{ type:      'function', names:     Identifier.fromAll(PkgName.Purrr, ['map2', 'map2_lgl', 'map2_int', 'map2_dbl', 'map2_chr']), processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x': { index: 0, name: '.x' },
 			'.y': { index: 1, name: '.y' },
@@ -498,7 +646,7 @@ export const DefaultBuiltinConfig = [
 		'.f':   { index: 2, name: '.f' },
 		ignore: ['.progress']
 	} },
-	{ type:      'function', names:     [Identifier.from(['modify', PkgName.Purrr]), Identifier.from(['imodify', PkgName.Purrr]), Identifier.from(['imap', PkgName.Purrr]), Identifier.from(['imap_lgl', PkgName.Purrr]), Identifier.from(['imap_int', PkgName.Purrr]), Identifier.from(['imap_dbl', PkgName.Purrr]), Identifier.from(['imap_chr', PkgName.Purrr]), Identifier.from(['imap_vec', PkgName.Purrr]), Identifier.from(['lmap', PkgName.Purrr])], processor: BuiltInProcName.PurrrFormula, config:    {
+	{ type:      'function', names:     Identifier.fromAll(PkgName.Purrr, ['modify', 'imodify', 'imap', 'imap_lgl', 'imap_int', 'imap_dbl', 'imap_chr', 'imap_vec', 'lmap']), processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x': { index: 0, name: '.x' }
 		},
@@ -513,7 +661,7 @@ export const DefaultBuiltinConfig = [
 		'.f':   { index: 2, name: '.f' },
 		ignore: []
 	} },
-	{ type:      'function', names:     [Identifier.from(['map_at', PkgName.Purrr]), Identifier.from(['modify_at', PkgName.Purrr])], processor: BuiltInProcName.PurrrFormula, config:    {
+	{ type:      'function', names:     Identifier.fromAll(PkgName.Purrr, ['map_at', 'modify_at']), processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x':  { index: 0, name: '.x' },
 			'.at': { index: 1, name: '.at' },
@@ -529,7 +677,7 @@ export const DefaultBuiltinConfig = [
 		'.f':   { index: 2, name: '.f' },
 		ignore: []
 	} },
-	{ type:      'function', names:     [Identifier.from(['map_if', PkgName.Purrr]), Identifier.from(['modify_if', PkgName.Purrr]), Identifier.from(['lmap_if', PkgName.Purrr])], processor: BuiltInProcName.PurrrFormula, config:    {
+	{ type:      'function', names:     Identifier.fromAll(PkgName.Purrr, ['map_if', 'modify_if', 'lmap_if']), processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x': { index: 0, name: '.x' },
 			'.p': { index: 1, name: '.p' },
@@ -584,7 +732,7 @@ export const DefaultBuiltinConfig = [
 		'.f':   { index: 1, name: '.f' },
 		ignore: ['.progress', '.ptype']
 	} },
-	{ type:      'function', names:     [Identifier.from(['map_depth', PkgName.Purrr]), Identifier.from(['modify_depth', PkgName.Purrr])], processor: BuiltInProcName.PurrrFormula, config:    {
+	{ type:      'function', names:     Identifier.fromAll(PkgName.Purrr, ['map_depth', 'modify_depth']), processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x':     { index: 0, name: '.x' },
 			'.depth': { index: 2, name: '.depth' }
@@ -616,15 +764,15 @@ export const DefaultBuiltinConfig = [
 	} },
 	{ type:            'function', names:           ['function', '\\'],
 		processor:       BuiltInProcName.FunctionDefinition, config:          {}, assumePrimitive: true },
-	{ type:            'function', names:           [Identifier.from(['quote', PkgName.Base]), Identifier.from(['bquote', PkgName.Base])],
-		processor:       BuiltInProcName.Quote, config:          { quoteArgumentsWithIndex: 0 }, assumePrimitive: true },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['quote', 'bquote']),
+		processor:       BuiltInProcName.Quote, config:          { quoteArgumentsWithIndex: 0, props: CallProp.Lang, sig: [['expr', ArgProp.Nse]] }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['substitute', PkgName.Base])],
-		processor:       BuiltInProcName.Quote, config:          { quoteArgumentsWithIndex: 0, envArgIndex: 1 }, assumePrimitive: true },
-	{ type: 'function', names: [Identifier.from(['enquo', PkgName.Rlang]), Identifier.from(['enquos', PkgName.Rlang]), Identifier.from(['quo', PkgName.Rlang]), Identifier.from(['quos', PkgName.Rlang]), Identifier.from(['sym', PkgName.Rlang]), Identifier.from(['syms', PkgName.Rlang]), Identifier.from(['ensym', PkgName.Rlang]), Identifier.from(['ensyms', PkgName.Rlang]), Identifier.from(['expr', PkgName.Rlang]), Identifier.from(['exprs', PkgName.Rlang]), Identifier.from(['quo_name', PkgName.Rlang]), Identifier.from(['as_name', PkgName.Rlang]), Identifier.from(['as_label', PkgName.Rlang]), Identifier.from(['as_string', PkgName.Rlang])], processor: BuiltInProcName.Quote, config: { quoteArgumentsWithIndex: 0, libFn: true }, assumePrimitive: true  },
-	{ type: 'function', names: [Identifier.from(['call2', PkgName.Rlang]), Identifier.from(['exec', PkgName.Rlang]), Identifier.from(['invoke', PkgName.Purrr]), Identifier.from(['invoke_map', PkgName.Purrr])],                                                             processor: BuiltInProcName.Default,               config: { libFn: true, hasUnknownSideEffects: true, unquoteFunction: true },                      assumePrimitive: false },
+		processor:       BuiltInProcName.Quote, config:          { quoteArgumentsWithIndex: 0, envArgIndex: 1, props: CallProp.Lang, sig: [['expr', ArgProp.Nse], ['env', ArgProp.Value]] }, assumePrimitive: true },
+	{ type: 'function', names: Identifier.fromAll(PkgName.Rlang, ['enquo', 'enquos', 'quo', 'quos', 'sym', 'syms', 'ensym', 'ensyms', 'expr', 'exprs', 'quo_name', 'as_name', 'as_label', 'as_string']), processor: BuiltInProcName.Quote, config: { quoteArgumentsWithIndex: 0, libFn: true, props: CallProp.Lang }, assumePrimitive: true  },
+	{ type: 'function', names: [...Identifier.fromAll(PkgName.Rlang, ['call2', 'exec']), ...Identifier.fromAll(PkgName.Purrr, ['invoke', 'invoke_map'])],                                                             processor: BuiltInProcName.Default,               config: { libFn: true, hasUnknownSideEffects: true, unquoteFunction: true },                      assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['local', PkgName.Base])],
 		processor:       BuiltInProcName.Local, config:          { args: { env: 'envir', expr: 'expr' } }, assumePrimitive: false },
-	{ type:            'function', names:           [Identifier.from(['with', PkgName.Base]), Identifier.from(['within', PkgName.Base])],
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['with', 'within']),
 		processor:       BuiltInProcName.With, config:          {}, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['new.env', PkgName.Base]), Identifier.from(['new_environment', PkgName.Rlang])],
 		processor:       BuiltInProcName.NewEnv, config:          {}, assumePrimitive: true },
@@ -635,15 +783,10 @@ export const DefaultBuiltinConfig = [
 		.filter(([n, kind]) => !n.startsWith('.') && (kind === StackEnvKind.Global || kind === StackEnvKind.Base || kind === StackEnvKind.Empty))
 		.map(([n]) => Identifier.from([n, PkgName.Base])),
 	processor: BuiltInProcName.StackEnv, config: {}, assumePrimitive: true },
-	{ type:  'function', names: [
-		Identifier.from(['parent.env', PkgName.Base]),
-		Identifier.from(['parent.frame', PkgName.Base]),  Identifier.from(['environmentName', PkgName.Base]),
-		Identifier.from(['as.environment', PkgName.Base]), Identifier.from(['pos.to.env', PkgName.Base]),
-		Identifier.from(['sys.frame', PkgName.Base]),     Identifier.from(['sys.frames', PkgName.Base]),
-		Identifier.from(['topenv', PkgName.Base]),
-	], processor: BuiltInProcName.Default, config: {}, assumePrimitive: true },
+	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['parent.env', 'parent.frame', 'environmentName', 'as.environment', 'pos.to.env', 'sys.frame', 'sys.frames', 'topenv']), processor: BuiltInProcName.Default, config: {}, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['load', PkgName.Base])],
-		processor:       BuiltInProcName.Load, config:          {}, assumePrimitive: false },
+		processor:       BuiltInProcName.Load,
+		config:          { props: CallProp.Invisible | CallProp.Scope | CallProp.File | CallProp.Reads, sig: [['file', ArgProp.Resource]] }, assumePrimitive: false },
 	/* attach injects an environment's contents into the search path; detach reverses it (treated as unknown side effect) */
 	{ type:            'function', names:           [Identifier.from(['attach', PkgName.Base])],
 		processor:       BuiltInProcName.Attach, config:          {}, assumePrimitive: false },
@@ -651,11 +794,11 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['repeat'], processor: BuiltInProcName.RepeatLoop, config: {}, assumePrimitive: true },
 	{ type: 'function', names: ['while'],  processor: BuiltInProcName.WhileLoop,  config: {}, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['do.call', PkgName.Base])],
-		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, unquoteFunction: true }, assumePrimitive: true },
+		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, unquoteFunction: true, props: CallProp.MayPure, sig: [['what', ArgProp.Callee], ['args', ArgProp.Value]] }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['UseMethod', PkgName.Base])],
-		processor:       BuiltInProcName.S3Dispatch, config:          { args: { generic: 'generic', object: 'object' } }, assumePrimitive: true },
+		processor:       BuiltInProcName.S3Dispatch, config:          { args: { generic: 'generic', object: 'object' }, props: CallProp.Generic }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['NextMethod', PkgName.Base])],
-		processor:       BuiltInProcName.S3Dispatch, config:          { args: { generic: 'generic', object: 'object' }, inferFromClosure: true }, assumePrimitive: true },
+		processor:       BuiltInProcName.S3Dispatch, config:          { args: { generic: 'generic', object: 'object' }, inferFromClosure: true, props: CallProp.Generic }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['new_generic', PkgName.S7])],
 		processor:       BuiltInProcName.S7NewGeneric, config:          { args: { name: 'name', dispatchArg: 'dispatch_args', fun: 'fun' } }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['setGeneric', PkgName.Methods])],
@@ -668,34 +811,31 @@ export const DefaultBuiltinConfig = [
 	], processor: BuiltInProcName.S7MakeConstructor, config: { mode: ['s7'] }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['setClass', PkgName.Methods])],
 		processor:       BuiltInProcName.S7MakeConstructor, config:          { mode: ['s4'] }, assumePrimitive: true },
-	{ type:  'function', names: [
-		Identifier.from(['Negate', PkgName.Base]), Identifier.from(['Vectorize', PkgName.Base])
-	], processor: BuiltInProcName.S7MakeConstructor, config: { wrapIndex: 0 }, assumePrimitive: true },
+	{ type: 'function', names: [Identifier.from(['Negate', PkgName.Base])],    processor: BuiltInProcName.S7MakeConstructor, config: { wrapIndex: 0, props: CallProp.Pure, sig: [['f', ArgProp.Callee]] },   assumePrimitive: true },
+	{ type: 'function', names: [Identifier.from(['Vectorize', PkgName.Base])], processor: BuiltInProcName.S7MakeConstructor, config: { wrapIndex: 0, props: CallProp.Pure, sig: [['FUN', ArgProp.Callee]] }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['partial', PkgName.Purrr])],
 		processor:       BuiltInProcName.S7MakeConstructor, config:          { wrapIndex: 0, wrapName: '.f' }, assumePrimitive: true },
-	{ type:            'function', names:           [Identifier.from(['.Primitive', PkgName.Base]), Identifier.from(['.Internal', PkgName.Base])],
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['.Primitive', '.Internal']),
 		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, unquoteFunction: true, resolveInEnvironment: 'global' }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['interference', PkgName.Inferference])],
 		processor:       BuiltInProcName.Apply, config:          { unquoteFunction: true, nameOfFunctionArgument: 'propensity_integrand', libFn: true }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['ddply', PkgName.Plyr])],
 		processor:       BuiltInProcName.Apply, config:          { unquoteFunction: true, indexOfFunction: 2, nameOfFunctionArgument: '.fun', libFn: true }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['list', PkgName.Base])],
-		processor:       BuiltInProcName.List, config:          {}, assumePrimitive: true },
+		processor:       BuiltInProcName.List, config:          { props: CallProp.Pure, sig: [['...', ArgProp.Value]] }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['Recall', PkgName.Base])],
 		processor:       BuiltInProcName.Recall, config:          { libFn: true }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['sys.function', PkgName.Base])],
-		processor:       BuiltInProcName.Recall, config:          { libFn: true, unknownOnNonZeroArg: true }, assumePrimitive: false },
+		processor:       BuiltInProcName.Recall, config:          { libFn: true, unknownOnNonZeroArg: true, props: CallProp.Lang }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['c', PkgName.Base])],
-		processor:       BuiltInProcName.Vector, config:          {}, assumePrimitive: true, evalHandler:     'built-in:c' },
-	{ type: 'function', names: [Identifier.from(['cmpfun', PkgName.Compiler]), Identifier.from(['compile', PkgName.Compiler])], processor: BuiltInProcName.Default, config: { returnsNthArgument: 0 } },
+		processor:       BuiltInProcName.Vector, config:          { props: CallProp.Pure, sig: [['...', ArgProp.Value]] }, assumePrimitive: true, evalHandler:     'built-in:c' },
+	{ type: 'function', names: Identifier.fromAll(PkgName.Compiler, ['cmpfun', 'compile']), processor: BuiltInProcName.Default, config: { returnsNthArgument: 0 } },
 	{ type: 'function', names: [Identifier.from(['loadcmp', PkgName.Compiler])],                                                processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true } },
 	{
 		type:  'function',
 		names: [
 			Identifier.from(['setnames', PkgName.DataTable]), Identifier.from(['setNames', PkgName.Base]),
-			Identifier.from(['setkey', PkgName.DataTable]),   Identifier.from(['setkeyv', PkgName.DataTable]),
-			Identifier.from(['setindex', PkgName.DataTable]), Identifier.from(['setindexv', PkgName.DataTable]),
-			Identifier.from(['setattr', PkgName.DataTable])
+			...Identifier.fromAll(PkgName.DataTable, ['setkey', 'setkeyv', 'setindex', 'setindexv', 'setattr'])
 		],
 		processor: BuiltInProcName.Assignment,
 		config:    {
@@ -708,44 +848,53 @@ export const DefaultBuiltinConfig = [
 	{
 		type:  'function',
 		names: [
-			Identifier.from(['sys.on.exit', PkgName.Base]), Identifier.from(['par', PkgName.Graphics]),
-			Identifier.from(['tpar', PkgName.TinyPlot]),    Identifier.from(['sink', PkgName.Base]),
+			Identifier.from(['sys.on.exit', PkgName.Base]),
 			/* library/require/(require|load|attach)Namespace/use are handled above */
 			Identifier.from(['asNamespace', PkgName.Base]),
-			/* env attachment */
 			Identifier.from(['unname', PkgName.Base]),
-			/* file creation/removal (base) */
-			Identifier.from(['dir.create', PkgName.Base]),  Identifier.from(['dir_create', PkgName.Fs]),
-			Identifier.from(['Sys.chmod', PkgName.Base]),   Identifier.from(['unlink', PkgName.Base]),
-			Identifier.from(['file.remove', PkgName.Base]), Identifier.from(['file.rename', PkgName.Base]),
-			Identifier.from(['file.copy', PkgName.Base]),   Identifier.from(['file.link', PkgName.Base]),
-			Identifier.from(['file.append', PkgName.Base]), Identifier.from(['Sys.junction', PkgName.Base]),
 		],
 		processor:       BuiltInProcName.Default,
 		config:          { hasUnknownSideEffects: true },
 		assumePrimitive: false
 	},
+	/* they create, move, or delete files */
+	{
+		type:  'function',
+		names: [
+			Identifier.from(['dir.create', PkgName.Base]), Identifier.from(['dir_create', PkgName.Fs]),
+			...Identifier.fromAll(PkgName.Base, ['Sys.chmod', 'unlink', 'file.remove', 'file.rename', 'file.copy', 'file.link', 'file.append', 'Sys.junction']),
+		],
+		processor:       BuiltInProcName.Default,
+		config:          { hasUnknownSideEffects: true, props: CallProp.File | CallProp.Writes },
+		assumePrimitive: false
+	},
+	/* `sink` diverts the output, `par`/`tpar` set the parameters of the current device */
+	{ type:            'function', names:           [Identifier.from(['sink', PkgName.Base])],
+		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true, props: CallProp.Invisible | CallProp.File | CallProp.Writes, sig: [['file', ArgProp.Resource]] }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['par', PkgName.Graphics]), Identifier.from(['tpar', PkgName.TinyPlot])],
+		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true, props: CallProp.Graphics }, assumePrimitive: false },
 	{
 		type:  'function',
 		names: [
 			Identifier.from(['tinytheme', PkgName.TinyPlot]), Identifier.from(['theme_set', PkgName.GgPlot2]),
-			Identifier.from(['context', PkgName.Testthat]),
-			/* installers (utils / devtools / remotes; devtools re-exports the entire remotes install API) */
-			Identifier.from(['library.dynam', PkgName.Base]),
-			Identifier.from(['install.packages', PkgName.Utils]),
-			Identifier.from(['install', PkgName.Devtools]),
-			Identifier.from(['install_github', PkgName.Remotes]),    Identifier.from(['install_github', PkgName.Devtools]),
-			Identifier.from(['install_gitlab', PkgName.Remotes]),    Identifier.from(['install_gitlab', PkgName.Devtools]),
-			Identifier.from(['install_bitbucket', PkgName.Remotes]), Identifier.from(['install_bitbucket', PkgName.Devtools]),
-			Identifier.from(['install_url', PkgName.Remotes]),       Identifier.from(['install_url', PkgName.Devtools]),
-			Identifier.from(['install_git', PkgName.Remotes]),       Identifier.from(['install_git', PkgName.Devtools]),
-			Identifier.from(['install_svn', PkgName.Remotes]),       Identifier.from(['install_svn', PkgName.Devtools]),
-			Identifier.from(['install_local', PkgName.Remotes]),     Identifier.from(['install_local', PkgName.Devtools]),
-			Identifier.from(['install_version', PkgName.Remotes]),   Identifier.from(['install_version', PkgName.Devtools]),
-			Identifier.from(['update_packages', PkgName.Remotes]),   Identifier.from(['update_packages', PkgName.Devtools]),
+			Identifier.from(['context', PkgName.Testthat]),  Identifier.from(['library.dynam', PkgName.Base]),
+			/* installs from a path that is already there */
+			Identifier.from(['install_local', PkgName.Remotes]), Identifier.from(['install_local', PkgName.Devtools]),
 		],
 		processor:       BuiltInProcName.Default,
 		config:          { hasUnknownSideEffects: true, libFn: true },
+		assumePrimitive: false
+	},
+	/* installers fetch the package and put it into the library (devtools re-exports the entire remotes install API) */
+	{
+		type:  'function',
+		names: [
+			Identifier.from(['install.packages', PkgName.Utils]), Identifier.from(['install', PkgName.Devtools]),
+			...['install_github', 'install_gitlab', 'install_bitbucket', 'install_url', 'install_git', 'install_svn', 'install_version', 'update_packages']
+				.flatMap(f => [Identifier.from([f, PkgName.Remotes]), Identifier.from([f, PkgName.Devtools])]),
+		],
+		processor:       BuiltInProcName.Default,
+		config:          { hasUnknownSideEffects: true, libFn: true, props: CallProp.Invisible | CallProp.Network | CallProp.File | CallProp.Writes },
 		assumePrimitive: false
 	},
 	{
@@ -762,20 +911,116 @@ export const DefaultBuiltinConfig = [
 		},
 		assumePrimitive: true
 	},
+	/* `parse(text=)` turns text into an expression, with `file=` it reads that file */
+	{ type:            'function', names:           [Identifier.from(['parse', PkgName.Base])],
+		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', props: CallProp.Pure }, assumePrimitive: false },
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['list.files', 'dir']),
+		processor:       BuiltInProcName.Default,
+		config:          { forceArgs: 'all', props: CallProp.File | CallProp.Reads, sig: [['path', ArgProp.Resource]] }, assumePrimitive: false },
+	/* language objects */
+	{
+		type:  'function',
+		names: Identifier.fromAll(PkgName.Base, ['enquote', 'call', 'as.call', 'as.expression', 'as.name', 'as.symbol',
+			'as.language', 'match.call', 'sys.call', 'args', 'deparse', 'deparse1']),
+		processor:       BuiltInProcName.Default,
+		config:          { forceArgs: 'all', props: CallProp.Lang },
+		assumePrimitive: false
+	},
+	/* `alist` keeps its arguments unevaluated, `evalq` evaluates its first one in another frame */
+	{ type:            'function', names:           [Identifier.from(['alist', PkgName.Base])],
+		processor:       BuiltInProcName.Default, config:          { props: CallProp.Lang, sig: [['...', ArgProp.Nse]] }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['evalq', PkgName.Base])],
+		processor:       BuiltInProcName.Default, config:          { props: CallProp.Lang, sig: [['expr', ArgProp.Nse], ['envir', ArgProp.Value]] }, assumePrimitive: false },
+	{
+		type:  'function',
+		names: Identifier.fromAll(PkgName.Rlang, ['enexpr', 'enexprs', 'inject', 'enquo0', 'enquos0', 'new_formula',
+			'f_rhs', 'f_lhs', 'fn_body', 'fn_fmls', 'fn_fmls_names']),
+		processor:       BuiltInProcName.Default,
+		config:          { forceArgs: 'all', libFn: true, props: CallProp.Lang },
+		assumePrimitive: false
+	},
+	/* native code */
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['dyn.load', 'getNativeSymbolInfo']),
+		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', props: CallProp.Ffi }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['sourceCpp', PkgName.Rcpp])],
+		processor:       BuiltInProcName.Default,
+		config:          { forceArgs: 'all', libFn: true, props: CallProp.Ffi | CallProp.File | CallProp.Reads, sig: [['file', ArgProp.Resource]] }, assumePrimitive: false },
+	/* ambient state: options, environment variables, the clock, the session itself */
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['getOption', 'Sys.getenv', 'Sys.info', 'Sys.getpid', 'getwd', 'getRversion', 'R.Version', 'Sys.time', 'Sys.Date', 'Sys.timezone', 'date', 'proc.time']),
+		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', props: CallProp.Ambient }, assumePrimitive: false },
+	/* system commands */
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['system', 'system2', 'pipe', 'shell', 'shell.exec']),
+		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', props: CallProp.Process }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['runjs', PkgName.ShinyJs])],
+		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', libFn: true, props: CallProp.Process }, assumePrimitive: false },
+	/* whatever the user types, picks, or sends along with a request */
+	{
+		type:  'function',
+		names: [
+			...Identifier.fromAll(PkgName.Base, ['readline', 'file.choose']),
+			...Identifier.fromAll(PkgName.Utils, ['askYesNo', 'choose.files', 'choose.dir', 'menu', 'select.list', 'winDialogString', 'winDialog']),
+		],
+		processor:       BuiltInProcName.Default,
+		config:          { forceArgs: 'all', props: CallProp.User },
+		assumePrimitive: false
+	},
+	{
+		type:  'function',
+		names: [
+			...Identifier.fromAll(PkgName.RstudioApi, ['showPrompt', 'askForPassword', 'selectDirectory', 'selectFile', 'showQuestion']),
+			...Identifier.fromAll(PkgName.SvDialogs, ['dlgInput', 'dlgOpen', 'dlgList', 'dlgSave', 'dlgDir']),
+			...Identifier.fromAll(PkgName.Tcltk, ['tk_choose.files', 'tk_choose.dir']),
+			...Identifier.fromAll(PkgName.Shiny, ['parseQueryString', 'getQueryString', 'getUrlHash', 'restoreInput']),
+			...Identifier.fromAll(PkgName.ShinyFiles, ['parseFilePaths', 'parseDirPath', 'parseSavePath', 'shinyFileChoose', 'shinyDirChoose', 'shinyFileSave']),
+			/* what comes out of a cohort depends on the filters the user set, and on the gui that sets them */
+			...Identifier.fromAll(PkgName.CohortBuilder, ['get_data', 'sum_up', 'attrition', 'get_state', 'code', 'stat']),
+			...Identifier.fromAll(PkgName.ShinyCohortBuilder, ['cb_server', 'cb_ui', 'cb_chat_server', 'cb_chat_ui', 'gui', 'demo_app']),
+		],
+		processor:       BuiltInProcName.Default,
+		config:          { forceArgs: 'all', libFn: true, props: CallProp.User },
+		assumePrimitive: false
+	},
+	/* temporary paths: TempFile is the narrower case of File, so it stands alone */
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['tempfile', 'tempdir']),
+		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', props: CallProp.TempFile }, assumePrimitive: false },
+	{
+		type:  'function',
+		names: [
+			...Identifier.fromAll(PkgName.Fs, ['file_temp', 'dir_temp']),
+			...Identifier.fromAll(PkgName.Withr, ['local_tempfile', 'with_tempfile', 'local_tempdir', 'with_tempdir']),
+		],
+		processor:       BuiltInProcName.Default,
+		config:          { forceArgs: 'all', libFn: true, props: CallProp.TempFile },
+		assumePrimitive: false
+	},
+	/* wrappers that run the expression they are handed; `observe`/`render*` are left out, they yield a handle instead */
+	{
+		type:  'function',
+		names: Identifier.fromAll(PkgName.Shiny, ['reactive', 'eventReactive', 'bindEvent', 'bindCache', 'isolate', 'req',
+			'debounce', 'throttle', 'reactiveVal', 'reactiveValues', 'reactiveValuesToList', 'freezeReactiveVal']),
+		processor:       BuiltInProcName.Default,
+		config:          { forceArgs: 'all', libFn: true, props: CallProp.MayPure },
+		assumePrimitive: false
+	},
+	/* assembling a cohort keeps the data of its source; `filter` is registered above, dplyr holds that name */
+	{
+		type:  'function',
+		names: Identifier.fromAll(PkgName.CohortBuilder, ['cohort', 'set_source', 'add_source', 'update_source', 'add_filter',
+			'update_filter', 'rm_filter', 'bind_key', 'bind_keys', 'as.tblist', 'tblist',
+			'step', 'add_step', 'rm_step', 'run', 'restore']),
+		processor:       BuiltInProcName.Default,
+		config:          { forceArgs: 'all', libFn: true, props: CallProp.Pure },
+		assumePrimitive: false
+	},
 	/* they are all mapped to `<-` but we separate super assignments */
 	{
 		type:     'replacement',
 		suffixes: ['<-', '<<-'],
 		names:    [
 			'[', '[[',
-			Identifier.from(['names', PkgName.Base]),      Identifier.from(['dimnames', PkgName.Base]),
-			Identifier.from(['attributes', PkgName.Base]), Identifier.from(['attr', PkgName.Base]),
-			Identifier.from(['class', PkgName.Base]),      Identifier.from(['levels', PkgName.Base]),
-			Identifier.from(['rownames', PkgName.Base]),   Identifier.from(['colnames', PkgName.Base]),
-			Identifier.from(['body', PkgName.Base]),       Identifier.from(['environment', PkgName.Base]),
-			Identifier.from(['formals', PkgName.Base]),
+			...Identifier.fromAll(PkgName.Base, ['names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames', 'body', 'environment', 'formals', 'length', 'dim']),
 		],
-		config: { readIndices: true }
+		config: { readIndices: true, props: CallProp.Scope }
 	},
 	{
 		type:     'replacement',
@@ -787,7 +1032,7 @@ export const DefaultBuiltinConfig = [
 		type:     'replacement',
 		suffixes: ['<-', '<<-'],
 		names:    ['$', '@'],
-		config:   { readIndices: false }
+		config:   { readIndices: false, props: CallProp.Scope }
 	},
 ] as const satisfies BuiltInDefinitions;
 

@@ -1,19 +1,18 @@
 import { DependencyInfoLinkConstraint, type DependencyInfoLink, type FunctionInfo } from './function-info';
+import { CallProp } from '../../../../dataflow/environments/built-in-props';
+import { functionInfosFromProps } from './derived-functions';
+import { OtherPathFunctions } from './other-path-functions';
+import { ReadFunctions } from './read-functions';
 
 const OutputRedirects = [
 	{ type: 'link-to-last-call', callName: 'sink', attachLinkInfo: { argIdx: 0, argName: 'file', when: DependencyInfoLinkConstraint.IfUnknown, resolveValue: true } }
 ] as const satisfies DependencyInfoLink[];
 
 
-export const WriteFunctions: FunctionInfo[] = [
-	{ package: 'base', name: 'save',        argName: 'file',               resolveValue: true },
-	{ package: 'base', name: 'save.image',  argIdx: 1, argName: 'file',    resolveValue: true, defaultValue: '.RData' },
-	{ package: 'base', name: 'write',       argIdx: 1, argName: 'file',    resolveValue: true },
-	{ package: 'base', name: 'dput',        argIdx: 1, argName: 'file',    resolveValue: true },
+const WriteFunctionsWithMore: FunctionInfo[] = [
+	{ package: 'base', name: 'save.image',  argIdx: 0, argName: 'file',    resolveValue: true, defaultValue: '.RData' },
 	{ package: 'base', name: 'dump',        argIdx: 1, argName: 'file',    resolveValue: true },
-	{ package: 'utils', name: 'write.table', argIdx: 1, argName: 'file',    resolveValue: true },
 	{ package: 'utils', name: 'write.csv',   argIdx: 1, argName: 'file',    resolveValue: true },
-	{ package: 'base', name: 'saveRDS',     argIdx: 1, argName: 'file',    resolveValue: true },
 	{
 		package:        'base',
 		name:           'try',
@@ -36,9 +35,6 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ package: 'rlang', name: 'inform',     linkTo: OutputRedirects,                  resolveValue: false },
 	{ package: 'cli',  name: 'cli_warn',   linkTo: OutputRedirects,                  resolveValue: false },
 	{ package: 'cli',  name: 'cli_abort',  linkTo: OutputRedirects,                  resolveValue: false },
-	{ package: 'base', name: 'writeLines', argIdx: 1, argName: 'con', resolveValue: true },
-	{ package: 'base', name: 'writeChar',  argIdx: 1, argName: 'con', resolveValue: true },
-	{ package: 'base', name: 'writeBin',   argIdx: 1, argName: 'con', resolveValue: true },
 	{ package: 'base', name: 'file', argIdx: 0, argName: 'description', resolveValue: true, ignoreIf: 'mode-only-read', additionalArgs: { mode: { argIdx: 1, argName: 'open', resolveValue: true } } },
 	{ package: 'base', name: 'url', argIdx: 0, argName: 'description', resolveValue: true, ignoreIf: 'mode-only-read', additionalArgs: { mode: { argIdx: 1, argName: 'open', resolveValue: true } } },
 	{ package: 'readr', name: 'write_csv',   argIdx: 1, argName: 'file', resolveValue: true },
@@ -62,18 +58,13 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ package: 'foreign', name: 'write.foreign', argIdx: 1, argName: 'file', resolveValue: true },
 	{ package: 'xlsx', name: 'write.xlsx',  argIdx: 1, argName: 'file', resolveValue: true },
 	{ package: 'xlsx', name: 'write.xlsx2', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'grDevices', name: 'pdf',        argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'grDevices', name: 'jpeg',       argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'grDevices', name: 'png',        argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'grDevices', name: 'jpeg',       argIdx: 0, argName: 'filename', resolveValue: true },
+	{ package: 'grDevices', name: 'png',        argIdx: 0, argName: 'filename', resolveValue: true },
 	{ package: 'grDevices', name: 'windows',    argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'grDevices', name: 'postscript', argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'grDevices', name: 'xfig',      argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'grDevices', name: 'bitmap',     argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'grDevices', name: 'pictex',     argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'grDevices', name: 'cairo_pdf',  argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'grDevices', name: 'svg',        argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'grDevices', name: 'bmp',        argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'grDevices', name: 'tiff',       argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'grDevices', name: 'cairo_pdf',  argIdx: 0, argName: 'filename', resolveValue: true },
+	{ package: 'grDevices', name: 'svg',        argIdx: 0, argName: 'filename', resolveValue: true },
+	{ package: 'grDevices', name: 'bmp',        argIdx: 0, argName: 'filename', resolveValue: true },
+	{ package: 'grDevices', name: 'tiff',       argIdx: 0, argName: 'filename', resolveValue: true },
 	{ package: 'grDevices', name: 'X11',        argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'grDevices', name: 'quartz',     argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'car', name: 'Export', argIdx: 0, argName: 'file', resolveValue: true },
@@ -101,8 +92,6 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ package: 'cowplot', name: 'ggsave2', argIdx: 0, argName: 'filename', resolveValue: true },
 	{ package: 'tinyplot', name: 'tinyplot',  argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'tinyplot', name: 'plt',  argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
-	{ package: 'rasterpdf', name: 'raster_pdf', argIdx: 0, argName: 'filename', resolveValue: true },
-	{ package: 'rasterpdf', name: 'agg_pdf',    argIdx: 0, argName: 'filename', resolveValue: true },
 	{ package: 'highcharter', name: 'hc_exporting', argName: 'filename', resolveValue: true },
 	{ package: 'jsonlite', name: 'write_json', argIdx: 1, argName: 'path', resolveValue: true },
 	{ package: 'rpolars', name: 'sink_ipc', argIdx: 0, argName: 'path', resolveValue: true, ignoreIf: 'arg-missing' },
@@ -141,3 +130,8 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ package: 'seewave', name: 'savewav',               argName: 'filename', resolveValue: true, defaultValue: '<wave-name>' },
 	{ package: 'audio',   name: 'save.wave',             argIdx: 1, argName: 'where',    resolveValue: true }
 ] as const;
+
+export const WriteFunctions: FunctionInfo[] = [
+	...WriteFunctionsWithMore,
+	...functionInfosFromProps(CallProp.File | CallProp.Writes, [...WriteFunctionsWithMore, ...OtherPathFunctions, ...ReadFunctions])
+];

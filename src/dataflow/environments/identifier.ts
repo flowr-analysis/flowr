@@ -68,6 +68,21 @@ export const Identifier = {
 		return arr;
 	},
 	/**
+	 * The same fast path for many names of one package: the given array of names is cast in place,
+	 * so the literal you pass is the only array involved.
+	 * @example
+	 * ```ts
+	 * Identifier.fromAll('purrr', ['map', 'walk']) // [['map', 'purrr'], ['walk', 'purrr']]
+	 * ```
+	 */
+	fromAll(this: void, namespace: BrandedNamespace, names: BrandedIdentifier[]): Identifier[] {
+		const ids = names as unknown as Identifier[];
+		for(let i = 0; i < names.length; i++) {
+			ids[i] = [names[i], namespace];
+		}
+		return ids;
+	},
+	/**
 	 * Verify whether an unknown element has a valid identifier shape!
 	 */
 	is(this: void, id: unknown): id is Identifier {
@@ -163,8 +178,8 @@ export const Identifier = {
 		if(idInternal === true) {
 			return true;
 		}
-		const targetInternal = Identifier.accessesInternal(target);
-		return idInternal === targetInternal;
+		/* an omitted flag is the same as an explicit `false`, `pkg::fn` written either way is one identifier */
+		return (idInternal ?? false) === (Identifier.accessesInternal(target) ?? false);
 	},
 	/**
 	 * Helper to create a regular expression that matches against an array of {@link Identifier} values. If both the passed identifier and the matched identifier are namespaced, their namespaces are expected to match. If either is not namespaced, the namespace is ignored on both.
@@ -274,6 +289,7 @@ export const enum PkgName {
 	AssertThat   = 'assertthat',
 	Box          = 'box',
 	Cli          = 'cli',
+	CohortBuilder = 'cohortBuilder',
 	DataTable    = 'data.table',
 	Devtools     = 'devtools',
 	Dplyr        = 'dplyr',
@@ -294,17 +310,26 @@ export const enum PkgName {
 	Ragg         = 'ragg',
 	R6           = 'R6',
 	RasterPdf    = 'rasterpdf',
+	Rcpp         = 'Rcpp',
 	Remotes      = 'remotes',
 	Rlang        = 'rlang',
 	RmethodsS3   = 'R.methodsS3',
 	Roo          = 'R.oo',
+	RstudioApi   = 'rstudioapi',
 	Rutils       = 'R.utils',
 	S7           = 'S7',
+	Shiny        = 'shiny',
+	ShinyCohortBuilder = 'shinyCohortBuilder',
+	ShinyFiles   = 'shinyFiles',
+	ShinyJs      = 'shinyjs',
 	Soda         = 'SoDA',
+	SvDialogs    = 'svDialogs',
+	Tcltk        = 'tcltk',
 	Testthat     = 'testthat',
 	TidyR        = 'tidyr',
 	TinyPlot     = 'tinyplot',
 	TryCatchLog  = 'tryCatchLog',
+	Withr        = 'withr',
 }
 
 /**
@@ -321,25 +346,25 @@ export const enum PkgName {
  */
 export enum ReferenceType {
 	/** The identifier type is unknown */
-	Unknown = 1,
+	Unknown = 1 << 0,
 	/** The identifier is defined by a function (includes built-in function) */
-	Function = 2,
+	Function = 1 << 1,
 	/** The identifier is defined by a variable (includes parameter and argument) */
-	Variable = 4,
+	Variable = 1 << 2,
 	/** The identifier is defined by a constant (includes built-in constant) */
-	Constant = 8,
+	Constant = 1 << 3,
 	/** The identifier is defined by a parameter (which we know nothing about at the moment) */
-	Parameter = 16,
+	Parameter = 1 << 4,
 	/** The identifier is defined by an argument (which we know nothing about at the moment) */
-	Argument = 32,
+	Argument = 1 << 5,
 	/** The identifier is defined by a built-in value/constant */
-	BuiltInConstant = 64,
+	BuiltInConstant = 1 << 6,
 	/** The identifier is defined by a built-in function */
-	BuiltInFunction = 128,
+	BuiltInFunction = 1 << 7,
 	/** Prefix to identify S3 methods, use this, to for example dispatch a call to `f` which will then link to `f.*` */
-	S3MethodPrefix = 256,
+	S3MethodPrefix = 1 << 8,
 	/** Prefix to identify S7 methods, use this, to for example dispatch a call to `f` which will then link to `f<7>*` */
-	S7MethodPrefix = 512
+	S7MethodPrefix = 1 << 9
 }
 
 /** Reverse mapping of the reference types so you can get the name from the bitmask (useful for debugging) */

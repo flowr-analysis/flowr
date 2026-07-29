@@ -83,6 +83,17 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 	if(fn.s3method) {
 		result.push(`      ╰ ${italic('S3 method of', f)} ${color(`${fn.s3method.package}::${fn.s3method.generic}`, Colors.Magenta, f)} ${italic(`(class ${fn.s3method.class})`, f)}`);
 	}
+	if(fn.flowr) {
+		const args = (fn.flowr.args ?? []).map(a => `${a.name}: ${a.roles.join('+')}`);
+		const props = fn.flowr.props.map(p => color(p, Colors.Blue, f)).join(', ');
+		const line = [props, args.length > 0 ? italic(`(${args.join(', ')})`, f) : ''].filter(s => s !== '').join('  ');
+		if(line !== '') {
+			result.push(`      ╰ ${italic('flowR', f)}   ${line}`);
+		}
+		if(fn.flowr.parameters) {
+			result.push(`      ╰ ${italic('flowR', f)}   ${italic('reads it as', f)} ${bold(fn.name, f)}(${fn.flowr.parameters.join(', ')})`);
+		}
+	}
 	const listLine = (label: string, items: readonly string[], max: number): void => {
 		if(!items.length) {
 			return;

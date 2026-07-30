@@ -156,6 +156,8 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * folder for a single-file request. Useful to report back which inputs did not resolve to anything.
 	 */
 	getRequestedRoots(): readonly string[];
+
+	getFileCount(): number;
 }
 
 /**
@@ -540,5 +542,9 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	public getFileByPath(path: string): FlowrFileProvider | undefined {
 		return this.files.get(path) ?? this.inlineFiles.find(f => f.path() === path);
+	}
+
+	public getFileCount(): number {
+		return this.files.size + this.inlineFiles.length;
 	}
 }

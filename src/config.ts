@@ -358,7 +358,27 @@ export interface FlowrConfig extends MergeableRecord {
 	}
 
 	readonly incrementalParsing: {
-		readonly activated: boolean;
+		readonly activated:       boolean;
+		/**
+		 * Skip reparsing entirely if the file's modification time is unchanged since the last parse
+		 */
+		readonly mtime:           boolean
+		/**
+		 * Only consider incremental parsing for files with at least this many lines
+		 */
+		readonly linesFrom:       number
+		/**
+		 * Only consider incremental parsing for files with at least this many bytes
+		 */
+		readonly bytesFrom:       number
+		/**
+		 * Always take the incremental path whenever there is a computed edit region, regardless of the other thresholds
+		 */
+		readonly alwaysWithEdits: boolean
+		/**
+		 * Only apply these heuristics once the project has at least this many files loaded
+		 */
+		readonly minFiles:        number
 	}
 
 	/**
@@ -609,7 +629,12 @@ export const FlowrConfig = {
 				}
 			},
 			incrementalParsing: {
-				activated: false,
+				activated:       false,
+				mtime:           true,
+				linesFrom:       500,
+				bytesFrom:       50_000,
+				alwaysWithEdits: false,
+				minFiles:        1,
 			},
 			gas: {
 				thresholds: {
@@ -744,7 +769,12 @@ export const FlowrConfig = {
 			}).description('The configuration of the shape inference for data frames.')
 		}).description('The configuration options for abstract interpretation.'),
 		incrementalParsing: Joi.object({
-			activated: Joi.boolean().description('If set, incremental parsing will be used.')
+			activated:       Joi.boolean().description('If set, incremental parsing will be used.'),
+			mtime:           Joi.boolean().optional().description('Skip reparsing entirely if the file\'s modification time is unchanged since the last parse.'),
+			linesFrom:       Joi.number().min(0).optional().description('Only consider incremental parsing for files with at least this many lines.'),
+			bytesFrom:       Joi.number().min(0).optional().description('Only consider incremental parsing for files with at least this many bytes.'),
+			alwaysWithEdits: Joi.boolean().optional().description('Always take the incremental path whenever there is a computed edit region, regardless of the other thresholds.'),
+			minFiles:        Joi.number().min(1).optional().description('Only apply these heuristics once the project has at least this many files loaded.'),
 		}),
 		gas: Joi.object({
 			thresholds: Joi.object({

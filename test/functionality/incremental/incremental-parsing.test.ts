@@ -55,11 +55,7 @@ async function createAnalyzerForFiles(
 	const analyzer = await new FlowrAnalyzerBuilder()
 		.setEngine('tree-sitter')
 		.configure('incrementalParsing.activated', true)
-		.configure('incrementalParsing.mtime', false)
-		.configure('incrementalParsing.linesFrom', 0)
-		.configure('incrementalParsing.bytesFrom', 0)
-		.configure('incrementalParsing.alwaysWithEdits', false)
-		.configure('incrementalParsing.minFiles', 1)
+		.configure('incrementalParsing.heuristics.activated', false)
 		.build();
 	const files = new Map<string, FlowrInlineTextFile>();
 

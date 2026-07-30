@@ -313,12 +313,15 @@ ${codeBlock('json', JSON.stringify(
 				}
 			},
 			incrementalParsing: {
-				activated:       false,
-				mtime:           true,
-				linesFrom:       500,
-				bytesFrom:       50_000,
-				alwaysWithEdits: false,
-				minFiles:        1,
+				activated:  false,
+				heuristics: {
+					activated:       true,
+					mtime:           true,
+					linesFrom:       500,
+					bytesFrom:       50_000,
+					alwaysWithEdits: false,
+					minFiles:        1,
+				},
 			},
 			gas: {
 				thresholds: {

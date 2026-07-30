@@ -54,12 +54,12 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 	}
 
 	handleShouldReparse(filePath: FilePath, ctx: FlowrAnalyzerContext): boolean {
-		const heuristics = ctx.config.incrementalParsing;
+		const heuristics = ctx.config.incrementalParsing.heuristics;
 		if(!heuristics) {
 			return false;
 		}
 
-		if(heuristics.alwaysWithEdits) {
+		if(!heuristics.activated || heuristics.alwaysWithEdits) {
 			return true;
 		}
 

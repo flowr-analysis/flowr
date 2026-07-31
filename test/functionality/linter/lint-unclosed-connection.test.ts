@@ -5,7 +5,7 @@ import { LintingResultCertainty } from '../../../src/linter/linter-format';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('unclosed-connection', () => {
-		assertLinter('All closed', parser, `zz <- textConnection(LETTERS)
+		assertLinter('All closed', parser, `zz <- textConnection(E)
 readLines(zz, 2)
 close(zz)`,
 			'unclosed-connection',
@@ -22,7 +22,7 @@ t <- 2`,
 			'unclosed-connection',
 			[{
                 certainty: LintingResultCertainty.Uncertain,
-                loc:       [1, 7, 1, 20]
+                loc:       [1, 6, 1, 23]
             }]
 		);
 	assertLinter('Not necessarily closed', parser, `a <- textConnection(AB)
@@ -35,17 +35,26 @@ close(b)`,
 			'unclosed-connection',
 			[{
                 certainty: LintingResultCertainty.Uncertain,
-                loc:       [1, 7, 1, 20]
+                loc:       [1, 6, 1, 23]
             }]
 		);
 	assertLinter('Openend and closed', parser, `a <- 4+3
 if(x){
 	a <- textConnection(A)
+	b <- textConnection(B)
+}
+t <- 34
+if(x){
 	close(a)
 }
-t <- 34`,
+if(y){
+	close(b)
+}`,
 			'unclosed-connection',
-			[]
+			[{
+                certainty: LintingResultCertainty.Uncertain,
+                loc:       [4, 6, 4, 22]
+            }]
 		);
 	});
 }));

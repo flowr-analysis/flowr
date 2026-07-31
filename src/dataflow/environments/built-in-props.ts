@@ -49,7 +49,7 @@ export enum CallProp {
 	Throws    = 1 << 2,
 	/** returns invisibly, so the result is not auto-printed */
 	Invisible = 1 << 3,
-	/** dispatches on the class of its first argument (S3, S4, or S7) */
+	/** dispatches on the class of an argument (S3, S4, or S7), a group generic like `+` on either operand */
 	Generic   = 1 << 4,
 	/** a method that is reached by dispatch, like `print.foo` (see {@link SigDbInferable}) */
 	Method    = 1 << 5,

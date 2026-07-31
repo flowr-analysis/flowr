@@ -14,6 +14,7 @@ import { BuiltInEvalName } from './built-in-eval-name';
 import { NseArguments } from '../internal/process/functions/call/known-call-handling';
 import { DataMaskingFunctionIdentifiers } from './data-masking-functions';
 import { ArgProp, CallProp, type FnSig } from './built-in-props';
+import { AttachedBasePackages } from '../../util/r-base-packages';
 
 /** Which stack environment an env-returning/-transforming builtin denotes (see {@link StackEnvBuiltins}). */
 export enum StackEnvKind {
@@ -144,10 +145,70 @@ const LinkToLastPlot = {
 	callName: toRegex((GraphicDeviceOpen as readonly string[]).concat(PlotCreate, PlotAddons, GgPlotAddons, TinyPlotAddons))
 } as const;
 
+const Arith = ['+', '-', '*', '/', '^', '**', '%%', '%/%'] as const;
+const Compare = ['==', '!=', '<', '<=', '>', '>='] as const;
+const Logic = ['&', '|'] as const;
+
 /**
- * Contains the built-in definitions recognized by flowR
+ * R's group generics: a class claims every member of a group at once, with an `Ops.cls` (S3) or a
+ * `setMethod('Arith', ...)` (S4), so a call to any member may dispatch to a method named after the group.
+ * `Ops` is what S3 calls the union of the three S4 groups it splits into.
  */
-export const DefaultBuiltinConfig = [
+export const RGroupGenerics = {
+	Arith, Compare, Logic,
+	Ops:  [...Arith, ...Compare, ...Logic, '!'],
+	Math: ['abs', 'sign', 'sqrt', 'floor', 'ceiling', 'trunc', 'exp', 'expm1', 'log', 'log2', 'log10', 'log1p',
+		'cos', 'sin', 'tan', 'cosh', 'sinh', 'tanh', 'acos', 'asin', 'atan', 'acosh', 'asinh', 'atanh',
+		'cumsum', 'cumprod', 'cummax', 'cummin'],
+	Math2:   ['round', 'signif'],
+	Summary: ['any', 'sum', 'prod', 'min', 'max', 'range'],
+	Complex: ['Re', 'Im', 'Mod', 'Arg', 'Conj']
+} as const satisfies Record<string, readonly string[]>;
+
+/**
+ * Every R generic flowR states a built-in for: the {@link RGroupGenerics} members, the `.S3PrimitiveGenerics` and
+ * internal generics (which have no R body, so {@link fnInfoFromSignature} could never see them), and the
+ * `UseMethod` closures flowR models itself, as its own definition hides the one in the signature database.
+ * The `<-` forms are left out, one replacement definition covers many names.
+ * `npm run check:generic-labels` (part of `checkup`) compares this against a synced database.
+ */
+const RGenerics: ReadonlySet<string> = new Set([
+	...Object.values(RGroupGenerics).flat(), '%*%',
+	'c', 'length', 'dim', 'dimnames', 'names', 'rep', 'seq.int', '[', '[[', '$', '@',
+	'as.call', 'as.character', 'as.complex', 'as.double', 'as.environment', 'as.integer', 'as.logical',
+	'as.numeric', 'as.raw', 'is.na', 'is.nan', 'is.finite', 'is.infinite', 'is.matrix', 'is.numeric',
+	'aperm', 'as.array', 'as.data.frame', 'as.expression', 'as.list', 'as.matrix', 'cbind', 'rbind', 'diff',
+	'duplicated', 'format', 'head', 'tail', 'mean', 'median', 'na.omit', 'print', 'quantile', 'rev', 'seq',
+	'simulate', 'solve', 'sort', 'subset', 't', 'transform', 'unique', 'with', 'within',
+	'plot', 'lines', 'points', 'text', 'image', 'contour', 'persp', 'hist', 'barplot', 'boxplot', 'density',
+	'pairs', 'qqnorm', 'mosaicplot', 'spineplot', 'stripchart', 'sunflowerplot'
+]);
+
+/** Label every {@link RGenerics} {@link CallProp.Generic}, splitting an entry that mixes them with names that do not dispatch (`&` does, `&&` does not). */
+function markGenerics(definitions: BuiltInDefinitions): BuiltInDefinitions {
+	return definitions.flatMap((def): BuiltInDefinitions => {
+		if(def.type !== 'function') {
+			return [def];
+		}
+		/* the attached base packages are the ones whose namespace layer a registered built-in hides, so their
+		 * label is the only thing left stating the dispatch */
+		const dispatches = (name: Identifier) => RGenerics.has(Identifier.getName(name))
+			&& AttachedBasePackages.includes(Identifier.getNamespace(name) ?? PkgName.Base);
+		const generics = def.names.filter(dispatches);
+		if(generics.length === 0) {
+			return [def];
+		}
+		const rest = def.names.filter(n => !dispatches(n));
+		const labeled = { ...def, names: generics, config: { ...def.config, props: (def.config?.props ?? 0) | CallProp.Generic } };
+		return rest.length === 0 ? [labeled] : [labeled, { ...def, names: rest }];
+	});
+}
+
+/**
+ * Contains the built-in definitions recognized by flowR, as they are written down: {@link DefaultBuiltinConfig}
+ * is what {@link markGenerics} makes of them, and a test checks that this is all it changes.
+ */
+export const WrittenBuiltinDefinitions = [
 	{ type: 'constant', names: Identifier.fromAll(PkgName.Base, ['NULL', 'NA', 'NA_integer_', 'NA_real_', 'NA_complex_', 'NA_character_']), value: null, assumePrimitive: true },
 	{ type: 'constant', names: [Identifier.from(['NaN', PkgName.Base])], value: NaN, assumePrimitive: true },
 	{ type: 'constant', names: Identifier.fromAll(PkgName.Base, ['.GlobalEnv', '.BaseNamespaceEnv', '.BaseEnv']), value: null, assumePrimitive: true },
@@ -1066,6 +1127,11 @@ export const DefaultBuiltinConfig = [
 		config:   { readIndices: false, props: CallProp.Scope }
 	},
 ] as const satisfies BuiltInDefinitions;
+
+/**
+ * Contains the built-in definitions recognized by flowR
+ */
+export const DefaultBuiltinConfig = markGenerics(WrittenBuiltinDefinitions);
 
 
 /**

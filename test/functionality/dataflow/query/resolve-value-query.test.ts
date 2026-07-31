@@ -9,6 +9,7 @@ import { fingerPrintOfQuery } from '../../../../src/queries/catalog/resolve-valu
 import type { SlicingCriteria } from '../../../../src/slicing/criterion/parse';
 import { setFrom } from '../../../../src/dataflow/eval/values/sets/set-constants';
 import { intervalFrom } from '../../../../src/dataflow/eval/values/intervals/interval-constants';
+import { stringFrom } from '../../../../src/dataflow/eval/values/string/string-constants';
 import { Top } from '../../../../src/dataflow/eval/values/r-value';
 import type { ResolveResult } from '../../../../src/dataflow/eval/resolve/alias-tracking';
 import { withTreeSitter } from '../../_helper/shell';
@@ -49,6 +50,8 @@ describe('Resolve Value Query', withTreeSitter( parser => {
 		
 		f1 <- data.frame(col)
 		print(col)`, ['8@col'], [[Top]]);
+
+	testQuery('Local defined by a call', 'p <- file.path("data", "x.csv")\nread.csv(p)', ['2@p'], [[setFrom(stringFrom('data/x.csv'))]]);
 
 	describe('Resolve Parameters and Calls', () => {
 		testQuery('No call-sites', 'function() { x <- 1 }', ['1@x'], [[setFrom(intervalFrom(1, 1))]]);

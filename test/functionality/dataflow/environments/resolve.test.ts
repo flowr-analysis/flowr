@@ -141,17 +141,30 @@ describe.sequential('Resolve', withShell(shell => {
 	});
 
 	describe('Graph vs. Environment', () => {
-		testWithGraphAndEnvironment('Not yet supported', (resolveWith) => {
+		testWithGraphAndEnvironment('A local defined by a call', resolveWith => {
+			testResolve('Path built by a call', '2@p', 'p <- file.path("data", "x.csv") \n p', set(['data/x.csv']), Allow.ExactOnly, resolveWith);
+			testResolve('Path from a local',    '3@p', 'dir <- "data" \n p <- file.path(dir, "x.csv") \n p', set(['data/x.csv']), Allow.ExactOnly, resolveWith);
+			testResolve('Nested calls',         '2@p', 'p <- file.path("data", paste0("x", ".csv")) \n p', set(['data/x.csv']), Allow.ExactOnly, resolveWith);
+			testResolve('Arithmetic',           '3@x', 'x <- 1 \n x <- x+1 \n x', set([2]), Allow.ExactOnly, resolveWith);
+			testResolve('Rebuilt from itself',  '3@p', 'p <- "data" \n p <- paste0(p, "/x.csv") \n p', set(['data/x.csv']), Allow.ExactOnly, resolveWith);
+			testResolve('Reassigned',           '3@p', 'p <- file.path("a", "x") \n p <- file.path("b", "x") \n p', set(['b/x']), Allow.ExactOnly, resolveWith);
+			testResolve('Through another local', '3@p', 'q <- file.path("data", "x.csv") \n p <- q \n p', set(['data/x.csv']), Allow.Top, resolveWith);
+		});
+		testWithGraphAndEnvironment('A local whose value stays unknown', resolveWith => {
+			testResolve('Unknown callee',       '2@p', 'p <- unknownFn("a") \n p', Top, Allow.ExactOnly, resolveWith);
+			testResolve('Unknown argument',     '2@p', 'p <- file.path("data", u) \n p', Top, Allow.ExactOnly, resolveWith);
+			testResolve('Replaced element',     '3@p', 'p <- c("a", "b") \n p[1] <- "c" \n p', Top, Allow.ExactOnly, resolveWith);
+			testResolve('Parameter default',    '2@x', 'f <- function(x=file.path("a", "b")) { \n x }', Top, Allow.ExactOnly, resolveWith);
+			testResolve('Redefined built-in',   '3@p', '`file.path` <- function(...) 0 \n p <- file.path("a", "b") \n p', set([0]), Allow.Top, resolveWith);
+		});
+		testWithGraphAndEnvironment('Not yet supported', resolveWith => {
 			// Not yet Supported
 			testResolve('Loop plus x',          '5@x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', interval(2, 57), Allow.Top, resolveWith);
 			testResolve('Get',                  '3@x', 'y <- 5 \n x <- get("y") \n x', set([5]), Allow.Top, resolveWith);
 			testResolve('Super Assign',         '4@x', 'x <- 1 \n f <- function() { x <<- 2} \n f() \n x', set([2]), Allow.Top, resolveWith);
-			testResolve('Plus One',             '3@x', 'x <- 1 \n x <- x+1 \n x', interval(1, Top), Allow.Top, resolveWith);
 
 			testResolve('Random Loop',          '4@x', 'x <- 1 \n while(TRUE) { x <- x + 1 \n if(runif(1) > 0.5) { break } } \n x', Top, Allow.Top, resolveWith);
 			testResolve('Loop plus one',        '4@i', 'for(i in 1:10) { i \n i <- i + 1 \n i} \n i', interval(2, 11), Allow.Top, resolveWith);
-			testResolve('Loop plus x',          '5@x', 'x <- 2 \n for(i in 1:10) { x \n x <- i + x \n i} \n x', interval(2, 57), Allow.Top, resolveWith);
-
 			testResolve('Superassign Arith',    '5@x', 'y <- 4 \n x <- 1 \n f <- function() { x <<- 2 * y } \n f() \n x', set([8]), Allow.Top, resolveWith);
 		});
 	});

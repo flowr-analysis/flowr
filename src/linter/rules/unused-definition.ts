@@ -18,6 +18,9 @@ import { Identifier } from '../../dataflow/environments/identifier';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { removeRQuotes } from '../../r-bridge/retriever';
+import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
+import { CallProp } from '../../dataflow/environments/built-in-props';
+import { RGroupGenerics } from '../../dataflow/environments/default-builtin-config';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
@@ -42,20 +45,31 @@ export interface UnusedDefinitionConfig extends MergeableRecord {
  */
 const DotsParameter = '...';
 
-/**
- * Common base/standard-library S3 generics. A definition named `generic.class` where `generic` is one of these
- * is an S3 method dispatched indirectly (e.g. `print(x)` on an object of class `class`), so it is used even
- * without a direct textual call.
- */
-const KnownS3Generics = new Set<string>([
-	'print', 'format', 'summary', 'plot', 'coef', 'vcov', 'residuals', 'fitted', 'predict',
-	'as.character', 'as.data.frame', 'as.list', 'as.matrix', 'as.vector', 'as.numeric',
-	'length', 'dim', 'dimnames', 'names', 'str', 'toString', 'all.equal', 'aggregate',
-	'update', 'anova', 'confint', 'logLik', 'AIC', 'BIC', 'deviance', 'df.residual',
-	'model.matrix', 'terms', 'weights', 'simulate', 'lines', 'points', 'head', 'tail',
-	'merge', 'rbind', 'cbind', 'split', 'window', 'subset', 'sort', 'rev', 'unique',
-	'mean', 'median', 'quantile', 'range', 'diff', 't'
+/** the standard-library S3 generics flowR models no built-in for, so the store cannot state them */
+const OtherKnownS3Generics: ReadonlySet<string> = new Set([
+	'summary', 'coef', 'vcov', 'residuals', 'fitted', 'predict', 'as.vector', 'str', 'toString', 'all.equal',
+	'aggregate', 'update', 'anova', 'confint', 'logLik', 'AIC', 'BIC', 'deviance', 'df.residual',
+	'model.matrix', 'terms', 'weights', 'merge', 'split', 'window'
 ]);
+
+let knownS3Generics: ReadonlySet<string> | undefined;
+
+/**
+ * Whether a definition named `name.class` may be an S3 method: `name` is a built-in flowR labels
+ * {@link CallProp.Generic} or one of {@link OtherKnownS3Generics}. Such a method is dispatched indirectly
+ * (`print(x)` on an object of that class), so it is used without a textual call.
+ */
+function isKnownS3Generic(name: string): boolean {
+	knownS3Generics ??= new Set([...OtherKnownS3Generics, ...Object.keys(RGroupGenerics),
+		...BuiltInIndex.default().with(CallProp.Generic).map(g => Identifier.getName(g))]);
+	return knownS3Generics.has(name);
+}
+
+/** Whether `generic`, or any member of it when it is a group generic (`Ops.cls` dispatches on `+`), is called. */
+function isDispatched(generic: string, called: ReadonlySet<string>): boolean {
+	const group = RGroupGenerics[generic as keyof typeof RGroupGenerics] as readonly string[] | undefined;
+	return called.has(generic) || (group?.some(member => called.has(member)) ?? false);
+}
 
 /**
  * R package lifecycle hooks called automatically by R's package machinery.
@@ -142,8 +156,9 @@ function isConsideredUsed(lexeme: string | undefined, config: UnusedDefinitionCo
 	if(lexeme === undefined) {
 		return false;
 	}
-	// non-syntactic definition names (e.g. S3 methods like `"[.irts"`) carry their R quotes in the lexeme
-	const name = removeRQuotes(lexeme);
+	// non-syntactic definition names (e.g. S3 methods like `"[.irts"`) carry their R quotes or backticks in the lexeme
+	const unquoted = removeRQuotes(lexeme);
+	const name = unquoted.length > 1 && unquoted.startsWith('`') && unquoted.endsWith('`') ? unquoted.slice(1, -1) : unquoted;
 	// the dots are a special parameter and must never be reported
 	if(name === DotsParameter) {
 		return true;
@@ -152,10 +167,10 @@ function isConsideredUsed(lexeme: string | undefined, config: UnusedDefinitionCo
 	if(PackageHookFunctions.has(name)) {
 		return true;
 	}
-	const dot = name.indexOf('.');
-	if(dot > 0) {
+	// every dot may be the one splitting method from class, as the generic may carry dots itself (`as.character.foo`)
+	for(let dot = name.indexOf('.'); dot > 0; dot = name.indexOf('.', dot + 1)) {
 		const generic = name.slice(0, dot);
-		if(KnownS3Generics.has(generic) || pkg.s3Generics.has(generic) || called.has(generic)) {
+		if(isKnownS3Generic(generic) || pkg.s3Generics.has(generic) || isDispatched(generic, called)) {
 			return true;
 		}
 	}

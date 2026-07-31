@@ -21,6 +21,7 @@ import type { BrandedNamespace } from '../../../dataflow/environments/identifier
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { OpenFunctions } from './function-info/open-functions';
 
 export const Unknown = 'unknown';
 
@@ -89,6 +90,10 @@ export const DefaultDependencyCategories = {
 	'test': {
 		queryDisplayName: 'Tests',
 		functions:        TestFunctions
+	},
+	'open': {
+		queryDisplayName: 'Open Connection',
+		functions:        OpenFunctions
 	}
 } as const satisfies Record<string, DependencyCategorySettings>;
 export type DefaultDependencyCategoryName = keyof typeof DefaultDependencyCategories;

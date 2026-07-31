@@ -1,0 +1,51 @@
+import { describe } from 'vitest';
+import { withTreeSitter } from '../_helper/shell';
+import { assertLinter } from '../_helper/linter';
+import { LintingResultCertainty } from '../../../src/linter/linter-format';
+
+describe('flowR linter', withTreeSitter(parser => {
+	describe('unclosed-connection', () => {
+		assertLinter('All closed', parser, `zz <- textConnection(LETTERS)
+readLines(zz, 2)
+close(zz)`,
+			'unclosed-connection',
+			[]
+		);
+    assertLinter('Only one closed', parser, `a <- textConnection(AB)
+b <- a
+if(x){
+	b <- textConnection(LETTERS)
+	close(b)
+	close(b)
+}
+t <- 2`,
+			'unclosed-connection',
+			[{
+                certainty: LintingResultCertainty.Uncertain,
+                loc:       [1, 7, 1, 20]
+            }]
+		);
+	assertLinter('Not necessarily closed', parser, `a <- textConnection(AB)
+b <- textConnection(E)
+if(x){
+	close(a)
+}
+t <- 2
+close(b)`,
+			'unclosed-connection',
+			[{
+                certainty: LintingResultCertainty.Uncertain,
+                loc:       [1, 7, 1, 20]
+            }]
+		);
+	assertLinter('Openend and closed', parser, `a <- 4+3
+if(x){
+	a <- textConnection(A)
+	close(a)
+}
+t <- 34`,
+			'unclosed-connection',
+			[]
+		);
+	});
+}));

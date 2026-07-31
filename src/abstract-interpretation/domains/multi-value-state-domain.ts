@@ -1,6 +1,6 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Bottom } from './lattice';
-import { type AbstractProduct, type ProductReduction, PartialProductDomain } from './partial-product-domain';
+import { type AbstractProduct, type PartialProduct, type ProductReduction, PartialProductDomain } from './partial-product-domain';
 import { type StateDomainLift, StateAbstractDomain } from './state-abstract-domain';
 
 /**
@@ -8,7 +8,7 @@ import { type StateDomainLift, StateAbstractDomain } from './state-abstract-doma
  * @template Product - Type of the abstract product of the multi-value domain combining multiple abstract values
  * @see {@link NodeId} for the node IDs of the AST nodes
  */
-export class MultiValueStateDomain<Product extends AbstractProduct, Value extends StateDomainLift<MultiValueDomain<Product>> = StateDomainLift<MultiValueDomain<Product>>>
+export class MultiValueStateDomain<Product extends PartialProduct, Value extends StateDomainLift<MultiValueDomain<Product>> = StateDomainLift<MultiValueDomain<Product>>>
 	extends StateAbstractDomain<MultiValueDomain<Product>, Value> {
 
 	constructor(value: Value, domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = []) {
@@ -31,10 +31,23 @@ export class MultiValueStateDomain<Product extends AbstractProduct, Value extend
 	}
 
 	public setValue<Key extends keyof Product>(node: NodeId, property: Key, value: Product[Key]): void {
-		if(this.value !== Bottom) {
-			const oldValue = this.get(node);
-			const newValue = { ...oldValue?.value ?? {}, [property]: value };
-			this.set(node, new MultiValueDomain(newValue as Product, this.domain.domain, this.domain.reductions));
+		if(this.value === Bottom) {
+			return;
+		}
+		const oldValue = this.get(node);
+		const newValue = { ...oldValue?.value ?? {}, [property]: value };
+		this.set(node, this.domain.create(newValue as Product));
+	}
+
+	public removeValue<Key extends keyof Product>(node: NodeId, property: Key): void {
+		if(this.value === Bottom) {
+			return;
+		}
+		const oldValue = this.get(node);
+
+		if(oldValue !== undefined) {
+			const { [property]: _value, ...newValue } = oldValue.value;
+			this.set(node, this.domain.create(newValue as Product));
 		}
 	}
 }
@@ -45,7 +58,7 @@ export class MultiValueStateDomain<Product extends AbstractProduct, Value extend
  * @template Product - Type of the abstract product of the multi-value domain combining multiple abstract values
  * @see {@link MultiValueStateDomain} for a state abstract domain of a multi-value domain
  */
-export class MultiValueDomain<Product extends AbstractProduct>
+export class MultiValueDomain<Product extends PartialProduct>
 	extends PartialProductDomain<Product> {
 
 	constructor(value: Product, domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = []) {

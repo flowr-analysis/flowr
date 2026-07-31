@@ -9,6 +9,7 @@ import { type NoInfo, RLoopConstructs, RNode } from '../r-bridge/lang-4.x/ast/mo
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { guard, isNotUndefined } from '../util/assert';
 import { AbstractDomain } from './domains/abstract-domain';
@@ -81,6 +82,9 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 		const origins = Array.isArray(call?.origin) ? call.origin : [];
 
 		if(node.type === RType.Symbol) {
+			if(node.info.role === RoleInParent.FunctionCallName) {
+				return this.getAbstractValue(node.info.parent, vertex !== undefined ? state : undefined);
+			}
 			const values = this.getVariableOrigins(node.info.id)
 				.map(origin => (this.getAbstractState(origin)?.isBottom() ? this.currentState.domain.bottom() : state?.get(origin)) as ValueDomain<StateDomain>);
 

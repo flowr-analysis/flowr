@@ -1,23 +1,22 @@
+import { Identifier } from '../../../dataflow/environments/identifier';
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import { FunctionArgument, type DataflowGraph } from '../../../dataflow/graph/graph';
 import { FunctionCallVertex, UseVertex } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import {
-	type PotentiallyEmptyRArgument,
-	type RFunctionCall,
-	EmptyArgument
-} from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument, type RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import type { RParseRequest } from '../../../r-bridge/retriever';
 import { assertUnreachable } from '../../../util/assert';
 import { readLineByLineSync } from '../../../util/files';
+import type { SemanticsContext } from '../../abstract-semantics';
+import type { StateDomain } from '../../domains/state-domain-like';
+import type { DataFrameDomain } from '../dataframe-domain';
 import { resolveIdToArgName, resolveIdToArgValue, unescapeSpecialChars, unquoteArgument } from '../resolve-args';
 import type { DataFrameShapeInferenceVisitor } from '../shape-inference';
-import { Identifier } from '../../../dataflow/environments/identifier';
 
 /** Regular expression representing valid columns names, e.g. for `data.frame` */
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
@@ -232,11 +231,11 @@ export function hasCriticalArgument(
  * @param inference - The data frame shape inference visitor to use
  * @returns Whether the argument represents a data frame
  */
-export function isDataFrameArgument(arg: RNode<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor):
+export function isDataFrameArgument(arg: RNode<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor | SemanticsContext<StateDomain<DataFrameDomain>>):
 	arg is RNode<ParentInformation>;
-export function isDataFrameArgument(arg: PotentiallyEmptyRArgument<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor):
+export function isDataFrameArgument(arg: PotentiallyEmptyRArgument<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor | SemanticsContext<StateDomain<DataFrameDomain>>):
 	arg is RArgument<ParentInformation> & { value: RNode<ParentInformation> };
-export function isDataFrameArgument(arg: RNode<ParentInformation> | PotentiallyEmptyRArgument<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor): boolean {
+export function isDataFrameArgument(arg: RNode<ParentInformation> | PotentiallyEmptyRArgument<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor | SemanticsContext<StateDomain<DataFrameDomain>>): boolean {
 	return arg !== EmptyArgument && inference.getAbstractValue(arg) !== undefined;
 }
 

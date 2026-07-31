@@ -131,7 +131,7 @@ export const InputSourcesDefinition = {
 			[InputType.User]:      Joi.array().items(Joi.string()).optional().description('Functions that read interactive user input (e.g., file.choose, readline, menu, askYesNo).'),
 			linkedObjects:         Joi.array().items(Joi.object({
 				name:       Joi.string().required().description('Name of the object, e.g. input.'),
-				type:       Joi.string().valid(...Record.values<string>(InputType)).required().description('How reads of the object (or of its fields) are classified.'),
+				type:       Joi.string().valid(...Record.values(InputType)).required().description('How reads of the object (or of its fields) are classified.'),
 				withParams: Joi.array().items(Joi.string()).optional().description('Only link the object if the function binding it declares all of these parameters as well.')
 			})).optional().description('Objects a framework provides without a definition in the code, e.g. shiny\'s input.'),
 			linkedEntryPoints: Joi.array().items(Joi.object({

@@ -61,7 +61,7 @@ export function testInferredDataFrameShape(
 	expected: InferenceTestCase<ExpectedDataFrameShape> | SlicingCriteria,
 	options?: DataFrameTestOptions
 ) {
-	const test = Array.isArray(expected) ? expected : Record.mapProperties(expected, expectedShape => toDataFrameDomain(expectedShape, options?.config));
+	const test = Array.isArray(expected) ? expected : Record.mapProps(expected, expectedShape => toDataFrameDomain(expectedShape, options?.config));
 	const inference = (config: AbsintVisitorConfiguration) => new DataFrameShapeInferenceVisitor({ ...config, trackOperations: false });
 	testInferredValues(options?.name ?? code.trim(), shell, code, test, inference, createOutputCode, parseOutput, options);
 }

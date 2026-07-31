@@ -30,7 +30,7 @@ export const SlicingCriterion = {
 	 * @see {@link SlicingCriterion.parse} to parse a slicing criterion to a node ID
 	 */
 	isValid(this: void, criterion: unknown): criterion is SlicingCriterion {
-		return typeof criterion === 'string' && criterion.match(/^\d+:\d+|\d+@.+|\$.+$/) !== null;
+		return typeof criterion === 'string' && criterion.match(/^\d+[:~]\d+|\d+@.+|\$.+$/) !== null;
 	},
 	/**
 	 * Takes a criterion in the form of `line:column`, `line~column`, or `line@variable-name` and returns the corresponding node id

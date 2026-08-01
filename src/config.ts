@@ -207,7 +207,7 @@ export interface FlowrConfig extends MergeableRecord {
 			shinyEntryFiles?:       string[]
 			/** Regex source evidencing shiny usage in an entry file. */
 			shinyUsagePattern?:     string
-			/** File extensions marking a notebook (default `ipynb`, `rmd`, `qmd`, `rnw`). */
+			/** File extensions marking a notebook (default `ipynb`, `rmd`, `rmarkdown`, `qmd`, `rnw`). */
 			notebookExtensions?:    string[]
 		}
 	}
@@ -446,6 +446,7 @@ export const FlowrDefaultPlugins = [
 	'loading-order:description',
 	'loading-order:implicit-sources',
 	'loading-order:rprofile',
+	'loading-order:included-files',
 	'meta:description',
 	'meta:rproject',
 	'meta:uvr',

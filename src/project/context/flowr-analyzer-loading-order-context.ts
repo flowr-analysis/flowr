@@ -138,6 +138,28 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 		}
 	}
 
+	/**
+	 * Drop `requests` from every order known so far. Use this for files another file already
+	 * contains (e.g. the target of an Rmd `child` chunk), as it refines the existing orders instead
+	 * of competing with them like {@link addGuess} would.
+	 */
+	public removeFromOrder(requests: readonly RParseRequest[]): void {
+		if(requests.length === 0) {
+			return;
+		}
+		const drop = new Set(requests);
+		const without = (order: readonly RParseRequest[]) => order.filter(r => !drop.has(r));
+		if(this.knownOrder) {
+			this.knownOrder = without(this.knownOrder);
+		}
+		for(let i = 0; i < this.guesses.length; i++) {
+			this.guesses[i] = without(this.guesses[i]);
+		}
+		if(!this.knownOrder && this.guesses.length === 0) {
+			this.addGuess(without(this.unordered));
+		}
+	}
+
 	public currentGuesses(): readonly (readonly RParseRequest[])[] {
 		return this.guesses;
 	}

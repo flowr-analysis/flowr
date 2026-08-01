@@ -275,4 +275,74 @@ print(42)
 			}
 		]);
 	});
+
+	test('merged content skips eval=FALSE blocks but keeps line numbers', () => {
+		const data = FlowrRMarkdownFile.from(new FlowrInlineTextFile('foo.Rmd', `\`\`\`{r, eval=FALSE}
+stop("no")
+\`\`\`
+
+\`\`\`{r}
+write.csv(1, "out.csv")
+\`\`\`
+`), new FlowrAnalyzerContext(FlowrConfig.default(), new Map()));
+
+		assert.equal(data.content(), '\n'.repeat(5) + 'write.csv(1, "out.csv")\n\n');
+	});
+
+	test('merged content skips quarto-style eval: false', () => {
+		const data = FlowrRMarkdownFile.from(new FlowrInlineTextFile('foo.qmd', `\`\`\`{r}
+#| eval: false
+stop("no")
+\`\`\`
+
+\`\`\`{r}
+write.csv(1, "out.csv")
+\`\`\`
+`), new FlowrAnalyzerContext(FlowrConfig.default(), new Map()));
+
+		assert.equal(data.content(), '\n'.repeat(6) + 'write.csv(1, "out.csv")\n\n');
+	});
+
+	describe('global chunk options', () => {
+		/** the code of every chunk that survives the eval resolution */
+		const executed = (content: string) => FlowrRMarkdownFile.from(
+			new FlowrInlineTextFile('foo.Rmd', content), new FlowrAnalyzerContext(FlowrConfig.default(), new Map())
+		).executableCells.map(c => c.code.trim());
+
+		test('quarto frontmatter execute defaults', () => {
+			assert.deepEqual(executed(`---
+title: Sample
+execute:
+  eval: false
+---
+
+\`\`\`{r}
+skipped()
+\`\`\`
+
+\`\`\`{r, eval=TRUE}
+kept()
+\`\`\`
+`), ['kept()']);
+		});
+
+		test('rmarkdown frontmatter knitr opts_chunk defaults', () => {
+			assert.deepEqual(executed(`---
+title: Sample
+knitr:
+  opts_chunk:
+    eval: false
+---
+
+\`\`\`{r}
+skipped()
+\`\`\`
+
+\`\`\`{r}
+#| eval: true
+kept()
+\`\`\`
+`), ['#| eval: true\nkept()']);
+		});
+	});
 });

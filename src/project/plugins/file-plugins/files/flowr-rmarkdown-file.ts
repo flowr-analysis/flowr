@@ -41,10 +41,8 @@ export class FlowrRMarkdownFile extends FlowrFile {
 	}
 
 	get executableCells(): CodeBlock[] {
-		return this.rmd.blocks.filter(b => {
-			const opt = b.options.get('eval');
-			return opt !== 'F' && opt !== 'FALSE';
-		});
+		const defaults = globalChunkOptions(this.rmd.options);
+		return this.rmd.blocks.filter(b => isExecutableCell(b, defaults));
 	}
 
 	/**
@@ -55,7 +53,7 @@ export class FlowrRMarkdownFile extends FlowrFile {
 		const raw = this.wrapped.content();
 		this.data = parseRMarkdownFile(raw);
 		this.postProcessCodeBlocks();
-		this.mergedCode = restoreBlocksWithoutMd(this.data.blocks, countNewlines(raw));
+		this.mergedCode = restoreBlocksWithoutMd(this.executableCells, countNewlines(raw));
 		guard(this.mergedCode !== undefined);
 		return this.mergedCode;
 	}
@@ -116,6 +114,38 @@ export interface CodeBlock {
 export interface RmdInfo {
 	blocks:  CodeBlock[]
 	options: object
+}
+
+/* knitr accepts R literals (`FALSE`, `F`), quarto yaml options accept `false` */
+const NonExecutableEvalValues = new Set(['F', 'FALSE', 'false', 'False']);
+
+/**
+ * Checks whether a code block is evaluated when the document is knitted (i.e. not `eval=FALSE`),
+ * falling back to the document-wide default of {@link globalChunkOptions} if the chunk says nothing
+ */
+export function isExecutableCell(block: CodeBlock, defaults: CodeBlockOptions): boolean {
+	const opt = block.options.get('eval') ?? defaults.get('eval');
+	return opt === undefined || !NonExecutableEvalValues.has(opt);
+}
+
+/**
+ * The chunk option defaults of the document, which quarto collects under `execute:` in the
+ * frontmatter and rmarkdown under `knitr: opts_chunk:`
+ */
+export function globalChunkOptions(frontmatter: object): CodeBlockOptions {
+	const knitr = (frontmatter as { knitr?: { opts_chunk?: unknown } }).knitr;
+	const options: CodeBlockOptions = new Map();
+	for(const source of [(frontmatter as { execute?: unknown }).execute, knitr?.opts_chunk]) {
+		if(typeof source !== 'object' || source === null) {
+			continue;
+		}
+		for(const [key, value] of Object.entries(source)) {
+			if(value !== null && typeof value !== 'object') {
+				options.set(key, String(value));
+			}
+		}
+	}
+	return options;
 }
 
 /**
@@ -232,7 +262,7 @@ export function parseCodeBlockOptions(header: string, content: string): CodeBloc
 	const parsedOptions = new Map<string, string>();
 	for(const match of opts.matchAll(OptionsRegex)) {
 		if(match[1] && match[2] !== undefined) { // key must not be empty, but value can be empty string for example
-			parsedOptions.set(match[1], match[2]);
+			parsedOptions.set(match[1], match[2].trim());
 		}
 	}
 

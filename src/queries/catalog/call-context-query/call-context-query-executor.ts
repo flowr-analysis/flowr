@@ -27,15 +27,6 @@ import { ArrayQueue } from '../../../util/collections/queue';
 import { baseRExportOwner } from '../../../util/r-base-packages';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
 
-/* if the node is effected by nse, we have an ingoing nse edge */
-function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
-	const vertex = graph.ingoingEdges(node);
-	if(vertex === undefined) {
-		return false;
-	}
-	return vertex.values().some(e => DfEdge.includesType(e, EdgeType.NonStandardEvaluation));
-}
-
 function makeReport(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>): CallContextQueryKindResult {
 	const result: CallContextQueryKindResult = {};
 	for(const [kind, collected] of collector.store) {
@@ -368,7 +359,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 					continue;
 				}
 			}
-			if(isQuoted(nodeId, dataflow.graph)) {
+			if(Dataflow.isQuoted(nodeId, dataflow.graph)) {
 				/* if the call is quoted, we do not want to link to it */
 				continue;
 			} else if(query.ignoreParameterValues && isParameterDefaultValue(nodeId, ast)) {

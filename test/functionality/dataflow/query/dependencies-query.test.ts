@@ -291,6 +291,25 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('parse text', 'parse(text="test.R")', {});
 		});
 
+		/* a loop marks its body as nse, but unlike a quotation the body really is evaluated */
+		describe('Braceless loop body', () => {
+			testQuery('for', 'for(f in c("a.csv","b.csv")) read.csv(f)',
+				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: Unknown, lexemeOfArgument: 'f' }] });
+			testQuery('for (constant)', 'for(f in c("a.csv")) read.csv("test.csv")',
+				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'test.csv' }] });
+			testQuery('while', 'while(TRUE) read.csv("test.csv")',
+				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'test.csv' }] });
+			testQuery('repeat', 'repeat read.csv("test.csv")',
+				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'test.csv' }] });
+			testQuery('nested', 'for(i in 1:2) while(TRUE) read.csv("test.csv")',
+				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'test.csv' }] });
+			testQuery('braced stays the same', 'for(f in c("a.csv","b.csv")) { read.csv(f) }',
+				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: Unknown, lexemeOfArgument: 'f' }] });
+			/* a real quotation within the body must still be suppressed */
+			testQuery('quoted body', 'for(i in 1:2) quote(read.csv("test.csv"))', {});
+			testQuery('substituted body', 'while(TRUE) substitute(read.csv("test.csv"))', {});
+		});
+
 		describe('Custom', () => {
 			const readCustomFile: Partial<DependenciesQuery> = {
 				readFunctions: [{ name: 'read.custom.file', argIdx: 1, argName: 'file' }]

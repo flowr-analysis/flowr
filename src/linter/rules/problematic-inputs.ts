@@ -19,14 +19,16 @@ const defaultConsider: readonly string[] = [
 ];
 
 export interface PipeCommandFunctionSpec {
-	pattern: string
-	argIdx:  number
-	argName: string
+	pattern:           string | RegExp
+	argIdx:            number
+	argName:           string
+	allowedValues?:    string | RegExp
+	disallowedValues?: string | RegExp
 }
 
 const defaultPipeCommandFunctions: readonly PipeCommandFunctionSpec[] = [
-	{ pattern: '^pdf$',        argIdx: 0, argName: 'file' },
-	{ pattern: '^postscript$', argIdx: 0, argName: 'file' }
+	{ pattern: /^pdf$/,        argIdx: 0, argName: 'file' },
+	{ pattern: /^postscript$/, argIdx: 0, argName: 'file' }
 ];
 
 function normalizePatternList(cfg: string | string[] | undefined, defaults: readonly string[]): RegExp[] {
@@ -40,11 +42,17 @@ function normalizePatternList(cfg: string | string[] | undefined, defaults: read
 	return [new RegExp(cfg)];
 }
 
-function normalizePipeSpecs(cfg: PipeCommandFunctionSpec | PipeCommandFunctionSpec[] | undefined): Array<{ pattern: RegExp, argIdx: number, argName: string }> {
+function normalizePipeSpecs(cfg: PipeCommandFunctionSpec | PipeCommandFunctionSpec[] | undefined): Array<{ pattern: RegExp, argIdx: number, argName: string, allowed?: RegExp, disallowed?: RegExp }> {
 	const raw = cfg === undefined ? defaultPipeCommandFunctions
 		: Array.isArray(cfg) ? (cfg.length === 0 ? defaultPipeCommandFunctions : cfg)
 			: [cfg];
-	return raw.map(s => ({ pattern: new RegExp(s.pattern), argIdx: s.argIdx, argName: s.argName }));
+	return raw.map(s => ({
+		pattern:    typeof s.pattern === 'string' ? new RegExp(s.pattern) : s.pattern,
+		argIdx:     s.argIdx,
+		argName:    s.argName,
+		allowed:    typeof s.allowedValues === 'string' ? new RegExp(s.allowedValues) : s.allowedValues,
+		disallowed: typeof s.disallowedValues === 'string' ? new RegExp(s.disallowedValues) : s.disallowedValues
+	}));
 }
 
 function formatInputSources(inputs: InputSources, inline = true): string | string[] {
@@ -69,11 +77,18 @@ function isProblematicForAllowed(sources: InputSources, allowed: InputType[]): b
 	return sources.some(s => s.types.some(t => !allowed.includes(t)));
 }
 
-function getPipeCommandValue(sources: InputSources): string | undefined {
+function getPipeCommandValue(sources: InputSources, allowed?: RegExp, disallowed?: RegExp): string | undefined {
 	for(const s of sources) {
-		if(typeof s.value === 'string' && s.value.startsWith('|')) {
-			return s.value;
+		if(typeof s.value !== 'string' || !s.value.startsWith('|')) {
+			continue;
 		}
+		if(allowed !== undefined && !allowed.test(s.value)) {
+			continue;
+		}
+		if(disallowed !== undefined && disallowed.test(s.value)){
+			continue;
+		}
+		return s.value;
 	}
 	return undefined;
 }
@@ -94,8 +109,8 @@ function resolveFileArgId(vertex: DataflowGraphVertexFunctionCall | undefined, a
 	return FunctionArgument.isEmpty(arg) ? undefined : FunctionArgument.getReference(arg);
 }
 
-function checkPipeInjection(nid: NodeId, loc: SourceLocation, name: string, sources: InputSources): ProblematicInputsResult | undefined {
-	const pipeCmd = getPipeCommandValue(sources);
+function checkPipeInjection(nid: NodeId, loc: SourceLocation, name: string, sources: InputSources, allowed?: RegExp, disallowed?: RegExp): ProblematicInputsResult | undefined {
+	const pipeCmd = getPipeCommandValue(sources, allowed, disallowed);
 	if(pipeCmd !== undefined) {
 		return { involvedId: nid, certainty: LintingResultCertainty.Certain, loc, name, sources, pipeCommand: pipeCmd };
 	}
@@ -154,7 +169,7 @@ export const PROBLEMATIC_INPUTS = {
 					const criterion = SlicingCriterion.fromId(fileArgId);
 					const all       = await data.query([{ type: 'input-sources', criterion, config: config.inputFns }]);
 					const sources   = all['input-sources']?.results?.[criterion] ?? [];
-					const r         = checkPipeInjection(nid, loc, name, sources);
+					const r         = checkPipeInjection(nid, loc, name, sources, pipeSpec.allowed, pipeSpec.disallowed);
 					if(r !== undefined) {
 						seen.add(nid);
 						results.push(r);

@@ -48,6 +48,24 @@ describe('flowR linter', withTreeSitter(parser => {
 			pipeCommand: '|lp -o landscape',
 			sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp -o landscape' }]
 		}]);
+		assertLinter('pipe allowedValues match', parser, 'custom("|rm -rf /")', 'problematic-inputs', [{
+			certainty:   LintingResultCertainty.Certain,
+			name:        'custom',
+			loc:         SourceRange.from(1, 1, 1, 19),
+			pipeCommand: '|rm -rf /',
+			sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|rm -rf /' }]
+		}], undefined, { pipeCommandFunctions: [{ pattern: /^custom$/, argIdx: 0, argName: 'file', allowedValues: /^\|rm/ }] });
+		assertLinter('pipe allowedValues no match', parser, 'custom("|lp -o landscape")', 'problematic-inputs', [], undefined,
+			{ pipeCommandFunctions: [{ pattern: /^custom$/, argIdx: 0, argName: 'file', allowedValues: /^\|rm/ }] });
+		assertLinter('pipe disallowedValues match', parser, 'custom("|rm -rf /")', 'problematic-inputs', [], undefined,
+			{ pipeCommandFunctions: [{ pattern: /^custom$/, argIdx: 0, argName: 'file', disallowedValues: /^\|rm/ }] });
+		assertLinter('pipe disallowedValues no match', parser, 'custom("|lp -o landscape")', 'problematic-inputs', [{
+			certainty:   LintingResultCertainty.Certain,
+			name:        'custom',
+			loc:         SourceRange.from(1, 1, 1, 26),
+			pipeCommand: '|lp -o landscape',
+			sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp -o landscape' }]
+		}], undefined, { pipeCommandFunctions: [{ pattern: /^custom$/, argIdx: 0, argName: 'file', disallowedValues: /^\|rm/ }] });
 		assertLinter('pdf pipe with named arg', parser, 'pdf("|lp -o landscape", paper = "a4r")', 'problematic-inputs', [{
 			certainty:   LintingResultCertainty.Certain,
 			name:        'pdf',

@@ -14,15 +14,15 @@ export abstract class ProductDomain<Product extends Required<AbstractProduct>>
 		super(value, value as Required<Product>);
 	}
 
-	public abstract create(value: Product): this;
+	public abstract create(value: Product, reduce?: boolean): this;
 
 	public top(): this {
-		const result = this.create(this.domain);
+		const result = {} as Product;
 
-		for(const key in result.value) {
-			result.value[key] =  result.value[key]?.top() as typeof result.value[typeof key];
+		for(const key in this.domain) {
+			result[key] = this.domain[key]?.top() as typeof result[typeof key];
 		}
-		return result;
+		return this.create(result);
 	}
 
 	public isTop(): boolean;

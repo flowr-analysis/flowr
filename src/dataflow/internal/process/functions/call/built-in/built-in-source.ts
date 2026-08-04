@@ -197,6 +197,7 @@ export function processSourceCall<OtherInfo>(
 		if(filepath !== undefined && filepath.length > 0) {
 			let result = information;
 			const origCds = data.cds?.slice() ?? [];
+			const maybe = !data.ctx.config.solver.resolveSource?.assumeFilesExist || filepath.length > 1;
 			for(const f of filepath) {
 				// check if the sourced file has already been dataflow analyzed, and if so, skip it
 				const limit = data.ctx.config.solver.resolveSource?.repeatedSourceLimit ?? 0;
@@ -212,7 +213,7 @@ export function processSourceCall<OtherInfo>(
 				result = sourceRequest(rootId, {
 					request: 'file',
 					content: f
-				}, data, result, true, sourcedDeterministicCountingIdGenerator((findCount > 0 ? findCount + '::' : '') + f, name.location));
+				}, data, result, maybe, sourcedDeterministicCountingIdGenerator((findCount > 0 ? findCount + '::' : '') + data.ctx.files.relativePath(f), name.location));
 			}
 			return result;
 		}
@@ -264,7 +265,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 		} else if(gasLevel >= GasLevel.Problematic) {
 			dataflowLogger.warn(`Approaching resource limits for source of ${JSON.stringify(request)} (gas: problematic). See ${GasWikiRef}`);
 		}
-		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r);
+		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r, data.ctx);
 		const normalized = (typeof parsed !== 'string' ?
 			normalizeTreeSitter({ files: [{ parsed, filePath: textRequest.path }] }, getId, data.ctx.config)
 			: normalize({ files: [{ parsed, filePath: textRequest.path }] }, getId)) as NormalizedAst<OtherInfo & ParentInformation>;

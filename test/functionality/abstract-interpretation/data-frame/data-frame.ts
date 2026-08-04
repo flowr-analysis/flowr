@@ -4,8 +4,8 @@ import { type AbstractDataFrameShape, DataFrameDomain } from '../../../../src/ab
 import type { DataFrameOperationArgs, DataFrameOperationName } from '../../../../src/abstract-interpretation/data-frame/semantics';
 import { type DataFrameOperations, DataFrameShapeInferenceVisitor } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
 import type { AbstractValue } from '../../../../src/abstract-interpretation/domains/abstract-domain';
-import { IntervalDomain } from '../../../../src/abstract-interpretation/domains/interval-domain';
 import { Bottom, type Top } from '../../../../src/abstract-interpretation/domains/lattice';
+import { PosIntervalDomain } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
 import { SetRangeDomain } from '../../../../src/abstract-interpretation/domains/set-range-domain';
 import { FlowrConfig } from '../../../../src/config';
 import { RoleInParent } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/role';
@@ -21,7 +21,7 @@ import { type InferenceTestCase, type InferenceTestOptions, runInference, testIn
  * The expected data frame shape for data frame shape tests.
  */
 export interface ExpectedDataFrameShape {
-	colnames: [min: string[], range: string[] | typeof Top] | typeof Bottom,
+	colnames: [must: string[], may: string[] | typeof Top] | typeof Bottom,
 	cols:     AbstractValue<AbstractDataFrameShape['cols']>,
 	rows:     AbstractValue<AbstractDataFrameShape['rows']>
 }
@@ -126,9 +126,9 @@ function toDataFrameDomain(shape: ExpectedDataFrameShape | undefined, config?: F
 	const maxColNames = config?.abstractInterpretation.dataFrame.maxColNames ?? FlowrConfig.default().abstractInterpretation.dataFrame.maxColNames;
 
 	return new DataFrameDomain({
-		colnames: new SetRangeDomain(shape.colnames === Bottom ? Bottom : { min: shape.colnames[0], range: shape.colnames[1] }, maxColNames),
-		cols:     new IntervalDomain(shape.cols),
-		rows:     new IntervalDomain(shape.rows)
+		colnames: new SetRangeDomain(shape.colnames === Bottom ? Bottom : { must: shape.colnames[0], may: shape.colnames[1] }, maxColNames),
+		cols:     new PosIntervalDomain(shape.cols),
+		rows:     new PosIntervalDomain(shape.rows)
 	});
 }
 

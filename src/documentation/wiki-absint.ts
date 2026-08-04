@@ -133,9 +133,6 @@ In _flowR_, an abstract domain is represented by the class ${ctx.link(AbstractDo
  * ${ctx.linkM(AbstractDomain, 'widen')} to perform widening with another abstract value to ensure termination of the fixpoint iteration
  * ${ctx.linkM(AbstractDomain, 'narrow')} to perform narrowing with another abstract value to refine the abstract value after widening
 
- - ${ctx.linkM(AbstractDomain, 'concretize')} representing the concretization function of the abstract domain
- - ${ctx.linkM(AbstractDomain, 'abstract')} representing the abstraction function of the abstract domain
-
 ${details('Class Diagram', `
 All boxes link to their respective implementation in the source code.
 ${codeBlock('mermaid', ctx.mermaid(AbstractDomain))}
@@ -154,7 +151,7 @@ ${codeBlock('mermaid', ctx.mermaid(AbstractDomain, { simplify: true, reverse: tr
 
 Multiple abstract domains can be combined using a ${ctx.link(MultiValueDomain)} (for example, to use an interval domain for numbers and bounded set domain for strings at the same time). A multi-value state domain (${ctx.link(MultiValueStateDomain)}) as state domain of a multi-value domain can be used to track the state of multiple value domains in a program. Additionally, is enables to define reductions on the multi-value domain to refine the inferred value for a value domain based on the other value domains in the multi-value domain. For example, the following example shows how a multi-value state domain can be defined to track numbers and strings at the same time with a simple reduction that sets both domains to bottom if one domain is bottom.
 
-${ctx.code(multiValueExample, { dropLinesStart: 1, dropLinesEnd: 1 })}
+${ctx.code(multiValueExample, { dropLinesStart: 1, dropLinesEnd: 1, hideDefinedAt: true })}
 
 ${section('Abstract Interpretation', 2, 'abstract-interpretation')}
 

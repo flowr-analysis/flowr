@@ -16,7 +16,7 @@ const TestPathPattern = /tests?/i;
  */
 export class FlowrAnalyzerMetaTestFilesPlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name = 'flowr-analyzer-test-files-plugin';
-	public readonly description = 'This plugin provides support for loading test files.';
+	public readonly description = 'Loads test files.';
 	public readonly version = new SemVer('0.1.0');
 	private readonly pathPattern: RegExp;
 

@@ -75,9 +75,6 @@ export const ROXYGEN_ARGS = {
 						const functionParamNames = getParameters(element.node).map(p => p.name.content.toString());
 						const inheritedParams = params.filter(tag => tag.inherited).map(tag => tag.value.name);
 						const roxygenParamNames = params.map(tag => tag.value.name);
-						if(functionParamNames === null || roxygenParamNames == null){
-							return false;
-						}
 						const result = calculateArgumentDiff(inheritedParams ?? [], functionParamNames, roxygenParamNames);
 						if(result === false){
 							return false;
@@ -98,8 +95,8 @@ export const ROXYGEN_ARGS = {
 		};
 	},
 	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Code at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `Code at ${SourceLocation.format(result.loc)} has undocumented parameters: ${result.underDocumented?.join()} and overdocumented parameters: ${result.overDocumented?.join()}`
+		[LintingPrettyPrintContext.Query]: result => `Function at ${SourceLocation.format(result.loc)} has ${describeArgumentDiff(result)}`,
+		[LintingPrettyPrintContext.Full]:  result => `Function at ${SourceLocation.format(result.loc)} has ${describeArgumentDiff(result)}`
 	},
 	info: {
 		name:          'Roxygen Arguments',
@@ -112,4 +109,22 @@ export const ROXYGEN_ARGS = {
 
 function getParameters(node: RNode): RParameter[]{
 	return RFunctionDefinition.is(node) ? node.parameters : [];
+}
+
+function quoteAll(names: readonly string[]): string {
+	return names.map(name => `'${name}'`).join(', ');
+}
+
+/** Describes the concrete mismatch between roxygen `@param` documentation and the actual function arguments. */
+function describeArgumentDiff(result: RoxygenArgsResult): string {
+	const parts: string[] = [];
+	const under = result.underDocumented ?? [];
+	const over = result.overDocumented ?? [];
+	if(under.length > 0) {
+		parts.push(`undocumented argument${under.length > 1 ? 's' : ''} ${quoteAll(under)}`);
+	}
+	if(over.length > 0) {
+		parts.push(`documented @param${over.length > 1 ? 's' : ''} with no matching argument: ${quoteAll(over)}`);
+	}
+	return parts.join(', and ');
 }

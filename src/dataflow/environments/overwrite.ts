@@ -1,4 +1,4 @@
-import { type REnvironmentInformation  } from './environment';
+import type { REnvironmentInformation } from './environment';
 import type { ControlDependency } from '../info';
 import { padToCommonScope } from './scoping';
 

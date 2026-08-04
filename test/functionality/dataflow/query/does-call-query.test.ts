@@ -18,9 +18,9 @@ describe('Does Call Query', withTreeSitter(parser => {
 			const q = rq as DeepWritable<DoesCallQuery>;
 			q.type = 'does-call';
 			if(!q.queryId) {
-				(q as DeepWritable<typeof q>).queryId = String(++i);
+				(q).queryId = String(++i);
 			}
-			query.push(q as DoesCallQuery);
+			query.push(q);
 		}
 		assertQuery(label(name), parser, code, query, (info) => {
 			const idMap = info.normalize.idMap;

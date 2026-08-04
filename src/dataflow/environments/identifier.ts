@@ -1,9 +1,12 @@
 import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './built-in';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
 import { startAndEndsWith } from '../../util/text/strings';
+import { baseRExportOwner } from '../../util/r-base-packages';
 import type { REnvironmentInformation } from './environment';
 import type { Origin } from '../origin/dfg-get-origin';
+/* type-only, as the value import would cycle back through the graph helpers */
+import type { Dataflow } from '../graph/df-helper';
 
 /** this is just a safe-guard type to prevent mixing up branded identifiers with normal strings */
 export type BrandedIdentifier = string & { __brand?: 'identifier' };
@@ -44,7 +47,7 @@ export const Identifier = {
 	 */
 	make(this: void, name: BrandedIdentifier, namespace?: BrandedNamespace, internal: boolean = false): Identifier {
 		if(startAndEndsWith(name, '`')) {
-			name = name.substring(1, name.length - 1) as BrandedIdentifier;
+			name = name.substring(1, name.length - 1);
 		}
 		if(namespace) {
 			return [name, namespace, internal];
@@ -63,6 +66,21 @@ export const Identifier = {
 	 */
 	from(this: void, arr: [BrandedIdentifier, BrandedNamespace] | [BrandedIdentifier, BrandedNamespace, boolean]): Identifier {
 		return arr;
+	},
+	/**
+	 * The same fast path for many names of one package: the given array of names is cast in place,
+	 * so the literal you pass is the only array involved.
+	 * @example
+	 * ```ts
+	 * Identifier.fromAll('purrr', ['map', 'walk']) // [['map', 'purrr'], ['walk', 'purrr']]
+	 * ```
+	 */
+	fromAll(this: void, namespace: BrandedNamespace, names: BrandedIdentifier[]): Identifier[] {
+		const ids = names as unknown as Identifier[];
+		for(let i = 0; i < names.length; i++) {
+			ids[i] = [names[i], namespace];
+		}
+		return ids;
 	},
 	/**
 	 * Verify whether an unknown element has a valid identifier shape!
@@ -89,9 +107,9 @@ export const Identifier = {
 		const internal = str.includes(':::');
 		const parts = str.split(internal ? ':::' : '::');
 		if(parts.length === 2) {
-			return [parts[1] as BrandedIdentifier, parts[0] as BrandedNamespace, internal];
+			return [parts[1], parts[0], internal];
 		}
-		return parts[0] as BrandedIdentifier;
+		return parts[0];
 	},
 	/**
 	 * Get the name part of the identifier
@@ -160,12 +178,19 @@ export const Identifier = {
 		if(idInternal === true) {
 			return true;
 		}
-		const targetInternal = Identifier.accessesInternal(target);
-		return idInternal === targetInternal;
+		/* an omitted flag is the same as an explicit `false`, `pkg::fn` written either way is one identifier */
+		return (idInternal ?? false) === (Identifier.accessesInternal(target) ?? false);
+	},
+	/**
+	 * Helper to create a regular expression that matches against an array of {@link Identifier} values. If both the passed identifier and the matched identifier are namespaced, their namespaces are expected to match. If either is not namespaced, the namespace is ignored on both.
+	 */
+	regex(this: void, ...identifiers: readonly Identifier[]): RegExp {
+		// if the passed identifier is not namespaced, we match against *any* namespace. if it is namespaced, we match against the correct namespace or no namespace
+		return new RegExp(`^(${identifiers.map(i => `(${Identifier.getNamespace(i) ?? '.+'}:::?)?${Identifier.getName(i)}`).join('|')})$`);
 	},
 	/** Special identifier for the `...` argument */
 	dotdotdot(this: void): BrandedIdentifier {
-		return '...' as BrandedIdentifier;
+		return '...';
 	},
 	/**
 	 * Check if the identifier is the special `...` argument / or one of its accesses like `..1`, `..2`, etc.
@@ -205,27 +230,45 @@ export const Identifier = {
 		}
 	},
 	/**
-	 * The qualified identifier of a call from its dataflow {@link Origin}s (via `getOriginInDfg`), if it
-	 * resolves to an export of a loaded package (the `flowr-pkgdb` info attached by `library()`/`use()`);
-	 * `undefined` otherwise. With `purrr` loaded, `map()` yields `Identifier.make('map', 'purrr')`.
+	 * The package-qualified identifier of a call, resolved in order of decreasing certainty:
+	 * 1. a package export the {@link Origin|origins} resolve to (`map()` with `purrr` loaded yields `purrr::map`),
+	 * 2. an already-namespaced `name` returned unchanged (an explicit `pkg::fn` call),
+	 * 3. with `qualifyBaseR`, a bare base-R call qualified from its exporting package via {@link baseRExportOwner}
+	 *    (`sd` yields `stats::sd`), needing no loaded database or graph edge and skipped when the call resolves to
+	 *    a user definition, so a local `sd()` stays bare.
+	 *
+	 * Returns `undefined` when none apply. Steps 2 and 3 need the call's `name`.
+	 * @param qualifyBaseR - whether to also qualify a bare base-R call from its exporting package (default `true`)
+	 * @see {@link Dataflow.qualify} - the compact form, if you have the call's id and its graph
 	 */
-	toQualified(this: void, origins: readonly Origin[] | undefined): Identifier | undefined {
+	toQualified(this: void, origins: readonly Origin[] | undefined, name?: Identifier, qualifyBaseR = true): Identifier | undefined {
+		let sawUserDefinition = false;
 		for(const origin of origins ?? []) {
-			// a package-export origin carries the target builtin id `built-in:pkg:func` in `proc`
-			if('proc' in origin && origin.proc.startsWith('built-in:')) {
-				const rest = origin.proc.slice('built-in:'.length);
-				const sep = rest.indexOf(':');   // base builtins (`built-in:print`) have no separator
-				if(sep > 0) {
-					return Identifier.make(rest.slice(sep + 1), rest.slice(0, sep));
+			if('proc' in origin) {
+				const pkgFn = NodeId.toPkgFn(origin.proc);
+				if(pkgFn) {
+					return Identifier.make(pkgFn[1], pkgFn[0]);
+				} else if(Identifier.getNamespace(origin.fn.name) !== undefined) {
+					return origin.fn.name;
 				}
+			} else {
+				sawUserDefinition = true;
+			}
+		}
+		if(name === undefined) {
+			return undefined;
+		}
+		if(Identifier.getNamespace(name) !== undefined) {
+			return name;
+		}
+		if(qualifyBaseR && !sawUserDefinition) {
+			const bare = Identifier.getName(name);
+			const owner = baseRExportOwner(bare);
+			if(owner !== undefined) {
+				return Identifier.make(bare, owner);
 			}
 		}
 		return undefined;
-	},
-	/** The fully qualified `package::name` of a resolved call (see {@link Identifier.toQualified}). */
-	toQualifiedName(this: void, origins: readonly Origin[] | undefined): string | undefined {
-		const qualified = Identifier.toQualified(origins);
-		return qualified === undefined ? undefined : Identifier.toString(qualified);
 	}
 } as const;
 
@@ -246,12 +289,14 @@ export const enum PkgName {
 	AssertThat   = 'assertthat',
 	Box          = 'box',
 	Cli          = 'cli',
+	CohortBuilder = 'cohortBuilder',
 	DataTable    = 'data.table',
 	Devtools     = 'devtools',
 	Dplyr        = 'dplyr',
 	Fs           = 'fs',
 	Functools    = 'functools',
 	GgPlot2      = 'ggplot2',
+	Hmisc        = 'Hmisc',
 	Import       = 'import',
 	Inferference = 'inferference',
 	Janitor      = 'janitor',
@@ -263,17 +308,28 @@ export const enum PkgName {
 	Plyr         = 'plyr',
 	Purrr        = 'purrr',
 	Ragg         = 'ragg',
+	R6           = 'R6',
 	RasterPdf    = 'rasterpdf',
+	Rcpp         = 'Rcpp',
 	Remotes      = 'remotes',
 	Rlang        = 'rlang',
 	RmethodsS3   = 'R.methodsS3',
 	Roo          = 'R.oo',
+	RstudioApi   = 'rstudioapi',
 	Rutils       = 'R.utils',
 	S7           = 'S7',
+	Shiny        = 'shiny',
+	ShinyCohortBuilder = 'shinyCohortBuilder',
+	ShinyFiles   = 'shinyFiles',
+	ShinyJs      = 'shinyjs',
 	Soda         = 'SoDA',
+	SvDialogs    = 'svDialogs',
+	Tcltk        = 'tcltk',
 	Testthat     = 'testthat',
+	TidyR        = 'tidyr',
 	TinyPlot     = 'tinyplot',
 	TryCatchLog  = 'tryCatchLog',
+	Withr        = 'withr',
 }
 
 /**
@@ -290,25 +346,25 @@ export const enum PkgName {
  */
 export enum ReferenceType {
 	/** The identifier type is unknown */
-	Unknown = 1,
+	Unknown = 1 << 0,
 	/** The identifier is defined by a function (includes built-in function) */
-	Function = 2,
+	Function = 1 << 1,
 	/** The identifier is defined by a variable (includes parameter and argument) */
-	Variable = 4,
+	Variable = 1 << 2,
 	/** The identifier is defined by a constant (includes built-in constant) */
-	Constant = 8,
+	Constant = 1 << 3,
 	/** The identifier is defined by a parameter (which we know nothing about at the moment) */
-	Parameter = 16,
+	Parameter = 1 << 4,
 	/** The identifier is defined by an argument (which we know nothing about at the moment) */
-	Argument = 32,
+	Argument = 1 << 5,
 	/** The identifier is defined by a built-in value/constant */
-	BuiltInConstant = 64,
+	BuiltInConstant = 1 << 6,
 	/** The identifier is defined by a built-in function */
-	BuiltInFunction = 128,
+	BuiltInFunction = 1 << 7,
 	/** Prefix to identify S3 methods, use this, to for example dispatch a call to `f` which will then link to `f.*` */
-	S3MethodPrefix = 256,
+	S3MethodPrefix = 1 << 8,
 	/** Prefix to identify S7 methods, use this, to for example dispatch a call to `f` which will then link to `f<7>*` */
-	S7MethodPrefix = 512
+	S7MethodPrefix = 1 << 9
 }
 
 /** Reverse mapping of the reference types so you can get the name from the bitmask (useful for debugging) */

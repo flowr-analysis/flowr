@@ -23,7 +23,8 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 		definedAt: parameter.info.id
 	}) as IdentifierDefinition & { name: string });
 
-	let environment = name.environment;
+	// keep the default's environment so its escaping (`<<-`) writes are carried on
+	let environment = defaultValue?.environment ?? name.environment;
 	for(const writtenNode of writtenNodes) {
 		const wid = writtenNode.nodeId;
 		expensiveTrace(log, () => `parameter ${writtenNode.name} (${wid}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' a default value'}`);

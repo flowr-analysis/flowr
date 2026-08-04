@@ -52,7 +52,7 @@ describe('Link libraries at scale', withTreeSitter(ts => {
 		}
 		const resolution = exportResolution(await analyzeWithPackages(ts, code, N));
 		for(let i = 0; i < N; i++) {
-			expect(resolution.get(`f${i}`)).toEqual([NodeId.toBuiltIn(Package.funcIdentif(`pkg${i}`, `f${i}`))]);
+			expect(resolution.get(`f${i}`)).toEqual([NodeId.fromPkgFn(`pkg${i}`, `f${i}`)]);
 		}
 	});
 
@@ -71,7 +71,7 @@ describe('Link libraries at scale', withTreeSitter(ts => {
 		}
 		const resolution = exportResolution(await analyzeWithPackages(ts, code, N));
 		for(let i = 0; i < N; i++) {
-			expect(resolution.get(`f${i}`)).toEqual([NodeId.toBuiltIn(Package.funcIdentif(`pkg${i}`, `f${i}`))]);
+			expect(resolution.get(`f${i}`)).toEqual([NodeId.fromPkgFn(`pkg${i}`, `f${i}`)]);
 		}
 	});
 }));

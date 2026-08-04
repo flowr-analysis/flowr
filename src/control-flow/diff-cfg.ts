@@ -36,8 +36,8 @@ function diffRootVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 }
 
 function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
-	const lVert = ctx.left.vertices(false).entries().map(([id, info]) => ([id, info] as const)).toArray();
-	const rVert = ctx.right.vertices(false).entries().map(([id, info]) => ([id, info] as const)).toArray();
+	const lVert = [...ctx.left.vertices(false).entries()];
+	const rVert = [...ctx.right.vertices(false).entries()];
 	if(lVert.length < rVert.length && !ctx.config.leftIsSubgraph
         || lVert.length > rVert.length && !ctx.config.rightIsSubgraph
 	) {

@@ -1,5 +1,6 @@
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
+import { RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Setup
@@ -23,7 +24,7 @@ or use its ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')} and $
 
 
 If you want to develop for _flowR_, you want to see how to [build from scratch](#-building-from-scratch) and have a 
-look at the [Contributing Guidelines](https://github.com/flowr-analysis/flowr/tree/main//.github/CONTRIBUTING.md).
+look at the [Contributing Guidelines](${RemoteFlowrFilePathBaseRef}/.github/CONTRIBUTING.md).
 
 ## 🗒️ Using the Visual Studio Code Extension
 
@@ -65,12 +66,12 @@ For more information, see the ${ctx.linkPage('wiki/Interface')} wiki page.
 ## ⚒️ Building From Scratch
 
 To use _flowR_, you may need [_R_](https://www.r-project.org/) installed and on your path
-(this only affects the [\`r-shell\` engine][r-shell], which is _not_ the default).
+(this only affects the ${ctx.linkPage('wiki/Engines', '`r-shell` engine')}, which is _not_ the default).
 
 ### Installing R
 Although there are several ways to do so, there is nothing wrong with installing&nbsp;R with the help of your favorite package manager or directly from the [website](https://cloud.r-project.org/).<a href="#note1" id="note1ref"><sup>&lt;1&gt;</sup></a>
 For 🪟&nbsp;Windows, see [here](https://www.hanss.info/sebastian/post/rtools-path/) for an explanation on how to add [_R_](https://www.r-project.org/) to your path variable.
-Again, you only require this for the [\`r-shell\` engine][r-shell].
+Again, you only require this for the ${ctx.linkPage('wiki/Engines', '`r-shell` engine')}.
 
 ### Installing Node.js
 
@@ -105,15 +106,17 @@ At the time of writing this, there is currently no page for frequently encounter
 ## 📜 Developing for _flowR_
 
 If you want to develop for _flowR_, explore the wiki.
-For details on _how_ to contribute, please refer to the [CONTRIBUTING.md](https://github.com/flowr-analysis/flowr/blob/main/.github/CONTRIBUTING.md) in the repository.
+For details on _how_ to contribute, please refer to the [CONTRIBUTING.md](${RemoteFlowrFilePathBaseRef}/.github/CONTRIBUTING.md) in the repository.
+
+### 📦 The Signature Database
+
+_flowR_ resolves \`library(pkg)\`/\`pkg::fn\` calls from a downloaded signature database (\`flowr-sigdb\`); no shards are committed (only the \`sigdb.remote.json\` pointer), everything else is fetched on demand &mdash; see the ${ctx.linkPage('wiki/Signature Database')} page.
 
 -----
 <a id="note1" href="#note1ref">&lt;1&gt;</a>: Currently, _flowR_ is only tested with R versions \`4.x\` and \`3.6.x\`.
 
 <a id="note2" href="#note2ref">&lt;2&gt;</a>: We use
-[git-lfs](https://git-lfs.com/) to store larger files, especially for the wiki pages. So if you want to work on these parts, make sure to have it set-up (see the [CONTRIBUTING.md](https://github.com/flowr-analysis/flowr/blob/main/.github/CONTRIBUTING.md) in the repository for more information).
-
-[r-shell]: (https://github.com/flowr-analysis/flowr/wiki/Engines)
+[git-lfs](https://git-lfs.com/) to store larger files, especially for the wiki pages. So if you want to work on these parts, make sure to have it set-up (see the [CONTRIBUTING.md](${RemoteFlowrFilePathBaseRef}/.github/CONTRIBUTING.md) in the repository for more information).
     `.trim();
 	}
 }

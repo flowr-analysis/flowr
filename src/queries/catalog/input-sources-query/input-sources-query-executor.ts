@@ -9,8 +9,12 @@ import type { InputClassifierConfig, InputClassifierFunctionIdentifiers, InputSo
 import { classifyInput } from './simple-input-classifier';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import { runSearch } from '../../../search/flowr-search-executor';
-import { type FlowrSearchLike } from '../../../search/flowr-search-builder';
+import type { FlowrSearchLike } from '../../../search/flowr-search-builder';
 import { Record } from '../../../util/record';
+import { Identifier } from '../../../dataflow/environments/identifier';
+import { AttachedBasePackages } from '../../../util/r-base-packages';
+import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
+import { REnvironment } from '../../../dataflow/environments/environment';
 
 /**
  * Execute an input sources query
@@ -20,7 +24,12 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 	const results: Record<string, InputSources> = {};
 	const nast = await analyzer.normalize();
 	const df = await analyzer.dataflow();
-	const defaultConfig = await resolveSearches(analyzer, DefaultInputClassifierConfig);
+	// flowR's defaults, extended by whatever the (possibly project-kind specialized) configuration adds
+	const defaultConfig = addAll(
+		await resolveSearches(analyzer, DefaultInputClassifierConfig),
+		await resolveSearches(analyzer, analyzer.inspectContext().config.inputSources ?? {})
+	);
+	const packages = attachedPackages(analyzer, df.environment);
 
 	for(const query of queries) {
 		const criteria: readonly SlicingCriterion[] = Array.isArray(query.criterion)
@@ -41,24 +50,62 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 				df.graph,
 				fdef ? RNode.collectAllIds(fdef) : undefined
 			);
-			results[criterion] = classifyInput(criterionId, provenance, config, df.graph);
+			results[criterion] = classifyInput(criterionId, provenance, config, df.graph, packages);
 		}
 	}
 
-	return ({
+	return {
 		'.meta': {
 			timing: Date.now() - start
 		},
 		results
-	} as unknown) as InputSourcesQueryResult;
+	};
+}
+
+/**
+ * The packages whose exports are usable without a namespace: those R has on its search path at the end of the
+ * program, the ones the project declares, and the base packages R attaches on startup.
+ */
+function attachedPackages(analyzer: ReadonlyFlowrAnalysisProvider, environment: REnvironmentInformation): ReadonlySet<string> {
+	return new Set([
+		...REnvironment.attachedPackages(environment.current),
+		...analyzer.inspectContext().deps.getDependencies().map(d => d.name),
+		...AttachedBasePackages
+	]);
+}
+
+/** every entry of `extra` appended to the matching list of `base`, so configured entries extend the defaults instead of replacing them */
+function addAll(base: InputClassifierConfig<InputClassifierFunctionIdentifiers>, extra: InputClassifierConfig<InputClassifierFunctionIdentifiers>): InputClassifierConfig<InputClassifierFunctionIdentifiers> {
+	const result = { ...base };
+	for(const [key, value] of Record.entries(extra)) {
+		if(value !== undefined) {
+			result[key] = [...(base[key] ?? []), ...value] as never;
+		}
+	}
+	return result;
+}
+
+/** Config fields that hold structured values (not function searches) and are carried over verbatim. */
+const StructuredConfigKeys = ['linkedObjects', 'linkedEntryPoints', 'narrowing'] as const;
+function isStructuredConfigKey(key: PropertyKey): key is typeof StructuredConfigKeys[number] {
+	return (StructuredConfigKeys as readonly PropertyKey[]).includes(key);
 }
 
 async function resolveSearches(analyzer: ReadonlyFlowrAnalysisProvider, config: InputClassifierConfig): Promise<InputClassifierConfig<InputClassifierFunctionIdentifiers>> {
+	/* structured (non-search) fields are carried over as-is; everything else is a resolvable function search */
 	const result: InputClassifierConfig<InputClassifierFunctionIdentifiers> = {};
+	for(const key of StructuredConfigKeys) {
+		if(config[key] !== undefined) {
+			result[key] = config[key] as never;
+		}
+	}
 
 	for(const [key, value] of Record.entries(config)) {
-		if(value === undefined || Array.isArray(value)) {
-			result[key] = value;
+		if(isStructuredConfigKey(key)) {
+			continue;
+		} else if(value === undefined || Array.isArray(value)) {
+			// entries may be written as `pkg::fn` strings in the configuration, which only mean the namespaced function once parsed
+			result[key] = (value as InputClassifierFunctionIdentifiers | undefined)?.map(e => typeof e === 'string' ? Identifier.parse(e) : e);
 		} else {
 			const searchResult = await runSearch(value as FlowrSearchLike, analyzer);
 			result[key] = searchResult.getElements().map(element => element.node.info.id);

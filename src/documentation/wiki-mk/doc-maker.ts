@@ -50,7 +50,7 @@ const DefaultReplacementPatterns: Array<[RegExp, string]> = [
 	[/\d+(\.\d+)?( |\s*)?ms/g, ''],
 	[/tmp[%A-Za-z0-9-]+/g, ''],
 	[/"?(timing|searchTimeMs|processTimeMs|id|tsId)"?:\s*\d+(\.\d)?,?/g, ''],
-	[/"format":"compact".+/gmius, ''],
+	[/"format":"compact"[^\n\r]*/giu, ''],
 	[/%%\s*\d*-+/g, ''],
 	[/"[rR]": "\d+\.\d+\.\d+.*?"/g, ''],
 	[/R\s*\d+\.\d+\.\d+/g, ''],
@@ -59,7 +59,9 @@ const DefaultReplacementPatterns: Array<[RegExp, string]> = [
 	[/%2Fhome%2F([a-zA-Z0-9._-]+%2F)*/g, ''],
 	// async wrapper depends on whether the promise got fulfilled already
 	[/async|%20/g, ''],
-	[/\s*Copied mermaid url to clipboard\s*\([^)]+\)/gmi, '']
+	[/\s*Copied mermaid url to clipboard\s*\([^)]+\)/gmi, ''],
+	// mute signature database load time variance in wiki table
+	[/≈\s*<?[\d.]+\s*[µm]s/g, '']
 ];
 
 /**

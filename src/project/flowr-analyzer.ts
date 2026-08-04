@@ -1,4 +1,5 @@
 import type { FlowrConfig } from '../config';
+import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser, KnownParserInformation } from '../r-bridge/parser';
 import { executeQueries, type Queries, type QueryResults, type SupportedQueryTypes } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
@@ -22,6 +23,7 @@ import { normalizeTreeSitterTreeToAst } from '../r-bridge/lang-4.x/tree-sitter/t
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { CallGraph } from '../dataflow/graph/call-graph';
 import { TaintAnalysis } from '../taint-analysis/builder/taint-analysis';
+import type { InvalidationEvent } from './cache/flowr-cache';
 
 /**
  * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
@@ -50,6 +52,11 @@ export interface FlowrAnalysisProvider<Parser extends KnownParser = KnownParser>
 	 * Reset the analyzer state, including the context and the cache.
 	 */
 	reset(): void;
+
+	/**
+	 * Receive cache invalidation events from the cache and propagate them to the context and other relevant components.
+	 */
+	receive(event: InvalidationEvent): void
 }
 
 /**
@@ -152,6 +159,10 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	runFull(force?: boolean): Promise<void>;
 	/** This is the config used for the analyzer */
 	flowrConfig: FlowrConfig;
+	/** Merge a runtime update into the base config and invalidate the derived config and cached analysis, so it takes effect. */
+	updateConfig(update: DeepPartial<FlowrConfig>): void;
+	/** Discard every {@link updateConfig} override made so far and invalidate the cached analysis. */
+	resetConfig(): void;
 }
 
 
@@ -208,13 +219,29 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		this.cache.reset();
 	}
 
+	public receive(event: InvalidationEvent): void {
+		this.ctx.receive(event);
+		this.cache.receive(event);
+	}
+
+	public updateConfig(update: DeepPartial<FlowrConfig>): void {
+		this.ctx.updateConfig(update);
+		// the parse/dataflow results were computed under the previous config, so they must be recomputed
+		this.cache.reset();
+	}
+
+	public resetConfig(): void {
+		this.ctx.resetConfig();
+		this.cache.reset();
+	}
+
 	public parseStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): Tree {
 		const request = isParseRequest(data) ? data : requestFromInput(data);
 		if(this.parser.name === 'tree-sitter') {
-			return this.parser.parse(request);
+			return this.parser.parse(request, this.ctx);
 		} else {
 			const ts = new TreeSitterExecutor();
-			return ts.parse(request);
+			return ts.parse(request, this.ctx);
 		}
 	}
 

@@ -19,6 +19,7 @@ export interface NormalizedAstQueryResult extends BaseQueryResult {
 }
 
 export const NormalizedAstQueryDefinition = {
+	title:           'Normalized AST Query',
 	executor:        executeNormalizedAstQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'normalized-ast'>['normalized-ast'];

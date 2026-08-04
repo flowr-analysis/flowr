@@ -39,23 +39,23 @@ export function processAttach<OtherInfo>(
 	}
 
 	/* build the attached layer with the env's known bindings */
-	let attachedLayer = new Environment(result.environment.current);
+	const injected: NamedInGraphIdentifierDefinition[] = [];
 	for(const [varName, varDefs] of envirResolution.envDef.envState.current.memory) {
 		for(const varDef of varDefs) {
 			const inDef = varDef as InGraphIdentifierDefinition;
-			const injected: NamedInGraphIdentifierDefinition = {
+			injected.push({
 				...inDef,
 				name: varName,
 				type: ReferenceType.Variable,
-			};
-			attachedLayer = attachedLayer.define(injected);
+			});
 			result.graph.addEdge(inDef.nodeId, rootId, EdgeType.Reads);
 		}
 	}
+	const attachedLayer = new Environment(result.environment.current).defineAll(injected);
 
 	/* R attaches below `.GlobalEnv`, so existing global bindings shadow the attached ones */
 	return { ...result, environment: {
-		current: REnvironment.attachBelowGlobal(result.environment.current, attachedLayer, attachedLayer),
+		current: REnvironment.attachAt(result.environment.current, attachedLayer, attachedLayer),
 		level:   result.environment.level
 	} };
 }

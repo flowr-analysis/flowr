@@ -9,8 +9,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
-import { isNotUndefined } from '../../util/assert';
-import { isVariableDefinitionVertex, VertexType } from '../../dataflow/graph/vertex';
+import { VariableDefinitionVertex, VertexType } from '../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
@@ -60,7 +59,7 @@ export const NO_LEAKED_CREDENTIALS = {
 			totalChecked++;
 			const name   = element.node.lexeme ?? '';
 			const vertex = dfg.getVertex(element.node.info.id);
-			if(!isVariableDefinitionVertex(vertex)) {
+			if(!VariableDefinitionVertex.is(vertex)) {
 				return [];
 			}
 			const nameMatches = namePattern.test(name);
@@ -79,7 +78,7 @@ export const NO_LEAKED_CREDENTIALS = {
 				}
 			}
 			return [];
-		}).filter(isNotUndefined);
+		});
 
 		return { results, '.meta': { totalChecked } };
 	},

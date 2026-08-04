@@ -71,7 +71,7 @@ describe.sequential('Quads', withShell(shell => {
 <${idPrefix}6> <${domain}from> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}6> <${domain}to> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}6> <${domain}type> "reads" <${context}> .
-<${idPrefix}6> <${domain}type> "argument" <${context}> .
+<${idPrefix}6> <${domain}type> "arg" <${context}> .
     `);
 	});
 }));

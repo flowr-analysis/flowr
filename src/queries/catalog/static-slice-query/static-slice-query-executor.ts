@@ -1,12 +1,9 @@
 import type { StaticSliceQuery, StaticSliceQueryResult } from './static-slice-query-format';
 import { staticSlice } from '../../../slicing/static/static-slicer';
-import { reconstructToCode } from '../../../reconstruct/reconstruct';
-import { doNotAutoSelect } from '../../../reconstruct/auto-select/auto-select-defaults';
-import { makeMagicCommentHandler } from '../../../reconstruct/auto-select/magic-comments';
+import { reconstructSlice, resolveSliceCriteria } from '../slice-query-options';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import { SliceDirection } from '../../../util/slice-direction';
-import { SlicingCriteria } from '../../../slicing/criterion/parse';
 
 /**
  * Produce a fingerprint string for a static slice query
@@ -29,16 +26,17 @@ export async function executeStaticSliceQuery({ analyzer }: BasicQueryData, quer
 		if(results[key]) {
 			log.warn(`Duplicate Key for slicing-query: ${key}, skipping...`);
 		}
-		const { criteria, noReconstruction, noMagicComments } = query;
+		const { criteria, noReconstruction, includeCallees } = query;
 		const sliceStart = Date.now();
 		const n = await analyzer.normalize();
-		const slice = staticSlice({ ctx: analyzer.inspectContext(), info: await analyzer.dataflow(), ast: n, ids: SlicingCriteria.convertAll(criteria, n.idMap), direction: query.direction ?? SliceDirection.Backward, threshold: analyzer.flowrConfig.solver.slicer?.threshold });
+		const df = await analyzer.dataflow();
+		const slice = staticSlice({ ctx: analyzer.inspectContext(), info: df, ast: n, ids: resolveSliceCriteria(criteria, n), direction: query.direction ?? SliceDirection.Backward, threshold: analyzer.flowrConfig.solver.slicer?.threshold, includeCallees });
 		const sliceEnd = Date.now();
 		if(noReconstruction) {
 			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart } } };
 		} else {
 			const reconstructStart = Date.now();
-			const reconstruct = reconstructToCode(await analyzer.normalize(), { nodes: slice.result }, noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect));
+			const reconstruct = reconstructSlice(n, df.graph, slice.result, query);
 			const reconstructEnd = Date.now();
 			results[key] = {
 				slice:       { ...slice, '.meta': { timing: sliceEnd - sliceStart } },

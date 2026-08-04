@@ -191,6 +191,10 @@ function(x) {
 		'undefined-symbol', 'UndefinedSymbolConfig', 'UNDEFINED_SYMBOL', 'lint-undefined-symbol',
 		'undefined_helper(42)', tagTypes);
 
+	rule(knownParser,
+		'syntactically-valid', 'SyntacticallyValidConfig', 'SYNTACTICALLY_VALID', 'lint-syntactically-valid',
+		'x <- c(1, 2', tagTypes);
+
 	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 
@@ -277,7 +281,7 @@ async function getTextMainPage(knownParser: KnownParser, tagTypes: TypeReport, c
 
 	return `
 This page describes the flowR linter, which is a tool that utilizes flowR's dataflow analysis to find common issues in R scripts. The linter can currently be used through the linter ${ctx.linkPage('wiki/Query API', 'query')}.
-Some rules also draw on the ${ctx.linkPage('wiki/Package Database', 'package database')}.
+Some rules also draw on the ${ctx.linkPage('wiki/Signature Database', 'signature database')}.
 For example:
 
 ${await(async() => {
@@ -322,7 +326,7 @@ We use tags to categorize linting rules for users. The following tags are availa
 | Tag/Badge&emsp;&emsp; | Description |
 | --- | :-- |
 ${Object.entries(LintingRuleTag).map(([name, tag]) => {
-	return `| <a id="${tag}"></a> ${(makeTagBadge(tag as LintingRuleTag, tagTypes.info))} | ${getDocumentationForType('LintingRuleTag::' + name, tagTypes.info).replaceAll('\n', ' ')} (rule${getAllLintingRulesWithTag(tag).length === 1 ? '' : 's'}: ${
+	return `| <a id="${tag}"></a> ${(makeTagBadge(tag, tagTypes.info))} | ${getDocumentationForType('LintingRuleTag::' + name, tagTypes.info).replaceAll('\n', ' ')} (rule${getAllLintingRulesWithTag(tag).length === 1 ? '' : 's'}: ${
 		joinWithLast(getAllLintingRulesWithTag(tag).map(l => linkToRule(l))) || '_none_'
 	}) | `;
 }).join('\n')}
@@ -353,7 +357,7 @@ ${Object.entries(LintingResultCertainty).map(([name, certainty]) =>
 
 async function getRulesPages(knownParser: KnownParser, tagTypes: TypeReport): Promise<Record<string, string>> {
 	const rules = registerRules(knownParser, tagTypes.info, 'long');
-	const result: Record<string, string> = {} as Record<string, string>;
+	const result: Record<string, string> = {};
 
 	for(const [name, rule] of rules) {
 		const filepath = path.join('wiki', `${getPageNameForLintingRule(name)}.md`);

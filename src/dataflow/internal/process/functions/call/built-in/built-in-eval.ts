@@ -1,4 +1,4 @@
-import { type DataflowProcessorInformation } from '../../../../../processor';
+import type { DataflowProcessorInformation } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { requestFromInput } from '../../../../../../r-bridge/retriever';

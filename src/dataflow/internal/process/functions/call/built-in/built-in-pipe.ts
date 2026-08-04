@@ -4,6 +4,8 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { DataMaskingFunctionNames } from '../../../../../environments/data-masking-functions';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -14,7 +16,7 @@ import { VertexType } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { toUnnamedArgument } from '../argument/make-argument';
-import { processAssignment, type AssignmentConfiguration } from './built-in-assignment';
+import { processAssignment } from './built-in-assignment';
 import type { BrandedIdentifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { log } from '../../../../../../util/log';
@@ -77,7 +79,7 @@ export function processPipe<OtherInfo>(
 			location: name.location
 		} as RSymbol<OtherInfo & ParentInformation>;
 
-		information = processAssignment(assignSym, [targetArg, sourceArg], rootId, data, { canBeReplacement: true, mayHaveMoreArgs: true } as AssignmentConfiguration);
+		information = processAssignment(assignSym, [targetArg, sourceArg], rootId, data, { canBeReplacement: true, mayHaveMoreArgs: true });
 	}
 
 	let treatedAsFunctionCall = false;
@@ -131,6 +133,18 @@ export function processPipe<OtherInfo>(
 				type:   ReferenceType.Function
 			});
 			information.graph.addEdge(functionCallNode.id, argId, EdgeType.Argument | EdgeType.Reads);
+		}
+
+		if(RFunctionCall.isNamed(rhs) && DataMaskingFunctionNames.has(Identifier.getName(rhs.functionName.content))) {
+			for(const arg of rhs.arguments) {
+				if(arg === EmptyArgument) {
+					continue;
+				}
+				RNode.visitAst<OtherInfo & ParentInformation>(arg, node => {
+					information.graph.addEdge(rhs.info.id, node.info.id, EdgeType.NonStandardEvaluation);
+					return false;
+				});
+			}
 		}
 
 	} else {

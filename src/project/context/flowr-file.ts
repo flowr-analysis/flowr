@@ -1,6 +1,8 @@
 import type { PathLike } from 'fs';
 import fs from 'fs';
 import type { RParseRequest } from '../../r-bridge/retriever';
+import type { InvalidationEventHandler } from '../cache/flowr-cache';
+import { InvalidationEventType } from '../cache/flowr-cache';
 
 /**
  * Just a readable alias for file paths, mostly for documentation purposes.
@@ -24,12 +26,29 @@ export enum FileRole {
 	Vignette    = 'vignette',
 	/** Test source files, e.g., files in the `tests/` folder */
 	Test        = 'test',
+	/**
+	 * Files below an `inst/` folder, which R installs verbatim into the package root (resources/scripts, e.g., `inst/REFERENCES.R`, `inst/CITATION`, `inst/extdata/...`).
+	 * These are not part of the package namespace source, so tooling may want to treat them separately.
+	 */
+	Install     = 'install',
 	/** Data files, e.g., `R/sysdata.rda`, currently not specially supported. */
 	Data        = 'data',
 	/** Signals separate license files, but please note, that DESCRIPTION files may contain license info too */
 	License     = 'license',
-	/** Files describing a project's virtual/pinned package environment, e.g., `renv.lock` or `rv.lock`. */
+	/** Files describing a project's virtual/pinned package environment, e.g., `renv.lock`, `rv.lock` or `uvr.lock`. */
 	VirtualEnv  = 'virtual-env',
+	/** A project manifest that is no `DESCRIPTION`, e.g. the `rproject.toml` of an rv project or the `uvr.toml` of a uvr project. */
+	Manifest    = 'manifest',
+	/**
+	 * R sources evaluated at startup, before any project code (`.Rprofile`, `Rprofile.site`).
+	 * These commonly bootstrap a package manager, e.g. by sourcing `packrat/init.R` or `renv/activate.R`.
+	 */
+	Startup     = 'startup',
+	/**
+	 * Environment-variable definitions read at startup (`.Renviron`, `Renviron.site`). These are `KEY=value`
+	 * files, not R source, so they are labeled but not parsed as R.
+	 */
+	Environment = 'environment',
 	/**
 	 * Catch-all for any file that provides usable R source code to incorporate into the analysis.
 	 * Please note, that the loading order/inclusion and even potential relevance of these source files
@@ -42,6 +61,8 @@ export enum FileRole {
 }
 
 export type StringableContent = { toString(): string };
+
+
 
 /**
  * This is the basic interface for all files known to the FlowrAnalyzer.
@@ -81,6 +102,21 @@ export interface FlowrFileProvider<Content extends { toString(): string } = { to
 	 * **Do not call this method yourself unless you are a file-loader plugin and/or really know what you are doing, this may break plugin assumptions!**
 	 */
 	assignRole(role: FileRole): void;
+
+	/**
+	 * Set the appropriate callback to trigger updates in case of an 'invalidate'
+	 */
+	addOnInvalidate(callback: InvalidationEventHandler<Content>): void;
+
+	/**
+	 * Remove a previously added callback
+	 */
+	removeOnInvalidate(callback: InvalidationEventHandler<Content>): void;
+
+	/**
+	 * Reload the file content because something has changed.
+	 */
+	invalidate(): void;
 }
 
 /**
@@ -92,6 +128,7 @@ export abstract class FlowrFile<Content extends StringableContent = StringableCo
 	private contentCache: Content | undefined;
 	protected filePath:   PathLike;
 	private _roles?:      FileRole[];
+	private onInvalidate: InvalidationEventHandler<Content>[] = [];
 	public static readonly INLINE_PATH = '@inline';
 
 	public constructor(filePath: PathLike, roles?: readonly FileRole[]) {
@@ -147,6 +184,22 @@ export abstract class FlowrFile<Content extends StringableContent = StringableCo
 			return new FlowrInlineTextFile(FlowrFile.INLINE_PATH, request.content);
 		}
 	}
+
+	public addOnInvalidate(callback: InvalidationEventHandler<Content>): void {
+		this.onInvalidate.push(callback);
+	}
+
+	public removeOnInvalidate(callback: InvalidationEventHandler<Content>): void {
+		this.onInvalidate = this.onInvalidate.filter(cb => cb !== callback);
+	}
+
+	public invalidate(): void {
+		const oldContent = this.contentCache;
+		this.contentCache = undefined;
+		for(const invalidator of this.onInvalidate) {
+			invalidator({ type: InvalidationEventType.SingleFileInvalidate, oldContent, filePath: this.path()  });
+		}
+	}
 }
 
 /**
@@ -164,7 +217,7 @@ export class FlowrTextFile extends FlowrFile<string> {
  * These will be handled by the {@link FlowrAnalyzerDescriptionFilePlugin} (e.g., by using the {@link FlowrDescriptionFile#from} method decorator).
  */
 export class FlowrInlineTextFile extends FlowrFile<string> {
-	private readonly contentStr: string;
+	private contentStr: string;
 
 	constructor(path: PathLike, content: string) {
 		super(path);
@@ -173,5 +226,14 @@ export class FlowrInlineTextFile extends FlowrFile<string> {
 
 	protected loadContent(): string {
 		return this.contentStr;
+	}
+
+	/**
+	 * Update the content of this inline file and invalidate the cache to trigger updates in the analysis.
+	 * @see {@link FlowrFile#invalidate}
+	 */
+	public updateInlineContent(newContent: string): void {
+		this.contentStr = newContent;
+		this.invalidate();
 	}
 }

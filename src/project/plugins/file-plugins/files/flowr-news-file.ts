@@ -127,13 +127,8 @@ function parseNews(file: FlowrFileProvider): NewsChunk[] {
 	// this is a port of the incredible complex R NEWS regex, but luckily it is  not too liberal :D
 	const regexVersion = makeRversionRegex();
 
-	// filter lines that match the version regex
-	const versionLines = lines.map(line =>
-		regexVersion.test(line)
-	);
-
 	// drop the header by removing everything before the first match
-	const firstVersionIndex = versionLines.findIndex(v => v);
+	const firstVersionIndex = lines.findIndex(line => regexVersion.test(line));
 	const relevantLines = lines.slice(firstVersionIndex);
 
 	// split at every version line

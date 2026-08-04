@@ -21,7 +21,9 @@ import {
 } from '../doc-util/doc-files';
 import type { scripts } from '../../cli/common/scripts-info';
 import type { ScriptOptions } from '../doc-util/doc-cli-option';
-import { getReplCommand, getCliLongOptionOf } from '../doc-util/doc-cli-option';
+import { getReplCommand, getCliLongOptionOf, getConfigOption } from '../doc-util/doc-cli-option';
+import type { FlowrConfig } from '../../config';
+import type { AutocompletablePaths } from '../../util/objects';
 import type { ReplCommandNames } from '../../cli/repl/commands/repl-commands';
 
 /**
@@ -130,6 +132,16 @@ export interface GeneralDocContext {
 	 * This is similar to {@link GeneralDocContext#link}, but it uses the type/element name as link text, which is especially useful for types with long or complex names.
 	 */
 	linkO<T extends object &  { name: string }>(obj: T, element: keyof T, fmt?: LinkFormat, filter?: ElementFilter): string;
+	/**
+	 * Generate a hyperlink to an enum member. Enums have no runtime prototype ({@link GeneralDocContext#linkM|linkM})
+	 * nor `name` ({@link GeneralDocContext#linkO|linkO}), so pass the enum type as the explicit type argument -- the
+	 * member is then checked against its keys -- together with the enum's name.
+	 * @example
+	 * ```ts
+	 * linkE<typeof FnProp>('FnProp', 'NoDoc')
+	 * ```
+	 */
+	linkE<E>(enumName: string, element: keyof E, fmt?: LinkFormat, filter?: ElementFilter): string;
 	/**
 	 * Generate a hyperlink to a type/element definition in the code base which is displayed using the file path as name
 	 * @param element - The element to create a link for, the name can be qualified with `::` to specify the class.
@@ -310,6 +322,19 @@ export interface GeneralDocContext {
 	 * @see {@link getReplCommand} - for the underlying impl.
 	 */
 	replCmd(commandName: ReplCommandNames, quote?: boolean, showStar?: boolean): string
+
+	/**
+	 * Generates a link to a flowR configuration option, resolving its schema type and description as a hover tooltip.
+	 * @example
+	 * ```ts
+	 * linkConfig('solver.sigdb.enabled')
+	 * ```
+	 * Returns a link to the configuration section of the Interface wiki page, showing `solver.sigdb.enabled` with its documentation on hover.
+	 * @param path  - The `.`-separated configuration path (autocompletes to valid config keys only).
+	 * @param quote - Whether to render the path as inline code. Default is `false`.
+	 * @see {@link getConfigOption} - for the underlying impl.
+	 */
+	linkConfig<K extends AutocompletablePaths<FlowrConfig>>(path: K, quote?: boolean): string
 }
 
 /**
@@ -358,6 +383,9 @@ export function makeDocContextForTypes(
 		linkO<T extends object &  { name: string }>(obj: T, element: keyof T, fmt?: LinkFormat, filter?: ElementFilter): string {
 			const fullName = `${obj.name}::${String(element)}`;
 			return this.link(fullName, fmt, filter);
+		},
+		linkE<E>(enumName: string, element: keyof E, fmt?: LinkFormat, filter?: ElementFilter): string {
+			return this.link(`${enumName}::${String(element)}`, fmt, filter);
 		},
 		linkFile(this: void, element: ElementIdOrRef): string {
 			return shortLinkFile(getNameFromElementIdOrRef(element), info);
@@ -418,6 +446,9 @@ export function makeDocContextForTypes(
 		},
 		replCmd(this: void, commandName: ReplCommandNames | string, quote = true, showStar = false): string {
 			return getReplCommand(commandName, quote, showStar);
+		},
+		linkConfig(this: void, path: AutocompletablePaths<FlowrConfig>, quote = false): string {
+			return getConfigOption(path, quote);
 		}
 	};
 }

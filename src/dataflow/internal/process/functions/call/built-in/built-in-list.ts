@@ -1,13 +1,22 @@
 import {
+	EmptyArgument,
+	RFunctionCall,
 	type PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { ReferenceType } from '../../../../../environments/identifier';
+import { resolveByName } from '../../../../../environments/resolve-by-name';
+import { define } from '../../../../../environments/define';
+import type { REnvironmentInformation } from '../../../../../environments/environment';
+import { pushLocalEnvironment } from '../../../../../environments/scoping';
 
 /**
  * Process a list call.
@@ -24,4 +33,36 @@ export function processList<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
 	return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.List }).information;
+}
+
+/** Records a `list(...)`'s named function entries as a resolvable pseudo-env, so `d$foo(...)`/`d[["foo"]](...)` link to them; `undefined` if none. */
+export function resolveListToEnvState<OtherInfo>(
+	source: RNode<OtherInfo & ParentInformation>,
+	data:   Pick<DataflowProcessorInformation<never>, 'environment'>
+): REnvironmentInformation | undefined {
+	if(!RFunctionCall.isNamed(source)) {
+		return undefined;
+	}
+	let envState = pushLocalEnvironment(data.environment);
+	let found = false;
+	for(const arg of source.arguments) {
+		if(arg === EmptyArgument || arg.name === undefined || arg.value === undefined) {
+			continue;
+		}
+		const value = arg.value;
+		const isFn = value.type === RType.FunctionDefinition
+			|| (value.type === RType.Symbol && (resolveByName(value.content, data.environment, ReferenceType.Function)?.length ?? 0) > 0);
+		if(!isFn) {
+			continue;
+		}
+		envState = define({
+			type:      ReferenceType.Function,
+			name:      arg.name.content,
+			nodeId:    value.info.id,
+			definedAt: value.info.id,
+			cds:       undefined
+		}, false, envState);
+		found = true;
+	}
+	return found ? envState : undefined;
 }

@@ -52,6 +52,7 @@ export interface Source {
 	fullRange?:  SourceRange
 	/**
 	 * Similar to {@link Source.fullRange} this contains the complete R lexeme of the given element.
+	 * This is the lexeme of the element itself, never that of an enclosing one: the field of `a$b` reports `b`.
 	 */
 	fullLexeme?: string
 	/**

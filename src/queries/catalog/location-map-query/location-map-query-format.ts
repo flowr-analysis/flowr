@@ -40,6 +40,7 @@ function locationMapLineParser(_output: ReplOutput, line: readonly string[], _co
 }
 
 export const LocationMapQueryDefinition = {
+	title:           'Location Map Query',
 	executor:        executeLocationMapQuery,
 	asciiSummarizer: (formatter: OutputFormatter, _analyzer: unknown, queryResults: BaseQueryResult, result: string[]) => {
 		const out = queryResults as LocationMapQueryResult;
@@ -53,6 +54,7 @@ export const LocationMapQueryDefinition = {
 	},
 	fromLine:  locationMapLineParser,
 	completer: criteriaQueryCompleter,
+	syntax:    '@location-map [(<crit>;...)] <code | file://path>',
 	schema:    Joi.object({
 		type: Joi.string().valid('location-map').required().description('The type of the query.'),
 		ids:  Joi.array().items(Joi.string()).optional().description('Optional list of ids to filter the results by.')

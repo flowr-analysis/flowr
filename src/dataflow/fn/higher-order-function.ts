@@ -3,8 +3,8 @@ import type { DataflowGraph } from '../graph/graph';
 import {
 	type DataflowGraphVertexArgument,
 	type DataflowGraphVertexFunctionDefinition,
-	isFunctionCallVertex,
-	isFunctionDefinitionVertex
+	FunctionCallVertex,
+	FunctionDefinitionVertex
 } from '../graph/vertex';
 import { isNotUndefined } from '../../util/assert';
 import { DfEdge, EdgeType } from '../graph/edge';
@@ -23,7 +23,7 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 			continue;
 		}
 		seen.add(current.id);
-		if(isFunctionDefinitionVertex(current)) {
+		if(FunctionDefinitionVertex.is(current)) {
 			return true;
 		}
 		const next = graph.outgoingEdges(current.id) ?? [];
@@ -47,7 +47,7 @@ function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition
 			continue;
 		}
 		const caller = graph.getVertex(callerId);
-		if(!caller || !isFunctionCallVertex(caller)) {
+		if(!caller || !FunctionCallVertex.is(caller)) {
 			continue;
 		}
 		for(const arg of caller.args) {
@@ -72,7 +72,7 @@ function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition
  */
 export function isFunctionHigherOrder(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph): boolean {
 	const vert = graph.getVertex(id);
-	if(!vert || !isFunctionDefinitionVertex(vert)) {
+	if(!vert || !FunctionDefinitionVertex.is(vert)) {
 		return false;
 	}
 

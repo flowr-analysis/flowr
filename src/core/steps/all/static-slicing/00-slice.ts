@@ -10,20 +10,25 @@ import { SliceDirection } from '../../../../util/slice-direction';
 
 export interface SliceRequiredInput {
 	/** The slicing criterion is only of interest if you actually want to slice the R code */
-	readonly criterion:  SlicingCriteria,
+	readonly criterion:       SlicingCriteria,
 	/** How many re-visits of the same node are ok? */
-	readonly threshold?: number
+	readonly threshold?:      number
 	/** The direction to slice in. Defaults to backward slicing if unset. */
-	readonly direction?: SliceDirection
+	readonly direction?:      SliceDirection
 	/** The context of the analysis */
-	readonly context?:   ReadOnlyFlowrAnalyzerContext
+	readonly context?:        ReadOnlyFlowrAnalyzerContext
+	/**
+	 * If set (and slicing backward), continue the slice past a function-definition boundary, also including
+	 * the definition's binding and call sites. Defaults to `false`.
+	 */
+	readonly includeCallees?: boolean
 }
 
 function processor(results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>) {
 	const direction = input.direction ?? SliceDirection.Backward;
 	const threshold = input.threshold ?? input.context?.config.solver.slicer?.threshold;
 	const n = results.normalize as NormalizedAst;
-	return staticSlice({ ctx: input.context as ReadOnlyFlowrAnalyzerContext, info: results.dataflow as DataflowInformation, ast: n, ids: SlicingCriteria.convertAll(input.criterion as SlicingCriteria, n.idMap), direction, threshold });
+	return staticSlice({ ctx: input.context as ReadOnlyFlowrAnalyzerContext, info: results.dataflow as DataflowInformation, ast: n, ids: SlicingCriteria.convertAll(input.criterion as SlicingCriteria, n.idMap), direction, threshold, includeCallees: input.includeCallees });
 }
 
 export const STATIC_SLICE = {

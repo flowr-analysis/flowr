@@ -20,6 +20,7 @@ export interface DataflowLensQueryResult extends BaseQueryResult {
 }
 
 export const DataflowLensQueryDefinition = {
+	title:           'Dataflow Lens Query',
 	executor:        executeDataflowLensQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'dataflow-lens'>['dataflow-lens'];

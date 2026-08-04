@@ -1,3 +1,4 @@
+import { MetaPriority } from '../../../../../src/project/context/flowr-analyzer-meta-context';
 import { describe } from 'vitest';
 import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
@@ -41,7 +42,7 @@ describe('Resolve for Namespaces', withTreeSitter(ts => {
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true,
 			modifyAnalyzer:        a => {
-				a.context().meta.setNamespace('base');
+				a.context().meta.contribute({ namespace: 'base' }, MetaPriority.Description);
 			}
 		} as const
 	);
@@ -53,7 +54,7 @@ describe('Resolve for Namespaces', withTreeSitter(ts => {
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true,
 			modifyAnalyzer:        a => {
-				a.context().meta.setNamespace('base');
+				a.context().meta.contribute({ namespace: 'base' }, MetaPriority.Description);
 			}
 		} as const
 	);

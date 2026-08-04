@@ -1,17 +1,18 @@
+import { AbstractDomain } from './abstract-domain';
 import { IntervalDomain } from './interval-domain';
-import { Bottom, Top } from './lattice';
+import { Bottom } from './lattice';
 
 /** The Top element of the positive interval domain as interval [0, +∞] */
 export const PosIntervalTop: PosIntervalValue = [0, +Infinity];
 
 /** The type of the actual values of the positive interval domain as tuple of the lower and upper bound */
-type PosIntervalValue = readonly [lower: number, upper: number];
+export type PosIntervalValue = readonly [lower: number, upper: number];
 /** The type of the Top element of the positive interval domain as interval [0, +∞] */
-type PosIntervalTop = typeof PosIntervalTop;
+export type PosIntervalTop = typeof PosIntervalTop;
 /** The type of the Bottom element of the positive interval domain as {@link Bottom} symbol */
-type PosIntervalBottom = typeof Bottom;
+export type PosIntervalBottom = typeof Bottom;
 /** The type of the abstract values of the positive interval domain that are Top, Bottom, or actual values */
-type PosIntervalLift = PosIntervalValue | PosIntervalBottom;
+export type PosIntervalLift = PosIntervalValue | PosIntervalBottom;
 
 /**
  * The positive interval abstract domain as positive intervals with possibly zero lower bounds and infinite upper bounds representing possible numeric values.
@@ -29,90 +30,59 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift>
 		}
 	}
 
-	public create(value: PosIntervalLift): this;
-	public create(value: PosIntervalLift): PosIntervalDomain {
-		return new PosIntervalDomain(value);
+	public create(value: PosIntervalLift): this {
+		return new PosIntervalDomain(value) as this;
 	}
 
 	public static top(): PosIntervalDomain<PosIntervalTop> {
-		return new PosIntervalDomain(PosIntervalTop);
+		return new this(PosIntervalTop);
 	}
 
 	public static bottom(): PosIntervalDomain<PosIntervalBottom> {
-		return new PosIntervalDomain(Bottom);
+		return new this(Bottom);
 	}
 
-	public static abstract(concrete: ReadonlySet<number> | typeof Top): PosIntervalDomain {
-		if(concrete === Top) {
-			return PosIntervalDomain.top();
-		} else if(concrete.size === 0 || concrete.values().some(value => isNaN(value) || value < 0)) {
-			return PosIntervalDomain.bottom();
-		}
-		return new PosIntervalDomain([Math.min(...concrete), Math.max(...concrete)]);
+	public top(): this & PosIntervalDomain<PosIntervalTop> {
+		return this.create(PosIntervalTop) as this & PosIntervalDomain<PosIntervalTop>;
 	}
 
-	public top(): this & PosIntervalDomain<PosIntervalTop>;
-	public top(): PosIntervalDomain<PosIntervalTop> {
-		return PosIntervalDomain.top();
-	}
-
-	public bottom(): this & PosIntervalDomain<PosIntervalBottom>;
-	public bottom(): PosIntervalDomain<PosIntervalBottom> {
-		return PosIntervalDomain.bottom();
-	}
-
-	public widen(other: this): this {
-		if(this.value === Bottom) {
-			return this.create(other.value);
-		} else if(other.value === Bottom) {
-			return this.create(this.value);
-		} else {
-			return this.create([
-				this.value[0] <= other.value[0] ? this.value[0] : 0,
-				this.value[1] >= other.value[1] ? this.value[1] : +Infinity
-			]);
-		}
-	}
-
-	public narrow(other: this): this {
-		if(this.value === Bottom || other.value === Bottom) {
-			return this.bottom();
-		} else if(Math.max(this.value[0], other.value[0]) > Math.min(this.value[1], other.value[1])) {
-			return this.bottom();
-		}
+	protected widenValue(this: this & PosIntervalDomain<PosIntervalValue>, other: PosIntervalDomain<PosIntervalValue>): this {
 		return this.create([
-			this.value[0] === 0 ? other.value[0] : this.value[0],
-			this.value[1] === +Infinity ? other.value[1] : this.value[1]
+			this.lower <= other.lower ? this.lower : 0,
+			this.upper >= other.upper ? this.upper : +Infinity
 		]);
 	}
 
-	public abstract(concrete: ReadonlySet<number> | typeof Top): this;
-	public abstract(concrete: ReadonlySet<number> | typeof Top): PosIntervalDomain {
-		return PosIntervalDomain.abstract(concrete);
+	protected narrowValue(this: this & PosIntervalDomain<PosIntervalValue>, other: PosIntervalDomain<PosIntervalValue>): this {
+		if(Math.max(this.lower, other.lower) > Math.min(this.upper, other.upper)) {
+			return this.bottom();
+		}
+		return this.create([
+			this.lower === 0 ? other.lower : this.lower,
+			this.upper === +Infinity ? other.upper : this.upper
+		]);
 	}
 
 	public subtract(other: this | PosIntervalLift): this {
-		const otherValue = other instanceof PosIntervalDomain ? other.value : other;
+		const otherValue = other instanceof AbstractDomain ? other.value : other;
 
-		if(this.value === Bottom || otherValue === Bottom) {
-			return this.bottom();
-		} else {
-			return this.create([Math.max(this.value[0] - otherValue[0], 0), Math.max(this.value[1] - otherValue[1], 0)]);
+		if(this.isValue() && otherValue !== Bottom) {
+			return this.create([Math.max(this.lower - otherValue[0], 0), Math.max(this.upper - otherValue[1], 0)]);
 		}
+		return this.bottom();
 	}
 
 	/**
 	 * Extends the lower bound of the current abstract value down to 0.
 	 */
 	public widenDown(): this {
-		if(this.value === Bottom) {
-			return this.bottom();
-		} else {
-			return this.create([0, this.value[1]]);
+		if(this.isValue()) {
+			return this.create([0, this.upper]);
 		}
+		return this.bottom();
 	}
 
-	public isTop(): this is PosIntervalDomain<PosIntervalTop> {
-		return this.value !== Bottom && this.value[0] === 0 && this.value[1] === +Infinity;
+	public isTop(): this is this & PosIntervalDomain<PosIntervalTop> {
+		return this.value !== Bottom && this.lower === 0 && this.upper === +Infinity;
 	}
 }

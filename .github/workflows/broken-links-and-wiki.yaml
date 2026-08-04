@@ -78,6 +78,19 @@ jobs:
           rm -f "/tmp/flowr-label-summary.json"
           bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
 
+      - name: "💾 Cache the Signature Database Bundles"
+        uses: actions/cache@v4
+        with:
+          # only the bundles, the shards unpacked next to them are re-derived on demand
+          path: ~/.cache/flowr/sigdb/bundles
+          key: sigdb-bundles-${{ hashFiles('src/data/sigdb/sigdb.remote.json') }}
+
+      - name: "⬇️ Sync the Signature Database"
+        # without it every sigdb-backed page says "No signature database is loaded" instead of showing a result
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run sync:sigdb
+
       - name: "🛠️ Update the Generated Pages"
         run: |
           # npm ci is done by the full test run before

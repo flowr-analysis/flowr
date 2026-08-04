@@ -5,6 +5,7 @@ import { SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { guard } from '../../../src/util/assert';
 import { SourceLocation, SourceRange } from '../../../src/util/range';
+import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('unused definitions', () => {
@@ -36,11 +37,30 @@ describe('flowR linter', withTreeSitter(parser => {
 }
 
 print(f()())
-print(x)`
+print(x)`,
+				/* the dots parameter must never be reported as an unused definition */
+				'f <- function(x, ...) { x }\nprint(f(1))',
+				/* S3 method for a known base generic - dispatched indirectly, so not unused */
+				'print.foo <- function(x, ...) { cat(x) }\ny <- structure(list(), class = "foo")\nprint(y)',
+				'`[.foo` <- function(x, i) { x[i] }',
+				'as.character.foo <- function(x, ...) { x }',
+				'Ops.foo <- function(e1, e2) { e1 + e2 }\nx <- structure(1, class = "foo")\nprint(x + 1)',
+				/* S3 method for a project-local generic that is dispatched somewhere - not unused */
+				'myg <- function(x) UseMethod("myg")\nmyg.foo <- function(x) x\nz <- structure(1, class = "foo")\nmyg(z)',
+				/* R package lifecycle hook called by package machinery - not unused */
+				'.onAttach <- function(libname, pkgname) { cat(libname, pkgname) }',
+				/* S4/S7 generic dispatcher passed to setGeneric - runs on every dispatch, so not unused */
+				'setGeneric("replaceEntries", function(x, map, ...) standardGeneric("replaceEntries"))',
+				/* same, with a braced dispatcher body */
+				'setGeneric("bar", function(obj) { standardGeneric("bar") })'
 			]) {
 				/* @ignore-in-wiki */
 				assertLinter(program, parser, program, 'unused-definitions', []);
 			}
+			/* a package export (via NAMESPACE) is the public API and must not be reported even without a local caller */
+			assertLinter('exported package function is not unused', parser,
+				'arma <- function(x) { x + 1 }', 'unused-definitions', [], undefined,
+				{ addFiles: [new FlowrInlineTextFile('NAMESPACE', 'export("arma")')] });
 		});
 		describe('With unused definitions', () => {
 			for(const [program, criteria, removableRange] of [
@@ -74,7 +94,7 @@ print(f()())`, '4@x', SourceRange.from(4, 7, 4, 13)]
 							loc:          SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
 							quickFix:     removableRange ? [{
 								type:        'remove',
-								loc:         removableRange as SourceLocation,
+								loc:         removableRange,
 								description: `Remove unused definition of \`${node.lexeme}\``
 							}] : undefined
 						};

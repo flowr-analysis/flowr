@@ -35,6 +35,7 @@ function inspectRecLineParser(output: ReplOutput, line: readonly string[], _conf
 }
 
 export const InspectRecursionQueryDefinition = {
+	title:           'Inspect Recursive Functions Query',
 	executor:        executeRecursionQuery,
 	asciiSummarizer: async(formatter, processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'inspect-recursion'>['inspect-recursion'];
@@ -47,6 +48,7 @@ export const InspectRecursionQueryDefinition = {
 		return true;
 	},
 	fromLine: inspectRecLineParser,
+	syntax:   '@inspect-recursion [(<crit>;...)] <code | file://path>',
 	schema:   Joi.object({
 		type:   Joi.string().valid('inspect-recursion').required().description('The type of the query.'),
 		filter: Joi.array().items(Joi.string().required()).optional().description('If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered.')

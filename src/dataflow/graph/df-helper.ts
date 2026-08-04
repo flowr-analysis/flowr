@@ -1,4 +1,4 @@
-import { DataflowGraph } from './graph';
+import { DataflowGraph, UnknownSideEffect } from './graph';
 import { DfEdge, EdgeType } from './edge';
 import { emptyGraph } from './dataflowgraph-builder';
 import { getOriginInDfg } from '../origin/dfg-get-origin';
@@ -8,6 +8,9 @@ import { computeCallGraphSummaries, propagateTransitiveSideEffects } from '../in
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { DataflowGraphVertexInfo } from './vertex';
+import { FunctionCallVertex } from './vertex';
+import { Identifier } from '../environments/identifier';
+import { RLoopConstructs } from '../../r-bridge/lang-4.x/ast/model/model';
 
 /**
  * This is the root helper object to work with the {@link DataflowGraph}.
@@ -15,6 +18,7 @@ import type { DataflowGraphVertexInfo } from './vertex';
  * - {@link Dataflow.visualize} - for visualization helpers (e.g., rendering the DFG as a mermaid graph),
  * - {@link Dataflow.views} - for working with specific views of the dataflow graph (e.g., the call graph),
  * - {@link Dataflow.edge} - for working with the edges in the dataflow graph,
+ * - {@link Dataflow.qualify} - for the package-qualified `pkg::fn` identifier of a call from its id and graph,
  */
 export const Dataflow = {
 	name:  'Dataflow',
@@ -51,7 +55,28 @@ export const Dataflow = {
 	 * Returns the origin of a vertex in the dataflow graph
 	 * @see {@link getOriginInDfg} - for the underlying function
 	 */
-	origin:      getOriginInDfg,
+	origin: getOriginInDfg,
+	/**
+	 * The qualified identifier of the call with the given id, or `undefined` if it does not resolve to a package
+	 * export and is not itself already namespaced (with `purrr` loaded, a `map()` call yields
+	 * `Identifier.make('map', 'purrr')`; an explicit `pkg::fn()` call yields `pkg::fn` unchanged).
+	 *
+	 * This is the compact form of {@link Identifier.toQualified}, reconstructing both the
+	 * {@link Dataflow.origin|origins} and the call's name from the graph.
+	 * @param id           - The id of the call to qualify
+	 * @param graph        - The graph the call is part of
+	 * @param qualifyBaseR - Whether to also qualify a bare base-R call from the package exporting it
+	 *                       (`sd` yields `stats::sd`), which needs neither a loaded database nor graph edges.
+	 *                       Set this to `false` to only qualify what the origins resolve to (or what is already namespaced).
+	 */
+	qualify(this: void, id: NodeId, graph: DataflowGraph, qualifyBaseR = true): Identifier | undefined {
+		const vertex = graph.getVertex(id);
+		return Identifier.toQualified(
+			getOriginInDfg(graph, id),
+			FunctionCallVertex.is(vertex) ? vertex.name : undefined,
+			qualifyBaseR
+		);
+	},
 	/**
 	 * Interprocedural propagation of escaped side effects (attached packages, `<<-` definitions) to their callers.
 	 */
@@ -95,10 +120,9 @@ export const Dataflow = {
 			}
 		}
 		for(const u of graph.unknownSideEffects) {
-			if(typeof u === 'object' && select.has(u.id)) {
-				df.markIdForUnknownSideEffects(u.id, u.linkTo);
-			} else if(select.has(u as NodeId)) {
-				df.markIdForUnknownSideEffects(u as NodeId);
+			const id = UnknownSideEffect.id(u);
+			if(select.has(id)) {
+				df.markIdForUnknownSideEffects(id, UnknownSideEffect.linkTo(u));
 			}
 		}
 		return df as G;
@@ -128,13 +152,34 @@ export const Dataflow = {
 			}
 		}
 		for(const u of graph.unknownSideEffects) {
-			if(typeof u === 'object' && select.has(u.id)) {
-				df.markIdForUnknownSideEffects(u.id, u.linkTo);
-			} else if(select.has(u as NodeId)) {
-				df.markIdForUnknownSideEffects(u as NodeId);
+			const id = UnknownSideEffect.id(u);
+			if(select.has(id)) {
+				df.markIdForUnknownSideEffects(id, UnknownSideEffect.linkTo(u));
 			}
 		}
 		return df as G;
+	},
+
+	/**
+	 * Whether the node is quoted, i.e., affected by a {@link EdgeType.NonStandardEvaluation} edge that actually
+	 * keeps it from being evaluated (as `quote` and `substitute` do).
+	 *
+	 * Loops mark their body as non-standard-evaluated as well, yet that body really is evaluated (and its symbols
+	 * really are read), so such an edge does not quote. Use this instead of testing for the edge type directly
+	 * whenever you want to know whether something is evaluated at all.
+	 * @param id           - The id of the node to check
+	 * @param graph        - The graph the node is part of
+	 * @param withOutgoing - Whether to also consider the outgoing edges of the node (i.e., whether the node itself
+	 *                       quotes something), and not just the ingoing ones (i.e., whether it is quoted)
+	 */
+	isQuoted(this: void, id: NodeId, graph: DataflowGraph, withOutgoing = false): boolean {
+		/* an nse edge quotes iff it does not originate from a loop marking its body */
+		const quotes = (source: NodeId, e: DfEdge): boolean =>
+			DfEdge.includesType(e, EdgeType.NonStandardEvaluation) && !RLoopConstructs.is(graph.idMap?.get(source));
+		if(graph.ingoingEdges(id)?.entries().some(([source, e]) => quotes(source, e))) {
+			return true;
+		}
+		return withOutgoing && (graph.outgoingEdges(id)?.values().some(e => quotes(id, e)) ?? false);
 	},
 
 	/**

@@ -65,7 +65,7 @@ function getTestDetails(info: CapabilityInformation, capability: FlowrCapability
 	grouped.delete('output');
 	const testString: string[] = [`${uniqueTests.length} test${uniqueTests.length !== 1 ? 's' : ''}`];
 	// sort by count
-	const sorted = [...grouped.entries()].sort((a, b) => b[1] - a[1]);
+	const sorted = [...grouped.entries()].sort((a, b) => b[0].localeCompare(a[0]));
 	for(const [context, count] of sorted) {
 		testString.push(`${context}: ${count}`);
 	}

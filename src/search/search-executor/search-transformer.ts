@@ -8,7 +8,6 @@ import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/proces
 import { isNotUndefined } from '../../util/assert';
 import { type Enrichment, type EnrichmentElementArguments, enrichElement } from './search-enrichers';
 import { type Mapper, type MapperArguments, map } from './search-mappers';
-import type { ElementOf } from 'ts-essentials';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 
 
@@ -159,7 +158,7 @@ async function getWith<Elements extends FlowrSearchElement<ParentInformation>[],
 
 	return (await elements.enrich(input, info, args)).mutate(
 		async s => await Promise.all(s.map(e => enrichElement(e, elements, input, info, args))) as Elements
-	) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
+	);
 }
 
 function getMap<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
@@ -181,12 +180,14 @@ async function getMerge<Elements extends FlowrSearchElement<ParentInformation>[]
 
 function getUnique<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
 	data: ReadonlyFlowrAnalysisProvider, elements: FSE): CascadeEmpty<Elements, Elements> {
-	return elements.mutate(e =>
-		e.reduce((acc, cur) => {
-			if(!acc.some(el => el.node.id === cur.node.id)) {
-				acc.push(cur as ElementOf<Elements>);
+	return elements.mutate(e => {
+		const seen = new Set();
+		return e.filter(cur => {
+			if(seen.has(cur.node.id)) {
+				return false;
 			}
-			return acc;
-		}, [] as unknown as Elements)
-	) as unknown as CascadeEmpty<Elements, Elements>;
+			seen.add(cur.node.id);
+			return true;
+		}) as Elements;
+	}) as unknown as CascadeEmpty<Elements, Elements>;
 }

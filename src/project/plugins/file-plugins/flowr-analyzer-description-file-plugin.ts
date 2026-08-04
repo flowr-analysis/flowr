@@ -16,7 +16,7 @@ const DescriptionFilePattern = /^DESCRIPTION(\.(txt|in))?$/i;
  */
 export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name = 'flowr-analyzer-description-file-plugin';
-	public readonly description = 'This plugin provides support for DESCRIPTION files and extracts their content into key-value(s) pairs.';
+	public readonly description = 'Reads DESCRIPTION files into key-value pairs.';
 	public readonly version = new SemVer('0.1.0');
 	private readonly pattern: RegExp;
 

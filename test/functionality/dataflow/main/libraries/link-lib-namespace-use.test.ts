@@ -14,8 +14,8 @@ describe('Namespace loading, import::from and box::use', withTreeSitter(ts => {
 		a.context().deps.addDependency(Package.fromConstants('pkgA', 'export(fa)\nexport(fb)', ['fa', 'fb']));
 	};
 	const withPkg = { modifyAnalyzer: twoExports, expectIsSubgraph: true, resolveIdsAsCriterion: true } as const;
-	const faBuiltIn = NodeId.toBuiltIn(Package.funcIdentif('pkgA', 'fa'));
-	const fbBuiltIn = NodeId.toBuiltIn(Package.funcIdentif('pkgA', 'fb'));
+	const faBuiltIn = NodeId.fromPkgFn('pkgA', 'fa');
+	const fbBuiltIn = NodeId.fromPkgFn('pkgA', 'fb');
 
 	assertDataflow(label('requireNamespace resolves :: but not bare names', ['library-loading', 'search-path']), ts,
 		'requireNamespace("pkgA")\npkgA::fa()\nfa()',

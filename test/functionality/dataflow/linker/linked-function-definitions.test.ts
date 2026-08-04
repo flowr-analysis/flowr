@@ -56,7 +56,8 @@ describe('Linked Function Definitions', withTreeSitter(ts => {
 		'4@h': { fns: [] }
 	});
 	expectLinkedFns('multiple defs', 'x <- function(a) { a + 1 }\nk <- function() function() 2\ny <- function() { if(u) { x } else { k() } } \nh <- y()', {
-		'4@h': { fns: ['1@function', '2@function'] }
+		// `k` returns its inner function, so the second `function` of line 2 is the one that gets linked
+		'4@h': { fns: ['1@function', '2@[2]function'] }
 	});
 	expectLinkedFns('double alias chain', 'f <- function() 1\ng <- f\nh <- g', {
 		'3@h': { fns: ['1@function'] }

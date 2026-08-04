@@ -122,6 +122,18 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			assertDeadCode('x <- 1\nstop(msg)\n3',  { reachableFromStart: ['1@1'],  unreachableFromStart: ['3@3'], ids: ['exceptions-and-errors'] });
 			assertDeadCode('x <- 1\nabort()\n3',  { reachableFromStart: ['1@1'],  unreachableFromStart: ['3@3'], ids: ['exceptions-and-errors'] });
 		});
+
+		describe('required-argument idiom', () => {
+			assertDeadCode('f <- function(y = stop("y is required")) {\n  x <- 1\n  x\n}', {
+				reachableFromStart: ['2@1', '3@x'], unreachableFromStart: [], ids: ['exceptions-and-errors']
+			});
+		});
+	});
+
+	describe('foreach loop bodies', () => {
+		assertDeadCode('f <- function(x) {\n  foreach(i = 1:3) %dopar% {\n    return(i)\n  }\n  after <- 1\n  after\n}', {
+			reachableFromStart: ['5@after', '6@after'], unreachableFromStart: []
+		});
 	});
 
 	describe('next and break in loops', () => {

@@ -121,6 +121,7 @@ function guessProto(obj: object): string | undefined {
 }
 
 export const FilesQueryDefinition = {
+	title:           'Files Query',
 	executor:        executeFileQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'files'>['files'];
@@ -138,6 +139,7 @@ export const FilesQueryDefinition = {
 	},
 	completer: filesQueryCompleter,
 	fromLine:  filesQueryLineParser,
+	syntax:    '@files [role:<r1>,<r2>,...] <code | file://path>',
 	schema:    Joi.object({
 		type:  Joi.string().valid('files').required().description('The type of the query.'),
 		roles: Joi.array().optional().items(

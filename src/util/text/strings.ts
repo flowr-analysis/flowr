@@ -9,6 +9,35 @@ export function startAndEndsWith(str: string, letter: string): boolean {
 }
 
 /**
+ * Whether every character of `needle` appears in `hay` in order (a subsequence / fuzzy match).
+ */
+export function isSubsequence(needle: string, hay: string): boolean {
+	if(needle.length === 0) {
+		return true;
+	}
+	let i = 0;
+	for(const c of hay) {
+		if(c === needle[i] && ++i === needle.length) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * The `candidates` that start with `needle`, or -- if none do -- those that contain it as a
+ * {@link isSubsequence|subsequence} (case-insensitive). `needle` itself is never returned.
+ */
+export function matchByPrefixOrSubsequence(candidates: readonly string[], needle: string): string[] {
+	const prefixed = candidates.filter(c => c.startsWith(needle) && c !== needle);
+	if(prefixed.length > 0) {
+		return prefixed;
+	}
+	const lower = needle.toLowerCase();
+	return candidates.filter(c => c !== needle && isSubsequence(lower, c.toLowerCase()));
+}
+
+/**
  * Removes all whitespace in the given string
  */
 export function withoutWhitespace(output: string): string {

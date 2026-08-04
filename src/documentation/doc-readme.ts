@@ -16,7 +16,7 @@ import { documentReplSession } from './doc-util/doc-repl';
 import { fileNameForGenHeader } from './doc-util/doc-auto-gen';
 import { prefixLines } from './doc-util/doc-general';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
-import { showQuery } from './doc-util/doc-query';
+import { linkToQueryOfName, showQuery } from './doc-util/doc-query';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { joinWithLast } from '../util/text/strings';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
@@ -158,6 +158,20 @@ available for ${ctx.linkPage('flowr:vscode', 'VSCode')}, ${ctx.linkPage('flowr:p
 and ${ctx.linkPage('flowr:docker', 'Docker')}.
 It offers a wide variety of features, for example:
 
+* 📚 **dependency analysis**\\
+  Given your analysis project, flowR offers a plethora of so-called ${ctx.linkPage('wiki/Query API', 'queries')} to get more information about your code.
+  An important query is the ${linkToQueryOfName('dependencies', 'dependencies query')}, which shows you the library your project needs,
+  the data files it reads, the scripts it sources, and the data it outputs.
+  Building on it, the ${linkToQueryOfName('guess-dep-versions', 'guess dependency versions query')} narrows down the version range each
+  of these libraries has to have, by combining the constraints your project declares with the functions your code actually calls.
+  
+  ${prefixLines(details('Example: Dependency Analysis with flowR', `
+The following showcases the dependency view of the ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')}:
+
+![Dependency Analysis](https://raw.githubusercontent.com/flowr-analysis/vscode-flowr/refs/heads/main/media/dependencies.png)
+  
+  `), '    ')} 
+
 * 🐞 **code linting**\\
    Analyze your R scripts for common issues and potential bugs (see the ${ctx.linkPage('wiki/Linter', 'wiki page')} for more information on the currently supported linters).
 
@@ -203,18 +217,6 @@ ${await documentReplSession(treeSitter, [{
 }])}
    
    `), '    ')}
-
-* 📚 **dependency analysis**\\
-  Given your analysis project, flowR offers a plethora of so-called ${ctx.linkPage('wiki/Query API', 'queries')} to get more information about your code.
-  An important query is the ${ctx.linkPage('wiki/Query API', 'dependencies query', 'dependencies-query')}, which shows you the library your project needs,
-  the data files it reads, the scripts it sources, and the data it outputs.
-  
-  ${prefixLines(details('Example: Dependency Analysis with flowR', `
-The following showcases the dependency view of the ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')}:
-
-![Dependency Analysis](https://raw.githubusercontent.com/flowr-analysis/vscode-flowr/refs/heads/main/media/dependencies.png)
-  
-  `), '    ')} 
 
 * 🚀 **fast call-graph, data-, and control-flow graphs**\\
   Within just [${'<i>' + textWithTooltip(roundToDecimals(await getLatestDfAnalysisTime('"social-science" Benchmark Suite (tree-sitter)'), 1) + ' ms', 'This measurement is automatically fetched from the latest benchmark!') + '</i>'} (as of ${new Date(await getLastBenchmarkUpdate()).toLocaleDateString('en-US', dateOptions)})](${FlowrSiteBaseRef}/wiki/stats/benchmark), 

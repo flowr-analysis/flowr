@@ -1,7 +1,7 @@
 import { VariableResolve } from '../../../config';
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import { isFunctionCallVertex } from '../../../dataflow/graph/vertex';
+import { FunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
@@ -92,7 +92,7 @@ function isDataFrameReplacement(functionName: string): functionName is DataFrame
 function hasParentReplacement(node: RNode<ParentInformation>, dfg: DataflowGraph): node is RNode<ParentInformation & { parent: NodeId }> {
 	const parentVertex = node.info.parent ? dfg.getVertex(node.info.parent) : undefined;
 
-	return isFunctionCallVertex(parentVertex) && parentVertex.origin.includes(BuiltInProcName.Replacement);
+	return FunctionCallVertex.is(parentVertex) && parentVertex.origin.includes(BuiltInProcName.Replacement);
 }
 
 function mapDataFrameContentAssignment(

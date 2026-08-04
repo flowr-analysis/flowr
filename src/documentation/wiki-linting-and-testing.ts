@@ -50,8 +50,11 @@ for the latest benchmark results, see the [benchmark results](${FlowrSiteBaseRef
 
 Currently, flowR contains three testing suites: one for [functionality](#functionality-tests), 
 one for [system tests](#system-tests), and one for [performance](#performance-tests). We explain each of them in the following.
-In addition to running those tests, you can use the more generalized \`npm run checkup\`. 
+In addition to running those tests, you can use the more generalized \`npm run checkup\`.
 This command includes the construction of the docker image, the generation of the wiki pages, and the linter.
+It runs these jobs concurrently but caps the test workers so the combined run fits the machine (it splits the
+available cores across the parallel \`vitest\` jobs via \`--maxWorkers\` instead of letting each grab every core).
+Pass job ids to run a subset (e.g. \`npm run checkup -- lint tests\`) or \`--no-docker\` to skip the image build.
 
 <a id='functionality-tests'></a>
 ### 🧪 Functionality Tests

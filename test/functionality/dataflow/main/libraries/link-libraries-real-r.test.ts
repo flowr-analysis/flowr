@@ -35,7 +35,7 @@ describe.sequential('Link libraries against real R', () => {
 		expect(rOut.join(' ')).toContain('42');
 
 		const targets = await filterCallTargets(shell, 'filter <- function(x) 42\nlibrary(stats)\nfilter(1)', [['stats', ['filter']]]);
-		expect(targets.has(NodeId.toBuiltIn(Package.funcIdentif('stats', 'filter')))).toBe(false);
-		expect([...targets].some(t => !NodeId.isBuiltIn(t))).toBe(true);
+		expect(targets.has(NodeId.fromPkgFn('stats', 'filter'))).toBe(false);
+		expect(targets.values().some(t => !NodeId.isBuiltIn(t))).toBe(true);
 	});
 });

@@ -1,4 +1,4 @@
-import { type DataflowProcessorInformation, processDataflowFor } from '../../../processor';
+import { type DataflowProcessor, type DataflowProcessorInformation, processDataflowFor } from '../../../processor';
 import { type DataflowInformation, ExitPointType } from '../../../info';
 import type { ParentInformation } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
@@ -31,7 +31,16 @@ export function processFunctionArgument<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
 	const name = argument.name === undefined ? undefined : processDataflowFor(argument.name, data);
-	const value = argument.value === undefined ? undefined : processDataflowFor(argument.value, data);
+	let value: DataflowInformation | undefined;
+	if(argument.value === undefined) {
+		value = undefined;
+	} else if(data.precomputedValue?.nodeId === argument.value.info.id) {
+		// the caller already processed this value iteratively (e.g., processChainedCall)
+		value = data.precomputedValue.info;
+	} else {
+		// call the value's processor directly instead of going through processDataflowFor, safes one stack frame
+		value = (data.processors[argument.value.type] as DataflowProcessor<OtherInfo & ParentInformation, typeof argument.value>)(argument.value, data);
+	}
 	// we do not keep the graph of the name, as this is no node that should ever exist
 	const graph = value?.graph ?? new DataflowGraph(data.completeAst.idMap);
 

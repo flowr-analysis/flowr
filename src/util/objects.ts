@@ -11,6 +11,14 @@ export function isObjectOrArray(item: unknown): boolean {
 	return typeof item === 'object';
 }
 
+/**
+ * checks if `item` is a record with keys, i.e. an object that is neither `null` nor an array
+ * @see {@link isObjectOrArray} to allow arrays as well
+ */
+export function isPlainObject(item: unknown): item is Record<string, unknown> {
+	return typeof item === 'object' && item !== null && !Array.isArray(item);
+}
+
 export type MergeableRecord = Record<string, unknown>;
 export type MergeableArray = unknown[];
 export type Mergeable = MergeableRecord | MergeableArray;
@@ -101,7 +109,7 @@ export function deepMergeObjectInPlace(base?: Mergeable, addon?: Mergeable): Mer
 		deepMergeObjectWithResult(addon, base, base);
 	} else if(baseIsArray && addonIsArray) {
 		for(const item of addon) {
-			(base as unknown[]).push(item);
+			(base).push(item);
 		}
 	} else {
 		throw new Error('cannot merge object with array!');
@@ -207,9 +215,9 @@ export function looselyCompareObjects(obj: Record<string, unknown>, expected: Re
 
 		if(Array.isArray(realValue)) {
 			const match = typeof expectedValue === 'object' ? expectedValue instanceof RegExp ?
-			// if we expect a regular expression but an array is supplied, test each value
+				// if we expect a regular expression but an array is supplied, test each value
 				(value: unknown) => expectedValue.test(typeof value === 'string' ? value : String(value)) :
-			// if we expect an object that is not a regular expression, match against our expected structure
+				// if we expect an object that is not a regular expression, match against our expected structure
 				(value: unknown) => looselyCompareObjects(value as Record<string, unknown>, expectedValue as Record<string, unknown>, arrayMatch, logger) :
 				// in any other case (primitives!), match against the exact value
 				(value: unknown) => expectedValue === value;
@@ -223,11 +231,11 @@ export function looselyCompareObjects(obj: Record<string, unknown>, expected: Re
 				expensiveTrace(logger, () => `Object ${JSON.stringify(realValue)} does not match expected object ${JSON.stringify(expectedValue)}`);
 				return false;
 			}
-		}
-
-		// for anything else, we match with our regular expression or string
-		if(expectedValue instanceof RegExp) {
-			if(!expectedValue.test(typeof realValue === 'string' ? realValue : String(realValue as unknown))) {
+		} else if(expectedValue instanceof RegExp) {
+			// for anything else, we match with our regular expression or string
+			// (arrays and objects are handled above, so only primitives reach this point)
+			const realPrimitive: Primitive = realValue as Primitive;
+			if(!expectedValue.test(typeof realPrimitive === 'string' ? realPrimitive : String(realPrimitive))) {
 				expensiveTrace(logger, () => `Value ${JSON.stringify(realValue)} does not match expected regular expression ${expectedValue}`);
 				return false;
 			}

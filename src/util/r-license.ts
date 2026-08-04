@@ -1,7 +1,7 @@
 import type { Range } from 'semver';
 import { assertUnreachable, guard } from './assert';
 import { compactRecord } from './objects';
-import { parseRRange } from './r-version';
+import { RRange } from './r-version';
 
 export interface RLicenseInfo {
 	type:               'license',
@@ -102,14 +102,12 @@ function skipWhitespace({ remInput, position }: ParserInfo): ParserInfo {
 function consumeLicenseName(info: ParserInfo): ParserResult<string>  {
 	info = skipWhitespace(info);
 	let licenseName = '';
-	let isAtWhitespace = false;
 	for(let i = 0; i < info.remInput.length; i++) {
 		const char = info.remInput[i];
 		if(/[()<>~!=,&|+]/.test(char)) {
 			break;
-		} else {
-			isAtWhitespace = /\s/.test(char);
 		}
+		const isAtWhitespace = /\s/.test(char);
 		if(isAtWhitespace) {
 			if(/^\s*(with|and|or)\s+/i.test(info.remInput.slice(i))) {
 				break;
@@ -128,14 +126,6 @@ function consumeLicenseName(info: ParserInfo): ParserResult<string>  {
 	return { ...newInfo, element: licenseName?.trim() ?? '' };
 }
 
-function makeRange(rangeStr: string): Range | undefined {
-	try {
-		return parseRRange(rangeStr);
-	} catch{
-		return undefined;
-	}
-}
-
 function parseLicenseElement(info: ParserInfo): ParserResult {
 	const licenseName = consumeLicenseName(info);
 	info = skipWhitespace(licenseName);
@@ -149,14 +139,14 @@ function parseLicenseElement(info: ParserInfo): ParserResult {
 			info = skipWhitespace(openParen);
 			// consume until closing parenthesis
 			const versionStr = consumeUntilString(info, ')');
-			versionConstraint = makeRange(versionStr.element);
+			versionConstraint = RRange.parse(versionStr.element);
 			const closeParen = consumeString(versionStr, ')');
 			guard(closeParen.element, `Expected ), but found ${versionStr.remInput[0]} at position ${versionStr.position}`);
 			info = skipWhitespace(closeParen);
 		} else {
 			// consume until whitespace or special character
 			const versionStr = consumeRegexp(info, /^[\d<>=!~.\s]+/);
-			versionConstraint = versionStr.element ? makeRange(versionStr.element) : undefined;
+			versionConstraint = versionStr.element ? RRange.parse(versionStr.element) : undefined;
 			info = skipWhitespace(versionStr);
 		}
 	}

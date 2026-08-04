@@ -339,7 +339,7 @@ function linkFunctionCall(
 		}
 	}
 
-	const [functionDefs] = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph);
+	const [functionDefs] = getAllLinkedFunctionDefinitions(functionDefinitionReadIds, graph);
 
 	const propagateExitPoints: ExitPoint[] = [];
 	for(const def of functionDefs.values()) {

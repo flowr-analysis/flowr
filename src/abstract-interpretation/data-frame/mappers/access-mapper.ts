@@ -121,7 +121,7 @@ function mapDataFrameIndexColRowAccess(
 		const colSubset = columns === undefined || columns.every(col => typeof col === 'string' || col >= 0);
 		const rowZero = rows?.length === 1 && rows[0] === 0;
 		const colZero = columns?.length === 1 && columns[0] === 0;
-		const duplicateRows = rows?.some((row, index, list) => list.indexOf(row as never) !== index);
+		const duplicateRows = rows?.some((row, index, list) => list.indexOf(row) !== index);
 		const duplicateCols = columns?.some((col, index, list) => list.indexOf(col as never) !== index);
 
 		let operand: RNode<ParentInformation> | undefined = dataFrame;
@@ -158,6 +158,7 @@ function mapDataFrameIndexColRowAccess(
 					colnames:  columns?.map(col => typeof col === 'string' ? col : undefined)
 				});
 			}
+			// eslint-disable-next-line no-useless-assignment -- ends the chain
 			operand = undefined;
 		}
 	}

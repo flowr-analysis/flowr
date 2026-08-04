@@ -37,6 +37,11 @@ export function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath:
 		}
 	}
 	data.push({
+		name:  'number of files',
+		unit:  '#',
+		value: ultimate.totalRequests
+	});
+	data.push({
 		name:  'failed to reconstruct/re-parse',
 		unit:  '#',
 		value: ultimate.failedToRepParse,

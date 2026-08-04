@@ -702,6 +702,14 @@ test-results.xml
 /test_perf/*.json
 .vscode/settings.json
 
-# pkgdb: track only the plain JSON tiers; compressed copies are build output
-src/data/pkgdb/*.br
-src/data/pkgdb/*.gz
+# sigdb bundles in src/data/sigdb/: NONE of the `.br` shards are versioned (they churn and brotli never deltas).
+# Only `sigdb.remote.json` is committed use :signature download
+src/data/sigdb/base.*
+src/data/sigdb/current.*
+src/data/sigdb/full.*
+src/data/sigdb/history.*
+dist/src/data/sigdb/
+
+# decompressed sigdb archives (the reader materializes these into a hash-keyed cache); never commit them anywhere
+*.sigs.ndjson
+*.sigs.ndjson.idx

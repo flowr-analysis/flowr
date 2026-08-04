@@ -19,10 +19,10 @@ describe('VirtualEnv-file', function() {
 		return ctx;
 	}
 
-	test('renv.lock and rv.lock are tagged VirtualEnv', () => {
-		const ctx = ctxWith('renv.lock', 'rv.lock');
+	test('renv.lock, rv.lock and uvr.lock are tagged VirtualEnv', () => {
+		const ctx = ctxWith('renv.lock', 'rv.lock', 'uvr.lock');
 		const files = ctx.files.getFilesByRole(FileRole.VirtualEnv).map(f => f.path());
-		assert.sameMembers(files, ['renv.lock', 'rv.lock']);
+		assert.sameMembers(files, ['renv.lock', 'rv.lock', 'uvr.lock']);
 	});
 
 	test('unrelated files are not tagged', () => {

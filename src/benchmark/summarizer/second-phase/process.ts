@@ -11,7 +11,7 @@ import {
 	CommonSlicerMeasurements,
 	PerSliceMeasurements
 } from '../../stats/stats';
-import { type DataFrameOperationName, DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
+import { DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
 import { arraySum } from '../../../util/collections/arrays';
 
 /**
@@ -276,11 +276,11 @@ export function processNextSummary(line: Buffer, allSummarized: SummarizedSlicer
 			perSliceMeasurements: {
 				...got.summarize.perSliceMeasurements,
 				// restore maps
-				measurements: new Map(got.summarize.perSliceMeasurements.measurements as unknown as [PerSliceMeasurements, SummarizedMeasurement][]),
+				measurements: new Map(got.summarize.perSliceMeasurements.measurements),
 			},
 			dataFrameShape: got.summarize.dataFrameShape !== undefined ? {
 				...got.summarize.dataFrameShape,
-				perOperationNumber: new Map(got.summarize.dataFrameShape.perOperationNumber as unknown as [DataFrameOperationName, number][])
+				perOperationNumber: new Map(got.summarize.dataFrameShape.perOperationNumber)
 			} : undefined
 		}
 	};
@@ -295,11 +295,11 @@ export function processNextUltimateSummary(line: Buffer, allSummarized: Ultimate
 	got = {
 		...got,
 		// restore maps
-		commonMeasurements:   new Map(got.commonMeasurements as unknown as [CommonSlicerMeasurements, SummarizedMeasurement][]),
-		perSliceMeasurements: new Map(got.perSliceMeasurements as unknown as [PerSliceMeasurements, SummarizedMeasurement][]),
+		commonMeasurements:   new Map(got.commonMeasurements),
+		perSliceMeasurements: new Map(got.perSliceMeasurements),
 		dataFrameShape:       got.dataFrameShape !== undefined ? {
 			...got.dataFrameShape,
-			perOperationNumber: new Map(got.dataFrameShape.perOperationNumber as unknown as [DataFrameOperationName, SummarizedMeasurement][])
+			perOperationNumber: new Map(got.dataFrameShape.perOperationNumber)
 		} : undefined
 	};
 	allSummarized.push(got);

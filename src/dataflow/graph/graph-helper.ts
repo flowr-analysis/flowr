@@ -4,7 +4,7 @@ import type { NamedGraph } from '../../util/diff-graph';
 import { GraphDifferenceReport, initDiffContext } from '../../util/diff-graph';
 import type { GenericDiffConfiguration } from '../../util/diff';
 import { diffDataflowGraph } from './diff-dataflow-graph';
-import { DataflowGraph } from './graph';
+import { DataflowGraph, UnknownSideEffect } from './graph';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -77,7 +77,7 @@ export const GraphHelper = {
 			if(cached !== undefined) {
 				return cached;
 			}
-			const resolved = SlicingCriterion.tryParse(id, resolveMap) ?? id as NodeId;
+			const resolved = SlicingCriterion.tryParse(id, resolveMap) ?? id;
 
 			cache.set(id as string, resolved);
 			return resolved;
@@ -90,7 +90,7 @@ export const GraphHelper = {
 		for(const [id, vertex] of graph.vertices(true)) {
 			resultGraph.addVertex({
 				...vertex,
-				id: resolve(id as string)
+				id: resolve(id)
 			}, ctx.env.makeCleanEnv(), roots.has(id));
 		}
 		/* recreate edges */
@@ -107,11 +107,8 @@ export const GraphHelper = {
 		}
 
 		for(const unknown of graph.unknownSideEffects) {
-			if(typeof unknown === 'object') {
-				resultGraph.markIdForUnknownSideEffects(resolve(unknown.id), unknown.linkTo);
-			} else {
-				resultGraph.markIdForUnknownSideEffects(resolve(unknown));
-			}
+			const { id, linkTo } = UnknownSideEffect.split(unknown);
+			resultGraph.markIdForUnknownSideEffects(resolve(id), linkTo);
 		}
 
 		return resultGraph as G;

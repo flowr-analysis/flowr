@@ -3,6 +3,7 @@ import { assertReplCompletions, assertReplParser } from '../../../_helper/repl';
 import { SupportedQueries } from '../../../../../src/queries/query';
 import { fileProtocol } from '../../../../../src/r-bridge/retriever';
 import { LintingRules } from '../../../../../src/linter/linter-rules';
+import { LinterOutputFormat } from '../../../../../src/linter/linter-output';
 
 describe('Linter Query REPL Parser', () => {
 	const parser = SupportedQueries['linter'].fromLine;
@@ -40,6 +41,53 @@ describe('Linter Query REPL Parser', () => {
 		},
 	});
 	assertReplParser({ parser,
+		label:         'a format next to the rules, in either order',
+		line:          ['rules:dead-code', 'format:sarif', 'some code'],
+		expectedParse: {
+			query: [{
+				type:   'linter',
+				rules:  ['dead-code'],
+				format: LinterOutputFormat.Sarif
+			}],
+			rCode: 'some code',
+		},
+	});
+	assertReplParser({ parser,
+		label:         'a format before the rules',
+		line:          ['format:sarif', 'rules:dead-code', 'some code'],
+		expectedParse: {
+			query: [{
+				type:   'linter',
+				rules:  ['dead-code'],
+				format: LinterOutputFormat.Sarif
+			}],
+			rCode: 'some code',
+		},
+	});
+	assertReplParser({ parser,
+		label:         'a format on its own',
+		line:          ['format:github', 'some code'],
+		expectedParse: {
+			query: [{
+				type:   'linter',
+				rules:  undefined,
+				format: LinterOutputFormat.Github
+			}],
+			rCode: 'some code',
+		},
+	});
+	assertReplParser({ parser,
+		label:         'an unknown format is dropped, not guessed',
+		line:          ['format:bogus', 'some code'],
+		expectedParse: {
+			query: [{
+				type:  'linter',
+				rules: undefined
+			}],
+			rCode: 'some code',
+		},
+	});
+	assertReplParser({ parser,
 		label:         'only R code',
 		line:          ['some code'],
 		expectedParse: {
@@ -59,13 +107,43 @@ describe('Linter Query REPL Completions', () => {
 		label:               'empty arguments',
 		startingNewArg:      true,
 		splitLine:           [''],
-		expectedCompletions: ['rules:']
+		expectedCompletions: ['rules:', 'format:', fileProtocol]
 	});
 	assertReplCompletions({ completer,
 		label:               'partial prefix',
 		startingNewArg:      false,
 		splitLine:           ['r'],
-		expectedCompletions: ['rules:']
+		expectedCompletions: ['rules:', 'format:', fileProtocol]
+	});
+	assertReplCompletions({ completer,
+		label:               'the formats, offered as values of the prefix',
+		startingNewArg:      false,
+		splitLine:           ['format:'],
+		expectedCompletions: Object.values(LinterOutputFormat)
+	});
+	assertReplCompletions({ completer,
+		label:               'a format is offered after a rules block too',
+		startingNewArg:      false,
+		splitLine:           ['rules:dead-code', 'format:'],
+		expectedCompletions: Object.values(LinterOutputFormat)
+	});
+	assertReplCompletions({ completer,
+		label:               'a finished rules block still offers the format',
+		startingNewArg:      true,
+		splitLine:           ['rules:dead-code'],
+		expectedCompletions: ['format:', fileProtocol]
+	});
+	assertReplCompletions({ completer,
+		label:               'a finished format still offers the rules',
+		startingNewArg:      true,
+		splitLine:           ['format:sarif'],
+		expectedCompletions: ['rules:', fileProtocol]
+	});
+	assertReplCompletions({ completer,
+		label:               'with both given only the file is left',
+		startingNewArg:      true,
+		splitLine:           ['format:sarif', 'rules:dead-code'],
+		expectedCompletions: [fileProtocol]
 	});
 	assertReplCompletions({ completer,
 		label:               'no rules',
@@ -113,12 +191,6 @@ describe('Linter Query REPL Completions', () => {
 		label:               'rules finished',
 		startingNewArg:      true,
 		splitLine:           ['rules:dead'],
-		expectedCompletions: [fileProtocol]
-	});
-	assertReplCompletions({ completer,
-		label:               'rules finished',
-		startingNewArg:      true,
-		splitLine:           ['rules:dead'],
-		expectedCompletions: [fileProtocol]
+		expectedCompletions: ['format:', fileProtocol]
 	});
 });

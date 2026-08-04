@@ -1,7 +1,7 @@
 import { assertUnreachable, isNotUndefined } from '../../util/assert';
 import { Bottom, Top } from '../domains/lattice';
 import { PosIntervalDomain, PosIntervalTop } from '../domains/positive-interval-domain';
-import type { ArrayRangeValue } from '../domains/set-range-domain';
+import type { SetRangeValue } from '../domains/set-range-domain';
 import type { DataFrameDomain } from './dataframe-domain';
 
 /**
@@ -212,7 +212,7 @@ function applySetColNamesSemantics(
 			rows:     value.rows
 		});
 	}
-	const allColNames = colnames?.every(isNotUndefined) && value.cols.value !== Bottom && colnames.length >= value.cols.value[1];
+	const allColNames = colnames?.every(isNotUndefined) && value.cols.isValue() && colnames.length >= value.cols.upper;
 
 	return value.create({
 		colnames: allColNames ? value.colnames.create(setRange(colnames)) : value.colnames.create(setRange(colnames)).widenUp(),
@@ -236,7 +236,7 @@ function applyAddRowsSemantics(
 	value: DataFrameDomain,
 	{ rows }: { rows: number | undefined }
 ): DataFrameDomain {
-	if(value.cols.value !== Bottom && value.cols.value[0] === 0) {
+	if(value.cols.isValue() && value.cols.lower === 0) {
 		return value.create({
 			colnames: value.colnames.top(),
 			cols:     rows !== undefined ? value.cols.add([1, 1]) : value.cols.top(),
@@ -303,7 +303,7 @@ function applyConcatRowsSemantics(
 	value: DataFrameDomain,
 	{ other }: { other: DataFrameDomain }
 ): DataFrameDomain {
-	if(value.cols.value !== Bottom && value.cols.value[0] === 0) {
+	if(value.cols.value !== Bottom && value.cols.lower === 0) {
 		return value.create({
 			colnames: value.colnames.join(other.colnames),
 			cols:     value.cols.join(other.cols),
@@ -417,19 +417,17 @@ function applyJoinSemantics(
 ): DataFrameDomain {
 	// Merge two intervals by creating the maximum of the lower bounds and adding the upper bounds
 	const mergeInterval = (interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain => {
-		if(interval1.value === Bottom || interval2.value === Bottom) {
-			return interval1.bottom();
-		} else {
-			return new PosIntervalDomain([Math.max(interval1.value[0], interval2.value[0]), interval1.value[1] + interval2.value[1]]);
+		if(interval1.isValue() && interval2.isValue()) {
+			return new PosIntervalDomain([Math.max(interval1.lower, interval2.lower), interval1.upper + interval2.upper]);
 		}
+		return interval1.bottom();
 	};
 	// Creating the Cartesian product of two intervals by keeping the lower bound and multiplying the upper bounds
 	const productInterval = (lower: PosIntervalDomain, interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain => {
-		if(lower.value === Bottom || interval1.value === Bottom || interval2.value === Bottom) {
-			return lower.bottom();
-		} else {
-			return new PosIntervalDomain([lower.value[0], interval1.value[1] * interval2.value[1]]);
+		if(lower.isValue() && interval1.isValue() && interval2.isValue()) {
+			return new PosIntervalDomain([lower.lower, interval1.upper * interval2.upper]);
 		}
+		return lower.bottom();
 	};
 	let duplicateCols: string[] | undefined;  // columns that may be renamed due to occurring in both data frames
 	let productRows: boolean;  // whether the resulting rows may be a Cartesian product of the rows of the data frames
@@ -461,10 +459,10 @@ function applyJoinSemantics(
 			rows = value.rows.max(other.rows).widenDown();
 			break;
 		case 'left':
-			rows = value.rows.max(other.rows.isValue() ? [0, other.rows.value[1]] : Bottom);
+			rows = value.rows.max(other.rows.isValue() ? [0, other.rows.upper] : Bottom);
 			break;
 		case 'right':
-			rows = other.rows.max(value.rows.isValue() ? [0, value.rows.value[1]] : Bottom);
+			rows = other.rows.max(value.rows.isValue() ? [0, value.rows.upper] : Bottom);
 			break;
 		case 'full':
 			rows = mergeInterval(value.rows, other.rows);
@@ -495,8 +493,8 @@ function applyUnknownSemantics(
 	return value.top();
 }
 
-function setRange(colnames: (string | undefined)[] | undefined): ArrayRangeValue<string> {
+function setRange(colnames: (string | undefined)[] | undefined): SetRangeValue<string> {
 	const names = colnames?.filter(isNotUndefined) ?? [];
 
-	return { min: names, range: names.length === colnames?.length ? [] : Top };
+	return { must: new Set(names), may: names.length === colnames?.length ? new Set() : Top };
 }

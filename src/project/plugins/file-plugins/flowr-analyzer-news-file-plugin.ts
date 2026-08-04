@@ -14,7 +14,7 @@ const NewsFilePattern = /^NEWS(\.(rd|md))?$/i;
  */
 export class FlowrAnalyzerNewsFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name = 'flowr-analyzer-news-file-plugin';
-	public readonly description = 'This plugin provides support for NEWS files and extracts their content into version chunks.';
+	public readonly description = 'Reads NEWS files into version chunks.';
 	public readonly version = new SemVer('0.1.0');
 	private readonly pattern: RegExp;
 

@@ -7,6 +7,7 @@ import { mapFnCallToTaint, resolveTaint } from './function-mapper';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AbstractProduct, ProductReduction } from '../abstract-interpretation/domains/partial-product-domain';
 import { type MultiValueDomain, MultiValueStateDomain } from '../abstract-interpretation/domains/multi-value-state-domain';
+import type { Writable } from 'ts-essentials';
 
 /**
  * The abstract product mapping the name of a (component) taint analysis to its (value) abstract domain.
@@ -65,7 +66,7 @@ export class CompositeTaintInferenceVisitor extends AbstractInterpretationVisito
 		if(node === undefined) {
 			return;
 		}
-		const product: TaintProduct = {};
+		const product: Writable<TaintProduct> = {};
 
 		for(const component of this.components) {
 			const taint = mapFnCallToTaint(node, component.mapper, this.config.dfg, this.config.ctx);

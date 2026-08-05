@@ -60,11 +60,12 @@ describe('taint-analysis evaluation', () => {
 		assert.isDefined(sec);
 
 		assert.equal(sec.mappedCalls.length, 2);
-		assert.deepEqual(sec.mappedCalls[0], { line: '2', nodeId: 2, functionName: 'read.table', args: [], taint: 'File Input' });
+		assert.deepEqual(sec.mappedCalls[0], { line: '2', nodeId: 2, functionName: 'read.table', args: [], role: 'from', taint: 'File Input' });
 		assert.deepEqual(sec.mappedCalls[1], {
 			line:         '4',
 			nodeId:       19,
 			functionName: 'source',
+			role:         'to',
 			args:         [
 				{ taint: 'File Input' }, { value: 'someOtherArg' }, { name: 'namedArg', value: true }
 			], taint: 'bottom' });
@@ -78,7 +79,7 @@ describe('taint-analysis evaluation', () => {
 		});
 
 		// the locally-defined function call carries its local definition target(s),
-		// signalling that intraprocedural analysis could apply
+		// signaling that intraprocedural analysis could apply
 		assert.deepEqual(sec.unmappedCalls[1], {
 			line:         '6',
 			nodeId:       32,

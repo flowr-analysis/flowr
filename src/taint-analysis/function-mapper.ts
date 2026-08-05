@@ -87,7 +87,7 @@ export function resolveTaint<Domain extends AnyAbstractDomain>(
 	projectArg: (id: NodeId) => Domain | undefined
 ): Domain {
 	if(!taint) {
-		return domain.top() as Domain;
+		return domain.top();
 	} else if('taint' in taint) {
 		return domain.create(taint.taint);
 	}
@@ -123,8 +123,8 @@ export type TaintMapper<Domain extends AnyAbstractDomain> = TaintMapping<Domain>
 export type TaintRole = 'from' | 'through' | 'to';
 
 export type TaintMapping<Domain extends AnyAbstractDomain> = {
-	role?:      TaintRole;
-	identifier: Identifier | Identifier[];
+	readonly role?:      TaintRole;
+	readonly identifier: Identifier | Identifier[];
 } & (
 	| { taint: AbstractValue<Domain>; condition?: TaintCondition<Domain> }
 	| { taint?: AbstractValue<Domain>; condition: TaintCondition<Domain> }

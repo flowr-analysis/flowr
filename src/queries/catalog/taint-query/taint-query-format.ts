@@ -92,6 +92,7 @@ function taintQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 }
 
 export const TaintQueryDefinition = {
+	title:           'Taint Analysis Query',
 	executor:        executeTaintQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, resultStrings) => {
 		const out = queryResults as QueryResults<'taint'>['taint'];

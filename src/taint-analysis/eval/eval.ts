@@ -82,7 +82,7 @@ async function analyzeScript(run: ScriptRun, analyzer: FlowrAnalyzer): Promise<s
 
 	const instrumentation = new TaintAnalysisInstrumentation();
 	const start = Date.now();
-	let result: Map<string, TaintInferenceResult> | undefined = undefined;
+	let result: Map<string, TaintInferenceResult> | undefined;
 
 	try {
 		// drop the previous file's requests and cached results, reusing the analyzer's parser

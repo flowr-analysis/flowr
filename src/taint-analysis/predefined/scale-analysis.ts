@@ -25,7 +25,7 @@ export const scaleDomain = new FiniteDomainBuilder<Top, Bottom, [Top, Bottom, ..
 function constantAggregate(...elements: symbol[]): TaintCondition<typeof scaleDomain> {
 	return {
 		argTaints: [{ pos: 0, name: 'x' }],
-		condition: (_args, [taint]) => elements.includes(taint as symbol) ? Bottom : (taint ?? Top)
+		condition: (_args, [taint]) => elements.includes(taint) ? Bottom : (taint ?? Top)
 	};
 }
 

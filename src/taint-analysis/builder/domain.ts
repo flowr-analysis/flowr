@@ -22,13 +22,13 @@ export class FiniteDomainBuilder<Top extends symbol, Bottom extends symbol, Elem
 
 	setTop(element: Top): this {
 		this._top = element;
-		this.addElements(element as Elements[number]);
+		this.addElements(element);
 		return this;
 	}
 
 	setBottom(element: Bottom): this {
 		this._bottom = element;
-		this.addElements(element as Elements[number]);
+		this.addElements(element);
 		return this;
 	}
 

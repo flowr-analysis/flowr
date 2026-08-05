@@ -7,16 +7,16 @@ import type { FiniteDomain } from '../../../src/taint-analysis/finite-domain';
 
 function topAndBottomCases(create: (d: symbol) => AnyAbstractDomain, top: symbol = Top, bottom: symbol = Bottom) {
 	assertAbstractDomain(create, bottom, bottom, {
-		equal: true, leq: true, join: bottom, meet: bottom, widen: bottom, narrow: bottom, concrete: [bottom]
+		equal: true, leq: true, join: bottom, meet: bottom, widen: bottom, narrow: bottom
 	});
 	assertAbstractDomain(create, top, top, {
-		equal: true, leq: true, join: top, meet: top, widen: top, narrow: top, concrete: [top]
+		equal: true, leq: true, join: top, meet: top, widen: top, narrow: top
 	});
 	assertAbstractDomain(create, bottom, top, {
-		equal: false, leq: true, join: top, meet: bottom, widen: top, narrow: bottom, concrete: [bottom]
+		equal: false, leq: true, join: top, meet: bottom, widen: top, narrow: bottom
 	});
 	assertAbstractDomain(create, top, bottom, {
-		equal: false, leq: false, join: top, meet: bottom, widen: top, narrow: bottom, concrete: [top]
+		equal: false, leq: false, join: top, meet: bottom, widen: top, narrow: bottom
 	});
 }
 
@@ -58,31 +58,31 @@ describe('Finite Domain', () => {
 		topAndBottomCases(create);
 
 		assertAbstractDomain(create, Bottom, A, {
-			equal: false, leq: true, join: A, meet: Bottom, widen: A, narrow: Bottom, concrete: [Bottom]
+			equal: false, leq: true, join: A, meet: Bottom, widen: A, narrow: Bottom
 		});
 		assertAbstractDomain(create, A, Bottom, {
-			equal: false, leq: false, join: A, meet: Bottom, widen: A, narrow: Bottom, concrete: [A]
+			equal: false, leq: false, join: A, meet: Bottom, widen: A, narrow: Bottom
 		});
 
 		assertAbstractDomain(create, A, Top, {
-			equal: false, leq: true, join: Top, meet: A, widen: Top, narrow: A, concrete: [A]
+			equal: false, leq: true, join: Top, meet: A, widen: Top, narrow: A
 		});
 		assertAbstractDomain(create, Top, A, {
-			equal: false, leq: false, join: Top, meet: A, widen: Top, narrow: A, concrete: [Top]
+			equal: false, leq: false, join: Top, meet: A, widen: Top, narrow: A
 		});
 
 		assertAbstractDomain(create, A, C, {
-			equal: false, leq: false, join: D, meet: Bottom, widen: D, narrow: Bottom, concrete: [A]
+			equal: false, leq: false, join: D, meet: Bottom, widen: D, narrow: Bottom
 		});
 		assertAbstractDomain(create, C, A, {
-			equal: false, leq: false, join: D, meet: Bottom, widen: D, narrow: Bottom, concrete: [C]
+			equal: false, leq: false, join: D, meet: Bottom, widen: D, narrow: Bottom
 		});
 
 		assertAbstractDomain(create, B, C, {
-			equal: false, leq: false, join: D, meet: Bottom, widen: D, narrow: Bottom, concrete: [B]
+			equal: false, leq: false, join: D, meet: Bottom, widen: D, narrow: Bottom
 		});
 		assertAbstractDomain(create, C, B, {
-			equal: false, leq: false, join: D, meet: Bottom, widen: D, narrow: Bottom, concrete: [C]
+			equal: false, leq: false, join: D, meet: Bottom, widen: D, narrow: Bottom
 		});
 	});
 });

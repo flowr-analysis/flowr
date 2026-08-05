@@ -22,7 +22,7 @@ import { guard } from '../util/assert';
 export type ResolvedTaint<Domain extends AnyAbstractDomain> =
 	{
 		condition: TaintConditionFunction<Domain>,
-		valArgs:   unknown[], // TODO Support for other types apart from booleans
+		valArgs:   unknown[],
 		taintArgs: PotentiallyEmptyRArgument<ParentInformation>[]
 	}
 	| { taint: AbstractValue<Domain> }

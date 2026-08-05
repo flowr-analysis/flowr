@@ -18,6 +18,7 @@ export async function executeTaintQuery({ analyzer }: BasicQueryData, queries: r
 	const start = Date.now();
 
 	const analysis = analyzer.taint<AllPredefinedTaintAnalysisNames>();
+
 	for(const def of flattened) {
 		analysis.addPredefined(def);
 	}

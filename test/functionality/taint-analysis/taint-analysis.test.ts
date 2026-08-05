@@ -86,7 +86,7 @@ describe('Taint Analysis', () => {
 			argumentTest( false, true, taint2);
 		});
 		describe('both args false', () => {
-			argumentTest( false, false, undefined);
+			argumentTest( false, false, Top);
 		});
 	});
 });

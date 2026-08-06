@@ -119,7 +119,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 			visitor.start();
 
 			const endState = visitor.getEndState();
-			const finding = endState.isBottom() ? def.msg : undefined;
+			const finding = endState.hasBottomValue() ? def.msg : undefined;
 
 			results.set(def.name, { domains: endState as StateAbstractDomain<AnyStateDomain>, finding });
 		}

@@ -45,8 +45,8 @@ export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends Abs
 
 	private readonly projectArg = (id: NodeId): Domain | undefined => this.getAbstractValue(id);
 
-	constructor(domain: Domain, fnCallMapper: TaintMapper<Domain>, visitorConfig: TaintVisitorConfiguration) {
-		super(visitorConfig, StateAbstractDomain.top(domain.top()));
+	constructor(domain: Domain, fnCallMapper: TaintMapper<Domain>, visitorConfig: TaintVisitorConfiguration, collapseOnBottom = false) {
+		super(visitorConfig, StateAbstractDomain.top(domain.top(), collapseOnBottom));
 		this.domain = domain;
 		this.fnCallMapper = fnCallMapper;
 	}

@@ -29,6 +29,11 @@ export interface StateDomain<Domain extends AnyAbstractDomain> {
 	 * Sets the inferred value for an AST node ID from the state domain.
 	 */
 	set(node: NodeId, value: Domain): void;
+
+	/**
+	 * Checks whether any AST node ID in the state domain is mapped to Bottom.
+	 */
+	hasBottomValue(): boolean;
 }
 
 /**

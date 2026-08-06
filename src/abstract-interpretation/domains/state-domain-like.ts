@@ -31,9 +31,9 @@ export interface StateDomain<Domain extends AnyAbstractDomain> {
 	set(node: NodeId, value: Domain): void;
 
 	/**
-	 * Checks whether any AST node ID in the state domain is mapped to Bottom.
+	 * Gets the AST node IDs in the state domain that are mapped to Bottom.
 	 */
-	hasBottomValue(): boolean;
+	getBottomNodes(): NodeId[];
 }
 
 /**

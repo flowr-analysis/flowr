@@ -180,7 +180,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		return this.value !== Bottom;
 	}
 
-	public hasBottomValue(): boolean {
-		return this.value === Bottom || this.value.values().some(entry => entry.isBottom());
+	public getBottomNodes(): NodeId[] {
+		return this.value === Bottom ? [] : this.value.entries().filter(([, entry]) => entry.isBottom()).map(([key]) => key).toArray();
 	}
 }

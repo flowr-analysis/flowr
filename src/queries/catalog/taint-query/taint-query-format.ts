@@ -14,6 +14,7 @@ import { printAsMs } from '../../../util/text/time';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import type { TaintInferenceResult } from '../../../taint-analysis/builder/taint-analysis';
+import { SourceLocation } from '../../../util/range';
 
 
 
@@ -103,8 +104,9 @@ export const TaintQueryDefinition = {
 			resultStrings.push(`   ╰ **${name}**:`);
 			const lift = result.domains.value;
 
-			if(result.finding) {
-				resultStrings.push(`      ╰ finding: ${result.finding}`);
+			if(result.findings.length > 0) {
+				resultStrings.push(`      ╰ ${result.msg}:`);
+				resultStrings.push(...result.findings.map(finding => `          ╰ at ${SourceLocation.format(finding.loc)}`));
 			}
 
 			if(lift === Bottom) {
@@ -125,9 +127,10 @@ export const TaintQueryDefinition = {
 	jsonFormatter: (queryResults: BaseQueryResult) => {
 		const { results, ...out } = queryResults as QueryResults<'taint'>['taint'];
 		const json = new Map(
-			Array.from(results, ([name, { domains, finding }]) => [name, {
+			Array.from(results, ([name, { domains, msg, findings }]) => [name, {
 				domains: domains.value === Bottom ? domains.value.description : Object.fromEntries(domains.value.entries().map(([key, domain]) => [key, domain?.toJSON() ?? null])),
-				finding: finding,
+				msg,
+				findings,
 			}])
 		);
 		const result = { results: json, ...out } as object;

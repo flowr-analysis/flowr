@@ -39,11 +39,8 @@ export class MultiValueStateDomain<Product extends AbstractProduct, Value extend
 		}
 	}
 
-	/**
-	 * Whether any {@link NodeId} in the state has at least one product component mapped to Bottom.
-	 */
-	public hasBottomValue(): boolean {
-		return this.value === Bottom || this.value.values().some(entry => Record.values(entry.value).some(value => value?.isBottom()));
+	public getBottomNodes(): NodeId[] {
+		return this.value === Bottom ? [] : this.value.entries().filter(([, entry]) => Record.values(entry.value).some(value => value?.isBottom())).map(([key]) => key).toArray();
 	}
 }
 

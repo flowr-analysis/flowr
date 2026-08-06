@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { assert, describe, test } from 'vitest';
 import { run } from '../utility/utility';
 import { allPredefinedTaintAnalysisNames } from '../../../src/taint-analysis/predefined/predefined';
@@ -91,6 +92,8 @@ describe('taint-analysis evaluation', () => {
 		assert.isUndefined(sec.mappedCalls[0].localTargets);
 		assert.isUndefined(sec.unmappedCalls[0].localTargets);
 
+		const filePath = path.resolve('test/system-tests/taint-eval/taint-eval-small.R');
+
 		assert.deepEqual(output.result['security'], {
 			domains: {
 				'0':  'File Input',
@@ -102,7 +105,11 @@ describe('taint-analysis evaluation', () => {
 				'28': 'top',
 				'32': 'top',
 			},
-			finding: 'User input potentially flowing to output',
+			msg:      'User input potentially flowing to output',
+			findings: [
+				{ nodeId: 19, loc: [4, 6, 4, 47, filePath] },
+				{ nodeId: 10, loc: [4, 1, 4, 1, filePath] },
+			],
 		});
 	});
 

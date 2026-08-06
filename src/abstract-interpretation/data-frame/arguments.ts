@@ -1,23 +1,21 @@
-import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
-import { FunctionArgument, type DataflowGraph } from '../../../dataflow/graph/graph';
-import { FunctionCallVertex, UseVertex } from '../../../dataflow/graph/vertex';
-import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
-import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import {
-	type PotentiallyEmptyRArgument,
-	type RFunctionCall,
-	EmptyArgument
-} from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
-import type { RParseRequest } from '../../../r-bridge/retriever';
-import { assertUnreachable } from '../../../util/assert';
-import { readLineByLineSync } from '../../../util/files';
-import { resolveIdToArgName, resolveIdToArgValue, unescapeSpecialChars, unquoteArgument } from '../resolve-args';
-import type { DataFrameShapeInferenceVisitor } from '../shape-inference';
-import { Identifier } from '../../../dataflow/environments/identifier';
+import { Identifier } from '../../dataflow/environments/identifier';
+import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
+import { FunctionArgument, type DataflowGraph } from '../../dataflow/graph/graph';
+import { FunctionCallVertex, UseVertex } from '../../dataflow/graph/vertex';
+import { toUnnamedArgument } from '../../dataflow/internal/process/functions/call/argument/make-argument';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import type { PotentiallyEmptyRArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RNull } from '../../r-bridge/lang-4.x/convert-values';
+import type { RParseRequest } from '../../r-bridge/retriever';
+import { assertUnreachable } from '../../util/assert';
+import { readLineByLineSync } from '../../util/files';
+import type { AbsintContext } from '../abstract-semantics';
+import type { StateDomain } from '../domains/state-domain';
+import type { DataFrameDomain } from './dataframe-domain';
+import { resolveIdToArgName, resolveIdToArgValue, unescapeSpecialChars, unquoteArgument } from './resolve-args';
 
 /** Regular expression representing valid columns names, e.g. for `data.frame` */
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
@@ -138,7 +136,7 @@ export function getFunctionArgument(
 	if(name !== undefined) {
 		arg = args.find(arg => resolveIdToArgName(arg, info) === name);
 	}
-	const hasArgPos = arg === undefined && pos >= 0 && pos < args.length && args[pos] !== EmptyArgument && args[pos].name === undefined;
+	const hasArgPos = arg === undefined && pos >= 0 && pos < args.length && RArgument.isNotEmpty(args[pos]) && args[pos].name === undefined;
 
 	if(hasArgPos) {
 		arg = args[pos];
@@ -175,21 +173,22 @@ export function getFunctionArguments(
  * @returns The name of all unresolved symbols in the expression
  */
 export function getUnresolvedSymbolsInExpression(
-	expression: RNode<ParentInformation> | typeof EmptyArgument | undefined,
+	expression: PotentiallyEmptyRArgument<ParentInformation> | undefined,
 	dfg?: DataflowGraph
 ): Identifier[] {
-	if(expression === undefined || expression === EmptyArgument || dfg === undefined) {
+	if(expression === undefined || RArgument.isEmpty(expression) || dfg === undefined) {
 		return [];
 	}
 	const unresolvedSymbols: Identifier[] = [];
 
 	RNode.visitAst(expression, node => {
 		if(RSymbol.is(node)) {
-			const vertex = dfg.get(node.info.id);
+			const [vertex, edges] = dfg.get(node.info.id) ?? [];
+			const symbolNamespace = Identifier.getNamespace(node.content);
 			const symbolName = Identifier.mapName(node.content, unquoteArgument);
 
 			// ignore symbols named ".", as they are used as argument placeholder in magrittr pipe operations
-			if(UseVertex.is(vertex?.[0]) && vertex[1].size === 0 && symbolName !== '.') {
+			if(UseVertex.is(vertex) && edges?.size === 0 && symbolNamespace === undefined && symbolName !== '.') {
 				unresolvedSymbols.push(symbolName);
 			}
 		}
@@ -228,16 +227,16 @@ export function hasCriticalArgument(
 
 /**
  * Checks if a given argument has an inferred data frame shape and therefore represents a data frame
- * @param arg       - The argument to check
- * @param inference - The data frame shape inference visitor to use
+ * @param arg - The argument to check
+ * @param ctx - The context of the data frame shape analysis
  * @returns Whether the argument represents a data frame
  */
-export function isDataFrameArgument(arg: RNode<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor):
+export function isDataFrameArgument(arg: RNode<ParentInformation> | undefined, ctx: AbsintContext<StateDomain<DataFrameDomain>>):
 	arg is RNode<ParentInformation>;
-export function isDataFrameArgument(arg: PotentiallyEmptyRArgument<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor):
+export function isDataFrameArgument(arg: PotentiallyEmptyRArgument<ParentInformation> | undefined, ctx: AbsintContext<StateDomain<DataFrameDomain>>):
 	arg is RArgument<ParentInformation> & { value: RNode<ParentInformation> };
-export function isDataFrameArgument(arg: RNode<ParentInformation> | PotentiallyEmptyRArgument<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor): boolean {
-	return arg !== EmptyArgument && inference.getAbstractValue(arg) !== undefined;
+export function isDataFrameArgument(arg: RNode<ParentInformation> | PotentiallyEmptyRArgument<ParentInformation> | undefined, ctx: AbsintContext<StateDomain<DataFrameDomain>>): boolean {
+	return !RArgument.isEmpty(arg) && ctx.getAbstractValue(arg) !== undefined;
 }
 
 /**

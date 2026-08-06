@@ -1,5 +1,7 @@
+import { AbstractInterpreter } from '../../abstract-interpretation/absint-inference';
 import type { DataFrameDomain } from '../../abstract-interpretation/data-frame/dataframe-domain';
-import { DataFrameShapeInferenceVisitor, type DataFrameOperationType } from '../../abstract-interpretation/data-frame/shape-inference';
+import type { DataFrameShapeSemantics } from '../../abstract-interpretation/data-frame/dataframe-semantics';
+import { DataFrameShapeAnalysis, type DataFrameOperationType } from '../../abstract-interpretation/data-frame/shape-inference';
 import { NumericalComparator, SetComparator } from '../../abstract-interpretation/domains/value-abstract-domain';
 import { FlowrConfig } from '../../config';
 import { Identifier } from '../../dataflow/environments/identifier';
@@ -69,10 +71,11 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 			})
 		};
 		const cfg = await data.controlflow(undefined, CfgKind.NoFunctionDefs);
-		const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg: dataflow.graph, normalizedAst: normalize, ctx });
+		const analysis = new DataFrameShapeAnalysis();
+		const inference = new AbstractInterpreter({ controlFlow: cfg, dfg: dataflow.graph, normalizedAst: normalize, ctx }, analysis);
 		inference.start();
 
-		const accessOperations = getAccessOperations(elements, inference);
+		const accessOperations = getAccessOperations(elements, analysis.semantics.dataFrame);
 		const accesses: DataFrameAccessOperation[] = [];
 
 		for(const [nodeId, operations] of accessOperations) {
@@ -80,7 +83,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 
 			for(const operation of operations) {
 				access.operand ??= operation.operand;
-				access.operandShape ??= inference.getAbstractValue(operation.operand);
+				access.operandShape ??= inference.getAbstractValue(operation.operand, 'dataFrame');
 
 				if(operation.operation === 'accessCols' && operation.columns !== undefined) {
 					access.accessedCols ??= [];
@@ -143,11 +146,11 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 
 function getAccessOperations(
 	elements: FlowrSearchElements<ParentInformation>,
-	inference: DataFrameShapeInferenceVisitor
+	semantics: DataFrameShapeSemantics
 ): Map<NodeId, DataFrameOperationType<'accessCols' | 'accessRows'>[]> {
 	return new Map(elements.getElements()
 		.map<[NodeId, DataFrameOperationType<'accessCols' | 'accessRows'>[]]>(element =>
-			[element.node.info.id, inference.getAbstractOperations(element.node.info.id)
+			[element.node.info.id, semantics.getAbstractOperations(element.node.info.id)
 				?.filter(({ operation }) => operation === 'accessCols' || operation === 'accessRows')
 				.map(({ operation, operand, type: _type, options: _options, ...args }) =>
 					({ operation, operand, ...args } as DataFrameOperationType<'accessCols' | 'accessRows'>)) ?? []

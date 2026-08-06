@@ -1,8 +1,9 @@
+import { AbstractInterpreter, type AbsintAnalysis } from '../../../abstract-interpretation/absint-inference';
 import { CfgKind } from '../../../project/cfg-kind';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
-import { AbsintQueryInferences, type AbsintQuery, type AbsintQueryDomain, type AbsintQueryResult, type AbsintQueryStateDomain, type AbsintQueryType } from './absint-query-format';
+import { AbsintQueryInferences, type AbsintQuery, type AbsintQueryDomain, type AbsintQueryDomains, type AbsintQueryResult, type AbsintQueryStateDomain, type AbsintQueryType } from './absint-query-format';
 
 /**
  * Executes the given abstract interpretation queries using the provided analyzer.
@@ -22,16 +23,18 @@ export async function executeAbsintQuery<AbsintType extends AbsintQueryType>({ a
 	const cfg = await analyzer.controlflow(undefined, CfgKind.NoFunctionDefs);
 
 	const start = Date.now();
-	const visitor = inference({ controlFlow: cfg, dfg, normalizedAst: ast, ctx: analyzer.inspectContext() });
-	visitor.start();
-	const endState = visitor.getEndState();
+	const analysis = inference.create() as unknown as AbsintAnalysis<AbsintQueryDomains<AbsintType>>;
+	const interpreter = new AbstractInterpreter({ controlFlow: cfg, dfg, normalizedAst: ast, ctx: analyzer.inspectContext() }, analysis);
+	interpreter.start();
 
 	if(queries.length === 1 && queries[0].criteria === undefined) {
+		const state = ('domain' in inference ? interpreter.getEndState(inference.domain) : interpreter.getEndState()) as AbsintQueryStateDomain<AbsintType>;
+
 		return {
 			'.meta': {
 				timing: Date.now() - start
 			},
-			result: endState as AbsintQueryStateDomain<AbsintType>
+			result: state
 		};
 	}
 	const result = new Map<SlicingCriterion, AbsintQueryDomain<AbsintType> | undefined>();
@@ -48,8 +51,8 @@ export async function executeAbsintQuery<AbsintType extends AbsintQueryType>({ a
 			}
 			try {
 				const nodeId = SlicingCriterion.parse(criterion, ast.idMap);
-				const value = visitor.getAbstractValue(nodeId);
-				result.set(criterion, value as AbsintQueryDomain<AbsintType>);
+				const value = ('domain' in inference ? interpreter.getAbstractValue(nodeId, inference.domain) : interpreter.getAbstractValue(nodeId)) as AbsintQueryDomain<AbsintType>;
+				result.set(criterion, value);
 			} catch(err) {
 				console.error(err instanceof Error ? err.message : err);
 			}

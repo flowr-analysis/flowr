@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { IntervalDomain } from '../../../src/abstract-interpretation/domains/interval-domain';
-import { IntervalInferenceVisitor } from '../../../src/documentation/wiki-absint';
+import { IntervalAnalysis } from '../../../src/documentation/wiki-absint';
 import { withShell } from '../_helper/shell';
 import { testInferredValues } from './inference';
 
@@ -37,7 +37,8 @@ z <- x + y
 			'2@y': new IntervalDomain([6, 12]),
 			'3@z': new IntervalDomain([48, 54])
 		},
-		config => new IntervalInferenceVisitor(config),
+		() => IntervalAnalysis,
+		'interval',
 		createOutputCode,
 		parseOutput
 	);

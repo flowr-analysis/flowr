@@ -6,9 +6,9 @@ import type { RLogicalValue } from '../r-bridge/lang-4.x/ast/model/nodes/r-logic
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RFalse, RNull, RNumberValue, RStringValue, RTrue } from '../r-bridge/lang-4.x/convert-values';
 import { Record } from '../util/record';
-import type { AbstractSemantics, SemanticsContext } from './abstract-semantics';
+import type { AbsintContext, AbstractSemantics } from './abstract-semantics';
 import type { AnyAbstractDomain } from './domains/abstract-domain';
-import type { StateDomain } from './domains/state-domain-like';
+import type { StateDomain } from './domains/state-domain';
 
 /**
  * The abstract semantics of the different types of R constants.
@@ -16,15 +16,15 @@ import type { StateDomain } from './domains/state-domain-like';
  */
 interface ConstantSemantics<Domain extends StateDomain> {
 	/** The abstract semantics of string constants, such as `"id"` */
-	readonly string:  AbstractSemantics<Domain>['handleStringConstant'];
+	readonly string?:  AbstractSemantics<Domain>['handleStringConstant'];
 	/** The abstract semantics of numeric constants, such as `42` */
-	readonly number:  AbstractSemantics<Domain>['handleNumberConstant'];
+	readonly number?:  AbstractSemantics<Domain>['handleNumberConstant'];
 	/** The abstract semantics of logical constants, i.e. `TRUE` and `FALSE` */
-	readonly logical: AbstractSemantics<Domain>['handleLogicalConstant'];
+	readonly logical?: AbstractSemantics<Domain>['handleLogicalConstant'];
 	/** The abstract semantics of the `NULL` constant */
-	readonly null:    AbstractSemantics<Domain>['handleNullConstant'];
+	readonly null?:    AbstractSemantics<Domain>['handleNullConstant'];
 	/** The abstract semantics of symbol constants, such as `NA` or `Inf` */
-	readonly symbol:  AbstractSemantics<Domain>['handleSymbolConstant'];
+	readonly symbol?:  AbstractSemantics<Domain>['handleSymbolConstant'];
 }
 
 /**
@@ -64,11 +64,18 @@ type CallSemanticsApplier<Semantics> = Semantics extends Record<IdentifierString
  * @template Domain - Type of the state abstract domain the semantics are defined for
  */
 type CallSemanticsDefinition<Domain extends StateDomain> = {
-	readonly [Key in keyof CallSemantics<Domain>]: readonly {
-		readonly identifier: Identifier;
-		readonly applier:    CallSemanticsApplier<CallSemantics<Domain>[Key]>;
-	}[];
+	readonly [Key in keyof CallSemantics<Domain>]: ReadonlyMap<string, CallSemanticsEntry<Domain, Key>[]>;
 };
+
+/**
+ * The entry of a {@link CallSemanticsDefinition} mapping a function name to the semantics to apply for calls of that function.
+ * @template Domain - Type of the state abstract domain the semantics are defined for
+ * @template Key    - The type of the call semantics entry to get the applier function type for
+ */
+interface CallSemanticsEntry<Domain extends StateDomain, Key extends keyof CallSemantics<Domain> = keyof CallSemantics<Domain>> {
+	readonly identifier: Identifier;
+	readonly applier:    CallSemanticsApplier<CallSemantics<Domain>[Key]>;
+}
 
 /**
  * The abstract semantics of an abstract domain defined by a declarative {@link SemanticsDefinition},
@@ -92,64 +99,76 @@ export class ValueSemantics<Domain extends StateDomain<AnyAbstractDomain>> imple
 	 */
 	constructor({ constants, ...callSemantics }: SemanticsDefinition<Domain>) {
 		this.constantSemantics = constants;
-		this.callSemantics = Record.mapPartialProps(callSemantics, semantics => Record.entries(semantics)
-			.map(([identifier, applier]) => ({ identifier: Identifier.parse(identifier), applier }))) as CallSemanticsDefinition<Domain>;
+		this.callSemantics = Record.mapPartialProps(callSemantics, semantics => {
+			const map = new Map<string, CallSemanticsEntry<Domain>[]>();
+
+			for(const [key, applier] of Record.entries(semantics)) {
+				const identifier = Identifier.parse(key);
+				const name = Identifier.getName(identifier);
+				const entries = map.get(name) ?? [];
+				entries.push({ identifier, applier });
+				map.set(name, entries);
+			}
+			return map;
+		});
 	}
 
 	/** Applies the defined abstract semantics of string constants (see {@link ConstantSemantics}) */
-	public handleStringConstant(state: Domain, vertex: DataflowGraphVertexValue, ctx: SemanticsContext<Domain>, value: RStringValue): void {
+	public handleStringConstant(state: Domain, vertex: DataflowGraphVertexValue, ctx: AbsintContext<Domain>, value: RStringValue): void {
 		this.constantSemantics?.string?.(state, vertex, ctx, value);
 	}
 
 	/** Applies the defined abstract semantics of numeric constants (see {@link ConstantSemantics}) */
-	public handleNumberConstant(state: Domain, vertex: DataflowGraphVertexValue, ctx: SemanticsContext<Domain>, value: RNumberValue): void {
+	public handleNumberConstant(state: Domain, vertex: DataflowGraphVertexValue, ctx: AbsintContext<Domain>, value: RNumberValue): void {
 		this.constantSemantics?.number?.(state, vertex, ctx, value);
 	}
 
 	/** Applies the defined abstract semantics of logical constants (see {@link ConstantSemantics}) */
-	public handleLogicalConstant(state: Domain, vertex: DataflowGraphVertexValue, ctx: SemanticsContext<Domain>, value: RLogicalValue): void {
+	public handleLogicalConstant(state: Domain, vertex: DataflowGraphVertexValue, ctx: AbsintContext<Domain>, value: RLogicalValue): void {
 		this.constantSemantics?.logical?.(state, vertex, ctx, value);
 	}
 
 	/** Applies the defined abstract semantics of the `NULL` constant (see {@link ConstantSemantics}) */
-	public handleNullConstant(state: Domain, vertex: DataflowGraphVertexValue, ctx: SemanticsContext<Domain>, value: typeof RNull): void {
+	public handleNullConstant(state: Domain, vertex: DataflowGraphVertexValue, ctx: AbsintContext<Domain>, value: typeof RNull): void {
 		this.constantSemantics?.null?.(state, vertex, ctx, value);
 	}
 
 	/** Applies the defined abstract semantics of symbol constants (see {@link ConstantSemantics}) */
-	public handleSymbolConstant(state: Domain, vertex: DataflowGraphVertexValue, ctx: SemanticsContext<Domain>, value: Identifier): void {
+	public handleSymbolConstant(state: Domain, vertex: DataflowGraphVertexValue, ctx: AbsintContext<Domain>, value: Identifier): void {
 		this.constantSemantics?.symbol?.(state, vertex, ctx, value);
 	}
 
 	/** Applies the abstract semantics defined for the called function, if the called function is supported (see {@link CallSemantics}) */
-	public handleFunctionCall(state: Domain, vertex: DataflowGraphVertexFunctionCall, ctx: SemanticsContext<Domain>): void {
+	public handleFunctionCall(state: Domain, vertex: DataflowGraphVertexFunctionCall, ctx: AbsintContext<Domain>): void {
 		const applySemantics = this.getSemantics('functionCalls', vertex, ctx);
 		applySemantics?.(state, vertex, ctx);
 	}
 
 	/** Applies the abstract semantics defined for the called replacement function, if the replacement function is supported (see {@link CallSemantics}) */
-	public handleReplacementCall(state: Domain, vertex: DataflowGraphVertexFunctionCall, ctx: SemanticsContext<Domain>, target: NodeId, source: NodeId): void {
+	public handleReplacementCall(state: Domain, vertex: DataflowGraphVertexFunctionCall, ctx: AbsintContext<Domain>, target: NodeId, source: NodeId): void {
 		const applySemantics = this.getSemantics('replacementCall', vertex, ctx);
 		applySemantics?.(state, vertex, ctx, target, source);
 	}
 
 	/** Applies the abstract semantics defined for the called access function, if the access function is supported (see {@link CallSemantics}) */
-	public handleAccessCall(state: Domain, vertex: DataflowGraphVertexFunctionCall, ctx: SemanticsContext<Domain>, target: NodeId): void {
+	public handleAccessCall(state: Domain, vertex: DataflowGraphVertexFunctionCall, ctx: AbsintContext<Domain>, target: NodeId): void {
 		const applySemantics = this.getSemantics('accessCalls', vertex, ctx);
 		applySemantics?.(state, vertex, ctx, target);
 	}
 
 	/** Assigns the abstract value inferred for the assigned source expression to the target of the assignment */
-	public handleAssignmentCall(state: Domain, vertex: DataflowGraphVertexFunctionCall, ctx: SemanticsContext<Domain>, target: NodeId, source: NodeId): void {
+	public handleAssignmentCall(state: Domain, vertex: DataflowGraphVertexFunctionCall, ctx: AbsintContext<Domain>, target: NodeId, source: NodeId): void {
 		const value = ctx.getAbstractValue(source);
 
 		if(value !== undefined) {
 			state.set(target, value);
+		} else {
+			state.remove(target);
 		}
 	}
 
 	/** Applies the abstract semantics defined for the function call guarding a branch, if the called function is supported (see {@link CallSemantics}) */
-	public handleConditionBranch(state: Domain, vertex: DataflowGraphVertexArgument, ctx: SemanticsContext<Domain>, condition: NodeId, branch: typeof RTrue | typeof RFalse): void {
+	public handleConditionBranch(state: Domain, vertex: DataflowGraphVertexArgument, ctx: AbsintContext<Domain>, condition: NodeId, branch: typeof RTrue | typeof RFalse): void {
 		if(FunctionCallVertex.is(vertex)) {
 			const applySemantics = this.getSemantics('conditionSemantics', vertex, ctx);
 			applySemantics?.(state, vertex, ctx, condition, branch);
@@ -160,16 +179,17 @@ export class ValueSemantics<Domain extends StateDomain<AnyAbstractDomain>> imple
 	 * Gets the semantics applier function defined for a function call, by matching the qualified name of the called function against the defined function names.
 	 * @param type   - The type of the call semantics to get the applier function for
 	 * @param vertex - The dataflow graph vertex of the function call
-	 * @param ctx    - The semantics context of the analysis
-	 * @returns The applier function of the defined semantics, or `undefined` if the called function cannot be qualified or is not supported
+	 * @param ctx    - The context of the abstract interpretation analysis
+	 * @returns The applier function of the defined semantics, or `undefined` if the called function is not supported
 	 */
-	private getSemantics<Key extends keyof CallSemantics<Domain>>(type: Key, vertex: DataflowGraphVertexFunctionCall, ctx: SemanticsContext<Domain>): CallSemanticsApplier<CallSemantics<Domain>[Key]> | undefined {
-		const name = Dataflow.qualify(vertex.id, ctx.dfg);
+	protected getSemantics<Key extends keyof CallSemantics<Domain>>(type: Key, vertex: DataflowGraphVertexFunctionCall, ctx: AbsintContext<Domain>): CallSemanticsApplier<CallSemantics<Domain>[Key]> | undefined {
+		const name = Dataflow.qualify(vertex.id, ctx.dfg, false) ?? vertex.name;
 
 		if(name === undefined) {
 			return;
 		}
-		const semantics = this.callSemantics[type]?.find(({ identifier }) => Identifier.matches(name, identifier));
+		const candidates = this.callSemantics[type]?.get(Identifier.getName(name)) ?? [];
+		const semantics = candidates.find(({ identifier }) => Identifier.matches(name, identifier));
 
 		return semantics?.applier;
 	}

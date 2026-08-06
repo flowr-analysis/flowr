@@ -31,15 +31,15 @@ export interface StateDomain<Domain extends AnyAbstractDomain = AnyAbstractDomai
 	set(node: NodeId, value: Domain): void;
 
 	/**
+	 * Returns all node-value pairs of the state domain.
+	 */
+	entries(): readonly [NodeId, Domain][];
+
+	/**
 	 * Whether the state is Bottom.
 	 */
 	isBottom(): boolean;
 }
-
-/**
- * A type representing any state abstract domain that stores abstract values for AST nodes.
- */
-export type AnyStateDomain<Domain extends AnyAbstractDomain = AnyAbstractDomain> = AnyAbstractDomain & StateDomain<Domain>;
 
 /**
  * The type of the value abstract domain of a state abstract domain.

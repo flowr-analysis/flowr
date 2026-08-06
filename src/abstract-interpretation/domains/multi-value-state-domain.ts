@@ -50,6 +50,17 @@ export class MultiValueStateDomain<Product extends PartialProduct, Value extends
 			this.set(node, this.domain.create(newValue as Product));
 		}
 	}
+
+	public entries(): readonly [NodeId, MultiValueDomain<Product>][];
+	public entries<Key extends keyof Product>(property: Key): readonly [NodeId, Product[Key]][];
+	public entries<Key extends keyof Product>(property?: Key): readonly [NodeId, MultiValueDomain<Product>][] | readonly [NodeId, Product[Key]][] {
+		if(property === undefined) {
+			return super.entries();
+		} else if(this.value === Bottom) {
+			return [];
+		}
+		return super.entries().map(([id, domain]) => [id, domain.value[property]]);
+	}
 }
 
 /**

@@ -3,6 +3,14 @@
  */
 export const Record = {
 	/**
+	 * Checks whether a key is a property of a record.
+	 * @param object - The record to check the key for.
+	 * @param key    - The ley to check for.
+	 */
+	has<K extends string>(this: void, object: Partial<Record<K, unknown>>, key: string): key is K {
+		return Object.hasOwn(object, key);
+	},
+	/**
 	 * Returns an array of the names of the properties of a record.
 	 * @param object - The record to get the property names from.
 	 */

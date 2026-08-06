@@ -49,7 +49,8 @@ import { equidistantSampling } from '../util/collections/arrays';
 import { FlowrConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { extractCfg } from '../control-flow/extract-cfg';
-import { DataFrameShapeInferenceVisitor } from '../abstract-interpretation/data-frame/shape-inference';
+import { AbstractInterpreter } from '../abstract-interpretation/absint-inference';
+import { DataFrameShapeAnalysis } from '../abstract-interpretation/data-frame/shape-inference';
 import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
 import { SetRangeDomain } from '../abstract-interpretation/domains/set-range-domain';
 import fs from 'fs';
@@ -377,15 +378,20 @@ export class BenchmarkSlicer {
 			perNodeStats:              new Map()
 		};
 
-		const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg, normalizedAst: ast, ctx: this.context });
+		const analysis = new DataFrameShapeAnalysis();
+		const inference = new AbstractInterpreter({ controlFlow: cfinfo, dfg, normalizedAst: ast, ctx: this.context }, analysis);
 		this.measureSimpleStep('infer data frame shapes', () => inference.start());
 		const result = inference.getEndState();
 
 		stats.numberOfResultConstraints = result.isValue() ? result.value.size : 0;
 		stats.sizeOfInfo = safeSizeOf(inference.getAbstractTrace().entries().toArray());
 
-		for(const value of result.isValue() ? result.value.values() : []) {
-			if(value.isTop()) {
+		for(const node of result.isValue() ? result.value.keys() : []) {
+			const value = result.getValue(node, 'dataFrame');
+
+			if(value === undefined) {
+				continue;
+			} else if(value.isTop()) {
 				stats.numberOfResultingTop++;
 			} else if(value.isBottom()) {
 				stats.numberOfResultingBottom++;
@@ -395,15 +401,15 @@ export class BenchmarkSlicer {
 		}
 
 		RProject.visitAst(this.normalizedAst.ast, node => {
-			const operations = inference.getAbstractOperations(node.info.id);
-			const value = inference.getAbstractValue(node.info.id);
+			const operations = analysis.semantics.dataFrame.getAbstractOperations(node.info.id);
+			const value = inference.getAbstractValue(node.info.id, 'dataFrame');
 
 			// Only store per-node information for nodes representing expressions or nodes with abstract values
 			if(operations === undefined && value === undefined) {
 				stats.numberOfEmptyNodes++;
 				return;
 			}
-			const state = inference.getAbstractState(node.info.id);
+			const state = inference.getAbstractTrace().get(node.info.id);
 
 			const nodeStats: PerNodeStatsDfShape = {
 				numberOfEntries: state?.isValue() ? state.value.size : 0

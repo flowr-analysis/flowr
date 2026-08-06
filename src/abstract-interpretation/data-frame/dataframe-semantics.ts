@@ -1,23 +1,32 @@
 import { VariableResolve } from '../../config';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
+import { Identifier, type IdentifierString } from '../../dataflow/environments/identifier';
 import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
+import { FunctionCallVertex, type DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../dataflow/internal/process/functions/call/argument/make-argument';
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RAccess, type RIndexAccess, type RNamedAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { EmptyArgument, RFunctionCall, type PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RUnaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { requestFromInput, type RParseRequest } from '../../r-bridge/retriever';
 import { isNotUndefined, isUndefined } from '../../util/assert';
-import type { AbstractSemantics, SemanticsContext } from '../abstract-semantics';
-import type { StateDomain } from '../domains/state-domain-like';
-import type { SemanticsDefinition } from '../value-semantics';
+import { Record } from '../../util/record';
+import type { AbsintContext, AbstractSemantics } from '../abstract-semantics';
+import type { StateDomain } from '../domains/state-domain';
+import { ValueSemantics, type SemanticsDefinition } from '../value-semantics';
+import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isRNull, parseRequestContent, type FunctionParameterLocation } from './arguments';
 import { DataFrameDomain } from './dataframe-domain';
-import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isRNull, parseRequestContent, type FunctionParameterLocation } from './mappers/arguments';
-import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars } from './resolve-args';
+import { resolveIdToArgName, resolveIdToArgStringVector, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars } from './resolve-args';
 import { applyDataFrameSemantics, ConstraintType, getConstraintType } from './semantics';
-import type { DataFrameOperations } from './shape-inference';
+import type { DataFrameOperation, DataFrameOperations } from './shape-inference';
 
 /**
  * Represents the different types of data frames in R
@@ -28,13 +37,79 @@ enum DataFrameType {
 	DataTable = 'data.table'
 }
 
+/** The state abstract domain of the data frame shape analysis */
+type DataFrameStateDomain = StateDomain<DataFrameDomain>;
+
 /**
- * The abstract semantics of the supported concrete data frame functions,
+ * A map storing the abstract data frame operations that the expressions of the analyzed program are mapped to.
+ */
+export type DataFrameOperationMap = Map<NodeId, readonly DataFrameOperation[]>;
+
+/**
+ * The abstract semantics of a data frame function, parameterized by an optional map to store the mapped abstract operations in.
+ * @template Handler - Type of the semantics handler the data frame semantics are defined for
+ */
+type DataFrameCallSemantics<Handler extends keyof AbstractSemantics<DataFrameStateDomain>> =
+	(operations?: DataFrameOperationMap) => AbstractSemantics<DataFrameStateDomain>[Handler];
+
+/**
+ * The declarative definition of the abstract semantics of the data frame domain,
+ * with all semantics parameterized by an optional map to store the mapped abstract operations in (see {@link createDataFrameSemantics}).
+ */
+interface DataFrameSemanticsDefinition {
+	readonly functionCalls:      Record<IdentifierString, DataFrameCallSemantics<'handleFunctionCall'>>;
+	readonly accessCalls:        Record<IdentifierString, DataFrameCallSemantics<'handleAccessCall'>>;
+	readonly replacementCall:    Record<IdentifierString, DataFrameCallSemantics<'handleReplacementCall'>>;
+	readonly conditionSemantics: Record<IdentifierString, DataFrameCallSemantics<'handleConditionBranch'>>;
+}
+
+/**
+ * Data frame function mapper for mapping a concrete data frame function to abstract data frame operations.
+ * - `args` contains the function call arguments
+ * - `params` contains the expected argument location for each parameter of the function
+ * - `ctx` contains the context of the abstract interpretation analysis
+ * - `info` contains the resolve information
+ */
+type DataFrameFunctionMapping<Params extends object> = (
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
+	params: Params,
+	ctx: AbsintContext<DataFrameStateDomain>,
+	info: ResolveInfo
+) => DataFrameOperations;
+
+/**
+ * Data frame access mapper for mapping a data frame access operation to abstract data frame operations.
+ * - `access` contains the R node of the access operation
+ * - `ctx` contains the context of the abstract interpretation analysis
+ * - `info` contains the resolve information
+ */
+type DataFrameAccessMapping = (
+	access: RAccess<ParentInformation>,
+	ctx: AbsintContext<DataFrameStateDomain>,
+	info: ResolveInfo
+) => DataFrameOperations;
+
+/**
+ * Data frame replacement mapper for mapping a data frame replacement function to abstract data frame operations.
+ * - `node` contains the R node of the replacement function call (e.g. the call `colnames(df)` in `colnames(df) <- "id"`)
+ * - `expression` contains the assigned expression of the replacement function
+ * - `ctx` contains the context of the abstract interpretation analysis
+ * - `info` contains the resolve information
+ */
+type DataFrameReplacementMapping = (
+	node: RNode<ParentInformation>,
+	expression: RNode<ParentInformation>,
+	ctx: AbsintContext<DataFrameStateDomain>,
+	info: ResolveInfo
+) => DataFrameOperations;
+
+/**
+ * The abstract semantics of the supported concrete data frame functions, access operations, and replacement functions,
  * mapping each supported function to the abstract data frame operations the function is composed of,
- * including information about the origin library of the function, the type of the returned data frame,
+ * including information about the type of the returned data frame
  * and the location of all relevant function parameters (see {@link FunctionParameterLocation}).
  */
-export const DataFrameSemantics = {
+const DataFrameSemantics = {
 	functionCalls: {
 		'base::data.frame': applyFunctionCall(mapDataFrameCreate, {
 			checkNames: { pos: -1, name: 'check.names', default: true },
@@ -344,9 +419,214 @@ export const DataFrameSemantics = {
 		'dplyr::arrange': applyFunctionCall(mapDataFrameIdentity, {
 			dataFrame: { pos: 0, name: '.data' },
 			special:   ['.by_group', '.locale']
-		}, DataFrameType.DataFrame, true)
+		}, DataFrameType.DataFrame, true),
+
+		/* Other functions that are not explicitly supported but always return data frames */
+		'base::as.data.frame.matrix': applyEntryPoint(DataFrameType.DataFrame),  // S3 dispatch of `as.data.frame`
+		'stats::anova':               applyEntryPoint(DataFrameType.DataFrame),
+		'stats::AIC':                 applyEntryPoint(DataFrameType.DataFrame),
+		'stats::BIC':                 applyEntryPoint(DataFrameType.DataFrame),
+		'car::Anova':                 applyEntryPoint(DataFrameType.DataFrame),
+		'car::Manova':                applyEntryPoint(DataFrameType.DataFrame),
+		'dplyr::data_frame':          applyEntryPoint(DataFrameType.DataFrame),
+		'dplyr::as_data_frame':       applyEntryPoint(DataFrameType.DataFrame),
+		'dplyr::tbl':                 applyEntryPoint(DataFrameType.Tibble),
+		'dplyr::as.tbl':              applyEntryPoint(DataFrameType.Tibble),
+		'readr::read_fwf':            applyEntryPoint(DataFrameType.Tibble),
+		'readr::read_log':            applyEntryPoint(DataFrameType.Tibble),
+		'readxl::read_excel':         applyEntryPoint(DataFrameType.Tibble),
+		'readxl::read_xls':           applyEntryPoint(DataFrameType.Tibble),
+		'readxl::read_xlsx':          applyEntryPoint(DataFrameType.Tibble),
+		'tibble::tibble':             applyEntryPoint(DataFrameType.Tibble),
+		'tibble::tibble_row':         applyEntryPoint(DataFrameType.Tibble),
+		'tibble::as_tibble':          applyEntryPoint(DataFrameType.Tibble),
+		'tibble::tribble':            applyEntryPoint(DataFrameType.Tibble),
+		'dplyr::tibble':              applyEntryPoint(DataFrameType.Tibble),  // re-export of `tibble::tibble`
+		'dplyr::as_tibble':           applyEntryPoint(DataFrameType.Tibble),  // re-export of `tibble::as_tibble`
+		'dplyr::tribble':             applyEntryPoint(DataFrameType.Tibble),  // re-export of `tibble::tribble`
+		'data.table::data.table':     applyEntryPoint(DataFrameType.DataTable),
+		'data.table::as.data.table':  applyEntryPoint(DataFrameType.DataTable),
+		'data.table::fread':          applyEntryPoint(DataFrameType.DataTable),
+
+		/* Other transformations that are not explicitly supported but return data frames if an argument is a data frame */
+		'stats::na.omit':    applyUnknownCall({ pos: 0, name: 'object' }, DataFrameType.DataFrame),
+		'base::unique':      applyUnknownCall({ pos: 0, name: 'x' }, DataFrameType.DataFrame),
+		'base::droplevels':  applyUnknownCall({ pos: 0, name: 'x' }, DataFrameType.DataFrame),
+		'stats::aggregate':  applyUnknownCall({ pos: 0, name: 'x' }, DataFrameType.DataFrame),
+		'base::with':        applyUnknownCall({ pos: 0, name: 'data' }, DataFrameType.DataFrame),
+		'base::within':      applyUnknownCall({ pos: 0, name: 'data' }, DataFrameType.DataFrame),
+		'stats::reshape':    applyUnknownCall({ pos: 0, name: 'data' }, DataFrameType.DataFrame),
+		'reshape2::melt':    applyUnknownCall({ pos: 0, name: 'data' }, DataFrameType.DataFrame),
+		'data.table::melt':  applyUnknownCall({ pos: 0, name: 'data' }, DataFrameType.DataTable),
+		'data.table::dcast': applyUnknownCall({ pos: 0, name: 'data' }, DataFrameType.DataTable),
+
+		'tidyr::drop_na':                 applyUnknownCall({ pos: 0, name: 'data' }, DataFrameType.DataFrame),
+		'tidyr::replace_na':              applyUnknownCall({ pos: 0, name: 'data' }, DataFrameType.DataFrame),
+		'tidyr::pivot_longer':            applyUnknownCall({ pos: 0, name: 'data' }, DataFrameType.DataFrame),
+		'tidyr::pivot_wider':             applyUnknownCall({ pos: 0, name: 'data' }, DataFrameType.DataFrame),
+		'tidyr::separate':                applyUnknownCall({ pos: 0, name: 'data' }, DataFrameType.DataFrame),
+		'tidyr::separate_wider_position': applyUnknownCall({ pos: 0, name: 'data' }, DataFrameType.DataFrame),
+		'tidyr::separate_wider_delim':    applyUnknownCall({ pos: 0, name: 'data' }, DataFrameType.DataFrame),
+		'tidyr::unite':                   applyUnknownCall({ pos: 0, name: 'data' }, DataFrameType.DataFrame),
+
+		'dplyr::transmute':        applyUnknownCall({ pos: 0, name: '.data' }, DataFrameType.DataFrame, true),
+		'dplyr::distinct':         applyUnknownCall({ pos: 0, name: '.data' }, DataFrameType.DataFrame, true),
+		'dplyr::distinct_prepare': applyUnknownCall({ pos: 0, name: '.data' }, DataFrameType.DataFrame, true),
+		'dplyr::group_by_prepare': applyUnknownCall({ pos: 0, name: '.data' }, DataFrameType.DataFrame, true),
+		'dplyr::rename':           applyUnknownCall({ pos: 0, name: '.data' }, DataFrameType.DataFrame, true),
+		'dplyr::rename_with':      applyUnknownCall({ pos: 0, name: '.data' }, DataFrameType.DataFrame, true),
+		'dplyr::reframe':          applyUnknownCall({ pos: 0, name: '.data' }, DataFrameType.DataFrame, true),
+		'dplyr::slice':            applyUnknownCall({ pos: 0, name: '.data' }, DataFrameType.DataFrame, true),
+		'dplyr::slice_head':       applyUnknownCall({ pos: 0, name: '.data' }, DataFrameType.DataFrame, true),
+		'dplyr::slice_tail':       applyUnknownCall({ pos: 0, name: '.data' }, DataFrameType.DataFrame, true),
+		'dplyr::slice_min':        applyUnknownCall({ pos: 0, name: '.data' }, DataFrameType.DataFrame, true),
+		'dplyr::slice_max':        applyUnknownCall({ pos: 0, name: '.data' }, DataFrameType.DataFrame, true),
+		'dplyr::slice_sample':     applyUnknownCall({ pos: 0, name: '.data' }, DataFrameType.DataFrame, true),
+
+		'dplyr::filter_if':     applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::filter_at':     applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::filter_all':    applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::select_if':     applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::select_at':     applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::select_all':    applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::mutate_if':     applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::mutate_at':     applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::mutate_all':    applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::transmute_if':  applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::transmute_at':  applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::transmute_all': applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::distinct_if':   applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::distinct_at':   applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::distinct_all':  applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::group_by_if':   applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::group_by_at':   applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::group_by_all':  applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::summarize_if':  applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::summarise_if':  applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::summarize_at':  applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::summarise_at':  applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::summarize_all': applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::summarise_all': applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::arrange_if':    applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::arrange_at':    applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::arrange_all':   applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::rename_if':     applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::rename_at':     applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+		'dplyr::rename_all':    applyUnknownCall({ pos: 0, name: '.tbl' }, DataFrameType.Tibble, true),
+
+		'dplyr::semi_join':   applyUnknownCall({ pos: 0, name: 'x' }, DataFrameType.DataFrame, true),
+		'dplyr::anti_join':   applyUnknownCall({ pos: 0, name: 'x' }, DataFrameType.DataFrame, true),
+		'dplyr::nest_join':   applyUnknownCall({ pos: 0, name: 'x' }, DataFrameType.DataFrame, true),
+		'dplyr::cross_join':  applyUnknownCall({ pos: 0, name: 'x' }, DataFrameType.DataFrame, true),
+		'dplyr::ungroup':     applyUnknownCall({ pos: 0, name: 'x' }, DataFrameType.DataFrame, true),
+		'dplyr::count':       applyUnknownCall({ pos: 0, name: 'x' }, DataFrameType.DataFrame, true),
+		'dplyr::tally':       applyUnknownCall({ pos: 0, name: 'x' }, DataFrameType.DataFrame, true),
+		'dplyr::add_count':   applyUnknownCall({ pos: 0, name: 'x' }, DataFrameType.DataFrame, true),
+		'dplyr::add_tally':   applyUnknownCall({ pos: 0, name: 'x' }, DataFrameType.DataFrame, true),
+		'dplyr::rows_insert': applyUnknownCall({ pos: 0, name: 'x' }, DataFrameType.DataFrame, true),
+		'dplyr::rows_append': applyUnknownCall({ pos: 0, name: 'x' }, DataFrameType.DataFrame, true),
+		'dplyr::rows_update': applyUnknownCall({ pos: 0, name: 'x' }, DataFrameType.DataFrame, true),
+		'dplyr::rows_patch':  applyUnknownCall({ pos: 0, name: 'x' }, DataFrameType.DataFrame, true),
+		'dplyr::rows_upsert': applyUnknownCall({ pos: 0, name: 'x' }, DataFrameType.DataFrame, true),
+		'dplyr::rows_delete': applyUnknownCall({ pos: 0, name: 'x' }, DataFrameType.DataFrame, true),
+
+		'dplyr::bind_cols': applyUnknownCall(undefined, DataFrameType.DataFrame, true),
+		'dplyr::bind_rows': applyUnknownCall(undefined, DataFrameType.DataFrame, true),
+
+		'tibble::add_column': applyUnknownCall({ pos: 0, name: '.data' }, DataFrameType.Tibble, true),
+		'tibble::add_row':    applyUnknownCall({ pos: 0, name: '.data' }, DataFrameType.Tibble, true),
+		'tibble::add_case':   applyUnknownCall({ pos: 0, name: '.data' }, DataFrameType.Tibble, true),
+		'dplyr::add_row':     applyUnknownCall({ pos: 0, name: '.data' }, DataFrameType.Tibble, true),  // re-export of `tibble::add_row`
+
+		/* Other functions that are not explicitly supported but modify their data frame argument in place */
+		'stats::setNames': applyUnknownCall({ pos: 0, name: 'object' }, DataFrameType.DataFrame, false, ConstraintType.OperandModification),
+		'base::unname':    applyUnknownCall({ pos: 0, name: 'obj' }, DataFrameType.DataFrame, false, ConstraintType.OperandModification)
+	},
+	accessCalls: {
+		'base::$':  applyAccessCall(mapDataFrameAccess),
+		'base::[':  applyAccessCall(mapDataFrameAccess),
+		'base::[[': applyAccessCall(mapDataFrameAccess)
+	},
+	replacementCall: {
+		'base::$<-':        applyReplacementCall(mapDataFrameAccessAssignment),
+		'base::[<-':        applyReplacementCall(mapDataFrameAccessAssignment),
+		'base::[[<-':       applyReplacementCall(mapDataFrameAccessAssignment),
+		'base::names<-':    applyReplacementCall(mapDataFrameColNamesAssignment),
+		'base::colnames<-': applyReplacementCall(mapDataFrameColNamesAssignment),
+		'base::rownames<-': applyReplacementCall(mapDataFrameRowNamesAssignment),
+		'base::dimnames<-': applyReplacementCall(mapDataFrameDimNamesAssignment)
+	},
+	conditionSemantics: {}
+} satisfies DataFrameSemanticsDefinition;
+
+/**
+ * The options of the abstract semantics of the data frame shape inference (see {@link DataFrameShapeSemantics}).
+ */
+export interface DataFrameShapeSemanticsOptions {
+	/** Whether the abstract data frame operations the expressions are mapped to should be stored (defaults to `true`) */
+	readonly trackOperations?: boolean;
+}
+
+/**
+ * The abstract semantics of the data frame shape inference, applying the abstract semantics defined for the supported
+ * data frame functions, access operations, and replacement functions (see {@link DataFrameSemantics}).
+ *
+ * Besides the defined semantics, all other replacement functions applied to a data frame are over-approximated
+ * by mapping the modified data frame operand to the `unknown` abstract operation.
+ *
+ * The semantics store the abstract data frame operations the expressions of the analyzed program are mapped to,
+ * which can be retrieved with {@link getAbstractOperations} after the analysis was performed.
+ */
+export class DataFrameShapeSemantics extends ValueSemantics<DataFrameStateDomain> {
+	/** The map storing the abstract data frame operations the expressions of the analyzed program are mapped to */
+	private readonly operations?: DataFrameOperationMap;
+
+	/**
+	 * Creates the abstract semantics of the data frame shape inference.
+	 * @param options - The options of the semantics, i.e. whether the mapped abstract operations should be stored
+	 */
+	constructor({ trackOperations = true }: DataFrameShapeSemanticsOptions = {}) {
+		const operations = trackOperations ? new Map<NodeId, readonly DataFrameOperation[]>() : undefined;
+		super(createDataFrameSemantics(operations));
+		this.operations = operations;
 	}
-} satisfies SemanticsDefinition<StateDomain<DataFrameDomain>>;
+
+	/**
+	 * Gets the mapped abstract data frame operations for an AST node (this only includes direct function calls, replacement calls, or access operations).
+	 * This requires that the abstract interpretation visitor applying the semantics has been completed, or at least started.
+	 * @param id - The ID of the node to get the mapped abstract operations for
+	 * @returns The mapped abstract data frame operations for the node, or `undefined` if no abstract operation was mapped for the node or storing mapped abstract operations is disabled via the options.
+	 */
+	public getAbstractOperations(id: NodeId | undefined): Readonly<DataFrameOperations> {
+		return id !== undefined ? this.operations?.get(id) : undefined;
+	}
+
+	/**
+	 * Applies the abstract semantics defined for the called replacement function, or over-approximates
+	 * the modified data frame operand of any other replacement function by the `unknown` abstract operation.
+	 */
+	public override handleReplacementCall(state: DataFrameStateDomain, vertex: DataflowGraphVertexFunctionCall, ctx: AbsintContext<DataFrameStateDomain>, target: NodeId, source: NodeId): void {
+		if(this.getSemantics('replacementCall', vertex, ctx) !== undefined) {
+			super.handleReplacementCall(state, vertex, ctx, target, source);
+		} else {
+			applyUnknownAssignment(state, vertex, ctx, this.operations);
+		}
+	}
+}
+
+/**
+ * Creates the declarative definition of the abstract semantics of the data frame domain (see {@link DataFrameSemantics}).
+ * @param operations - An optional map to store the abstract data frame operations the expressions are mapped to
+ * @returns The definition of the abstract semantics of the data frame domain
+ */
+function createDataFrameSemantics(operations?: DataFrameOperationMap): SemanticsDefinition<DataFrameStateDomain> {
+	return {
+		functionCalls:      Record.mapProps(DataFrameSemantics.functionCalls, semantics => semantics(operations)),
+		accessCalls:        Record.mapProps(DataFrameSemantics.accessCalls, semantics => semantics(operations)),
+		replacementCall:    Record.mapProps(DataFrameSemantics.replacementCall, semantics => semantics(operations)),
+		conditionSemantics: Record.mapProps(DataFrameSemantics.conditionSemantics, (semantics: DataFrameCallSemantics<'handleConditionBranch'>) => semantics(operations))
+	};
+}
 
 /**
  * Creates the abstract semantics of a data frame function, by mapping calls of the function to abstract data frame operations and applying their semantics.
@@ -361,38 +641,128 @@ function applyFunctionCall<Params extends object, Mapper extends DataFrameFuncti
 	params: Params & { critical?: FunctionParameterLocation<unknown>[] },
 	returnType: DataFrameType,
 	alwaysReturnsDataFrame?: boolean
-): AbstractSemantics<StateDomain<DataFrameDomain>>['handleFunctionCall'] {
-	return (state, vertex, ctx) => {
-		const resolveInfo = { graph: ctx.dfg, idMap: ctx.ast.idMap, full: true, resolve: VariableResolve.Alias, ctx: ctx.context };
-		const node = ctx.ast.idMap.get(vertex.id);
+): DataFrameCallSemantics<'handleFunctionCall'> {
+	return operations => (state, vertex, ctx) => {
+		const resolveInfo = getResolveInfo(ctx);
+		const node = ctx.getAstNode(vertex.id);
 
 		if(!RFunctionCall.isNamed(node)) {
 			return;
 		}
-		let operations: DataFrameOperations;
+		let result: DataFrameOperations;
 		const args = getFunctionArguments(node, ctx.dfg);
 
 		if(hasCriticalArgument(args, params.critical, resolveInfo)) {
-			operations = [{ operation: 'unknown', operand: undefined }];
+			result = [{ operation: 'unknown', operand: undefined }];
 		} else {
-			operations = mapper(args, params, ctx, resolveInfo) ?? (alwaysReturnsDataFrame ? [{ operation: 'unknown', operand: undefined }] : undefined);
+			result = mapper(args, params, ctx, resolveInfo) ?? (alwaysReturnsDataFrame ? [{ operation: 'unknown', operand: undefined }] : undefined);
 		}
-		applyDataFrameExpression(state, node, operations, ctx);
+		applyDataFrameExpression(state, node, result, ctx, operations);
 	};
+}
+
+/**
+ * Creates the abstract semantics of a data frame function that is not explicitly supported but always returns a data frame, such as `tibble(id = 1:5)`.
+ * @param returnType - The type of the data frame returned by the function
+ * @returns The function call semantics over-approximating the result of the function by the `unknown` operation
+ */
+function applyEntryPoint(returnType: DataFrameType): DataFrameCallSemantics<'handleFunctionCall'> {
+	return applyFunctionCall(() => [{ operation: 'unknown', operand: undefined }], {}, returnType);
+}
+
+/**
+ * Creates the abstract semantics of a data frame function that is not explicitly supported but returns or modifies a data frame, such as `na.omit(df)`.
+ * @param dataFrame              - The expected location of the data frame parameter (if `undefined`, the first argument that is a data frame is used)
+ * @param returnType             - The type of the data frame returned by the function
+ * @param alwaysReturnsDataFrame - Whether the function always returns a data frame, so that unsuccessful mappings are over-approximated by the `unknown` operation
+ * @param constraintType         - The optional constraint type to overwrite the default type of the `unknown` operation (e.g. for functions modifying their operand in place)
+ * @returns The function call semantics over-approximating the result of the function by the `unknown` operation
+ */
+function applyUnknownCall(
+	dataFrame: FunctionParameterLocation | undefined,
+	returnType: DataFrameType,
+	alwaysReturnsDataFrame?: boolean,
+	constraintType?: Exclude<ConstraintType, ConstraintType.OperandPrecondition>
+): DataFrameCallSemantics<'handleFunctionCall'> {
+	return applyFunctionCall(mapDataFrameUnknown, { dataFrame, constraintType }, returnType, alwaysReturnsDataFrame);
+}
+
+/**
+ * Creates the abstract semantics of a data frame access operation, by mapping the access to abstract data frame operations and applying their semantics.
+ * @param mapper - The mapper function mapping the access operation to abstract data frame operations
+ * @returns The access call semantics applying the abstract data frame operations of the access operation
+ */
+function applyAccessCall(mapper: DataFrameAccessMapping): DataFrameCallSemantics<'handleAccessCall'> {
+	return operations => (state, vertex, ctx) => {
+		const node = ctx.getAstNode(vertex.id);
+
+		if(!RAccess.is(node)) {
+			return;
+		}
+		applyDataFrameExpression(state, node, mapper(node, ctx, getResolveInfo(ctx)), ctx, operations);
+	};
+}
+
+/**
+ * Creates the abstract semantics of a data frame replacement function, by mapping the replacement call to abstract data frame operations and applying their semantics.
+ * @param mapper - The mapper function mapping the replacement call to abstract data frame operations
+ * @returns The replacement call semantics applying the abstract data frame operations of the replacement function
+ */
+function applyReplacementCall(mapper: DataFrameReplacementMapping): DataFrameCallSemantics<'handleReplacementCall'> {
+	return operations => (state, vertex, ctx, target, source) => {
+		const node = ctx.getAstNode(vertex.id);
+		const expression = ctx.getAstNode(source);
+
+		if(node === undefined || ctx.getAstNode(target) === undefined || expression === undefined) {
+			return;
+		}
+		applyDataFrameExpression(state, node, mapper(node, expression, ctx, getResolveInfo(ctx)), ctx, operations);
+	};
+}
+
+/**
+ * Applies the abstract semantics of a replacement function that is not explicitly supported, such as `levels(df) <- c("A", "B")`,
+ * by over-approximating the modified data frame operand with the `unknown` abstract operation.
+ * @param state      - The abstract state to apply the semantics to
+ * @param vertex     - The dataflow graph vertex of the replacement call
+ * @param ctx        - The context of the abstract interpretation analysis
+ * @param operations - An optional map to store the mapped abstract data frame operations in
+ */
+function applyUnknownAssignment(state: DataFrameStateDomain, vertex: DataflowGraphVertexFunctionCall, ctx: AbsintContext<DataFrameStateDomain>, operations?: DataFrameOperationMap): void {
+	const node = ctx.getAstNode(vertex.id);
+	const operand = node !== undefined ? getReplacementOperand(node, ctx) : undefined;
+
+	if(node === undefined || operand === undefined) {
+		return;
+	}
+	applyDataFrameExpression(state, node, [{
+		operation: 'unknown',
+		operand:   operand.value.info.id,
+		type:      ConstraintType.OperandModification
+	}], ctx, operations);
+}
+
+/**
+ * Creates the resolve information for resolving the arguments of a data frame function call.
+ */
+function getResolveInfo(ctx: AbsintContext<DataFrameStateDomain>): ResolveInfo {
+	return { graph: ctx.dfg, idMap: ctx.ast.idMap, full: true, resolve: VariableResolve.Alias, ctx: ctx.context };
 }
 
 /**
  * Applies the semantics of abstract data frame operations to an abstract state,
  * by storing the inferred abstract value either at the modified operand or at the result of the expression, depending on the {@link ConstraintType} of the operation.
- * @param state      - The abstract state to apply the semantics to
- * @param node       - The R node of the expression the abstract operations were mapped from
- * @param operations - The abstract data frame operations to apply
- * @param ctx        - The semantics context of the analysis
+ * @param state          - The abstract state to apply the semantics to
+ * @param node           - The R node of the expression the abstract operations were mapped from
+ * @param operations     - The abstract data frame operations to apply
+ * @param ctx            - The context of the abstract interpretation analysis
+ * @param operationsMap  - An optional map to store the mapped abstract data frame operations in
  */
-function applyDataFrameExpression(state: StateDomain<DataFrameDomain>, node: RNode<ParentInformation>, operations: DataFrameOperations, ctx: SemanticsContext<StateDomain<DataFrameDomain>>): void {
+function applyDataFrameExpression(state: DataFrameStateDomain, node: RNode<ParentInformation>, operations: DataFrameOperations, ctx: AbsintContext<DataFrameStateDomain>, operationsMap?: DataFrameOperationMap): void {
 	if(operations === undefined) {
 		return;
 	}
+	operationsMap?.set(node.info.id, operations);
 	const maxColNames = ctx.context.config.abstractInterpretation.dataFrame.maxColNames;
 	let value = DataFrameDomain.top(maxColNames);
 
@@ -414,20 +784,6 @@ function applyDataFrameExpression(state: StateDomain<DataFrameDomain>, node: RNo
 }
 
 /**
- * Data frame function mapper for mapping a concrete data frame function to abstract data frame operations.
- * - `args` contains the function call arguments
- * - `params` contains the expected argument location for each parameter of the function
- * - `ctx` contains the semantics context of the analysis
- * - `info` contains the resolve information
- */
-type DataFrameFunctionMapping<Params extends object> = (
-	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
-	params: Params,
-	ctx: SemanticsContext<StateDomain<DataFrameDomain>>,
-	info: ResolveInfo
-) => DataFrameOperations;
-
-/**
  * Maps a data frame creation function, such as `data.frame(id = 1:5, name = c("A", "B"))`, to abstract data frame operations.
  */
 function mapDataFrameCreate(
@@ -437,7 +793,7 @@ function mapDataFrameCreate(
 		noDupNames: FunctionParameterLocation<boolean>,
 		special:    string[]
 	},
-	ctx: SemanticsContext<StateDomain<DataFrameDomain>>,
+	ctx: AbsintContext<DataFrameStateDomain>,
 	info: ResolveInfo
 ): DataFrameOperations {
 	const checkNames = getArgumentValue(args, params.checkNames, info);
@@ -472,12 +828,12 @@ function mapDataFrameCreate(
 function mapDataFrameConvert(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation },
-	ctx: SemanticsContext<StateDomain<DataFrameDomain>>,
+	ctx: AbsintContext<DataFrameStateDomain>,
 	info: ResolveInfo
 ): DataFrameOperations {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(dataFrame === EmptyArgument || dataFrame?.value === undefined) {
+	if(RArgument.isEmpty(dataFrame) || !RArgument.isWithValue(dataFrame)) {
 		return [{ operation: 'unknown', operand: undefined }];
 	}
 	return [{
@@ -504,7 +860,7 @@ function mapDataFrameRead(
 		noDupNames:    FunctionParameterLocation<boolean>,
 		noEmptyNames?: boolean
 	},
-	ctx: SemanticsContext<StateDomain<DataFrameDomain>>,
+	ctx: AbsintContext<DataFrameStateDomain>,
 	info: ResolveInfo
 ): DataFrameOperations {
 	const fileNameArg = getFunctionArgument(args, params.fileName, info);
@@ -572,7 +928,7 @@ function mapDataFrameRead(
 function mapDataFrameColBind(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { special: string[] },
-	ctx: SemanticsContext<StateDomain<DataFrameDomain>>,
+	ctx: AbsintContext<DataFrameStateDomain>,
 	info: ResolveInfo
 ): DataFrameOperations {
 	args = getEffectiveArgs(args, params.special);
@@ -588,7 +944,7 @@ function mapDataFrameColBind(
 	let colnames: (string | undefined)[] | undefined = [];
 
 	for(const arg of args) {
-		if(arg !== dataFrame && arg !== EmptyArgument) {
+		if(arg !== dataFrame && RArgument.isNotEmpty(arg)) {
 			const otherDataFrame = ctx.getAbstractValue(arg.value);
 
 			if(otherDataFrame !== undefined) {
@@ -623,7 +979,7 @@ function mapDataFrameColBind(
 function mapDataFrameRowBind(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { special: string[] },
-	ctx: SemanticsContext<StateDomain<DataFrameDomain>>,
+	ctx: AbsintContext<DataFrameStateDomain>,
 	info: ResolveInfo
 ): DataFrameOperations {
 	args = getEffectiveArgs(args, params.special);
@@ -639,7 +995,7 @@ function mapDataFrameRowBind(
 	let rows: number | undefined = 0;
 
 	for(const arg of args) {
-		if(arg !== dataFrame && arg !== EmptyArgument) {
+		if(arg !== dataFrame && RArgument.isNotEmpty(arg)) {
 			const otherDataFrame = ctx.getAbstractValue(arg.value);
 
 			if(otherDataFrame !== undefined) {
@@ -673,7 +1029,7 @@ function mapDataFrameRowBind(
 function mapDataFrameHeadTail(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, amount: FunctionParameterLocation<number> },
-	ctx: SemanticsContext<StateDomain<DataFrameDomain>>,
+	ctx: AbsintContext<DataFrameStateDomain>,
 	info: ResolveInfo
 ): DataFrameOperations {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
@@ -719,7 +1075,7 @@ function mapDataFrameSubset(
 		select:    FunctionParameterLocation,
 		drop:      FunctionParameterLocation<boolean>
 	},
-	ctx: SemanticsContext<StateDomain<DataFrameDomain>>,
+	ctx: AbsintContext<DataFrameStateDomain>,
 	info: ResolveInfo
 ): DataFrameOperations {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
@@ -760,7 +1116,7 @@ function mapDataFrameSubset(
 		});
 	}
 
-	if(filterArg !== undefined && filterArg !== EmptyArgument) {
+	if(RArgument.isNotEmpty(filterArg)) {
 		result.push({
 			operation: 'filterRows',
 			operand:   operand?.info.id,
@@ -769,7 +1125,7 @@ function mapDataFrameSubset(
 		operand = undefined;
 	}
 
-	if(!dropArg || accessedCols.length > 1) {
+	if(dropArg === undefined || accessedCols.length > 1) {
 		if(unselectedCols === undefined || unselectedCols.length > 0) {
 			result.push({
 				operation: 'removeCols',
@@ -798,7 +1154,7 @@ function mapDataFrameSubset(
 function mapDataFrameFilter(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, special: string[] },
-	ctx: SemanticsContext<StateDomain<DataFrameDomain>>,
+	ctx: AbsintContext<DataFrameStateDomain>,
 	info: ResolveInfo
 ): DataFrameOperations {
 	args = getEffectiveArgs(args, params.special);
@@ -839,7 +1195,7 @@ function mapDataFrameFilter(
 function mapDataFrameSelect(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, special: string[] },
-	ctx: SemanticsContext<StateDomain<DataFrameDomain>>,
+	ctx: AbsintContext<DataFrameStateDomain>,
 	info: ResolveInfo
 ): DataFrameOperations {
 	args = getEffectiveArgs(args, params.special);
@@ -913,7 +1269,7 @@ function mapDataFrameMutate(
 		checkNames?: boolean,
 		noDupNames?: boolean
 	},
-	ctx: SemanticsContext<StateDomain<DataFrameDomain>>,
+	ctx: AbsintContext<DataFrameStateDomain>,
 	info: ResolveInfo
 ): DataFrameOperations {
 	args = getEffectiveArgs(args, params.special);
@@ -983,7 +1339,7 @@ function mapDataFrameGroupBy(
 		by:        FunctionParameterLocation,
 		special:   string[]
 	},
-	ctx: SemanticsContext<StateDomain<DataFrameDomain>>,
+	ctx: AbsintContext<DataFrameStateDomain>,
 	info: ResolveInfo
 ): DataFrameOperations {
 	args = getEffectiveArgs(args, params.special);
@@ -1025,7 +1381,7 @@ function mapDataFrameGroupBy(
 function mapDataFrameSummarize(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, special: string[] },
-	ctx: SemanticsContext<StateDomain<DataFrameDomain>>,
+	ctx: AbsintContext<DataFrameStateDomain>,
 	info: ResolveInfo
 ): DataFrameOperations {
 	args = getEffectiveArgs(args, params.special);
@@ -1073,7 +1429,7 @@ function mapDataFrameJoin(
 		joinLeft:       FunctionParameterLocation<boolean>,
 		joinRight:      FunctionParameterLocation<boolean>
 	},
-	ctx: SemanticsContext<StateDomain<DataFrameDomain>>,
+	ctx: AbsintContext<DataFrameStateDomain>,
 	info: ResolveInfo
 ): DataFrameOperations {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
@@ -1143,7 +1499,7 @@ function mapDataFrameIdentity(
 		special:            string[],
 		disallowNamedArgs?: boolean
 	},
-	ctx: SemanticsContext<StateDomain<DataFrameDomain>>,
+	ctx: AbsintContext<DataFrameStateDomain>,
 	info: ResolveInfo
 ): DataFrameOperations {
 	args = getEffectiveArgs(args, params.special);
@@ -1161,6 +1517,427 @@ function mapDataFrameIdentity(
 }
 
 /**
+ * Maps a function that is not explicitly supported but returns or modifies a data frame, such as `na.omit(df)` or `setNames(df, "id")`, to abstract data frame operations.
+ */
+function mapDataFrameUnknown(
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
+	params: {
+		dataFrame?:      FunctionParameterLocation,
+		constraintType?: Exclude<ConstraintType, ConstraintType.OperandPrecondition>
+	},
+	ctx: AbsintContext<DataFrameStateDomain>,
+	info: ResolveInfo
+): DataFrameOperations {
+	let dataFrame;
+
+	if(params.dataFrame !== undefined) {
+		dataFrame = getFunctionArgument(args, params.dataFrame, info);
+	} else {
+		dataFrame = args.find(arg => isDataFrameArgument(arg, ctx));
+	}
+
+	if(!isDataFrameArgument(dataFrame, ctx)) {
+		return;
+	}
+	return [{
+		operation: 'unknown',
+		operand:   dataFrame.value.info.id,
+		...(params.constraintType !== undefined ? { type: params.constraintType } : {})
+	}];
+}
+
+/**
+ * Maps a data frame access operation, such as `df$id`, `df["id"]`, or `df[1, 2]`, to abstract data frame operations.
+ */
+function mapDataFrameAccess(
+	access: RAccess<ParentInformation>,
+	ctx: AbsintContext<DataFrameStateDomain>,
+	info: ResolveInfo
+): DataFrameOperations {
+	if(RAccess.isNamed(access)) {
+		return mapDataFrameNamedColumnAccess(access, ctx, info);
+	} else {
+		return mapDataFrameIndexColRowAccess(access, ctx, info);
+	}
+}
+
+/**
+ * Maps a string-based access of a data frame column, such as `df$id`, to abstract data frame operations.
+ */
+function mapDataFrameNamedColumnAccess(
+	access: RNamedAccess<ParentInformation>,
+	ctx: AbsintContext<DataFrameStateDomain>,
+	info: ResolveInfo
+): DataFrameOperations {
+	const dataFrame = access.accessed;
+
+	if(!isDataFrameArgument(dataFrame, ctx)) {
+		return;
+	}
+	const colname = resolveIdToArgValueSymbolName(access.access[0], info);
+
+	return [{
+		operation: 'accessCols',
+		operand:   dataFrame.info.id,
+		columns:   colname ? [colname] : undefined
+	}];
+}
+
+/**
+ * Maps an index-based access of the rows and columns of a data frame, such as `df[1, ]` or `df[["id"]]`, to abstract data frame operations.
+ */
+function mapDataFrameIndexColRowAccess(
+	access: RIndexAccess<ParentInformation>,
+	ctx: AbsintContext<DataFrameStateDomain>,
+	info: ResolveInfo
+): DataFrameOperations {
+	const dataFrame = access.accessed;
+	const drop = getArgumentValue(access.access, 'drop', info);
+	const exact = getArgumentValue(access.access, 'exact', info);
+	const args = access.access.filter(arg => RArgument.isEmpty(arg) || RArgument.isUnnamed(arg));
+
+	if(!isDataFrameArgument(dataFrame, ctx)) {
+		return;
+	} else if(args.every(RArgument.isEmpty)) {
+		return [{ operation: 'identity', operand: dataFrame.info.id }];
+	}
+	const result: DataFrameOperations = [];
+
+	const rowArg = args.length < 2 ? undefined : args[0];
+	const colArg = args.length < 2 ? args[0] : args[1];
+	let rows: number[] | undefined = undefined;
+	let columns: string[] | number[] | undefined = undefined;
+
+	if(RArgument.isNotEmpty(rowArg)) {
+		const rowValue = resolveIdToArgValue(rowArg, info);
+
+		if(typeof rowValue === 'number') {
+			rows = [rowValue];
+		} else if(Array.isArray(rowValue) && rowValue.every(row => typeof row === 'number')) {
+			rows = rowValue;
+		}
+		result.push({
+			operation: 'accessRows',
+			operand:   dataFrame.info.id,
+			rows:      rows?.map(Math.abs)
+		});
+	}
+	if(RArgument.isNotEmpty(colArg)) {
+		const colValue = resolveIdToArgValue(colArg, info);
+
+		if(typeof colValue === 'number') {
+			columns = [colValue];
+		} else if(typeof colValue === 'string' && exact !== false) {
+			columns = [colValue];
+		} else if(Array.isArray(colValue) && colValue.every(col => typeof col === 'number')) {
+			columns = colValue;
+		} else if(Array.isArray(colValue) && colValue.every(col => typeof col === 'string') && exact !== false) {
+			columns = colValue;
+		}
+		result.push({
+			operation: 'accessCols',
+			operand:   dataFrame.info.id,
+			columns:   columns?.every(col => typeof col === 'number') ? columns.map(Math.abs) : columns
+		});
+	}
+	// The data frame extent is dropped if the operator `[[` is used, the argument `drop` is true, or only one column is accessed
+	const dropExtent = access.operator === '[[' ? true :
+		args.length === 2 && typeof drop === 'boolean' ? drop :
+			rowArg !== undefined && columns?.length === 1 && (typeof columns[0] === 'string' || columns[0] > 0);
+
+	if(!dropExtent) {
+		const rowSubset = rows === undefined || rows.every(row => row >= 0);
+		const colSubset = columns === undefined || columns.every(col => typeof col === 'string' || col >= 0);
+		const rowZero = rows?.length === 1 && rows[0] === 0;
+		const colZero = columns?.length === 1 && columns[0] === 0;
+		const duplicateRows = rows?.some((row, index, list) => list.indexOf(row) !== index);
+		const duplicateCols = columns?.some((col, index, list) => list.indexOf(col as never) !== index);
+
+		let operand: RNode<ParentInformation> | undefined = dataFrame;
+
+		if(RArgument.isNotEmpty(rowArg)) {
+			if(rowSubset) {
+				result.push({
+					operation: 'subsetRows',
+					operand:   operand?.info.id,
+					rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length,
+					...(duplicateRows ? { options: { duplicateRows: true } } : {})
+				});
+			} else {
+				result.push({
+					operation: 'removeRows',
+					operand:   operand?.info.id,
+					rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length
+				});
+			}
+			operand = undefined;
+		}
+		if(RArgument.isNotEmpty(colArg)) {
+			if(colSubset) {
+				result.push({
+					operation: 'subsetCols',
+					operand:   operand?.info.id,
+					colnames:  colZero ? [] : columns?.map(col => typeof col === 'string' ? col : undefined),
+					...(duplicateCols ? { options: { duplicateCols: true } } : {})
+				});
+			} else {
+				result.push({
+					operation: 'removeCols',
+					operand:   operand?.info.id,
+					colnames:  columns?.map(col => typeof col === 'string' ? col : undefined)
+				});
+			}
+			// eslint-disable-next-line no-useless-assignment -- ends the chain
+			operand = undefined;
+		}
+	}
+	return result;
+}
+
+/**
+ * Maps an assignment to a data frame access, such as `df$id <- 1:5`, `df[] <- NULL`, or `df[1, 2] <- 0`, to abstract data frame operations.
+ */
+function mapDataFrameAccessAssignment(
+	node: RNode<ParentInformation>,
+	expression: RNode<ParentInformation>,
+	ctx: AbsintContext<DataFrameStateDomain>,
+	info: ResolveInfo
+): DataFrameOperations {
+	if(!RAccess.is(node)) {
+		return;
+	} else if(RAccess.isNamed(node)) {
+		return mapDataFrameNamedColumnAssignment(node, expression, ctx, info);
+	} else if(node.access.every(RArgument.isEmpty)) {
+		return mapDataFrameContentAssignment(node, expression, ctx);
+	} else {
+		return mapDataFrameIndexColRowAssignment(node, expression, ctx, info);
+	}
+}
+
+/**
+ * Maps an assignment to the content of a data frame, such as `df[] <- NULL`, to abstract data frame operations.
+ */
+function mapDataFrameContentAssignment(
+	access: RAccess<ParentInformation>,
+	expression: RNode<ParentInformation>,
+	ctx: AbsintContext<DataFrameStateDomain>
+): DataFrameOperations {
+	const dataFrame = access.accessed;
+
+	if(!isDataFrameArgument(dataFrame, ctx)) {
+		return;
+	}
+	if(isRNull(expression)) {
+		return [{
+			operation: 'subsetCols',
+			operand:   dataFrame.info.id,
+			colnames:  [],
+			type:      ConstraintType.OperandModification
+		}];
+	} else {
+		return [{
+			operation: 'identity',
+			operand:   dataFrame.info.id,
+			type:      ConstraintType.OperandModification
+		}];
+	}
+}
+
+/**
+ * Maps an assignment to a string-based access of a data frame column, such as `df$id <- 1:5`, to abstract data frame operations.
+ */
+function mapDataFrameNamedColumnAssignment(
+	access: RNamedAccess<ParentInformation>,
+	expression: RNode<ParentInformation>,
+	ctx: AbsintContext<DataFrameStateDomain>,
+	info: ResolveInfo
+): DataFrameOperations {
+	const dataFrame = access.accessed;
+
+	if(!isDataFrameArgument(dataFrame, ctx)) {
+		return;
+	}
+	const colname = resolveIdToArgValueSymbolName(access.access[0], info);
+
+	if(isRNull(expression)) {
+		return [{
+			operation: 'removeCols',
+			operand:   dataFrame.info.id,
+			colnames:  colname ? [colname] : undefined,
+			type:      ConstraintType.OperandModification,
+			options:   { maybe: true }
+		}];
+	} else {
+		return [{
+			operation: 'assignCols',
+			operand:   dataFrame.info.id,
+			columns:   colname ? [colname] : undefined
+		}];
+	}
+}
+
+/**
+ * Maps an assignment to an index-based access of the rows and columns of a data frame, such as `df[1, 2] <- 0`, to abstract data frame operations.
+ */
+function mapDataFrameIndexColRowAssignment(
+	access: RIndexAccess<ParentInformation>,
+	expression: RNode<ParentInformation>,
+	ctx: AbsintContext<DataFrameStateDomain>,
+	info: ResolveInfo
+): DataFrameOperations {
+	const dataFrame = access.accessed;
+	const args = access.access.filter(arg => RArgument.isEmpty(arg) || RArgument.isUnnamed(arg));
+
+	if(!isDataFrameArgument(dataFrame, ctx) || args.every(RArgument.isEmpty)) {
+		return;
+	}
+	const result: DataFrameOperations = [];
+	const rowArg = args.length < 2 ? undefined : args[0];
+	const colArg = args.length < 2 ? args[0] : args[1];
+
+	if(RArgument.isNotEmpty(rowArg)) {
+		const rowValue = resolveIdToArgValue(rowArg, info);
+		let rows: number[] | undefined = undefined;
+
+		if(typeof rowValue === 'number') {
+			rows = [rowValue];
+		} else if(Array.isArray(rowValue) && rowValue.every(row => typeof row === 'number')) {
+			rows = rowValue;
+		}
+		result.push({
+			operation: 'assignRows',
+			operand:   dataFrame.info.id,
+			rows
+		});
+	}
+	if(RArgument.isNotEmpty(colArg)) {
+		const colValue = resolveIdToArgValue(colArg, info);
+		let columns: string[] | number[] | undefined = undefined;
+
+		if(typeof colValue === 'string') {
+			columns = [colValue];
+		} else if(typeof colValue === 'number') {
+			columns = [colValue];
+		} else if(Array.isArray(colValue) && (colValue.every(col => typeof col === 'string') || colValue.every(col => typeof col === 'number'))) {
+			columns = colValue;
+		}
+		if(isRNull(expression)) {
+			result.push({
+				operation: 'removeCols',
+				operand:   dataFrame.info.id,
+				colnames:  columns?.map(col => typeof col === 'string' ? col : undefined),
+				type:      ConstraintType.OperandModification,
+				options:   { maybe: true }
+			});
+		} else {
+			result.push({
+				operation: 'assignCols',
+				operand:   dataFrame.info.id,
+				columns
+			});
+		}
+	}
+	return result;
+}
+
+/**
+ * Maps an assignment to the column names of a data frame, such as `colnames(df) <- c("id", "name")`, to abstract data frame operations.
+ */
+function mapDataFrameColNamesAssignment(
+	node: RNode<ParentInformation>,
+	expression: RNode<ParentInformation>,
+	ctx: AbsintContext<DataFrameStateDomain>,
+	info: ResolveInfo
+): DataFrameOperations {
+	const operand = getReplacementOperand(node, ctx);
+
+	if(operand === undefined) {
+		return;
+	}
+	const argument = info.idMap !== undefined ? toUnnamedArgument(expression, info.idMap) : undefined;
+	const assignedNames = resolveIdToArgStringVector(argument, info);
+	// the assignment is only partial if the replacement is nested in another replacement, such as `colnames(df)[1:2] <- ...`
+	const parent = hasParentReplacement(node, ctx) ? ctx.getAstNode(node.info.parent) : undefined;
+
+	return [{
+		operation: 'setColNames',
+		operand:   operand.value.info.id,
+		colnames:  assignedNames,
+		...(parent !== undefined ? { options: { partial: true } } : {})
+	}];
+}
+
+/**
+ * Maps an assignment to the row names of a data frame, such as `rownames(df) <- c("a", "b")`, to abstract data frame operations.
+ */
+function mapDataFrameRowNamesAssignment(
+	node: RNode<ParentInformation>,
+	_expression: RNode<ParentInformation>,
+	ctx: AbsintContext<DataFrameStateDomain>
+): DataFrameOperations {
+	const operand = getReplacementOperand(node, ctx);
+
+	if(operand === undefined) {
+		return;
+	}
+	return [{
+		operation: 'identity',
+		operand:   operand.value.info.id,
+		type:      ConstraintType.OperandModification
+	}];
+}
+
+/**
+ * Maps an assignment to the dimension names of a data frame, such as `dimnames(df) <- list(NULL, c("id"))`, to abstract data frame operations.
+ */
+function mapDataFrameDimNamesAssignment(
+	node: RNode<ParentInformation>,
+	_expression: RNode<ParentInformation>,
+	ctx: AbsintContext<DataFrameStateDomain>
+): DataFrameOperations {
+	const operand = getReplacementOperand(node, ctx);
+
+	if(operand === undefined) {
+		return;
+	}
+	return [{
+		operation: 'setColNames',
+		operand:   operand.value.info.id,
+		colnames:  undefined
+	}];
+}
+
+/**
+ * Gets the data frame operand of a replacement function call, such as `df` in `colnames(df) <- "id"`.
+ * @param node - The R node of the replacement function call
+ * @param ctx  - The context of the abstract interpretation analysis
+ * @returns The argument of the data frame operand, or `undefined` if the call has no single argument that is a data frame
+ */
+function getReplacementOperand(
+	node: RNode<ParentInformation>,
+	ctx: AbsintContext<DataFrameStateDomain>
+): (RArgument<ParentInformation> & { value: RNode<ParentInformation> }) | undefined {
+	if(!RFunctionCall.isNamed(node) || node.arguments.length !== 1) {
+		return;
+	}
+	const operand = node.arguments[0];
+
+	return isDataFrameArgument(operand, ctx) ? operand : undefined;
+}
+
+/**
+ * Checks whether a replacement function call is nested in another replacement function call, such as `colnames(df)[1:2] <- ...`.
+ */
+function hasParentReplacement(
+	node: RNode<ParentInformation>,
+	ctx: AbsintContext<DataFrameStateDomain>
+): node is RNode<ParentInformation & { parent: NodeId }> {
+	const parentVertex = ctx.getDfgVertex(node.info.parent);
+
+	return FunctionCallVertex.is(parentVertex) && parentVertex.origin.includes(BuiltInProcName.Replacement);
+}
+
+/**
  * Gets the source and the parse request of the file or text that is read by a data frame read function (see {@link mapDataFrameRead}).
  */
 function getRequestFromRead(
@@ -1172,7 +1949,7 @@ function getRequestFromRead(
 	let source: string | undefined;
 	let request: RParseRequest | undefined;
 
-	if(fileNameArg !== undefined && fileNameArg !== EmptyArgument) {
+	if(RArgument.isNotEmpty(fileNameArg)) {
 		const fileName = resolveIdToArgValue(fileNameArg, info);
 
 		if(typeof fileName === 'string') {
@@ -1190,7 +1967,7 @@ function getRequestFromRead(
 				request = requestFromInput(text);
 			}
 		}
-	} else if(textArg !== undefined && textArg !== EmptyArgument) {
+	} else if(RArgument.isNotEmpty(textArg)) {
 		const text = resolveIdToArgValue(textArg, info);
 
 		if(typeof text === 'string') {
@@ -1234,20 +2011,20 @@ function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInfo
 		columns1 !== undefined && columns2 !== undefined ? [...columns1, ...columns2] : undefined;
 
 	for(const arg of args) {
-		if(arg !== undefined && arg !== EmptyArgument) {
-			if(arg.value?.type === RType.FunctionCall && arg.value.named && arg.value.functionName.content === 'c') {
+		if(RArgument.isNotEmpty(arg)) {
+			if(RFunctionCall.is(arg.value) && arg.value.named && arg.value.functionName.content === 'c') {
 				const result = getSelectedColumns(arg.value.arguments, info);
 				selectedCols = joinColumns(selectedCols, result.selectedCols);
 				unselectedCols = joinColumns(unselectedCols, result.unselectedCols);
-			} else if(arg.value?.type === RType.UnaryOp && arg.value.operator === '+' && info.idMap !== undefined) {
+			} else if(RUnaryOp.is(arg.value) && arg.value.operator === '+' && info.idMap !== undefined) {
 				const result = getSelectedColumns([toUnnamedArgument(arg.value.operand, info.idMap)], info);
 				selectedCols = joinColumns(selectedCols, result.selectedCols);
 				unselectedCols = joinColumns(unselectedCols, result.unselectedCols);
-			} else if(arg.value?.type === RType.UnaryOp && arg.value.operator === '-' && info.idMap !== undefined) {
+			} else if(RUnaryOp.is(arg.value) && arg.value.operator === '-' && info.idMap !== undefined) {
 				const result = getSelectedColumns([toUnnamedArgument(arg.value.operand, info.idMap)], info);
 				selectedCols = joinColumns(selectedCols, result.unselectedCols);
 				unselectedCols = joinColumns(unselectedCols, result.selectedCols);
-			} else if(arg.value?.type === RType.BinaryOp && arg.value.operator === ':' && info.idMap !== undefined) {
+			} else if(RBinaryOp.is(arg.value) && arg.value.operator === ':' && info.idMap !== undefined) {
 				const values = resolveIdToArgValue(toUnnamedArgument(arg.value, info.idMap), { ...info, resolve: VariableResolve.Disabled });
 
 				if(Array.isArray(values) && values.every(value => typeof value === 'number')) {
@@ -1256,9 +2033,9 @@ function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInfo
 				} else {
 					selectedCols = undefined;
 				}
-			} else if(arg.value?.type === RType.Symbol || arg.value?.type === RType.String) {
+			} else if(RSymbol.is(arg.value) || RString.is(arg.value)) {
 				selectedCols?.push(resolveIdToArgValueSymbolName(arg, info));
-			} else if(arg.value?.type === RType.Number) {
+			} else if(RNumber.is(arg.value)) {
 				selectedCols?.push(arg.value.content.num);
 			} else {
 				selectedCols = undefined;

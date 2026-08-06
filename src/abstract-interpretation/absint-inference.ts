@@ -20,11 +20,12 @@ import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import type { RNull } from '../r-bridge/lang-4.x/convert-values';
 import { guard, isNotUndefined } from '../util/assert';
 import { Record } from '../util/record';
-import type { AbstractSemantics, SemanticsContext } from './abstract-semantics';
+import type { AbsintContext, AbstractSemantics } from './abstract-semantics';
 import { AbstractDomain } from './domains/abstract-domain';
+import type { MultiValueDomain } from './domains/multi-value-state-domain';
 import { MultiValueStateDomain } from './domains/multi-value-state-domain';
 import type { AbstractProduct, ProductReduction } from './domains/partial-product-domain';
-import type { StateDomain } from './domains/state-domain-like';
+import type { StateDomain } from './domains/state-domain';
 import { UnsupportedFunctions } from './unsupported-functions';
 
 /**
@@ -49,23 +50,23 @@ export interface AbsintAnalysis<Domains extends AbstractProduct> {
 }
 
 /**
- * The configuration of an {@link AbstractInterpretationVisitor},
+ * The configuration of an {@link AbstractInterpreter},
  * i.e. the configuration of a semantic control flow graph visitor without the visiting order and type (which are fixed by the abstract interpretation visitor).
  */
 export type AbsintVisitorConfiguration =  Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'>;
 
 /**
- * A control flow graph visitor to perform abstract interpretation.
+ * An abstract interpreter that visits the control flow graph to perform abstract interpretation using fixpoint iteration.
  *
- * The visitor infers the abstract values of multiple abstract domains in a single traversal:
- * the abstract state maps each AST node to the abstract values of all domains of the {@link AbsintAnalysis},
+ * The visitor infers the abstract values of multiple abstract domains in a single traversal.
+ * The abstract state maps each AST node to the abstract values of all domains of the {@link AbsintAnalysis},
  * and whenever a node is visited, the {@link AbstractSemantics} of every domain of the analysis are applied to that state.
  *
  * However, the visitor does not yet support inter-procedural abstract interpretation and abstract condition semantics.
  * @template Domains - Type of the abstract product mapping the names of the abstract domains of the analysis to the respective domains
  * @template Config  - Type of the configuration of the abstract interpretation visitor
  */
-export class AbstractInterpretationVisitor<Domains extends AbstractProduct, Config extends AbsintVisitorConfiguration = AbsintVisitorConfiguration>
+export class AbstractInterpreter<Domains extends AbstractProduct, Config extends AbsintVisitorConfiguration = AbsintVisitorConfiguration>
 	extends SemanticCfgGuidedVisitor<NoInfo, ControlFlowInformation, NormalizedAst, DataflowGraph, Config & { defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' }> {
 
 	/**
@@ -94,6 +95,11 @@ export class AbstractInterpretationVisitor<Domains extends AbstractProduct, Conf
 	private stack: NodeId[] = [];
 
 	/**
+	 * The cached abstract interpretation contexts of the abstract domains of the analysis (see {@link getContext}).
+	 */
+	private readonly contexts: Map<keyof Domains, AbsintContext<StateDomain<Domains[keyof Domains]>>> = new Map();
+
+	/**
 	 * A set of nodes representing variable definitions that have already been visited but whose assignment has not yet been processed.
 	 */
 	private readonly unassigned: Set<NodeId> = new Set();
@@ -117,82 +123,18 @@ export class AbstractInterpretationVisitor<Domains extends AbstractProduct, Conf
 	}
 
 	/**
-	 * Creates the semantics context that is passed to the abstract semantics of one of the abstract domains of the analysis.
+	 * Creates the abstract interpretation context that is passed to the abstract semantics of one of the abstract domains of the analysis.
 	 * The context provides access to the analyzed program and to the abstract states and values inferred for the requested abstract domain so far.
-	 * @param type - The name of the abstract domain to create the semantics context for
-	 * @returns The semantics context for the requested abstract domain
+	 * @param type - The name of the abstract domain to create the context for
+	 * @returns The abstract interpretation context for the requested abstract domain
 	 */
-	public getContext<Key extends keyof Domains>(type: Key): SemanticsContext<StateDomain<Domains[Key]>> {
-		const domain = this.analysis.domains[type];
+	public getContext<Key extends keyof Domains>(type: Key): AbsintContext<StateDomain<Domains[Key]>> {
+		const cached = this.contexts.get(type);
 
-		const getAbstractState = (nodeId: NodeId | undefined) => {
-			if(nodeId === undefined) {
-				return;
-			}
-			const state = this.trace.get(nodeId);
-
-			if(state !== undefined) {
-				return this.getState(type, state);
-			};
-		};
-
-		const getAbstractValue = (nodeId: RNodeWithParent | NodeId | undefined, state?: StateDomain<Domains[Key]>): Domains[Key] | undefined => {
-			const node = (nodeId === undefined || typeof nodeId === 'object') ? nodeId : this.getNormalizedAst(nodeId);
-			state ??= node !== undefined ? getAbstractState(node.info.id) : undefined;
-
-			if(node === undefined || state === undefined) {
-				return;
-			} else if(state?.isBottom()) {
-				return domain.bottom();
-			} else if(state.has(node.info.id)) {
-				return state.get(node.info.id);
-			}
-			const vertex = this.getDataflowGraph(node.info.id);
-			const call = FunctionCallVertex.is(vertex) ? vertex : undefined;
-			const origins = Array.isArray(call?.origin) ? call.origin : [];
-
-			if(node.type === RType.Symbol) {
-				if(node.info.role === RoleInParent.FunctionCallName) {
-					return getAbstractValue(node.info.parent, state);
-				}
-				const values = getVariableOrigins(node.info.id)
-					.map(origin => (getAbstractState(origin)?.isBottom() ? domain.bottom() : state.get(origin)));
-
-				if(values.length > 0 && values.every(isNotUndefined)) {
-					return AbstractDomain.joinAll(values);
-				}
-			} else if(node.type === RType.Argument && node.value !== undefined) {
-				return getAbstractValue(node.value, state);
-			} else if(node.type === RType.ExpressionList && node.children.length > 0) {
-				return getAbstractValue(node.children.at(-1), state);
-			} else if(origins.includes(BuiltInProcName.Pipe)) {
-				if(node.type === RType.Pipe || node.type === RType.BinaryOp) {
-					return getAbstractValue(node.rhs, state);
-				} else if(call?.args.length === 2 && call?.args[1] !== EmptyArgument) {
-					return getAbstractValue(call.args[1].nodeId, state);
-				}
-			} else if(origins.includes(BuiltInProcName.IfThenElse)) {
-				let values: (Domains[Key] | undefined)[] = [];
-
-				if(node.type === RType.IfThenElse && node.otherwise !== undefined) {
-					values = [node.then, node.otherwise].map(entry => getAbstractValue(entry, state));
-				} else if(call?.args.every(arg => arg !== EmptyArgument) && call.args.length === 3) {
-					values = call.args.slice(1, 3).map(entry => getAbstractValue(entry.nodeId, state));
-				}
-				if(values.length > 0 && values.every(isNotUndefined)) {
-					return AbstractDomain.joinAll(values);
-				}
-			}
-		};
-
-		const getVariableOrigins = (nodeId: NodeId): NodeId[] => {
-			return Dataflow.origin(this.config.dfg, nodeId)
-				?.filter(origin => origin.type === OriginType.ReadVariableOrigin)
-				.map(origin => origin.id)
-				.filter(origin => getAbstractState(origin) !== undefined) ?? [];
-		};
-
-		return {
+		if(cached !== undefined) {
+			return cached as AbsintContext<StateDomain<Domains[Key]>>;
+		}
+		const context: AbsintContext<StateDomain<Domains[Key]>> = {
 			ast:                this.config.normalizedAst,
 			dfg:                this.config.dfg,
 			cfg:                this.config.controlFlow.graph,
@@ -201,10 +143,13 @@ export class AbstractInterpretationVisitor<Domains extends AbstractProduct, Conf
 			getAstNode:         nodeId => this.getNormalizedAst(nodeId),
 			getDfgVertex:       vertexId => vertexId !== undefined ? this.getDataflowGraph(vertexId) : undefined,
 			getCfgVertex:       vertexId => vertexId !== undefined ? this.getCfgVertex(vertexId) : undefined,
-			getAbstractState:   getAbstractState,
-			getAbstractValue:   getAbstractValue,
-			getVariableOrigins: getVariableOrigins
+			getAbstractState:   nodeId => this.getAbstractState(nodeId, type),
+			getAbstractValue:   (nodeId, state) => this.getAbstractValue(nodeId, type, state),
+			getVariableOrigins: nodeId => this.getVariableOrigins(nodeId)
 		};
+		this.contexts.set(type, context);
+
+		return context;
 	}
 
 	/**
@@ -221,9 +166,128 @@ export class AbstractInterpretationVisitor<Domains extends AbstractProduct, Conf
 			has:      id => state.hasValue(id, type),
 			set:      (id, value) => state.setValue(id, type, value),
 			remove:   id => state.removeValue(id, type),
+			entries:  () => state.entries(type) as readonly [NodeId, Domains[Key]][],
 			isBottom: () => state.isBottom()
 		};
 	}
+
+	/**
+	 * Resolves the inferred abstract value of an AST node for one of the abstract domains of the analysis,
+	 * by following symbols to their variable origins, arguments to their values, expression lists to their last expression,
+	 * and pipes and `if` expressions to their results.
+	 * This requires that the abstract interpretation visitor has been completed, or at least started.
+	 * @param nodeId - The node (or ID of the node) to get the inferred abstract value for
+	 * @param type   - The name of the abstract domain to get the inferred abstract value for
+	 * @returns The inferred abstract value of the node, or `undefined` if no value was inferred for the node
+	 */
+	public getAbstractValue<Key extends keyof Domains>(nodeId: RNodeWithParent | NodeId | undefined, type: Key, state?: StateDomain<Domains[Key]>): Domains[Key] | undefined;
+	public getAbstractValue(nodeId: RNodeWithParent | NodeId | undefined, type?: undefined, state?: MultiValueStateDomain<Partial<Domains>>): MultiValueDomain<Partial<Domains>> | undefined;
+	public getAbstractValue<Key extends keyof Domains>(nodeId: RNodeWithParent | NodeId | undefined, type?: Key, state?: StateDomain<Domains[Key]> | MultiValueStateDomain<Partial<Domains>>): Domains[Key] | MultiValueDomain<Partial<Domains>> | undefined;
+	public getAbstractValue<Key extends keyof Domains>(nodeId: RNodeWithParent | NodeId | undefined, type?: Key, state?: StateDomain<Domains[Key]> | MultiValueStateDomain<Partial<Domains>>): Domains[Key] | MultiValueDomain<Partial<Domains>> | undefined {
+		const node = (nodeId === undefined || typeof nodeId === 'object') ? nodeId : this.getNormalizedAst(nodeId);
+		state ??= node !== undefined ? this.getAbstractState(node.info.id, type) : undefined;
+
+		if(state?.isBottom()) {
+			return state.domain.bottom();
+		} else if(node === undefined) {
+			return;
+		} else if(state?.has(node.info.id)) {
+			return state.get(node.info.id);
+		}
+		const vertex = this.getDataflowGraph(node.info.id);
+		const call = FunctionCallVertex.is(vertex) ? vertex : undefined;
+		const origins = Array.isArray(call?.origin) ? call.origin : [];
+
+		if(node.type === RType.Symbol) {
+			if(node.info.role === RoleInParent.FunctionCallName) {
+				return this.getAbstractValue(node.info.parent, type, vertex !== undefined ? state : undefined);
+			}
+			const values = this.getVariableOrigins(node.info.id)
+				.map(origin => (this.getAbstractState(origin)?.isBottom() ? state?.domain.bottom() : state?.get(origin)));
+
+			if(values.length > 0 && values.every(isNotUndefined)) {
+				return AbstractDomain.joinAll(values);
+			}
+		} else if(node.type === RType.Argument && node.value !== undefined) {
+			return this.getAbstractValue(node.value, type, state);
+		} else if(node.type === RType.ExpressionList && node.children.length > 0) {
+			return this.getAbstractValue(node.children.at(-1), type, state);
+		} else if(origins.includes(BuiltInProcName.Pipe)) {
+			if(node.type === RType.Pipe || node.type === RType.BinaryOp) {
+				return this.getAbstractValue(node.rhs, type, state);
+			} else if(call?.args.length === 2 && call?.args[1] !== EmptyArgument) {
+				return this.getAbstractValue(call.args[1].nodeId, type, state);
+			}
+		} else if(origins.includes(BuiltInProcName.IfThenElse)) {
+			let values: (MultiValueDomain<Partial<Domains>> | Domains[Key] | undefined)[] = [];
+
+			if(node.type === RType.IfThenElse && node.otherwise !== undefined) {
+				values = [node.then, node.otherwise].map(entry => this.getAbstractValue(entry, type, state));
+			} else if(call?.args.every(arg => arg !== EmptyArgument) && call.args.length === 3) {
+				values = call.args.slice(1, 3).map(entry => this.getAbstractValue(entry.nodeId, type, state));
+			}
+			if(values.length > 0 && values.every(isNotUndefined)) {
+				return AbstractDomain.joinAll(values);
+			}
+		}
+	}
+
+	/**
+	 * Gets the inferred abstract state at the location of a specific AST node.
+	 * This requires that the abstract interpretation visitor has been completed, or at least started.
+	 * @param nodeId - The ID of the node to get the abstract state at
+	 * @param type   - The name of the abstract domain to get the abstract state for
+	 * @returns The abstract state at the node, or `undefined` if the node has no abstract state for the abstract domain
+	 */
+	public getAbstractState<Key extends keyof Domains>(nodeId: NodeId | undefined, type: Key): StateDomain<Domains[Key]> | undefined;
+	public getAbstractState(nodeId: NodeId | undefined): MultiValueStateDomain<Partial<Domains>> | undefined;
+	public getAbstractState<Key extends keyof Domains>(nodeId: NodeId | undefined, type?: Key): StateDomain<Domains[Key]> | MultiValueStateDomain<Partial<Domains>> | undefined;
+	public getAbstractState<Key extends keyof Domains>(nodeId: NodeId | undefined, type?: Key): StateDomain<Domains[Key]> | MultiValueStateDomain<Partial<Domains>> | undefined {
+		if(nodeId === undefined) {
+			return;
+		}
+		const state = this.trace.get(nodeId);
+
+		if(type !== undefined && state !== undefined) {
+			return this.getState(type, state);
+		}
+		return state;
+	}
+
+	/**
+	 * Gets the inferred abstract state at the end of the program (exit nodes of the control flow graph).
+	 * This requires that the abstract interpretation visitor has been completed, or at least started.
+	 * @param type - The name of the abstract domain to get the abstract state for
+	 * @returns The inferred abstract state at the end of the program
+	 */
+	public getEndState<Key extends keyof Domains>(type: Key): StateDomain<Domains[Key]>;
+	public getEndState(): MultiValueStateDomain<Partial<Domains>>;
+	public getEndState<Key extends keyof Domains>(type?: Key): StateDomain<Domains[Key]> | MultiValueStateDomain<Partial<Domains>> {
+		const exitPoints = this.config.controlFlow.exitPoints.map(id => this.getCfgVertex(id)).filter(isNotUndefined);
+		const exitNodes = exitPoints.map(CfgVertex.getRootId).filter(isNotUndefined);
+		const states = exitNodes.map(node => this.trace.get(node)).filter(isNotUndefined);
+		const state = AbstractDomain.joinAll(states, this.stateDomain.bottom());
+
+		if(type !== undefined && state !== undefined) {
+			return this.getState(type, state);
+		}
+		return state;
+	}
+
+	/**
+	 * Gets the inferred abstract trace mapping AST nodes to the inferred abstract state at the respective node.
+	 * @returns The inferred abstract trace of the program
+	 */
+	public getAbstractTrace(): ReadonlyMap<NodeId, MultiValueStateDomain<Partial<Domains>>> {
+		return this.trace;
+	}
+
+	protected getVariableOrigins(nodeId: NodeId): NodeId[] {
+		return Dataflow.origin(this.config.dfg, nodeId)
+			?.filter(origin => origin.type === OriginType.ReadVariableOrigin)
+			.map(origin => origin.id)
+			.filter(origin => this.trace.has(origin) && !this.unassigned.has(origin)) ?? [];
+	};
 
 	public override start(): void {
 		guard(this.trace.size === 0, 'Abstract interpretation visitor has already been started');
@@ -420,6 +484,8 @@ export class AbstractInterpretationVisitor<Domains extends AbstractProduct, Conf
 		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
 			semantics.handleAssignmentCall?.(this.getState(type), call, this.getContext(type), target, source);
 		}
+		// the assignment target is visited before the assignment, so we update its state with the assigned values
+		this.trace.set(target, this.currentState);
 	}
 
 	protected override onReplacementCall({ call, target, source }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {

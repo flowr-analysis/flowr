@@ -65,7 +65,7 @@ export const SlicingCriterion = {
 	tryParse(this: void, criterion: SlicingCriterion | NodeId, idMap: AstIdMap): NodeId | undefined {
 		criterion = criterion.toString(); // in case it's a number
 		if(criterion.startsWith('$')) {
-			return NodeId.normalize(criterion.substring(1)) as NodeId;
+			return NodeId.normalize(criterion.substring(1));
 		}
 		const split = splitFileFilter(criterion);
 		if(split === undefined) {

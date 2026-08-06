@@ -12,7 +12,8 @@ import { SigDbBuilder } from '../../../src/project/sigdb/build';
 import { DepType, FnProp, type SigDb, type SigFunctionInfo, type SigVersionInfo } from '../../../src/project/sigdb/schema';
 import { RRange, RVersion } from '../../../src/util/r-version';
 import { Package } from '../../../src/project/plugins/package-version-plugins/package';
-import { expFn, sigTmpDir, sigdbAnalyzer, writeAndOpen } from './sigdb';
+import { expFn, sigdbAnalyzer } from './sigdb';
+import { SigDatabase } from '../../../src/project/sigdb/reader';
 
 /** one version of a package in a scenario: when it was released, which functions (with which parameters) it exports, and what it depends on */
 export interface ScenarioVersion {
@@ -87,8 +88,7 @@ export function buildGuessDb(packages: Readonly<Record<string, ScenarioPackage>>
 
 /** build the scenario's database + analyzer, inject declared constraints, and add the code as a request */
 export async function buildGuessAnalyzer(ts: TreeSitterExecutor, scenario: GuessScenario): Promise<FlowrAnalyzer> {
-	const db = await writeAndOpen(sigTmpDir('guess-db-'), buildGuessDb(scenario.packages));
-	const analyzer = await sigdbAnalyzer(ts, db, scenario.config);
+	const analyzer = await sigdbAnalyzer(ts, SigDatabase.fromMemory(buildGuessDb(scenario.packages)), scenario.config);
 	for(const [name, constraints] of Object.entries(scenario.declared ?? {})) {
 		const ranges = (typeof constraints === 'string' ? [constraints] : constraints).map(c => RRange.parse(c)).filter(r => r !== undefined);
 		analyzer.context().deps.addDependency(new Package({ name, ...(ranges.length > 0 ? { versionConstraints: ranges } : {}) }));

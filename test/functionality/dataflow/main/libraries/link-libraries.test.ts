@@ -222,6 +222,28 @@ describe('Link libraries', withTreeSitter(ts => {
 		expect(await loadedPackages(ts, 'library(a)\nlibrary(b)\nlibrary(c)\nlibrary(b)')).toEqual(['c', 'b', 'a']);
 	});
 
+	test('pos attaches at the given search position', async() => {
+		expect(await loadedPackages(ts, 'library(a)\nlibrary(b, pos = 3)')).toEqual(['a', 'b']);
+		expect(await loadedPackages(ts, 'library(a)\nlibrary(b)\nlibrary(c, pos = 3)')).toEqual(['b', 'c', 'a']);
+		/* the global env can never be displaced, and a position past the end attaches at the bottom */
+		expect(await loadedPackages(ts, 'library(a)\nlibrary(b, pos = 1)')).toEqual(['b', 'a']);
+		expect(await loadedPackages(ts, 'library(a)\nlibrary(b, pos = 99)')).toEqual(['a', 'b']);
+	});
+
+	test('pos may name a search-path entry', async() => {
+		expect(await loadedPackages(ts, 'library(a)\nlibrary(b)\nlibrary(c, pos = "package:a")')).toEqual(['b', 'c', 'a']);
+		/* attaching at an entry's position pushes that entry down */
+		expect(await loadedPackages(ts, 'library(a)\nlibrary(b, pos = "a")')).toEqual(['b', 'a']);
+		/* base is the built-in env at the very bottom when it is not attached as its own layer */
+		expect(await loadedPackages(ts, 'library(a)\nlibrary(b, pos = "package:base")')).toEqual(['a', 'b']);
+		/* an entry that is not on the search path falls back to the default position, as R does */
+		expect(await loadedPackages(ts, 'library(a)\nlibrary(b, pos = "package:nope")')).toEqual(['b', 'a']);
+	});
+
+	test('pos resolves through a variable', async() => {
+		expect(await loadedPackages(ts, 'p <- 3\nlibrary(a)\nlibrary(b, pos = p)')).toEqual(['a', 'b']);
+	});
+
 	test('require attaches like library', async() => {
 		expect(await loadedPackages(ts, 'require(a)\nrequire(b)')).toEqual(['b', 'a']);
 	});

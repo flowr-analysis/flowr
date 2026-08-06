@@ -9,7 +9,7 @@ import {
 } from '../../dataflow/environments/identifier';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { DfEdge, type EdgeType } from '../../dataflow/graph/edge';
-import { type DataflowGraphVertexInfo, VertexType, isFunctionCallVertex } from '../../dataflow/graph/vertex';
+import { type DataflowGraphVertexInfo, VertexType, FunctionCallVertex } from '../../dataflow/graph/vertex';
 import { getOriginInDfg } from '../../dataflow/origin/dfg-get-origin';
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
@@ -212,7 +212,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	const lexeme = node?.lexeme ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0]?.lexeme : '') ?? '??';
 
 	let display = lexeme;
-	if(fCall && isFunctionCallVertex(info)) {
+	if(fCall && FunctionCallVertex.is(info)) {
 		const q = Identifier.toQualified(getOriginInDfg(mermaid.rootGraph, origId), info.name, mermaid.qualifyBaseR !== false);
 		const qs = q !== undefined ? Identifier.toString(q) : undefined;
 		if(qs !== undefined && qs !== lexeme) {

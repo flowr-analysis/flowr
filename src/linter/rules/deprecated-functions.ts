@@ -3,7 +3,7 @@ import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
-import { isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
+import { FunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { isNotUndefined } from '../../util/assert';
@@ -14,13 +14,13 @@ import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty
 import { LintingRuleTag } from '../linter-tags';
 import { RRange } from '../../util/r-version';
 import { Q } from '../../search/flowr-search-builder';
-import { testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Dataflow } from '../../dataflow/graph/df-helper';
-import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
+import type { FlowrAnalyzer, ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { hasArgumentValue } from './function-finder-util';
 import { Ternary } from '../../util/logic';
+import { KnownParser } from '../../r-bridge/parser';
 
 /**
  * Information about an argument of a function that should be flagged as deprecated if it is called with this argument
@@ -136,9 +136,12 @@ const ConditionallyDeprecated = {
 export const DEPRECATED_FUNCTIONS = {
 	// unlike functionFinderUtil.createSearch(config.fns), this does not pre-filter to the hardcoded list: the
 	// sigdb-driven pass below needs every resolved call, so the `fns` filtering happens in processSearchResult instead
-	createSearch:        (_config) => Q.all().filter(VertexType.FunctionCall).with(Enrichment.CallTargets, { onlyBuiltin: true }),
+	createSearch: (_config) => Q.all().filter(VertexType.FunctionCall).with(Enrichment.CallTargets, {
+		onlyBuiltin: true,
+		qualifyNames: false // we don't use qualified names for this rule yet
+	}),
 	processSearchResult: async(elements, config, data) => {
-		const matchesConfiguredFns = testFunctionsIgnoringPackage(config.always);
+		const matchesConfiguredFns = Identifier.regex(...config.always);
 		const graph = (await data.dataflow()).graph;
 		const idMap = (await data.normalize()).idMap;
 
@@ -244,14 +247,14 @@ export const DEPRECATED_FUNCTIONS = {
 /**
  * This function is applied to function candidates that have an entry in the {@link DeprecatedFunctionsConfig.conditionally} map.
  */
-function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: DataflowGraph, idMap: AstIdMap, analyzer: FlowrAnalyzer, info: DeprecatedFunctionInformation): DeprecatedFunctionRuleResult[] {
+function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: DataflowGraph, idMap: AstIdMap, analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>, info: DeprecatedFunctionInformation): DeprecatedFunctionRuleResult[] {
 	const results: DeprecatedFunctionRuleResult[] = [];
-	const derivedVersion = analyzer.inspectContext().deps.getDependency(info.package)?.deriveVersion();
+	const derivedVersion = analyzer.inspectContext().deps.getDependency(info.package)?.derivedRange;
 
 	// Deprecated Argument: If `whenArgs` is provided, only mark deprecated arguments
 	if(info.whenArgs) {
 		const vertex = dataflow.getVertex(candidate.node.info.id);
-		if(vertex === undefined || !isFunctionCallVertex(vertex)) {
+		if (vertex === undefined || !FunctionCallVertex.is(vertex)) {
 			return results;
 		}
 

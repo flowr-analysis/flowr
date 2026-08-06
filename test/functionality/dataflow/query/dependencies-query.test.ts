@@ -8,10 +8,17 @@ import {
 	Unknown
 } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { describe } from 'vitest';
+import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
+import { DefaultBuiltinConfig } from '../../../../src/dataflow/environments/default-builtin-config';
+import { builtInNames } from '../../../../src/dataflow/environments/query-fn-props';
+import type { BuiltInFnInfo, FnSig } from '../../../../src/dataflow/environments/built-in-props';
+import { ArgProp } from '../../../../src/dataflow/environments/built-in-props';
+import { ReadFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/read-functions';
+import { WriteFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/write-functions';
+import { OtherPathFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/other-path-functions';
 
 const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], source: [], read: [], write: [], visualize: [], test: [] };
 
@@ -267,16 +274,40 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 		testQuery('read.table', "read.table('test.csv')", { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }] });
 		testQuery('read_csv', "read_csv('test.csv')", { read: [{ nodeId: '1@read_csv', functionName: 'read_csv', value: 'test.csv' }] });
-		testQuery('gzfile', 'gzfile("this is my gzip file :)", "test.gz")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
-		testQuery('With Argument', 'gzfile(open="test.gz",description="this is my gzip file :)")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
+		testQuery('gzfile', 'gzfile("test.gz", "rb")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
+		testQuery('With Argument', 'gzfile(open="rb",description="test.gz")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
+		testQuery('write mode only', 'gzfile("test.gz", "wb")', { read: [] });
 
 		testQuery('unknown read', 'read.table(x)', { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'unknown', lexemeOfArgument: 'x' }] });
 
 		testQuery('single read (variable)', 'x <- "test.csv"; read.table(x)', { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }] });
+		testQuery('read (path built in a local)', 'p <- file.path("data", "x.csv")\nread.csv(p)',
+			{ read: [{ nodeId: '2@read.csv', functionName: 'read.csv', value: 'data/x.csv' }] });
+		testQuery('write (path built in a local)', 'p <- file.path("out", "r.csv")\nwrite.csv(x, p)',
+			{ write: [{ nodeId: '2@write.csv', functionName: 'write.csv', value: 'out/r.csv' }] });
 
 		describe('Only if file parameter', () => {
 			testQuery('parse', 'parse(file="test.R")', { read: [{ nodeId: '1@parse', functionName: 'parse', value: 'test.R' }] });
 			testQuery('parse text', 'parse(text="test.R")', {});
+		});
+
+		/* a loop marks its body as nse, but unlike a quotation the body really is evaluated */
+		describe('Braceless loop body', () => {
+			testQuery('for', 'for(f in c("a.csv","b.csv")) read.csv(f)',
+				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: Unknown, lexemeOfArgument: 'f' }] });
+			testQuery('for (constant)', 'for(f in c("a.csv")) read.csv("test.csv")',
+				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'test.csv' }] });
+			testQuery('while', 'while(TRUE) read.csv("test.csv")',
+				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'test.csv' }] });
+			testQuery('repeat', 'repeat read.csv("test.csv")',
+				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'test.csv' }] });
+			testQuery('nested', 'for(i in 1:2) while(TRUE) read.csv("test.csv")',
+				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'test.csv' }] });
+			testQuery('braced stays the same', 'for(f in c("a.csv","b.csv")) { read.csv(f) }',
+				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: Unknown, lexemeOfArgument: 'f' }] });
+			/* a real quotation within the body must still be suppressed */
+			testQuery('quoted body', 'for(i in 1:2) quote(read.csv("test.csv"))', {});
+			testQuery('substituted body', 'while(TRUE) substitute(read.csv("test.csv"))', {});
 		});
 
 		describe('Custom', () => {
@@ -306,6 +337,17 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		]) {
 			testQuery(`${writeFn}`, `${writeFn}("a")`, { write: [{ nodeId: `1@${writeFn}`, functionName: writeFn, value: 'a' }] });
 		}
+
+		// regression: once the owning library is loaded the call resolves to that origin namespace, so a wrong
+		// `package` attribution makes the namespace check drop the call (e.g. ggsave was attributed to `ggplot`)
+		testQuery('ggsave after library', 'library(ggplot2)\nggsave("a")', {
+			library: [{ nodeId: '1@library', functionName: 'library', value: 'ggplot2' }],
+			write:   [{ nodeId: '2@ggsave', functionName: 'ggsave', value: 'a' }]
+		});
+		testQuery('write_dta after library', 'library(haven)\nwrite_dta(d, "a")', {
+			library: [{ nodeId: '1@library', functionName: 'library', value: 'haven' }],
+			write:   [{ nodeId: '2@write_dta', functionName: 'write_dta', value: 'a' }]
+		});
 
 		testQuery('visSave', 'visSave(obj, "a")', { write: [{ nodeId: '1@visSave', functionName: 'visSave', value: 'a' }] });
 		testQuery('save_graph', 'save_graph(obj, "a")', { write: [{ nodeId: '1@save_graph', functionName: 'save_graph', value: 'a' }] });
@@ -527,4 +569,32 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		});
 	});
 
+
+	describe('The categories agree with the built-in configuration', () => {
+		const resources = new Map<string, { idx: number, name: string }>();
+		for(const d of DefaultBuiltinConfig) {
+			const info = d.type !== 'constant' ? (d as { config?: BuiltInFnInfo }).config : undefined;
+			const idx = info?.sig?.findIndex(([, p]) => (p & ArgProp.Resource) !== 0) ?? -1;
+			if(idx >= 0) {
+				for(const n of builtInNames(d)) {
+					resources.set(Identifier.getName(n), { idx, name: (info?.sig as FnSig)[idx][0] });
+				}
+			}
+		}
+		test.each([['read', ReadFunctions], ['write', WriteFunctions], ['other paths', OtherPathFunctions]] as const)(
+			'%s', (_name, list) => {
+				for(const f of list) {
+					const declared = resources.get(f.name);
+					if(declared === undefined) {
+						continue;
+					}
+					if(f.argIdx !== undefined && f.argIdx !== 'unnamed') {
+						assert.strictEqual(f.argIdx, declared.idx, `${f.package}::${f.name} takes its resource from another position than the built-in states`);
+					}
+					if(f.argName !== undefined) {
+						assert.strictEqual(f.argName, declared.name, `${f.package}::${f.name} names its resource differently than the built-in states`);
+					}
+				}
+			});
+	});
 }));

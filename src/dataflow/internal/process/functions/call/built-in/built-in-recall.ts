@@ -10,7 +10,7 @@ import type { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { log } from '../../../../../../util/log';
 import { EdgeType } from '../../../../../graph/edge';
-import { isFunctionCallVertex } from '../../../../../graph/vertex';
+import { FunctionCallVertex } from '../../../../../graph/vertex';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { Identifier } from '../../../../../environments/identifier';
@@ -68,7 +68,7 @@ export function processRecall<OtherInfo>(
 		information.graph.addEdge(rootId, closure, EdgeType.Calls);
 		// also kill the name of the recall function
 		const r = information.graph.getVertex(rootId);
-		if(isFunctionCallVertex(r)){
+		if(FunctionCallVertex.is(r)){
 			(r as { name: string }).name = UnnamedFunctionCallPrefix + rootId + '-' + Identifier.toString(r.name);
 			(r as { environment: REnvironmentInformation }).environment = information.environment;
 		}

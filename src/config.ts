@@ -19,6 +19,8 @@ import { ProjectKind } from './project/context/project-kind';
 import objectPath from 'object-path';
 import type { BuiltInFlowrPluginArgs, BuiltInFlowrPluginName } from './project/plugins/plugin-registry';
 import { type FlowrGasConfig, GasWikiRef } from './gas';
+import type { InputClassifierConfig } from './queries/catalog/input-sources-query/simple-input-classifier';
+import { InputType } from './queries/catalog/input-sources-query/input-types';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -205,7 +207,7 @@ export interface FlowrConfig extends MergeableRecord {
 			shinyEntryFiles?:       string[]
 			/** Regex source evidencing shiny usage in an entry file. */
 			shinyUsagePattern?:     string
-			/** File extensions marking a notebook (default `ipynb`, `rmd`, `qmd`, `rnw`). */
+			/** File extensions marking a notebook (default `ipynb`, `rmd`, `rmarkdown`, `qmd`, `rnw`). */
 			notebookExtensions?:    string[]
 		}
 	}
@@ -214,6 +216,13 @@ export interface FlowrConfig extends MergeableRecord {
 		/** Rule names excluded from the *default* rule set (a rule requested explicitly still runs). */
 		readonly disabledRules: string[]
 	}
+	/**
+	 * Teaches the {@link InputSourcesQuery|input-sources} analysis (and with it the `problematic-inputs` linter)
+	 * about further frameworks. Everything here is *added* to what flowR already knows, so a shiny app keeps its
+	 * `input` even when you declare your own. Usually set per {@link ProjectKind} via {@link specializeConfig}.
+	 * @see {@link InputClassifierConfig} - for what the entries mean
+	 */
+	readonly inputSources?:     DeepWritable<InputClassifierConfig<string[]>>
 	/**
 	 * Overwrite (parts of) this configuration depending on the {@link ProjectKind} flowR detects for the project,
 	 * e.g. to give a shiny app its implicit sources. An entry may `inherit` another kind's overwrite (merged first,
@@ -249,7 +258,7 @@ export interface FlowrConfig extends MergeableRecord {
 		readonly sigdb: {
 			/** Resolve library exports from a signature database (default `true`); when `false` no database is consulted. */
 			readonly enabled:                     boolean
-			/** Load the project's declared dependencies from its metadata files (`DESCRIPTION` Imports/Depends, `rproject.toml`, `renv.lock`, `rv.lock`) into the dependency context (default `true`); when `false` these files are not read, so neither the undefined-symbol linter nor {@link linkDescriptionDependencies} sees any project-declared dependency. */
+			/** Load the project's declared dependencies from its metadata files (`DESCRIPTION` Imports/Depends, `rproject.toml`, `uvr.toml`, `renv.lock`, `rv.lock`, `uvr.lock`) into the dependency context (default `true`); when `false` these files are not read, so neither the undefined-symbol linter nor {@link linkDescriptionDependencies} sees any project-declared dependency. */
 			readonly loadProjectDependencies:     boolean
 			/** Parse the database up front rather than on the first package load (default `false`, ignored if disabled). */
 			readonly eagerlyLoad:                 boolean
@@ -347,6 +356,11 @@ export interface FlowrConfig extends MergeableRecord {
 			}
 		}
 	}
+
+	readonly incrementalParsing: {
+		readonly activated: boolean;
+	}
+
 	/**
 	 * Resource-usage guard (gas) configuration.
 	 * Gas checks are disabled by default (all feature factors are `0`).
@@ -426,13 +440,16 @@ export const FlowrDefaultPlugins = [
 	'versions:namespace',
 	'versions:renv',
 	'versions:rv',
+	'versions:uvr',
 	'versions:packrat',
 	'versions:session-info',
 	'loading-order:description',
 	'loading-order:implicit-sources',
 	'loading-order:rprofile',
+	'loading-order:included-files',
 	'meta:description',
 	'meta:rproject',
+	'meta:uvr',
 	'file-roles:vignette',
 	'file-roles:test',
 	'file-roles:inst',
@@ -446,6 +463,7 @@ export const FlowrDefaultPlugins = [
 	'file:license',
 	'file:virtualenv',
 	'file:rproject',
+	'file:uvr',
 	'file:rprofile',
 ] satisfies ConfigPlugin<string>[];
 
@@ -549,7 +567,8 @@ export const FlowrConfig = {
 				[ProjectKind.Package]:  { solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.Project]:  { solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.ShinyApp]: {
-					project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] },
+					/* shiny evaluates global.R before the supporting files in R/, and the app itself last */
+					project: { implicitSources: ['global.R', 'R/*.R', 'ui.R', 'server.R', 'app.R'] },
 					solver:  { resolveSource: { assumeFilesExist: true } }
 				},
 				[ProjectKind.Script]:   { inherit: ProjectKind.Unknown },
@@ -589,6 +608,9 @@ export const FlowrConfig = {
 						maxReadLines:      1e6
 					}
 				}
+			},
+			incrementalParsing: {
+				activated: false,
 			},
 			gas: {
 				thresholds: {
@@ -648,6 +670,12 @@ export const FlowrConfig = {
 		linter: Joi.object({
 			disabledRules: Joi.array().items(Joi.string()).description('Linting rule names excluded from the default rule set (a rule requested explicitly via a linter query still runs). Usually set per project kind via specializeConfig.')
 		}).description('Linter configuration options.'),
+		inputSources: Joi.object({
+			pure:              Joi.array().items(Joi.string()).optional().description('Functions that only pass the constantness of their arguments on.'),
+			...Object.fromEntries(Object.values(InputType).map(t => [t, Joi.array().items(Joi.string()).optional().description(`Functions whose result is a '${t}' input.`)])),
+			linkedObjects:     Joi.array().items(Joi.object()).optional().description('Objects a framework provides without a definition in the code, e.g. shiny\'s input.'),
+			linkedEntryPoints: Joi.array().items(Joi.object()).optional().description('Calls that hand a function to a framework, which binds its objects to the parameters by position.')
+		}).optional().description('Further frameworks the input-sources analysis should know about; entries are added to flowR\'s defaults.'),
 		specializeConfig: Joi.object().pattern(Joi.string().valid(...Object.values(ProjectKind)), Joi.object({
 			inherit: Joi.string().valid(...Object.values(ProjectKind)).optional().description('Inherit another kind\'s overwrite first (merged before this entry\'s own keys, which win).')
 		}).unknown(true)).optional()
@@ -671,7 +699,7 @@ export const FlowrConfig = {
 			trackEnvironments: Joi.boolean().optional().description('Track user-created environments (new.env, assign/get/local with envir=, dollar-assign, attach). When false, all envir-style calls fall through conservatively.'),
 			sigdb:             Joi.object({
 				enabled:                     Joi.boolean().optional().description('Resolve library()/use() exports from a signature database (default true); when false no database is consulted.'),
-				loadProjectDependencies:     Joi.boolean().optional().description('Load the project\'s declared dependencies from its metadata files (DESCRIPTION Imports/Depends, rproject.toml, renv.lock, rv.lock) (default true); when false these files are not read for dependencies.'),
+				loadProjectDependencies:     Joi.boolean().optional().description('Load the project\'s declared dependencies from its metadata files (DESCRIPTION Imports/Depends, rproject.toml, uvr.toml, renv.lock, rv.lock, uvr.lock) (default true); when false these files are not read for dependencies.'),
 				eagerlyLoad:                 Joi.boolean().optional().description('Parse the database up front rather than on the first package load (default false, ignored if disabled).'),
 				eagerlyLoadExports:          Joi.boolean().optional().description('Add a vertex for every export on load rather than on demand (default false); keeps the dataflow graph small.'),
 				assumedRVersion:             Joi.string().optional().description('R version assumed when resolving versioned (base-R) exports: a pin like "4.5" or "auto" to detect the installed R (default "auto").'),
@@ -716,6 +744,9 @@ export const FlowrConfig = {
 				}).description('Configuration options for reading data frame shapes from loaded external data files, such as CSV files.')
 			}).description('The configuration of the shape inference for data frames.')
 		}).description('The configuration options for abstract interpretation.'),
+		incrementalParsing: Joi.object({
+			activated: Joi.boolean().description('If set, incremental parsing will be used.')
+		}),
 		gas: Joi.object({
 			thresholds: Joi.object({
 				memory: Joi.object({
@@ -755,7 +786,7 @@ export const FlowrConfig = {
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 	amend(this: void, config: FlowrConfig, amendmentFunc: (config: DeepWritable<FlowrConfig>) => FlowrConfig | void): FlowrConfig {
 		const newConfig = FlowrConfig.clone(config);
-		return amendmentFunc(newConfig as DeepWritable<FlowrConfig>) ?? newConfig;
+		return amendmentFunc(newConfig) ?? newConfig;
 	},
 	/**
 	 * Clones the given flowr config object.

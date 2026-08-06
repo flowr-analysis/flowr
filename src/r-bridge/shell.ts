@@ -1,6 +1,6 @@
 import { type ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import { deepMergeObject, type MergeableRecord } from '../util/objects';
-import { type ILogObj, type Logger } from 'tslog';
+import type { ILogObj, Logger } from 'tslog';
 import * as readline from 'readline';
 import { expensiveTrace, log, LogLevel } from '../util/log';
 import type { SemVer } from 'semver';
@@ -145,6 +145,7 @@ export class RShell implements AsyncParser<string> {
 	public readonly name = 'r-shell';
 	public readonly async = true;
 	public readonly options: Readonly<RShellOptions>;
+	public readonly incremental = false;
 	private _session:        RShellSession | undefined = undefined;
 	private readonly log:    Logger<ILogObj>;
 	private versionCache:    SemVer | null = null;

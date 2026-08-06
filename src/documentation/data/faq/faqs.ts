@@ -4,6 +4,9 @@ import { codeBlock } from '../../doc-util/doc-code';
 import { recommendedVsCodeTask, recommendedZedConfig } from './recommended-configs';
 import type { GeneralDocContext } from '../../wiki-mk/doc-context';
 import { ProjectKind } from '../../../project/context/project-kind';
+import { getCliLongOptionOf } from '../../doc-util/doc-cli-option';
+import { setMinLevelOfAllLogs } from '../../../../test/functionality/_helper/log';
+import { expensiveTrace, FlowrLogger } from '../../../util/log';
 
 
 /**
@@ -53,6 +56,14 @@ ${codeBlock('shell', 'npm run flowR -- --help')}
 `)
 		.addFaq('How to do *logging* in flowR?', `
 Check out the ${ctx.linkPage('wiki/Linting and Testing', 'Logging Section in the Linting and Testing wiki page', 'logging')} for more information on how to do logging in *flowR*.
+`)
+		.addFaq('How to get flowR to *talk*?', `
+When using flowR from the CLI, you can use the ${getCliLongOptionOf('flowr', 'verbose')} option to get more information about what flowR is doing.
+While coding, however, you can use the ${ctx.link(setMinLevelOfAllLogs)} function to set the minimum level of logs to be displayed (this works with the ${ctx.link(FlowrLogger)} abstraction).
+In general, you can configure the levels of individual logs, such as the general \`log\` (obtained with ${ctx.link('getActiveLog')}) or the ${ctx.link('parseLog')}.
+Please note that flowR makes no guarantees that log outputs are persistent across versions, and it is up to the implementors to provide sensible logging.
+If you are an implementor and want to add logging, please make sure there are no larger runtime implications when logging is disabled.
+Have a look at the ${ctx.link(expensiveTrace)} function for example, which uses a function to generate the log message only when the log level is reached.
 `)
 		.addFaq('How to run *tests* with *verbose* logging?', `
 Use the dedicated npm script to run all tests with trace-level log output:

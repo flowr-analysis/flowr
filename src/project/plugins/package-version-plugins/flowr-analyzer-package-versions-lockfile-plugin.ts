@@ -10,9 +10,9 @@ import { MetaPriority } from '../../context/flowr-analyzer-meta-context';
 
 export const lockfileLog = log.getSubLogger({ name: 'flowr-analyzer-package-versions-lockfile-plugin' });
 
-/** The {@link FileRole.VirtualEnv} lockfiles named `name` (e.g. `renv.lock`), collected by role like the DESCRIPTION reader. */
+/** The {@link FileRole.VirtualEnv} lockfiles named `name` (e.g. `renv.lock`), matched case-insensitively like the role is assigned. */
 function virtualEnvFiles(ctx: FlowrAnalyzerContext, name: string): FlowrFileProvider[] {
-	return ctx.files.getFilesByRole(FileRole.VirtualEnv).filter(f => platformBasename(f.path()) === name);
+	return ctx.files.getFilesByRole(FileRole.VirtualEnv).filter(f => platformBasename(f.path()).toLowerCase() === name);
 }
 
 function pin(ctx: FlowrAnalyzerContext, name: string, version: string): void {
@@ -112,7 +112,7 @@ export class FlowrAnalyzerPackageVersionsRvPlugin extends FlowrAnalyzerPackageVe
 		for(const file of virtualEnvFiles(ctx, 'rv.lock')) {
 			let lock: RvLock;
 			try {
-				lock = parseToml(file.content().toString()) as RvLock;
+				lock = parseToml(file.content().toString());
 			} catch(e) {
 				lockfileLog.warn(`Could not parse rv.lock: ${(e as Error).message}`);
 				continue;
@@ -121,6 +121,40 @@ export class FlowrAnalyzerPackageVersionsRvPlugin extends FlowrAnalyzerPackageVe
 				ctx.meta.contribute({ rVersion: lock.r_version }, MetaPriority.Lockfile);
 			}
 			for(const pkg of Array.isArray(lock.packages) ? lock.packages : []) {
+				const { name, version } = pkg as { name?: unknown, version?: unknown };
+				if(typeof name === 'string' && typeof version === 'string') {
+					pin(ctx, name, version);
+				}
+			}
+		}
+	}
+}
+
+/** The parts of a `uvr.lock` we read, see https://github.com/nbafrank/uvr */
+interface UvrLock {
+	r?:       { version?: unknown };
+	package?: unknown;
+}
+
+/** Reads package versions from a `uvr.lock` (TOML). uvr pins are exact, the dev-dependencies among them. */
+export class FlowrAnalyzerPackageVersionsUvrPlugin extends FlowrAnalyzerPackageVersionsPlugin {
+	public readonly name        = 'flowr-analyzer-package-versions-uvr-plugin';
+	public readonly description = 'Extracts package versions from a uvr.lock lockfile.';
+	public readonly version     = new SemVer('0.1.0');
+
+	public process(ctx: FlowrAnalyzerContext): void {
+		for(const file of virtualEnvFiles(ctx, 'uvr.lock')) {
+			let lock: UvrLock;
+			try {
+				lock = parseToml(file.content().toString());
+			} catch(e) {
+				lockfileLog.warn(`Could not parse uvr.lock: ${(e as Error).message}`);
+				continue;
+			}
+			if(typeof lock.r?.version === 'string') {
+				ctx.meta.contribute({ rVersion: lock.r.version }, MetaPriority.Lockfile);
+			}
+			for(const pkg of Array.isArray(lock.package) ? lock.package : []) {
 				const { name, version } = pkg as { name?: unknown, version?: unknown };
 				if(typeof name === 'string' && typeof version === 'string') {
 					pin(ctx, name, version);

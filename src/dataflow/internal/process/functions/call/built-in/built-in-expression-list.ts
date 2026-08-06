@@ -5,7 +5,7 @@
 import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
 import { addNonDefaultExitPoints, alwaysExits, ExitPointType, happensInEveryBranch } from '../../../../../info';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { linkFunctionCalls } from '../../../../linker';
+import { getAllLinkedFunctionDefinitions, linkFunctionCalls } from '../../../../linker';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import { patchFunctionCall } from '../common';
@@ -27,7 +27,6 @@ import type { Writable } from 'ts-essentials';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { cancelRevivedKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import type { BuiltInIdentifierConstant } from '../../../../../environments/built-in';
 import { valueFromTsValue } from '../../../../../eval/values/general';
 
 
@@ -69,10 +68,71 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 				tag:   VertexType.Value,
 				id:    tid,
 				cds:   undefined,
-				value: valueFromTsValue((target as BuiltInIdentifierConstant).value)
+				value: valueFromTsValue((target).value)
 			}, environments, false);
 		}
 	}
+}
+
+/**
+ * Expands the directly-called function definitions (`direct`) with those they transitively call (resolved by name in
+ * `resolveEnv`). A sibling/outer callee is invisible inside its caller's (clean) body, so its escaped globals never fold
+ * into the caller's subflow; pulling them here lets a super-assignment escaping through several call levels reach the
+ * outer read. Escapes are folded popped to the fold level, so a write binding an intermediate frame stops there.
+ * Package attachments keep their own (lazy) propagation, so transitive callees only contribute their `<<-` escapes.
+ */
+function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInfo[], graph: DataflowGraph, resolveEnv: REnvironmentInformation): Generator<{ fn: DataflowGraphVertexInfo, direct: boolean }> {
+	const seen = new Set<NodeId>();
+	const stack = initial.map(fn => ({ fn, direct: true }));
+	while(stack.length > 0) {
+		const { fn, direct } = stack.pop() as { fn: DataflowGraphVertexInfo, direct: boolean };
+		if(fn.tag !== VertexType.FunctionDefinition || seen.has(fn.id)) {
+			continue;
+		}
+		seen.add(fn.id);
+		yield { fn, direct };
+		for(const nodeId of fn.subflow.graph) {
+			const call = graph.getVertex(nodeId);
+			if(call?.tag !== VertexType.FunctionCall || call.onlyBuiltin || call.name === undefined) {
+				continue;
+			}
+			const resolved = resolveByName(call.name, resolveEnv, ReferenceType.Function);
+			if(resolved === undefined) {
+				continue;
+			}
+			const [targets] = getAllLinkedFunctionDefinitions(new Set(resolved.map(r => r.nodeId)), graph);
+			for(const target of targets) {
+				if(!seen.has(target.id)) {
+					stack.push({ fn: target, direct: false });
+				}
+			}
+		}
+	}
+}
+
+/** Rebuilds `env` without its attached-package/namespace layers (`t !== undefined`), keeping only the lexical frames a `<<-` can bind. */
+function withoutPackageLayers(env: REnvironmentInformation): REnvironmentInformation {
+	let builtIn: Environment = env.current;
+	const core: Environment[] = [];
+	let hasPackage = false;
+	while(!builtIn.builtInEnv) {
+		if(builtIn.t === undefined) {
+			core.push(builtIn);
+		} else {
+			hasPackage = true;
+		}
+		builtIn = builtIn.parent;
+	}
+	if(!hasPackage) {
+		return env;
+	}
+	let parent: Environment = builtIn;
+	for(let i = core.length - 1; i >= 0; i--) {
+		const cloned = core[i].clone(false);
+		cloned.parent = parent;
+		parent = cloned;
+	}
+	return { current: parent, level: env.level };
 }
 
 function updateSideEffectsForCalledFunctions(calledEnvs: {
@@ -81,10 +141,10 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 }[], inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[]) {
 	for(const { functionCall, called } of calledEnvs) {
 		let callDependencies: ControlDependency[] | null | undefined = null;
-		for(const calledFn of called) {
+		for(const { fn: calledFn, direct } of transitivelyCalledDefinitions(called, nextGraph, inputEnvironment)) {
 			guard(calledFn.tag === VertexType.FunctionDefinition, 'called function must be a function definition');
 			// only merge the environments they have in common
-			let environment = calledFn.subflow.environment;
+			let environment = direct ? calledFn.subflow.environment : withoutPackageLayers(calledFn.subflow.environment);
 			while(environment.level > inputEnvironment.level) {
 				environment = popLocalEnvironment(environment);
 			}

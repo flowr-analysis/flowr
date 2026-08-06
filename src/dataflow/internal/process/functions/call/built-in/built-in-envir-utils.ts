@@ -9,12 +9,19 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { unpackArg } from '../argument/unpack-argument';
 import { signatureParameterNames } from '../../../../../../project/sigdb/decode';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import type { Identifier, IdentifierDefinition, InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { ReferenceType } from '../../../../../environments/identifier';
+import type { IdentifierDefinition, InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import { Identifier, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { define } from '../../../../../environments/define';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
+import { DefaultAttachPosition, REnvironment } from '../../../../../environments/environment';
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
 import { resolveNodeToStackEnv } from './built-in-stack-env';
+import { resolveIdToValue, resolveIdToSingleString } from '../../../../../eval/resolve/alias-tracking';
+import { foldStringCall, PasteLikeCalls } from '../../../../../eval/resolve/resolve-strings';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { valueSetGuard } from '../../../../../eval/values/general';
+import type { Value } from '../../../../../eval/values/r-value';
+import { dataflowLogger } from '../../../../../logger';
 
 /** A tracked env is a real stack environment (not a private custom env) when its current layer is the global or the built-in/base env. */
 function isStackEnvState(envState: REnvironmentInformation): boolean {
@@ -100,6 +107,38 @@ export function signatureParamNames<OtherInfo>(
 	return names.length > 0 ? names : fallback;
 }
 
+/** The constant string a name-position node denotes at construction time (string literal, aliased variable, or a paste-like join of such); `undefined` if any part is dynamic or the paste builtin is user-shadowed. */
+export function resolveConstantString<OtherInfo>(
+	node: RNode<OtherInfo & ParentInformation>,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+): string | undefined {
+	const info = { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx, full: true };
+	const unshadowed = new Map<string, boolean>();
+	const fold = (n: RNode<OtherInfo & ParentInformation>): string | undefined => {
+		if(!RFunctionCall.isNamed(n)) {
+			return resolveIdToSingleString(n.info.id, info);
+		}
+		const fnName = Identifier.getName(n.functionName.content);
+		if(!PasteLikeCalls.has(fnName)) {
+			return undefined;
+		}
+		let ok = unshadowed.get(fnName);
+		if(ok === undefined) {
+			const defs = resolveByName(n.functionName.content, data.environment, ReferenceType.Function);
+			ok = defs === undefined || defs.every(d => isReferenceType(d.type, ReferenceType.BuiltInFunction));
+			unshadowed.set(fnName, ok);
+		}
+		const folded = ok ? foldStringCall(n, fold) : undefined;
+		return typeof folded === 'string' ? folded : undefined;
+	};
+	return fold(node);
+}
+
+/** The `returnsEnvState` of the first reaching definition that carries one, else `undefined`. */
+export function findReturnsEnvState(defs: readonly IdentifierDefinition[] | undefined): REnvironmentInformation | undefined {
+	return defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).returnsEnvState !== undefined)?.returnsEnvState;
+}
+
 /** Resolves a single already-found argument (e.g. from {@link bindArgs}) to an {@link EnvirResolution} when it is a symbol holding a tracked envState. */
 export function resolveArgToEnvir<OtherInfo>(
 	arg:  PotentiallyEmptyRArgument<OtherInfo & ParentInformation>,
@@ -129,7 +168,7 @@ function stackEnvirResolution<OtherInfo>(
 ): EnvirResolution<OtherInfo> {
 	// no holder variable: envDef is only a carrier for envState/nodeId
 	const envDef = {
-		name:      lexeme as Identifier,
+		name:      lexeme,
 		nodeId,
 		type:      ReferenceType.Variable,
 		definedAt: nodeId,
@@ -151,7 +190,7 @@ export function resolveEnvirArg<OtherInfo>(
 		if(arg === EmptyArgument || arg.name === undefined) {
 			continue;
 		}
-		if(findByPrefixIfUnique(arg.name.content as string, allParamNames) === argName) {
+		if(findByPrefixIfUnique(arg.name.content, allParamNames) === argName) {
 			return resolveArgToEnvir(arg, data);
 		}
 	}
@@ -205,4 +244,56 @@ export function routeWrittenToCustomEnv(
 		{ current: result.environment.current.removeAll(namesToRemove), level: result.environment.level }
 	);
 	return { ...result, environment: newEnvironment };
+}
+
+/** A `search()` position must be an integer and may never displace the global environment (R rejects `pos = 1`). */
+function clampAttachPosition(pos: number): number | undefined {
+	return Number.isFinite(pos) ? Math.max(DefaultAttachPosition, Math.trunc(pos)) : undefined;
+}
+
+/** The number a value denotes, directly or as the single point of an interval (how a numeric literal resolves). */
+function scalarNumber(value: Value): number | undefined {
+	if(value.type === 'number') {
+		return 'num' in value.value ? value.value.num : undefined;
+	}
+	if(value.type === 'interval' && value.startInclusive && value.endInclusive
+		&& value.start.type === 'number' && 'num' in value.start.value
+		&& value.end.type === 'number' && 'num' in value.end.value
+		&& value.start.value.num === value.end.value.num) {
+		return value.start.value.num;
+	}
+	return undefined;
+}
+
+/**
+ * The `search()` position the `pos` argument of a `library()` call requests, either given as a number or as the name of
+ * an existing entry (`pos = "package:base"`). Returns `undefined` when there is no such argument, its value is unknown
+ * or ambiguous, or it names an entry that is not on the search path; callers then attach at {@link DefaultAttachPosition}
+ * (as R does, which warns in the last case).
+ */
+export function resolveAttachPosition<OtherInfo>(
+	posId: NodeId | undefined,
+	data:  DataflowProcessorInformation<OtherInfo & ParentInformation>
+): number | undefined {
+	if(posId === undefined) {
+		return undefined;
+	}
+	const values = valueSetGuard(resolveIdToValue(posId, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx }));
+	if(values?.type !== 'set' || values.elements.length !== 1) {
+		return undefined;
+	}
+	const element = values.elements[0];
+	const asNumber = scalarNumber(element);
+	if(asNumber !== undefined) {
+		return clampAttachPosition(asNumber);
+	}
+	if(element.type === 'string' && 'str' in element.value) {
+		const found = REnvironment.searchPosition(data.environment.current, element.value.str);
+		if(found === undefined) {
+			dataflowLogger.warn(`search-path entry '${element.value.str}' does not exist, attaching at the default position`);
+			return undefined;
+		}
+		return clampAttachPosition(found);
+	}
+	return undefined;
 }

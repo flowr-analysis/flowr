@@ -47,27 +47,27 @@ export const SigDbExt = '.sigs.ndjson';
 
 /** function-level boolean properties, packed into {@link SigFn}'s bitfield */
 export const enum FnProp {
-	Exported         = 1,
-	HigherOrder      = 2,
-	Recursive        = 4,
-	CallsDeprecated  = 8,
-	CanThrow         = 16,
-	Deprecated       = 32,
-	CallsInternal    = 64,
-	NonDeterministic = 128,
-	NoDoc            = 256,
-	S3Method         = 512,
+	Exported         = 1 << 0,
+	HigherOrder      = 1 << 1,
+	Recursive        = 1 << 2,
+	CallsDeprecated  = 1 << 3,
+	CanThrow         = 1 << 4,
+	Deprecated       = 1 << 5,
+	CallsInternal    = 1 << 6,
+	NonDeterministic = 1 << 7,
+	NoDoc            = 1 << 8,
+	S3Method         = 1 << 9,
 	/**
 	 * An exported function that is also an S3 class this package OWNS: it is a same-named constructor for a
 	 * class the package registers at least one S3 method for (see {@link LibraryExports.s3Classes}, derived
 	 * from this bit by {@link deriveLibraryExports}).
 	 */
-	S3Owner          = 1024,
+	S3Owner          = 1 << 10,
 	/**
 	 * Set on the name of an S4 class this package OWNS: it exports the class via its NAMESPACE `exportClasses()`
 	 * (see {@link LibraryExports.s4Classes}, derived from this bit by {@link deriveLibraryExports}).
 	 */
-	S4Owner          = 2048
+	S4Owner          = 1 << 11
 }
 
 /** the {@link FnProp} bit to its name (for decoding); integer keys iterate in ascending bit order */
@@ -89,9 +89,9 @@ export const FnPropNames: Readonly<Record<FnProp, string>> = {
 /** parameter flags, packed into {@link SigParam}'s flag int */
 export const enum ParamFlag {
 	/** forced: the argument is always evaluated (crawlr `always-read`) */
-	Forced  = 1,
+	Forced  = 1 << 0,
 	/** the argument has no default value (crawlr `missing`) */
-	Missing = 2
+	Missing = 1 << 1
 }
 
 /**

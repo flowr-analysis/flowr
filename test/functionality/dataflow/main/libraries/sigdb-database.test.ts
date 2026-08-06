@@ -553,6 +553,24 @@ describe('sigdb shared-dictionary shards, verification, R-core markers and relea
 		expect(report.errors.some(e => e.includes('recomputed hash'))).toBe(true);
 	});
 
+	test('an in-memory database answers exactly as the same bundle written to disk does', async() => {
+		const db = builder().build(meta);
+		const dir = sigTmpDir('sigdb-memory-');
+		const onDisk = await writeAndOpen(dir, db);
+		const inMemory = SigDatabase.fromMemory(db);
+		expect(inMemory.packageNames()).toEqual(onDisk.packageNames());
+		for(const pkg of onDisk.packageNames()) {
+			expect(inMemory.lookup(pkg)).toEqual(onDisk.lookup(pkg));
+			expect(inMemory.releaseDates(pkg)).toEqual(onDisk.releaseDates(pkg));
+			expect(inMemory.isBaseR(pkg)).toBe(onDisk.isBaseR(pkg));
+		}
+		// re-hashing works too, so the blobs are reachable without any byte ranges to seek to
+		expect(inMemory.allBlobs()).toEqual(onDisk.allBlobs());
+		expect(inMemory.contentHash()).toBe(onDisk.contentHash());
+		inMemory.close();
+		onDisk.close();
+	});
+
 	test('release dates survive a full write/read round-trip on a single bundle', async() => {
 		const dir = sigTmpDir('sigdb-dates-');
 		const db = builder().build(meta);

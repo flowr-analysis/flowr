@@ -42,10 +42,17 @@ print(x)`,
 				'f <- function(x, ...) { x }\nprint(f(1))',
 				/* S3 method for a known base generic - dispatched indirectly, so not unused */
 				'print.foo <- function(x, ...) { cat(x) }\ny <- structure(list(), class = "foo")\nprint(y)',
+				'`[.foo` <- function(x, i) { x[i] }',
+				'as.character.foo <- function(x, ...) { x }',
+				'Ops.foo <- function(e1, e2) { e1 + e2 }\nx <- structure(1, class = "foo")\nprint(x + 1)',
 				/* S3 method for a project-local generic that is dispatched somewhere - not unused */
 				'myg <- function(x) UseMethod("myg")\nmyg.foo <- function(x) x\nz <- structure(1, class = "foo")\nmyg(z)',
 				/* R package lifecycle hook called by package machinery - not unused */
-				'.onAttach <- function(libname, pkgname) { cat(libname, pkgname) }'
+				'.onAttach <- function(libname, pkgname) { cat(libname, pkgname) }',
+				/* S4/S7 generic dispatcher passed to setGeneric - runs on every dispatch, so not unused */
+				'setGeneric("replaceEntries", function(x, map, ...) standardGeneric("replaceEntries"))',
+				/* same, with a braced dispatcher body */
+				'setGeneric("bar", function(obj) { standardGeneric("bar") })'
 			]) {
 				/* @ignore-in-wiki */
 				assertLinter(program, parser, program, 'unused-definitions', []);
@@ -87,7 +94,7 @@ print(f()())`, '4@x', SourceRange.from(4, 7, 4, 13)]
 							loc:          SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
 							quickFix:     removableRange ? [{
 								type:        'remove',
-								loc:         removableRange as SourceLocation,
+								loc:         removableRange,
 								description: `Remove unused definition of \`${node.lexeme}\``
 							}] : undefined
 						};

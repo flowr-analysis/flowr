@@ -106,6 +106,14 @@ export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 	}
 
 	/**
+	 * Returns the parsed enhanced packages from the 'Enhances' field in the DESCRIPTION file.
+	 */
+	public enhances(): Package[] | undefined {
+		const enhances = this.content().get('Enhances');
+		return enhances ? parsePackagesWithVersions(enhances, 'package') : undefined;
+	}
+
+	/**
 	 * Returns the 'Collate' field from the DESCRIPTION file.
 	 */
 	public collate(): readonly string[] | undefined {
@@ -178,7 +186,7 @@ function emplaceDCF(key: string, val: string, result: Map<string, string[]>) {
 	if(!key) {
 		return;
 	}
-	let values: string[] = [];
+	let values: string[];
 	if(key.includes('@')) {
 		values = [val.trim()];
 	} else {

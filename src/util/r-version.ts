@@ -205,5 +205,24 @@ export const RRange = {
 		}
 		const r = typeof range === 'string' ? RRange.parse(range) : range;
 		return r !== undefined && semverSatisfies(v, r, { loose: true, includePrerelease: true });
+	},
+
+	/**
+	 * The range every one of `ranges` allows (semver reads a space-separated list as a conjunction). `undefined` if
+	 * none were given or the combination is unparseable; it may still be a range no version satisfies, which
+	 * {@link RVersion.parse|minVersion} reports.
+	 */
+	intersect(this: void, ranges: readonly Range[]): (Range & { str: string }) | undefined {
+		return ranges.length > 0 ? RRange.parse(ranges.map(r => r.raw).join(' ')) : undefined;
+	},
+
+	/** how a set of alternative requirements reads, in semver's `a || b` form (for reporting, not for parsing back) */
+	formatAlternatives(this: void, ranges: readonly Range[]): string {
+		return ranges.map(r => r.raw).join(' || ');
+	},
+
+	/** whether `version` satisfies at least one of `ranges` (an empty list constrains nothing, so it does) */
+	satisfiesAny(this: void, version: string, ranges: readonly Range[]): boolean {
+		return ranges.length === 0 || ranges.some(r => RRange.satisfies(version, r));
 	}
 } as const;

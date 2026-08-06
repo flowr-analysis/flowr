@@ -5,8 +5,8 @@ import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-bui
 import { FlowrConfig } from '../../../../src/config';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { SigDatabase } from '../../../../src/project/sigdb/reader';
-import { SigDbBuilder, writeSignatureDb } from '../../../../src/project/sigdb/build';
-import { SigDbExt, FnProp, type SigVersionInfo } from '../../../../src/project/sigdb/schema';
+import { SigDbBuilder } from '../../../../src/project/sigdb/build';
+import { FnProp, type SigVersionInfo } from '../../../../src/project/sigdb/schema';
 import { executeQueries } from '../../../../src/queries/query';
 import { asciiSummaryOfQueryResult } from '../../../../src/queries/query-print';
 import { ansiFormatter } from '../../../../src/util/text/ansi';
@@ -19,14 +19,13 @@ const expFn = (name: string) => ({ name, props: FnProp.Exported, params: [], cal
 const ver = (functions: SigVersionInfo['functions']): SigVersionInfo => ({ cran: true, functions });
 
 /** an in-memory signature database exporting a couple of symbols for cli and ggplot2 */
-async function buildDb(dir: string): Promise<SigDatabase> {
+function buildDb(): SigDatabase {
 	const b = new SigDbBuilder();
 	b.addPackage('cli', { latest: '3.6.0', downloads: 5 });
 	b.addVersion('cli', '3.6.0', ver([expFn('cli_alert')]));
 	b.addPackage('ggplot2', { latest: '3.5.1', downloads: 5 });
 	b.addVersion('ggplot2', '3.5.1', ver([expFn('ggplot'), expFn('aes'), expFn('geom_point')]));
-	await writeSignatureDb(path.join(dir, 'db'), b.build({ date: '2026-05-23', generated: 0 }));
-	return SigDatabase.open(path.join(dir, `db${SigDbExt}`));
+	return SigDatabase.fromMemory(b.build({ date: '2026-05-23', generated: 0 }));
 }
 
 function writePackage(root: string, pkgName: string, description: string, code: string): string {
@@ -52,9 +51,9 @@ async function analyzeProject(parser: TreeSitterExecutor, db: SigDatabase, dir: 
 describe.sequential('Project Query', withTreeSitter(parser => {
 	let tmp: string;
 	let db: SigDatabase;
-	beforeAll(async() => {
+	beforeAll(() => {
 		tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-project-query-'));
-		db = await buildDb(tmp);
+		db = buildDb();
 	});
 	afterAll(() => {
 		db?.close();

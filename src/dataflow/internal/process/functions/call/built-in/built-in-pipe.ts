@@ -16,7 +16,7 @@ import { VertexType } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { toUnnamedArgument } from '../argument/make-argument';
-import { processAssignment, type AssignmentConfiguration } from './built-in-assignment';
+import { processAssignment } from './built-in-assignment';
 import type { BrandedIdentifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { log } from '../../../../../../util/log';
@@ -79,7 +79,7 @@ export function processPipe<OtherInfo>(
 			location: name.location
 		} as RSymbol<OtherInfo & ParentInformation>;
 
-		information = processAssignment(assignSym, [targetArg, sourceArg], rootId, data, { canBeReplacement: true, mayHaveMoreArgs: true } as AssignmentConfiguration);
+		information = processAssignment(assignSym, [targetArg, sourceArg], rootId, data, { canBeReplacement: true, mayHaveMoreArgs: true });
 	}
 
 	let treatedAsFunctionCall = false;

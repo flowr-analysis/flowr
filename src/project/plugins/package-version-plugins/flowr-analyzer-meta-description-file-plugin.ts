@@ -41,7 +41,8 @@ export class FlowrAnalyzerMetaDescriptionFilePlugin extends FlowrAnalyzerPackage
 				imports:   deps.imports(),
 				depends:   deps.depends(),
 				suggests:  deps.suggests(),
-				linkingTo: deps.linkingTo()
+				linkingTo: deps.linkingTo(),
+				enhances:  deps.enhances()
 			}
 		}, MetaPriority.Description);
 	}

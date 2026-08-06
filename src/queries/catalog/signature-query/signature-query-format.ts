@@ -55,10 +55,12 @@ export interface SignatureFunctionView {
 	readonly callees:    readonly string[];
 	readonly file?:      string;
 	readonly line?:      number;
-	/** deep link into the read-only CRAN GitHub mirror, when the definition location + a CRAN version are known */
+	/** deep link to the definition on the read-only GitHub mirror of the sources (CRAN, or R's own for a base package) */
 	readonly sourceUrl?: string;
 	/** best-effort rdrr.io documentation link, when the function name maps to a documentable topic */
 	readonly docUrl?:    string;
+	/** link to the `.Rd` help source *at the queried version*, which {@link docUrl} cannot offer (rdrr.io only serves the current release) */
+	readonly manUrl?:    string;
 	/** whether the function looks like an S3 generic (has `<generic>.<class>` dispatch targets in the same package) */
 	readonly s3generic?: boolean;
 	/** the `<generic>.<class>` dispatch targets found in the same package */
@@ -67,6 +69,31 @@ export interface SignatureFunctionView {
 	readonly s3method?:  { readonly generic: string, readonly class: string, readonly package: string };
 	/** a mermaid.live link visualizing the transitive call graph from this function (only when requested with `--cg`) */
 	readonly callGraph?: string;
+	/** what flowR itself states about the function, from the built-in environment of the analysis */
+	readonly flowr?:     SignatureFlowrView;
+	/**
+	 * whether the whole view comes from flowR's built-in definition because the database has no entry: the
+	 * primitives and operators (`+`, `[`, `if`) that appear in no package's sources, and anything a flowR
+	 * configuration adds. Everything the database would contribute (defaults, callees, location) is then empty,
+	 * and since flowR records no defaults, every {@link SignatureParameterView.required} reads `false`.
+	 */
+	readonly flowrOnly?: boolean;
+}
+
+/**
+ * What flowR knows about a function on its own, next to what the database records: the properties of the
+ * call and what it uses each argument for. Read from the built-in environment of the analysis, so a
+ * configured or overwritten built-in is what shows up here.
+ */
+export interface SignatureFlowrView {
+	/** the {@link CallProp} names the built-in definition carries, like `pure` or `reads` */
+	readonly props:       readonly string[];
+	/** the {@link ArgProp} names of every parameter flowR declares, in order; a parameter it says nothing about has no roles */
+	readonly args?:       readonly { readonly name: string, readonly roles: readonly string[] }[];
+	/** the parameter handed back as the result ({@link ArgProp.Alias}), which is what draws the `Returns` edge */
+	readonly returns?:    string;
+	/** flowR's own parameter names, only present when they disagree with the ones the database records */
+	readonly parameters?: readonly string[];
 }
 
 /** one declared dependency of a package */
@@ -113,6 +140,8 @@ export interface SignatureMatchView {
 	readonly sourceUrl?:         string;
 	/** best-effort rdrr.io documentation link, when the function name maps to a documentable topic */
 	readonly docUrl?:            string;
+	/** link to the `.Rd` help source at the queried version, see {@link SignatureFunctionView.manUrl} */
+	readonly manUrl?:            string;
 	/** a preview of the function's parameters (the ones a parameter/required filter matched first), when such a filter is active */
 	readonly parameters?:        readonly string[];
 	/** the subset of {@link parameters} that the `--param` filter actually matched, so the renderer can highlight them */
@@ -185,7 +214,7 @@ function signatureQueryLineParser(output: ReplOutput, line: readonly string[], _
 			positional.push(tok);
 		}
 	}
-	// help only when it is the leading word or an explicit flag -- never for a package/function literally named `help`
+	// help only when it is the leading word or an explicit flag, never for a package/function literally named `help`
 	if(positional[0] === 'help' || line.includes('--help') || line.includes('-h')) {
 		printSignatureHelp(output);
 		return { query: [] };

@@ -86,6 +86,8 @@ export enum BuiltInProcName {
 	StackEnv = 'builtin:stack-env',
 	/** for `stop` calls */
 	Stop = 'builtin:stop',
+	/** for `switch` calls */
+	Switch = 'builtin:switch',
 	/** for `stopifnot` calls, see {@link processStopIfNot} */
 	StopIfNot = 'builtin:stopifnot',
 	/** support for `:=` in subsetting assignments, see {@link processAccess} */
@@ -96,6 +98,8 @@ export enum BuiltInProcName {
 	Attach = 'builtin:attach',
 	/** for `new.env` and related environment-creation calls, see {@link processNewEnv} */
 	NewEnv = 'builtin:nenv',
+	/** for `R6Class`/`setRefClass` class generators whose methods back `$new()`-instance dispatch */
+	ClassGenerator = 'builtin:class-gen',
 	/** for unnamed directly-linked function calls */
 	Unnamed = 'unnamed',
 	/** for vector construction calls, see {@link processVector} */

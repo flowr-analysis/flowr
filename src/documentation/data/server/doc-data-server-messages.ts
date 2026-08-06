@@ -497,7 +497,7 @@ See [above](#message-request-file-analysis) for the general structure of the res
 							kind:        'visualize',
 							subkind:     'text',
 							callTargets: CallTargets.OnlyGlobal,
-						} as never,
+						},
 						arguments: [
 							{
 								callName: '^mean$'

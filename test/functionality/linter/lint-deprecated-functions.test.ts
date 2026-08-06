@@ -26,6 +26,7 @@ function sigDbWithDeprecatedFn(pkg: string, fnName: string): PackageSignatureSou
 		dependencies:      () => undefined,
 		packageNames:      () => [pkg],
 		isBaseR:           () => false,
+		downloads:         () => 0,
 		coreVersions:      () => undefined,
 		releaseDate:       () => undefined,
 		releaseDates:      () => [],

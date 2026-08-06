@@ -15,7 +15,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { type NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import {
 	Identifier,
@@ -29,21 +29,22 @@ import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
-import { isFunctionCallVertex, isFunctionDefinitionVertex, VertexType } from '../../../../../graph/vertex';
+import { FunctionCallVertex, FunctionDefinitionVertex, VertexType } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import { resolveEnvirArg, resolveSymbolToEnvir, routeWrittenToCustomEnv } from './built-in-envir-utils';
+import { findReturnsEnvState, resolveConstantString, resolveEnvirArg, resolveSymbolToEnvir, routeWrittenToCustomEnv } from './built-in-envir-utils';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { getAliases, resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
-import { isValue } from '../../../../../eval/values/r-value';
+import { getAliases } from '../../../../../eval/resolve/alias-tracking';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { createFreshEnvState } from './built-in-new-env';
+import { resolveListToEnvState } from './built-in-list';
+import { resolveClassMethodsToEnvState, resolveConstructorInstanceEnvState } from './built-in-class-generator';
 import { stackEnvStateFromSource } from './built-in-stack-env';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & RAstNodeBase<OtherInfo> & Location, prefix: Identifier, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
@@ -204,8 +205,30 @@ export function processAssignment<OtherInfo>(
 	}
 	const { type, named } = target;
 
-	if(type === RType.Symbol) {
-		if(!config.targetVariable) {
+	if(type === RType.Symbol && !config.targetVariable) {
+		const res = processKnownFunctionCall({
+			name,
+			args,
+			rootId,
+			data,
+			reverseOrder: !config.swapSourceAndTarget,
+			forceArgs:    config.forceArgs,
+			origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
+		});
+		return processAssignmentToSymbol<OtherInfo & ParentInformation>({
+			...config,
+			nameOfAssignmentFunction: name.content,
+			source,
+			targetId:                 target.info.id,
+			args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
+			rootId,
+			data,
+			information:              res.information,
+		});
+	} else if(config.targetVariable && (type === RType.Symbol || type === RType.FunctionCall)) {
+		// the target expression (`assign(x, v)` / `assign(paste0("cfg_", k), v)`) resolving to a constant name defines that name, keeping the reads that produced it; a dynamic name falls through to the unknown-target handling below
+		const resolvedName = resolveConstantString(target, data);
+		if(resolvedName !== undefined) {
 			const res = processKnownFunctionCall({
 				name,
 				args,
@@ -220,39 +243,12 @@ export function processAssignment<OtherInfo>(
 				nameOfAssignmentFunction: name.content,
 				source,
 				targetId:                 target.info.id,
+				targetName:               resolvedName,
 				args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
 				rootId,
 				data,
 				information:              res.information,
 			});
-		}  else {
-			// try to resolve the variable first
-			const n = resolveIdToValue(target.info.id, { environment: data.environment, resolve: data.ctx.config.solver.variables, idMap: data.completeAst.idMap, full: true, ctx: data.ctx });
-			if(n.type === 'set' && n.elements.length === 1 && n.elements[0].type === 'string') {
-				const val = n.elements[0].value;
-				if(isValue(val)) {
-					const res = processKnownFunctionCall({
-						name,
-						args,
-						rootId,
-						data,
-						reverseOrder: !config.swapSourceAndTarget,
-						forceArgs:    config.forceArgs,
-						origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
-					});
-					return processAssignmentToSymbol<OtherInfo & ParentInformation>({
-						...config,
-						nameOfAssignmentFunction: name.content,
-						source,
-						targetId:                 target.info.id,
-						targetName:               val.str,
-						args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
-						rootId,
-						data,
-						information:              res.information,
-					});
-				}
-			}
 		}
 	} else if(config.canBeReplacement && type === RType.FunctionCall && named) {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
@@ -403,7 +399,7 @@ function checkTargetReferenceType(sourceInfo: DataflowInformation, fnModes: Data
  */
 function isEnvCreatorSource(sourceInfo: DataflowInformation): boolean {
 	const vert = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
-	return isFunctionCallVertex(vert) && vert.origin.includes(BuiltInProcName.NewEnv);
+	return FunctionCallVertex.hasOrigin(vert, BuiltInProcName.NewEnv);
 }
 
 /**
@@ -608,25 +604,20 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 			envState = stackEnv;
 		} else if(source.type === RType.Symbol) {
 			const defs = resolveByName(source.content, data.environment, ReferenceType.Variable);
-			const def = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined);
-			envState = def?.envState;
-			if(!envState) {
-				const fnDef = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).returnsEnvState !== undefined);
-				if(fnDef?.returnsEnvState) {
-					envState = fnDef.returnsEnvState;
-				}
-			}
+			envState = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined)?.envState
+				?? findReturnsEnvState(defs);
 		} else {
 			const entryVertex = sourceArg.graph.getVertex(sourceArg.entryPoint);
-			if(isFunctionDefinitionVertex(entryVertex) && entryVertex.returnEnvState !== undefined) {
+			if(FunctionCallVertex.hasOrigin(entryVertex, BuiltInProcName.List)) {
+				envState = resolveListToEnvState(source, data);
+			} else if(FunctionCallVertex.hasOrigin(entryVertex, BuiltInProcName.ClassGenerator)) {
+				returnsEnvState = resolveClassMethodsToEnvState(source, data);
+			} else if(FunctionDefinitionVertex.is(entryVertex) && entryVertex.returnEnvState !== undefined) {
 				returnsEnvState = entryVertex.returnEnvState;
-			} else if(isFunctionCallVertex(entryVertex) && entryVertex.name) {
-				const fnDefs = resolveByName(entryVertex.name, data.environment, ReferenceType.Function);
-				const fnDef = fnDefs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).returnsEnvState !== undefined);
-				if(fnDef?.returnsEnvState) {
-					envState = fnDef.returnsEnvState;
-				}
+			} else if(FunctionCallVertex.is(entryVertex) && entryVertex.name) {
+				envState = findReturnsEnvState(resolveByName(entryVertex.name, data.environment, ReferenceType.Function));
 			}
+			envState ??= resolveConstructorInstanceEnvState(source, data);
 		}
 		if(envState) {
 			for(let i = 0; i < writeNodes.length; i++) {
@@ -646,7 +637,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	// we drop the first arg which we use to pass along arguments :D
 	const readFromSourceWritten = sourceArg.out.slice(1);
 	const readTargets: IdentifierReference[] = [
-		{ nodeId: rootId, name: nameOfAssignmentFunction, cds: data.cds, type: ReferenceType.Function } as IdentifierReference
+		{ nodeId: rootId, name: nameOfAssignmentFunction, cds: data.cds, type: ReferenceType.Function }
 	];
 	readTargets.push(...sourceArg.unknownReferences);
 	readTargets.push(...sourceArg.in);

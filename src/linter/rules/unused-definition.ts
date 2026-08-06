@@ -4,7 +4,7 @@ import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
 import { isNotUndefined } from '../../util/assert';
-import { isFunctionDefinitionVertex, isVariableDefinitionVertex, VertexType } from '../../dataflow/graph/vertex';
+import { FunctionDefinitionVertex, VariableDefinitionVertex, VertexType } from '../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { F } from '../../search/flowr-search-filters';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -18,6 +18,9 @@ import { Identifier } from '../../dataflow/environments/identifier';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { removeRQuotes } from '../../r-bridge/retriever';
+import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
+import { CallProp } from '../../dataflow/environments/built-in-props';
+import { RGroupGenerics } from '../../dataflow/environments/default-builtin-config';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
@@ -42,20 +45,31 @@ export interface UnusedDefinitionConfig extends MergeableRecord {
  */
 const DotsParameter = '...';
 
-/**
- * Common base/standard-library S3 generics. A definition named `generic.class` where `generic` is one of these
- * is an S3 method dispatched indirectly (e.g. `print(x)` on an object of class `class`), so it is used even
- * without a direct textual call.
- */
-const KnownS3Generics = new Set<string>([
-	'print', 'format', 'summary', 'plot', 'coef', 'vcov', 'residuals', 'fitted', 'predict',
-	'as.character', 'as.data.frame', 'as.list', 'as.matrix', 'as.vector', 'as.numeric',
-	'length', 'dim', 'dimnames', 'names', 'str', 'toString', 'all.equal', 'aggregate',
-	'update', 'anova', 'confint', 'logLik', 'AIC', 'BIC', 'deviance', 'df.residual',
-	'model.matrix', 'terms', 'weights', 'simulate', 'lines', 'points', 'head', 'tail',
-	'merge', 'rbind', 'cbind', 'split', 'window', 'subset', 'sort', 'rev', 'unique',
-	'mean', 'median', 'quantile', 'range', 'diff', 't'
+/** the standard-library S3 generics flowR models no built-in for, so the store cannot state them */
+const OtherKnownS3Generics: ReadonlySet<string> = new Set([
+	'summary', 'coef', 'vcov', 'residuals', 'fitted', 'predict', 'as.vector', 'str', 'toString', 'all.equal',
+	'aggregate', 'update', 'anova', 'confint', 'logLik', 'AIC', 'BIC', 'deviance', 'df.residual',
+	'model.matrix', 'terms', 'weights', 'merge', 'split', 'window'
 ]);
+
+let knownS3Generics: ReadonlySet<string> | undefined;
+
+/**
+ * Whether a definition named `name.class` may be an S3 method: `name` is a built-in flowR labels
+ * {@link CallProp.Generic} or one of {@link OtherKnownS3Generics}. Such a method is dispatched indirectly
+ * (`print(x)` on an object of that class), so it is used without a textual call.
+ */
+function isKnownS3Generic(name: string): boolean {
+	knownS3Generics ??= new Set([...OtherKnownS3Generics, ...Object.keys(RGroupGenerics),
+		...BuiltInIndex.default().with(CallProp.Generic).map(g => Identifier.getName(g))]);
+	return knownS3Generics.has(name);
+}
+
+/** Whether `generic`, or any member of it when it is a group generic (`Ops.cls` dispatches on `+`), is called. */
+function isDispatched(generic: string, called: ReadonlySet<string>): boolean {
+	const group = RGroupGenerics[generic as keyof typeof RGroupGenerics] as readonly string[] | undefined;
+	return called.has(generic) || (group?.some(member => called.has(member)) ?? false);
+}
 
 /**
  * R package lifecycle hooks called automatically by R's package machinery.
@@ -97,17 +111,19 @@ function collectCalledNames(dfg: DataflowGraph): ReadonlySet<string> {
 	return names;
 }
 
-/** Checks if a function body is a single call to UseMethod. */
-function isUseMethodOnlyBody(node: RNode<ParentInformation>): boolean {
-	// Direct call to UseMethod
-	if(RFunctionCall.isNamed(node) && Identifier.getName(node.functionName.content) === 'UseMethod') {
+/** S3 (`UseMethod`) and S4/S7 (`standardGeneric`) generic dispatchers, invoked indirectly by R's dispatch. */
+const GenericDispatchers = new Set<string>(['UseMethod', 'standardGeneric']);
+
+/** Whether a function body is a single call to a generic dispatcher. */
+function isGenericDispatcherOnlyBody(node: RNode<ParentInformation>): boolean {
+	if(RFunctionCall.isNamed(node) && GenericDispatchers.has(Identifier.getName(node.functionName.content))) {
 		return true;
 	}
 
 	const nodeWithChildren = node as Record<string, unknown>;
 	if(Array.isArray(nodeWithChildren.children) && nodeWithChildren.children.length === 1) {
 		const child = nodeWithChildren.children[0] as RNode<ParentInformation> | undefined;
-		if(child && RFunctionCall.isNamed(child) && Identifier.getName(child.functionName.content) === 'UseMethod') {
+		if(child && RFunctionCall.isNamed(child) && GenericDispatchers.has(Identifier.getName(child.functionName.content))) {
 			return true;
 		}
 	}
@@ -115,14 +131,14 @@ function isUseMethodOnlyBody(node: RNode<ParentInformation>): boolean {
 	return false;
 }
 
-/** Collects the parameter IDs of S3 generic functions (functions whose body is just UseMethod). */
+/** Collects the parameter IDs of generic dispatcher functions. */
 function collectS3GenericParameterIds(ast: NormalizedAst): ReadonlySet<NodeId> {
 	const paramIds = new Set<NodeId>();
 	for(const [, node] of ast.idMap) {
 		if(!RFunctionDefinition.is(node)) {
 			continue;
 		}
-		if(isUseMethodOnlyBody(node.body)) {
+		if(isGenericDispatcherOnlyBody(node.body)) {
 			for(const param of node.parameters) {
 				paramIds.add(param.name.info.id);
 			}
@@ -140,8 +156,9 @@ function isConsideredUsed(lexeme: string | undefined, config: UnusedDefinitionCo
 	if(lexeme === undefined) {
 		return false;
 	}
-	// non-syntactic definition names (e.g. S3 methods like `"[.irts"`) carry their R quotes in the lexeme
-	const name = removeRQuotes(lexeme);
+	// non-syntactic definition names (e.g. S3 methods like `"[.irts"`) carry their R quotes or backticks in the lexeme
+	const unquoted = removeRQuotes(lexeme);
+	const name = unquoted.length > 1 && unquoted.startsWith('`') && unquoted.endsWith('`') ? unquoted.slice(1, -1) : unquoted;
 	// the dots are a special parameter and must never be reported
 	if(name === DotsParameter) {
 		return true;
@@ -150,10 +167,10 @@ function isConsideredUsed(lexeme: string | undefined, config: UnusedDefinitionCo
 	if(PackageHookFunctions.has(name)) {
 		return true;
 	}
-	const dot = name.indexOf('.');
-	if(dot > 0) {
+	// every dot may be the one splitting method from class, as the generic may carry dots itself (`as.character.foo`)
+	for(let dot = name.indexOf('.'); dot > 0; dot = name.indexOf('.', dot + 1)) {
 		const generic = name.slice(0, dot);
-		if(KnownS3Generics.has(generic) || pkg.s3Generics.has(generic) || called.has(generic)) {
+		if(isKnownS3Generic(generic) || pkg.s3Generics.has(generic) || isDispatched(generic, called)) {
 			return true;
 		}
 	}
@@ -270,13 +287,18 @@ export const UNUSED_DEFINITION = {
 
 				const dfgVertex = dataflow.graph.getVertex(element.node.info.id);
 				if(!dfgVertex || (
-					!isVariableDefinitionVertex(dfgVertex)
-					&& isFunctionDefinitionVertex(dfgVertex) && !config.includeFunctionDefinitions
+					!VariableDefinitionVertex.is(dfgVertex)
+					&& FunctionDefinitionVertex.is(dfgVertex) && !config.includeFunctionDefinitions
 				)) {
 					return undefined;
 				}
 
 				if(s3GenericParams.has(element.node.info.id)) {
+					return undefined;
+				}
+
+				// an anonymous dispatcher passed to setGeneric()/new_generic() runs on every dispatch, so it is used
+				if(FunctionDefinitionVertex.is(dfgVertex) && RFunctionDefinition.is(element.node) && isGenericDispatcherOnlyBody(element.node.body)) {
 					return undefined;
 				}
 
@@ -286,7 +308,7 @@ export const UNUSED_DEFINITION = {
 
 				const ingoingEdges = dataflow.graph.ingoingEdges(dfgVertex.id);
 
-				const interestedIn = isVariableDefinitionVertex(dfgVertex) ? InterestingEdgesVariable : InterestingEdgesFunction;
+				const interestedIn = VariableDefinitionVertex.is(dfgVertex) ? InterestingEdgesVariable : InterestingEdgesFunction;
 				const ingoingInteresting = ingoingEdges?.values().some(e => DfEdge.includesType(e, interestedIn));
 
 				if(ingoingInteresting) {

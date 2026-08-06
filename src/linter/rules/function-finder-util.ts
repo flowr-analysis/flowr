@@ -1,5 +1,5 @@
 import { Q } from '../../search/flowr-search-builder';
-import { FlowrFilter, testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
+import { FlowrFilter } from '../../search/flowr-search-filters';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { SourceLocation } from '../../util/range';
 import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty } from '../linter-format';
@@ -9,14 +9,16 @@ import type { MergeableRecord } from '../../util/objects';
 import { isNotUndefined } from '../../util/assert';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
+import { FunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
-import type { BrandedIdentifier, Identifier } from '../../dataflow/environments/identifier';
+import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
+import { Identifier } from '../../dataflow/environments/identifier';
 import { Ternary } from '../../util/logic';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import type { AsyncOrSync } from 'ts-essentials';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
+import { Dataflow } from '../../dataflow/graph/df-helper';
 
 export interface FunctionsResult extends LintingResult {
 	function: string
@@ -39,7 +41,7 @@ export interface FunctionsToDetectConfig extends MergeableRecord {
  * This helper object collects utility functions used to create linting rules that search for specific functions.
  */
 export const functionFinderUtil = {
-	createSearch: (functions: readonly string[]) => {
+	createSearch: (functions: readonly Identifier[]) => {
 		return (
 			Q.all().filter(VertexType.FunctionCall)
 				.with(Enrichment.CallTargets, { onlyBuiltin: true })
@@ -48,7 +50,7 @@ export const functionFinderUtil = {
 					args: {
 						enrichment: Enrichment.CallTargets,
 						test:       {
-							targets: testFunctionsIgnoringPackage(functions)
+							targets: Identifier.regex(...functions)
 						}
 					}
 				})
@@ -103,20 +105,25 @@ export const functionFinderUtil = {
 		analyzer: ReadonlyFlowrAnalysisProvider,
 		requireValue: RegExp | string | undefined
 	): Promise<Ternary> {
-		if(requireValue === undefined) {
+		const dataflow = await analyzer.dataflow();
+		const identifier = Dataflow.qualify(element.node.info.id, dataflow.graph, true) ?? (element.node.lexeme !== undefined ? Identifier.parse(element.node.lexeme) : undefined);
+
+		/* if we have no additional info, we assume they always access the network */
+		if(identifier === undefined || requireValue === undefined) {
 			return Ternary.Always;
 		}
 
-		const info = pool.get(element.node.lexeme ?? '');
-		/* if we have no additional info, we assume they always access the network */
+		// we allow our function pool to contain non-namespaced functions
+		const info = pool.get(Identifier.toString(identifier)) ?? pool.get(Identifier.getName(identifier));
 		if(info === undefined) {
 			return Ternary.Always;
 		}
-		const dataflow = await analyzer.dataflow();
+
 		const vert = dataflow.graph.getVertex(element.node.info.id);
-		if(isFunctionCallVertex(vert)) {
+		if(FunctionCallVertex.is(vert)) {
 			return hasArgumentValue(requireValue, vert, analyzer, dataflow.graph, info.resolveValue, info.argName, info.argIdx);
 		}
+
 		return Ternary.Never;
 	}
 };

@@ -1,5 +1,6 @@
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
+import { Dataflow } from '../../dataflow/graph/df-helper';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
@@ -35,10 +36,12 @@ export function useResolvesToDefinitionOrBuiltin(graph: DataflowGraph, id: NodeI
 	return false;
 }
 
-/** Whether any edge incident to `id` marks it as non-standard-evaluated (quoted), e.g. `quote`/`substitute`. */
+/**
+ * Whether any edge incident to `id` marks it as non-standard-evaluated (quoted), e.g. `quote`/`substitute`.
+ * A loop body is marked as non-standard-evaluated too, but it is evaluated, so it does not count here.
+ */
 export function isNonStandardEvaluated(graph: DataflowGraph, id: NodeId): boolean {
-	const nse = (edge: DfEdge): boolean => DfEdge.includesType(edge, EdgeType.NonStandardEvaluation);
-	return (graph.outgoingEdges(id)?.values().some(nse) ?? false) || (graph.ingoingEdges(id)?.values().some(nse) ?? false);
+	return Dataflow.isQuoted(id, graph, true);
 }
 
 /**
@@ -124,7 +127,9 @@ export function collectScopeDefinedNames(graph: DataflowGraph): ScopeDefinedName
 		if(!unconditional) {
 			continue;
 		}
-		(byScope.get(scope) ?? byScope.set(scope, new Set()).get(scope) as Set<string>).add(name);
+		const names = byScope.get(scope) ?? new Set<string>();
+		names.add(name);
+		byScope.set(scope, names);
 	}
 	return byScope;
 }

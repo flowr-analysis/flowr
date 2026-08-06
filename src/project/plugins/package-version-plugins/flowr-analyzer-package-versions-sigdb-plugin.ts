@@ -163,7 +163,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 			if(!dl.sigDbNeedsSync()) {
 				return;
 			}
-			sigDbLog.info('sigdb: committed link file changed -- re-syncing shards in the background');
+			sigDbLog.info('sigdb: committed link file changed, re-syncing shards in the background');
 			const { files } = await dl.downloadFullSigDb({
 				repo:       ctx.config.solver.sigdb.downloadRepo,
 				onProgress: msg => sigDbLog.info(`sigdb sync: ${msg}`)
@@ -240,9 +240,11 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	}
 
 	/**
-	 * Packages in the loaded sources (respecting `self`-package exclusion) that export `name`. Backed by a
-	 * reverse index built once per source set, so repeated hint lookups (e.g. from the `undefined-symbol` linter)
-	 * do not re-scan every package. The first call still pays one full pass over the sources.
+	 * Packages in the loaded sources (respecting `self`-package exclusion) that export `name`, **most downloaded
+	 * first**, so whoever has to pick one (or show only a few) starts with the package a script most likely means.
+	 * Backed by a reverse index built once per source set, so repeated hint lookups (e.g. from the
+	 * `undefined-symbol` linter) do not re-scan every package. The first call still pays one full pass over the
+	 * sources.
 	 */
 	public override packagesExporting(name: string): readonly string[] {
 		if(!isSigDbEnabled(this.analyzerCtx?.config)) {
@@ -252,14 +254,20 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		return this.exportIndex.get(name) ?? [];
 	}
 
-	/** one pass over every loaded source building `export name -> packages`, honoring self-package exclusion */
+	/**
+	 * One pass over every loaded source building `export name -> packages`, honoring self-package exclusion.
+	 * Each list ends up sorted by download count (descending, ties by name), which the sort at the end does
+	 * once per name rather than at every lookup.
+	 */
 	private buildExportIndex(): Map<string, string[]> {
 		const index = new Map<string, string[]>();
+		const downloads = new Map<string, number>();
 		for(const src of this.loadSources()) {
 			for(const pkg of src.packageNames()) {
 				if(this.isSelfPackage(pkg)) {
 					continue;
 				}
+				downloads.set(pkg, Math.max(downloads.get(pkg) ?? 0, src.downloads(pkg)));
 				for(const exp of src.lookup(pkg)?.exported ?? []) {
 					const owners = index.get(exp);
 					if(owners === undefined) {
@@ -270,12 +278,17 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 				}
 			}
 		}
+		for(const owners of index.values()) {
+			if(owners.length > 1) {
+				owners.sort((a, b) => (downloads.get(b) ?? 0) - (downloads.get(a) ?? 0) || a.localeCompare(b));
+			}
+		}
 		return index;
 	}
 
 	/**
 	 * The raw sources in priority order: explicit constructor sources, `$FLOWR_SIGDB`, then **every** bundled
-	 * database discovered in the data dirs (see {@link defaultSigDbPaths}) -- so an extra bundle dropped next to
+	 * database discovered in the data dirs (see {@link defaultSigDbPaths}), so an extra bundle dropped next to
 	 * the default (e.g. a downloaded full-history one) is mounted automatically. All bundled defaults are skipped
 	 * when `$FLOWR_DISABLE_DEFAULT_SIGDB` is set; explicit sources are always honored.
 	 */
@@ -295,7 +308,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	private loadSources(config?: FlowrConfig): PackageSignatureSource[] {
 		const cfg = config ?? this.analyzerCtx?.config;
 		// `solver.sigdb.enabled: false` disables the database for this analyzer only: drop any loaded sources so it
-		// frees memory and every consumer (resolve, base-R link, queries) sees nothing -- other analyzers are untouched.
+		// frees memory and every consumer (resolve, base-R link, queries) sees nothing; other analyzers are untouched.
 		// An absent config is the pre-analysis query path (default enabled), so only an explicit `false` disables.
 		if(cfg !== undefined && !isSigDbEnabled(cfg)) {
 			if(this.sources !== undefined) {
@@ -396,7 +409,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		const sigdb = this.analyzerCtx?.config.solver.sigdb;
 		const override = sigdb?.versionOverrides?.[name];
 		const selection = sigdb?.versionSelection ?? VersionSelection.Newest;
-		const range = existing?.derivedVersion;
+		const range = existing?.derivedRange;
 		let fallback: LibraryExports | undefined;
 		for(const src of this.loadSources()) {
 			if(!src.has(name)) {

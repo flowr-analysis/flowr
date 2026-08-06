@@ -32,10 +32,10 @@ import {
 	ReferenceType
 } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
-import { isFunctionCallVertex, VertexType } from '../../../../../graph/vertex';
+import { FunctionCallVertex, VertexType } from '../../../../../graph/vertex';
 import { createFreshEnvState } from './built-in-new-env';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
-import { type REnvironmentInformation } from '../../../../../environments/environment';
+import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
@@ -71,6 +71,7 @@ export function processFunctionDefinition<OtherInfo>(
 	const subgraph = new DataflowGraph(data.completeAst.idMap);
 
 	let readInParameters: IdentifierReference[] = [];
+	const allParameterReads: IdentifierReference[] = [];
 	const paramIds: NodeId[] = [];
 	for(const param of parameters) {
 		guard(param !== EmptyArgument, () => `Empty param arg in function definition ${Identifier.toString(name.content)}, ${JSON.stringify(args)}`);
@@ -80,6 +81,7 @@ export function processFunctionDefinition<OtherInfo>(
 		}
 		subgraph.mergeWith(processed.graph);
 		const read = processed.in.concat(processed.unknownReferences);
+		allParameterReads.push(...read);
 		linkInputs(read, data.environment, readInParameters, subgraph, false);
 		(data as { environment: REnvironmentInformation }).environment = overwriteEnvironment(data.environment, processed.environment);
 	}
@@ -125,7 +127,16 @@ export function processFunctionDefinition<OtherInfo>(
 	// This is the correct behavior, even if someone uses non-`=` arguments in functions.
 	const bodyEnvironment = body.environment;
 
-	readInParameters = findPromiseLinkagesForParameters(subgraph, readInParameters, paramsEnvironments, body);
+	// a default read (e.g. `function(x, y = x)`) may also see a later body reassignment, as the default is a promise
+	const writesByName = groupBodyWrites(body.out);
+	const unresolvedParamReads = new Set(readInParameters);
+	for(const read of allParameterReads) {
+		if(read.name && !unresolvedParamReads.has(read)) {
+			linkParameterReadToBodyWrites(subgraph, read, writesByName);
+		}
+	}
+
+	readInParameters = findPromiseLinkagesForParameters(subgraph, readInParameters, paramsEnvironments, writesByName);
 
 	const readInBody = body.in.concat(body.unknownReferences);
 
@@ -152,7 +163,7 @@ export function processFunctionDefinition<OtherInfo>(
 
 	subgraph.mergeWith(body.graph);
 
-	const outEnvironment = overwriteEnvironment(paramsEnvironments, bodyEnvironment);
+	let outEnvironment = overwriteEnvironment(paramsEnvironments, bodyEnvironment);
 
 	for(const read of remainingRead) {
 		if(read.name) {
@@ -167,6 +178,18 @@ export function processFunctionDefinition<OtherInfo>(
 
 	const compactedHooks = compactHookStates(body.hooks);
 	const exitHooks = getHookInformation(compactedHooks, KnownHooks.OnFnExit);
+	// an on.exit hook's `<<-` escapes like a body `<<-`; fold its escaping writes into this function's subflow
+	for(const hook of exitHooks) {
+		const vert = subgraph.getVertex(hook.id);
+		if(vert?.tag !== VertexType.FunctionDefinition) {
+			continue;
+		}
+		let hookEnvironment = vert.subflow.environment;
+		while(hookEnvironment.level > outEnvironment.level) {
+			hookEnvironment = popLocalEnvironment(hookEnvironment);
+		}
+		outEnvironment = overwriteEnvironment(outEnvironment, hookEnvironment);
+	}
 	const flow: DataflowFunctionFlowInformation = {
 		unknownReferences: [],
 		in:                remainingRead,
@@ -215,7 +238,7 @@ export function processFunctionDefinition<OtherInfo>(
 	if(data.ctx.config.solver.trackEnvironments) {
 		for(const ep of afterHookExitPoints) {
 			const epVertex = subgraph.getVertex(ep.nodeId);
-			if(isFunctionCallVertex(epVertex) && epVertex.origin.includes(BuiltInProcName.NewEnv)) {
+			if(FunctionCallVertex.is(epVertex) && epVertex.origin.includes(BuiltInProcName.NewEnv)) {
 				returnEnvState = createFreshEnvState(data, { graph: subgraph, entryPoint: ep.nodeId });
 				break;
 			}
@@ -517,7 +540,43 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
  * <p>
  * <b>Currently we may be unable to narrow down every definition within the body as we have not implemented ways to track what covers the first definitions precisely</b>
  */
-function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParameters: readonly IdentifierReference[], parameterEnvs: REnvironmentInformation, body: DataflowInformation): IdentifierReference[] {
+/** Links a parameter default read to the body writes of the same name (may), returning whether any was linked. */
+/** Groups body writes by name, each list sorted by descending id (so the lowest id is last), for `linkParameterReadToBodyWrites`. */
+function groupBodyWrites(out: readonly IdentifierReference[]): Map<Identifier, IdentifierReference[]> {
+	const byName = new Map<Identifier, IdentifierReference[]>();
+	for(const o of out) {
+		if(o.name === undefined) {
+			continue;
+		}
+		const writes = byName.get(o.name);
+		if(writes === undefined) {
+			byName.set(o.name, [o]);
+		} else {
+			writes.push(o);
+		}
+	}
+	for(const writes of byName.values()) {
+		writes.sort((a, b) => String(a.nodeId) < String(b.nodeId) ? 1 : -1);
+	}
+	return byName;
+}
+
+function linkParameterReadToBodyWrites(graph: DataflowGraph, read: IdentifierReference, writesByName: ReadonlyMap<Identifier, IdentifierReference[]>): boolean {
+	const writingOuts = read.name === undefined ? undefined : writesByName.get(read.name);
+	if(writingOuts === undefined) {
+		return false;
+	}
+	if(writingOuts[0].cds === undefined) {
+		graph.addEdge(read.nodeId, writingOuts[0].nodeId, EdgeType.Reads);
+	} else {
+		for(const { nodeId } of writingOuts) {
+			graph.addEdge(read.nodeId, nodeId, EdgeType.Reads);
+		}
+	}
+	return true;
+}
+
+function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParameters: readonly IdentifierReference[], parameterEnvs: REnvironmentInformation, writesByName: ReadonlyMap<Identifier, IdentifierReference[]>): IdentifierReference[] {
 	// first, we try to bind again within parameters - if we have it, fine
 	const remainingRead: IdentifierReference[] = [];
 	for(const read of readInParameters) {
@@ -530,19 +589,8 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 			continue;
 		}
 		// If not resolved, link all outs within the body as potential reads.
-		// Regarding the sort, we can ignore equality as nodeIds are unique.
-		// We sort to get the lowest id - if it is an 'always' flag, we can safely use it instead of all of them.
-		const writingOuts = body.out.filter(o => o.name === read.name).sort((a, b) => String(a.nodeId) < String(b.nodeId) ? 1 : -1);
-		if(writingOuts.length === 0) {
+		if(!linkParameterReadToBodyWrites(parameters, read, writesByName)) {
 			remainingRead.push(read);
-			continue;
-		}
-		if(writingOuts[0].cds === undefined) {
-			parameters.addEdge(rid, writingOuts[0].nodeId, EdgeType.Reads);
-			continue;
-		}
-		for(const { nodeId } of writingOuts) {
-			parameters.addEdge(rid, nodeId, EdgeType.Reads);
 		}
 	}
 	return remainingRead;

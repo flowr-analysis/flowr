@@ -8,8 +8,9 @@ import { computeCallGraphSummaries, propagateTransitiveSideEffects } from '../in
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { DataflowGraphVertexInfo } from './vertex';
-import { isFunctionCallVertex } from './vertex';
+import { FunctionCallVertex } from './vertex';
 import { Identifier } from '../environments/identifier';
+import { RLoopConstructs } from '../../r-bridge/lang-4.x/ast/model/model';
 
 /**
  * This is the root helper object to work with the {@link DataflowGraph}.
@@ -72,7 +73,7 @@ export const Dataflow = {
 		const vertex = graph.getVertex(id);
 		return Identifier.toQualified(
 			getOriginInDfg(graph, id),
-			isFunctionCallVertex(vertex) ? vertex.name : undefined,
+			FunctionCallVertex.is(vertex) ? vertex.name : undefined,
 			qualifyBaseR
 		);
 	},
@@ -157,6 +158,28 @@ export const Dataflow = {
 			}
 		}
 		return df as G;
+	},
+
+	/**
+	 * Whether the node is quoted, i.e., affected by a {@link EdgeType.NonStandardEvaluation} edge that actually
+	 * keeps it from being evaluated (as `quote` and `substitute` do).
+	 *
+	 * Loops mark their body as non-standard-evaluated as well, yet that body really is evaluated (and its symbols
+	 * really are read), so such an edge does not quote. Use this instead of testing for the edge type directly
+	 * whenever you want to know whether something is evaluated at all.
+	 * @param id           - The id of the node to check
+	 * @param graph        - The graph the node is part of
+	 * @param withOutgoing - Whether to also consider the outgoing edges of the node (i.e., whether the node itself
+	 *                       quotes something), and not just the ingoing ones (i.e., whether it is quoted)
+	 */
+	isQuoted(this: void, id: NodeId, graph: DataflowGraph, withOutgoing = false): boolean {
+		/* an nse edge quotes iff it does not originate from a loop marking its body */
+		const quotes = (source: NodeId, e: DfEdge): boolean =>
+			DfEdge.includesType(e, EdgeType.NonStandardEvaluation) && !RLoopConstructs.is(graph.idMap?.get(source));
+		if(graph.ingoingEdges(id)?.entries().some(([source, e]) => quotes(source, e))) {
+			return true;
+		}
+		return withOutgoing && (graph.outgoingEdges(id)?.values().some(e => quotes(id, e)) ?? false);
 	},
 
 	/**

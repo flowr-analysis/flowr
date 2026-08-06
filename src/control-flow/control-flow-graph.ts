@@ -259,7 +259,8 @@ export const CfgVertex = {
 	 * @see {@link CfgVertex#getRootId|getRootId()} - for a way to get the root id of a vertex
 	 */
 	getId<T extends CfgVertex | undefined>(this: void, vertex: T): T extends undefined ? NodeId | undefined : NodeId {
-		return vertex === undefined ? undefined as never : (Array.isArray(vertex) ? vertex[1] : vertex as never);
+		const id = vertex === undefined ? undefined : (Array.isArray(vertex) ? vertex[1] : vertex);
+		return id as T extends undefined ? NodeId | undefined : NodeId;
 	},
 	/**
 	 * Check whether two vertices are equal, i.e., they have the same type, id, and if they are basic block vertices, they also have the same elements in the same order.

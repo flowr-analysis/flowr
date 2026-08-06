@@ -7,7 +7,7 @@
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { isFunctionCallVertex } from '../../dataflow/graph/vertex';
+import { FunctionCallVertex } from '../../dataflow/graph/vertex';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -78,7 +78,7 @@ export const SourceInlineMap = {
 		const sourceArgs = new Map<NodeId, string | undefined>();
 		const firstVertexByCd = new Map<NodeId, NodeId>();
 		for(const [id, vertex] of graph.vertices(true)) {
-			if(isFunctionCallVertex(vertex) && Array.isArray(vertex.origin) && vertex.origin.includes(BuiltInProcName.Source)) {
+			if(FunctionCallVertex.is(vertex) && Array.isArray(vertex.origin) && vertex.origin.includes(BuiltInProcName.Source)) {
 				sourceArgs.set(id, sourceArg(ast, id));
 			}
 			const cds = vertex.cds;

@@ -38,6 +38,9 @@ import { contextFromInput } from '../project/context/flowr-analyzer-context';
 import { FlowrAnalyzerGasContext } from '../project/context/flowr-analyzer-gas-context';
 import { FlowrAnalyzerGasPlugin } from '../project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { GasFeatureKey, GasLevel } from '../gas';
+import { ArgProp, CallProp, ExclusiveCallProps, SigDbInferable } from '../dataflow/environments/built-in-props';
+import { BuiltInIndex, inferFnProps } from '../dataflow/environments/query-fn-props';
+import type { GeneralDocContext } from './wiki-mk/doc-context';
 import { SemVer } from 'semver';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
@@ -49,8 +52,6 @@ import { getCliLongOptionOf, getReplCommand } from './doc-util/doc-cli-option';
 import { RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 import { block, details } from './doc-util/doc-structure';
 import { RShell } from '../r-bridge/shell';
-import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
-import { expensiveTrace, FlowrLogger } from '../util/log';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 
 async function makeAnalyzerExample() {
@@ -115,6 +116,80 @@ async function gasPluginExample() {
 		.build();
 }
 
+/** the names of the {@link CallProp} bits that make up a mask, as inline code */
+function propNames(mask: number): string {
+	return Object.entries(CallProp).filter(([, b]) => typeof b === 'number' && (b & mask) !== 0)
+		.map(([n]) => `\`${n}\``).join(', ');
+}
+
+/** The "Labeling the Built-Ins" section of the Core page, with a table per enum taken from the configuration. */
+function builtInLabelsSection(ctx: GeneralDocContext): string {
+	const index = BuiltInIndex.default();
+	/* the doc comment of a bit is its explanation, flattened to fit a table cell; bits nothing carries are left out */
+	const table = (type: 'CallProp' | 'ArgProp', of: (bit: number) => number) => [
+		`| ${type === 'CallProp' ? 'Call property' : 'Argument role'} | Built-ins | Meaning |`,
+		'| :-- | --: | :-- |',
+		...Object.entries(type === 'CallProp' ? CallProp : ArgProp)
+			.filter(([, bit]) => typeof bit === 'number' && of(bit) > 0)
+			.map(([name, bit]) => {
+				/* a `{@link}` has already become an anchor, so dropping the tags leaves the bare name and a stray space */
+				const doc = ctx.doc(`${type}::${name}`).replaceAll(/<[^>]*>/g, '').replaceAll(/\s+/g, ' ')
+					.replaceAll(/ ([),.;])/g, '$1').replaceAll('|', '\\|').trim();
+				const db = type === 'CallProp' && ((bit as number) & SigDbInferable) !== 0 ? '<sup>db</sup>' : '';
+				return `| \`${name}\`${db} | ${of(bit as number)} | ${doc} |`;
+			})
+	].join('\n');
+
+	return `#### Labeling the Built-Ins
+
+Besides the processor, an entry says what the function *is*, in two label vocabularies:
+
+* ${ctx.link('CallProp')} labels the call as a whole (\`props\`): whether it is pure, whether it throws, whether it
+  touches the file system, whether it dispatches, and so on. \`print\` is \`Invisible | Generic | Prints\`; R's
+  primitive generics (\`+\`, \`sin\`, \`length\`, ...) are \`Pure | Generic\`, and as they have no R body, the store is
+  the only place that can say they dispatch.
+* ${ctx.link('ArgProp')} labels each parameter (\`sig\`), in the order R declares them: which one carries the data,
+  which one only selects a behavior, which one names a file, which one is called as a function.
+
+For several analyses the labels are all they know about a call: ${ctx.link(BuiltInIndex.name)} turns them into the
+questions callers ask over and over (\`with\`, \`without\`, \`params\`), which is how the
+${ctx.linkPage('wiki/Query API', 'input-sources query')} knows which functions bring in data of their own, and how
+${ctx.linkPage('wiki/Linter', 'linting rules')} like *seeded randomness* find every call drawing from the RNG without
+naming a single one of them. Labeling a built-in therefore teaches all of them at once.
+
+So \`lapply\` is pure on its own but runs what it is handed, and says which argument that is:
+
+${codeBlock('ts', `{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['lapply', 'sapply', 'vapply']),
+  processor: BuiltInProcName.Apply,
+  config:    { indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true,
+               props: CallProp.MayPure, sig: [['X', ArgProp.Value], ['FUN', ArgProp.Callee]] } }`)}
+
+The two tables below are generated from the configuration itself, so they always list every label that exists,
+what it means, and how many built-ins carry it.
+
+${details('What each call property means', `<sup>db</sup> marks the bits the ${ctx.linkPage('wiki/Signature Database', 'signature database')}
+states for any package function on its own (${ctx.link(inferFnProps.name)} reads them off an entry and carries what a
+function calls over to the function calling it).
+
+${table('CallProp', bit => index.with(bit).length)}
+
+Most of these combine freely. The exceptions are ${ctx.link('ExclusiveCallProps')}, which a test checks the whole
+configuration against:
+
+${ExclusiveCallProps.map(([bit, forbidden]) => `* \`${CallProp[bit]}\` rules out ${propNames(forbidden)}`).join('\n')}
+
+Two pairs read like refinements but are not: \`TempFile\` does not imply \`File\` (making up a path touches no file
+system, so a call doing both states both), and \`Reads\`/\`Writes\` say what happens to the resource an
+\`ArgProp.Resource\` argument names, so they only ever appear next to a resource bit.`)}
+
+${details('What each argument role means', `A role is stated per parameter in the ${ctx.link('FnSig')} of a built-in, in the order R declares
+them, with \`...\` covering every position from where it appears. The count is how many built-ins have at least one
+parameter in that role.
+
+${table('ArgProp', bit => new Set(index.params(bit).map(p => p.call)).size)}`)}
+`;
+}
+
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Core
  */
@@ -147,7 +222,7 @@ ${await documentReplSession(shell, [{
 }])}
 	
 If you are brave (or desperate) enough, you can also try to use the ${getCliLongOptionOf('flowr', 'verbose')} option to be dumped with information about flowR's internals (please, never use this for benchmarking).
-See the [Getting flowR to Talk](#getting-flowr-to-talk) section below for more information.
+See the ${ctx.linkPage('wiki/FAQ', 'FAQ')} (*How to get flowR to talk?*) for more information.
 `
 })}
 	
@@ -158,10 +233,10 @@ See the [Getting flowR to Talk](#getting-flowr-to-talk) section below for more i
   * [Parsing](#parsing)
   * [Normalization](#normalization)
   * [Dataflow Graph Generation](#dataflow-graph-generation)
+    * [Labeling the Built-Ins](#labeling-the-built-ins)
 * [Beyond the Dataflow Graph](#beyond-the-dataflow-graph)
   * [Static Backward Slicing](#static-backward-slicing)
 * [Gas (Resource Guard)](#gas-resource-guard)
-* [Getting flowR to Talk](#getting-flowr-to-talk)
 
 ## Creating and Using a flowR Analyzer Instance
 
@@ -444,8 +519,13 @@ But where are all the interesting things handled then?
 For that, we want to have a look at the built-in environment, which can be freely configured using flowR's ${ctx.linkPage('wiki/Interface', 'configuration system', 'configuring-flowr')}.
 FlowR's heart and soul resides in the ${ctx.link('DefaultBuiltinConfig')} object, which is used to configure the built-in environment
 by mapping function names to ${ctx.link('BuiltInProcessorMapper')} functions.
-There you can find functions like ${ctx.link(processAccess)} which handles the (subset) access to a variable, 
+There you can find functions like ${ctx.link(processAccess)} which handles the (subset) access to a variable,
 or ${ctx.link(processForLoop)} which handles the primitive for loop construct (whenever it is not overwritten).
+
+Besides the processor, an entry states what the function does with ${ctx.link('BuiltInFnInfo')} -- see
+[Labeling the Built-Ins](#labeling-the-built-ins) below for the labels it may carry.
+
+${builtInLabelsSection(ctx)}
 
 Just as an example, we want to have a look at the ${ctx.link(processRepeatLoop)} function, as it is one of the simplest built-in processors
 we have:
@@ -550,17 +630,6 @@ You can search for \`ctx.gas.checkGas(\` in the source to locate every active ch
 ${ctx.doc(FlowrAnalyzerGasPlugin)}
 
 ${ctx.code(gasPluginExample, { dropLinesStart: 1, dropLinesEnd: 1, hideDefinedAt: true })}
-
-## Helpful Things
-
-### Getting flowR to Talk
-
-When using flowR from the CLI, you can use the ${getCliLongOptionOf('flowr', 'verbose')} option to get more information about what flowR is doing.
-While coding, however, you can use the ${ctx.link(setMinLevelOfAllLogs)} function to set the minimum level of logs to be displayed (this works with the ${ctx.link(FlowrLogger)} abstraction).
-In general, you can configure the levels of individual logs, such as the general \`log\` (obtained with ${ctx.link('getActiveLog')}) or the ${ctx.link('parseLog')}.
-Please note that flowR makes no guarantees that log outputs are persistent across versions, and it is up to the implementors to provide sensible logging.
-If you are an implementor and want to add logging, please make sure there are no larger runtime impliciations when logging is disabled. 
-Have a look at the ${ctx.link(expensiveTrace)} function for example, which uses a function to generate the log message only when the log level is reached.
 
 `;
 	}

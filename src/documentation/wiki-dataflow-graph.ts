@@ -1154,30 +1154,10 @@ Additionally, we get the information that the node with the id 2 was responsible
 Calling \`library(pkg)\` (or \`require\`) attaches a package to the search path.
 Mirroring R's \`search()\`, _flowR_ inserts the package's namespace and imports environments *below* the global environment (\`.GlobalEnv\`), so resolution walks **current scope -> enclosing scopes -> global -> attached packages -> built-ins**.
 
-**A global binding shadows a package export** of the same name, exactly as in R:
-
-\`\`\`r
-filter <- function(x) x   # your global definition
-library(stats)            # stats also exports filter()
-filter(1)                 # -> resolves to YOUR filter, not stats::filter
-\`\`\`
-
-**Most recently attached is nearest, and re-attaching is a no-op:**
-
-\`\`\`r
-library(A)   # search path (top-down): A
-library(B)   #                         B, A
-library(A)   # no-op                   B, A   (A is not moved or duplicated)
-\`\`\`
-
-**Attaching inside a function propagates to the caller** (R attaches globally), and across branches every possibly-attached package is kept (a sound over-approximation of R's single runtime path):
-
-\`\`\`r
-f <- function() library(A)   # attaches A when called
-f()
-someExportOfA()              # -> resolves against A
-if (cond) library(B)         # B is kept (may be attached)
-\`\`\`
+A global binding shadows a package export of the same name, exactly as in R.
+The most recently attached package is the nearest one, and re-attaching neither moves nor duplicates it.
+The \`pos\` argument attaches further down the search path instead, given either as a position or as the name of an existing entry (an unknown position or name falls back to the default of 2, directly below the global environment).
+Attaching inside a function propagates to the caller (R attaches globally), and across branches every possibly-attached package is kept (a sound over-approximation of R's single runtime path).
 
 Last but not least, the information contains the single **entry point** (${
 		JSON.stringify(result.entryPoint)

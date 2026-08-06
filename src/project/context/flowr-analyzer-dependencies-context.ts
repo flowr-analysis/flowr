@@ -9,6 +9,9 @@ import { Identifier } from '../../dataflow/environments/identifier';
 import type { DecodedFunction } from '../sigdb/decode';
 import type { Range } from 'semver';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
+import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
+import { InvalidationEventType } from '../cache/flowr-cache';
+import { assertUnreachable } from '../../util/assert';
 import { isSigDbEnabled } from '../../config';
 import { RRange } from '../../util/r-version';
 
@@ -38,20 +41,26 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	getDependency(name: string, version?: string | Range): Readonly<Package> | undefined;
 
 	/**
-	 * The versions a dependency can possibly have, combining everything declared for it (a `DESCRIPTION` range,
-	 * an `rproject.toml` entry, a lockfile pin, ...). `undefined` if the dependency is unknown, if nothing
-	 * constrains it, or if the sources contradict each other -- then no version is possible at all.
+	 * The versions a dependency can possibly have: its {@link Package.derivedRange|derived range}, but only once
+	 * some version can satisfy it. `undefined` if the dependency is unknown, if nothing constrains it, or if the
+	 * sources contradict each other, since then no version is possible at all.
 	 *
 	 * For *why* it is what it is (the individual constraints, or the version the database resolved to), take the
 	 * {@link Package} from {@link getDependency}.
 	 * @param name - The name of the dependency.
 	 */
-	inferredVersion(name: string): Range | undefined;
+	inferredRange(name: string): Range | undefined;
 
 	/**
 	 * Get all dependencies known to this context.
 	 */
 	getDependencies(): readonly Readonly<Package>[];
+
+	/**
+	 * Every package name the project *declares* (`Depends`/`Imports`/`Suggests`/`LinkingTo`/`Enhances`), whether or
+	 * not it became a loadable dependency here. `Suggests` do not, yet they still name packages the project may install.
+	 */
+	declaredPackageNames(): readonly string[];
 
 	/**
 	 * Metadata of the signature databases the version plugins currently have loaded.
@@ -94,12 +103,14 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 /**
  * Manages the project's dependencies, their versions, and their interplay with {@link FlowrAnalyzerPackageVersionsPlugin}s.
  */
-export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerPackageVersionsPlugin> implements ReadOnlyFlowrAnalyzerDependenciesContext {
+export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerPackageVersionsPlugin> implements ReadOnlyFlowrAnalyzerDependenciesContext, InvalidationEventReceiver {
 	public readonly name = 'flowr-analyzer-dependencies-context';
 
 	public readonly functionsContext: FlowrAnalyzerFunctionsContext;
 
 	private dependencies:  Map<string, Package> = new Map();
+	/** what {@link getDependency} resolved for a package the project does not depend on, so a lookup never makes it one */
+	private resolvedOnly:  Map<string, Package> = new Map();
 	private staticsLoaded = false;
 	/** resolvers consulted lazily to fill in exports; `existing` carries version info from other plugins */
 	private lazyResolvers: ((name: string, existing?: Package) => Package | undefined)[] = [];
@@ -107,6 +118,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 
 	public reset(): void {
 		this.dependencies = new Map();
+		this.resolvedOnly = new Map();
 		this.staticsLoaded = false;
 		this.lazyResolvers = [];
 		this.resolvedMisses = new Set();
@@ -200,6 +212,20 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		}
 	}
 
+	receive(event: InvalidationEvent): void {
+		const type = event.type;
+		switch(type) {
+			case InvalidationEventType.Full:
+				this.reset();
+				break;
+			case InvalidationEventType.SingleFileInvalidate:
+				// nothing to do
+				break;
+			default:
+				assertUnreachable(type);
+		}
+	}
+
 	public constructor(functionsContext: FlowrAnalyzerFunctionsContext, plugins?: readonly FlowrAnalyzerPackageVersionsPlugin[]) {
 		super(functionsContext.getAttachedContext(), FlowrAnalyzerPackageVersionsPlugin.defaultPlugin(), plugins);
 		this.functionsContext = functionsContext;
@@ -218,7 +244,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	}
 
 	/**
-	 * Register a dependency declared by a project metadata file (`DESCRIPTION`, `renv.lock`, `rv.lock`). Gated by
+	 * Register a dependency declared by a project metadata file (`DESCRIPTION`, `renv.lock`, `rv.lock`, `uvr.lock`). Gated by
 	 * `solver.sigdb.loadProjectDependencies`: when project-dependency loading is disabled this is a no-op, so the
 	 * declared deps never enter the context (unlike {@link addDependency}, used for on-demand signature-database
 	 * resolution).
@@ -231,12 +257,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	}
 
 	public addDependency(pkg: Package): this {
-		const p = this.dependencies.get(pkg.name);
-		if(p) {
-			p.mergeInPlace(pkg);
-		} else {
-			this.dependencies.set(pkg.name, pkg);
-		}
+		mergeIntoMap(this.dependencies, pkg);
 		return this;
 	}
 
@@ -247,7 +268,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		if(version !== undefined) {
 			return this.resolvePinnedDependency(name, typeof version === 'string' ? RRange.parse('=' + version) : version);
 		}
-		const existing = this.dependencies.get(name);
+		const existing = this.dependencies.get(name) ?? this.resolvedOnly.get(name);
 		// a package already carrying exports is complete; a version-only one is still enriched below
 		if(existing?.namespaceInfo || (!existing && this.resolvedMisses.has(name))) {
 			return existing;
@@ -256,8 +277,10 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 			for(const resolve of this.lazyResolvers) {
 				const resolved = resolve(name, existing);
 				if(resolved) {
-					this.addDependency(resolved);   // merges exports into any existing version info
-					return this.dependencies.get(name);
+					// merges exports into any existing version info, of a dependency or of a mere lookup
+					const into = this.dependencies.has(name) ? this.dependencies : this.resolvedOnly;
+					mergeIntoMap(into, resolved);
+					return into.get(name);
 				}
 			}
 			this.resolvedMisses.add(name);
@@ -265,9 +288,20 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		return existing;
 	}
 
+	/** Like {@link getDependency}, but for a package the code pulls in (`library(p)`): the result joins the project's {@link getDependencies|dependencies}. */
+	public loadDependency(name: string): Package | undefined {
+		const found = this.getDependency(name);
+		const cached = this.resolvedOnly.get(name);
+		if(cached !== undefined) {
+			this.resolvedOnly.delete(name);
+			mergeIntoMap(this.dependencies, cached);
+		}
+		return this.dependencies.get(name) ?? found;
+	}
+
 	/** Resolve `name` constrained to `range` via the plugins (uncached); falls back to the cached dependency. */
 	private resolvePinnedDependency(name: string, range: Range | undefined): Package | undefined {
-		const pin = new Package({ name, derivedVersion: range });
+		const pin = new Package({ name, versionConstraints: range ? [range] : [] });
 		for(const resolve of this.lazyResolvers) {
 			const resolved = resolve(name, pin);
 			if(resolved) {
@@ -277,9 +311,9 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		return this.getDependency(name);
 	}
 
-	public inferredVersion(name: string): Range | undefined {
+	public inferredRange(name: string): Range | undefined {
 		const pkg = this.getDependency(name);
-		return pkg?.hasSatisfiableVersion() ? pkg.derivedVersion : undefined;
+		return pkg?.hasSatisfiableVersion() ? pkg.derivedRange : undefined;
 	}
 
 	public getDependencies(): Package[] {
@@ -287,5 +321,20 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 			this.resolveStaticDependencies();
 		}
 		return Array.from(this.dependencies.values());
+	}
+
+	public declaredPackageNames(): string[] {
+		this.ensureStaticsLoaded();
+		const declared: readonly (readonly Package[] | undefined)[] = Object.values(this.ctx.meta.getDeclaredPackages());
+		return [...new Set(declared.flatMap(group => group?.map(p => p.name) ?? []))];
+	}
+}
+
+function mergeIntoMap(map: Map<string, Package>, pkg: Package): void {
+	const existing = map.get(pkg.name);
+	if(existing) {
+		existing.mergeInPlace(pkg);
+	} else {
+		map.set(pkg.name, pkg);
 	}
 }

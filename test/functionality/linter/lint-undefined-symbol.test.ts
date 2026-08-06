@@ -91,6 +91,19 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('quoted symbols are not flagged', parser, 'quote(someSymbol)\nsubstitute(other)',
 				'undefined-symbol', []);
 
+			// a loop marks its body as nse too, but the body is evaluated, so its symbols are ordinary reads
+			assertLinter('a braceless for-loop body is still flagged', parser, 'for(i in 1:2) undefinedVar',
+				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'undefinedVar', kind: 'variable', loc: [1, 15, 1, 26] }]);
+
+			assertLinter('a braceless while-loop body is still flagged', parser, 'while(TRUE) undefinedVar',
+				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'undefinedVar', kind: 'variable', loc: [1, 13, 1, 24] }]);
+
+			assertLinter('a braceless repeat body is still flagged', parser, 'repeat undefinedVar',
+				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'undefinedVar', kind: 'variable', loc: [1, 8, 1, 19] }]);
+
+			assertLinter('a quotation within a loop body is still not flagged', parser, 'for(i in 1:2) quote(someSymbol)',
+				'undefined-symbol', []);
+
 			// recall: a variable defined nowhere is still flagged even next to a defined one
 			assertLinter('a variable defined nowhere is still flagged', parser,
 				'f <- function() {\n  known <- 1\n  known + reallyUndefined\n}',

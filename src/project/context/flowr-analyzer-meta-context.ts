@@ -1,4 +1,7 @@
 import type { SemVer } from 'semver';
+import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
+import { InvalidationEventType } from '../cache/flowr-cache';
+import { assertUnreachable } from '../../util/assert';
 import type { RAuthorInfo } from '../../util/r-author';
 import type { RLicenseElementInfo } from '../../util/r-license';
 import type { Package } from '../plugins/package-version-plugins/package';
@@ -16,6 +19,7 @@ export enum MetaPriority {
 	Description = 2
 }
 
+
 /**
  * The packages a project declares, grouped as a `DESCRIPTION` groups them. A source without such groups
  * (an `rproject.toml` just lists `dependencies`) reports them as {@link DeclaredPackages#imports}.
@@ -25,6 +29,7 @@ export interface DeclaredPackages {
 	depends?:   readonly Package[];
 	suggests?:  readonly Package[];
 	linkingTo?: readonly Package[];
+	enhances?:  readonly Package[];
 }
 
 /** The project metadata a plugin may contribute, see {@link FlowrAnalyzerMetaContext#contribute}. */
@@ -105,7 +110,7 @@ export interface ReadOnlyFlowrAnalyzerMetaContext {
  *
  * If you are interested in inspecting this metadata, refer to {@link ReadOnlyFlowrAnalyzerMetaContext}.
  */
-export class FlowrAnalyzerMetaContext implements ReadOnlyFlowrAnalyzerMetaContext {
+export class FlowrAnalyzerMetaContext implements ReadOnlyFlowrAnalyzerMetaContext, InvalidationEventReceiver {
 	public readonly name = 'flowr-analyzer-meta-context';
 	private readonly fields = new Map<keyof ProjectMetaFields, { value: unknown, priority: MetaPriority }>();
 	/** runs the plugins that contribute the metadata, as they only do so on demand */
@@ -117,6 +122,20 @@ export class FlowrAnalyzerMetaContext implements ReadOnlyFlowrAnalyzerMetaContex
 
 	public reset(): void {
 		this.fields.clear();
+	}
+
+	receive(event: InvalidationEvent): void {
+		const type = event.type;
+		switch(type) {
+			case InvalidationEventType.Full:
+				this.reset();
+				break;
+			case InvalidationEventType.SingleFileInvalidate:
+				// nothing to do
+				break;
+			default:
+				assertUnreachable(type);
+		}
 	}
 
 	/**

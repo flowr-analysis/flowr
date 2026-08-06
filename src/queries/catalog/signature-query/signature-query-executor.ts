@@ -2,13 +2,19 @@ import { satisfies as semverSatisfies, validRange } from 'semver';
 import type { BasicQueryData } from '../../base-query-format';
 import type {
 	SignatureQuery, SignatureQueryResult, SignaturePackageView, SignatureFunctionView, SignatureDatabaseView,
-	SignatureMatchView, SignaturePackageMatch
+	SignatureMatchView, SignaturePackageMatch, SignatureFlowrView
 } from './signature-query-format';
 import { availableVersionEntries, getSharedSigSourceSync, SigDatabaseSet, type AvailableVersion, type PackageSignatureSource, type ShardStatus } from '../../../project/sigdb/reader';
 import { isDateBound, releaseDateBound } from '../../../project/sigdb/sigdb-version';
 import { DepType, DepTypeNames, type LibraryExports } from '../../../project/sigdb/schema';
 import { defaultSigDbPaths } from '../../../project/sigdb/manifest';
 import type { DecodedFunction } from '../../../project/sigdb/decode';
+import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
+import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
+import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
+import type { BuiltInFnInfo } from '../../../dataflow/environments/built-in-props';
+import { ArgProp, CallProp } from '../../../dataflow/environments/built-in-props';
+import { Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
 import { RVersion } from '../../../util/r-version';
 import { baseRPackages, baseRExportOwner } from '../../../util/r-base-packages';
 import { Mermaid } from '../../../util/mermaid/mermaid';
@@ -111,7 +117,26 @@ export function cranMirrorSourceUrl(pkg: string, version: string | undefined, fi
 	return `${cranMirrorRepoUrl(pkg)}/blob/${ref}/${file}${anchor}`;
 }
 
-/** function/topic names that map cleanly to an rdrr.io man page (skip operators like `+.gg`, `[.data.frame`; Rd topics allow hyphens, e.g. `dplyr-package`) */
+/** read-only GitHub mirror of R's own SVN; base packages live under `src/library/<pkg>` */
+const RSourceMirror = 'https://github.com/wch/r-source';
+
+/**
+ * The mirror ref holding an R version. The mirror carries no tags, only a `R-<major>-<minor>-branch` per release
+ * series, so a link is exact to the minor release and points at its latest patch; `trunk` stands in when the version
+ * is unknown.
+ */
+export function rSourceRef(version: string | undefined): string {
+	const series = /^(\d+)\.(\d+)/.exec(version ?? '');
+	return series ? `R-${series[1]}-${series[2]}-branch` : 'trunk';
+}
+
+/** deep-link a base-R definition into the R sources mirror at the release series of `version` */
+function rSourceUrl(pkg: string, version: string | undefined, file: string, line?: number): string {
+	const anchor = line !== undefined && line >= 0 ? `#L${line}` : '';
+	return `${RSourceMirror}/blob/${rSourceRef(version)}/src/library/${encodeURIComponent(pkg)}/${file}${anchor}`;
+}
+
+/** function/topic names that map cleanly to a man page (skip operators like `+.gg`, `[.data.frame`; Rd topics allow hyphens, e.g. `dplyr-package`) */
 const RdrrTopicName = /^[A-Za-z.][A-Za-z0-9._-]*$/;
 /** best-effort rdrr.io documentation link: `/r/<pkg>/<fn>` for base R, `/cran/<pkg>/man/<fn>` for CRAN */
 export function rdrrDocUrl(pkg: string, fn: string, opts: { base: boolean, cran: boolean }): string | undefined {
@@ -127,19 +152,115 @@ export function rdrrDocUrl(pkg: string, fn: string, opts: { base: boolean, cran:
 	return undefined;
 }
 
-/** the doc link for a function: its help topic (else its name), or none when it is proven undocumented (`no-doc`) */
-function docUrlFor(pkg: string, fn: DecodedFunction, base: boolean, cran: boolean): string | undefined {
-	return fn.props.includes('no-doc') ? undefined : rdrrDocUrl(pkg, fn.topic ?? fn.name, { base, cran });
+/**
+ * The `.Rd` help source of a topic *at the queried version*, on the same mirrors the source links use. rdrr.io only
+ * serves a package's current release, so {@link rdrrDocUrl} silently answers for the wrong version whenever an older
+ * one was asked for; this link cannot drift.
+ */
+function manPageUrl(pkg: string, topic: string, version: string | undefined, opts: { base: boolean, cran: boolean }): string | undefined {
+	if(!RdrrTopicName.test(topic)) {
+		return undefined;
+	}
+	if(opts.base) {
+		return rSourceUrl(pkg, version, `man/${topic}.Rd`);
+	}
+	return opts.cran ? cranMirrorSourceUrl(pkg, version, `man/${topic}.Rd`) : undefined;
 }
 
-/** the trailing fields shared by every function view: definition location, CRAN-mirror source link, and rdrr.io doc link */
+/** the doc links for a function: its help topic (else its name), or none when it is proven undocumented (`no-doc`) */
+function docUrlsFor(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean) {
+	if(fn.props.includes('no-doc')) {
+		return {};
+	}
+	const topic = fn.topic ?? fn.name;
+	const doc = rdrrDocUrl(pkg, topic, { base, cran });
+	const man = manPageUrl(pkg, topic, version, { base, cran });
+	return { ...(doc ? { docUrl: doc } : {}), ...(man ? { manUrl: man } : {}) };
+}
+
+/** the source link of a definition: the CRAN mirror at its version tag, or the R sources mirror for a base package */
+function sourceUrlFor(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean): string | undefined {
+	if(!fn.file) {
+		return undefined;
+	}
+	if(base) {
+		return rSourceUrl(pkg, version, fn.file, fn.line);
+	}
+	return cran ? cranMirrorSourceUrl(pkg, version, fn.file, fn.line) : undefined;
+}
+
+/** the trailing fields shared by every function view: definition location, source link, and documentation links */
 function locationFields(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean) {
-	const doc = docUrlFor(pkg, fn, base, cran);
+	const source = sourceUrlFor(pkg, fn, version, base, cran);
 	return {
 		...(fn.file ? { file: fn.file } : {}),
 		...(fn.line >= 0 ? { line: fn.line } : {}),
-		...(cran && !base && fn.file ? { sourceUrl: cranMirrorSourceUrl(pkg, version, fn.file, fn.line) } : {}),
-		...(doc ? { docUrl: doc } : {})
+		...(source ? { sourceUrl: source } : {}),
+		...docUrlsFor(pkg, fn, version, base, cran)
+	};
+}
+
+/** the {@link CallProp}/{@link ArgProp} bits of `props`, lowercased, as the names to print */
+function propNames(props: number, of: Record<string, string | number>): string[] {
+	return Object.entries(of).filter(([, v]) => typeof v === 'number' && (props & v) !== 0).map(([k]) => k.toLowerCase());
+}
+
+/** the view of one {@link BuiltInFnInfo}: every declared parameter with what it is used for, and what comes back */
+function flowrViewOf(info: BuiltInFnInfo, sigParams: readonly string[]): SignatureFlowrView {
+	/* every declared parameter, even one flowR says nothing about, so the answer is the whole signature */
+	const args = (info.sig ?? []).map(([n, p]) => ({ name: n, roles: propNames(p, ArgProp) }));
+	const params = args.map(a => a.name);
+	const returns = info.sig?.find(([, p]) => (p & ArgProp.Alias) !== 0)?.[0];
+	/* flowR usually declares only the parameters it models, which is no disagreement as long as they line up */
+	const same = params.every((n, i) => n === sigParams[i]);
+	return {
+		props: propNames(info.props ?? 0, CallProp),
+		...(args.length > 0 ? { args } : {}),
+		...(returns !== undefined ? { returns } : {}),
+		...(params.length > 0 && !same ? { parameters: params } : {})
+	};
+}
+
+/**
+ * What flowR states about `pkg::name` itself, resolved in `env` so that a configured built-in wins over the
+ * default one. The parameter names are only reported when they differ from the ones `sigParams` records.
+ */
+function flowrView(env: REnvironmentInformation | undefined, pkg: string, name: string, sigParams: readonly string[]): SignatureFlowrView | undefined {
+	const info = env === undefined ? undefined : queryFnProps(Identifier.make(name, pkg), { environment: env });
+	if(info === undefined || (info.props === undefined && info.sig === undefined)) {
+		return undefined;
+	}
+	return flowrViewOf(info, sigParams);
+}
+
+/**
+ * The view of a call flowR models itself but the signature database has no entry for: the primitives and
+ * operators (`+`, `[`, `if`) that never appear in a package's sources, and anything a flowR configuration
+ * adds. `pkg` narrows the lookup when the query named one, otherwise the built-in's own namespace is reported.
+ */
+function flowrOnlyFunctionInfo(env: REnvironmentInformation | undefined, pkg: string | undefined, name: string): SignatureFunctionView | undefined {
+	if(env === undefined) {
+		return undefined;
+	}
+	const resolved = resolveByName(pkg === undefined ? name : Identifier.make(name, pkg), env, ReferenceType.Function);
+	const definition = resolved?.find(d => d.type === ReferenceType.BuiltInFunction);
+	if(definition === undefined) {
+		return undefined;
+	}
+	const info = queryFnProps(definition.name ?? name, { environment: env });
+	if(info === undefined || (info.props === undefined && info.sig === undefined)) {
+		return undefined;
+	}
+	return {
+		name,
+		package:    pkg ?? (definition.name === undefined ? undefined : Identifier.getNamespace(definition.name)) ?? 'base',
+		flowrOnly:  true,
+		exported:   true,
+		properties: [],
+		/* flowR states no defaults, so `required` stays `false` throughout; whether R forces a parameter it does know */
+		parameters: (info.sig ?? []).map(([n, p]) => ({ name: n, required: false, forced: (p & ArgProp.Forced) !== 0 })),
+		callees:    [],
+		flowr:      flowrViewOf(info, [])
 	};
 }
 
@@ -164,11 +285,11 @@ function decodedToView(pkg: string, fn: DecodedFunction, version: string | undef
 
 /**
  * The detailed view of a single function within a package: its signature (parameters, forced/optional,
- * defaults), properties, definition location, call graph, and -- for a CRAN package -- a deep link into the
+ * defaults), properties, definition location, call graph, and for a CRAN package a deep link into the
  * read-only CRAN GitHub mirror. `version` defaults to the source's latest; `undefined` when the source does
  * not carry that function.
  */
-export function signatureFunctionInfo(src: PackageSignatureSource, pkg: string, fnName: string, version?: string): SignatureFunctionView | undefined {
+export function signatureFunctionInfo(src: PackageSignatureSource, pkg: string, fnName: string, version?: string, env?: REnvironmentInformation): SignatureFunctionView | undefined {
 	const fns = src.functions(pkg, version) ?? src.functions(pkg);
 	const fn = fns?.find(f => f.name === fnName);
 	if(fn === undefined) {
@@ -176,42 +297,77 @@ export function signatureFunctionInfo(src: PackageSignatureSource, pkg: string, 
 	}
 	const exports = src.lookup(pkg, version) ?? src.lookup(pkg);
 	const view = decodedToView(pkg, fn, exports?.version, { cran: exports?.cran ?? false, base: src.isBaseR(pkg) });
-	// an S3 generic's methods are the same-package `<generic>.<class>` functions that are themselves registered
-	// S3 methods; the reverse links a registered method back to the generic it dispatches for
+	// an S3 generic's methods are the `<generic>.<class>` functions that resolve back to it (see s3MethodParts);
+	// the reverse links a method to the generic it dispatches for
 	const methods = (fns ?? [])
-		.filter(f => f.name !== fn.name && f.name.startsWith(fn.name + '.') && isS3Method(f))
+		.filter(f => f.name !== fn.name && f.name.startsWith(fn.name + '.') && s3MethodParts(src, pkg, fns, f)?.generic === fn.name)
 		.map(f => f.name)
 		.sort();
-	const s3method = isS3Method(fn) ? s3MethodParts(src, pkg, fns, fn.name) : undefined;
+	const s3method = s3MethodParts(src, pkg, fns, fn);
+	const flowr = flowrView(env, pkg, fnName, view.parameters.map(p => p.name));
 	return {
 		...view,
+		...(flowr ? { flowr } : {}),
 		...(methods.length > 0 ? { s3generic: true, s3methods: methods } : {}),
 		...(s3method ? { s3method } : {})
 	};
 }
 
-/** whether a function is a registered S3 method (the `s3-method` property, set from its NAMESPACE at build time) */
-function isS3Method(fn: DecodedFunction): boolean {
-	return fn.props.includes('s3-method');
+/** whether `fn` is an S3 generic: its body dispatches via `UseMethod`, so `<name>.<class>` functions can be its methods */
+function dispatchesGeneric(fn: DecodedFunction): boolean {
+	return fn.callees.includes('UseMethod');
+}
+
+/** the function named `generic`, resolved in `pkg` first, then base R, with the package it was found in */
+function resolveGeneric(src: PackageSignatureSource, pkg: string, fns: readonly DecodedFunction[] | undefined, generic: string): { fn: DecodedFunction, package: string } | undefined {
+	const local = fns?.find(f => f.name === generic);
+	if(local) {
+		return { fn: local, package: pkg };
+	}
+	for(const base of baseRPackages()) {
+		if(base !== pkg) {
+			const fn = src.functionByName(base, generic);
+			if(fn) {
+				return { fn, package: base };
+			}
+		}
+	}
+	return undefined;
+}
+
+/** whether `cls` is a class a loaded package registers S3 methods for (the method's own package, or base R) */
+function isKnownS3Class(src: PackageSignatureSource, pkg: string, cls: string): boolean {
+	if(src.lookup(pkg)?.s3Classes.includes(cls)) {
+		return true;
+	}
+	for(const base of baseRPackages()) {
+		if(base !== pkg && src.lookup(base)?.s3Classes.includes(cls)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/** the `generic.class` readings of a dotted name, longest generic first (`as.data.frame.matrix` before `as.data`) */
+function* dottedSplits(name: string): Generator<readonly [generic: string, cls: string]> {
+	for(let dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.', dot - 1)) {
+		yield [name.slice(0, dot), name.slice(dot + 1)];
+	}
 }
 
 /**
- * The generic and dispatch class of a registered S3 method named `generic.class`: the longest dotted prefix that
- * names a function in the same package or base R is the generic, the remainder is the class, and the owning package
- * is returned too (`print.rema` gives `print` in `base`, class `rema`). Only ever called for names flagged
- * {@link isS3Method}, so ordinary dotted names like `data.frame` never reach here and are not mistaken for methods.
+ * The generic and dispatch class of an S3 method named `generic.class`, or `undefined` when `fn` is not one.
+ *
+ * The crawled `s3-method` property settles it when present. It is missing for a base method whose generic lives in
+ * another package (`stats` never flags `print.acf`, since `print` is in `base`), so then the prefix must name a
+ * dispatching generic and the suffix a registered class. Dropping either check would split `data.frame` or `t.test`.
  */
-function s3MethodParts(src: PackageSignatureSource, pkg: string, fns: readonly DecodedFunction[] | undefined, name: string): { generic: string, class: string, package: string } | undefined {
-	const bases = baseRPackages();
-	for(let dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.', dot - 1)) {
-		const generic = name.slice(0, dot);
-		if(fns?.some(f => f.name === generic)) {
-			return { generic, class: name.slice(dot + 1), package: pkg };
-		}
-		for(const base of bases) {
-			if(base !== pkg && src.functionByName(base, generic) !== undefined) {
-				return { generic, class: name.slice(dot + 1), package: base };
-			}
+function s3MethodParts(src: PackageSignatureSource, pkg: string, fns: readonly DecodedFunction[] | undefined, fn: DecodedFunction): { generic: string, class: string, package: string } | undefined {
+	const flagged = fn.props.includes('s3-method');
+	for(const [generic, cls] of dottedSplits(fn.name)) {
+		const g = resolveGeneric(src, pkg, fns, generic);
+		if(g && (flagged || (dispatchesGeneric(g.fn) && isKnownS3Class(src, pkg, cls)))) {
+			return { generic, class: cls, package: g.package };
 		}
 	}
 	return undefined;
@@ -282,7 +438,7 @@ function signatureCallGraphUrl(src: PackageSignatureSource, pkg: string, version
 		for(const callee of src.functionByName(cur.owner, cur.name, cur.ver)?.callees ?? []) {
 			const r = resolve(cur.owner, cur.ver, callee);
 			edges.push(`  ${cur.id} --> ${node(r?.owner, r ? r.name : callee)}`);
-			// expand into a resolved same/other CRAN package (not base R -- its internals explode the graph), avoiding cycles
+			// expand into a resolved same/other CRAN package (not base R, whose internals explode the graph), avoiding cycles
 			if(r && !bases.has(r.owner) && !seen.has(`${r.owner}::${r.name}`) && nodes.size < CallGraphMaxNodes) {
 				queue.push({ owner: r.owner, ver: r.owner === cur.owner ? cur.ver : src.latestVersion(r.owner)?.str, name: r.name, id: node(r.owner, r.name) });
 			}
@@ -391,16 +547,12 @@ function matchedParamPreview(fn: DecodedFunction, q: SignatureQuery): { preview:
 
 /** a compact view for a wildcard search hit (signature/call-graph omitted; the JSON dump carries those per name) */
 function compactMatch(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean, params?: { preview: string[], matched: string[] }): SignatureMatchView {
-	const doc = docUrlFor(pkg, fn, base, cran);
 	return {
 		package:  pkg,
 		name:     fn.name,
 		exported: fn.exported,
 		...(version !== undefined ? { version } : {}),
-		...(fn.file ? { file: fn.file } : {}),
-		...(fn.line >= 0 ? { line: fn.line } : {}),
-		...(cran && !base && fn.file ? { sourceUrl: cranMirrorSourceUrl(pkg, version, fn.file, fn.line) } : {}),
-		...(doc ? { docUrl: doc } : {}),
+		...locationFields(pkg, fn, version, base, cran),
 		...(params && params.preview.length > 0 ? { parameters: params.preview } : {}),
 		...(params && params.matched.length > 0 ? { matchedParameters: params.matched } : {})
 	};
@@ -420,7 +572,7 @@ function allAvailableVersions(sources: readonly PackageSignatureSource[], pkg: s
 }
 
 /**
- * The owning source that actually carries `version` -- `current` is checked before `history`, so a
+ * The owning source that actually carries `version`: `current` is checked before `history`, so a
  * latest-version query never decompresses the (large) history shard. Returns the first owner when no version
  * was asked, or `undefined` when an explicit version is carried by none of them.
  */
@@ -483,7 +635,7 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 
 	const fnMatch = q.function ? nameMatcher(q.function) : () => true;
 	// an exact function name lets us seek that one record (decoding only it) instead of decoding every function of
-	// every package -- the difference between a fast `* ggplot` and one that decodes the whole database
+	// every package, the difference between a fast `* ggplot` and one that decodes the whole database
 	const exactName = q.function !== undefined && !hasGlob(q.function);
 	const matches: SignatureMatchView[] = [];
 	let searched = 0;
@@ -655,6 +807,8 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 		}
 	}
 	const meta = (): SignatureQueryResult => ({ '.meta': { timing: Date.now() - start }, databases, packageCount: packages.size, sourceCount: sources.length });
+	/* the built-in environment answers for the primitives no package's sources contain, see flowrOnlyFunctionInfo */
+	const builtIn = (pkg: string | undefined, name: string) => flowrOnlyFunctionInfo(analyzer.inspectContext().env.makeCleanEnv(), pkg, name);
 
 	if(!q.package) {
 		// shard load-state is only shown in the summary, so it is only worth its filesystem probes here
@@ -684,7 +838,10 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	// version must be looked up in whichever source actually has it (not just the first one found)
 	const owning = sources.filter(s => s.has(q.package as string));
 	if(owning.length === 0) {
-		return { ...meta(), message: `The signature database does not know the package '${q.package}'.`, suggestions: suggest(packages, q.package) };
+		// `@signature +` names no package but a call flowR models itself, so answer for that instead of not-found
+		const own = q.function === undefined ? builtIn(undefined, q.package) : undefined;
+		return own ? { ...meta(), function: own }
+			: { ...meta(), message: `The signature database does not know the package '${q.package}'.`, suggestions: suggest(packages, q.package) };
 	}
 	// the version to resolve against: an explicit `@version`, else the version flowR inferred for the script's
 	// dependency (which may be an older release that only `history` carries)
@@ -696,10 +853,15 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	}
 	const resolvedSrc = src ?? owning[0];
 	if(q.function) {
-		const fn = signatureFunctionInfo(resolvedSrc, q.package, q.function, version);
+		const fn = signatureFunctionInfo(resolvedSrc, q.package, q.function, version, analyzer.inspectContext().env.makeCleanEnv());
 		if(fn) {
 			const cg = q.callGraph ? signatureCallGraphUrl(resolvedSrc, q.package, version, fn.name) : undefined;
 			return { ...meta(), function: cg ? { ...fn, callGraph: cg } : fn };
+		}
+		// a primitive like `base::+` has no entry in the package's sources, but flowR models it itself
+		const own = builtIn(q.package, q.function);
+		if(own) {
+			return { ...meta(), function: own };
 		}
 		const exports = resolvedSrc.lookup(q.package, version) ?? resolvedSrc.lookup(q.package);
 		const universe = new Set<string>([

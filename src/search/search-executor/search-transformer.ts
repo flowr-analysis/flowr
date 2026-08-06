@@ -158,7 +158,7 @@ async function getWith<Elements extends FlowrSearchElement<ParentInformation>[],
 
 	return (await elements.enrich(input, info, args)).mutate(
 		async s => await Promise.all(s.map(e => enrichElement(e, elements, input, info, args))) as Elements
-	) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
+	);
 }
 
 function getMap<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(

@@ -17,10 +17,10 @@ import { Q } from '../../search/flowr-search-builder';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Dataflow } from '../../dataflow/graph/df-helper';
-import type { FlowrAnalyzer, ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
+import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { hasArgumentValue } from './function-finder-util';
 import { Ternary } from '../../util/logic';
-import { KnownParser } from '../../r-bridge/parser';
+import type { KnownParser } from '../../r-bridge/parser';
 
 /**
  * Information about an argument of a function that should be flagged as deprecated if it is called with this argument
@@ -137,7 +137,7 @@ export const DEPRECATED_FUNCTIONS = {
 	// unlike functionFinderUtil.createSearch(config.fns), this does not pre-filter to the hardcoded list: the
 	// sigdb-driven pass below needs every resolved call, so the `fns` filtering happens in processSearchResult instead
 	createSearch: (_config) => Q.all().filter(VertexType.FunctionCall).with(Enrichment.CallTargets, {
-		onlyBuiltin: true,
+		onlyBuiltin:  true,
 		qualifyNames: false // we don't use qualified names for this rule yet
 	}),
 	processSearchResult: async(elements, config, data) => {
@@ -254,7 +254,7 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
 	// Deprecated Argument: If `whenArgs` is provided, only mark deprecated arguments
 	if(info.whenArgs) {
 		const vertex = dataflow.getVertex(candidate.node.info.id);
-		if (vertex === undefined || !FunctionCallVertex.is(vertex)) {
+		if(vertex === undefined || !FunctionCallVertex.is(vertex)) {
 			return results;
 		}
 

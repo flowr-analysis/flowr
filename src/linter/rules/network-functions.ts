@@ -1,5 +1,5 @@
 import { LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../linter-format';
-import type { FunctionsToDetectConfig,  FunctionsMetadata,  FunctionsResult } from './function-finder-util';
+import type {  FunctionsMetadata,  FunctionsResult } from './function-finder-util';
 import { functionFinderUtil } from './function-finder-util';
 import { LintingRuleTag } from '../linter-tags';
 import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
@@ -11,7 +11,7 @@ import { WriteFunctions } from '../../queries/catalog/dependencies-query/functio
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Dataflow } from '../../dataflow/graph/df-helper';
-import { MergeableRecord } from '../../util/objects';
+import type { MergeableRecord } from '../../util/objects';
 
 export interface NetworkFunctionsConfig extends MergeableRecord {
 	/**

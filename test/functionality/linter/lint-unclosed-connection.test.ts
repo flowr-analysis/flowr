@@ -8,10 +8,10 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('All closed', parser, `zz <- textConnection(E)
 readLines(zz, 2)
 close(zz)`,
-			'unclosed-connection',
-			[]
+		'unclosed-connection',
+		[]
 		);
-    assertLinter('Only one closed', parser, `a <- textConnection(AB)
+		assertLinter('Only one closed', parser, `a <- textConnection(AB)
 b <- a
 if(x){
 	b <- textConnection(LETTERS)
@@ -19,26 +19,26 @@ if(x){
 	close(b)
 }
 t <- 2`,
-			'unclosed-connection',
-			[{
-                certainty: LintingResultCertainty.Uncertain,
-                loc:       [1, 6, 1, 23]
-            }]
+		'unclosed-connection',
+		[{
+			certainty: LintingResultCertainty.Uncertain,
+			loc:       [1, 6, 1, 23]
+		}]
 		);
-	assertLinter('Not necessarily closed', parser, `a <- textConnection(AB)
+		assertLinter('Not necessarily closed', parser, `a <- textConnection(AB)
 b <- textConnection(E)
 if(x){
 	close(a)
 }
 t <- 2
 close(b)`,
-			'unclosed-connection',
-			[{
-                certainty: LintingResultCertainty.Uncertain,
-                loc:       [1, 6, 1, 23]
-            }]
+		'unclosed-connection',
+		[{
+			certainty: LintingResultCertainty.Uncertain,
+			loc:       [1, 6, 1, 23]
+		}]
 		);
-	assertLinter('Openend and closed', parser, `a <- 4+3
+		assertLinter('Openend and closed', parser, `a <- 4+3
 if(x){
 	a <- textConnection(A)
 	b <- textConnection(B)
@@ -50,11 +50,33 @@ if(x){
 if(y){
 	close(b)
 }`,
-			'unclosed-connection',
-			[{
-                certainty: LintingResultCertainty.Uncertain,
-                loc:       [4, 6, 4, 22]
-            }]
+		'unclosed-connection',
+		[{
+			certainty: LintingResultCertainty.Uncertain,
+			loc:       [4, 6, 4, 22]
+		},
+		{
+			certainty: LintingResultCertainty.Uncertain,
+			loc:       [5, 6, 5, 22]
+		}]
+		);
+		assertLinter('::::', parser, `a <- 4+3
+if(x){
+	a <- textConnection(A)
+	b <- textConnection(B)
+	if(y){
+	close(a)
+	}
+}`,
+		'unclosed-connection',
+		[{
+			certainty: LintingResultCertainty.Uncertain,
+			loc:       [4, 6, 4, 22]
+		},
+		{
+			certainty: LintingResultCertainty.Uncertain,
+			loc:       [5, 6, 5, 22]
+		}]
 		);
 	});
 }));

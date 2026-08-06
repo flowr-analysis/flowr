@@ -5,10 +5,15 @@ import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { DeprecationState } from '../../../src/linter/rules/deprecated-functions';
 import type { PackageSignatureSource } from '../../../src/project/sigdb/reader';
 import type { DecodedFunction } from '../../../src/project/sigdb/decode';
-import type { LibraryExports } from '../../../src/project/sigdb/schema';
+import { FnProp, type LibraryExports, type SigFunctionInfo } from '../../../src/project/sigdb/schema';
 import { RRange } from '../../../src/util/r-version';
 import { SigDbBuilder } from '../../../src/project/sigdb/build';
 import { expFn, sigTmpDir, ver, writeAndOpen } from '../_helper/sigdb';
+import { Identifier } from '../../../src/dataflow/environments/identifier';
+
+const fn = (name: string, opts: Partial<SigFunctionInfo> = {}): SigFunctionInfo => ({
+	name, props: FnProp.Exported, params: [], callees: [], line: 1, ...opts
+});
 
 /** a minimal in-memory signature source exposing a single, richly-decoded (and deprecated) function of `pkg` */
 function sigDbWithDeprecatedFn(pkg: string, fnName: string): PackageSignatureSource {
@@ -46,8 +51,8 @@ describe('flowR linter', withTreeSitter(parser => {
 		/* Given that we declare `cat` as deprecated, we expect all uses to be marked! */
 		assertLinter('cat', parser, 'cat("hello")\nprint("hello")\nx <- 1\ncat(x)',
 			'deprecated-functions', [
-				{ certainty: LintingResultCertainty.Certain, function: 'cat', loc: [1, 1, 1, 12], type: 'deprecated-function' },
-				{ certainty: LintingResultCertainty.Certain, function: 'cat', loc: [4, 1, 4, 6], type: 'deprecated-function' },
+				{ certainty: LintingResultCertainty.Certain, function: 'base::cat', loc: [1, 1, 1, 12], type: 'deprecated-function' },
+				{ certainty: LintingResultCertainty.Certain, function: 'base::cat', loc: [4, 1, 4, 6], type: 'deprecated-function' },
 			],
 			{ hardcoded: 2, sigdb: 0 },
 			{ always: ['cat'] }
@@ -55,7 +60,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		/* Overwriting the `cat` function with a user defined implementation (even though it is useless), should cause the linter to not mark calls to the custom `cat` function as deprecated */
 		assertLinter('custom cat', parser, 'cat("hello")\nprint("hello")\ncat <- function(x) { }\nx <- 1\ncat(x)',
 			'deprecated-functions', [
-				{ certainty: LintingResultCertainty.Certain, function: 'cat', loc: [1, 1, 1, 12], type: 'deprecated-function' }
+				{ certainty: LintingResultCertainty.Certain, function: 'base::cat', loc: [1, 1, 1, 12], type: 'deprecated-function' }
 			],
 			{ hardcoded: 1, sigdb: 0 },
 			{ always: ['cat'] }
@@ -86,7 +91,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 			// regression: the loaded-package export must still count as a built-in call target
 			assertLinter('with a (controlled) package database', parser, 'library(dplyr)\nrecode(x)',
 				'deprecated-functions',
-				[{ certainty: LintingResultCertainty.Certain, function: 'recode', loc: [2, 1, 2, 9], type: 'deprecated-function' }],
+				[{ certainty: LintingResultCertainty.Certain, function: 'dplyr::recode', loc: [2, 1, 2, 9], type: 'deprecated-function' }],
 				{ hardcoded: 1, sigdb: 0 },
 				{ always: ['recode'], sigDb: controlledSigDb('dplyr', ['recode', 'filter']) }
 			);
@@ -148,13 +153,13 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 			);
 		});
 
-		describe('only detect deprecated fn/args when present and version constraint is satisfied', async() => {
+		describe('only deprecate when version constraint is satisfied', async() => {
 			const b = new SigDbBuilder();
-			b.addVersion('testPkg', '2.0.0', ver([expFn('testFn')]));
+			b.addPackage('testPkg', { latest: '2.0.0', downloads: 5 });
+			b.addVersion('testPkg', '2.0.0', { cran: true, functions: [fn('testFn', { file: 'R/paste.R', line: 10, params: [ { name: 'badArg'} ] })] });
 			const db = await writeAndOpen(sigTmpDir('dep-lint'), b.build({ date: '2026-05-23', generated: 0 }));
 
-			describe('deprecated arg', () => {
-				assertLinter('unresolved version should make result uncertain', parser, 'library(testPkg)\ntestFn(badArg=5)',
+				assertLinter('(arg) unresolved version should make result uncertain', parser, 'library(testPkg)\ntestFn(badArg=5)',
 					'deprecated-functions',
 					[{
 						type:         'deprecated-argument',
@@ -170,14 +175,14 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					{ always: [], conditionally: { 'testFn': { package: 'testPkg', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>=1.0.0') }] } } }
 				);
 
-				assertLinter('version resolved and constraint satisfied', parser, 'library(testPkg)\ntestFn(badArg=5)',
+				assertLinter('(arg) version resolved and constraint satisfied', parser, 'library(testPkg)\ntestFn(badArg=5)',
 					'deprecated-functions',
 					[{
 						type:         'deprecated-argument',
 						certainty:    LintingResultCertainty.Certain,
 						arg:          'badArg',
 						replacedBy:   'foo',
-						function:     'testFn',
+						function:     'testPkg::testFn',
 						state:        DeprecationState.Deprecated,
 						sinceVersion: RRange.parse('>=1.0.0'),
 						loc:          [2, 8, 2, 13]
@@ -190,7 +195,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					}
 				);
 
-				assertLinter('version resolved and constraint not satisfied', parser, 'library(testPkg)\ntestFn(badArg=5)',
+				assertLinter('(arg) version resolved and constraint not satisfied', parser, 'library(testPkg)\ntestFn(badArg=5)',
 					'deprecated-functions',
 					[],
 					{ hardcoded: 0, sigdb: 0 },
@@ -200,11 +205,10 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 						sigDb:         db
 					}
 				);
-			});
 
-			describe('deprecated function', () => {
-				describe('deprecated arg', () => {
-					assertLinter('unresolved version should make result uncertain', parser, 'library(testPkg)\ntestFn()',
+
+
+					assertLinter('(fn) unresolved version should make result uncertain', parser, 'library(testPkg)\ntestFn()',
 						'deprecated-functions',
 						[{
 							type:         'deprecated-function',
@@ -219,12 +223,12 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 						{ always: [], conditionally: { 'testFn': { package: 'testPkg', sinceVersion: RRange.parse('>=1.0.0'), state: DeprecationState.Defunct } } }
 					);
 
-					assertLinter('version resolved and constraint satisfied', parser, 'library(testPkg)\ntestFn()',
+					assertLinter('(fn) version resolved and constraint satisfied', parser, 'library(testPkg)\ntestFn()',
 						'deprecated-functions',
 						[{
 							type:         'deprecated-function',
 							certainty:    LintingResultCertainty.Certain,
-							function:     'testFn',
+							function:     'testPkg::testFn',
 							state:        DeprecationState.Defunct,
 							sinceVersion: RRange.parse('>=1.0.0'),
 							replacedBy:   undefined,
@@ -238,18 +242,16 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 						}
 					);
 
-					assertLinter('version resolved and constraint not satisfied', parser, 'library(testPkg)\ntestFn()',
+					assertLinter('(fn) version resolved and constraint not satisfied', parser, 'library(testPkg)\ntestFn()',
 						'deprecated-functions',
 						[],
-						{ hardcoded: 1, sigdb: 0 },
+						{ hardcoded: 0, sigdb: 0 },
 						{
 							always:        [],
 							conditionally: { 'testFn': { package: 'testPkg', sinceVersion: RRange.parse('>= 3.0.0'), state: DeprecationState.Defunct } },
 							sigDb:         db
 						}
 					);
-				});
-			});
 		});
 
 		describe('a call the signature database marks deprecated is flagged even outside the hardcoded list', () => {

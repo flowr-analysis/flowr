@@ -109,14 +109,14 @@ export enum DeprecationState {
 
 export interface DeprecatedFunctionsConfig extends MergeableRecord {
 	/** Functions to always mark as deprecated */
-	always:        BrandedIdentifier[]
+	always:        Identifier[]
 	/** Functions to mark as deprecated for specific argument, argument value or version */
 	conditionally: Record<BrandedIdentifier, DeprecatedFunctionInformation>
 }
 
 interface PotentialFunction {
 	node:           RNode<ParentInformation>;
-	target:         BrandedIdentifier;
+	target:         Identifier;
 	sourceLocation: SourceLocation
 }
 
@@ -138,7 +138,7 @@ export const DEPRECATED_FUNCTIONS = {
 	// sigdb-driven pass below needs every resolved call, so the `fns` filtering happens in processSearchResult instead
 	createSearch: (_config) => Q.all().filter(VertexType.FunctionCall).with(Enrichment.CallTargets, {
 		onlyBuiltin:  true,
-		qualifyNames: false // we don't use qualified names for this rule yet
+		qualifyNames: true // we don't use qualified names for this rule yet
 	}),
 	processSearchResult: async(elements, config, data) => {
 		const matchesConfiguredFns = Identifier.regex(...config.always);
@@ -151,7 +151,7 @@ export const DEPRECATED_FUNCTIONS = {
 				const sourceLocation = SourceLocation.fromNode(e.node);
 				if(sourceLocation !== undefined) {
 					return {
-						node: e.node, target: target as BrandedIdentifier, sourceLocation
+						node: e.node, target: target as string, sourceLocation
 					};
 				}
 			});
@@ -159,7 +159,8 @@ export const DEPRECATED_FUNCTIONS = {
 
 		// 2. Uses hardcoded information about deprecated arguments and deprecated functions
 		const results: DeprecatedFunctionRuleResult[] = detectedFunctions.map(candidate => {
-			const info = config.conditionally[candidate.target];
+			const name = candidate.target.includes('::') ? Identifier.getName(Identifier.parse(candidate.target)) : candidate.target;
+			const info = config.conditionally[name];
 			if(isNotUndefined(info)) {
 				// Check functions from DeprecatedFunctionsConfig.conditionally
 				return deprecateFunctionConditionally(candidate, graph, idMap, data, info);
@@ -250,16 +251,15 @@ export const DEPRECATED_FUNCTIONS = {
 function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: DataflowGraph, idMap: AstIdMap, analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>, info: DeprecatedFunctionInformation): DeprecatedFunctionRuleResult[] {
 	const results: DeprecatedFunctionRuleResult[] = [];
 	const derivedVersion = analyzer.inspectContext().deps.getDependency(info.package)?.derivedRange;
-
+	console.log(candidate.target, derivedVersion);
 	// Deprecated Argument: If `whenArgs` is provided, only mark deprecated arguments
 	if(info.whenArgs) {
 		const vertex = dataflow.getVertex(candidate.node.info.id);
-		if(vertex === undefined || !FunctionCallVertex.is(vertex)) {
+		if (vertex === undefined || !FunctionCallVertex.is(vertex)) {
 			return results;
 		}
 
 		for(const deprecatedArgInfo of info.whenArgs) {
-
 			// Check if function call has deprecated argument
 			const arg = vertex.args.find((arg, idx) =>
 				FunctionArgument.isNamed(arg) && arg.name === deprecatedArgInfo.argName ||
@@ -330,7 +330,7 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
  * This function is applied to function candidates that have an entry in the {@link DeprecatedFunctionsConfig.always} map.
  */
 function deprecateFunctionAlways(candidate: PotentialFunction, matchesConfiguredFns: RegExp): DeprecatedFunctionResult | undefined {
-	if(!matchesConfiguredFns.test(candidate.target)) {
+	if(!matchesConfiguredFns.test(Identifier.getName(candidate.target))) {
 		return undefined;
 	}
 

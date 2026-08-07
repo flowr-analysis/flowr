@@ -1,4 +1,5 @@
-import { describe } from 'vitest';
+import { assert, describe, test } from 'vitest';
+import { discoverRSourcesRegex } from '../../../../src/project/plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { FlowrRMarkdownFile } from '../../../../src/project/plugins/file-plugins/files/flowr-rmarkdown-file';
 import { testFileLoadPlugin } from './plugin-test-helper';
 import { FlowrAnalyzerRmdFilePlugin } from '../../../../src/project/plugins/file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
@@ -25,4 +26,21 @@ describe('RMarkdown-file', async() => {
 
 describe('Quarto RMarkdown-file', async() => {
 	await testFileLoadPlugin(FlowrAnalyzerQmdFilePlugin, FlowrRMarkdownFile, 'test/testfiles/notebook/example.Rmd', testFileSourceWithoutMd, ['file:qmd']);
+});
+
+describe('RMarkdown file extensions', () => {
+	const plugin = new FlowrAnalyzerRmdFilePlugin();
+	test.each([
+		['doc.Rmd', true],
+		['doc.rmd', true],
+		['doc.Rmarkdown', true],
+		['doc.rmarkdown', true],
+		['doc.md', false],
+		['doc.qmd', false]
+	])('%s is handled by the rmd plugin: %s', (name, expected) => {
+		assert.equal(plugin.applies(name), expected);
+		if(expected) {
+			assert.isTrue(discoverRSourcesRegex.test(name), 'must also be discovered as an R source');
+		}
+	});
 });

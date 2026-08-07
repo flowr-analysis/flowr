@@ -840,6 +840,22 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 			expect(guessed(res, 'pkgB')).toBeUndefined();
 		});
 
+		test('running the query twice on one analyzer gives the same answer', async() => {
+			const analyzer = await buildGuessAnalyzer(ts, {
+				code:     'draw(x)',
+				packages: {
+					pkgA: { downloads: 10, versions: { '1.0.0': { date: '2020-01-01', fns: { draw: [] } } } },
+					pkgB: { downloads: 9000, versions: { '1.0.0': { date: '2020-01-01', fns: { draw: [] } } } }
+				}
+			});
+			const run = async() => (await executeQueries({ analyzer }, [{ type: 'guess-dep-versions' }]))['guess-dep-versions'];
+			const first = await run();
+			const second = await run();
+			expect(second.dependencies).toEqual(first.dependencies);
+			expect(guessed(second, 'pkgB')?.orphan).toBe(true);
+			expect(guessed(second, 'pkgA')).toBeUndefined();
+		});
+
 		test('a name too many packages export is left ambiguous (not attributed to any)', async() => {
 			const many = Object.fromEntries(['pkgA', 'pkgB', 'pkgC', 'pkgD', 'pkgE', 'pkgF'].map((n, i) =>
 				[n, { downloads: i, versions: { '1.0.0': { date: '2020-01-01', fns: { draw: [] } } } }]));

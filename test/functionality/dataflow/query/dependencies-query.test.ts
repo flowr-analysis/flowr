@@ -281,10 +281,33 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('unknown read', 'read.table(x)', { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'unknown', lexemeOfArgument: 'x' }] });
 
 		testQuery('single read (variable)', 'x <- "test.csv"; read.table(x)', { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }] });
+		testQuery('read (path built in a local)', 'p <- file.path("data", "x.csv")\nread.csv(p)',
+			{ read: [{ nodeId: '2@read.csv', functionName: 'read.csv', value: 'data/x.csv' }] });
+		testQuery('write (path built in a local)', 'p <- file.path("out", "r.csv")\nwrite.csv(x, p)',
+			{ write: [{ nodeId: '2@write.csv', functionName: 'write.csv', value: 'out/r.csv' }] });
 
 		describe('Only if file parameter', () => {
 			testQuery('parse', 'parse(file="test.R")', { read: [{ nodeId: '1@parse', functionName: 'parse', value: 'test.R' }] });
 			testQuery('parse text', 'parse(text="test.R")', {});
+		});
+
+		/* a loop marks its body as nse, but unlike a quotation the body really is evaluated */
+		describe('Braceless loop body', () => {
+			testQuery('for', 'for(f in c("a.csv","b.csv")) read.csv(f)',
+				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: Unknown, lexemeOfArgument: 'f' }] });
+			testQuery('for (constant)', 'for(f in c("a.csv")) read.csv("test.csv")',
+				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'test.csv' }] });
+			testQuery('while', 'while(TRUE) read.csv("test.csv")',
+				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'test.csv' }] });
+			testQuery('repeat', 'repeat read.csv("test.csv")',
+				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'test.csv' }] });
+			testQuery('nested', 'for(i in 1:2) while(TRUE) read.csv("test.csv")',
+				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'test.csv' }] });
+			testQuery('braced stays the same', 'for(f in c("a.csv","b.csv")) { read.csv(f) }',
+				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: Unknown, lexemeOfArgument: 'f' }] });
+			/* a real quotation within the body must still be suppressed */
+			testQuery('quoted body', 'for(i in 1:2) quote(read.csv("test.csv"))', {});
+			testQuery('substituted body', 'while(TRUE) substitute(read.csv("test.csv"))', {});
 		});
 
 		describe('Custom', () => {

@@ -7,7 +7,8 @@ import { FlowrRMarkdownFile } from '../files/flowr-rmarkdown-file';
 import { platformBasename } from '../../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 
 
-export const RmdPattern = /\.rmd$/i;
+/* `.Rmarkdown` is the knitr-only variant used by blogdown and quarto */
+export const RmdPattern = /\.(rmd|rmarkdown)$/i;
 
 /**
  * The plugin provides support for R Markdown (`.rmd`) files

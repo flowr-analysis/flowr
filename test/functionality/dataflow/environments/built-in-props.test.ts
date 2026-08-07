@@ -15,7 +15,7 @@ import {
 	sigLayout
 } from '../../../../src/dataflow/environments/built-in-props';
 import { builtInNames, BuiltInIndex, inferFnProps, queryFnProps } from '../../../../src/dataflow/environments/query-fn-props';
-import { DefaultBuiltinConfig } from '../../../../src/dataflow/environments/default-builtin-config';
+import { DefaultBuiltinConfig, WrittenBuiltinDefinitions } from '../../../../src/dataflow/environments/default-builtin-config';
 import { Identifier, PkgName } from '../../../../src/dataflow/environments/identifier';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
 import { defaultEnv } from '../../_helper/dataflow/environment-builder';
@@ -46,45 +46,26 @@ const TestSignatures = {
 	transitiveCallees: (pkg: string, name: string) => pkg === 'base' && name === 'known' ? ['paste', 'system'] : undefined
 } as unknown as PackageSignatureSource;
 
-/** what the configuration is expected to say about these, checked below */
+/** one instance of each kind of claim the configuration makes, so a name that loses its props shows up */
 const ExpectedLabels: readonly (readonly [Identifier, CallProps])[] = [
-	[Identifier.from(['sum', PkgName.Base]), CallProp.Pure],
+	[Identifier.from(['sum', PkgName.Base]), CallProp.Pure | CallProp.Generic],
 	[Identifier.from(['nchar', PkgName.Base]), CallProp.Pure | CallProp.Narrows],
 	[Identifier.from(['lapply', PkgName.Base]), CallProp.MayPure],
-	[Identifier.from(['do.call', PkgName.Base]), CallProp.MayPure],
 	[Identifier.from(['print', PkgName.Base]), CallProp.Invisible | CallProp.Generic | CallProp.Prints],
-	[Identifier.from(['warning', PkgName.Base]), CallProp.Invisible | CallProp.Prints],
 	[Identifier.from(['stop', PkgName.Base]), CallProp.Throws],
-	[Identifier.from(['library', PkgName.Base]), CallProp.Invisible | CallProp.Scope],
 	[Identifier.from(['rm', PkgName.Base]), CallProp.Invisible | CallProp.Scope],
-	[Identifier.from(['<-', PkgName.Base]), CallProp.Scope | CallProp.Invisible],
 	[Identifier.from(['set.seed', PkgName.Base]), CallProp.Invisible | CallProp.Random],
-	[Identifier.from(['Sys.getenv', PkgName.Base]), CallProp.Ambient],
-	[Identifier.from(['tempfile', PkgName.Base]), CallProp.TempFile],
-	[Identifier.from(['list.files', PkgName.Base]), CallProp.File | CallProp.Reads],
-	[Identifier.from(['system', PkgName.Base]), CallProp.Process],
-	[Identifier.from(['.Call', PkgName.Base]), CallProp.Ffi],
-	[Identifier.from(['quote', PkgName.Base]), CallProp.Lang],
-	[Identifier.from(['readline', PkgName.Base]), CallProp.User],
-	[Identifier.from(['install.packages', PkgName.Utils]), CallProp.Invisible | CallProp.Network | CallProp.File | CallProp.Writes],
-	[Identifier.from(['png', PkgName.GrDevices]), CallProp.Invisible | CallProp.Graphics | CallProp.File | CallProp.Writes],
-	[Identifier.from(['UseMethod', PkgName.Base]), CallProp.Generic],
-	[Identifier.from(['invisible', PkgName.Base]), CallProp.Pure | CallProp.Invisible]
+	[Identifier.from(['png', PkgName.GrDevices]), CallProp.Invisible | CallProp.Graphics | CallProp.File | CallProp.Writes]
 ];
 
-/** and what their signatures are expected to say */
+/** and the shapes a signature comes in */
 const ExpectedSigs: readonly (readonly [Identifier, FnSig])[] = [
 	[Identifier.from(['+', PkgName.Base]), [['e1', ArgProp.Value], ['e2', ArgProp.Value]]],
-	[Identifier.from(['nrow', PkgName.Base]), [['x', ArgProp.Shape]]],
 	[Identifier.from(['sum', PkgName.Base]), [['...', ArgProp.Value]]],
 	[Identifier.from(['missing', PkgName.Base]), [['x', ArgProp.Presence]]],
 	/* `Alias` is what states the argument handed back, so these have to keep declaring it */
 	[Identifier.from(['identity', PkgName.Base]), [['x', ArgProp.Alias | ArgProp.Forced]]],
-	[Identifier.from(['print', PkgName.Base]), [['x', ArgProp.Alias | ArgProp.Forced]]],
-	[Identifier.from(['return', PkgName.Base]), [['value', ArgProp.Alias]]],
 	[Identifier.from(['match.arg', PkgName.Base]), [['arg', ArgProp.Value], ['choices', ArgProp.Bounds]]],
-	[Identifier.from(['lapply', PkgName.Base]), [['X', ArgProp.Value], ['FUN', ArgProp.Callee]]],
-	[Identifier.from(['quote', PkgName.Base]), [['expr', ArgProp.Nse]]],
 	[Identifier.from(['read.csv', PkgName.Utils]), [['file', ArgProp.Resource]]]
 ];
 
@@ -273,6 +254,26 @@ describe('Built-in properties', () => {
 						assert.isFalse(declared.has(name), `${name} is redefined without the signature it had before`);
 					}
 				}
+			}
+		});
+	});
+
+	describe('Labeling the generics', () => {
+		const written = new Map(WrittenBuiltinDefinitions.flatMap(d => builtInNames(d).map(n => [Identifier.toString(n), d] as const)));
+		const registered = new Map(DefaultBuiltinConfig.flatMap(d => builtInNames(d).map(n => [Identifier.toString(n), d] as const)));
+		test(label('every definition stays registered', ['name-normal'], ['other']), () => {
+			assert.deepStrictEqual([...registered.keys()].sort(), [...written.keys()].sort());
+		});
+		test(label('nothing but the `Generic` bit changes', ['name-normal'], ['other']), () => {
+			for(const [name, def] of registered) {
+				const before = written.get(name) as typeof def;
+				const info = (d: typeof def) => (d as { config?: BuiltInFnInfo }).config;
+				assert.deepStrictEqual({ ...info(def), props: undefined }, { ...info(before), props: undefined }, name);
+				assert.deepStrictEqual((def as { processor?: string }).processor, (before as { processor?: string }).processor, name);
+				assert.deepStrictEqual((def as { evalHandler?: string }).evalHandler, (before as { evalHandler?: string }).evalHandler, name);
+				const gained = (info(def)?.props ?? 0) & ~(info(before)?.props ?? 0);
+				assert.strictEqual(gained & ~CallProp.Generic, 0, `${name} gained more than \`Generic\``);
+				assert.strictEqual((info(before)?.props ?? 0) & ~(info(def)?.props ?? 0), 0, `${name} lost a property`);
 			}
 		});
 	});

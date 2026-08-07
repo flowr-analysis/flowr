@@ -122,11 +122,8 @@ function propNames(mask: number): string {
 		.map(([n]) => `\`${n}\``).join(', ');
 }
 
-/**
- * A table per property enum, taken straight from the configuration: what each bit means (its own doc comment),
- * how many built-ins carry it, and which of them the signature database can state on its own.
- */
-function builtInPropsTables(ctx: GeneralDocContext): string {
+/** The "Labeling the Built-Ins" section of the Core page, with a table per enum taken from the configuration. */
+function builtInLabelsSection(ctx: GeneralDocContext): string {
 	const index = BuiltInIndex.default();
 	/* the doc comment of a bit is its explanation, flattened to fit a table cell; bits nothing carries are left out */
 	const table = (type: 'CallProp' | 'ArgProp', of: (bit: number) => number) => [
@@ -143,7 +140,34 @@ function builtInPropsTables(ctx: GeneralDocContext): string {
 			})
 	].join('\n');
 
-	return `${details('What each call property means', `<sup>db</sup> marks the bits the ${ctx.linkPage('wiki/Signature Database', 'signature database')}
+	return `#### Labeling the Built-Ins
+
+Besides the processor, an entry says what the function *is*, in two label vocabularies:
+
+* ${ctx.link('CallProp')} labels the call as a whole (\`props\`): whether it is pure, whether it throws, whether it
+  touches the file system, whether it dispatches, and so on. \`print\` is \`Invisible | Generic | Prints\`; R's
+  primitive generics (\`+\`, \`sin\`, \`length\`, ...) are \`Pure | Generic\`, and as they have no R body, the store is
+  the only place that can say they dispatch.
+* ${ctx.link('ArgProp')} labels each parameter (\`sig\`), in the order R declares them: which one carries the data,
+  which one only selects a behavior, which one names a file, which one is called as a function.
+
+For several analyses the labels are all they know about a call: ${ctx.link(BuiltInIndex.name)} turns them into the
+questions callers ask over and over (\`with\`, \`without\`, \`params\`), which is how the
+${ctx.linkPage('wiki/Query API', 'input-sources query')} knows which functions bring in data of their own, and how
+${ctx.linkPage('wiki/Linter', 'linting rules')} like *seeded randomness* find every call drawing from the RNG without
+naming a single one of them. Labeling a built-in therefore teaches all of them at once.
+
+So \`lapply\` is pure on its own but runs what it is handed, and says which argument that is:
+
+${codeBlock('ts', `{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['lapply', 'sapply', 'vapply']),
+  processor: BuiltInProcName.Apply,
+  config:    { indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true,
+               props: CallProp.MayPure, sig: [['X', ArgProp.Value], ['FUN', ArgProp.Callee]] } }`)}
+
+The two tables below are generated from the configuration itself, so they always list every label that exists,
+what it means, and how many built-ins carry it.
+
+${details('What each call property means', `<sup>db</sup> marks the bits the ${ctx.linkPage('wiki/Signature Database', 'signature database')}
 states for any package function on its own (${ctx.link(inferFnProps.name)} reads them off an entry and carries what a
 function calls over to the function calling it).
 
@@ -163,13 +187,6 @@ them, with \`...\` covering every position from where it appears. The count is h
 parameter in that role.
 
 ${table('ArgProp', bit => new Set(index.params(bit).map(p => p.call)).size)}`)}
-
-So \`lapply\` is pure on its own but runs what it is handed, and says which argument that is:
-
-${codeBlock('ts', `{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['lapply', 'sapply', 'vapply']),
-  processor: BuiltInProcName.Apply,
-  config:    { indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true,
-               props: CallProp.MayPure, sig: [['X', ArgProp.Value], ['FUN', ArgProp.Callee]] } }`)}
 `;
 }
 
@@ -216,6 +233,7 @@ See the ${ctx.linkPage('wiki/FAQ', 'FAQ')} (*How to get flowR to talk?*) for mor
   * [Parsing](#parsing)
   * [Normalization](#normalization)
   * [Dataflow Graph Generation](#dataflow-graph-generation)
+    * [Labeling the Built-Ins](#labeling-the-built-ins)
 * [Beyond the Dataflow Graph](#beyond-the-dataflow-graph)
   * [Static Backward Slicing](#static-backward-slicing)
 * [Gas (Resource Guard)](#gas-resource-guard)
@@ -504,12 +522,10 @@ by mapping function names to ${ctx.link('BuiltInProcessorMapper')} functions.
 There you can find functions like ${ctx.link(processAccess)} which handles the (subset) access to a variable,
 or ${ctx.link(processForLoop)} which handles the primitive for loop construct (whenever it is not overwritten).
 
-Besides the processor, an entry states what the function does with ${ctx.link('BuiltInFnInfo')}: its ${ctx.link('CallProp')} bits
-say what the call as a whole does, its ${ctx.link('FnSig')} says what each argument is used for (in the order R declares them,
-with \`...\` covering every position from where it appears). Anything you add there is picked up by ${ctx.link(BuiltInIndex.name)},
-which is how the ${ctx.linkPage('wiki/Query API', 'input-sources query')} learns which functions bring in data of their own.
+Besides the processor, an entry states what the function does with ${ctx.link('BuiltInFnInfo')} -- see
+[Labeling the Built-Ins](#labeling-the-built-ins) below for the labels it may carry.
 
-${builtInPropsTables(ctx)}
+${builtInLabelsSection(ctx)}
 
 Just as an example, we want to have a look at the ${ctx.link(processRepeatLoop)} function, as it is one of the simplest built-in processors
 we have:

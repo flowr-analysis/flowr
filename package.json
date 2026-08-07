@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.13.5",
+  "version": "2.13.8",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {
@@ -30,6 +30,7 @@
     "build": "npm run gen:base-packages && tsc --project . && npm run build:copy-data",
     "gen:base-packages": "ts-node --transpile-only scripts/gen-base-packages.ts",
     "sync:sigdb": "ts-node --transpile-only scripts/sigdb-sync.ts",
+    "check:generic-labels": "ts-node --transpile-only scripts/check-generic-labels.ts",
     "gen:sigdb-remote": "ts-node --transpile-only scripts/sigdb-remote.ts",
     "publish:sigdb": "ts-node scripts/publish-sigdb.ts",
     "build:copy-data": "ts-node --transpile-only scripts/sigdb-copy.ts",

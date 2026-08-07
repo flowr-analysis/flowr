@@ -28,7 +28,7 @@ export abstract class FlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerP
 }
 
 // `.Rprofile`/`Rprofile.site` carry no extension but are plain R sources
-export const discoverRSourcesRegex = /(\.(r|rmd|ipynb|qmd|rnw)|(^|[\\/])\.?Rprofile(\.site)?)$/i;
+export const discoverRSourcesRegex = /(\.(r|rmd|rmarkdown|ipynb|qmd|rnw)|(^|[\\/])\.?Rprofile(\.site)?)$/i;
 // matched against the posix path relative to the project root
 export const ignorePathsWith = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|\.uvr|Rtmp[^/]*|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles)[^/]*)(\/|$)/i;
 export const excludeRequestsForPaths = /vignettes?|tests?|revdep|inst|data/i;

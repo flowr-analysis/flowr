@@ -190,14 +190,11 @@ export function processLibrary<OtherInfo>(
 	}).information;
 
 	for(const p of packetName){
-		const dependency = data.ctx.deps.getDependency(p);
+		const dependency = data.ctx.deps.loadDependency(p);
 		if(dependency){
 			linkLibrary(dependency, info, rootId, data, spec);
 		} else {
 			info.graph.markIdForUnknownSideEffects(rootId);
-			// no database resolves the package, but the load is syntactically known: record it so an explicit
-			// `p::fn` can still link back to this call. requireNamespace/loadNamespace are recorded too, since
-			// they equally make `p::fn` valid.
 			if(info.environment.level >= 0){
 				info.environment = recordUnresolvedLibraryLoad(info.environment, p, rootId, spec.pos, data.cds);
 			}

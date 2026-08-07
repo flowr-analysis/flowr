@@ -157,6 +157,15 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 */
 	getRequestedRoots(): readonly string[];
 
+	/**
+	 * The total number of files known to this context (every file added via {@link addFile}, both disk-backed and inline).
+	 *
+	 * This is unrelated to {@link getFilesByRole}: A file counted here may have no role, one role, or several
+	 * (summing `getFilesByRole(role).length` over all roles can both over-count (multi-role files) and under-count (roleless files) relative to this method).
+	 *
+	 * Files that were merely considered during dataflow analysis (see {@link consideredFilesList}) but never actually added to the context are not included.
+	 * @returns The number of files currently held by this context.
+	 */
 	getFileCount(): number;
 }
 

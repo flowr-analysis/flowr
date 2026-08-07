@@ -143,7 +143,7 @@ describe('Config Query REPL Completions', () => {
 		label:               'fuzzy-completes a key with no prefix match',
 		startingNewArg:      false,
 		splitLine:           ['+sg'],
-		expectedCompletions: ['+specializeConfig', '+incrementalParsing'],
+		expectedCompletions: ['+specializeConfig'],
 	});
 	assertReplCompletions({ completer,
 		label:               'adds a dot after a full root node',

@@ -18,6 +18,15 @@ export interface ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
 	getOldContentOf(filePath: FilePath): string | undefined;
 }
 
+/**
+ * Heuristic dimension used by {@link FlowrAnalyzerIncrementalAnalysisContext.handleShouldReparse} to decide
+ * whether incremental parsing is worth attempting for a given `filePath`.
+ *
+ * It is not this function's job to respect the config in {@link FlowrConfig.incremental.parsing}:
+ * {@link FlowrAnalyzerIncrementalAnalysisContext.handleShouldReparse} only ever constructs and pushes
+ * a `ShouldReparseTest` for a heuristic that is actually configured/enabled, reading
+ * any thresholds into the closure at construction time.
+ */
 type ShouldReparseTest = (filePath: FilePath, ctx: FlowrAnalyzerContext) => boolean;
 
 /**
@@ -54,11 +63,13 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 	}
 
 	handleShouldReparse(filePath: FilePath, ctx: FlowrAnalyzerContext): boolean {
-		const heuristics = ctx.config.incrementalParsing.heuristics;
-		if(!heuristics) {
+		if(ctx.config.incremental.alwaysIncremental) {
+			return true;
+		}
+		if(!ctx.config.incremental.parsing.activated) {
 			return false;
 		}
-
+		const heuristics = ctx.config.incremental.parsing.heuristics;
 		if(!heuristics.activated || heuristics.alwaysWithEdits) {
 			return true;
 		}
@@ -74,9 +85,14 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 					return true;
 				}
 				const lastMtime = ctx.inc.getLastKnownMtime(filePath);
-				ctx.inc.setLastKnownMtime(filePath, currentMtime);
 
-				return !(lastMtime !== undefined && lastMtime === currentMtime);
+				const mtimeChanged = !(lastMtime !== undefined && lastMtime === currentMtime);
+
+				if(mtimeChanged){
+					ctx.inc.setLastKnownMtime(filePath, currentMtime);
+				}
+
+				return mtimeChanged;
 			});
 		}
 

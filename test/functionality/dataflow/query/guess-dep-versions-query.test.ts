@@ -757,6 +757,31 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		expect(first).toEqual({ pkgA: '2.0.0', pkgB: '1.1.0' });
 	});
 
+	test('a combination whose versions cannot be loaded together is not proposed', async() => {
+		// pkgA 2.0.0 needs pkgB >= 2.0.0, pkgA 1.0.0 only >= 1.0.0; merged over both, pkgB 1.0.0 stays a candidate,
+		// so the raw product still pairs it with pkgA 2.0.0 -- the pairing `library()` rejects
+		const scenario: GuessScenario = {
+			code:     'library(pkgA)\nlibrary(pkgB)\nfa(x)\nfb(y)',
+			packages: {
+				pkgA: { versions: {
+					'1.0.0': { date: '2020-01-01', fns: { fa: ['x'] }, deps: { pkgB: '>= 1.0.0' } },
+					'2.0.0': { date: '2021-01-01', fns: { fa: ['x'] }, deps: { pkgB: '>= 2.0.0' } }
+				} },
+				pkgB: { versions: {
+					'1.0.0': { date: '2020-01-01', fns: { fb: ['y'] } },
+					'2.0.0': { date: '2021-01-01', fns: { fb: ['y'] } }
+				} }
+			},
+			query: { packages: ['pkgA', 'pkgB'], explode: {} }
+		};
+		const assignments = (await runGuess(ts, scenario)).assignments;
+		expect(assignments).toBeDefined();
+		expect(assignments).not.toContainEqual({ versions: { pkgA: '2.0.0', pkgB: '1.0.0' } });
+		for(const { versions } of assignments ?? []) {
+			expect(versions.pkgA === '2.0.0' ? versions.pkgB : '2.0.0').toBe('2.0.0');
+		}
+	});
+
 	test('without a signature database the query explains why it cannot guess', async() => {
 		const res = await runGuess(ts, {
 			code:     'library(dplyr)',

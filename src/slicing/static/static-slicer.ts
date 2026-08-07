@@ -78,7 +78,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 	}
 
-	const queue = new VisitingQueue(threshold, cache);
+	const queue = new VisitingQueue(threshold, cache, id => graph.hasVertex(id));
 
 	let minNesting = Number.MAX_SAFE_INTEGER;
 	const sliceSeedIds = new Set<NodeId>();

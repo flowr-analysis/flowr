@@ -1003,6 +1003,15 @@ export const WrittenBuiltinDefinitions = [
 		},
 		assumePrimitive: true
 	},
+	{ type:            'function', names:           [Identifier.from(['on_load', PkgName.Rlang])],
+		processor:       BuiltInProcName.Default,
+		config:          { libFn: true, props: CallProp.Invisible | CallProp.Scope | CallProp.MayPure, sig: [['expr', ArgProp.Forced], ['env', ArgProp.Value], ['ns', ArgProp.Value]] }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['on_package_load', PkgName.Rlang])],
+		processor:       BuiltInProcName.Default,
+		config:          { libFn: true, props: CallProp.Invisible | CallProp.Scope | CallProp.MayPure, sig: [['pkg', ArgProp.Value], ['expr', ArgProp.Forced], ['env', ArgProp.Value]] }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['run_on_load', PkgName.Rlang])],
+		processor:       BuiltInProcName.Default,
+		config:          { libFn: true, props: CallProp.Invisible | CallProp.Scope | CallProp.MayPure, sig: [['ns', ArgProp.Value]] }, assumePrimitive: false },
 	/* `parse(text=)` turns text into an expression, with `file=` it reads that file */
 	{ type:            'function', names:           [Identifier.from(['parse', PkgName.Base])],
 		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', props: CallProp.Pure }, assumePrimitive: false },

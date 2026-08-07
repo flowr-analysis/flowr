@@ -128,7 +128,26 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'av',      name: 'av_capture_graphics',  argIdx: 1, argName: 'output',   resolveValue: true },
 	{ package: 'tuneR',   name: 'writeWave',             argIdx: 1, argName: 'filename', resolveValue: true },
 	{ package: 'seewave', name: 'savewav',               argName: 'filename', resolveValue: true, defaultValue: '<wave-name>' },
-	{ package: 'audio',   name: 'save.wave',             argIdx: 1, argName: 'where',    resolveValue: true }
+	{ package: 'audio',   name: 'save.wave',             argIdx: 1, argName: 'where',    resolveValue: true },
+	/* geospatial */
+	{ package: 'terra',  name: 'writeRaster', argIdx: 1, argName: 'filename', resolveValue: true },
+	{ package: 'terra',  name: 'writeVector', argIdx: 1, argName: 'filename', resolveValue: true },
+	{ package: 'terra',  name: 'writeCDF',    argIdx: 1, argName: 'filename', resolveValue: true },
+	{ package: 'raster', name: 'writeRaster', argIdx: 1, argName: 'filename', resolveValue: true },
+	{ package: 'stars',  name: 'write_stars', argIdx: 1, argName: 'dsn',      resolveValue: true },
+	/* array / binary science formats */
+	{ package: 'ncdf4',    name: 'nc_create',  argIdx: 0, argName: 'filename', resolveValue: true },
+	{ package: 'RNetCDF',  name: 'create.nc',  argIdx: 0, argName: 'filename', resolveValue: true },
+	{ package: 'R.matlab', name: 'writeMat',   argIdx: 0, argName: 'con',      resolveValue: true },
+	{ package: 'rhdf5',    name: 'h5write',    argIdx: 1, argName: 'file',     resolveValue: true },
+	{ package: 'rhdf5',    name: 'h5createFile', argIdx: 0, argName: 'file',   resolveValue: true },
+	{ package: 'fst',      name: 'write_fst',  argIdx: 1, argName: 'path',     resolveValue: true },
+	{ package: 'qs',       name: 'qsave',      argIdx: 1, argName: 'file',     resolveValue: true },
+	{ package: 'yaml',     name: 'write_yaml', argIdx: 1, argName: 'file',     resolveValue: true },
+	/* phylogeny / sequence */
+	{ package: 'ape',    name: 'write.dna',        argIdx: 1, argName: 'file',     resolveValue: true },
+	{ package: 'ape',    name: 'write.nexus.data', argIdx: 1, argName: 'file',     resolveValue: true },
+	{ package: 'seqinr', name: 'write.fasta',      argIdx: 2, argName: 'file.out', resolveValue: true }
 ] as const;
 
 export const WriteFunctions: FunctionInfo[] = [

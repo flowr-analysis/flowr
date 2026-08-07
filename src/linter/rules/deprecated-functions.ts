@@ -20,7 +20,7 @@ import { Dataflow } from '../../dataflow/graph/df-helper';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { hasArgumentValue } from './function-finder-util';
 import { Ternary } from '../../util/logic';
-import type { KnownParser } from '../../r-bridge/parser';
+import type  { KnownParser } from '../../r-bridge/parser';
 
 /**
  * Information about an argument of a function that should be flagged as deprecated if it is called with this argument
@@ -255,7 +255,7 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
 	// Deprecated Argument: If `whenArgs` is provided, only mark deprecated arguments
 	if(info.whenArgs) {
 		const vertex = dataflow.getVertex(candidate.node.info.id);
-		if (vertex === undefined || !FunctionCallVertex.is(vertex)) {
+		if(vertex === undefined || !FunctionCallVertex.is(vertex)) {
 			return results;
 		}
 

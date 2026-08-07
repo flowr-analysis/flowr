@@ -10,10 +10,12 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { LinkToLastCall } from './call-context-query-format';
 import { CascadeAction } from './cascade-action';
-import type { PromotedLinkTo } from './call-context-query-executor';
+import type { PromotedCallTest, PromotedLinkTo } from './call-context-query-executor';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import { CfgKind } from '../../../project/cfg-kind';
 import type { ControlFlowGraph } from '../../../control-flow/control-flow-graph';
+
+type KnownCalls = Map<NodeId, Required<DataflowGraphVertexFunctionCall>>;
 
 export enum CallTargets {
 	/** call targets a function that is not defined locally in the script (e.g., the call targets a library function) */
@@ -136,12 +138,33 @@ export async function identifyLinkToLastCallRelation(
 	from: NodeId,
 	analyzer: ReadonlyFlowrAnalysisProvider,
 	l: LinkToLastCall<RegExp> | PromotedLinkTo<LinkToLastCall<RegExp>>,
-	knownCalls?: Map<NodeId, Required<DataflowGraphVertexFunctionCall>>
+	knownCalls?: KnownCalls
 ): Promise<NodeId[]> {
 	const graph = (await analyzer.dataflow()).graph;
 	const cfg = (await analyzer.controlflow([], CfgKind.WithDataflow)).graph;
 
 	return identifyLinkToLastCallRelationSync(from, cfg, graph, l, knownCalls);
+}
+
+/**
+ * Memoizes, per set of known calls and per `callName`, whether any call can match it at all. One link keeps the same
+ * `callName` object across every call site it is evaluated against, so identity is enough to key it.
+ */
+const candidatesPerCallSet = new WeakMap<KnownCalls, Map<RegExp | PromotedCallTest, boolean>>();
+
+function anyCallMatches(knownCalls: KnownCalls, callName: RegExp | PromotedCallTest, matches: (vertex: DataflowGraphVertexFunctionCall) => boolean): boolean {
+	let perName = candidatesPerCallSet.get(knownCalls);
+	if(perName === undefined) {
+		perName = new Map();
+		candidatesPerCallSet.set(knownCalls, perName);
+	}
+	const cached = perName.get(callName);
+	if(cached !== undefined) {
+		return cached;
+	}
+	const matched = knownCalls.values().some(matches);
+	perName.set(callName, matched);
+	return matched;
 }
 
 /**
@@ -152,7 +175,7 @@ export function identifyLinkToLastCallRelationSync(
 	cfg: ControlFlowGraph,
 	graph: DataflowGraph,
 	{ callName, cascadeIf, ignoreIf }: LinkToLastCall<RegExp> | PromotedLinkTo<LinkToLastCall<RegExp>>,
-	knownCalls?: Map<NodeId, Required<DataflowGraphVertexFunctionCall>>
+	knownCalls?: KnownCalls
 ): NodeId[] {
 	if(ignoreIf?.(from, graph)) {
 		return [];
@@ -160,6 +183,13 @@ export function identifyLinkToLastCallRelationSync(
 	const found: NodeId[] = [];
 	const cNameCheck = callName instanceof RegExp ? ({ name }: DataflowGraphVertexFunctionCall) => callName.test(Identifier.getName(name))
 		: ({ name }: DataflowGraphVertexFunctionCall) => callName(Identifier.getName(name));
+
+	/* only a call matching `callName` is ever collected, so with none in the whole graph every walk below returns
+	 * nothing: skipping them turns one reverse walk per call site into a single scan (a `sink` redirect in a
+	 * script that never sinks is the common case) */
+	if(knownCalls !== undefined && !anyCallMatches(knownCalls, callName, cNameCheck)) {
+		return [];
+	}
 
 	const getVertex = knownCalls ?
 		(node: NodeId) => knownCalls.get(node) :

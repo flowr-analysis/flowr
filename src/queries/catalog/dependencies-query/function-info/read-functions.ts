@@ -131,6 +131,32 @@ const ReadFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'tuneR',  name: 'readMidi',         argIdx: 0, argName: 'file',     resolveValue: true },
 	{ package: 'seewave', name: 'read.audacity',   argIdx: 0, argName: 'file',     resolveValue: true },
 	{ package: 'audio',  name: 'load.wave',         argIdx: 0, argName: 'where',   resolveValue: true },
+	/* geospatial (no `raster::stack`: only the name is matched on and `utils::stack` shares it) */
+	{ package: 'terra',    name: 'rast',            argIdx: 0, argName: 'x',   resolveValue: true },
+	{ package: 'terra',    name: 'vect',            argIdx: 0, argName: 'x',   resolveValue: true },
+	{ package: 'raster',   name: 'raster',          argIdx: 0, argName: 'x',   resolveValue: true },
+	{ package: 'raster',   name: 'brick',           argIdx: 0, argName: 'x',   resolveValue: true },
+	{ package: 'raster',   name: 'shapefile',       argIdx: 0, argName: 'x',   resolveValue: true },
+	{ package: 'stars',    name: 'read_stars',      argIdx: 0, argName: '.x',  resolveValue: true },
+	{ package: 'stars',    name: 'read_ncdf',       argIdx: 0, argName: '.x',  resolveValue: true },
+	{ package: 'maptools', name: 'readShapeLines',   argIdx: 0, argName: 'fn', resolveValue: true },
+	{ package: 'maptools', name: 'readShapePoints',  argIdx: 0, argName: 'fn', resolveValue: true },
+	{ package: 'maptools', name: 'readShapeSpatial', argIdx: 0, argName: 'fn', resolveValue: true },
+	/* array / binary science formats */
+	{ package: 'ncdf4',    name: 'nc_open',   argIdx: 0, argName: 'filename', resolveValue: true },
+	{ package: 'RNetCDF',  name: 'open.nc',   argIdx: 0, argName: 'con',      resolveValue: true },
+	{ package: 'R.matlab', name: 'readMat',   argIdx: 0, argName: 'con',      resolveValue: true },
+	{ package: 'rhdf5',    name: 'h5read',    argIdx: 0, argName: 'file',     resolveValue: true },
+	{ package: 'rhdf5',    name: 'h5ls',      argIdx: 0, argName: 'file',     resolveValue: true },
+	{ package: 'fst',      name: 'read_fst',  argIdx: 0, argName: 'path',     resolveValue: true },
+	{ package: 'qs',       name: 'qread',     argIdx: 0, argName: 'file',     resolveValue: true },
+	{ package: 'yaml',     name: 'read_yaml', argIdx: 0, argName: 'file',     resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
+	/* phylogeny / sequence */
+	{ package: 'ape',    name: 'read.nexus',      argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'ape',    name: 'read.nexus.data', argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'ape',    name: 'read.dna',        argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'ape',    name: 'read.FASTA',      argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'seqinr', name: 'read.fasta',      argIdx: 0, argName: 'file', resolveValue: true },
 	/* shinyjs - loads an external JavaScript file */
 	{ package: 'shinyjs', name: 'extendShinyjs', argIdx: 0, argName: 'script', resolveValue: true, ignoreIf: 'arg-missing' }
 ] as const;

@@ -13,6 +13,7 @@ import { compactRecord } from '../../../util/objects';
 import { VisualizeFunctions } from '../dependencies-query/function-info/visualize-functions';
 import {
 	assignmentsOf,
+	declaredDependenciesOf,
 	collectOrphanUsage,
 	collectUsage,
 	dateCutoff,
@@ -330,7 +331,7 @@ export async function executeGuessDepVersionsQuery(
 	}
 
 	const assignments = query.explode
-		? [...assignmentsOf(ordered, query.explode.limit ?? DefaultExplodeLimit)].map(a => ({ versions: Object.fromEntries(a.versions) }))
+		? [...assignmentsOf(ordered, query.explode.limit ?? DefaultExplodeLimit, declaredDependenciesOf(space))].map(a => ({ versions: Object.fromEntries(a.versions) }))
 		: undefined;
 
 	return compactRecord({

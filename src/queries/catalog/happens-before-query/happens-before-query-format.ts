@@ -23,8 +23,9 @@ export const HappensBeforeQueryDefinition = {
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'happens-before'>['happens-before'];
 		result.push(`Query: ${bold('happens-before', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		for(const [key, value] of Object.entries(out.results)) {
-			result.push(`   ╰ ${key}: ${value}`);
+		for(const [fingerprint, value] of Object.entries(out.results)) {
+			const { a, b } = JSON.parse(fingerprint) as HappensBeforeQuery;
+			result.push(`   ╰ ${bold(a, formatter)} happens before ${bold(b, formatter)}: ${value}`);
 		}
 		return true;
 	},

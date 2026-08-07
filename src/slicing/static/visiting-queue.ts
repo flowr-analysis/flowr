@@ -1,25 +1,28 @@
 import { type Fingerprint, fingerprint } from './fingerprint';
 import type { NodeToSlice, SliceResult } from './slicer-types';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 
 export class VisitingQueue {
-	private readonly threshold:   number;
-	private timesHitThreshold:    number                   = 0;
-	private readonly seen:        Map<Fingerprint, NodeId> = new Map();
-	private readonly seenByCache: Set<NodeId>              = new Set();
-	private readonly idThreshold: Map<NodeId, number>      = new Map();
-	private readonly queue:       NodeToSlice[] = [];
-	private readonly cache?:      Map<Fingerprint, Set<NodeId>> = new Map();
+	private readonly threshold:      number;
+	private timesHitThreshold:       number                   = 0;
+	private readonly seen:           Map<Fingerprint, NodeId> = new Map();
+	private readonly seenByCache:    Set<NodeId>              = new Set();
+	private readonly idThreshold:    Map<NodeId, number>      = new Map();
+	private readonly queue:          NodeToSlice[] = [];
+	private readonly cache?:         Map<Fingerprint, Set<NodeId>> = new Map();
 	// the set of potential additions holds nodes which may be added if a second edge deems them relevant (e.g., found with the `defined-by-on-call` edge)
 	// additionally it holds which node id added the addition so we can separate their inclusion on the structure
-	public potentialAdditions:    Map<NodeId, [NodeId, NodeToSlice]> = new Map();
-	private cachedCallTargets:    Map<NodeId, Set<DataflowGraphVertexInfo>> = new Map();
+	public potentialAdditions:       Map<NodeId, [NodeId, NodeToSlice]> = new Map();
+	private cachedCallTargets:       Map<NodeId, Set<DataflowGraphVertexInfo>> = new Map();
+	/** whether the dataflow graph has a vertex for an id, i.e. whether the traversal could continue from it */
+	private readonly isGraphVertex?: (id: NodeId) => boolean;
 
-	constructor(threshold: number, cache?: Map<Fingerprint, Set<NodeId>>) {
+	constructor(threshold: number, cache?: Map<Fingerprint, Set<NodeId>>, isGraphVertex?: (id: NodeId) => boolean) {
 		this.threshold = threshold;
 		this.cache     = cache;
+		this.isGraphVertex = isGraphVertex;
 	}
 
 	/**
@@ -30,6 +33,12 @@ export class VisitingQueue {
 	 * @param onlyForSideEffects - whether the node is only used for its side effects
 	 */
 	public add(target: NodeId, env: REnvironmentInformation, envFingerprint: string, onlyForSideEffects: boolean): void {
+		/* a built-in without a vertex is R's own definition (`x <- 1` reads `built-in:<-`), a dead end the traversal
+		 * would drop right back out of, so it only ever widened the result */
+		if(NodeId.isBuiltIn(target) && this.isGraphVertex?.(target) === false) {
+			return;
+		}
+
 		const idCounter = this.idThreshold.get(target) ?? 0;
 		if(idCounter > this.threshold) {
 			this.timesHitThreshold++;

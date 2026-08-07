@@ -58,6 +58,11 @@ export class Package {
 		return this._derivedRange;
 	}
 
+	/** {@link derivedRange} if a source declared one, else the {@link resolvedVersion} the exports were read from. */
+	public get effectiveRange(): Range | undefined {
+		return this.derivedRange ?? (this._resolvedVersion !== undefined ? RRange.parse('=' + this._resolvedVersion) : undefined);
+	}
+
 	constructor(info: { name: string } & PackageOptions) {
 		this.name = info.name;
 		this.addInfo(info);

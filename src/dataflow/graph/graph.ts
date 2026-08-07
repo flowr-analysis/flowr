@@ -269,6 +269,9 @@ export class DataflowGraph<
 	private vertexInformation: DataflowGraphVertices<Vertex> = new Map<NodeId, Vertex>();
 	/** All edges in the complete graph (including those nested in function definition) */
 	private edgeInformation:   Map<NodeId, OutgoingEdges<Edge>> = new Map<NodeId, OutgoingEdges<Edge>>();
+	/* the reverse of `edgeInformation`, built on demand and dropped whenever an edge is added: rebuilding it per
+	 * lookup made every caller asking for the ingoing edges of many nodes scan the whole graph once per node */
+	private incomingIndex?:    Map<NodeId, IngoingEdges<Edge>>;
 
 	private readonly types: Map<Vertex['tag'], NodeId[]> = new Map<Vertex['tag'], NodeId[]>();
 
@@ -325,14 +328,22 @@ export class DataflowGraph<
 	}
 
 	public ingoingEdges(id: NodeId): IngoingEdges | undefined {
-		const edges = new Map<NodeId, Edge>();
-		for(const [source, outgoing] of this.edgeInformation.entries()) {
-			const o = outgoing.get(id);
-			if(o) {
-				edges.set(source, o);
+		if(this.incomingIndex === undefined) {
+			const index = new Map<NodeId, IngoingEdges<Edge>>();
+			for(const [source, outgoing] of this.edgeInformation.entries()) {
+				for(const [target, edge] of outgoing) {
+					const into = index.get(target);
+					if(into === undefined) {
+						index.set(target, new Map([[source, edge]]));
+					} else {
+						into.set(source, edge);
+					}
+				}
 			}
+			this.incomingIndex = index;
 		}
-		return edges;
+		/* the historic contract is an (possibly empty) map for every id, never `undefined` */
+		return this.incomingIndex.get(id) ?? new Map<NodeId, Edge>();
 	}
 
 	/**
@@ -464,6 +475,7 @@ export class DataflowGraph<
 		if(fromId === toId) {
 			return this;
 		}
+		this.incomingIndex = undefined;
 
 		let fromEdges = this.edgeInformation.get(fromId);
 		if(fromEdges === undefined) {
@@ -527,6 +539,7 @@ export class DataflowGraph<
 	}
 
 	private mergeEdges(otherGraph: DataflowGraph<Vertex, Edge>) {
+		this.incomingIndex = undefined;
 		for(const [id, edges] of otherGraph.edgeInformation.entries()) {
 			let existing = this.edgeInformation.get(id);
 			if(existing === undefined) {
@@ -647,6 +660,7 @@ export class DataflowGraph<
 			}
 		}
 		graph.edgeInformation = new Map<NodeId, OutgoingEdges>(data.edgeInformation.map(([id, edges]) => [id, new Map<NodeId, DfEdge>(edges)]));
+		graph.incomingIndex = undefined;
 		for(const unknown of data._unknownSideEffects) {
 			graph._unknownSideEffects.add(unknown);
 		}

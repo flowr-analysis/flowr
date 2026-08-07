@@ -10,7 +10,7 @@ import { RRange, RVersion, rReleaseDate, type VersionString } from '../util/r-ve
 import { findByPrefixIfUnique } from '../util/prefix';
 import { RBasePrimitives } from '../data/r-base-primitives.generated';
 import { availableVersionEntries, classOwnerIndexFor, sourceForPackage, type PackageSignatureSource } from './sigdb/reader';
-import type { DecodedFunction } from './sigdb/decode';
+import type { DecodedFunction, ResolvedDependency } from './sigdb/decode';
 import { matchArgumentsToSignature } from './sigdb/signature-match';
 import { parseDateWindow } from './sigdb/sigdb-version';
 import { Identifier } from '../dataflow/environments/identifier';
@@ -1099,8 +1099,37 @@ export function defaultTargets(deps: ReadOnlyFlowrAnalyzerDependenciesContext, u
 	return [...new Set([...deps.getDependencies().map(d => d.name), ...usage.keys()])].filter(name => name !== ProjectPackage);
 }
 
-/** lazily yield concrete version assignments (one version per package) in odometer order over the per-package lists */
-export function* assignmentsOf(perPackage: readonly OrderedCandidates[], limit: number): Generator<VersionAssignment> {
+/** the requirements one concrete version declares, as {@link isCoInstallable} reads them */
+export type DependencyResolver = (pkg: string, version: VersionString) => readonly ResolvedDependency[] | undefined;
+
+/**
+ * Whether the chosen versions can be loaded together. The per-package candidates are narrowed by requirements
+ * merged over *all* versions of the requiring package, so a combination can still pair a version with one that
+ * the version it was actually chosen alongside rules out (`library()` then reports the conflict). Packages
+ * outside the assignment and requirements without a version qualifier constrain nothing.
+ */
+export function isCoInstallable(versions: ReadonlyMap<string, VersionString>, declares: DependencyResolver): boolean {
+	for(const [pkg, version] of versions) {
+		for(const dep of declares(pkg, version) ?? []) {
+			const chosen = versions.get(dep.name);
+			if(chosen === undefined || dep.constraint === undefined) {
+				continue;
+			}
+			const range = RRange.parse(dep.constraint);
+			if(range !== undefined && !RRange.satisfies(chosen, range)) {
+				return false;
+			}
+		}
+	}
+	return true;
+}
+
+/**
+ * Lazily yield concrete version assignments (one version per package) in odometer order over the per-package lists.
+ * With `declares`, a combination whose versions cannot be loaded together is skipped rather than proposed; `limit`
+ * bounds the combinations *considered* either way, so fewer than `limit` assignments may come out.
+ */
+export function* assignmentsOf(perPackage: readonly OrderedCandidates[], limit: number, declares?: DependencyResolver): Generator<VersionAssignment> {
 	if(perPackage.length === 0 || perPackage.some(p => p.versions.length === 0)) {
 		return;
 	}
@@ -1110,7 +1139,9 @@ export function* assignmentsOf(perPackage: readonly OrderedCandidates[], limit: 
 		for(let i = 0; i < perPackage.length; i++) {
 			versions.set(perPackage[i].pkg, perPackage[i].versions[idx[i]]);
 		}
-		yield { versions };
+		if(declares === undefined || isCoInstallable(versions, declares)) {
+			yield { versions };
+		}
 		// advance the odometer: the last package varies fastest
 		let k = perPackage.length - 1;
 		for(; k >= 0; k--) {
@@ -1126,12 +1157,12 @@ export function* assignmentsOf(perPackage: readonly OrderedCandidates[], limit: 
 }
 
 /** the per-package ordered candidate lists for the constraint-space explosion (only packages with a surviving version) */
-async function orderedCandidatesFor(analyzer: ReadonlyFlowrAnalysisProvider, options: VersionExplodeOptions): Promise<OrderedCandidates[]> {
+async function orderedCandidatesFor(analyzer: ReadonlyFlowrAnalysisProvider, options: VersionExplodeOptions): Promise<{ candidates: OrderedCandidates[], declares: DependencyResolver }> {
 	const ctx = analyzer.inspectContext();
 	const deps = ctx.deps;
 	const sources = deps.signatureSources();
 	if(sources.length === 0) {
-		return [];
+		return { candidates: [], declares: () => undefined };
 	}
 	const cutoff = options.date ? dateCutoff(options.date) : undefined;
 	// bound base packages by R only when genuinely known (a config pin, metadata, or detection); `auto` with nothing detected imposes no R ceiling
@@ -1149,7 +1180,12 @@ async function orderedCandidatesFor(analyzer: ReadonlyFlowrAnalysisProvider, opt
 			out.push(oc);
 		}
 	}
-	return out;
+	return { candidates: out, declares: declaredDependenciesOf(space) };
+}
+
+/** the {@link DependencyResolver} backed by the signature database a version space resolves each package in */
+export function declaredDependenciesOf(space: VersionSpace): DependencyResolver {
+	return (pkg, version) => space.resolve(pkg).src?.dependencies(pkg, version);
 }
 
 /**
@@ -1160,5 +1196,6 @@ async function orderedCandidatesFor(analyzer: ReadonlyFlowrAnalysisProvider, opt
  * {@link VersionExplodeOptions.limit} so an enormous product cannot run away.
  */
 export async function* explodeDependencyVersions(analyzer: ReadonlyFlowrAnalysisProvider, options: VersionExplodeOptions = {}): AsyncGenerator<VersionAssignment> {
-	yield* assignmentsOf(await orderedCandidatesFor(analyzer, options), options.limit ?? DefaultExplodeLimit);
+	const { candidates, declares } = await orderedCandidatesFor(analyzer, options);
+	yield* assignmentsOf(candidates, options.limit ?? DefaultExplodeLimit, declares);
 }

@@ -6,11 +6,18 @@ import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { AstIdMap, RNodeWithParent } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
+import { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
 
 /** the node a criterion resolves to, which tells far more about the pick than a bare id */
 function nodeOf(criterion: SlicingCriterion, idMap: AstIdMap): RNodeWithParent | undefined {
 	const id = SlicingCriterion.tryParse(criterion, idMap);
 	return id === undefined ? undefined : idMap.get(id);
+}
+
+/** the full source text of the node a criterion resolves to, as an operator's own lexeme is just the operator */
+function fullTextOf(criterion: SlicingCriterion, idMap: AstIdMap): string | undefined {
+	const node = nodeOf(criterion, idMap);
+	return node === undefined ? undefined : RNode.lexeme(node);
 }
 
 async function idMapOf(ts: TreeSitterExecutor, code: string): Promise<AstIdMap> {
@@ -81,6 +88,44 @@ describe('Slicing criteria', withTreeSitter(ts => {
 			expect(nodeOf('2~8', idMap)?.lexeme).toBe('x');
 			// `y` is more precise than the whole `y <- f(x)` containing column 1 as well
 			expect(nodeOf('2~1', idMap)?.lexeme).toBe('y');
+		});
+	});
+
+	describe('line^', () => {
+		test('widens to the statement instead of an inner sub-expression', async() => {
+			const idMap = await idMapOf(ts, 'x <- 1\ny <- f(g(x) + 1)');
+			// `2~8` lands on the inner `g(x)`, the statement is the whole assignment
+			expect(nodeOf('2~8', idMap)?.lexeme).toBe('g');
+			expect(fullTextOf('2^', idMap)).toBe('y <- f(g(x) + 1)');
+		});
+
+		test('a statement spanning several lines is found from any of them', async() => {
+			const code = 'x <- 1\nif (x > 0) {\n  y <- 2\n}';
+			const idMap = await idMapOf(ts, code);
+			for(const line of ['2^', '3^', '4^'] as const) {
+				expect(nodeOf(line, idMap)?.type, line).toBe(RType.IfThenElse);
+			}
+			expect(fullTextOf('1^', idMap)).toBe('x <- 1');
+		});
+
+		test('the first statement wins when several share the line', async() => {
+			const idMap = await idMapOf(ts, 'a <- 1; b <- 2');
+			expect(fullTextOf('1^', idMap)).toBe('a <- 1');
+		});
+
+		test('a negative line counts from the end, as for the other criteria', async() => {
+			const idMap = await idMapOf(ts, 'x <- 1\ny <- 2');
+			expect(nodeOf('-1^', idMap)?.info.id).toBe(nodeOf('2^', idMap)?.info.id);
+		});
+	});
+
+	describe('isValid', () => {
+		test.each(['2:5', '2~5', '2^', '-1^', '2@x', '2@[2]x', '-1@x', '2@x(tmp/.*)', '$42'])('accepts %s', criterion => {
+			expect(SlicingCriterion.isValid(criterion)).toBe(true);
+		});
+
+		test.each(['nonsense', 'xx2@y', '2', '', '@x'])('rejects %s', criterion => {
+			expect(SlicingCriterion.isValid(criterion)).toBe(false);
 		});
 	});
 

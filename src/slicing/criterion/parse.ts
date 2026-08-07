@@ -16,7 +16,7 @@ type FileFilterSuffix = '' | `(${string})`;
  * `(file-regex)`. See {@link SlicingCriterion.tryParse} for what each of them resolves to.
  */
 export type SlicingCriterion = `${number}:${number}${FileFilterSuffix}` | `${number}~${number}${FileFilterSuffix}`
-	| `${number}@${string}` | `$${NodeId | number}`;
+	| `${number}^${FileFilterSuffix}` | `${number}@${string}` | `$${NodeId | number}`;
 
 /**
  * The helper object associated with {@link SlicingCriterion} which makes it easy
@@ -30,7 +30,7 @@ export const SlicingCriterion = {
 	 * @see {@link SlicingCriterion.parse} to parse a slicing criterion to a node ID
 	 */
 	isValid(this: void, criterion: unknown): criterion is SlicingCriterion {
-		return typeof criterion === 'string' && criterion.match(/^\d+:\d+|\d+@.+|\$.+$/) !== null;
+		return typeof criterion === 'string' && /^(-?\d+([:~]\d+|\^|@.+)|\$.+)$/.test(criterion);
 	},
 	/**
 	 * Takes a criterion in the form of `line:column`, `line~column`, or `line@variable-name` and returns the corresponding node id
@@ -52,6 +52,7 @@ export const SlicingCriterion = {
 	 * | `2@[3]x`   | the 3rd occurrence of `x` in line 2 (by column); `[-1]` for the last |
 	 * | `2:5`      | the element *starting* at line 2, column 5 |
 	 * | `2~5`      | the innermost element *containing* line 2, column 5 |
+	 * | `2^`       | the top-level statement line 2 belongs to, the first one when several share the line |
 	 * | `$42`      | the node with the normalized id 42 |
 	 *
 	 * A negative line counts from the end of the input (`-1` being the last line). Every criterion but `$id`
@@ -90,6 +91,9 @@ export const SlicingCriterion = {
 		} else if(base.includes('~')) {
 			const location = parseLocation(base, '~', idMap, file);
 			return location && fuzzyLocationToId(location, idMap, file);
+		} else if(base.endsWith('^')) {
+			const line = parseLineNumber(base.slice(0, -1), idMap, file);
+			return line === undefined ? undefined : topLevelStatementToId(line, idMap, file);
 		}
 	},
 	/**
@@ -178,6 +182,39 @@ function fuzzyLocationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: A
 	const candidates = SourceRange.innermostNodes(SourceRange.nodesContaining(potentials, location[0], location[1]), false);
 	// prefer the call over the symbol it refers to, exactly as locationToId does
 	return (candidates.find(n => n.type === RType.FunctionCall) ?? candidates[0])?.info.id;
+}
+
+/** Walks up to the statement `node` belongs to: the outermost node still below the root of its file. */
+function enclosingTopLevelStatement<OtherInfo>(node: RNodeWithParent<OtherInfo>, idMap: AstIdMap<OtherInfo>): RNodeWithParent<OtherInfo> {
+	let current = node;
+	for(;;) {
+		const parent = current.info.parent !== undefined ? idMap.get(current.info.parent) : undefined;
+		if(parent === undefined || parent.info.parent === undefined) {
+			return current;
+		}
+		current = parent;
+	}
+}
+
+/**
+ * Resolves a `line^` criterion: the top-level statement covering the line, which is what has to be excised to
+ * remove that line from the program. Unlike {@link fuzzyLocationToId} this widens rather than narrows, so an
+ * inner sub-expression on the line never stands in for the statement carrying it.
+ */
+function topLevelStatementToId<OtherInfo>(line: number, idMap: AstIdMap<OtherInfo>, file?: RegExp): NodeId | undefined {
+	const potentials = [...idMap.values()].filter(nodeInfo => matchesFile(nodeInfo, file));
+	let best: RNodeWithParent<OtherInfo> | undefined;
+	let bestRange: SourceRange | undefined;
+	for(const node of SourceRange.nodesContaining(potentials, line)) {
+		const statement = enclosingTopLevelStatement(node, idMap);
+		const range = SourceRange.fromNode(statement);
+		/* several statements may cover the line (`a <- 1; b <- 2`), the one starting first wins */
+		if(range !== undefined && (bestRange === undefined || SourceRange.compare(range, bestRange) < 0)) {
+			best = statement;
+			bestRange = range;
+		}
+	}
+	return best?.info.id;
 }
 
 /**

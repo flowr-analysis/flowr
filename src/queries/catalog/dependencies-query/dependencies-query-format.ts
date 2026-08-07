@@ -16,11 +16,16 @@ import type { CallContextQueryResult } from '../call-context-query/call-context-
 import type { Range } from 'semver';
 import type { AsyncOrSync, MarkOptional } from 'ts-essentials';
 import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
-import { TestFunctions } from './function-info/test-functions';
+import { ExpectFunctionNames, TestFunctions } from './function-info/test-functions';
 import type { BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { compactRecord } from '../../../util/objects';
+import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
+import { CallProp } from '../../../dataflow/environments/built-in-props';
+import { VertexType } from '../../../dataflow/graph/vertex';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
 
 export const Unknown = 'unknown';
 
@@ -59,7 +64,7 @@ export const DefaultDependencyCategories = {
 							functionName:       RNode.lexeme(node).includes(':::') ? ':::' : '::',
 							value:              ns,
 							versionConstraints: dep?.versionConstraints,
-							derivedRange:       dep?.derivedRange,
+							derivedRange:       dep?.effectiveRange,
 							namespaceInfo:      dep?.namespaceInfo
 						});
 					}
@@ -82,6 +87,37 @@ export const DefaultDependencyCategories = {
 		functions:        WriteFunctions,
 		defaultValue:     'stdout'
 	},
+	'print': {
+		queryDisplayName:   'Auto-printed Results',
+		functions:          [],
+		defaultValue:       'stdout',
+		additionalAnalysis: async(data, ignoreDefault, _functions, queryResults, result) => {
+			if(ignoreDefault) {
+				return;
+			}
+			const [{ ast }, dataflow] = await Promise.all([data.analyzer.normalize(), data.analyzer.dataflow()]);
+			const accountedFor = new Set(Object.values(queryResults?.kinds ?? {})
+				.flatMap(k => Object.values(k.subkinds).flat()).map(r => r.id));
+			for(const file of ast.files) {
+				for(const statement of file.root.children) {
+					if(statement.type !== RType.FunctionCall || accountedFor.has(statement.info.id)) {
+						continue;
+					}
+					const vertex = dataflow.graph.getVertex(statement.info.id);
+					const functionName = vertex?.tag === VertexType.FunctionCall
+						? Dataflow.qualify(statement.info.id, dataflow.graph, false) ?? vertex.name : undefined;
+					if(functionName === undefined) {
+						continue;
+					}
+					const props = queryFnProps(functionName, { environment: dataflow.environment })?.props ?? 0;
+					if((props & (CallProp.Invisible | CallProp.Graphics)) !== 0 || ExpectFunctionNames.test(Identifier.getName(functionName))) {
+						continue;
+					}
+					result.push({ nodeId: statement.info.id, functionName, value: 'stdout' });
+				}
+			}
+		}
+	},
 	'visualize': {
 		queryDisplayName: 'Visualizations',
 		functions:        VisualizeFunctions
@@ -98,6 +134,7 @@ export interface DependenciesQuery extends BaseQueryFormat, Partial<Record<`${De
 	readonly type:                    'dependencies'
 	readonly enabledCategories?:      DependencyCategoryName[]
 	readonly ignoreDefaultFunctions?: boolean
+	/** Naming a built-in category extends it; use `ignoreDefaultFunctions` to drop the built-in functions. */
 	readonly additionalCategories?:   Record<string, MarkOptional<DependencyCategorySettings, 'additionalAnalysis'>>
 }
 
@@ -135,12 +172,18 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 
 /**
  * Gets all dependency categories, including user-defined additional categories.
+ * A category named like a built-in one extends it instead of replacing it.
  */
 export function getAllCategories(queries: readonly DependenciesQuery[]): Record<DependencyCategoryName, DependencyCategorySettings> {
-	let categories = DefaultDependencyCategories;
+	const categories: Record<DependencyCategoryName, DependencyCategorySettings> = { ...DefaultDependencyCategories };
 	for(const query of queries) {
-		if(query.additionalCategories) {
-			categories = { ...categories, ...query.additionalCategories };
+		for(const [name, settings] of Object.entries(query.additionalCategories ?? {})) {
+			const known = categories[name];
+			categories[name] = known === undefined ? settings : {
+				...known,
+				...compactRecord(settings),
+				functions: [...known.functions, ...settings.functions]
+			};
 		}
 	}
 	return categories;
@@ -173,7 +216,7 @@ export const DependenciesQueryDefinition = {
 			queryDisplayName: Joi.string().description('The display name in the query result.'),
 			functions:        functionInfoSchema.description('The functions that this additional category should search for.'),
 			defaultValue:     Joi.string().description('The default value to return when there is no value to gather from the function information.').optional()
-		})).description('A set of additional, user-supplied dependency categories, whose results will be included in the query return value.').optional()
+		})).description('A set of additional, user-supplied dependency categories, whose results will be included in the query return value. Using the name of a built-in category extends it instead of replacing it.').optional()
 	}).description('The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data.'),
 	flattenInvolvedNodes: (queryResults, query): NodeId[] => {
 		const out = queryResults as DependenciesQueryResult;

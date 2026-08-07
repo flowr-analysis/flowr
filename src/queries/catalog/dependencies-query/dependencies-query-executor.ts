@@ -72,7 +72,8 @@ export async function executeDependenciesQuery({
 	if(query.additionalCategories !== undefined){
 		for(const [category, value] of Object.entries(query.additionalCategories)) {
 			// custom categories only use the "functions" collection and do not allow specifying additional functions in the object itself, so we "undefined" a lot here
-			functions.set(category, getFunctionsToCheck(undefined, category, undefined, false, value.functions));
+			const custom = getFunctionsToCheck(undefined, category, undefined, false, value.functions);
+			functions.set(category, [...(functions.get(category) ?? []), ...custom]);
 		}
 	}
 
@@ -235,7 +236,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 						linkedIds:          linked?.length ? linked : undefined,
 						value:              resolvedValue ?? info.defaultValue ?? defaultValue,
 						versionConstraints: dep?.versionConstraints,
-						derivedRange:       dep?.derivedRange,
+						derivedRange:       dep?.effectiveRange,
 						namespaceInfo:      dep?.namespaceInfo
 					} as DependencyInfo));
 				}

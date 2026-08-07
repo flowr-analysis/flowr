@@ -46,7 +46,7 @@ export interface GuessExplodeOptions {
 	readonly order?:  'newest' | 'oldest';
 	/** a version to prefer per dependency when it survives the constraints (package name to version) */
 	readonly prefer?: Readonly<Record<string, VersionString>>;
-	/** cap the number of assignments produced */
+	/** cap the number of combinations considered; the ones that cannot be loaded together are skipped, not returned */
 	readonly limit?:  number;
 }
 
@@ -525,7 +525,7 @@ export const GuessDepVersionsQueryDefinition = {
 		explode: Joi.object({
 			order:  Joi.string().valid('newest', 'oldest').optional().description('Iterate each dependency newest-first (default) or oldest-first.'),
 			prefer: Joi.object().pattern(Joi.string(), Joi.string()).optional().description('A version to prefer per dependency when it survives the constraints.'),
-			limit:  Joi.number().integer().min(0).optional().description('Cap the number of concrete assignments produced.')
+			limit:  Joi.number().integer().min(0).optional().description('Cap the number of version combinations considered. Combinations whose versions cannot be loaded together are skipped, so fewer assignments may come out.')
 		}).optional().description('Also explode the guessed space into concrete per-dependency version assignments.')
 	}).description('Guesses the possible version range of every dependency from declared constraints and signature-database usage.'),
 	flattenInvolvedNodes: (): NodeId[] => []

@@ -48,6 +48,7 @@ const SliceCriterionHelp = [
 	'  <line>@[<n>]<name>  the n-th occurrence of <name> in line <line> (e.g. 2@[2]x, 2@[-1]x)',
 	'  <line>:<col>        the element starting at line <line>, column <col> (e.g. 2:5)',
 	'  <line>~<col>        the innermost element containing line <line>, column <col> (e.g. 2~5)',
+	'  <line>^             the top-level statement line <line> belongs to (e.g. 2^)',
 	'  $<id>               the normalized node with the id <id> (e.g. $42)',
 	'A negative <line> counts from the end; a trailing (file-regex) restricts to a file (e.g. 2@x(tmp/.*)).',
 	`Append flags after the ")": ${describeSliceFlags(StaticSliceFlags)}.`,

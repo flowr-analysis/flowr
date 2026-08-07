@@ -715,7 +715,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 					name:        'Hooks',
 					id:          'hooks',
 					supported:   'partially',
-					description: '_Handle hooks like [`userhooks`](https://stat.ethz.ch/R-manual/R-devel/library/base/html/userhooks.html) and [`on.exit`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/on.exit)._ We do not support hooks.'
+					description: '_Handle hooks like [`userhooks`](https://stat.ethz.ch/R-manual/R-devel/library/base/html/userhooks.html) and [`on.exit`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/on.exit)._ We support `on.exit` and rlang\'s [`on_load`/`run_on_load`/`on_package_load`](https://rlang.r-lib.org/reference/on_load.html), whose expressions we analyze where they are registered. `setHook` and the other user hooks are not modelled.'
 				},
 				{
 					name:        'Precedence',

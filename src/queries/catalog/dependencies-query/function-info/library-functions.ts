@@ -15,5 +15,6 @@ export const LibraryFunctions: FunctionInfo[] = [
 	{ package: 'librarian',    name: 'shelf',             argIdx: 'unnamed',                     resolveValue: true },
 	{ package: 'devtools',     name: 'load_all',          argIdx: 0,         argName: 'path',    resolveValue: true, defaultValue: '.' },
 	{ package: 'devtools',     name: 'load_code',         argIdx: 0,         argName: 'path',    resolveValue: true, defaultValue: '.' },
-	{ package: 'import',       name: 'from',              argIdx: 0,         argName: 'package', resolveValue: true }
+	{ package: 'import',       name: 'from',              argIdx: 0,         argName: 'package', resolveValue: true },
+	{ package: 'rlang',        name: 'on_package_load',   argIdx: 0,         argName: 'pkg',     resolveValue: true }
 ] as const;

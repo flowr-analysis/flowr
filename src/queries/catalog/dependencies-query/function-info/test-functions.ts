@@ -1,10 +1,9 @@
 import type { FunctionInfo } from './function-info';
 import type { LinkToLastCall, LinkToNestedCall } from '../../call-context-query/call-context-query-format';
 
-export const ExpectFunctions: LinkToNestedCall = {
-	type:     'link-to-nested-call',
-	callName: new RegExp(/* testthat */
-		'^(expect_equal|expect_identical|expect_error|expect_warning|expect_message|expect_condition|' +
+/** the assertion helpers of the test frameworks; each hands its input back invisibly, so none reaches stdout */
+export const ExpectFunctionNames = new RegExp(/* testthat */
+	'^(expect_equal|expect_identical|expect_error|expect_warning|expect_message|expect_condition|' +
 		'expect_true|expect_false|expect_all_equal|expect_all_true|expect_all_false|expect_lt|expect_lte|expect_gt|expect_gte|' +
 		'expect_length|expect_shape|expect_match|expect_no_match|expect_named|expect_null|expect_setequal|expect_mapequal|' +
 		'expect_contains|expect_in|expect_disjoint|expect_type|expect_s3_class|expect_s4_class|expect_r6_class|expect_s7_class|' +
@@ -33,7 +32,11 @@ export const ExpectFunctions: LinkToNestedCall = {
 		'assert_permutation|assertPermutation|assert_posixct|assertPOSIXct|assert_r6|assertR6|assert_raw|assertRaw|assert_scalar|' +
 		'assertScalar|assert_scalar_na|assertScalarNA|assert_set_equal|assertSetEqual|assert_string|assertString|assert_subset|' +
 		'assertSubset|assert_tibble|assertTibble|assert_true|assertTrue|assert_vector|assertVector' +
-		')$')
+		')$');
+
+export const ExpectFunctions: LinkToNestedCall = {
+	type:     'link-to-nested-call',
+	callName: ExpectFunctionNames
 };
 
 const ContextFunctions: LinkToLastCall = {

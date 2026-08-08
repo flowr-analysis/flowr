@@ -1,12 +1,14 @@
 /**
  * The Top symbol to represent the Top element of complete lattices (e.g. of abstract domains).
  */
+export type Top = typeof Top;
 export const Top = Symbol('top');
 export const TopSymbol = '⊤';
 
 /**
  * The Bottom symbol to represent the Bottom element of complete lattices (e.g. of abstract domains).
  */
+export type Bottom = typeof Bottom;
 export const Bottom = Symbol('bottom');
 export const BottomSymbol = '⊥';
 

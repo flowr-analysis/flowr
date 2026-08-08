@@ -27,7 +27,10 @@ import { CallProp } from '../../../dataflow/environments/built-in-props';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 
+/** The value could not be resolved, e.g. a path assembled at runtime. Such a dependency may be missing or fetchable. */
 export const Unknown = 'unknown';
+/** The value resolved, but to data given inline rather than to a path (`matrix(0, 2, 2)`, `data.frame(a = 1)`). */
+export const Constant = 'constant';
 
 export interface DependencyCategorySettings {
 	queryDisplayName?:   string
@@ -146,7 +149,7 @@ export interface DependencyInfo extends Record<string, unknown>{
 	/** the called name; an {@link Identifier}, so a namespaced call like `maps::map` keeps its package */
 	functionName:        Identifier
 	linkedIds?:          readonly NodeId[]
-	/** the lexeme is presented whenever the specific info is of {@link Unknown} */
+	/** the lexeme is presented whenever the specific info is {@link Unknown} or {@link Constant} */
 	lexemeOfArgument?:   string;
 	/** The library name, file, source, destination etc. being sourced, read from, or written to. */
 	value?:              string
@@ -163,7 +166,9 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 	// one line per dependency: the value (package/file) up front, its function + node as a faint provenance suffix
 	for(const i of infos) {
 		const fn = Identifier.getName(i.functionName);
-		const value = i.value !== undefined ? bold(i.value, formatter) : faint('<unresolved>', formatter);
+		/* neither names a resource: inline data is resolved but no path, `unknown` is a path we could not resolve */
+		const stands = i.value === Constant ? '<inline data>' : i.value === Unknown || i.value === undefined ? '<unresolved>' : undefined;
+		const value = stands !== undefined ? faint(stands, formatter) : bold(i.value as string, formatter);
 		const version = i.derivedRange !== undefined ? ` ${faint(i.derivedRange.format(), formatter)}` : '';
 		const linked = i.linkedIds ? `, linked ${i.linkedIds.join(', ')}` : '';
 		result.push(`     ${value}${version} ${faint(`via ${fn} (node ${i.nodeId}${linked})`, formatter)}`);

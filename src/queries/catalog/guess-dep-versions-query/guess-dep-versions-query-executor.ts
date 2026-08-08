@@ -184,6 +184,7 @@ function guessPackage(name: string, cap: number, surviving: SurvivingEntries, ev
 		maxVersion:         survivors.length > 0 ? survivors[survivors.length - 1] : undefined,
 		candidateCount:     survivors.length,
 		totalVersions:      surviving.total,
+		constrained:        surviving.total !== undefined && survivors.length === surviving.total ? false : undefined,
 		candidates:         candidates.length > 0 ? candidates : undefined,
 		truncated:          survivors.length > cap ? true : undefined,
 		evidence:           evidence.list,
@@ -229,6 +230,7 @@ export async function executeGuessDepVersionsQuery(
 	}
 	// bound base packages by R only when the version is genuinely known; in `auto` mode with nothing detected, base tries every R release
 	const rVersion = ctx.rVersionKnown ? (ctx.meta.getRVersion() ?? ctx.resolvedRVersion) : undefined;
+	const rVersionOrigin = rVersion !== undefined ? ctx.rVersionOrigin : undefined;
 
 	// the analyzed package guesses versions for its dependencies, not for itself
 	const self = ctx.meta.getNamespace();
@@ -353,7 +355,8 @@ export async function executeGuessDepVersionsQuery(
 	}
 
 	const assignments = query.explode
-		? [...assignmentsOf(ordered, query.explode.limit ?? DefaultExplodeLimit, declaredDependenciesOf(space))].map(a => ({ versions: Object.fromEntries(a.versions) }))
+		? [...assignmentsOf(ordered, query.explode.limit ?? DefaultExplodeLimit, declaredDependenciesOf(space))]
+			.map(a => compactRecord({ versions: Object.fromEntries(a.versions), unverified: a.unverified }))
 		: undefined;
 
 	return compactRecord({
@@ -361,6 +364,7 @@ export async function executeGuessDepVersionsQuery(
 		dependencies,
 		dateCutoff:       cutoff ? isoDay(cutoff) : undefined,
 		rVersion,
+		rVersionOrigin,
 		versionSelection: ctx.config.solver.sigdb.versionSelection,
 		runnableCombinations,
 		possibleCombinations,

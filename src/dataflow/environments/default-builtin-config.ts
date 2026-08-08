@@ -60,7 +60,8 @@ export const GraphicsPlotCreate = [
 export const PlotCreate = GraphicsPlotCreate.concat(TinyPlotCrate, GgPlotCreate);
 const GraphicDeviceOpen = [
 	'pdf', 'jpeg', 'png', 'windows', 'postscript', 'xfig', 'bitmap', 'pictex', 'cairo_pdf', 'svg', 'bmp', 'tiff', 'X11', 'quartz', 'image_graph',
-	'image_draw', 'dev.new', 'trellis.device', 'raster_pdf', 'agg_pdf'
+	'image_draw', 'dev.new', 'trellis.device', 'raster_pdf',
+	'agg_png', 'agg_jpeg', 'agg_tiff', 'agg_ppm', 'agg_webp', 'agg_capture'
 ] as const;
 export const TinyPlotAddons = [
 	'tinyplot_add', 'plt_add'
@@ -225,12 +226,12 @@ export const WrittenBuiltinDefinitions = [
 		value:           ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], assumePrimitive: true },
 	{ type:            'constant', names:           [Identifier.from(['month.name', PkgName.Base])],
 		value:           ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'], assumePrimitive: true },
-	/* formula: operands are model terms/columns, not variables (NSE) */
+	/* formula: operands are model terms/columns, not variables */
 	{
 		type:            'function',
 		names:           [Identifier.from(['~', PkgName.Base])],
 		processor:       BuiltInProcName.DefaultReadAllArgs,
-		config:          { markArgsAsNSE: NseArguments.All },
+		config:          { markArgsAsMasked: NseArguments.All },
 		assumePrimitive: false
 	},
 	/* cohortBuilder has a `filter` too, and built-ins go by name, so dplyr's entry below wins in the environment
@@ -242,12 +243,12 @@ export const WrittenBuiltinDefinitions = [
 		config:          { forceArgs: 'all', libFn: true, props: CallProp.Pure },
 		assumePrimitive: false
 	},
-	/* data-masking: the non-data arguments name columns of the (first) data object, not variables (NSE) */
+	/* data-masking: the non-data arguments name columns of the (first) data object, not variables */
 	{
 		type:            'function',
 		names:           DataMaskingFunctionIdentifiers,
 		processor:       BuiltInProcName.Default,
-		config:          { markArgsAsNSE: NseArguments.AllButFirst, props: CallProp.Pure },
+		config:          { markArgsAsMasked: NseArguments.AllButFirst, props: CallProp.Pure },
 		assumePrimitive: false
 	},
 	/* slice_sample draws rows at random; registered after the block above, so this definition is the one that sticks */
@@ -255,7 +256,7 @@ export const WrittenBuiltinDefinitions = [
 		type:            'function',
 		names:           [Identifier.from(['slice_sample', PkgName.Dplyr])],
 		processor:       BuiltInProcName.Default,
-		config:          { markArgsAsNSE: NseArguments.AllButFirst, props: CallProp.Random },
+		config:          { markArgsAsMasked: NseArguments.AllButFirst, props: CallProp.Random },
 		assumePrimitive: false
 	},
 	/* data-masking without a data argument, e.g. `aes(x, y)` */
@@ -263,7 +264,7 @@ export const WrittenBuiltinDefinitions = [
 		type:            'function',
 		names:           Identifier.fromAll(PkgName.GgPlot2, ['aes', 'aes_string', 'vars']),
 		processor:       BuiltInProcName.DefaultReadAllArgs,
-		config:          { markArgsAsNSE: NseArguments.All },
+		config:          { markArgsAsMasked: NseArguments.All },
 		assumePrimitive: false
 	},
 	/* an {@link BuiltInEvalName} marks what the value solver folds; a test checks the names against the handler tables */
@@ -391,7 +392,7 @@ export const WrittenBuiltinDefinitions = [
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure | CallProp.Narrows }, assumePrimitive: true },
 
 	/* they open a device that writes the plot to the file they are given, under the name each of them uses */
-	{ type:            'function', names:           [...Identifier.fromAll(PkgName.GrDevices, ['png', 'jpeg', 'bmp', 'tiff', 'svg', 'cairo_pdf']), Identifier.from(['raster_pdf', PkgName.RasterPdf]), Identifier.from(['agg_pdf', PkgName.Ragg])],
+	{ type:            'function', names:           [...Identifier.fromAll(PkgName.GrDevices, ['png', 'jpeg', 'bmp', 'tiff', 'svg', 'cairo_pdf']), Identifier.from(['raster_pdf', PkgName.RasterPdf]), ...Identifier.fromAll(PkgName.Ragg, ['agg_png', 'agg_jpeg', 'agg_tiff', 'agg_ppm', 'agg_webp'])],
 		processor:       BuiltInProcName.DefaultReadAllArgs,
 		config:          { props: CallProp.Invisible | CallProp.Graphics | CallProp.File | CallProp.Writes, sig: [['filename', ArgProp.Resource]] }, assumePrimitive: true },
 	{ type:            'function', names:           Identifier.fromAll(PkgName.GrDevices, ['pdf', 'postscript', 'xfig', 'bitmap', 'pictex']),

@@ -78,7 +78,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 	}
 
-	const queue = new VisitingQueue(threshold, cache, id => graph.hasVertex(id));
+	const queue = new VisitingQueue(threshold, cache, id => graph.hasVertex(id), ctx.gas);
 
 	let minNesting = Number.MAX_SAFE_INTEGER;
 	const sliceSeedIds = new Set<NodeId>();
@@ -232,6 +232,7 @@ export function staticDice(
 		timesHitThreshold: forward.timesHitThreshold + backward.timesHitThreshold,
 		result,
 		slicedFor:         [...startIds, ...endIds],
+		...(forward.stoppedEarly || backward.stoppedEarly ? { stoppedEarly: true } : {})
 	};
 }
 

@@ -11,6 +11,7 @@ import { findByPrefixIfUnique } from '../util/prefix';
 import { RBasePrimitives } from '../data/r-base-primitives.generated';
 import { availableVersionEntries, classOwnerIndexFor, sourceForPackage, type PackageSignatureSource } from './sigdb/reader';
 import type { DecodedFunction, ResolvedDependency } from './sigdb/decode';
+import { DepType } from './sigdb/schema';
 import { matchArgumentsToSignature } from './sigdb/signature-match';
 import { parseDateWindow } from './sigdb/sigdb-version';
 import { Identifier } from '../dataflow/environments/identifier';
@@ -144,10 +145,24 @@ export interface VersionExplodeOptions {
 
 /** a concrete, sigdb-available version choice for every resolvable dependency */
 export interface VersionAssignment {
-	readonly versions: ReadonlyMap<string, VersionString>;
+	readonly versions:    ReadonlyMap<string, VersionString>;
+	/**
+	 * The requirements of the chosen versions that nothing here could settle, because they bear on a package the
+	 * assignment does not choose (`dplyr 1.1.0 requires rlang >= 1.0.0`). Such an assignment holds for what it
+	 * states and may still fail at `library()` time, so it is proposed but not verified.
+	 */
+	readonly unverified?: readonly string[];
 }
 
 /** default safety cap on how many assignments {@link explodeDependencyVersions} yields */
+/** the dependency kinds a load has to satisfy, as `Suggests`/`Enhances` are not enforced when a package is attached */
+const LoadRelevantDeps: ReadonlySet<DepType> = new Set([DepType.Depends, DepType.Imports, DepType.LinkingTo]);
+
+/** The requirements `pkg@version` places on other packages that a load has to satisfy (see {@link LoadRelevantDeps}). */
+function loadRequirements(src: PackageSignatureSource | undefined, pkg: string, version?: VersionString): readonly ResolvedDependency[] {
+	return (src?.dependencies(pkg, version) ?? []).filter(d => LoadRelevantDeps.has(d.type));
+}
+
 export const DefaultExplodeLimit = 256;
 
 /** the date cutoff (end of the named day/month/year) for a `YYYY.MM.DD` spec, or `undefined` if malformed */
@@ -630,7 +645,7 @@ export function collectTransitiveConstraints(deps: ReadOnlyFlowrAnalyzerDependen
 		const perDep = new Map<string, { readonly ranges: Map<string, Range>, declaredBy: number }>();
 		for(const version of versions) {
 			const seen = new Set<string>();
-			for(const dep of src.dependencies(pkg.name, version) ?? []) {
+			for(const dep of loadRequirements(src, pkg.name, version)) {
 				const range = dep.constraint ? RRange.parse(dep.constraint) : undefined;
 				if(!range || seen.has(dep.name)) {
 					continue;
@@ -863,7 +878,7 @@ function factorRequirements(space: VersionSpace, f: CountFactor): Map<string, Ra
 	const { src, key } = space.resolve(f.name);
 	return f.survivors.map(v => {
 		const out = new Map<string, Range>();
-		for(const dep of src?.dependencies(key, v) ?? []) {
+		for(const dep of loadRequirements(src, key, v)) {
 			const range = dep.constraint ? RRange.parse(dep.constraint) : undefined;
 			if(range && !out.has(dep.name)) {
 				out.set(dep.name, range);
@@ -969,7 +984,7 @@ function countOverForest(factors: readonly CountFactor[], tree: readonly (Factor
 
 /** whether every requirement `pkg@ver` places on a co-guessed dependency is met by one of that partner's surviving versions */
 function versionMeetsPartners(src: PackageSignatureSource, pkg: string, ver: string, partnerSurvivors: ReadonlyMap<string, readonly string[]>, selfName: string, onReject?: (partner: string, constraint: string) => void): boolean {
-	for(const dep of src.dependencies(pkg, ver) ?? []) {
+	for(const dep of loadRequirements(src, pkg, ver)) {
 		if(dep.name === selfName || !dep.constraint) {
 			continue;
 		}
@@ -1123,29 +1138,35 @@ export function defaultTargets(deps: ReadOnlyFlowrAnalyzerDependenciesContext, u
 	return [...new Set([...deps.getDependencies().map(d => d.name), ...usage.keys()])].filter(name => name !== ProjectPackage);
 }
 
-/** the requirements one concrete version declares, as {@link isCoInstallable} reads them */
+/** the requirements one concrete version declares, as {@link coInstallability} reads them */
 export type DependencyResolver = (pkg: string, version: VersionString) => readonly ResolvedDependency[] | undefined;
 
 /**
- * Whether the chosen versions can be loaded together. The per-package candidates are narrowed by requirements
- * merged over *all* versions of the requiring package, so a combination can still pair a version with one that
- * the version it was actually chosen alongside rules out (`library()` then reports the conflict). Packages
- * outside the assignment and requirements without a version qualifier constrain nothing.
+ * Whether the chosen versions can be loaded together, checking every requirement the chosen versions declare
+ * against the version chosen for the required package (R itself against the chosen base-R version). A requirement
+ * on a package the assignment does not choose cannot be settled here and is reported as
+ * {@link VersionAssignment.unverified} instead of silently passing, as `library()` still enforces it.
  */
-export function isCoInstallable(versions: ReadonlyMap<string, VersionString>, declares: DependencyResolver): boolean {
+export function coInstallability(versions: ReadonlyMap<string, VersionString>, declares: DependencyResolver): { ok: boolean, unverified?: readonly string[] } {
+	const unverified: string[] = [];
 	for(const [pkg, version] of versions) {
 		for(const dep of declares(pkg, version) ?? []) {
-			const chosen = versions.get(dep.name);
-			if(chosen === undefined || dep.constraint === undefined) {
+			if(dep.constraint === undefined || !LoadRelevantDeps.has(dep.type)) {
 				continue;
 			}
+			/* R's own version is the version of the base packages, which is what the assignment names it by */
+			const chosen = versions.get(dep.name) ?? (dep.name === 'R' ? versions.get('base') : undefined);
 			const range = RRange.parse(dep.constraint);
-			if(range !== undefined && !RRange.satisfies(chosen, range)) {
-				return false;
+			if(range === undefined) {
+				continue;
+			} else if(chosen === undefined) {
+				unverified.push(`${pkg} ${version} requires ${dep.name} ${dep.constraint}`);
+			} else if(!RRange.satisfies(chosen, range)) {
+				return { ok: false };
 			}
 		}
 	}
-	return true;
+	return { ok: true, ...(unverified.length > 0 ? { unverified } : {}) };
 }
 
 /**
@@ -1163,8 +1184,11 @@ export function* assignmentsOf(perPackage: readonly OrderedCandidates[], limit: 
 		for(let i = 0; i < perPackage.length; i++) {
 			versions.set(perPackage[i].pkg, perPackage[i].versions[idx[i]]);
 		}
-		if(declares === undefined || isCoInstallable(versions, declares)) {
+		const checked = declares === undefined ? undefined : coInstallability(versions, declares);
+		if(checked === undefined) {
 			yield { versions };
+		} else if(checked.ok) {
+			yield { versions, ...(checked.unverified ? { unverified: checked.unverified } : {}) };
 		}
 		// advance the odometer: the last package varies fastest
 		let k = perPackage.length - 1;

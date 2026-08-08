@@ -7,6 +7,7 @@ import {
 	type DependencyCategoryName,
 	type DependencyInfo,
 	getAllCategories,
+	Constant,
 	Unknown
 } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
@@ -246,8 +247,8 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 
 	return finalResults;
 
-	function getLexeme(argument: string | undefined | typeof Unknown, id: NodeId | undefined) {
-		if((argument && argument !== Unknown) || !id) {
+	function getLexeme(argument: string | undefined, id: NodeId | undefined) {
+		if((argument && argument !== Unknown && argument !== Constant) || !id) {
 			return undefined;
 		}
 		let get = normalize.idMap.get(id);
@@ -262,7 +263,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | und
 	if(!linkedIds || linkedIds.length === 0) {
 		return undefined;
 	}
-	const hasAtLeastAValue = args !== undefined && args.values().flatMap(x => Array.from(x)).toArray().some(v => v !== Unknown && v !== undefined);
+	const hasAtLeastAValue = args !== undefined && args.values().flatMap(x => Array.from(x)).toArray().some(v => v !== Unknown && v !== Constant && v !== undefined);
 	const map = new Map<NodeId, Set<string | undefined>>();
 	for(const linkedId of linkedIds) {
 		if(typeof linkedId !== 'object' || !linkedId.info) {

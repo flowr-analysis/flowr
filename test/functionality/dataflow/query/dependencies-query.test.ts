@@ -1,10 +1,13 @@
 import { assertQuery } from '../../_helper/query';
+import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { label } from '../../_helper/label';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import {
 	type DependenciesQuery,
 	type DependenciesQueryResult,
+	DefaultDependencyCategories,
 	type DependencyInfo,
+	Constant,
 	Unknown
 } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -289,6 +292,24 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 		testQuery('unknown read', 'read.table(x)', { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'unknown', lexemeOfArgument: 'x' }] });
 
+		describe('Bundled datasets', () => {
+			testQuery('by symbol', 'data(mtcars)', { read: [{ nodeId: '1@data', functionName: 'data', value: 'mtcars' }] });
+			testQuery('by string', 'data("iris")', { read: [{ nodeId: '1@data', functionName: 'data', value: 'iris' }] });
+			testQuery('listing them all reads nothing', 'data()', {});
+		});
+
+		/* only a value we failed to resolve may be missing, fetched or rebound, so inline data must not look like one */
+		describe('Inline data is no unresolved path', () => {
+			testQuery('constructed from constants', 'matrix(0, 2, 2)',
+				{ read: [{ nodeId: '1@matrix', functionName: 'matrix', value: Constant, lexemeOfArgument: '0' }] });
+			testQuery('constructed from a vector of constants', 'matrix(c(1, 2), 1, 2)',
+				{ read: [{ nodeId: '1@matrix', functionName: 'matrix', value: Constant, lexemeOfArgument: 'c(1, 2)' }] });
+			testQuery('constructed from a constant local', 'x <- 0\nmatrix(x, 2, 2)',
+				{ read: [{ nodeId: '2@matrix', functionName: 'matrix', value: Constant, lexemeOfArgument: 'x' }] });
+			testQuery('data that does not resolve stays unknown', 'matrix(f(), 2, 2)',
+				{ read: [{ nodeId: '1@matrix', functionName: 'matrix', value: Unknown, lexemeOfArgument: 'f()' }] });
+		});
+
 		testQuery('single read (variable)', 'x <- "test.csv"; read.table(x)', { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }] });
 		testQuery('read (path built in a local)', 'p <- file.path("data", "x.csv")\nread.csv(p)',
 			{ read: [{ nodeId: '2@read.csv', functionName: 'read.csv', value: 'data/x.csv' }] });
@@ -340,7 +361,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		for(const writeFn of [
 			'ggsave',
 			'raster_pdf',
-			'agg_pdf',
+			'agg_png',
+			'agg_webp',
 			'Export',
 			'windows'
 		]) {
@@ -420,6 +442,19 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('dplyr::map is not a visualization', 'dplyr::map(x, f)', {
 				library:   [{ nodeId: '1@map', functionName: '::', value: 'dplyr' }],
 				visualize: []
+			});
+			// regression: the ggplot-style calls other packages export were all attributed to ggplot2, so a
+			// qualified call to the package that really exports them was dropped by the namespace check
+			testQuery('a theme keeps its own package', 'plot()\nggthemes::theme_wsj()', {
+				library:   [{ nodeId: '2@theme_wsj', functionName: '::', value: 'ggthemes' }],
+				visualize: [
+					{ nodeId: '1@plot', functionName: 'plot' },
+					{ nodeId: '2@ggthemes::theme_wsj', functionName: Identifier.make('theme_wsj', 'ggthemes'), linkedIds: [1] }
+				]
+			});
+			testQuery('a plot creator keeps its own package', 'plotly::ggplotly(p)', {
+				library:   [{ nodeId: '1@ggplotly', functionName: '::', value: 'plotly' }],
+				visualize: [{ nodeId: '1@plotly::ggplotly', functionName: Identifier.make('ggplotly', 'plotly') }]
 			});
 			testQuery('maps::map stays a visualization', 'maps::map(x)', {
 				library:   [{ nodeId: '1@map', functionName: '::', value: 'maps' }],
@@ -519,7 +554,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		});
 		testQuery('addon', 'cat("a")\nx <- 2', {
 			write:      [{ value: 'stdout', functionName: 'cat', nodeId: '1@cat' }],
-			assignment: [{ lexemeOfArgument: '2', functionName: '<-', nodeId: '2@<-', value: Unknown }]
+			assignment: [{ lexemeOfArgument: '2', functionName: '<-', nodeId: '2@<-', value: Constant }]
 		}, {
 			additionalCategories: {
 				assignment: {
@@ -616,5 +651,30 @@ describe('Dependencies Query', withTreeSitter(parser => {
 					}
 				}
 			});
+	});
+	/**
+	 * The signature database knows what a package exports, so it settles whether an entry names the right one.
+	 * A wrong package is invisible in a bare snippet and only drops the call once the owning library is loaded.
+	 */
+	describe('Package attribution', () => {
+		/* the database records these as an S4 generic or an S3 method, so their name is not in the export list */
+		const recordedElsewhere = new Set(['rast', 'vect', 'writeRaster', 'writeVector', 'writeCDF', 'readMat', 'writeMat', 'open.nc', 'create.nc']);
+
+		test('every entry names a package that exports it', async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+			analyzer.addRequest('1');
+			const sources = analyzer.inspectContext().deps.signatureSources();
+			const exportsOf = (pkg: string): string[] => sources.filter(s => s.packageNames().includes(pkg))
+				.flatMap(s => [...s.lookup(pkg)?.exported ?? [], ...(s.functions(pkg) ?? []).map(f => f.name)]);
+			for(const [category, { functions }] of Object.entries(DefaultDependencyCategories)) {
+				for(const f of functions) {
+					const known = f.package === undefined ? [] : exportsOf(f.package);
+					if(known.length === 0 || recordedElsewhere.has(f.name)) {
+						continue;
+					}
+					assert.include(known, f.name, `${category}: ${f.package} does not export ${f.name}`);
+				}
+			}
+		});
 	});
 }));

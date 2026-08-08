@@ -27,7 +27,14 @@ export const SlicingCriterion = {
 	 * @see {@link SlicingCriterion.parse} to parse a slicing criterion to a node ID
 	 */
 	isValid(this: void, criterion: unknown): criterion is SlicingCriterion {
-		return typeof criterion === 'string' && /^(-?\d+([:~]\d+|\^|@.+)|\$.+)$/.test(criterion);
+		if(typeof criterion !== 'string') {
+			return false;
+		} else if(criterion.startsWith('$')) {
+			return criterion.length > 1;
+		}
+		/* the file filter is optional on every form, so validate what remains once it is split off */
+		const split = splitFileFilter(criterion);
+		return split !== undefined && /^-?\d+([:~]\d+|\^|@.+)$/.test(split.rest);
 	},
 	/**
 	 * Resolves a slicing criterion to the corresponding node id.
@@ -199,10 +206,11 @@ function topLevelStatementToId<OtherInfo>(line: number, idMap: AstIdMap<OtherInf
 
 /**
  * Splits the optional trailing `(file-regex)` off a criterion (e.g. `2@x(tmp/.*)`), which restricts it to nodes
- * originating from a matching file. Returns `undefined` if the regex is malformed.
+ * originating from a matching file. The regex may contain escaped parentheses (`3^(a\(b\)\.R)`).
+ * Returns `undefined` if the regex is malformed.
  */
 function splitFileFilter(criterion: string): { rest: string, file: RegExp | undefined } | undefined {
-	const match = /^(.*)\(([^()]*)\)$/.exec(criterion);
+	const match = /^([^()]*)\(((?:\\.|[^()])*)\)$/.exec(criterion);
 	if(match === null) {
 		return { rest: criterion, file: undefined };
 	}

@@ -27,7 +27,13 @@ export const GasFeatureKey = {
 	/** Gas key for the side-effect link resolution phase of the dataflow extractor, which matches unknown side effects against call sites via the CFG and can be expensive for large scripts. */
 	SideEffectLinking: 'side-effect-linking',
 	/** Gas key for the linter, checked once per linting rule. Under critical pressure, remaining rules are skipped. */
-	Linter:            'linter'
+	Linter:            'linter',
+	/**
+	 * Gas key for the static slicer, checked while traversing the dataflow graph. Under critical pressure the
+	 * traversal stops and the slice is returned as far as it got (`SliceResult.stoppedEarly`), which is the only
+	 * way to bound the otherwise synchronous traversal from the outside.
+	 */
+	Slicer:            'slicer'
 } as const;
 
 export type GasFeatureKey = typeof GasFeatureKey[keyof typeof GasFeatureKey];

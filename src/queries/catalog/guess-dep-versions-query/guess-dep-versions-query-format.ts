@@ -2,7 +2,7 @@ import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import Joi from 'joi';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
-import { bold, italic, faint, color, Colors } from '../../../util/text/ansi';
+import { bold, italic, faint, color, Colors, type OutputFormatter } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import { RVersion, type VersionString } from '../../../util/r-version';
 import { arraysGroupBy } from '../../../util/collections/arrays';
@@ -12,6 +12,7 @@ import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { VersionSelection, type FlowrConfig } from '../../../config';
 import { executeGuessDepVersionsQuery } from './guess-dep-versions-query-executor';
 import type { ConstraintSource, DerivedConstraint, OrphanReason } from '../../../project/dependency-version-space';
+import type { RVersionOrigin } from '../../../project/context/flowr-analyzer-context';
 
 /**
  * Guesses the possible version range of every dependency of a project by combining what the project *declares*
@@ -52,7 +53,9 @@ export interface GuessExplodeOptions {
 
 /** one concrete version choice per resolvable dependency (`package -> version`) */
 export interface VersionAssignmentView {
-	readonly versions: Readonly<Record<string, VersionString>>;
+	readonly versions:    Readonly<Record<string, VersionString>>;
+	/** see {@link VersionAssignment.unverified}: requirements on packages this assignment does not choose */
+	readonly unverified?: readonly string[];
 }
 
 /** the default cap on how many surviving candidate versions are listed per dependency */
@@ -137,6 +140,13 @@ export interface GuessedDependency {
 	 */
 	readonly known?:              boolean;
 	/**
+	 * Set to `false` when nothing narrowed the package: every version the database holds survives, so the range
+	 * merely restates what is available. Its {@link minVersion}/{@link maxVersion} then say nothing about the code
+	 * (an era read off the minimum would be the database's oldest release, not the script's), which a range that
+	 * happens to end at the newest version does not reveal on its own.
+	 */
+	readonly constrained?:        boolean;
+	/**
 	 * Set when this package was inferred purely from *orphan* calls: bare calls (`ggplot()`) that flowR could not
 	 * resolve and that no loaded package defines, but whose name is exported by exactly this one package in the
 	 * signature database. The symbol would be undefined were the package not loaded, so a downstream handler may
@@ -161,6 +171,11 @@ export interface GuessDepVersionsQueryResult extends BaseQueryResult {
 	readonly dateCutoff?:           string;
 	/** the R version the guess assumed when bounding base-R packages, if known */
 	readonly rVersion?:             string;
+	/**
+	 * Where {@link rVersion} comes from. An `engine` version is the R installation running the analysis, which
+	 * bounds the guess without saying anything about the analyzed code, unlike a `config` pin or project `metadata`.
+	 */
+	readonly rVersionOrigin?:       RVersionOrigin;
 	/** the configured version-selection policy the sample illustrates (newest by default; see `solver.sigdb.versionSelection`) */
 	readonly versionSelection?:     VersionSelection;
 	/** version tuples that satisfy every interdependency (the base/R hub counted against each dependency) */
@@ -352,7 +367,12 @@ function compareBounds(a: DerivedConstraint, b: DerivedConstraint): number {
 
 /** whether a dependency's version is actually narrowed (not every database version survives); a fully redundant one is unconstrained */
 function isConstrained(dep: GuessedDependency): boolean {
-	return dep.totalVersions !== undefined && dep.candidateCount !== dep.totalVersions;
+	return dep.constrained !== false;
+}
+
+/** the assumed R version with where it came from, as a detected one bounds the guess without describing the code */
+function rVersionText(out: GuessDepVersionsQueryResult, formatter: OutputFormatter): string {
+	return italic(out.rVersion as string, formatter) + (out.rVersionOrigin ? ' ' + faint(`(${out.rVersionOrigin})`, formatter) : '');
 }
 
 /** a version-combination count with thousands separators (exponential only past a trillion, where digits stop being useful) */
@@ -398,9 +418,9 @@ export const GuessDepVersionsQueryDefinition = {
 		const out = queryResults as QueryResults<'guess-dep-versions'>['guess-dep-versions'];
 		result.push(`Query: ${bold('guess-dep-versions', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		if(out.dateCutoff) {
-			result.push(`   ╰ up to ${italic(out.dateCutoff, formatter)}${out.rVersion ? `, R ${italic(out.rVersion, formatter)}` : ''}`);
+			result.push(`   ╰ up to ${italic(out.dateCutoff, formatter)}${out.rVersion ? `, R ${rVersionText(out, formatter)}` : ''}`);
 		} else if(out.rVersion) {
-			result.push(`   ╰ R ${italic(out.rVersion, formatter)}`);
+			result.push(`   ╰ R ${rVersionText(out, formatter)}`);
 		}
 		if(out.dependencies.some(d => d.evidence.length > 0)) {
 			const legend = (Object.keys(evidenceLetter) as GuessEvidenceSource[]).map(s => `${color(evidenceLetter[s], evidenceColor[s], formatter)} ${s}`).join('  ');

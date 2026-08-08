@@ -12,6 +12,8 @@ import type { ArgTaintProjector, TaintVisitorConfiguration, TaintVisitorHook } f
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { SourceLocation } from '../../util/range';
 
 /**
  * Information passed to a {@link FnCallHook} for each function call visited during taint analysis.
@@ -43,13 +45,25 @@ export interface FnCallHookInfo {
 export type FnCallHook = (info: FnCallHookInfo) => void;
 
 /**
- * Result of running a taint analysis, containing the final abstract domain state and an optional finding message.
+ * A single finding produced by a taint analysis, i.e. an AST node whose inferred taint reached Bottom (e.g. a sink call).
+ */
+export interface TaintFinding {
+	/** The AST node ID that reached Bottom */
+	nodeId: NodeId
+	/** The source location of the AST node, if it could be resolved */
+	loc?:   SourceLocation
+}
+
+/**
+ * Result of running a taint analysis, containing the final abstract domain state and any findings.
  */
 export interface TaintInferenceResult {
 	/** The final abstract domain state after running the taint analysis visitor */
 	domains:  StateAbstractDomain<AnyAbstractDomain>
-	/** Message produced by the analysis if it reached a bottom state (indicating a finding) */
-	finding?: string
+	/** The message describing the findings */
+	msg?:     string
+	/** The findings produced by the analysis, i.e. one per AST node whose inferred taint reached Bottom */
+	findings: TaintFinding[]
 }
 
 /**
@@ -119,9 +133,13 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 			visitor.start();
 
 			const endState = visitor.getEndState();
-			const finding = endState.isBottom() ? def.msg : undefined;
+			const msg = def.msg;
+			const findings: TaintFinding[] = msg === undefined ? [] : endState.getBottomNodes().map(nodeId => ({
+				nodeId,
+				loc: SourceLocation.fromNode(baseConfig.normalizedAst.idMap.get(nodeId))
+			}));
 
-			results.set(def.name, { domains: endState as StateAbstractDomain<AnyStateDomain>, finding });
+			results.set(def.name, { domains: endState as StateAbstractDomain<AnyStateDomain>, msg, findings });
 		}
 		return results;
 	}

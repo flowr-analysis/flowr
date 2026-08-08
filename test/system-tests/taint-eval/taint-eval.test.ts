@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { assert, describe, test } from 'vitest';
 import { run } from '../utility/utility';
 import { allPredefinedTaintAnalysisNames } from '../../../src/taint-analysis/predefined/predefined';
@@ -79,12 +80,11 @@ describe('taint-analysis evaluation', () => {
 		});
 
 		// the locally-defined function call carries its local definition target(s),
-		// signaling that intraprocedural analysis could apply
 		assert.deepEqual(sec.unmappedCalls[1], {
 			line:         '6',
 			nodeId:       32,
 			functionName: 'myLocal',
-			args:         [ { taint: 'bottom' } ],
+			args:         [ { taint: 'File Input' } ],
 			localTargets: [ 26 ],
 		});
 
@@ -92,7 +92,25 @@ describe('taint-analysis evaluation', () => {
 		assert.isUndefined(sec.mappedCalls[0].localTargets);
 		assert.isUndefined(sec.unmappedCalls[0].localTargets);
 
-		assert.deepEqual(output.result['security'], { 'domains': 'bottom', 'finding': 'User input potentially flowing to output' });
+		const filePath = path.resolve('test/system-tests/taint-eval/taint-eval-small.R');
+
+		assert.deepEqual(output.result['security'], {
+			domains: {
+				'0':  'File Input',
+				'2':  'File Input',
+				'4':  'top',
+				'8':  'top',
+				'10': 'bottom',
+				'19': 'bottom',
+				'28': 'top',
+				'32': 'top',
+			},
+			msg:      'User input potentially flowing to output',
+			findings: [
+				{ nodeId: 19, loc: [4, 6, 4, 47, filePath] },
+				{ nodeId: 10, loc: [4, 1, 4, 1, filePath] },
+			],
+		});
 	});
 
 	test('logs the control dependencies of guarded calls', async() => {

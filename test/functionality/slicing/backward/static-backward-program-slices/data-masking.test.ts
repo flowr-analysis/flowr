@@ -2,6 +2,7 @@ import { assertSliced, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { describe } from 'vitest';
 
 /**
@@ -13,19 +14,19 @@ describe.sequential('Data Masking', withShell(shell => {
 		'unnamed-arguments', 'named-arguments', ...OperatorDatabase['<-'].capabilities];
 
 	describe('keeps what a masked argument reads from the enclosing scope', () => {
-		const cases = {
-			'subset':    'res <- subset(d, a >= k)',
-			'transform': 'res <- transform(d, c = a * k)',
-			'with':      'res <- with(d, a + k)',
-			'filter':    'res <- dplyr::filter(d, a >= k)',
-			'pipe':      'res <- d |> dplyr::filter(a >= k)'
+		const cases: Record<string, { call: string, minRVersion?: string }> = {
+			'subset':    { call: 'res <- subset(d, a >= k)' },
+			'transform': { call: 'res <- transform(d, c = a * k)' },
+			'with':      { call: 'res <- with(d, a + k)' },
+			'filter':    { call: 'res <- dplyr::filter(d, a >= k)' },
+			'pipe':      { call: 'res <- d |> dplyr::filter(a >= k)', minRVersion: MIN_VERSION_PIPE }
 		};
-		for(const [name, call] of Object.entries(cases)) {
+		for(const [name, { call, minRVersion }] of Object.entries(cases)) {
 			const code = `k <- 100
 d <- data.frame(a = 1:5)
 ${call}
 print(res)`;
-			assertSliced(label(name, capabilities), shell, code, ['4@res'], code.split('\n').slice(0, 3).concat('res').join('\n'));
+			assertSliced(label(name, capabilities), shell, code, ['4@res'], code.split('\n').slice(0, 3).concat('res').join('\n'), { minRVersion });
 		}
 	});
 

@@ -556,7 +556,7 @@ function groupBodyWrites(out: readonly IdentifierReference[]): Map<Identifier, I
 		}
 	}
 	for(const writes of byName.values()) {
-		writes.sort((a, b) => String(a.nodeId) < String(b.nodeId) ? 1 : -1);
+		writes.sort((a, b) => String(b.nodeId).localeCompare(String(a.nodeId)));
 	}
 	return byName;
 }

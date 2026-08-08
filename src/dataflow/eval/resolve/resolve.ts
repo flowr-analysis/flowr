@@ -51,7 +51,9 @@ function evalNameOf({ node, graph }: BuiltInEvalHandlerArgs): Identifier | undef
 			continue;
 		}
 		/* an alias like `f <- c` keeps the built-in it stands for in `proc`, a direct call names itself */
-		const named = NodeId.isBuiltIn(origin.proc) ? NodeId.fromBuiltIn(origin.proc) : origin.fn.name;
+		const pkgFn = NodeId.toPkgFn(origin.proc);
+		const named = pkgFn !== undefined ? Identifier.make(pkgFn[1], pkgFn[0])
+			: NodeId.isBuiltIn(origin.proc) ? NodeId.fromBuiltIn(origin.proc) : origin.fn.name;
 		if(name !== undefined && Identifier.getName(name) !== Identifier.getName(named)) {
 			return undefined;
 		}

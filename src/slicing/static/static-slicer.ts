@@ -6,9 +6,9 @@ import { VisitingQueue } from './visiting-queue';
 import { findEnclosingFunctionDefinition, handleReturns, includeCalleesOfDefinition, sliceForCall, sliceReachesFunctionInterface } from './slice-call';
 import type { AstIdMap, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
-import { shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
+import { DfEdge, EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import type { DataflowInformation } from '../../dataflow/info';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -78,7 +78,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 	}
 
-	const queue = new VisitingQueue(threshold, cache, id => graph.hasVertex(id));
+	const queue = new VisitingQueue(threshold, cache, id => graph.hasVertex(id), ctx.gas);
 
 	let minNesting = Number.MAX_SAFE_INTEGER;
 	const sliceSeedIds = new Set<NodeId>();
@@ -192,11 +192,34 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	}
 
 	const status = queue.status();
-	if(ctx.config.solver.slicer?.autoExtend) {
-		return { ...status, slicedFor: ids, result: extendSlices(status.result, idMap) };
-	} else {
-		return { ...status, slicedFor: ids };
+	const result = ctx.config.solver.slicer?.autoExtend ? extendSlices(status.result, idMap) : status.result;
+	return { ...status, slicedFor: ids, result, freeNames: freeNamesOf(result, info.graph) };
+}
+
+/**
+ * The names the slice reads without defining them: a use whose definitions all stayed outside meets that name
+ * undefined, and so does one that reads nothing at all (a name the program never defines). Reading a built-in
+ * is no such case, as those are there whatever the slice contains.
+ */
+function freeNamesOf(slice: ReadonlySet<NodeId>, graph: DataflowGraph): readonly string[] {
+	const free = new Set<string>();
+	for(const id of slice) {
+		if(graph.getVertex(id)?.tag !== VertexType.Use) {
+			continue;
+		}
+		let defined = false;
+		for(const [target, edge] of graph.outgoingEdges(id) ?? []) {
+			if(DfEdge.includesType(edge, EdgeType.Reads) && (slice.has(target) || NodeId.isBuiltIn(target))) {
+				defined = true;
+				break;
+			}
+		}
+		const name = defined ? undefined : recoverName(id, graph.idMap);
+		if(name !== undefined) {
+			free.add(name);
+		}
 	}
+	return [...free].sort();
 }
 
 /**
@@ -232,6 +255,7 @@ export function staticDice(
 		timesHitThreshold: forward.timesHitThreshold + backward.timesHitThreshold,
 		result,
 		slicedFor:         [...startIds, ...endIds],
+		...(forward.stoppedEarly || backward.stoppedEarly ? { stoppedEarly: true } : {})
 	};
 }
 

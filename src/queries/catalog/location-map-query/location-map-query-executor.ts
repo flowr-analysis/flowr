@@ -1,4 +1,7 @@
 import type { LocationMapQuery, LocationMapQueryResult } from './location-map-query-format';
+import { LocationMapSpan } from './location-map-query-format';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import type { SourceRange } from '../../../util/range';
 import type { BasicQueryData } from '../../base-query-format';
 import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { isNotUndefined } from '../../../util/assert';
@@ -23,6 +26,15 @@ function fuzzyFindFile(node: RNodeWithParent | undefined, idMap: AstIdMap): stri
 	return '@inline';
 }
 
+/** The range reported for a node under the requested {@link LocationMapSpan}, falling back to its own location. */
+function rangeOf(node: RNodeWithParent, idMap: AstIdMap, span: LocationMapSpan): SourceRange {
+	if(span === LocationMapSpan.Token) {
+		return node.location as SourceRange;
+	}
+	const of = span === LocationMapSpan.Statement ? RNode.topLevelStatement(node, idMap) : node;
+	return RNode.span(of) ?? node.location as SourceRange;
+}
+
 /**
  * Executes a location map query
  * @see {@link LocationMapQuery}
@@ -30,11 +42,8 @@ function fuzzyFindFile(node: RNodeWithParent | undefined, idMap: AstIdMap): stri
 export async function executeLocationMapQuery({ analyzer }: BasicQueryData, queries: readonly LocationMapQuery[]): Promise<LocationMapQueryResult> {
 	const ast = await analyzer.normalize();
 	const start = Date.now();
-	const criteriaOfInterest = new Set(queries
-		.flatMap(q => q.ids ?? [])
-		.map(c => SlicingCriterion.tryParse(c, ast.idMap))
-		.filter(isNotUndefined))
-	;
+	const requested = queries.flatMap(q => q.ids ?? []);
+	const criteriaOfInterest = new Set(requested.map(c => SlicingCriterion.tryParse(c, ast.idMap)).filter(isNotUndefined));
 	const locationMap: LocationMapQueryResult['map'] = {
 		files: {},
 		ids:   {}
@@ -48,12 +57,14 @@ export async function executeLocationMapQuery({ analyzer }: BasicQueryData, quer
 		count++;
 	}
 
+	const span = queries.find(q => q.span !== undefined)?.span ?? LocationMapSpan.Token;
 	for(const [id, node] of ast.idMap.entries()) {
-		if(node.location && (criteriaOfInterest.size === 0 || criteriaOfInterest.has(id))) {
+		/* asking for ids none of which resolve yields nothing, not everything */
+		if(node.location && (requested.length === 0 || criteriaOfInterest.has(id))) {
 			const file = fuzzyFindFile(node, ast.idMap);
 			locationMap.ids[id] = [
 				inverseMap.get(file) ?? -1,
-				node.location
+				rangeOf(node, ast.idMap, span)
 			];
 		}
 	}

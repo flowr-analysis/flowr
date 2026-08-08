@@ -57,7 +57,7 @@ function withAppliedCds(definition: IdentifierDefinition, defaultCd: readonly Co
 function replaceDefinitions(env: Environment, key: BrandedIdentifier, toUpdate: ReadonlySet<IdentifierDefinition>, defaultCd: readonly ControlDependency[] | undefined): void {
 	const defs = env.memory.get(key);
 	if(defs?.some(d => toUpdate.has(d))) {
-		env.memory.set(key, defs.map(d => toUpdate.has(d) ? withAppliedCds(d, defaultCd) : d));
+		env.writableMemory.set(key, defs.map(d => toUpdate.has(d) ? withAppliedCds(d, defaultCd) : d));
 	}
 	env.cache?.delete(key);
 }

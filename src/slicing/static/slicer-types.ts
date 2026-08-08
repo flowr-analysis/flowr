@@ -34,4 +34,14 @@ export interface SliceResult {
 	 * The ids of the nodes in the normalized ast that were used as seed ids for slicing. This is a subset of {@link result}.
 	 */
 	readonly slicedFor:         readonly NodeId[]
+	/**
+	 * Set when the {@link GasFeatureKey.Slicer|gas guard} stopped the traversal before the queue drained, so
+	 * {@link result} is what was reached until then and not the complete slice.
+	 */
+	readonly stoppedEarly?:     boolean
+	/**
+	 * The names the slice reads without defining them, so running it on its own would fail with
+	 * `object 'x' not found`. Empty when the slice is closed under the names it uses.
+	 */
+	readonly freeNames?:        readonly string[]
 }

@@ -6,7 +6,8 @@ import {
 	type GuessDepVersionsQueryResult,
 	type GuessedDependency,
 	type GuessVersionEvidence,
-	type OrphanAlternativeView
+	type OrphanAlternativeView,
+	type OrphanEvidenceView
 } from './guess-dep-versions-query-format';
 import { RVersion } from '../../../util/r-version';
 import { compactRecord } from '../../../util/objects';
@@ -33,6 +34,8 @@ import {
 	type OrderedCandidates,
 	type SurvivingEntries
 } from '../../../project/dependency-version-space';
+import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** flowR's curated builtin-library function to package map (e.g. `ggplot` to `ggplot2`), disambiguating an orphan call several packages re-export */
 const BuiltinLibraryByFunction: ReadonlyMap<string, string> = new Map(
@@ -47,10 +50,23 @@ function disabledSources(query: GuessDepVersionsQuery): ReadonlySet<ConstraintSo
 	return new Set([...(query.clean ? (['declared', 'transitive'] as const) : []), ...(query.disabled ?? [])]);
 }
 
-/** collects and deduplicates provenance-carrying constraints */
+/** the `line:column` of a node (prefixed by its file when there is one), for pointing evidence at the code */
+type Locator = (id: NodeId | undefined) => string | undefined;
+
+function locatorOf(idMap: AstIdMap): Locator {
+	return id => {
+		const node = id === undefined ? undefined : idMap.get(id);
+		const at = node?.location ?? node?.info.fullRange;
+		return at === undefined ? undefined : `${node?.info.file ? node.info.file + ':' : ''}${at[0]}:${at[1]}`;
+	};
+}
+
+/** collects and deduplicates provenance-carrying constraints, resolving their call site to a location */
 class EvidenceCollector {
 	private readonly seen = new Set<string>();
 	public readonly list: GuessVersionEvidence[] = [];
+
+	constructor(private readonly locate: Locator) {}
 
 	public readonly add = (c: DerivedConstraint): void => {
 		const key = `${c.source}|${c.origin}|${c.bound ?? ''}|${c.detail}`;
@@ -58,7 +74,7 @@ class EvidenceCollector {
 			return;
 		}
 		this.seen.add(key);
-		this.list.push(compactRecord({ ...c }));
+		this.list.push(compactRecord({ ...c, location: this.locate(c.at) }));
 	};
 }
 
@@ -143,12 +159,14 @@ interface PackageRelations {
 	readonly coupledWith?:        readonly string[];
 	/** the undefined orphan functions that inferred this package (e.g. `ggplot()` inferring `ggplot2`), if any */
 	readonly orphanFunctions?:    readonly string[];
+	/** per such function, where the undefined call is and why it was pinned on this package */
+	readonly orphanEvidence?:     readonly OrphanEvidenceView[];
 	/** the other packages exporting those functions, each with the versions of it that would fit the calls */
 	readonly orphanAlternatives?: readonly OrphanAlternativeView[];
 }
 
 /** build the reported guess for one package from its already-computed surviving versions and provenance */
-function guessPackage(name: string, cap: number, surviving: SurvivingEntries, evidence: EvidenceCollector, { used, linkedWith, coupledWith, orphanFunctions, orphanAlternatives }: PackageRelations): GuessedDependency {
+function guessPackage(name: string, cap: number, surviving: SurvivingEntries, evidence: EvidenceCollector, { used, linkedWith, coupledWith, orphanFunctions, orphanEvidence, orphanAlternatives }: PackageRelations): GuessedDependency {
 	const { declaredRange, declaredConstraints, unsatisfiable } = surviving;
 	const survivors = surviving.survivors.map(e => e.ver);
 	const preSignature = surviving.preSignature.map(e => e.ver);
@@ -166,6 +184,7 @@ function guessPackage(name: string, cap: number, surviving: SurvivingEntries, ev
 		maxVersion:         survivors.length > 0 ? survivors[survivors.length - 1] : undefined,
 		candidateCount:     survivors.length,
 		totalVersions:      surviving.total,
+		constrained:        surviving.total !== undefined && survivors.length === surviving.total ? false : undefined,
 		candidates:         candidates.length > 0 ? candidates : undefined,
 		truncated:          survivors.length > cap ? true : undefined,
 		evidence:           evidence.list,
@@ -175,6 +194,7 @@ function guessPackage(name: string, cap: number, surviving: SurvivingEntries, ev
 		known:              surviving.known ? undefined : false,
 		orphan:             orphanFunctions && orphanFunctions.length > 0 ? true : undefined,
 		orphanFunctions:    orphanFunctions && orphanFunctions.length > 0 ? orphanFunctions : undefined,
+		orphanEvidence:     orphanEvidence && orphanEvidence.length > 0 ? orphanEvidence : undefined,
 		orphanAlternatives: orphanAlternatives && orphanAlternatives.length > 0 ? orphanAlternatives : undefined,
 		used
 	});
@@ -210,10 +230,12 @@ export async function executeGuessDepVersionsQuery(
 	}
 	// bound base packages by R only when the version is genuinely known; in `auto` mode with nothing detected, base tries every R release
 	const rVersion = ctx.rVersionKnown ? (ctx.meta.getRVersion() ?? ctx.resolvedRVersion) : undefined;
+	const rVersionOrigin = rVersion !== undefined ? ctx.rVersionOrigin : undefined;
 
 	// the analyzed package guesses versions for its dependencies, not for itself
 	const self = ctx.meta.getNamespace();
 	const graph = (await analyzer.dataflow()).graph;
+	const locate = locatorOf((await analyzer.normalize()).idMap);
 	const usage = collectUsage(graph, deps);
 	// fold orphan calls (`ggplot()` with ggplot2 neither declared nor loaded) into usage; a package the project does
 	// not already know is flagged for downstream attachment (see collectOrphanUsage)
@@ -230,7 +252,7 @@ export async function executeGuessDepVersionsQuery(
 	const explodeOrder = query.explode?.order ?? 'newest';
 
 	const guessedAll = sorted.map(name => {
-		const evidence = new EvidenceCollector();
+		const evidence = new EvidenceCollector(locate);
 		const surviving = space.survivors(name, transitive.get(name) ?? [], evidence.add);
 		return { name, evidence, surviving };
 	});
@@ -317,11 +339,13 @@ export async function executeGuessDepVersionsQuery(
 	const dependencies: GuessedDependency[] = [];
 	const ordered: OrderedCandidates[] = [];
 	for(const g of guessedAll) {
+		const orphanCalls = [...orphans.attributed.get(g.name) ?? []].sort(([a], [b]) => a.localeCompare(b));
 		dependencies.push(guessPackage(g.name, cap, g.surviving, g.evidence, {
 			used:               usage.has(g.name),
 			linkedWith:         linkedWith.get(g.name),
 			coupledWith:        coupledWith.get(g.name),
-			orphanFunctions:    [...orphans.attributed.get(g.name) ?? []].sort(),
+			orphanFunctions:    orphanCalls.map(([fn]) => fn),
+			orphanEvidence:     orphanCalls.map(([fn, call]) => compactRecord({ function: fn, location: locate(call.at), reason: call.reason, exporters: call.exporters })),
 			orphanAlternatives: orphanAlternatives(g.name)
 		}));
 		const oc = query.explode ? orderedCandidatesOf(space.resolve(g.name).src, g.name, g.surviving, query.explode.prefer?.[g.name], explodeOrder) : undefined;
@@ -331,7 +355,8 @@ export async function executeGuessDepVersionsQuery(
 	}
 
 	const assignments = query.explode
-		? [...assignmentsOf(ordered, query.explode.limit ?? DefaultExplodeLimit, declaredDependenciesOf(space))].map(a => ({ versions: Object.fromEntries(a.versions) }))
+		? [...assignmentsOf(ordered, query.explode.limit ?? DefaultExplodeLimit, declaredDependenciesOf(space))]
+			.map(a => compactRecord({ versions: Object.fromEntries(a.versions), unverified: a.unverified }))
 		: undefined;
 
 	return compactRecord({
@@ -339,6 +364,7 @@ export async function executeGuessDepVersionsQuery(
 		dependencies,
 		dateCutoff:       cutoff ? isoDay(cutoff) : undefined,
 		rVersion,
+		rVersionOrigin,
 		versionSelection: ctx.config.solver.sigdb.versionSelection,
 		runnableCombinations,
 		possibleCombinations,

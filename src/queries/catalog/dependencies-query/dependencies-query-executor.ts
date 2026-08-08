@@ -7,6 +7,7 @@ import {
 	type DependencyCategoryName,
 	type DependencyInfo,
 	getAllCategories,
+	Constant,
 	Unknown
 } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
@@ -32,6 +33,7 @@ import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/process
 import { log } from '../../../util/log';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionArgument } from '../../../dataflow/graph/graph';
+import { linkPlotsToDevices } from './link-devices';
 
 
 /**
@@ -90,6 +92,10 @@ export async function executeDependenciesQuery({
 		}
 		return [c, results];
 	}))) as { [C in DependencyCategoryName]?: DependencyInfo[] };
+
+	if(results.visualize?.length && results.write?.length) {
+		linkPlotsToDevices(results.write, results.visualize, dataflow, normalize);
+	}
 
 	return {
 		'.meta': {
@@ -229,10 +235,13 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 						resolvedValue = info.stringReplacements[resolvedValue];
 					}
 					const dep = resolvedValue ? d.getDependency(resolvedValue) ?? undefined : undefined;
+					const lexeme = getLexeme(value, arg);
 					finalResults.push(compactRecord({
 						nodeId:             id,
 						functionName,
-						lexemeOfArgument:   getLexeme(value, arg),
+						/* only a value we could not make sense of is worth asking about further */
+						argumentId:         lexeme === undefined ? undefined : arg,
+						lexemeOfArgument:   lexeme,
 						linkedIds:          linked?.length ? linked : undefined,
 						value:              resolvedValue ?? info.defaultValue ?? defaultValue,
 						versionConstraints: dep?.versionConstraints,
@@ -246,8 +255,8 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 
 	return finalResults;
 
-	function getLexeme(argument: string | undefined | typeof Unknown, id: NodeId | undefined) {
-		if((argument && argument !== Unknown) || !id) {
+	function getLexeme(argument: string | undefined, id: NodeId | undefined) {
+		if((argument && argument !== Unknown && argument !== Constant) || !id) {
 			return undefined;
 		}
 		let get = normalize.idMap.get(id);
@@ -262,7 +271,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | und
 	if(!linkedIds || linkedIds.length === 0) {
 		return undefined;
 	}
-	const hasAtLeastAValue = args !== undefined && args.values().flatMap(x => Array.from(x)).toArray().some(v => v !== Unknown && v !== undefined);
+	const hasAtLeastAValue = args !== undefined && args.values().flatMap(x => Array.from(x)).toArray().some(v => v !== Unknown && v !== Constant && v !== undefined);
 	const map = new Map<NodeId, Set<string | undefined>>();
 	for(const linkedId of linkedIds) {
 		if(typeof linkedId !== 'object' || !linkedId.info) {

@@ -80,6 +80,8 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	readonly resolvedRVersion: string;
 	/** Whether {@link resolvedRVersion} is a genuine signal (a config pin, project metadata, or an engine-detected version) rather than the fallback default. */
 	readonly rVersionKnown:    boolean;
+	/** Where {@link resolvedRVersion} comes from, as only {@link RVersionOrigin.Config} and {@link RVersionOrigin.Metadata} say anything about the analyzed code. */
+	readonly rVersionOrigin:   RVersionOrigin;
 	/** Classify the {@link ProjectKind} of the project, see {@link ReadOnlyFlowrAnalyzerFilesContext#projectKind}. */
 	projectKind(): ProjectKind;
 	/** The versions a dependency can possibly have, see {@link ReadOnlyFlowrAnalyzerDependenciesContext#inferredRange}. */
@@ -91,6 +93,18 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	 * @see {@link ReadOnlyFlowrAnalyzerGasContext}
 	 */
 	readonly gas:              ReadOnlyFlowrAnalyzerGasContext;
+}
+
+/** Where the R version an analysis assumes comes from, see {@link ReadOnlyFlowrAnalyzerContext.rVersionOrigin}. */
+export const enum RVersionOrigin {
+	/** pinned via `solver.sigdb.assumedRVersion` */
+	Config   = 'config',
+	/** stated by the project itself (e.g. a `DESCRIPTION` `Depends: R (>= x)`) */
+	Metadata = 'metadata',
+	/** detected from the R installation running the analysis, which says nothing about the analyzed code */
+	Engine   = 'engine',
+	/** nothing said anything, so the fallback default is used */
+	Default  = 'default'
 }
 
 /**
@@ -262,10 +276,20 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 
 	/** Whether {@link resolvedRVersion} is a genuine signal (a config pin, project metadata, or engine detection) rather than the fallback default. */
 	public get rVersionKnown(): boolean {
+		return this.rVersionOrigin !== RVersionOrigin.Default;
+	}
+
+	/** Where {@link resolvedRVersion} comes from, which decides what it says about the analyzed code. */
+	public get rVersionOrigin(): RVersionOrigin {
 		const setting = this.config.solver.sigdb.assumedRVersion;
-		return (setting !== undefined && setting !== 'auto')
-			|| this.meta.getRVersion() !== undefined
-			|| (this._detectedR !== undefined && this._detectedR !== 'none' && this._detectedR !== 'unknown');
+		if(setting !== undefined && setting !== 'auto') {
+			return RVersionOrigin.Config;
+		} else if(this.meta.getRVersion() !== undefined) {
+			return RVersionOrigin.Metadata;
+		} else if(this._detectedR !== undefined && this._detectedR !== 'none' && this._detectedR !== 'unknown') {
+			return RVersionOrigin.Engine;
+		}
+		return RVersionOrigin.Default;
 	}
 
 	/** Classify the {@link ProjectKind} of the project (delegates to the cached {@link FlowrAnalyzerFilesContext#projectKind}). */

@@ -31,6 +31,8 @@ export interface DiceQueryResult extends BaseQueryResult {
 			timesHitThreshold: number;
 			result:            ReadonlySet<NodeId>;
 			slicedFor:         readonly NodeId[];
+			/** see {@link SliceResult.stoppedEarly} */
+			stoppedEarly?:     boolean;
 			'.meta':           { timing: number };
 		};
 		reconstruct?: {

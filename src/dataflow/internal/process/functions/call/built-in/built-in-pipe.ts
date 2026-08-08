@@ -7,7 +7,7 @@ import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-
 import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { DataMaskingFunctionNames } from '../../../../../environments/data-masking-functions';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -140,8 +140,11 @@ export function processPipe<OtherInfo>(
 				if(arg === EmptyArgument) {
 					continue;
 				}
+				/* only the symbols may name columns, the rest is evaluated in the caller's frame */
 				RNode.visitAst<OtherInfo & ParentInformation>(arg, node => {
-					information.graph.addEdge(rhs.info.id, node.info.id, EdgeType.NonStandardEvaluation);
+					if(RSymbol.is(node)) {
+						information.graph.addEdge(rhs.info.id, node.info.id, EdgeType.NonStandardEvaluation);
+					}
 					return false;
 				});
 			}

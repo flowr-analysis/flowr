@@ -1,12 +1,16 @@
 import { assertQuery } from '../../_helper/query';
+import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { label } from '../../_helper/label';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import {
 	type DependenciesQuery,
 	type DependenciesQueryResult,
+	DefaultDependencyCategories,
 	type DependencyInfo,
+	Constant,
 	Unknown
 } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
+import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
@@ -20,19 +24,21 @@ import { ReadFunctions } from '../../../../src/queries/catalog/dependencies-quer
 import { WriteFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/write-functions';
 import { OtherPathFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/other-path-functions';
 
-const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], source: [], read: [], write: [], visualize: [], test: [], print: [] };
+const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], remote: [], source: [], read: [], write: [], visualize: [], test: [], print: [] };
 
 function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Partial<DependenciesQueryResult> {
 	const out: Partial<DependenciesQueryResult> = {
 		...res
 	};
+	const decode = (id: NodeId) => typeof id === 'number' ? id : SlicingCriterion.parse(String(id) as SlicingCriterion, idMap);
 	for(const [key, value] of Object.entries(res) as [keyof DependenciesQueryResult, DependencyInfo[]][]) {
 		if(key === '.meta') {
 			continue;
 		}
-		out[key] = value.map(({ nodeId, linkedIds, ...rest }) => ({
-			nodeId:    typeof nodeId === 'number' ? nodeId : SlicingCriterion.parse(String(nodeId) as SlicingCriterion, idMap),
-			linkedIds: linkedIds?.map(lid => typeof lid === 'number' ? lid : SlicingCriterion.parse(String(lid) as SlicingCriterion, idMap)),
+		out[key] = value.map(({ nodeId, linkedIds, argumentId, ...rest }) => ({
+			nodeId:     decode(nodeId),
+			linkedIds:  linkedIds?.map(decode),
+			argumentId: argumentId === undefined ? undefined : decode(argumentId),
 			...rest
 		}));
 	}
@@ -85,7 +91,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		] });
 
 		testQuery('Given Require with character only', 'require(c, character.only=TRUE)', { library: [
-			{ nodeId: '1@require', functionName: 'require', value: 'unknown', lexemeOfArgument: 'c' }
+			{ nodeId: '1@require', functionName: 'require', value: 'unknown', lexemeOfArgument: 'c', argumentId: '1:9' }
 		] });
 
 
@@ -127,12 +133,12 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 		testQuery('Using a vector to load (missing elements)', 'lapply(c("x", u), library, character.only = TRUE)', { print:   [{ nodeId: '1@lapply', functionName: 'lapply', value: 'stdout' }], library: [
 			// We currently don't support resolving that "x" and some unknown library is loaded
-			{ nodeId: '1@library', functionName: 'library', value: 'unknown', lexemeOfArgument: 'c("x", u)' },
+			{ nodeId: '1@library', functionName: 'library', value: 'unknown', lexemeOfArgument: 'c("x", u)', argumentId: '1:8' },
 		] });
 
 		testQuery('Using an aliased vector to load (missing elements)', 'x <- c("x", u)\nlapply(x, library, character.only = TRUE)', { print:   [{ nodeId: '2@lapply', functionName: 'lapply', value: 'stdout' }], library: [
 			// We currently don't support resolving that "x" and some unknown library is loaded
-			{ nodeId: '2@library', functionName: 'library', value: 'unknown', lexemeOfArgument: 'x' },
+			{ nodeId: '2@library', functionName: 'library', value: 'unknown', lexemeOfArgument: 'x', argumentId: '2:8' },
 		] });
 
 		testQuery('Using a vector to load', 'lapply(c("foo", "bar", "baz"), library, character.only = TRUE)', { print:   [{ nodeId: '1@lapply', functionName: 'lapply', value: 'stdout' }], library: [
@@ -176,7 +182,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		] });
 
 		testQuery('Using a vector (but c is redefined)', 'c <- print\nv <- c(c("a", "b"), "c")\nlapply(v, library, character.only = TRUE)', { print:   [{ nodeId: '3@lapply', functionName: 'lapply', value: 'stdout' }], library: [
-			{ nodeId: '3@library', functionName: 'library', value: 'unknown', lexemeOfArgument: 'v' },
+			{ nodeId: '3@library', functionName: 'library', value: 'unknown', lexemeOfArgument: 'v', argumentId: '3:8' },
 		] });
 
 		testQuery('Using a vector by variable (real world)', 'packages <- c("ggplot2", "dplyr", "tidyr")\nlapply(packages, library, character.only = TRUE)', { print:   [{ nodeId: '2@lapply', functionName: 'lapply', value: 'stdout' }], library: [
@@ -231,6 +237,33 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		});
 	});
 
+	describe('Remote installs', () => {
+		/* every call here is namespaced, so the `::` the library category reports comes with it; `1:1` is the call */
+		function testInstall(name: string, code: string, fn: string, value: string, target: Partial<DependencyInfo>, pkg = 'remotes') {
+			testQuery(name, code, {
+				library: [{ nodeId: `1@${fn}`, functionName: '::', value: pkg }],
+				remote:  [{ nodeId: '1:1', functionName: Identifier.make(fn, pkg), value, ...target }]
+			});
+		}
+
+		testInstall('namespaced', 'remotes::install_github("user/repo")', 'install_github', 'user/repo', { packageName: 'repo' });
+		testInstall('devtools re-exports the same call', 'devtools::install_github(repo = "user/repo")', 'install_github', 'user/repo', { packageName: 'repo' }, 'devtools');
+		testInstall('a pinned revision', 'remotes::install_github("user/repo@v1.2")', 'install_github', 'user/repo@v1.2', { packageName: 'repo', revision: 'v1.2' });
+		testInstall('a package in a subdirectory', 'remotes::install_github("user/repo/pkg")', 'install_github', 'user/repo/pkg', { packageName: 'pkg' });
+		testInstall('an archive url', 'remotes::install_url("https://x.org/src/pkg_1.0.tar.gz")', 'install_url', 'https://x.org/src/pkg_1.0.tar.gz', { packageName: 'pkg' });
+		testInstall('a clone url', 'remotes::install_git("https://gitlab.com/user/repo.git")', 'install_git', 'https://gitlab.com/user/repo.git', { packageName: 'repo' });
+		testInstall('pak with its source prefix', 'pak::pkg_install("github::user/repo")', 'pkg_install', 'github::user/repo', { packageName: 'repo' }, 'pak');
+		testInstall('a reference we cannot resolve names nothing', 'remotes::install_github(x)', 'install_github', Unknown, { lexemeOfArgument: 'x', argumentId: '1:25' });
+
+		/* nothing states the package of a bare call, the loaded library is what makes it resolve at all */
+		testQuery('the bare name once the library is loaded', 'library(remotes)\ninstall_github("user/repo")', {
+			library: [{ nodeId: '1@library', functionName: 'library', value: 'remotes' }],
+			remote:  [{ nodeId: '2@install_github', functionName: 'install_github', value: 'user/repo', packageName: 'repo' }]
+		});
+		/* a CRAN install is no remote one, whatever it installs comes from a configured repository */
+		testQuery('install.packages is no remote install', 'install.packages("dplyr")', {});
+	});
+
 	describe('Sourced files', () => {
 		for(const sourceFn of [
 			'source_url',
@@ -243,7 +276,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 		testQuery('Single source variable', 'a <- "test/file.R"; source("test/file.R")', { source: [{ nodeId: '1@source', functionName: 'source', value: 'test/file.R' }] });
 
-		testQuery('source with empty string', 'source("")', { source: [{ nodeId: '1@source', functionName: 'source', value: 'stdin', lexemeOfArgument: '""' }] });
+		testQuery('source with empty string', 'source("")', { source: [{ nodeId: '1@source', functionName: 'source', value: 'stdin', lexemeOfArgument: '""', argumentId: '1:8' }] });
 
 		describe('Custom', () => {
 			const sourceCustomFile: Partial<DependenciesQuery> = {
@@ -287,7 +320,25 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('With Argument', 'gzfile(open="rb",description="test.gz")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
 		testQuery('write mode only', 'gzfile("test.gz", "wb")', { read: [] });
 
-		testQuery('unknown read', 'read.table(x)', { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'unknown', lexemeOfArgument: 'x' }] });
+		testQuery('unknown read', 'read.table(x)', { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'unknown', lexemeOfArgument: 'x', argumentId: '1:12' }] });
+
+		describe('Bundled datasets', () => {
+			testQuery('by symbol', 'data(mtcars)', { read: [{ nodeId: '1@data', functionName: 'data', value: 'mtcars' }] });
+			testQuery('by string', 'data("iris")', { read: [{ nodeId: '1@data', functionName: 'data', value: 'iris' }] });
+			testQuery('listing them all reads nothing', 'data()', {});
+		});
+
+		/* only a value we failed to resolve may be missing, fetched or rebound, so inline data must not look like one */
+		describe('Inline data is no unresolved path', () => {
+			testQuery('constructed from constants', 'matrix(0, 2, 2)',
+				{ read: [{ nodeId: '1@matrix', functionName: 'matrix', value: Constant, lexemeOfArgument: '0', argumentId: '1:8' }] });
+			testQuery('constructed from a vector of constants', 'matrix(c(1, 2), 1, 2)',
+				{ read: [{ nodeId: '1@matrix', functionName: 'matrix', value: Constant, lexemeOfArgument: 'c(1, 2)', argumentId: '1:8' }] });
+			testQuery('constructed from a constant local', 'x <- 0\nmatrix(x, 2, 2)',
+				{ read: [{ nodeId: '2@matrix', functionName: 'matrix', value: Constant, lexemeOfArgument: 'x', argumentId: '2:8' }] });
+			testQuery('data that does not resolve stays unknown', 'matrix(f(), 2, 2)',
+				{ read: [{ nodeId: '1@matrix', functionName: 'matrix', value: Unknown, lexemeOfArgument: 'f()', argumentId: '1:8' }] });
+		});
 
 		testQuery('single read (variable)', 'x <- "test.csv"; read.table(x)', { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }] });
 		testQuery('read (path built in a local)', 'p <- file.path("data", "x.csv")\nread.csv(p)',
@@ -302,8 +353,12 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 		/* a loop marks its body as nse, but unlike a quotation the body really is evaluated */
 		describe('Braceless loop body', () => {
+			/* the variable runs over the sequence, so each of its elements is read */
 			testQuery('for', 'for(f in c("a.csv","b.csv")) read.csv(f)',
-				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: Unknown, lexemeOfArgument: 'f' }] });
+				{ read: [
+					{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'a.csv' },
+					{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'b.csv' }
+				] });
 			testQuery('for (constant)', 'for(f in c("a.csv")) read.csv("test.csv")',
 				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'test.csv' }] });
 			testQuery('while', 'while(TRUE) read.csv("test.csv")',
@@ -313,7 +368,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('nested', 'for(i in 1:2) while(TRUE) read.csv("test.csv")',
 				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'test.csv' }] });
 			testQuery('braced stays the same', 'for(f in c("a.csv","b.csv")) { read.csv(f) }',
-				{ read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: Unknown, lexemeOfArgument: 'f' }] });
+				{ read: [
+					{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'a.csv' },
+					{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'b.csv' }
+				] });
 			/* a real quotation within the body must still be suppressed */
 			testQuery('quoted body', 'for(i in 1:2) quote(read.csv("test.csv"))', {});
 			testQuery('substituted body', 'while(TRUE) substitute(read.csv("test.csv"))', {});
@@ -340,7 +398,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		for(const writeFn of [
 			'ggsave',
 			'raster_pdf',
-			'agg_pdf',
+			'agg_png',
+			'agg_webp',
 			'Export',
 			'windows'
 		]) {
@@ -374,7 +433,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('cat 2 args with file', 'cat("Hello", "World", file="foo.txt")', { write: [{ nodeId: '1@cat', functionName: 'cat', value: 'foo.txt' }] });
 		testQuery('cat many args', 'cat(a, b, c, d, e, file)', { write: [{ nodeId: '1@cat', functionName: 'cat', value: 'stdout' }] });
 
-		testQuery('Unknown write', 'write.csv(data, file=u)', { write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'unknown', lexemeOfArgument: 'u' }] });
+		testQuery('Unknown write', 'write.csv(data, file=u)', { write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'unknown', lexemeOfArgument: 'u', argumentId: '1:22' }] });
 		testQuery('File save', 'save(foo,file="a.Rda")', { write: [{ nodeId: '1@save', functionName: 'save', value: 'a.Rda' }] });
 
 		testQuery('single write (variable)', 'u <- "test.csv"; write.csv(data, file=u)', { write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'test.csv' }] });
@@ -406,6 +465,29 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	});
 
 	describe('Visualize', () => {
+		/* a plot lands in whatever device is open, so the file is what the opener named */
+		describe('Devices', () => {
+			testQuery('the plots between an opener and its close land in its file',
+				'pdf("a.pdf")\nplot(x)\nlines(y)\ndev.off()\nplot(onScreen)', {
+					write:     [{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' }],
+					visualize: [
+						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf' },
+						{ nodeId: '5@plot', functionName: 'plot' },
+						{ nodeId: '3@lines', functionName: 'lines', value: 'a.pdf', linkedIds: ['2@plot'] }
+					]
+				});
+			testQuery('each device takes the plots of its own block',
+				'pdf("a.pdf")\nplot(x)\ndev.off()\npng("b.png")\nhist(z)\ndev.off()', {
+					write: [
+						{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' },
+						{ nodeId: '4@png', functionName: 'png', value: 'b.png' }
+					],
+					visualize: [
+						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf' },
+						{ nodeId: '5@hist', functionName: 'hist', value: 'b.png' }
+					]
+				});
+		});
 		describe('Creation', () => {
 			for(const f of ['ggplot', 'tinyplot', 'plot', 'bootcurve']) {
 				testQuery(f, `${f}()`, { visualize: [{ nodeId: `1@${f}`, functionName: f }] });
@@ -420,6 +502,19 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('dplyr::map is not a visualization', 'dplyr::map(x, f)', {
 				library:   [{ nodeId: '1@map', functionName: '::', value: 'dplyr' }],
 				visualize: []
+			});
+			// regression: the ggplot-style calls other packages export were all attributed to ggplot2, so a
+			// qualified call to the package that really exports them was dropped by the namespace check
+			testQuery('a theme keeps its own package', 'plot()\nggthemes::theme_wsj()', {
+				library:   [{ nodeId: '2@theme_wsj', functionName: '::', value: 'ggthemes' }],
+				visualize: [
+					{ nodeId: '1@plot', functionName: 'plot' },
+					{ nodeId: '2@ggthemes::theme_wsj', functionName: Identifier.make('theme_wsj', 'ggthemes'), linkedIds: [1] }
+				]
+			});
+			testQuery('a plot creator keeps its own package', 'plotly::ggplotly(p)', {
+				library:   [{ nodeId: '1@ggplotly', functionName: '::', value: 'plotly' }],
+				visualize: [{ nodeId: '1@plotly::ggplotly', functionName: Identifier.make('ggplotly', 'plotly') }]
 			});
 			testQuery('maps::map stays a visualization', 'maps::map(x)', {
 				library:   [{ nodeId: '1@map', functionName: '::', value: 'maps' }],
@@ -519,7 +614,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		});
 		testQuery('addon', 'cat("a")\nx <- 2', {
 			write:      [{ value: 'stdout', functionName: 'cat', nodeId: '1@cat' }],
-			assignment: [{ lexemeOfArgument: '2', functionName: '<-', nodeId: '2@<-', value: Unknown }]
+			assignment: [{ lexemeOfArgument: '2', functionName: '<-', nodeId: '2@<-', value: Constant, argumentId: '2:6' }]
 		}, {
 			additionalCategories: {
 				assignment: {
@@ -616,5 +711,30 @@ describe('Dependencies Query', withTreeSitter(parser => {
 					}
 				}
 			});
+	});
+	/**
+	 * The signature database knows what a package exports, so it settles whether an entry names the right one.
+	 * A wrong package is invisible in a bare snippet and only drops the call once the owning library is loaded.
+	 */
+	describe('Package attribution', () => {
+		/* the database records these as an S4 generic or an S3 method, so their name is not in the export list */
+		const recordedElsewhere = new Set(['rast', 'vect', 'writeRaster', 'writeVector', 'writeCDF', 'readMat', 'writeMat', 'open.nc', 'create.nc']);
+
+		test('every entry names a package that exports it', async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+			analyzer.addRequest('1');
+			const sources = analyzer.inspectContext().deps.signatureSources();
+			const exportsOf = (pkg: string): string[] => sources.filter(s => s.packageNames().includes(pkg))
+				.flatMap(s => [...s.lookup(pkg)?.exported ?? [], ...(s.functions(pkg) ?? []).map(f => f.name)]);
+			for(const [category, { functions }] of Object.entries(DefaultDependencyCategories)) {
+				for(const f of functions) {
+					const known = f.package === undefined ? [] : exportsOf(f.package);
+					if(known.length === 0 || recordedElsewhere.has(f.name)) {
+						continue;
+					}
+					assert.include(known, f.name, `${category}: ${f.package} does not export ${f.name}`);
+				}
+			}
+		});
 	});
 }));

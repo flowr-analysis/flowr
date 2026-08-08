@@ -10,9 +10,9 @@ import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { type IdentifierReference, ReferenceType } from '../../../../environments/identifier';
 import type { FunctionArgument } from '../../../../graph/graph';
 import { DataflowGraph } from '../../../../graph/graph';
-import { EdgeType } from '../../../../graph/edge';
+import { DfEdge, EdgeType } from '../../../../graph/edge';
 import { dataflowLogger } from '../../../../logger';
-import { type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
+import { type FunctionOriginInformation, UseVertex, VertexType } from '../../../../graph/vertex';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 
@@ -67,25 +67,47 @@ export enum NseArguments {
 }
 
 /**
- * Marks the selected arguments - and everything within them - as {@link EdgeType.NonStandardEvaluation}
- * (as `quote` does), so their nested symbols are recognised as non-standardly evaluated too.
- * Besides the {@link NseArguments} shorthands, the positions may be listed explicitly.
+ * How an argument escapes standard evaluation, which decides what is marked
+ * {@link EdgeType.NonStandardEvaluation}.
+ */
+export enum NseKind {
+	/** the argument is not evaluated at all (`quote(x + y)`), so nothing within it is */
+	Quoted     = 'quoted',
+	/** the argument is evaluated in a data mask (`subset(d, a > k)`), where only its symbols may name columns */
+	DataMasked = 'data-masked'
+}
+
+/**
+ * Marks the selected arguments as {@link EdgeType.NonStandardEvaluation}, so they are recognised as not being
+ * evaluated the standard way. A {@link NseKind.Quoted|quoted} argument is marked entirely, as none of it is
+ * evaluated. A {@link NseKind.DataMasked|data-masked} one is evaluated in the caller's frame, with only the
+ * names the mask supplies (those that resolve to nothing else) taken from the data, so only those are marked.
+ * Besides the {@link NseArguments} shorthands, the positions may be listed explicitly, `undefined` marks nothing.
  */
 export function markArgumentsAsNonStandardEvaluation(
 	graph:              DataflowGraph,
 	rootId:             NodeId,
 	processedArguments: readonly (DataflowInformation | undefined)[],
-	which:              NseArguments | readonly number[]
+	which:              NseArguments | readonly number[] | undefined,
+	kind:               NseKind = NseKind.Quoted
 ): void {
+	if(which === undefined) {
+		return;
+	}
 	const end = which === NseArguments.First ? 1 : processedArguments.length;
 	for(let i = which === NseArguments.AllButFirst ? 1 : 0; i < end; i++) {
 		const arg = processedArguments[i];
 		if(arg === undefined || (typeof which !== 'string' && !which.includes(i))) {
 			continue;
 		}
-		graph.addEdge(rootId, arg.entryPoint, EdgeType.NonStandardEvaluation);
-		for(const [vtx] of arg.graph.vertices(true)) {
-			graph.addEdge(rootId, vtx, EdgeType.NonStandardEvaluation);
+		if(kind === NseKind.Quoted) {
+			graph.addEdge(rootId, arg.entryPoint, EdgeType.NonStandardEvaluation);
+		}
+		for(const [vtx, info] of arg.graph.vertices(true)) {
+			/* a masked name the caller does not bind is the one the data supplies */
+			if(kind === NseKind.Quoted || (UseVertex.is(info) && !arg.graph.outgoingEdges(vtx)?.values().some(e => DfEdge.includesType(e, EdgeType.Reads)))) {
+				graph.addEdge(rootId, vtx, EdgeType.NonStandardEvaluation);
+			}
 		}
 	}
 }

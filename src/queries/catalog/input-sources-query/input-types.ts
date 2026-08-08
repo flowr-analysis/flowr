@@ -28,6 +28,11 @@ export enum InputType {
 	File = 'file',
 	/** Temporary file paths produced by tempfile()/tempdir() and equivalents; a sub-type of {@link File} */
 	TempFile = 'tempfile',
+	/**
+	 * Paths matched on disk at run time by list.files()/Sys.glob() and equivalents; a sub-type of {@link File}.
+	 * Such a read finds no missing input, only an empty answer.
+	 */
+	Glob = 'glob',
 	Network = 'net',
 	Random = 'rand',
 	/** Calls to system/system2 and similar */
@@ -38,6 +43,11 @@ export enum InputType {
 	Lang = 'lang',
 	/** Global options / option accessors (options, getOption) */
 	Options = 'options',
+	/**
+	 * What the program was invoked with (commandArgs and equivalents): neither missing nor resolvable, it is
+	 * chosen when the program is called. Carries {@link Options} too, the command line being ambient state.
+	 */
+	CommandLine = 'cmdline',
 	/** Interactive user input (file choosers, prompts, dialogs, menu selections) */
 	User = 'user',
 	Constant = 'const',

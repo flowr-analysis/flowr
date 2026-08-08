@@ -1,0 +1,164 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>DataflowGraphVertexFunctionDefinition | @eagleoutice/flowr - v2.13.10</title><meta name="description" content="Documentation for @eagleoutice/flowr"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="../index.html" class="title">@eagleoutice/flowr - v2.13.10</a>
+<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<ul role="listbox" id="tsd-search-results"></ul>
+<div id="tsd-search-status" aria-live="polite" aria-atomic="true">
+<div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<ul class="tsd-breadcrumb" aria-label="Breadcrumb">
+<li><a href="../modules/src_dataflow_graph_vertex.html">src/dataflow/graph/vertex</a></li>
+<li><a href="" aria-current="page">DataflowGraphVertexFunctionDefinition</a></li></ul>
+<h1>Interface DataflowGraphVertexFunctionDefinition</h1></div>
+<section class="tsd-panel tsd-comment">
+<div class="tsd-comment tsd-typography"><p>Arguments required to construct a vertex which represents the definition of a function in the DataflowGraph|dataflow graph.</p>
+</div>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see">See<a href="#see" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><a href="../variables/src_dataflow_graph_vertex.FunctionDefinitionVertex.html#is" class="tsd-kind-method">FunctionDefinitionVertex.is</a> - to check if a vertex is a function definition vertex</p>
+</div></div></section>
+<div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">DataflowGraphVertexFunctionDefinition</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-property" href="#cds">cds</a><span class="tsd-signature-symbol">:</span> <a href="src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#environment">environment</a><span class="tsd-signature-symbol">?:</span> <a href="src_dataflow_environments_environment.REnvironmentInformation.html" class="tsd-signature-type tsd-kind-interface">REnvironmentInformation</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#exitpoints">exitPoints</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> <a href="src_dataflow_info.ExitPoint.html" class="tsd-signature-type tsd-kind-interface">ExitPoint</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#id">id</a><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#link">link</a><span class="tsd-signature-symbol">?:</span> <a href="src_dataflow_graph_vertex.DataflowGraphVertexAstLink.html" class="tsd-signature-type tsd-kind-interface">DataflowGraphVertexAstLink</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#mode">mode</a><span class="tsd-signature-symbol">?:</span> (<span class="tsd-signature-type">&quot;s7&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;s3&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;s4&quot;</span>)<span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#params">params</a><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#returnenvstate">returnEnvState</a><span class="tsd-signature-symbol">?:</span> <a href="src_dataflow_environments_environment.REnvironmentInformation.html" class="tsd-signature-type tsd-kind-interface">REnvironmentInformation</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#subflow">subflow</a><span class="tsd-signature-symbol">:</span> <a href="../types/src_dataflow_graph_graph.DataflowFunctionFlowInformation.html" class="tsd-signature-type tsd-kind-type-alias">DataflowFunctionFlowInformation</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-property" href="#tag">tag</a><span class="tsd-signature-symbol">:</span> <a href="../enums/src_dataflow_graph_vertex.VertexType.html#functiondefinition" class="tsd-signature-type tsd-kind-enum-member">FunctionDefinition</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-signature-symbol">[</span><span class="tsd-kind-index-signature">key</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">]:</span> <span class="tsd-signature-type">unknown</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div>
+<section class="tsd-panel tsd-hierarchy" data-refl="12535">
+<h4>Hierarchy (<a href="../hierarchy.html#src/dataflow/graph/vertex.DataflowGraphVertexFunctionDefinition">View Summary</a>)</h4>
+<ul class="tsd-hierarchy">
+<li class="tsd-hierarchy-item"><a href="src_dataflow_graph_vertex._internal_.DataflowGraphVertexBase.html" class="tsd-signature-type tsd-kind-interface">DataflowGraphVertexBase</a>
+<ul class="tsd-hierarchy">
+<li class="tsd-hierarchy-item"><span class="tsd-hierarchy-target">DataflowGraphVertexFunctionDefinition</span></li></ul></li></ul></section>
+<section class="tsd-panel">
+<h4 class="tsd-before-signature">Indexable</h4>
+<ul class="tsd-signatures">
+<li class="tsd-index-signature">
+<div class="tsd-signature"><span class="tsd-signature-symbol">[</span><span class="tsd-kind-parameter">key</span>: <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">]:</span> <span class="tsd-signature-type">unknown</span></div></li></ul></section><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/dataflow/graph/vertex.ts#L144">src/dataflow/graph/vertex.ts:144</a></li></ul></aside>
+<section class="tsd-panel-group tsd-index-group">
+<section class="tsd-panel tsd-index-panel">
+<details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h5 class="tsd-index-heading uppercase">Index</h5></summary>
+<div class="tsd-accordion-details">
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading tsd-anchor-link" id="properties">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-index-list"><a href="#cds" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>cds</span></a>
+<a href="#environment" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>environment?</span></a>
+<a href="#exitpoints" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>exit<wbr/>Points</span></a>
+<a href="#id" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>id</span></a>
+<a href="#link" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>link?</span></a>
+<a href="#mode" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>mode?</span></a>
+<a href="#params" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>params</span></a>
+<a href="#returnenvstate" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>return<wbr/>Env<wbr/>State?</span></a>
+<a href="#subflow" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>subflow</span></a>
+<a href="#tag" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>tag</span></a>
+</div></section></div></details></section></section>
+<details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h2 class="tsd-anchor-link" id="properties-1">Properties<a href="#properties-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
+<section>
+<section class="tsd-panel tsd-member tsd-is-inherited">
+<h3 class="tsd-anchor-link" id="cds"><span>cds</span><a href="#cds" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">cds</span><span class="tsd-signature-symbol">:</span> <a href="src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></div>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see-1">See<a href="#see-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><a href="src_dataflow_info.ControlDependency.html" class="tsd-kind-interface">ControlDependency</a> - the collection of control dependencies which have an influence on whether the vertex is executed.</p>
+</div></div><aside class="tsd-sources">
+<p>Inherited from <a href="src_dataflow_graph_vertex.DataflowGraphVertexValue.html">DataflowGraphVertexValue</a>.<a href="src_dataflow_graph_vertex.DataflowGraphVertexValue.html#cds">cds</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/dataflow/graph/vertex.ts#L46">src/dataflow/graph/vertex.ts:46</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="environment"><code class="tsd-tag">Optional</code><span>environment</span><a href="#environment" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">environment</span><span class="tsd-signature-symbol">?:</span> <a href="src_dataflow_environments_environment.REnvironmentInformation.html" class="tsd-signature-type tsd-kind-interface">REnvironmentInformation</a></div>
+<div class="tsd-comment tsd-typography"><p>The environment in which the function is defined (this is only attached if the DFG deems it necessary).</p>
+</div><aside class="tsd-sources">
+<p>Overrides <a href="src_dataflow_graph_vertex._internal_.DataflowGraphVertexBase.html">DataflowGraphVertexBase</a>.<a href="src_dataflow_graph_vertex._internal_.DataflowGraphVertexBase.html#environment">environment</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/dataflow/graph/vertex.ts#L160">src/dataflow/graph/vertex.ts:160</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="exitpoints"><span>exit<wbr/>Points</span><a href="#exitpoints" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">exitPoints</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> <a href="src_dataflow_info.ExitPoint.html" class="tsd-signature-type tsd-kind-interface">ExitPoint</a><span class="tsd-signature-symbol">[]</span></div>
+<div class="tsd-comment tsd-typography"><p>All exit points of the function definitions.
+In other words: last expressions/return calls</p>
+</div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/dataflow/graph/vertex.ts#L156">src/dataflow/graph/vertex.ts:156</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-inherited">
+<h3 class="tsd-anchor-link" id="id"><span>id</span><a href="#id" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">id</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></div>
+<div class="tsd-comment tsd-typography"><p>The id of the node (the id assigned by the ParentInformation decoration).
+This unanimously identifies the vertex in the DataflowGraph|dataflow graph
+as well as the corresponding NormalizedAst|normalized AST.</p>
+</div><aside class="tsd-sources">
+<p>Inherited from <a href="src_dataflow_graph_vertex._internal_.DataflowGraphVertexBase.html">DataflowGraphVertexBase</a>.<a href="src_dataflow_graph_vertex._internal_.DataflowGraphVertexBase.html#id">id</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/dataflow/graph/vertex.ts#L38">src/dataflow/graph/vertex.ts:38</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-inherited">
+<h3 class="tsd-anchor-link" id="link"><code class="tsd-tag">Optional</code><span>link</span><a href="#link" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">link</span><span class="tsd-signature-symbol">?:</span> <a href="src_dataflow_graph_vertex.DataflowGraphVertexAstLink.html" class="tsd-signature-type tsd-kind-interface">DataflowGraphVertexAstLink</a></div>
+<div class="tsd-comment tsd-typography"><p>Describes the collection of AST vertices that contributed to this vertex.
+For example, this is useful with replacement operators, telling you which assignment operator caused them</p>
+</div><aside class="tsd-sources">
+<p>Inherited from <a href="src_dataflow_graph_vertex._internal_.DataflowGraphVertexBase.html">DataflowGraphVertexBase</a>.<a href="src_dataflow_graph_vertex._internal_.DataflowGraphVertexBase.html#link">link</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/dataflow/graph/vertex.ts#L51">src/dataflow/graph/vertex.ts:51</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="mode"><code class="tsd-tag">Optional</code><span>mode</span><a href="#mode" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">mode</span><span class="tsd-signature-symbol">?:</span> (<span class="tsd-signature-type">&quot;s7&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;s3&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;s4&quot;</span>)<span class="tsd-signature-symbol">[]</span></div>
+<div class="tsd-comment tsd-typography"><p>If the function is a (potential) S3/S4/S7 dispatch
+Please note that flowR may create these flags <em>on use</em> (e.g. <code>s3</code> as otherwise any func with a <code>.</code> would be considered S3).
+This is more of a convenience flag for later processing.</p>
+</div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/dataflow/graph/vertex.ts#L166">src/dataflow/graph/vertex.ts:166</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="params"><span>params</span><a href="#params" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">params</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">&gt;</span></div>
+<div class="tsd-comment tsd-typography"><p>Maps each param to whether it is read, this is an estimate!</p>
+</div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/dataflow/graph/vertex.ts#L158">src/dataflow/graph/vertex.ts:158</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="returnenvstate"><code class="tsd-tag">Optional</code><span>return<wbr/>Env<wbr/>State</span><a href="#returnenvstate" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">returnEnvState</span><span class="tsd-signature-symbol">?:</span> <a href="src_dataflow_environments_environment.REnvironmentInformation.html" class="tsd-signature-type tsd-kind-interface">REnvironmentInformation</a></div>
+<div class="tsd-comment tsd-typography"><p>If this function statically returns a tracked environment, stores the envState it returns.
+Set by <code>processFunctionDefinition</code> when exit points include NewEnv calls or symbols resolving to tracked envs.</p>
+</div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/dataflow/graph/vertex.ts#L171">src/dataflow/graph/vertex.ts:171</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="subflow"><span>subflow</span><a href="#subflow" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">subflow</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_dataflow_graph_graph.DataflowFunctionFlowInformation.html" class="tsd-signature-type tsd-kind-type-alias">DataflowFunctionFlowInformation</a></div>
+<div class="tsd-comment tsd-typography"><p>The static subflow of the function definition, constructed within processFunctionDefinition.
+If the vertex is (for example) a function, it can have a subgraph which is used as a template for each call.
+This is the <code>body</code> of the function.</p>
+</div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/dataflow/graph/vertex.ts#L151">src/dataflow/graph/vertex.ts:151</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="tag"><code class="tsd-tag">Readonly</code><span>tag</span><a href="#tag" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">tag</span><span class="tsd-signature-symbol">:</span> <a href="../enums/src_dataflow_graph_vertex.VertexType.html#functiondefinition" class="tsd-signature-type tsd-kind-enum-member">FunctionDefinition</a></div>
+<div class="tsd-comment tsd-typography"><p>Used to identify and separate different types of vertices.</p>
+</div><aside class="tsd-sources">
+<p>Overrides <a href="src_dataflow_graph_vertex._internal_.DataflowGraphVertexBase.html">DataflowGraphVertexBase</a>.<a href="src_dataflow_graph_vertex._internal_.DataflowGraphVertexBase.html#tag">tag</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/dataflow/graph/vertex.ts#L145">src/dataflow/graph/vertex.ts:145</a></li></ul></aside></section></section></details></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div>
+<div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div>
+<details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>On This Page</h3></summary>
+<div class="tsd-accordion-details">
+<details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Properties</summary>
+<div><a href="#cds" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>cds</span></a><a href="#environment"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>environment</span></a><a href="#exitpoints"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>exit<wbr/>Points</span></a><a href="#id" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>id</span></a><a href="#link" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>link</span></a><a href="#mode"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>mode</span></a><a href="#params"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>params</span></a><a href="#returnenvstate"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>return<wbr/>Env<wbr/>State</span></a><a href="#subflow"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>subflow</span></a><a href="#tag"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>tag</span></a></div></details></div></details></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="../modules.html">@eagleoutice/flowr - v2.13.10</a>
+<ul class="tsd-small-nested-navigation" id="tsd-nav-container">
+<li>Loading...</li></ul></nav></div></div></div><footer>
+<p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>
+<div class="overlay"></div></body></html>

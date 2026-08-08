@@ -1,0 +1,247 @@
+import fs, { type PathLike, promises as fsPromise } from 'fs';
+import path from 'path';
+import { log } from './log';
+import LineByLine from 'n-readlines';
+import type { RParseRequestFromFile } from '../r-bridge/retriever';
+
+/**
+ * Represents a table, identified by a header and a list of rows.
+ */
+export interface Table {
+	header: string[]
+	rows:   string[][]
+}
+
+/**
+ * Retrieves all files in the given directory recursively
+ * @param dir          - Directory path to start the search from
+ * @param suffix       - Suffix of the files to be retrieved
+ * @param throwOnError - If `true`, a directory that cannot be read aborts the traversal; otherwise it is logged and skipped (the default)
+ * Based on {@link https://stackoverflow.com/a/45130990}
+ * @see {@link getAllFilesSync} for a synchronous version.
+ */
+export async function* getAllFiles(dir: string, suffix = /.*/, throwOnError = false): AsyncGenerator<string> {
+	let entries: fs.Dirent[];
+	try {
+		entries = await fsPromise.readdir(dir, { withFileTypes: true, recursive: false });
+	} catch(e) {
+		if(throwOnError) {
+			throw e;
+		}
+		log.warn(`Skipping '${dir}' during file discovery: ${e instanceof Error ? e.message : String(e)}`);
+		return;
+	}
+	for(const subEntries of entries) {
+		const res = path.resolve(dir, subEntries.name);
+		if(subEntries.isDirectory()) {
+			yield* getAllFiles(res, suffix, throwOnError);
+		} else if(suffix.test(subEntries.name)) {
+			yield res;
+		}
+	}
+}
+
+/**
+ * Retrieves all files in the given directory recursively (synchronously)
+ * @param dir        - Directory path to start the search from
+ * @param suffix     - Suffix of the files to be retrieved, tested against the file name
+ * @param ignoreDirs - Directories to skip, tested against the posix path relative to `dir`
+ *                     (e.g. `packrat/lib`), so a pattern can address nested directories
+ * @param relativeTo - The path to which the returned paths are relative (used for `ignoreDirs`), defaults to `dir`
+ * @param throwOnError - If `true`, a directory that cannot be read aborts the traversal; otherwise it is logged and skipped (the default)
+ * @see {@link getAllFiles} - for an asynchronous version.
+ */
+export function* getAllFilesSync(dir: string, suffix = /.*/, ignoreDirs: RegExp | undefined = undefined, relativeTo: string = dir, throwOnError = false): Generator<string> {
+	let entries: fs.Dirent[];
+	try {
+		entries = fs.readdirSync(dir, { withFileTypes: true, recursive: false });
+	} catch(e) {
+		if(throwOnError) {
+			throw e;
+		}
+		log.warn(`Skipping '${dir}' during file discovery: ${e instanceof Error ? e.message : String(e)}`);
+		return;
+	}
+	for(const subEntries of entries) {
+		const res = path.resolve(dir, subEntries.name);
+		if(subEntries.isDirectory()) {
+			if(!ignoreDirs?.test(toPosixPath(path.relative(relativeTo, res)))) {
+				yield* getAllFilesSync(res, suffix, ignoreDirs, relativeTo, throwOnError);
+			}
+		} else if(suffix.test(subEntries.name)) {
+			yield res;
+		}
+	}
+}
+
+const rFileRegex = /\.[rR]$/;
+
+/**
+ * Retrieves all R files in a given directory (asynchronously)
+ * @param input - directory-path to start the search from, can be a file as well. Will just return the file then.
+ * @param limit - limit the number of files to be retrieved
+ * @returns Number of files processed (normally &le; `limit`, is &ge; `limit` if limit was reached).
+ *          Will be `1`, if `input` is an R file (and `0` if it isn't).
+ * @see getAllFiles
+ */
+export async function* allRFiles(input: string, limit: number = Number.MAX_VALUE): AsyncGenerator<RParseRequestFromFile, number> {
+	let count = 0;
+	if(fs.statSync(input).isFile()) {
+		if(rFileRegex.test(input)) {
+			yield { request: 'file', content: input };
+			return 1;
+		}
+		log.warn(`Input ${input} is not an R file`);
+		return 0;
+	}
+
+	for await (const f of getAllFiles(input, rFileRegex)) {
+		if(++count > limit) {
+			return count;
+		}
+		yield { request: 'file', content: f };
+	}
+	return count;
+}
+
+/**
+ * Retrieves all R files in a given set of directories and files (asynchronously)
+ * @param inputs - Files or directories to validate for R-files
+ * @param limit  - Limit the number of files to be retrieved
+ * @returns Number of files processed (&le; limit)
+ * @see allRFiles
+ */
+export async function* allRFilesFrom(inputs: string[], limit?: number): AsyncGenerator<RParseRequestFromFile, number> {
+	limit ??= Number.MAX_VALUE;
+	if(inputs.length === 0) {
+		log.info('No inputs given, nothing to do');
+		return 0;
+	}
+	let count = 0;
+	for(const input of inputs) {
+		count += yield* allRFiles(input, limit - count);
+	}
+	return count;
+}
+
+/**
+ * Writes the given table as a CSV file.
+ * @param table   - The table to write
+ * @param file    - The file path to write the CSV to
+ * @param sep     - The separator to use (default: `,`)
+ * @param newline - The newline character to use (default: `\n`)
+ */
+export function writeTableAsCsv(table: Table, file: string, sep = ',', newline = '\n') {
+	const csv = [table.header.join(sep), ...table.rows.map(row => row.join(sep))].join(newline);
+	fs.writeFileSync(file, csv);
+}
+
+/**
+ * Reads a file line by line and calls the given function for each line.
+ * The `lineNumber` starts at `0`.
+ * The `maxLines` option limits the maximum number of read lines and is `Infinity` by default.
+ * @returns Whether all lines have been successfully read (`false` if `maxLines` was reached)
+ *
+ * See {@link readLineByLineSync} for a synchronous version.
+ */
+export async function readLineByLine(filePath: string, onLine: (line: Buffer, lineNumber: number) => Promise<void>, maxLines: number = Infinity): Promise<boolean> {
+	if(!(await fs.promises.stat(filePath).catch(() => {}))?.isFile()) {
+		log.warn(`File ${filePath} does not exist`);
+		return false;
+	}
+	const reader = new LineByLine(filePath);
+
+	let line: Buffer | null;
+
+	let counter = 0;
+	// eslint-disable-next-line no-cond-assign
+	while(line = reader.next()) {
+		if(counter >= maxLines) {
+			return false;
+		}
+		await onLine(line, counter++);
+	}
+	return true;
+}
+
+/**
+ * Reads a file line by line and calls the given function for each line.
+ * The `lineNumber` starts at `0`.
+ * The `maxLines` option limits the maximum number of read lines and is `Infinity` by default.
+ * @returns Whether the file exists and all lines have been successfully read (`false` if `maxLines` was reached)
+ *
+ * See {@link readLineByLine} for an asynchronous version.
+ */
+export function readLineByLineSync(filePath: string, onLine: (line: Buffer, lineNumber: number) => void, maxLines: number = Infinity): boolean {
+	if(!fs.statSync(filePath, { throwIfNoEntry: false })?.isFile()) {
+		log.warn(`File ${filePath} does not exist`);
+		return false;
+	}
+	const reader = new LineByLine(filePath);
+
+	let line: Buffer | null;
+
+	let counter = 0;
+	// eslint-disable-next-line no-cond-assign
+	while(line = reader.next()) {
+		if(counter >= maxLines) {
+			return false;
+		}
+		onLine(line, counter++);
+	}
+	return true;
+}
+
+/**
+ * Chops off the last part of the given directory path after a path separator, essentially returning the path's parent directory.
+ * If an absolute path is passed, the returned path is also absolute.
+ * @param directory - The directory whose parent to return
+ */
+export function getParentDirectory(directory: string): string{
+	// apparently this is somehow the best way to do it in node, what
+	return directory.split(path.sep).slice(0, -1).join(path.sep);
+}
+
+/**
+ * A path with backslashes rewritten to forward slashes, i.e. POSIX form. R accepts these on every OS, so this is
+ * also how a filesystem path is made safe to interpolate into an R string literal (where a raw `\` would escape).
+ */
+export function toPosixPath(p: string): string {
+	return p.replaceAll('\\', '/');
+}
+
+/**
+ * The directory all given paths share, e.g. `/a` for `/a/b.R` and `/a/c/d.R`; `undefined` if they share none.
+ */
+export function commonDirectory(paths: readonly string[]): string | undefined {
+	if(paths.length === 0) {
+		return undefined;
+	}
+	const split = paths.map(p => path.resolve(p).split(path.sep));
+	const common: string[] = [];
+	for(let i = 0; i < split[0].length; i++) {
+		if(!split.every(s => s[i] === split[0][i])) {
+			break;
+		}
+		common.push(split[0][i]);
+	}
+	if(common.length === 0) {
+		return undefined;
+	}
+	return common.length === 1 && common[0] === '' ? path.sep : common.join(path.sep);
+}
+
+/**
+ * The path of `filePath` seen from `root` (`s.R` instead of `/tmp/s.R`), or unchanged if it lies outside of `root`.
+ */
+export function relativeTo(root: string, filePath: string): string {
+	const relative = toPosixPath(path.relative(root, filePath));
+	return relative.length > 0 && !relative.startsWith('..') ? relative : filePath;
+}
+
+/**
+ * Checks whether the given path-like object is a file that exists on the local filesystem.
+ */
+export function isFilePath(p: PathLike) {
+	return fs.existsSync(p) && fs.statSync(p).isFile();
+}

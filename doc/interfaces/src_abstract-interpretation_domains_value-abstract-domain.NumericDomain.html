@@ -1,0 +1,210 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>NumericDomain | @eagleoutice/flowr - v2.13.10</title><meta name="description" content="Documentation for @eagleoutice/flowr"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="../index.html" class="title">@eagleoutice/flowr - v2.13.10</a>
+<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<ul role="listbox" id="tsd-search-results"></ul>
+<div id="tsd-search-status" aria-live="polite" aria-atomic="true">
+<div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<ul class="tsd-breadcrumb" aria-label="Breadcrumb">
+<li><a href="../modules/src_abstract-interpretation_domains_value-abstract-domain.html">src/abstract-interpretation/domains/value-abstract-domain</a></li>
+<li><a href="" aria-current="page">NumericDomain</a></li></ul>
+<h1>Interface NumericDomain</h1></div>
+<section class="tsd-panel tsd-comment">
+<div class="tsd-comment tsd-typography"><p>A numeric value abstract domain with numeric operations and a satisfiability check.</p>
+</div></section>
+<div class="tsd-signature"><span class="tsd-signature-keyword">interface</span> <span class="tsd-kind-interface">NumericDomain</span> <span class="tsd-signature-symbol">{</span><br/>    <a class="tsd-kind-call-signature" href="#add-1">add</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">other</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#divide-1">divide</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">other</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#from-1">from</a><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">...</span><span class="tsd-kind-parameter">values</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#max-1">max</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">other</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#min-1">min</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">other</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#multiply-1">multiply</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">other</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#negate-1">negate</a><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#satisfies-1">satisfies</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">value</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">comparator</span><span class="tsd-signature-symbol">?:</span> <a href="../enums/src_abstract-interpretation_domains_value-abstract-domain.NumericalComparator.html" class="tsd-signature-type tsd-kind-enum">NumericalComparator</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../enums/src_util_logic.Ternary.html" class="tsd-signature-type tsd-kind-enum">Ternary</a><span class="tsd-signature-symbol">;</span><br/>    <a class="tsd-kind-call-signature" href="#subtract-1">subtract</a><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">other</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div>
+<section class="tsd-panel tsd-hierarchy" data-refl="3490">
+<h4>Hierarchy (<a href="../hierarchy.html#src/abstract-interpretation/domains/value-abstract-domain.NumericDomain">View Summary</a>)</h4>
+<ul class="tsd-hierarchy">
+<li class="tsd-hierarchy-item"><a href="src_abstract-interpretation_domains_value-abstract-domain.ValueDomain.html" class="tsd-signature-type tsd-kind-interface">ValueDomain</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">&gt;</span>
+<ul class="tsd-hierarchy">
+<li class="tsd-hierarchy-item"><span class="tsd-hierarchy-target">NumericDomain</span></li></ul></li></ul></section>
+<section class="tsd-panel">
+<h4>Implemented by</h4>
+<ul class="tsd-hierarchy">
+<li><a href="../classes/src_abstract-interpretation_domains_interval-domain.IntervalDomain.html" class="tsd-signature-type tsd-kind-class">IntervalDomain</a></li></ul></section><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/abstract-interpretation/domains/value-abstract-domain.ts#L34">src/abstract-interpretation/domains/value-abstract-domain.ts:34</a></li></ul></aside>
+<section class="tsd-panel-group tsd-index-group">
+<section class="tsd-panel tsd-index-panel">
+<details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h5 class="tsd-index-heading uppercase">Index</h5></summary>
+<div class="tsd-accordion-details">
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading tsd-anchor-link" id="methods">Methods<a href="#methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-index-list"><a href="#add" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>add</span></a>
+<a href="#divide" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>divide</span></a>
+<a href="#from" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>from</span></a>
+<a href="#max" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>max</span></a>
+<a href="#min" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>min</span></a>
+<a href="#multiply" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>multiply</span></a>
+<a href="#negate" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>negate</span></a>
+<a href="#satisfies" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>satisfies</span></a>
+<a href="#subtract" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>subtract</span></a>
+</div></section></div></details></section></section>
+<details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Methods"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h2 class="tsd-anchor-link" id="methods-1">Methods<a href="#methods-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
+<section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="add"><span>add</span><a href="#add" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="add-1"><span class="tsd-kind-call-signature">add</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">other</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><a href="#add-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Adds an numeric abstract value to this numeric abstract value.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">other</span>: <span class="tsd-signature-type">this</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">this</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/abstract-interpretation/domains/value-abstract-domain.ts#L43">src/abstract-interpretation/domains/value-abstract-domain.ts:43</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="divide"><span>divide</span><a href="#divide" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="divide-1"><span class="tsd-kind-call-signature">divide</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">other</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><a href="#divide-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Divides this numeric abstract value by another numeric abstract value.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">other</span>: <span class="tsd-signature-type">this</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">this</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/abstract-interpretation/domains/value-abstract-domain.ts#L58">src/abstract-interpretation/domains/value-abstract-domain.ts:58</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited">
+<h3 class="tsd-anchor-link" id="from"><span>from</span><a href="#from" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited">
+<li class="tsd-is-inherited">
+<div class="tsd-signature tsd-anchor-link" id="from-1"><span class="tsd-kind-call-signature">from</span><span class="tsd-signature-symbol">(</span><span class="tsd-signature-symbol">...</span><span class="tsd-kind-parameter">values</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><a href="#from-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Abstracts a list of concrete values into an abstract value of the value abstract domain.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-signature-symbol">...</span><span class="tsd-kind-parameter">values</span>: <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">[]</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">this</span></h4><aside class="tsd-sources">
+<p>Inherited from <a href="src_abstract-interpretation_domains_value-abstract-domain.ValueDomain.html">ValueDomain</a>.<a href="src_abstract-interpretation_domains_value-abstract-domain.ValueDomain.html#from">from</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/abstract-interpretation/domains/value-abstract-domain.ts#L10">src/abstract-interpretation/domains/value-abstract-domain.ts:10</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="max"><span>max</span><a href="#max" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="max-1"><span class="tsd-kind-call-signature">max</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">other</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><a href="#max-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Gets the maximum of this numeric abstract value and another numeric abstract value.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">other</span>: <span class="tsd-signature-type">this</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">this</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/abstract-interpretation/domains/value-abstract-domain.ts#L68">src/abstract-interpretation/domains/value-abstract-domain.ts:68</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="min"><span>min</span><a href="#min" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="min-1"><span class="tsd-kind-call-signature">min</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">other</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><a href="#min-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Gets the minimum of this numeric abstract value and another numeric abstract value.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">other</span>: <span class="tsd-signature-type">this</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">this</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/abstract-interpretation/domains/value-abstract-domain.ts#L63">src/abstract-interpretation/domains/value-abstract-domain.ts:63</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="multiply"><span>multiply</span><a href="#multiply" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="multiply-1"><span class="tsd-kind-call-signature">multiply</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">other</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><a href="#multiply-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Multiplies this numeric abstract value with another numeric abstract value.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">other</span>: <span class="tsd-signature-type">this</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">this</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/abstract-interpretation/domains/value-abstract-domain.ts#L53">src/abstract-interpretation/domains/value-abstract-domain.ts:53</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="negate"><span>negate</span><a href="#negate" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="negate-1"><span class="tsd-kind-call-signature">negate</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><a href="#negate-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Negates this numeric abstract value.</p>
+</div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">this</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/abstract-interpretation/domains/value-abstract-domain.ts#L38">src/abstract-interpretation/domains/value-abstract-domain.ts:38</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="satisfies"><span>satisfies</span><a href="#satisfies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="satisfies-1"><span class="tsd-kind-call-signature">satisfies</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">value</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">comparator</span><span class="tsd-signature-symbol">?:</span> <a href="../enums/src_abstract-interpretation_domains_value-abstract-domain.NumericalComparator.html" class="tsd-signature-type tsd-kind-enum">NumericalComparator</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../enums/src_util_logic.Ternary.html" class="tsd-signature-type tsd-kind-enum">Ternary</a><a href="#satisfies-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Checks whether the current abstract value satisfies a concrete value (i.e. includes a concrete value).</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">value</span>: <span class="tsd-signature-type">number</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">comparator</span>: <a href="../enums/src_abstract-interpretation_domains_value-abstract-domain.NumericalComparator.html" class="tsd-signature-type tsd-kind-enum">NumericalComparator</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../enums/src_util_logic.Ternary.html" class="tsd-signature-type tsd-kind-enum">Ternary</a></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see">See<a href="#see" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><a href="../enums/src_util_logic.Ternary.html" class="tsd-kind-enum">Ternary</a> for the returned satisfiability result</p>
+</div></div><aside class="tsd-sources">
+<p>Overrides <a href="src_abstract-interpretation_domains_value-abstract-domain.ValueDomain.html">ValueDomain</a>.<a href="src_abstract-interpretation_domains_value-abstract-domain.ValueDomain.html#satisfies">satisfies</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/abstract-interpretation/domains/value-abstract-domain.ts#L70">src/abstract-interpretation/domains/value-abstract-domain.ts:70</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="subtract"><span>subtract</span><a href="#subtract" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="subtract-1"><span class="tsd-kind-call-signature">subtract</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">other</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><a href="#subtract-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Subtracts an numeric abstract value from this numeric abstract value.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">other</span>: <span class="tsd-signature-type">this</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">this</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/abstract-interpretation/domains/value-abstract-domain.ts#L48">src/abstract-interpretation/domains/value-abstract-domain.ts:48</a></li></ul></aside></div></li></ul></section></section></details></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div>
+<div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div>
+<details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>On This Page</h3></summary>
+<div class="tsd-accordion-details">
+<details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Methods"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Methods</summary>
+<div><a href="#add"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>add</span></a><a href="#divide"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>divide</span></a><a href="#from" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>from</span></a><a href="#max"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>max</span></a><a href="#min"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>min</span></a><a href="#multiply"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>multiply</span></a><a href="#negate"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>negate</span></a><a href="#satisfies"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>satisfies</span></a><a href="#subtract"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>subtract</span></a></div></details></div></details></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="../modules.html">@eagleoutice/flowr - v2.13.10</a>
+<ul class="tsd-small-nested-navigation" id="tsd-nav-container">
+<li>Loading...</li></ul></nav></div></div></div><footer>
+<p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>
+<div class="overlay"></div></body></html>

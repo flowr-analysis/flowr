@@ -1,0 +1,496 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>SigDatabase | @eagleoutice/flowr - v2.13.10</title><meta name="description" content="Documentation for @eagleoutice/flowr"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="../index.html" class="title">@eagleoutice/flowr - v2.13.10</a>
+<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<ul role="listbox" id="tsd-search-results"></ul>
+<div id="tsd-search-status" aria-live="polite" aria-atomic="true">
+<div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<ul class="tsd-breadcrumb" aria-label="Breadcrumb">
+<li><a href="../modules/src_project_sigdb_reader.html">src/project/sigdb/reader</a></li>
+<li><a href="" aria-current="page">SigDatabase</a></li></ul>
+<h1>Class SigDatabase</h1></div>
+<section class="tsd-panel tsd-comment">
+<div class="tsd-comment tsd-typography"><p>The read interface every package-signature source implements, so a single <a href="#" class="tsd-kind-class">SigDatabase</a> and a
+sharded <a href="src_project_sigdb_reader.SigDatabaseSet.html" class="tsd-kind-class">SigDatabaseSet</a> are interchangeable. Queries are synchronous; any decompression/caching
+happens once during <code>open</code>.</p>
+</div></section>
+<section class="tsd-panel">
+<h4>Implements</h4>
+<ul class="tsd-hierarchy">
+<li><a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html" class="tsd-signature-type tsd-kind-interface">PackageSignatureSource</a></li></ul></section><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L338">src/project/sigdb/reader.ts:338</a></li></ul></aside>
+<section class="tsd-panel-group tsd-index-group">
+<section class="tsd-panel tsd-index-panel">
+<details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h5 class="tsd-index-heading uppercase">Index</h5></summary>
+<div class="tsd-accordion-details">
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading tsd-anchor-link" id="properties">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-index-list"><a href="#content" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>content</span></a>
+<a href="#index" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>index</span></a>
+<a href="#strings" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>strings</span></a>
+</div></section>
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading tsd-anchor-link" id="methods">Methods<a href="#methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-index-list"><a href="#frommemory" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>from<wbr/>Memory</span></a>
+<a href="#open" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>open</span></a>
+<a href="#opensync" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>open<wbr/>Sync</span></a>
+<a href="#opensyncfrom" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>open<wbr/>Sync<wbr/>From</span></a>
+<a href="#allblobs" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>all<wbr/>Blobs</span></a>
+<a href="#blob" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>blob</span></a>
+<a href="#classowner" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>class<wbr/>Owner</span></a>
+<a href="#close" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>close</span></a>
+<a href="#contenthash" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>content<wbr/>Hash</span></a>
+<a href="#coreversions" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>core<wbr/>Versions</span></a>
+<a href="#dependencies" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>dependencies</span></a>
+<a href="#downloads" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>downloads</span></a>
+<a href="#functionbyname" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>function<wbr/>By<wbr/>Name</span></a>
+<a href="#functions" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>functions</span></a>
+<a href="#has" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>has</span></a>
+<a href="#hasversion" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>has<wbr/>Version</span></a>
+<a href="#isbaser" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>is<wbr/>Base<wbr/>R</span></a>
+<a href="#iscranversion" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>is<wbr/>Cran<wbr/>Version</span></a>
+<a href="#latestversion" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>latest<wbr/>Version</span></a>
+<a href="#lookup" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>lookup</span></a>
+<a href="#packagenames" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>package<wbr/>Names</span></a>
+<a href="#releasedate" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>release<wbr/>Date</span></a>
+<a href="#releasedates" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>release<wbr/>Dates</span></a>
+<a href="#transitivecallees" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>transitive<wbr/>Callees</span></a>
+</div></section></div></details></section></section>
+<details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h2 class="tsd-anchor-link" id="properties-1">Properties<a href="#properties-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
+<section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="content"><code class="tsd-tag">Readonly</code><span>content</span><a href="#content" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">content</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_project_sigdb_schema.SigDbContent.html" class="tsd-signature-type tsd-kind-interface">SigDbContent</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L348">src/project/sigdb/reader.ts:348</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="index"><code class="tsd-tag">Readonly</code><span>index</span><a href="#index" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">index</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_project_sigdb_index-format.SigDbIndex.html" class="tsd-signature-type tsd-kind-interface">SigDbIndex</a></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L347">src/project/sigdb/reader.ts:347</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="strings"><code class="tsd-tag">Readonly</code><span>strings</span><a href="#strings" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">strings</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L346">src/project/sigdb/reader.ts:346</a></li></ul></aside></section></section></details>
+<details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Methods"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h2 class="tsd-anchor-link" id="methods-1">Methods<a href="#methods-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
+<section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="frommemory"><code class="tsd-tag">Static</code><span>from<wbr/>Memory</span><a href="#frommemory" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="frommemory-1"><span class="tsd-kind-call-signature">fromMemory</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">db</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_project_sigdb_schema.SigDb.html" class="tsd-signature-type tsd-kind-interface">SigDb</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="" class="tsd-signature-type tsd-kind-class">SigDatabase</a><a href="#frommemory-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Use an already-built <a href="../interfaces/src_project_sigdb_schema.SigDb.html" class="tsd-kind-interface">SigDb</a> directly, without writing or reading a file: its blobs simply start out in
+the cache. It holds exactly what a bundle carries, so every query answers as it would from disk; the
+SigDbBuilder plus this is all a test needs.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">db</span>: <a href="../interfaces/src_project_sigdb_schema.SigDb.html" class="tsd-signature-type tsd-kind-interface">SigDb</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="" class="tsd-signature-type tsd-kind-class">SigDatabase</a></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L363">src/project/sigdb/reader.ts:363</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="open"><code class="tsd-tag">Static</code><span>open</span><a href="#open" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="open-1"><span class="tsd-kind-call-signature">open</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">source</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">opts</span><span class="tsd-signature-symbol">?:</span> <a href="../interfaces/src_project_sigdb_reader.SigDbOpenOptions.html" class="tsd-signature-type tsd-kind-interface">SigDbOpenOptions</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="" class="tsd-signature-type tsd-kind-class">SigDatabase</a><span class="tsd-signature-symbol">&gt;</span><a href="#open-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>open a <code>.sigs.ndjson</code>, <code>.br</code> or <code>.gz</code>; compressed sources are decompressed into a hash-keyed cache once</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">source</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><span class="tsd-kind-parameter">opts</span>: <a href="../interfaces/src_project_sigdb_reader.SigDbOpenOptions.html" class="tsd-signature-type tsd-kind-interface">SigDbOpenOptions</a><span class="tsd-signature-symbol"> = {}</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><a href="" class="tsd-signature-type tsd-kind-class">SigDatabase</a><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L399">src/project/sigdb/reader.ts:399</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="opensync"><code class="tsd-tag">Static</code><span>open<wbr/>Sync</span><a href="#opensync" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="opensync-1"><span class="tsd-kind-call-signature">openSync</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">plainFile</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">opts</span><span class="tsd-signature-symbol">?:</span> <a href="../interfaces/src_project_sigdb_reader.OpenSyncOptions.html" class="tsd-signature-type tsd-kind-interface">OpenSyncOptions</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="" class="tsd-signature-type tsd-kind-class">SigDatabase</a><a href="#opensync-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Open a plain, seekable <code>.sigs.ndjson</code> synchronously. Pass <code>index</code> to skip reading the <code>.idx</code>,
+and <code>strings</code> to use an already-loaded shared dictionary instead of the file's own <code>d</code> section (for a
+blob-only shard). One ranged read loads the dictionary, no readline overhead.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">plainFile</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><span class="tsd-kind-parameter">opts</span>: <a href="../interfaces/src_project_sigdb_reader.OpenSyncOptions.html" class="tsd-signature-type tsd-kind-interface">OpenSyncOptions</a><span class="tsd-signature-symbol"> = {}</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="" class="tsd-signature-type tsd-kind-class">SigDatabase</a></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L375">src/project/sigdb/reader.ts:375</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="opensyncfrom"><code class="tsd-tag">Static</code><span>open<wbr/>Sync<wbr/>From</span><a href="#opensyncfrom" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="opensyncfrom-1"><span class="tsd-kind-call-signature">openSyncFrom</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">source</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">opts</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_project_sigdb_reader.OpenSyncFromOptions.html" class="tsd-signature-type tsd-kind-interface">OpenSyncFromOptions</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="" class="tsd-signature-type tsd-kind-class">SigDatabase</a><a href="#opensyncfrom-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Like <a href="#open" class="tsd-kind-method">open</a> but fully synchronous (blocking decompression); a <code>hash</code> keys the cache when <code>source</code>
+is compressed. Pass <code>strings</code> for a blob-only shard that shares an already-loaded dictionary.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">source</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><span class="tsd-kind-parameter">opts</span>: <a href="../interfaces/src_project_sigdb_reader.OpenSyncFromOptions.html" class="tsd-signature-type tsd-kind-interface">OpenSyncFromOptions</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="" class="tsd-signature-type tsd-kind-class">SigDatabase</a></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L407">src/project/sigdb/reader.ts:407</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="allblobs"><span>all<wbr/>Blobs</span><a href="#allblobs" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="allblobs-1"><span class="tsd-kind-call-signature">allBlobs</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_project_sigdb_schema.PkgBlob.html" class="tsd-signature-type tsd-kind-interface">PkgBlob</a><span class="tsd-signature-symbol">[]</span><a href="#allblobs-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>read every unique package blob in index order (used to re-hash a whole shard during verification)</p>
+</div>
+<h4 class="tsd-returns-title">Returns <a href="../interfaces/src_project_sigdb_schema.PkgBlob.html" class="tsd-signature-type tsd-kind-interface">PkgBlob</a><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L458">src/project/sigdb/reader.ts:458</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="blob"><span>blob</span><a href="#blob" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="blob-1"><span class="tsd-kind-call-signature">blob</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">pkg</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_project_sigdb_schema.PkgBlob.html" class="tsd-signature-type tsd-kind-interface">PkgBlob</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#blob-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>load a single package's blob by seeking to its line (undefined if absent); cached by blob index</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">pkg</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../interfaces/src_project_sigdb_schema.PkgBlob.html" class="tsd-signature-type tsd-kind-interface">PkgBlob</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L426">src/project/sigdb/reader.ts:426</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="classowner"><span>class<wbr/>Owner</span><a href="#classowner" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="classowner-1"><span class="tsd-kind-call-signature">classOwner</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">className</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">version</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#classowner-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>The package that OWNS the class <code>className</code>: an S3 class (a same-named constructor plus a registered method,
+see <a href="../interfaces/src_project_sigdb_schema.LibraryExports.html#s3classes" class="tsd-kind-property">LibraryExports.s3Classes</a>) or an S4 class (exported via <code>exportClasses</code>, see
+<a href="../interfaces/src_project_sigdb_schema.LibraryExports.html#s4classes" class="tsd-kind-property">LibraryExports.s4Classes</a>); S3 ownership wins a tie. <code>undefined</code> if none does. Without <code>version</code>, backed
+by a reverse index over every package's latest version, built once and cached.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">className</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">version</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html">PackageSignatureSource</a>.<a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html#classowner">classOwner</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L495">src/project/sigdb/reader.ts:495</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="close"><span>close</span><a href="#close" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="close-1"><span class="tsd-kind-call-signature">close</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#close-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>close the underlying file descriptor (idempotent; safe to call more than once)</p>
+</div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html">PackageSignatureSource</a>.<a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html#close">close</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L589">src/project/sigdb/reader.ts:589</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="contenthash"><span>content<wbr/>Hash</span><a href="#contenthash" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="contenthash-1"><span class="tsd-kind-call-signature">contentHash</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">blobs</span><span class="tsd-signature-symbol">?:</span> <a href="../interfaces/src_project_sigdb_schema.PkgBlob.html" class="tsd-signature-type tsd-kind-interface">PkgBlob</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><a href="#contenthash-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>recompute this bundle's self-contained content hash from its re-read data (matches writeSignatureDb)</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">blobs</span>: <a href="../interfaces/src_project_sigdb_schema.PkgBlob.html" class="tsd-signature-type tsd-kind-interface">PkgBlob</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol"> = ...</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L466">src/project/sigdb/reader.ts:466</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="coreversions"><span>core<wbr/>Versions</span><a href="#coreversions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="coreversions-1"><span class="tsd-kind-call-signature">coreVersions</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">pkg</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_r-version.RVersion.html" class="tsd-signature-type tsd-kind-type-alias">RVersion</a><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#coreversions-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>The R versions a base package was part of core, in ascending R-version order (exactly its stored
+versions). <code>undefined</code> for a non-base package. E.g. <code>mva</code> returns <code>…1.9.1</code>, <code>parallel</code> <code>2.14.0…</code>.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">pkg</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_util_r-version.RVersion.html" class="tsd-signature-type tsd-kind-type-alias">RVersion</a><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html">PackageSignatureSource</a>.<a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html#coreversions">coreVersions</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L556">src/project/sigdb/reader.ts:556</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="dependencies"><span>dependencies</span><a href="#dependencies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="dependencies-1"><span class="tsd-kind-call-signature">dependencies</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">pkg</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">version</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_project_sigdb_decode.ResolvedDependency.html" class="tsd-signature-type tsd-kind-interface">ResolvedDependency</a><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#dependencies-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>declared dependencies (Depends/Imports/…) of a package version, with version qualifiers</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">pkg</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">version</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../interfaces/src_project_sigdb_decode.ResolvedDependency.html" class="tsd-signature-type tsd-kind-interface">ResolvedDependency</a><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html">PackageSignatureSource</a>.<a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html#dependencies">dependencies</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L532">src/project/sigdb/reader.ts:532</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="downloads"><span>downloads</span><a href="#downloads" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="downloads-1"><span class="tsd-kind-call-signature">downloads</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">pkg</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><a href="#downloads-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>the download count recorded for the package, <code>0</code> when this source does not carry it</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">pkg</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">number</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html">PackageSignatureSource</a>.<a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html#downloads">downloads</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L548">src/project/sigdb/reader.ts:548</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="functionbyname"><span>function<wbr/>By<wbr/>Name</span><a href="#functionbyname" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="functionbyname-1"><span class="tsd-kind-call-signature">functionByName</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">pkg</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">name</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">version</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_project_sigdb_decode.DecodedFunction.html" class="tsd-signature-type tsd-kind-interface">DecodedFunction</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#functionbyname-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>the rich view of a single function by name, decoding only it (unlike <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html#functions" class="tsd-kind-method">functions</a>, which decodes the whole package)</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">pkg</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><span class="tsd-kind-parameter">name</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">version</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../interfaces/src_project_sigdb_decode.DecodedFunction.html" class="tsd-signature-type tsd-kind-interface">DecodedFunction</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html">PackageSignatureSource</a>.<a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html#functionbyname">functionByName</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L520">src/project/sigdb/reader.ts:520</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="functions"><span>functions</span><a href="#functions" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="functions-1"><span class="tsd-kind-call-signature">functions</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">pkg</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">version</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_project_sigdb_decode.DecodedFunction.html" class="tsd-signature-type tsd-kind-interface">DecodedFunction</a><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#functions-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>rich per-function view (signatures + call graphs) of a package version</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">pkg</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">version</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../interfaces/src_project_sigdb_decode.DecodedFunction.html" class="tsd-signature-type tsd-kind-interface">DecodedFunction</a><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html">PackageSignatureSource</a>.<a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html#functions">functions</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L515">src/project/sigdb/reader.ts:515</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="has"><span>has</span><a href="#has" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="has-1"><span class="tsd-kind-call-signature">has</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">pkg</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#has-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>whether the source can resolve the package at all</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">pkg</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html">PackageSignatureSource</a>.<a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html#has">has</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L417">src/project/sigdb/reader.ts:417</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="hasversion"><span>has<wbr/>Version</span><a href="#hasversion" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="hasversion-1"><span class="tsd-kind-call-signature">hasVersion</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">pkg</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">version</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#hasversion-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>whether this bundle actually carries the given version of a package (not just the package)</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">pkg</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><span class="tsd-kind-parameter">version</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html">PackageSignatureSource</a>.<a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html#hasversion">hasVersion</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L477">src/project/sigdb/reader.ts:477</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="isbaser"><span>is<wbr/>Base<wbr/>R</span><a href="#isbaser" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="isbaser-1"><span class="tsd-kind-call-signature">isBaseR</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">pkg</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#isbaser-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>whether this is an R-core / base package (its versions are the R releases it shipped with; see <a href="../types/src_project_sigdb_schema.SigDbPkgMeta.html" class="tsd-kind-type-alias">SigDbPkgMeta</a>)</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">pkg</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html">PackageSignatureSource</a>.<a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html#isbaser">isBaseR</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L543">src/project/sigdb/reader.ts:543</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="iscranversion"><span>is<wbr/>Cran<wbr/>Version</span><a href="#iscranversion" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="iscranversion-1"><span class="tsd-kind-call-signature">isCranVersion</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">pkg</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">version</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#iscranversion-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>whether a version is a current CRAN release (not in the package's <code>noncran</code>/removed set)</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">pkg</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><span class="tsd-kind-parameter">version</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html">PackageSignatureSource</a>.<a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html#iscranversion">isCranVersion</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L482">src/project/sigdb/reader.ts:482</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="latestversion"><span>latest<wbr/>Version</span><a href="#latestversion" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="latestversion-1"><span class="tsd-kind-call-signature">latestVersion</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">pkg</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_r-version.RVersion.html" class="tsd-signature-type tsd-kind-type-alias">RVersion</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#latestversion-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>the newest version of a package by release date (falling back to the recorded latest, then SemVer order)</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">pkg</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_util_r-version.RVersion.html" class="tsd-signature-type tsd-kind-type-alias">RVersion</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html">PackageSignatureSource</a>.<a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html#latestversion">latestVersion</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L581">src/project/sigdb/reader.ts:581</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="lookup"><span>lookup</span><a href="#lookup" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="lookup-1"><span class="tsd-kind-call-signature">lookup</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">pkg</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">version</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_project_sigdb_schema.LibraryExports.html" class="tsd-signature-type tsd-kind-interface">LibraryExports</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#lookup-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>the export view of a package version (defaults to its latest)</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">pkg</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">version</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../interfaces/src_project_sigdb_schema.LibraryExports.html" class="tsd-signature-type tsd-kind-interface">LibraryExports</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html">PackageSignatureSource</a>.<a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html#lookup">lookup</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L486">src/project/sigdb/reader.ts:486</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="packagenames"><span>package<wbr/>Names</span><a href="#packagenames" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="packagenames-1"><span class="tsd-kind-call-signature">packageNames</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><a href="#packagenames-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>every package name this source can resolve</p>
+</div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html">PackageSignatureSource</a>.<a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html#packagenames">packageNames</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L421">src/project/sigdb/reader.ts:421</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="releasedate"><span>release<wbr/>Date</span><a href="#releasedate" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="releasedate-1"><span class="tsd-kind-call-signature">releaseDate</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">pkg</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">version</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Date</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#releasedate-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>the release date of a package version (defaulting to the newest release), or <code>undefined</code> if unknown</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">pkg</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">version</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Date</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html">PackageSignatureSource</a>.<a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html#releasedate">releaseDate</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L564">src/project/sigdb/reader.ts:564</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="releasedates"><span>release<wbr/>Dates</span><a href="#releasedates" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="releasedates-1"><span class="tsd-kind-call-signature">releaseDates</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">pkg</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_project_sigdb_sigdb-version.VersionRelease.html" class="tsd-signature-type tsd-kind-interface">VersionRelease</a><span class="tsd-signature-symbol">[]</span><a href="#releasedates-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>every known release date of a package, in ascending R-version order (empty when no dates were stored)</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">pkg</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../interfaces/src_project_sigdb_sigdb-version.VersionRelease.html" class="tsd-signature-type tsd-kind-interface">VersionRelease</a><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html">PackageSignatureSource</a>.<a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html#releasedates">releaseDates</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L576">src/project/sigdb/reader.ts:576</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="transitivecallees"><span>transitive<wbr/>Callees</span><a href="#transitivecallees" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="transitivecallees-1"><span class="tsd-kind-call-signature">transitiveCallees</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">pkg</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">name</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">version</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#transitivecallees-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>the transitive callees of a function within one package version, expanding the stored local call graphs</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">pkg</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><span class="tsd-kind-parameter">name</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">version</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html">PackageSignatureSource</a>.<a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html#transitivecallees">transitiveCallees</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/sigdb/reader.ts#L527">src/project/sigdb/reader.ts:527</a></li></ul></aside></div></li></ul></section></section></details></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div>
+<div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div>
+<details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>On This Page</h3></summary>
+<div class="tsd-accordion-details">
+<details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Properties</summary>
+<div><a href="#content"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>content</span></a><a href="#index"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>index</span></a><a href="#strings"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>strings</span></a></div></details>
+<details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Methods"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Methods</summary>
+<div><a href="#frommemory"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>from<wbr/>Memory</span></a><a href="#open"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>open</span></a><a href="#opensync"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>open<wbr/>Sync</span></a><a href="#opensyncfrom"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>open<wbr/>Sync<wbr/>From</span></a><a href="#allblobs"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>all<wbr/>Blobs</span></a><a href="#blob"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>blob</span></a><a href="#classowner"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>class<wbr/>Owner</span></a><a href="#close"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>close</span></a><a href="#contenthash"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>content<wbr/>Hash</span></a><a href="#coreversions"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>core<wbr/>Versions</span></a><a href="#dependencies"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>dependencies</span></a><a href="#downloads"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>downloads</span></a><a href="#functionbyname"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>function<wbr/>By<wbr/>Name</span></a><a href="#functions"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>functions</span></a><a href="#has"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>has</span></a><a href="#hasversion"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>has<wbr/>Version</span></a><a href="#isbaser"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>is<wbr/>Base<wbr/>R</span></a><a href="#iscranversion"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>is<wbr/>Cran<wbr/>Version</span></a><a href="#latestversion"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>latest<wbr/>Version</span></a><a href="#lookup"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>lookup</span></a><a href="#packagenames"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>package<wbr/>Names</span></a><a href="#releasedate"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>release<wbr/>Date</span></a><a href="#releasedates"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>release<wbr/>Dates</span></a><a href="#transitivecallees"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>transitive<wbr/>Callees</span></a></div></details></div></details></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="../modules.html">@eagleoutice/flowr - v2.13.10</a>
+<ul class="tsd-small-nested-navigation" id="tsd-nav-container">
+<li>Loading...</li></ul></nav></div></div></div><footer>
+<p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>
+<div class="overlay"></div></body></html>

@@ -1,0 +1,238 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>FlowrAnalyzerIncrementalAnalysisContext | @eagleoutice/flowr - v2.13.10</title><meta name="description" content="Documentation for @eagleoutice/flowr"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="../index.html" class="title">@eagleoutice/flowr - v2.13.10</a>
+<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<ul role="listbox" id="tsd-search-results"></ul>
+<div id="tsd-search-status" aria-live="polite" aria-atomic="true">
+<div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<ul class="tsd-breadcrumb" aria-label="Breadcrumb">
+<li><a href="../modules/src_project_context_flowr-analyzer-incremental-analysis-context.html">src/project/context/flowr-analyzer-incremental-analysis-context</a></li>
+<li><a href="" aria-current="page">FlowrAnalyzerIncrementalAnalysisContext</a></li></ul>
+<h1>Class FlowrAnalyzerIncrementalAnalysisContext</h1></div>
+<section class="tsd-panel tsd-comment">
+<div class="tsd-comment tsd-typography"><p>Information to carry over for future incremental builds</p>
+</div></section>
+<section class="tsd-panel">
+<h4>Implements</h4>
+<ul class="tsd-hierarchy">
+<li><a href="../interfaces/src_project_context_flowr-analyzer-incremental-analysis-context.ReadOnlyFlowrAnalyzerIncrementalAnalysisContext.html" class="tsd-signature-type tsd-kind-interface">ReadOnlyFlowrAnalyzerIncrementalAnalysisContext</a></li>
+<li><a href="../interfaces/src_project_cache_flowr-cache.InvalidationEventReceiver.html" class="tsd-signature-type tsd-kind-interface">InvalidationEventReceiver</a></li></ul></section><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-incremental-analysis-context.ts#L35">src/project/context/flowr-analyzer-incremental-analysis-context.ts:35</a></li></ul></aside>
+<section class="tsd-panel-group tsd-index-group">
+<section class="tsd-panel tsd-index-panel">
+<details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h5 class="tsd-index-heading uppercase">Index</h5></summary>
+<div class="tsd-accordion-details">
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading tsd-anchor-link" id="constructors">Constructors<a href="#constructors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-index-list"><a href="#constructor" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Constructor"><use href="../assets/icons.svg#icon-512"></use></svg><span>constructor</span></a>
+</div></section>
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading tsd-anchor-link" id="properties">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-index-list"><a href="#name" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>name</span></a>
+</div></section>
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading tsd-anchor-link" id="methods">Methods<a href="#methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-index-list"><a href="#deleteoldcontentof" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>delete<wbr/>Old<wbr/>Content<wbr/>Of</span></a>
+<a href="#getlastknownmtime" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Last<wbr/>Known<wbr/>Mtime</span></a>
+<a href="#getoldcontentof" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Old<wbr/>Content<wbr/>Of</span></a>
+<a href="#getoldparseresultof" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Old<wbr/>Parse<wbr/>Result<wbr/>Of</span></a>
+<a href="#handlefileinvalidate" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>handle<wbr/>File<wbr/>Invalidate</span></a>
+<a href="#handleshouldreparse" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>handle<wbr/>Should<wbr/>Reparse</span></a>
+<a href="#receive" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>receive</span></a>
+<a href="#reset" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>reset</span></a>
+<a href="#setlastknownmtime" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>set<wbr/>Last<wbr/>Known<wbr/>Mtime</span></a>
+<a href="#storeoldparseresults" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>store<wbr/>Old<wbr/>Parse<wbr/>Results</span></a>
+</div></section></div></details></section></section>
+<details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Constructors"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h2 class="tsd-anchor-link" id="constructors-1">Constructors<a href="#constructors-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
+<section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="constructor"><span>constructor</span><a href="#constructor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="constructorflowranalyzerincrementalanalysiscontext"><span class="tsd-signature-keyword">new</span> <span class="tsd-kind-constructor-signature">FlowrAnalyzerIncrementalAnalysisContext</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">context</span><span class="tsd-signature-symbol">:</span> <a href="src_project_context_flowr-analyzer-context.FlowrAnalyzerContext.html" class="tsd-signature-type tsd-kind-class">FlowrAnalyzerContext</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="" class="tsd-signature-type tsd-kind-class">FlowrAnalyzerIncrementalAnalysisContext</a><a href="#constructorflowranalyzerincrementalanalysiscontext" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">context</span>: <a href="src_project_context_flowr-analyzer-context.FlowrAnalyzerContext.html" class="tsd-signature-type tsd-kind-class">FlowrAnalyzerContext</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="" class="tsd-signature-type tsd-kind-class">FlowrAnalyzerIncrementalAnalysisContext</a></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-incremental-analysis-context.ts#L47">src/project/context/flowr-analyzer-incremental-analysis-context.ts:47</a></li></ul></aside></div></li></ul></section></section></details>
+<details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h2 class="tsd-anchor-link" id="properties-1">Properties<a href="#properties-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
+<section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="name"><code class="tsd-tag">Readonly</code><span>name</span><a href="#name" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">name</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;flowr-analyzer-incremental-analysis-context&quot;</span><span class="tsd-signature-symbol"> = &#39;flowr-analyzer-incremental-analysis-context&#39;</span></div>
+<div class="tsd-comment tsd-typography"><p>The name of this context.</p>
+</div><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_context_flowr-analyzer-incremental-analysis-context.ReadOnlyFlowrAnalyzerIncrementalAnalysisContext.html">ReadOnlyFlowrAnalyzerIncrementalAnalysisContext</a>.<a href="../interfaces/src_project_context_flowr-analyzer-incremental-analysis-context.ReadOnlyFlowrAnalyzerIncrementalAnalysisContext.html#name">name</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-incremental-analysis-context.ts#L36">src/project/context/flowr-analyzer-incremental-analysis-context.ts:36</a></li></ul></aside></section></section></details>
+<details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Methods"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h2 class="tsd-anchor-link" id="methods-1">Methods<a href="#methods-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
+<section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="deleteoldcontentof"><span>delete<wbr/>Old<wbr/>Content<wbr/>Of</span><a href="#deleteoldcontentof" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="deleteoldcontentof-1"><span class="tsd-kind-call-signature">deleteOldContentOf</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">filePath</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#deleteoldcontentof-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">filePath</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-incremental-analysis-context.ts#L164">src/project/context/flowr-analyzer-incremental-analysis-context.ts:164</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="getlastknownmtime"><span>get<wbr/>Last<wbr/>Known<wbr/>Mtime</span><a href="#getlastknownmtime" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getlastknownmtime-1"><span class="tsd-kind-call-signature">getLastKnownMtime</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">filePath</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#getlastknownmtime-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">filePath</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">number</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-incremental-analysis-context.ts#L168">src/project/context/flowr-analyzer-incremental-analysis-context.ts:168</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="getoldcontentof"><span>get<wbr/>Old<wbr/>Content<wbr/>Of</span><a href="#getoldcontentof" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getoldcontentof-1"><span class="tsd-kind-call-signature">getOldContentOf</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">filePath</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#getoldcontentof-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">filePath</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_context_flowr-analyzer-incremental-analysis-context.ReadOnlyFlowrAnalyzerIncrementalAnalysisContext.html">ReadOnlyFlowrAnalyzerIncrementalAnalysisContext</a>.<a href="../interfaces/src_project_context_flowr-analyzer-incremental-analysis-context.ReadOnlyFlowrAnalyzerIncrementalAnalysisContext.html#getoldcontentof">getOldContentOf</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-incremental-analysis-context.ts#L160">src/project/context/flowr-analyzer-incremental-analysis-context.ts:160</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="getoldparseresultof"><span>get<wbr/>Old<wbr/>Parse<wbr/>Result<wbr/>Of</span><a href="#getoldparseresultof" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getoldparseresultof-1"><span class="tsd-kind-call-signature">getOldParseResultOf</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">filePath</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Tree</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#getoldparseresultof-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">filePath</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Tree</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_context_flowr-analyzer-incremental-analysis-context.ReadOnlyFlowrAnalyzerIncrementalAnalysisContext.html">ReadOnlyFlowrAnalyzerIncrementalAnalysisContext</a>.<a href="../interfaces/src_project_context_flowr-analyzer-incremental-analysis-context.ReadOnlyFlowrAnalyzerIncrementalAnalysisContext.html#getoldparseresultof">getOldParseResultOf</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-incremental-analysis-context.ts#L156">src/project/context/flowr-analyzer-incremental-analysis-context.ts:156</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="handlefileinvalidate"><span>handle<wbr/>File<wbr/>Invalidate</span><a href="#handlefileinvalidate" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="handlefileinvalidate-1"><span class="tsd-kind-call-signature">handleFileInvalidate</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">filePath</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">oldContent</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#handlefileinvalidate-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">filePath</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><span class="tsd-kind-parameter">oldContent</span>: <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-incremental-analysis-context.ts#L56">src/project/context/flowr-analyzer-incremental-analysis-context.ts:56</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="handleshouldreparse"><span>handle<wbr/>Should<wbr/>Reparse</span><a href="#handleshouldreparse" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="handleshouldreparse-1"><span class="tsd-kind-call-signature">handleShouldReparse</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">filePath</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">ctx</span><span class="tsd-signature-symbol">:</span> <a href="src_project_context_flowr-analyzer-context.FlowrAnalyzerContext.html" class="tsd-signature-type tsd-kind-class">FlowrAnalyzerContext</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#handleshouldreparse-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">filePath</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><span class="tsd-kind-parameter">ctx</span>: <a href="src_project_context_flowr-analyzer-context.FlowrAnalyzerContext.html" class="tsd-signature-type tsd-kind-class">FlowrAnalyzerContext</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-incremental-analysis-context.ts#L65">src/project/context/flowr-analyzer-incremental-analysis-context.ts:65</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="receive"><span>receive</span><a href="#receive" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="receive-1"><span class="tsd-kind-call-signature">receive</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">event</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_project_cache_flowr-cache.InvalidationEvent.html" class="tsd-signature-type tsd-kind-type-alias">InvalidationEvent</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#receive-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">event</span>: <a href="../types/src_project_cache_flowr-cache.InvalidationEvent.html" class="tsd-signature-type tsd-kind-type-alias">InvalidationEvent</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
+<p>Implementation of InvalidationEventReceiver.receive</p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-incremental-analysis-context.ts#L131">src/project/context/flowr-analyzer-incremental-analysis-context.ts:131</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="reset"><span>reset</span><a href="#reset" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="reset-1"><span class="tsd-kind-call-signature">reset</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#reset-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-incremental-analysis-context.ts#L51">src/project/context/flowr-analyzer-incremental-analysis-context.ts:51</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="setlastknownmtime"><span>set<wbr/>Last<wbr/>Known<wbr/>Mtime</span><a href="#setlastknownmtime" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="setlastknownmtime-1"><span class="tsd-kind-call-signature">setLastKnownMtime</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">filePath</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">mtimeMs</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#setlastknownmtime-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">filePath</span>: <span class="tsd-signature-type">string</span></span></li>
+<li><span><span class="tsd-kind-parameter">mtimeMs</span>: <span class="tsd-signature-type">number</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-incremental-analysis-context.ts#L172">src/project/context/flowr-analyzer-incremental-analysis-context.ts:172</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="storeoldparseresults"><span>store<wbr/>Old<wbr/>Parse<wbr/>Results</span><a href="#storeoldparseresults" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="storeoldparseresults-1"><span class="tsd-kind-call-signature">storeOldParseResults</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">parseStepOutput</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_r-bridge_parser.ParseStepOutput.html" class="tsd-signature-type tsd-kind-interface">ParseStepOutput</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Tree</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#storeoldparseresults-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">parseStepOutput</span>: <a href="../interfaces/src_r-bridge_parser.ParseStepOutput.html" class="tsd-signature-type tsd-kind-interface">ParseStepOutput</a><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Tree</span><span class="tsd-signature-symbol">&gt;</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-incremental-analysis-context.ts#L145">src/project/context/flowr-analyzer-incremental-analysis-context.ts:145</a></li></ul></aside></div></li></ul></section></section></details></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div>
+<div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div>
+<details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>On This Page</h3></summary>
+<div class="tsd-accordion-details">
+<details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Constructors"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Constructors</summary>
+<div><a href="#constructor"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Constructor"><use href="../assets/icons.svg#icon-512"></use></svg><span>constructor</span></a></div></details>
+<details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Properties</summary>
+<div><a href="#name"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>name</span></a></div></details>
+<details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Methods"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Methods</summary>
+<div><a href="#deleteoldcontentof"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>delete<wbr/>Old<wbr/>Content<wbr/>Of</span></a><a href="#getlastknownmtime"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Last<wbr/>Known<wbr/>Mtime</span></a><a href="#getoldcontentof"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Old<wbr/>Content<wbr/>Of</span></a><a href="#getoldparseresultof"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Old<wbr/>Parse<wbr/>Result<wbr/>Of</span></a><a href="#handlefileinvalidate"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>handle<wbr/>File<wbr/>Invalidate</span></a><a href="#handleshouldreparse"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>handle<wbr/>Should<wbr/>Reparse</span></a><a href="#receive"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>receive</span></a><a href="#reset"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>reset</span></a><a href="#setlastknownmtime"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>set<wbr/>Last<wbr/>Known<wbr/>Mtime</span></a><a href="#storeoldparseresults"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>store<wbr/>Old<wbr/>Parse<wbr/>Results</span></a></div></details></div></details></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="../modules.html">@eagleoutice/flowr - v2.13.10</a>
+<ul class="tsd-small-nested-navigation" id="tsd-nav-container">
+<li>Loading...</li></ul></nav></div></div></div><footer>
+<p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>
+<div class="overlay"></div></body></html>

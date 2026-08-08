@@ -1,0 +1,503 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>FlowrAnalyzerDependenciesContext | @eagleoutice/flowr - v2.13.10</title><meta name="description" content="Documentation for @eagleoutice/flowr"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="../index.html" class="title">@eagleoutice/flowr - v2.13.10</a>
+<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<ul role="listbox" id="tsd-search-results"></ul>
+<div id="tsd-search-status" aria-live="polite" aria-atomic="true">
+<div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<ul class="tsd-breadcrumb" aria-label="Breadcrumb">
+<li><a href="../modules/src_project_context_flowr-analyzer-dependencies-context.html">src/project/context/flowr-analyzer-dependencies-context</a></li>
+<li><a href="" aria-current="page">FlowrAnalyzerDependenciesContext</a></li></ul>
+<h1>Class FlowrAnalyzerDependenciesContext</h1></div>
+<section class="tsd-panel tsd-comment">
+<div class="tsd-comment tsd-typography"><p>Manages the project's dependencies, their versions, and their interplay with <a href="src_project_plugins_package-version-plugins_flowr-analyzer-package-versions-plugin.FlowrAnalyzerPackageVersionsPlugin.html" class="tsd-kind-class">FlowrAnalyzerPackageVersionsPlugin</a>s.</p>
+</div></section>
+<section class="tsd-panel tsd-hierarchy" data-refl="18270">
+<h4>Hierarchy (<a href="../hierarchy.html#src/project/context/flowr-analyzer-dependencies-context.FlowrAnalyzerDependenciesContext">View Summary</a>)</h4>
+<ul class="tsd-hierarchy">
+<li class="tsd-hierarchy-item"><a href="src_project_context_abstract-flowr-analyzer-context.AbstractFlowrAnalyzerContext.html" class="tsd-signature-type tsd-kind-class">AbstractFlowrAnalyzerContext</a><span class="tsd-signature-symbol">&lt;</span><br/>    <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <a href="src_project_plugins_package-version-plugins_flowr-analyzer-package-versions-plugin.FlowrAnalyzerPackageVersionsPlugin.html" class="tsd-signature-type tsd-kind-class">FlowrAnalyzerPackageVersionsPlugin</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">&gt;</span>
+<ul class="tsd-hierarchy">
+<li class="tsd-hierarchy-item"><span class="tsd-hierarchy-target">FlowrAnalyzerDependenciesContext</span></li></ul></li></ul></section>
+<section class="tsd-panel">
+<h4>Implements</h4>
+<ul class="tsd-hierarchy">
+<li><a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html" class="tsd-signature-type tsd-kind-interface">ReadOnlyFlowrAnalyzerDependenciesContext</a></li>
+<li><a href="../interfaces/src_project_cache_flowr-cache.InvalidationEventReceiver.html" class="tsd-signature-type tsd-kind-interface">InvalidationEventReceiver</a></li></ul></section><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L106">src/project/context/flowr-analyzer-dependencies-context.ts:106</a></li></ul></aside>
+<section class="tsd-panel-group tsd-index-group">
+<section class="tsd-panel tsd-index-panel">
+<details class="tsd-index-content tsd-accordion" open><summary class="tsd-accordion-summary tsd-index-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h5 class="tsd-index-heading uppercase">Index</h5></summary>
+<div class="tsd-accordion-details">
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading tsd-anchor-link" id="constructors">Constructors<a href="#constructors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-index-list"><a href="#constructor" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Constructor"><use href="../assets/icons.svg#icon-512"></use></svg><span>constructor</span></a>
+</div></section>
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading tsd-anchor-link" id="properties">Properties<a href="#properties" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-index-list"><a href="#ctx" class="tsd-index-link tsd-is-protected tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>ctx</span></a>
+<a href="#functionscontext" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>functions<wbr/>Context</span></a>
+<a href="#name" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>name</span></a>
+<a href="#plugins" class="tsd-index-link tsd-is-protected tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>plugins</span></a>
+</div></section>
+<section class="tsd-index-section">
+<h3 class="tsd-index-heading tsd-anchor-link" id="methods">Methods<a href="#methods" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-index-list"><a href="#adddatabasesource" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>add<wbr/>Database<wbr/>Source</span></a>
+<a href="#adddeclareddependency" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>add<wbr/>Declared<wbr/>Dependency</span></a>
+<a href="#adddependency" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>add<wbr/>Dependency</span></a>
+<a href="#addlazyresolver" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>add<wbr/>Lazy<wbr/>Resolver</span></a>
+<a href="#applyplugins" class="tsd-index-link tsd-is-protected tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>apply<wbr/>Plugins</span></a>
+<a href="#availablesignaturedatabases" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>available<wbr/>Signature<wbr/>Databases</span></a>
+<a href="#basersourcefingerprint" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>base<wbr/>R<wbr/>Source<wbr/>Fingerprint</span></a>
+<a href="#declaredpackagenames" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>declared<wbr/>Package<wbr/>Names</span></a>
+<a href="#eagerlyloadsignaturedatabases" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>eagerly<wbr/>Load<wbr/>Signature<wbr/>Databases</span></a>
+<a href="#ensurestaticsloaded" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>ensure<wbr/>Statics<wbr/>Loaded</span></a>
+<a href="#getattachedcontext" class="tsd-index-link tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Attached<wbr/>Context</span></a>
+<a href="#getdependencies" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Dependencies</span></a>
+<a href="#getdependency" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Dependency</span></a>
+<a href="#hasbasersource" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>has<wbr/>Base<wbr/>R<wbr/>Source</span></a>
+<a href="#hassignaturedatabase" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>has<wbr/>Signature<wbr/>Database</span></a>
+<a href="#inferredrange" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>inferred<wbr/>Range</span></a>
+<a href="#loaddependency" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>load<wbr/>Dependency</span></a>
+<a href="#loadedsignaturedatabases" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>loaded<wbr/>Signature<wbr/>Databases</span></a>
+<a href="#packagesexporting" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>packages<wbr/>Exporting</span></a>
+<a href="#receive" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>receive</span></a>
+<a href="#reset" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>reset</span></a>
+<a href="#resolvestaticdependencies" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>resolve<wbr/>Static<wbr/>Dependencies</span></a>
+<a href="#signatureof" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>signature<wbr/>Of</span></a>
+<a href="#signaturesources" class="tsd-index-link"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>signature<wbr/>Sources</span></a>
+</div></section></div></details></section></section>
+<details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Constructors"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h2 class="tsd-anchor-link" id="constructors-1">Constructors<a href="#constructors-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
+<section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="constructor"><span>constructor</span><a href="#constructor" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="constructorflowranalyzerdependenciescontext"><span class="tsd-signature-keyword">new</span> <span class="tsd-kind-constructor-signature">FlowrAnalyzerDependenciesContext</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">functionsContext</span><span class="tsd-signature-symbol">:</span> <a href="src_project_context_flowr-analyzer-functions-context.FlowrAnalyzerFunctionsContext.html" class="tsd-signature-type tsd-kind-class">FlowrAnalyzerFunctionsContext</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">plugins</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-keyword">readonly</span> <a href="src_project_plugins_package-version-plugins_flowr-analyzer-package-versions-plugin.FlowrAnalyzerPackageVersionsPlugin.html" class="tsd-signature-type tsd-kind-class">FlowrAnalyzerPackageVersionsPlugin</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="" class="tsd-signature-type tsd-kind-class">FlowrAnalyzerDependenciesContext</a><a href="#constructorflowranalyzerdependenciescontext" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">functionsContext</span>: <a href="src_project_context_flowr-analyzer-functions-context.FlowrAnalyzerFunctionsContext.html" class="tsd-signature-type tsd-kind-class">FlowrAnalyzerFunctionsContext</a></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">plugins</span>: <span class="tsd-signature-keyword">readonly</span> <a href="src_project_plugins_package-version-plugins_flowr-analyzer-package-versions-plugin.FlowrAnalyzerPackageVersionsPlugin.html" class="tsd-signature-type tsd-kind-class">FlowrAnalyzerPackageVersionsPlugin</a><span class="tsd-signature-symbol">[]</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="" class="tsd-signature-type tsd-kind-class">FlowrAnalyzerDependenciesContext</a></h4><aside class="tsd-sources">
+<p>Overrides <a href="src_project_context_abstract-flowr-analyzer-context.AbstractFlowrAnalyzerContext.html">AbstractFlowrAnalyzerContext</a>.<a href="src_project_context_abstract-flowr-analyzer-context.AbstractFlowrAnalyzerContext.html#constructor">constructor</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L229">src/project/context/flowr-analyzer-dependencies-context.ts:229</a></li></ul></aside></div></li></ul></section></section></details>
+<details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h2 class="tsd-anchor-link" id="properties-1">Properties<a href="#properties-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
+<section>
+<section class="tsd-panel tsd-member tsd-is-protected tsd-is-inherited">
+<h3 class="tsd-anchor-link" id="ctx"><code class="tsd-tag">Protected</code> <code class="tsd-tag">Readonly</code><span>ctx</span><a href="#ctx" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">ctx</span><span class="tsd-signature-symbol">:</span> <a href="src_project_context_flowr-analyzer-context.FlowrAnalyzerContext.html" class="tsd-signature-type tsd-kind-class">FlowrAnalyzerContext</a></div>
+<div class="tsd-comment tsd-typography"><p>The linked full project context, allowing plugins to modify and access it.</p>
+</div><aside class="tsd-sources">
+<p>Inherited from <a href="src_project_context_abstract-flowr-analyzer-context.AbstractFlowrAnalyzerContext.html">AbstractFlowrAnalyzerContext</a>.<a href="src_project_context_abstract-flowr-analyzer-context.AbstractFlowrAnalyzerContext.html#ctx">ctx</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/abstract-flowr-analyzer-context.ts#L24">src/project/context/abstract-flowr-analyzer-context.ts:24</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="functionscontext"><code class="tsd-tag">Readonly</code><span>functions<wbr/>Context</span><a href="#functionscontext" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">functionsContext</span><span class="tsd-signature-symbol">:</span> <a href="src_project_context_flowr-analyzer-functions-context.FlowrAnalyzerFunctionsContext.html" class="tsd-signature-type tsd-kind-class">FlowrAnalyzerFunctionsContext</a></div>
+<div class="tsd-comment tsd-typography"><p>The functions context associated with this dependencies-context.</p>
+</div><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html">ReadOnlyFlowrAnalyzerDependenciesContext</a>.<a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html#functionscontext">functionsContext</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L109">src/project/context/flowr-analyzer-dependencies-context.ts:109</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="name"><code class="tsd-tag">Readonly</code><span>name</span><a href="#name" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">name</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;flowr-analyzer-dependencies-context&quot;</span><span class="tsd-signature-symbol"> = &#39;flowr-analyzer-dependencies-context&#39;</span></div>
+<div class="tsd-comment tsd-typography"><p>A human-readable name of the context. Try to make it unique to avoid confusion in the logs.</p>
+</div><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html">ReadOnlyFlowrAnalyzerDependenciesContext</a>.<a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html#name">name</a></p>
+<p>Overrides <a href="src_project_context_abstract-flowr-analyzer-context.AbstractFlowrAnalyzerContext.html">AbstractFlowrAnalyzerContext</a>.<a href="src_project_context_abstract-flowr-analyzer-context.AbstractFlowrAnalyzerContext.html#name">name</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L107">src/project/context/flowr-analyzer-dependencies-context.ts:107</a></li></ul></aside></section>
+<section class="tsd-panel tsd-member tsd-is-protected tsd-is-inherited">
+<h3 class="tsd-anchor-link" id="plugins"><code class="tsd-tag">Protected</code> <code class="tsd-tag">Readonly</code><span>plugins</span><a href="#plugins" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<div class="tsd-signature"><span class="tsd-kind-property">plugins</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> <a href="src_project_plugins_package-version-plugins_flowr-analyzer-package-versions-plugin.FlowrAnalyzerPackageVersionsPlugin.html" class="tsd-signature-type tsd-kind-class">FlowrAnalyzerPackageVersionsPlugin</a><span class="tsd-signature-symbol">[]</span></div>
+<div class="tsd-comment tsd-typography"><p>The plugins registered for this context. These build the foundation for <a href="#applyplugins" class="tsd-kind-method">applyPlugins</a>.</p>
+</div><aside class="tsd-sources">
+<p>Inherited from <a href="src_project_context_abstract-flowr-analyzer-context.AbstractFlowrAnalyzerContext.html">AbstractFlowrAnalyzerContext</a>.<a href="src_project_context_abstract-flowr-analyzer-context.AbstractFlowrAnalyzerContext.html#plugins">plugins</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/abstract-flowr-analyzer-context.ts#L20">src/project/context/abstract-flowr-analyzer-context.ts:20</a></li></ul></aside></section></section></details>
+<details class="tsd-panel-group tsd-member-group tsd-accordion" open><summary class="tsd-accordion-summary" data-key="section-Methods"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h2 class="tsd-anchor-link" id="methods-1">Methods<a href="#methods-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h2></summary>
+<section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="adddatabasesource"><span>add<wbr/>Database<wbr/>Source</span><a href="#adddatabasesource" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="adddatabasesource-1"><span class="tsd-kind-call-signature">addDatabaseSource</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">source</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span><a href="#adddatabasesource-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Mount an additional signature database/source by path (a plain <code>.sigs.ndjson</code>, a <code>.br</code>, or a manifest).</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">source</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Promise</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">&gt;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L202">src/project/context/flowr-analyzer-dependencies-context.ts:202</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="adddeclareddependency"><span>add<wbr/>Declared<wbr/>Dependency</span><a href="#adddeclareddependency" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="adddeclareddependency-1"><span class="tsd-kind-call-signature">addDeclaredDependency</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">pkg</span><span class="tsd-signature-symbol">:</span> <a href="src_project_plugins_package-version-plugins_package.Package.html" class="tsd-signature-type tsd-kind-class">Package</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><a href="#adddeclareddependency-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Register a dependency declared by a project metadata file (<code>DESCRIPTION</code>, <code>renv.lock</code>, <code>rv.lock</code>, <code>uvr.lock</code>). Gated by
+<code>solver.sigdb.loadProjectDependencies</code>: when project-dependency loading is disabled this is a no-op, so the
+declared deps never enter the context (unlike <a href="#adddependency" class="tsd-kind-method">addDependency</a>, used for on-demand signature-database
+resolution).</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">pkg</span>: <a href="src_project_plugins_package-version-plugins_package.Package.html" class="tsd-signature-type tsd-kind-class">Package</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">this</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L252">src/project/context/flowr-analyzer-dependencies-context.ts:252</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="adddependency"><span>add<wbr/>Dependency</span><a href="#adddependency" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="adddependency-1"><span class="tsd-kind-call-signature">addDependency</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">pkg</span><span class="tsd-signature-symbol">:</span> <a href="src_project_plugins_package-version-plugins_package.Package.html" class="tsd-signature-type tsd-kind-class">Package</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">this</span><a href="#adddependency-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">pkg</span>: <a href="src_project_plugins_package-version-plugins_package.Package.html" class="tsd-signature-type tsd-kind-class">Package</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">this</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L259">src/project/context/flowr-analyzer-dependencies-context.ts:259</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="addlazyresolver"><span>add<wbr/>Lazy<wbr/>Resolver</span><a href="#addlazyresolver" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="addlazyresolver-1"><span class="tsd-kind-call-signature">addLazyResolver</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">resolver</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">name</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">existing</span><span class="tsd-signature-symbol">?:</span> <a href="src_project_plugins_package-version-plugins_package.Package.html" class="tsd-signature-type tsd-kind-class">Package</a><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <a href="src_project_plugins_package-version-plugins_package.Package.html" class="tsd-signature-type tsd-kind-class">Package</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#addlazyresolver-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Register a resolver consulted by <a href="#getdependency" class="tsd-kind-method">getDependency</a> to fill in a package's exports lazily.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">resolver</span>: <span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">name</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">existing</span><span class="tsd-signature-symbol">?:</span> <a href="src_project_plugins_package-version-plugins_package.Package.html" class="tsd-signature-type tsd-kind-class">Package</a><span class="tsd-signature-symbol">)</span> <span class="tsd-signature-symbol">=&gt;</span> <a href="src_project_plugins_package-version-plugins_package.Package.html" class="tsd-signature-type tsd-kind-class">Package</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L128">src/project/context/flowr-analyzer-dependencies-context.ts:128</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-protected tsd-is-inherited">
+<h3 class="tsd-anchor-link" id="applyplugins"><code class="tsd-tag">Protected</code><span>apply<wbr/>Plugins</span><a href="#applyplugins" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-protected tsd-is-inherited">
+<li class="tsd-is-inherited">
+<div class="tsd-signature tsd-anchor-link" id="applyplugins-1"><span class="tsd-kind-call-signature">applyPlugins</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">args</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">[]</span><a href="#applyplugins-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Run all registered plugins on the given args, please be aware that if they are async, it is up to you to
+await them.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">args</span>: <span class="tsd-signature-type">undefined</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
+<p>Inherited from <a href="src_project_context_abstract-flowr-analyzer-context.AbstractFlowrAnalyzerContext.html">AbstractFlowrAnalyzerContext</a>.<a href="src_project_context_abstract-flowr-analyzer-context.AbstractFlowrAnalyzerContext.html#applyplugins">applyPlugins</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/abstract-flowr-analyzer-context.ts#L38">src/project/context/abstract-flowr-analyzer-context.ts:38</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="availablesignaturedatabases"><span>available<wbr/>Signature<wbr/>Databases</span><a href="#availablesignaturedatabases" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="availablesignaturedatabases-1"><span class="tsd-kind-call-signature">availableSignatureDatabases</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><a href="#availablesignaturedatabases-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>The identifying names (scopes, e.g. <code>base</code>/<code>current</code>/<code>history</code>) of the signature databases currently
+available, deduplicated. A simple view over <a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html#loadedsignaturedatabases" class="tsd-kind-method">loadedSignatureDatabases</a> for checking what a project
+can resolve against; empty when the signature database is disabled or none is loaded.</p>
+</div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-keyword">readonly</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html">ReadOnlyFlowrAnalyzerDependenciesContext</a>.<a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html#availablesignaturedatabases">availableSignatureDatabases</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L139">src/project/context/flowr-analyzer-dependencies-context.ts:139</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="basersourcefingerprint"><span>base<wbr/>R<wbr/>Source<wbr/>Fingerprint</span><a href="#basersourcefingerprint" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="basersourcefingerprint-1"><span class="tsd-kind-call-signature">baseRSourceFingerprint</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><a href="#basersourcefingerprint-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Cheap fingerprint of only the base-R-providing databases, so base-R-derived caches survive unrelated database changes.</p>
+</div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L193">src/project/context/flowr-analyzer-dependencies-context.ts:193</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="declaredpackagenames"><span>declared<wbr/>Package<wbr/>Names</span><a href="#declaredpackagenames" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="declaredpackagenames-1"><span class="tsd-kind-call-signature">declaredPackageNames</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><a href="#declaredpackagenames-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Every package name the project <em>declares</em> (<code>Depends</code>/<code>Imports</code>/<code>Suggests</code>/<code>LinkingTo</code>/<code>Enhances</code>), whether or
+not it became a loadable dependency here. <code>Suggests</code> do not, yet they still name packages the project may install.</p>
+</div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html">ReadOnlyFlowrAnalyzerDependenciesContext</a>.<a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html#declaredpackagenames">declaredPackageNames</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L326">src/project/context/flowr-analyzer-dependencies-context.ts:326</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="eagerlyloadsignaturedatabases"><span>eagerly<wbr/>Load<wbr/>Signature<wbr/>Databases</span><a href="#eagerlyloadsignaturedatabases" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="eagerlyloadsignaturedatabases-1"><span class="tsd-kind-call-signature">eagerlyLoadSignatureDatabases</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#eagerlyloadsignaturedatabases-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Eagerly mount every version plugin's signature database up front (see <code>solver.sigdb.eagerlyLoad</code>).</p>
+</div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L209">src/project/context/flowr-analyzer-dependencies-context.ts:209</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="ensurestaticsloaded"><span>ensure<wbr/>Statics<wbr/>Loaded</span><a href="#ensurestaticsloaded" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="ensurestaticsloaded-1"><span class="tsd-kind-call-signature">ensureStaticsLoaded</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#ensurestaticsloaded-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Runs the static plugins once. They fill this context and the project metadata, so both gate their reads on it.</p>
+</div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L240">src/project/context/flowr-analyzer-dependencies-context.ts:240</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member tsd-is-inherited">
+<h3 class="tsd-anchor-link" id="getattachedcontext"><span>get<wbr/>Attached<wbr/>Context</span><a href="#getattachedcontext" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures tsd-is-inherited">
+<li class="tsd-is-inherited">
+<div class="tsd-signature tsd-anchor-link" id="getattachedcontext-1"><span class="tsd-kind-call-signature">getAttachedContext</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <a href="src_project_context_flowr-analyzer-context.FlowrAnalyzerContext.html" class="tsd-signature-type tsd-kind-class">FlowrAnalyzerContext</a><a href="#getattachedcontext-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Returns the project context this sub-context is attached to</p>
+</div>
+<h4 class="tsd-returns-title">Returns <a href="src_project_context_flowr-analyzer-context.FlowrAnalyzerContext.html" class="tsd-signature-type tsd-kind-class">FlowrAnalyzerContext</a></h4><aside class="tsd-sources">
+<p>Inherited from <a href="src_project_context_abstract-flowr-analyzer-context.AbstractFlowrAnalyzerContext.html">AbstractFlowrAnalyzerContext</a>.<a href="src_project_context_abstract-flowr-analyzer-context.AbstractFlowrAnalyzerContext.html#getattachedcontext">getAttachedContext</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/abstract-flowr-analyzer-context.ts#L54">src/project/context/abstract-flowr-analyzer-context.ts:54</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="getdependencies"><span>get<wbr/>Dependencies</span><a href="#getdependencies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getdependencies-1"><span class="tsd-kind-call-signature">getDependencies</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <a href="src_project_plugins_package-version-plugins_package.Package.html" class="tsd-signature-type tsd-kind-class">Package</a><span class="tsd-signature-symbol">[]</span><a href="#getdependencies-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Get all dependencies known to this context.</p>
+</div>
+<h4 class="tsd-returns-title">Returns <a href="src_project_plugins_package-version-plugins_package.Package.html" class="tsd-signature-type tsd-kind-class">Package</a><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html">ReadOnlyFlowrAnalyzerDependenciesContext</a>.<a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html#getdependencies">getDependencies</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L319">src/project/context/flowr-analyzer-dependencies-context.ts:319</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="getdependency"><span>get<wbr/>Dependency</span><a href="#getdependency" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getdependency-1"><span class="tsd-kind-call-signature">getDependency</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">name</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">version</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">Range</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="src_project_plugins_package-version-plugins_package.Package.html" class="tsd-signature-type tsd-kind-class">Package</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#getdependency-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Get the dependency with the given name, if it exists.</p>
+<p>If the static dependencies have not yet been loaded, this may trigger a resolution step.
+Pass <code>version</code> to pin the resolution to a constraint (an exact version string, or a Range; uncached;
+<code>versionOverrides</code> config still wins, base-R stays tied to the assumed R version); otherwise the version
+comes from the declared constraints.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">name</span>: <span class="tsd-signature-type">string</span></span>
+<div class="tsd-comment tsd-typography"><p>The name of the dependency to get.</p>
+</div></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">version</span>: <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">Range</span></span>
+<div class="tsd-comment tsd-typography"><p>Optional version constraint to pin the resolution to (exact version string or a Range).</p>
+</div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="src_project_plugins_package-version-plugins_package.Package.html" class="tsd-signature-type tsd-kind-class">Package</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><p>The dependency with the given name, or undefined if it does not exist.</p>
+<aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html">ReadOnlyFlowrAnalyzerDependenciesContext</a>.<a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html#getdependency">getDependency</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L264">src/project/context/flowr-analyzer-dependencies-context.ts:264</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="hasbasersource"><span>has<wbr/>Base<wbr/>R<wbr/>Source</span><a href="#hasbasersource" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="hasbasersource-1"><span class="tsd-kind-call-signature">hasBaseRSource</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#hasbasersource-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Whether any version plugin can resolve the base-R packages (a versioned signature source is available).</p>
+</div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L188">src/project/context/flowr-analyzer-dependencies-context.ts:188</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="hassignaturedatabase"><span>has<wbr/>Signature<wbr/>Database</span><a href="#hassignaturedatabase" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="hassignaturedatabase-1"><span class="tsd-kind-call-signature">hasSignatureDatabase</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#hassignaturedatabase-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Whether at least one signature database is available (i.e., <a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html#availablesignaturedatabases" class="tsd-kind-method">availableSignatureDatabases</a> is non-empty).
+Cheaper than materializing the list when only the presence matters.</p>
+</div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html">ReadOnlyFlowrAnalyzerDependenciesContext</a>.<a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html#hassignaturedatabase">hasSignatureDatabase</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L143">src/project/context/flowr-analyzer-dependencies-context.ts:143</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="inferredrange"><span>inferred<wbr/>Range</span><a href="#inferredrange" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="inferredrange-1"><span class="tsd-kind-call-signature">inferredRange</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">name</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">Range</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#inferredrange-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>The versions a dependency can possibly have: its <a href="src_project_plugins_package-version-plugins_package.Package.html#derivedrange" class="tsd-kind-accessor">derived range</a>, but only once
+some version can satisfy it. <code>undefined</code> if the dependency is unknown, if nothing constrains it, or if the
+sources contradict each other, since then no version is possible at all.</p>
+<p>For <em>why</em> it is what it is (the individual constraints, or the version the database resolved to), take the
+<a href="src_project_plugins_package-version-plugins_package.Package.html" class="tsd-kind-class">Package</a> from <a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html#getdependency" class="tsd-kind-method">getDependency</a>.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">name</span>: <span class="tsd-signature-type">string</span></span>
+<div class="tsd-comment tsd-typography"><p>The name of the dependency.</p>
+</div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">Range</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html">ReadOnlyFlowrAnalyzerDependenciesContext</a>.<a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html#inferredrange">inferredRange</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L314">src/project/context/flowr-analyzer-dependencies-context.ts:314</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="loaddependency"><span>load<wbr/>Dependency</span><a href="#loaddependency" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="loaddependency-1"><span class="tsd-kind-call-signature">loadDependency</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">name</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="src_project_plugins_package-version-plugins_package.Package.html" class="tsd-signature-type tsd-kind-class">Package</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#loaddependency-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Like <a href="#getdependency" class="tsd-kind-method">getDependency</a>, but for a package the code pulls in (<code>library(p)</code>): the result joins the project's <a href="#getdependencies" class="tsd-kind-method">dependencies</a>.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">name</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="src_project_plugins_package-version-plugins_package.Package.html" class="tsd-signature-type tsd-kind-class">Package</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L292">src/project/context/flowr-analyzer-dependencies-context.ts:292</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="loadedsignaturedatabases"><span>loaded<wbr/>Signature<wbr/>Databases</span><a href="#loadedsignaturedatabases" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="loadedsignaturedatabases-1"><span class="tsd-kind-call-signature">loadedSignatureDatabases</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_project_plugins_package-version-plugins_flowr-analyzer-package-versions-plugin.SigDbLoadedInfo.html" class="tsd-signature-type tsd-kind-interface">SigDbLoadedInfo</a><span class="tsd-signature-symbol">[]</span><a href="#loadedsignaturedatabases-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Metadata of the signature databases the version plugins currently have loaded.</p>
+</div>
+<h4 class="tsd-returns-title">Returns <a href="../interfaces/src_project_plugins_package-version-plugins_flowr-analyzer-package-versions-plugin.SigDbLoadedInfo.html" class="tsd-signature-type tsd-kind-interface">SigDbLoadedInfo</a><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html">ReadOnlyFlowrAnalyzerDependenciesContext</a>.<a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html#loadedsignaturedatabases">loadedSignatureDatabases</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L132">src/project/context/flowr-analyzer-dependencies-context.ts:132</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="packagesexporting"><span>packages<wbr/>Exporting</span><a href="#packagesexporting" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="packagesexporting-1"><span class="tsd-kind-call-signature">packagesExporting</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">name</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span><a href="#packagesexporting-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>The names of known packages that export <code>name</code> (from the version plugins' signature databases). Used to
+hint which <code>library()</code>/<code>::</code> might be missing for an otherwise-undefined symbol. Empty if no database is
+available or the signature database is disabled.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">name</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-keyword">readonly</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html">ReadOnlyFlowrAnalyzerDependenciesContext</a>.<a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html#packagesexporting">packagesExporting</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L147">src/project/context/flowr-analyzer-dependencies-context.ts:147</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="receive"><span>receive</span><a href="#receive" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="receive-1"><span class="tsd-kind-call-signature">receive</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">event</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_project_cache_flowr-cache.InvalidationEvent.html" class="tsd-signature-type tsd-kind-type-alias">InvalidationEvent</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#receive-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">event</span>: <a href="../types/src_project_cache_flowr-cache.InvalidationEvent.html" class="tsd-signature-type tsd-kind-type-alias">InvalidationEvent</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
+<p>Implementation of InvalidationEventReceiver.receive</p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L215">src/project/context/flowr-analyzer-dependencies-context.ts:215</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="reset"><span>reset</span><a href="#reset" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="reset-1"><span class="tsd-kind-call-signature">reset</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#reset-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Reset the context to its initial state.</p>
+</div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
+<p>Overrides <a href="src_project_context_abstract-flowr-analyzer-context.AbstractFlowrAnalyzerContext.html">AbstractFlowrAnalyzerContext</a>.<a href="src_project_context_abstract-flowr-analyzer-context.AbstractFlowrAnalyzerContext.html#reset">reset</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L119">src/project/context/flowr-analyzer-dependencies-context.ts:119</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="resolvestaticdependencies"><span>resolve<wbr/>Static<wbr/>Dependencies</span><a href="#resolvestaticdependencies" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="resolvestaticdependencies-1"><span class="tsd-kind-call-signature">resolveStaticDependencies</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><a href="#resolvestaticdependencies-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">void</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L234">src/project/context/flowr-analyzer-dependencies-context.ts:234</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="signatureof"><span>signature<wbr/>Of</span><a href="#signatureof" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="signatureof-1"><span class="tsd-kind-call-signature">signatureOf</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">id</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_dataflow_environments_identifier.Identifier.html" class="tsd-signature-type tsd-kind-type-alias">Identifier</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">version</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_project_sigdb_decode.DecodedFunction.html" class="tsd-signature-type tsd-kind-interface">DecodedFunction</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#signatureof-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>The signature-database entry for the qualified call <code>id</code> (a <code>pkg::fn</code> <a href="../variables/src_dataflow_environments_identifier.Identifier.html" class="tsd-kind-variable">Identifier</a>) from the first
+<a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html#signaturesources" class="tsd-kind-method">source</a> that has it, resolving the package version from the project's dependency info
+unless <code>version</code> overrides it. This is the easy way to obtain a function's parameters from a context: pass
+<code>fn.signature</code> (or signatureParameterNames) to RFunctionCall.matchArgsToParams. <code>undefined</code>
+if <code>id</code> is unqualified or no loaded source defines it.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">id</span>: <a href="../types/src_dataflow_environments_identifier.Identifier.html" class="tsd-signature-type tsd-kind-type-alias">Identifier</a></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">version</span>: <span class="tsd-signature-type">string</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../interfaces/src_project_sigdb_decode.DecodedFunction.html" class="tsd-signature-type tsd-kind-interface">DecodedFunction</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html">ReadOnlyFlowrAnalyzerDependenciesContext</a>.<a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html#signatureof">signatureOf</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L167">src/project/context/flowr-analyzer-dependencies-context.ts:167</a></li></ul></aside></div></li></ul></section>
+<section class="tsd-panel tsd-member">
+<h3 class="tsd-anchor-link" id="signaturesources"><span>signature<wbr/>Sources</span><a href="#signaturesources" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="signaturesources-1"><span class="tsd-kind-call-signature">signatureSources</span><span class="tsd-signature-symbol">()</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html" class="tsd-signature-type tsd-kind-interface">PackageSignatureSource</a><span class="tsd-signature-symbol">[]</span><a href="#signaturesources-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>The signature sources the version plugins currently have loaded (backs the signature query).</p>
+</div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-keyword">readonly</span> <a href="../interfaces/src_project_sigdb_reader.PackageSignatureSource.html" class="tsd-signature-type tsd-kind-interface">PackageSignatureSource</a><span class="tsd-signature-symbol">[]</span></h4><aside class="tsd-sources">
+<p>Implementation of <a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html">ReadOnlyFlowrAnalyzerDependenciesContext</a>.<a href="../interfaces/src_project_context_flowr-analyzer-dependencies-context.ReadOnlyFlowrAnalyzerDependenciesContext.html#signaturesources">signatureSources</a></p>
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/project/context/flowr-analyzer-dependencies-context.ts#L160">src/project/context/flowr-analyzer-dependencies-context.ts:160</a></li></ul></aside></div></li></ul></section></section></details></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div>
+<div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div>
+<details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>On This Page</h3></summary>
+<div class="tsd-accordion-details">
+<details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Constructors"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Constructors</summary>
+<div><a href="#constructor"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Constructor"><use href="../assets/icons.svg#icon-512"></use></svg><span>constructor</span></a></div></details>
+<details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Properties"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Properties</summary>
+<div><a href="#ctx" class="tsd-is-protected tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>ctx</span></a><a href="#functionscontext"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>functions<wbr/>Context</span></a><a href="#name"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>name</span></a><a href="#plugins" class="tsd-is-protected tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Property"><use href="../assets/icons.svg#icon-1024"></use></svg><span>plugins</span></a></div></details>
+<details open class="tsd-accordion tsd-page-navigation-section"><summary class="tsd-accordion-summary" data-key="section-Methods"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>Methods</summary>
+<div><a href="#adddatabasesource"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>add<wbr/>Database<wbr/>Source</span></a><a href="#adddeclareddependency"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>add<wbr/>Declared<wbr/>Dependency</span></a><a href="#adddependency"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>add<wbr/>Dependency</span></a><a href="#addlazyresolver"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>add<wbr/>Lazy<wbr/>Resolver</span></a><a href="#applyplugins" class="tsd-is-protected tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>apply<wbr/>Plugins</span></a><a href="#availablesignaturedatabases"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>available<wbr/>Signature<wbr/>Databases</span></a><a href="#basersourcefingerprint"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>base<wbr/>R<wbr/>Source<wbr/>Fingerprint</span></a><a href="#declaredpackagenames"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>declared<wbr/>Package<wbr/>Names</span></a><a href="#eagerlyloadsignaturedatabases"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>eagerly<wbr/>Load<wbr/>Signature<wbr/>Databases</span></a><a href="#ensurestaticsloaded"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>ensure<wbr/>Statics<wbr/>Loaded</span></a><a href="#getattachedcontext" class="tsd-is-inherited"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Attached<wbr/>Context</span></a><a href="#getdependencies"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Dependencies</span></a><a href="#getdependency"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>get<wbr/>Dependency</span></a><a href="#hasbasersource"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>has<wbr/>Base<wbr/>R<wbr/>Source</span></a><a href="#hassignaturedatabase"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>has<wbr/>Signature<wbr/>Database</span></a><a href="#inferredrange"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>inferred<wbr/>Range</span></a><a href="#loaddependency"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>load<wbr/>Dependency</span></a><a href="#loadedsignaturedatabases"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>loaded<wbr/>Signature<wbr/>Databases</span></a><a href="#packagesexporting"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>packages<wbr/>Exporting</span></a><a href="#receive"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>receive</span></a><a href="#reset"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>reset</span></a><a href="#resolvestaticdependencies"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>resolve<wbr/>Static<wbr/>Dependencies</span></a><a href="#signatureof"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>signature<wbr/>Of</span></a><a href="#signaturesources"><svg class="tsd-kind-icon" viewBox="0 0 24 24" aria-label="Method"><use href="../assets/icons.svg#icon-2048"></use></svg><span>signature<wbr/>Sources</span></a></div></details></div></details></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="../modules.html">@eagleoutice/flowr - v2.13.10</a>
+<ul class="tsd-small-nested-navigation" id="tsd-nav-container">
+<li>Loading...</li></ul></nav></div></div></div><footer>
+<p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>
+<div class="overlay"></div></body></html>

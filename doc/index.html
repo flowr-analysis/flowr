@@ -1,0 +1,598 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="./"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>@eagleoutice/flowr - v2.13.10</title><meta name="description" content="Documentation for @eagleoutice/flowr"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="assets/style.css"/><link rel="stylesheet" href="assets/highlight.css"/><script defer src="assets/main.js"></script><script async src="assets/icons.js" id="tsd-icons-script"></script><script async src="assets/search.js" id="tsd-search-script"></script><script async src="assets/navigation.js" id="tsd-nav-script"></script><script async src="assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="index.html" class="title">@eagleoutice/flowr - v2.13.10</a>
+<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<ul role="listbox" id="tsd-search-results"></ul>
+<div id="tsd-search-status" aria-live="polite" aria-atomic="true">
+<div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-menu"></use></svg></a></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<h1>@eagleoutice/flowr - v2.13.10</h1></div>
+<div class="tsd-panel tsd-typography"><p><a href="https://github.com/flowr-analysis/flowr/wiki"><img src="https://raw.githubusercontent.com/wiki/flowr-analysis/flowr/img/flowR.png" alt="flowR logo"></a><br>
+<a href="https://github.com/flowr-analysis/flowr/actions/workflows/qa.yaml"><img src="https://github.com/flowr-analysis/flowr/actions/workflows/qa.yaml/badge.svg" alt="QA (and potentially deploy)"></a>
+<a href="https://codecov.io/gh/flowr-analysis/flowr"><img src="https://codecov.io/gh/flowr-analysis/flowr/graph/badge.svg" alt="codecov"></a>
+<a href="https://hub.docker.com/r/eagleoutice/flowr"><img src="https://img.shields.io/docker/v/eagleoutice/flowr?logo=docker&amp;logoColor=white&amp;label=dockerhub" alt="Docker Image Version (latest semver)"></a>
+<a href="https://github.com/flowr-analysis/flowr/releases/latest"><img src="https://badgen.net/github/tag/flowr-analysis/flowr?label=latest&amp;color=purple" alt="latest tag"></a>
+<a href="https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr"><img src="https://badgen.net/vs-marketplace/v/code-inspect.vscode-flowr" alt="Marketplace"></a>
+<a href="https://open-vsx.org/extension/code-inspect/vscode-flowr"><img src="https://badgen.net/open-vsx/version/code-inspect/vscode-flowr?label=Positron/Open%20VSX" alt="Marketplace"></a>
+<a href="https://zenodo.org/doi/10.5281/zenodo.13319290"><img src="https://zenodo.org/badge/624819038.svg" alt="DOI"></a></p>
+<p><em>flowR</em> is a sophisticated, static <a href="https://en.wikipedia.org/wiki/Data-flow_analysis">dataflow analyzer</a> for the <a href="https://www.r-project.org/">R programming language</a>,
+available for <a href="https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr">VSCode</a>, <a href="https://open-vsx.org/extension/code-inspect/vscode-flowr">Positron</a>, <a href="https://github.com/flowr-analysis/rstudio-addin-flowr">RStudio</a>,
+and <a href="https://hub.docker.com/r/eagleoutice/flowr">Docker</a>.
+It offers a wide variety of features, for example:</p>
+<ul>
+<li>
+<p>📚 <strong>dependency analysis</strong><br>
+Given your analysis project, flowR offers a plethora of so-called <a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">queries</a> to get more information about your code.
+An important query is the <a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dependencies">dependencies query</a>, which shows you the library your project needs,
+the data files it reads, the scripts it sources, and the data it outputs.
+Building on it, the <a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Guess-Dependency-Versions">guess dependency versions query</a> narrows down the version range each
+of these libraries has to have, by combining the constraints your project declares with the functions your code actually calls.</p>
+  <details><summary>Example: Dependency Analysis with flowR</summary>
+<p>The following showcases the dependency view of the <a href="https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr">Visual Studio Code extension</a>:</p>
+<p><img src="https://raw.githubusercontent.com/flowr-analysis/vscode-flowr/refs/heads/main/media/dependencies.png" alt="Dependency Analysis"></p>
+  </details> 
+</li>
+<li>
+<p>🐞 <strong>code linting</strong><br>
+Analyze your R scripts for common issues and potential bugs (see the <a href="https://github.com/flowr-analysis/flowr/wiki/Linter">wiki page</a> for more information on the currently supported linters).</p>
+  <details><summary>Example: Linting code with flowR</summary>
+<p>To lint your code, you can use the <a href="https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl">REPL</a> or the <a href="https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr">Visual Studio Code extension</a> (see <a href="https://github.com/flowr-analysis/vscode-flowr/pull/283">vscode-flowr#283</a>).</p>
+<pre><code class="shell"><span class="hl-0">$</span><span class="hl-1"> </span><span class="hl-2">docker</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-3">-it</span><span class="hl-1"> </span><span class="hl-3">--rm</span><span class="hl-1"> </span><span class="hl-2">eagleoutice/flowr</span><span class="hl-1"> </span><span class="hl-4"># or npm run flowr </span><br/><span class="hl-0">flowR</span><span class="hl-1"> </span><span class="hl-2">repl</span><span class="hl-1"> </span><span class="hl-2">v2.13.10,</span><span class="hl-1"> </span><span class="hl-2">R</span><span class="hl-1"> </span><span class="hl-2">grammar</span><span class="hl-1"> </span><span class="hl-2">v14</span><span class="hl-1"> (tree-sitter </span><span class="hl-2">engine</span><span class="hl-1">)</span><br/><span class="hl-0">R</span><span class="hl-1">&gt; </span><span class="hl-2">:query</span><span class="hl-1"> </span><span class="hl-2">@linter</span><span class="hl-1"> </span><span class="hl-2">&quot;read.csv(</span><span class="hl-5">\&quot;</span><span class="hl-2">/root/x.txt</span><span class="hl-5">\&quot;</span><span class="hl-2">)&quot;</span>
+</code><button type="button">Copy</button></pre>
+
+  <details>
+  <summary style='color:gray'>Output</summary>
+<pre><code class="text">Query: linter (10 ms)
+   ╰ Deprecated Functions (deprecated-functions): no findings
+   ╰ File Path Validity (file-path-validity):
+       ╰ certain:
+           ╰ Path `/root/x.txt` at 1.1-23
+       ╰ Metadata: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 0, processTimeMs: 1
+   ╰ Seeded Randomness (seeded-randomness): no findings
+   ╰ Absolute Paths (absolute-file-paths):
+       ╰ certain:
+           ╰ Path `/root/x.txt` at 1.1-23
+       ╰ Metadata: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 1, processTimeMs: 0
+   ╰ Unused Definitions (unused-definitions): no findings
+   ╰ Network Functions (network-functions): no findings
+   ╰ Dataframe Access Validation (dataframe-access-validation): no findings
+   ╰ Dead Code (dead-code): no findings
+   ╰ Useless Loops (useless-loop): no findings
+   ╰ Problematic inputs (problematic-inputs): no findings
+   ╰ Stop without call.=False argument (stop-call): no findings
+   ╰ Roxygen Arguments (roxygen-arguments): no findings
+   ╰ No Leaked Credentials (no-leaked-credentials): no findings
+   ╰ Undefined Symbol (undefined-symbol): no findings
+All queries together required ≈10 ms (1ms accuracy, total 11 ms)
+</code><button type="button">Copy</button></pre>
+
+<p>The linter will analyze the code and return any issues found.
+Formatted more nicely, this returns:</p>
+<pre><code class="json"><span class="hl-1">[ { </span><span class="hl-6">&quot;type&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;linter&quot;</span><span class="hl-1"> } ]</span>
+</code><button type="button">Copy</button></pre>
+
+<p>(This can be shortened to <code>@linter</code> when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)"><code>:query</code></span>).</p>
+<p><em>Results (prettified and summarized):</em></p>
+<p>Query: <strong>linter</strong> (246 ms)<br>
+   ╰ <strong>Deprecated Functions</strong> (deprecated-functions): <em>no findings</em><br>
+   ╰ <strong>File Path Validity</strong> (file-path-validity):<br>
+       ╰ certain:<br>
+           ╰ Path <code>/root/x.txt</code> at 1.1-23<br>
+       ╰ <em>Metadata</em>: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 3, processTimeMs: 1<br>
+   ╰ <strong>Seeded Randomness</strong> (seeded-randomness): <em>no findings</em><br>
+   ╰ <strong>Absolute Paths</strong> (absolute-file-paths):<br>
+       ╰ certain:<br>
+           ╰ Path <code>/root/x.txt</code> at 1.1-23<br>
+       ╰ <em>Metadata</em>: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 1, processTimeMs: 1<br>
+   ╰ <strong>Unused Definitions</strong> (unused-definitions): <em>no findings</em><br>
+   ╰ <strong>Network Functions</strong> (network-functions): <em>no findings</em><br>
+   ╰ <strong>Dataframe Access Validation</strong> (dataframe-access-validation): <em>no findings</em><br>
+   ╰ <strong>Dead Code</strong> (dead-code): <em>no findings</em><br>
+   ╰ <strong>Useless Loops</strong> (useless-loop): <em>no findings</em><br>
+   ╰ <strong>Problematic inputs</strong> (problematic-inputs): <em>no findings</em><br>
+   ╰ <strong>Stop without call.=False argument</strong> (stop-call): <em>no findings</em><br>
+   ╰ <strong>Roxygen Arguments</strong> (roxygen-arguments): <em>no findings</em><br>
+   ╰ <strong>No Leaked Credentials</strong> (no-leaked-credentials): <em>no findings</em><br>
+   ╰ <strong>Undefined Symbol</strong> (undefined-symbol): <em>no findings</em><br>
+<em>All queries together required ≈246 ms (1ms accuracy, total 248 ms)</em></p>
+  <details> <summary style="color:gray">Show Detailed Results as Json</summary>
+<p>The analysis required <em>248.0 ms</em> (including parsing and normalization and the query) within the generation environment.</p>
+<p>In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
+Please consult the <a href="https://github.com/flowr-analysis/flowr/wiki/Interface">Interface</a> wiki page for more information on how to get those.</p>
+<pre><code class="json"><span class="hl-1">{</span><br/><span class="hl-1">  </span><span class="hl-6">&quot;linter&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-6">&quot;results&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">      </span><span class="hl-6">&quot;deprecated-functions&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;results&quot;</span><span class="hl-1">: [],</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;.meta&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;totalCalls&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;totalFunctionDefinitions&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;searchTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">46</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;processTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">167</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-6">&quot;file-path-validity&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;results&quot;</span><span class="hl-1">: [</span><br/><span class="hl-1">          {</span><br/><span class="hl-1">            </span><span class="hl-6">&quot;involvedId&quot;</span><span class="hl-1">: </span><span class="hl-7">3</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-6">&quot;loc&quot;</span><span class="hl-1">: [</span><br/><span class="hl-1">              </span><span class="hl-7">1</span><span class="hl-1">,</span><br/><span class="hl-1">              </span><span class="hl-7">1</span><span class="hl-1">,</span><br/><span class="hl-1">              </span><span class="hl-7">1</span><span class="hl-1">,</span><br/><span class="hl-1">              </span><span class="hl-7">23</span><br/><span class="hl-1">            ],</span><br/><span class="hl-1">            </span><span class="hl-6">&quot;filePath&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;/root/x.txt&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-6">&quot;certainty&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;certain&quot;</span><br/><span class="hl-1">          }</span><br/><span class="hl-1">        ],</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;.meta&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;totalReads&quot;</span><span class="hl-1">: </span><span class="hl-7">1</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;totalUnknown&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;totalWritesBeforeAlways&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;totalValid&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;searchTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">3</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;processTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">1</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-6">&quot;seeded-randomness&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;results&quot;</span><span class="hl-1">: [],</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;.meta&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;consumerCalls&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;callsWithFunctionProducers&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;callsWithAssignmentProducers&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;callsWithNonConstantProducers&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;callsWithOtherBranchProducers&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;searchTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">1</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;processTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-6">&quot;absolute-file-paths&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;results&quot;</span><span class="hl-1">: [</span><br/><span class="hl-1">          {</span><br/><span class="hl-1">            </span><span class="hl-6">&quot;certainty&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;certain&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-6">&quot;filePath&quot;</span><span class="hl-1">: </span><span class="hl-2">&quot;/root/x.txt&quot;</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-6">&quot;loc&quot;</span><span class="hl-1">: [</span><br/><span class="hl-1">              </span><span class="hl-7">1</span><span class="hl-1">,</span><br/><span class="hl-1">              </span><span class="hl-7">1</span><span class="hl-1">,</span><br/><span class="hl-1">              </span><span class="hl-7">1</span><span class="hl-1">,</span><br/><span class="hl-1">              </span><span class="hl-7">23</span><br/><span class="hl-1">            ]</span><br/><span class="hl-1">          }</span><br/><span class="hl-1">        ],</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;.meta&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;totalConsidered&quot;</span><span class="hl-1">: </span><span class="hl-7">1</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;totalUnknown&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;searchTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">1</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;processTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">1</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-6">&quot;unused-definitions&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;results&quot;</span><span class="hl-1">: [],</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;.meta&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;totalConsidered&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;searchTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;processTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-6">&quot;network-functions&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;results&quot;</span><span class="hl-1">: [],</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;.meta&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;totalCalls&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;totalFunctionDefinitions&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;searchTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;processTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">1</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-6">&quot;dataframe-access-validation&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;results&quot;</span><span class="hl-1">: [],</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;.meta&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;numOperations&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;numAccesses&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;totalAccessed&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;searchTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;processTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">2</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-6">&quot;dead-code&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;results&quot;</span><span class="hl-1">: [],</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;.meta&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;searchTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">1</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;processTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-6">&quot;useless-loop&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;results&quot;</span><span class="hl-1">: [],</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;.meta&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;numOfUselessLoops&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;searchTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;processTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-6">&quot;problematic-inputs&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;results&quot;</span><span class="hl-1">: [],</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;.meta&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;searchTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;processTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">1</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-6">&quot;stop-call&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;results&quot;</span><span class="hl-1">: [],</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;.meta&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;consideredNodes&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;searchTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;processTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-6">&quot;roxygen-arguments&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;results&quot;</span><span class="hl-1">: [],</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;.meta&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;searchTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;processTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-6">&quot;no-leaked-credentials&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;results&quot;</span><span class="hl-1">: [],</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;.meta&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;totalChecked&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;searchTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;processTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      },</span><br/><span class="hl-1">      </span><span class="hl-6">&quot;undefined-symbol&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;results&quot;</span><span class="hl-1">: [],</span><br/><span class="hl-1">        </span><span class="hl-6">&quot;.meta&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;totalFunctionCalls&quot;</span><span class="hl-1">: </span><span class="hl-7">1</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;totalVariableUses&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;suppressed&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">            </span><span class="hl-6">&quot;installed&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-6">&quot;loadedPackage&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-6">&quot;enclosingScope&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-6">&quot;nonStandardEval&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">            </span><span class="hl-6">&quot;subscript&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><br/><span class="hl-1">          },</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;searchTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">0</span><span class="hl-1">,</span><br/><span class="hl-1">          </span><span class="hl-6">&quot;processTimeMs&quot;</span><span class="hl-1">: </span><span class="hl-7">21</span><br/><span class="hl-1">        }</span><br/><span class="hl-1">      }</span><br/><span class="hl-1">    },</span><br/><span class="hl-1">    </span><span class="hl-6">&quot;.meta&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">      </span><span class="hl-6">&quot;timing&quot;</span><span class="hl-1">: </span><span class="hl-7">246</span><br/><span class="hl-1">    }</span><br/><span class="hl-1">  },</span><br/><span class="hl-1">  </span><span class="hl-6">&quot;.meta&quot;</span><span class="hl-1">: {</span><br/><span class="hl-1">    </span><span class="hl-6">&quot;timing&quot;</span><span class="hl-1">: </span><span class="hl-7">246</span><br/><span class="hl-1">  }</span><br/><span class="hl-1">}</span>
+</code><button type="button">Copy</button></pre>
+
+  </details>
+  </details>
+  </details>
+</li>
+<li>
+<p>🍕 <strong>program slicing</strong><br>
+Given a point of interest like the visualization of a plot, <em>flowR</em> reduces the program to just the parts which are relevant
+for the computation of the point of interest.</p>
+  <details><summary>Example: Slicing with flowR</summary>
+<p>The simplest way to retrieve slices is with flowR's <a href="https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr">Visual Studio Code extension</a>.
+However, you can slice using the <a href="https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl">REPL</a> as well.
+This can help you if you want to reuse specific parts of an existing analysis within another context or if you want to understand
+what is happening in the code.</p>
+<p>For this, let's have a look at the example file, located at <a href="https://github.com/flowr-analysis/flowr/tree/main/test/testfiles/example.R">test/testfiles/example.R</a>:</p>
+<pre><code class="r"><span class="hl-8">sum</span><span class="hl-1"> &lt;- </span><span class="hl-7">0</span><br/><span class="hl-8">product</span><span class="hl-1"> &lt;- </span><span class="hl-7">1</span><br/><span class="hl-8">w</span><span class="hl-1"> &lt;- </span><span class="hl-7">7</span><br/><span class="hl-8">N</span><span class="hl-1"> &lt;- </span><span class="hl-7">10</span><br/><br/><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-8">i</span><span class="hl-1"> </span><span class="hl-3">in</span><span class="hl-1"> </span><span class="hl-7">1</span><span class="hl-1">:(</span><span class="hl-8">N</span><span class="hl-1">-</span><span class="hl-7">1</span><span class="hl-1">)) {</span><br/><span class="hl-1">  </span><span class="hl-8">sum</span><span class="hl-1"> &lt;- </span><span class="hl-8">sum</span><span class="hl-1"> + </span><span class="hl-8">i</span><span class="hl-1"> + </span><span class="hl-8">w</span><br/><span class="hl-1">  </span><span class="hl-8">product</span><span class="hl-1"> &lt;- </span><span class="hl-8">product</span><span class="hl-1"> * </span><span class="hl-8">i</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-0">cat</span><span class="hl-1">(</span><span class="hl-2">&quot;Sum:&quot;</span><span class="hl-1">, </span><span class="hl-8">sum</span><span class="hl-1">, </span><span class="hl-2">&quot;</span><span class="hl-5">\n</span><span class="hl-2">&quot;</span><span class="hl-1">)</span><br/><span class="hl-0">cat</span><span class="hl-1">(</span><span class="hl-2">&quot;Product:&quot;</span><span class="hl-1">, </span><span class="hl-8">product</span><span class="hl-1">, </span><span class="hl-2">&quot;</span><span class="hl-5">\n</span><span class="hl-2">&quot;</span><span class="hl-1">)</span>
+</code><button type="button">Copy</button></pre>
+
+<p>Let's suppose we are interested only in the <code>sum</code> which is printed in line 11.
+To get a slice for this, you can use the following command:</p>
+<pre><code class="shell"><span class="hl-0">$</span><span class="hl-1"> </span><span class="hl-2">docker</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-3">-it</span><span class="hl-1"> </span><span class="hl-3">--rm</span><span class="hl-1"> </span><span class="hl-2">eagleoutice/flowr</span><span class="hl-1"> </span><span class="hl-4"># or npm run flowr </span><br/><span class="hl-0">flowR</span><span class="hl-1"> </span><span class="hl-2">repl</span><span class="hl-1"> </span><span class="hl-2">v2.13.10,</span><span class="hl-1"> </span><span class="hl-2">R</span><span class="hl-1"> </span><span class="hl-2">grammar</span><span class="hl-1"> </span><span class="hl-2">v14</span><span class="hl-1"> (tree-sitter </span><span class="hl-2">engine</span><span class="hl-1">)</span><br/><span class="hl-0">R</span><span class="hl-1">&gt; </span><span class="hl-2">:query</span><span class="hl-1"> </span><span class="hl-2">@static-slice</span><span class="hl-1"> (11@sum) file://test/testfiles/example.R</span>
+</code><button type="button">Copy</button></pre>
+
+  <details>
+  <summary style='color:gray'>Output</summary>
+<pre><code class="text">sum &lt;- 0
+w &lt;- 7
+N &lt;- 10
+for(i in 1:(N-1)) sum &lt;- sum + i + w
+sum
+All queries together required ≈27 ms (1ms accuracy, total 27 ms)
+</code><button type="button">Copy</button></pre>
+
+  </details>
+  </details>
+</li>
+<li>
+<p>🚀 <strong>fast call-graph, data-, and control-flow graphs</strong><br>
+Within just <a href="https://flowr-analysis.github.io/flowr/wiki/stats/benchmark"><i><span title="This measurement is automatically fetched from the latest benchmark!">107.6 ms</span></i> (as of Aug 8, 2026)</a>,
+<em>flowR</em> can analyze the data- and control-flow of the average real-world R script. See the <a href="https://flowr-analysis.github.io/flowr/wiki/stats/benchmark">benchmarks</a> for more information,
+and consult the <a href="https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph">wiki pages</a> for more details on the <a href="https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph">dataflow graphs</a> as well as <a href="https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg">call graphs</a>.</p>
+  <details><summary>Example: Generating a dataflow graph with flowR</summary>
+<p>You can investigate flowR's analyses using the <a href="https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl">REPL</a>.
+Commands like <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the dataflow graph (aliases: :d*, :df*)"><code>:dataflow*</code></span> allow you to view a <a href="https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph">dataflow graph</a> for a given R script.</p>
+<p>Let's have a look at the following example:</p>
+<pre><code class="r"><span class="hl-8">sum</span><span class="hl-1"> &lt;- </span><span class="hl-7">0</span><br/><span class="hl-8">product</span><span class="hl-1"> &lt;- </span><span class="hl-7">1</span><br/><span class="hl-8">w</span><span class="hl-1"> &lt;- </span><span class="hl-7">7</span><br/><span class="hl-8">N</span><span class="hl-1"> &lt;- </span><span class="hl-7">10</span><br/><br/><span class="hl-3">for</span><span class="hl-1"> (</span><span class="hl-8">i</span><span class="hl-1"> </span><span class="hl-3">in</span><span class="hl-1"> </span><span class="hl-7">1</span><span class="hl-1">:(</span><span class="hl-8">N</span><span class="hl-1">-</span><span class="hl-7">1</span><span class="hl-1">)) {</span><br/><span class="hl-1">  </span><span class="hl-8">sum</span><span class="hl-1"> &lt;- </span><span class="hl-8">sum</span><span class="hl-1"> + </span><span class="hl-8">i</span><span class="hl-1"> + </span><span class="hl-8">w</span><br/><span class="hl-1">  </span><span class="hl-8">product</span><span class="hl-1"> &lt;- </span><span class="hl-8">product</span><span class="hl-1"> * </span><span class="hl-8">i</span><br/><span class="hl-1">}</span><br/><br/><span class="hl-0">cat</span><span class="hl-1">(</span><span class="hl-2">&quot;Sum:&quot;</span><span class="hl-1">, </span><span class="hl-8">sum</span><span class="hl-1">, </span><span class="hl-2">&quot;</span><span class="hl-5">\n</span><span class="hl-2">&quot;</span><span class="hl-1">)</span><br/><span class="hl-0">cat</span><span class="hl-1">(</span><span class="hl-2">&quot;Product:&quot;</span><span class="hl-1">, </span><span class="hl-8">product</span><span class="hl-1">, </span><span class="hl-2">&quot;</span><span class="hl-5">\n</span><span class="hl-2">&quot;</span><span class="hl-1">)</span>
+</code><button type="button">Copy</button></pre>
+
+<p>To get the <a href="https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph">dataflow graph</a> for this script, you can use the following command:</p>
+<pre><code class="shell"><span class="hl-0">$</span><span class="hl-1"> </span><span class="hl-2">docker</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-3">-it</span><span class="hl-1"> </span><span class="hl-3">--rm</span><span class="hl-1"> </span><span class="hl-2">eagleoutice/flowr</span><span class="hl-1"> </span><span class="hl-4"># or npm run flowr </span><br/><span class="hl-0">flowR</span><span class="hl-1"> </span><span class="hl-2">repl</span><span class="hl-1"> </span><span class="hl-2">v2.13.10,</span><span class="hl-1"> </span><span class="hl-2">R</span><span class="hl-1"> </span><span class="hl-2">grammar</span><span class="hl-1"> </span><span class="hl-2">v14</span><span class="hl-1"> (tree-sitter </span><span class="hl-2">engine</span><span class="hl-1">)</span><br/><span class="hl-0">R</span><span class="hl-1">&gt; </span><span class="hl-2">:dataflow</span><span class="hl-3">*</span><span class="hl-1"> </span><span class="hl-2">test/testfiles/example.R</span>
+</code><button type="button">Copy</button></pre>
+
+  <details>
+  <summary style='color:gray'>Output</summary>
+<pre><code class="text">&#39;test/testfiles/example.R&#39; looks like a path, analyzing file://test/testfiles/example.R (repl.autoUseFileProtocol is set).
+https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMXt7XCJgKiM5MTtSTnVtYmVyIzkzOyogKiowKipcbiAgICAgICoxLjgqICgqKmlkOiAxKiopYFwifX1cbiAgICUlIE5vIGVkZ2VzIGZvdW5kIGZvciAxXG4gICAgMFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKnN1bSoqXG4gICAgICAqMS4xLTMqICgqKmlkOiAwKiosIHY6IDEpYFwiXVxuICAgIDJbW1wiYCojOTE7UkJpbmFyeU9wIzkzOyogYmFzZSM1ODsjNTg7KiojNjA7IzQ1OyoqXG4gICAgICAqMS4xLTgqICgqKmlkOiAyKiopXG4gICAgYXJnOiAoMCwgMSlgXCJdXVxuICAgIGJ1aWx0LWluOl8tW1wiYEJ1aWx0LUluOlxuIzYwOyM0NTtgXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46Xy0gc3Ryb2tlOmdyYXksZmlsbDpncmF5LHN0cm9rZS13aWR0aDoycHgsb3BhY2l0eTouODtcbiAgICA0e3tcImAqIzkxO1JOdW1iZXIjOTM7KiAqKjEqKlxuICAgICAgKjIuMTIqICgqKmlkOiA0KiopYFwifX1cbiAgICUlIE5vIGVkZ2VzIGZvdW5kIGZvciA0XG4gICAgM1tcImAqIzkxO1JTeW1ib2wjOTM7KiAqKnByb2R1Y3QqKlxuICAgICAgKjIuMS03KiAoKippZDogMyoqLCB2OiA0KWBcIl1cbiAgICA1W1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzYwOyM0NTsqKlxuICAgICAgKjIuMS0xMiogKCoqaWQ6IDUqKilcbiAgICBhcmc6ICgzLCA0KWBcIl1dXG4gICAgN3t7XCJgKiM5MTtSTnVtYmVyIzkzOyogKio3KipcbiAgICAgICozLjYqICgqKmlkOiA3KiopYFwifX1cbiAgICUlIE5vIGVkZ2VzIGZvdW5kIGZvciA3XG4gICAgNltcImAqIzkxO1JTeW1ib2wjOTM7KiAqKncqKlxuICAgICAgKjMuMSogKCoqaWQ6IDYqKiwgdjogNylgXCJdXG4gICAgOFtbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM2MDsjNDU7KipcbiAgICAgICozLjEtNiogKCoqaWQ6IDgqKilcbiAgICBhcmc6ICg2LCA3KWBcIl1dXG4gICAgMTB7e1wiYCojOTE7Uk51bWJlciM5MzsqICoqMTAqKlxuICAgICAgKjQuNi03KiAoKippZDogMTAqKilgXCJ9fVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDEwXG4gICAgOVtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKk4qKlxuICAgICAgKjQuMSogKCoqaWQ6IDkqKiwgdjogMTApYFwiXVxuICAgIDExW1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzYwOyM0NTsqKlxuICAgICAgKjQuMS03KiAoKippZDogMTEqKilcbiAgICBhcmc6ICg5LCAxMClgXCJdXVxuICAgIDEyW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqaSoqXG4gICAgICAqNi42KiAoKippZDogMTIqKiwgdjogMjApYFwiXVxuICAgIDEze3tcImAqIzkxO1JOdW1iZXIjOTM7KiAqKjEqKlxuICAgICAgKjYuMTEqICgqKmlkOiAxMyoqKWBcIn19XG4gICAlJSBObyBlZGdlcyBmb3VuZCBmb3IgMTNcbiAgICAxNihbXCJgKiM5MTtSU3ltYm9sIzkzOyogKipOKipcbiAgICAgICo2LjE0KiAoKippZDogMTYqKilgXCJdKVxuICAgIDE3e3tcImAqIzkxO1JOdW1iZXIjOTM7KiAqKjEqKlxuICAgICAgKjYuMTYqICgqKmlkOiAxNyoqKWBcIn19XG4gICAlJSBObyBlZGdlcyBmb3VuZCBmb3IgMTdcbiAgICAxOFtbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM0NTsqKlxuICAgICAgKjYuMTQtMTYqICgqKmlkOiAxOCoqKVxuICAgIGFyZzogKDE2LCAxNylgXCJdXVxuICAgIGJ1aWx0LWluOi1bXCJgQnVpbHQtSW46XG4jNDU7YFwiXVxuICAgIHN0eWxlIGJ1aWx0LWluOi0gc3Ryb2tlOmdyYXksZmlsbDpncmF5LHN0cm9rZS13aWR0aDoycHgsb3BhY2l0eTouODtcbiAgICAxOVtbXCJgKiM5MTtSRXhwcmVzc2lvbkxpc3QjOTM7KiBiYXNlIzU4OyM1ODsqKigqKlxuICAgICAgKjYuMTMqICgqKmlkOiAxOSoqKVxuICAgIGFyZzogKDE4KWBcIl1dXG4gICAgMjBbW1wiYCojOTE7UkJpbmFyeU9wIzkzOyogYmFzZSM1ODsjNTg7KiojNTg7KipcbiAgICAgICo2LjExLTE3KiAoKippZDogMjAqKilcbiAgICBhcmc6ICgxMywgMTkpYFwiXV1cbiAgICBidWlsdC1pbjo6W1wiYEJ1aWx0LUluOlxuIzU4O2BcIl1cbiAgICBzdHlsZSBidWlsdC1pbjo6IHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMjQoW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqc3VtKipcbiAgICAgICo3LjEwLTEyKiAoKippZDogMjQqKiwgMzYrKWBcIl0pXG4gICAgMjUoW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqaSoqXG4gICAgICAqNy4xNiogKCoqaWQ6IDI1KiosIDM2KylgXCJdKVxuICAgIDI2W1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzQzOyoqXG4gICAgICAqNy4xMC0xNiogKCoqaWQ6IDI2KiosIDM2KylcbiAgICBhcmc6ICgyNCwgMjUpYFwiXV1cbiAgICBidWlsdC1pbjpfW1wiYEJ1aWx0LUluOlxuIzQzO2BcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpfIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMjcoW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqdyoqXG4gICAgICAqNy4yMCogKCoqaWQ6IDI3KiosIDM2KylgXCJdKVxuICAgIDI4W1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzQzOyoqXG4gICAgICAqNy4xMC0yMCogKCoqaWQ6IDI4KiosIDM2KylcbiAgICBhcmc6ICgyNiwgMjcpYFwiXV1cbiAgICAyM1tcImAqIzkxO1JTeW1ib2wjOTM7KiAqKnN1bSoqXG4gICAgICAqNy4zLTUqICgqKmlkOiAyMyoqLCAzNissIHY6IDI4KWBcIl1cbiAgICAyOVtbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM2MDsjNDU7KipcbiAgICAgICo3LjMtMjAqICgqKmlkOiAyOSoqLCAzNispXG4gICAgYXJnOiAoMjMsIDI4KWBcIl1dXG4gICAgMzEoW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqcHJvZHVjdCoqXG4gICAgICAqOC4xNC0yMCogKCoqaWQ6IDMxKiosIDM2KylgXCJdKVxuICAgIDMyKFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKmkqKlxuICAgICAgKjguMjQqICgqKmlkOiAzMioqLCAzNispYFwiXSlcbiAgICAzM1tbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM0MjsqKlxuICAgICAgKjguMTQtMjQqICgqKmlkOiAzMyoqLCAzNispXG4gICAgYXJnOiAoMzEsIDMyKWBcIl1dXG4gICAgMzBbXCJgKiM5MTtSU3ltYm9sIzkzOyogKipwcm9kdWN0KipcbiAgICAgICo4LjMtOSogKCoqaWQ6IDMwKiosIDM2KywgdjogMzMpYFwiXVxuICAgIDM0W1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzYwOyM0NTsqKlxuICAgICAgKjguMy0yNCogKCoqaWQ6IDM0KiosIDM2KylcbiAgICBhcmc6ICgzMCwgMzMpYFwiXV1cbiAgICAzNVtbXCJgKiM5MTtSRXhwcmVzc2lvbkxpc3QjOTM7KiBiYXNlIzU4OyM1ODsqKiMxMjM7KipcbiAgICAgICo2LjIwKiAoKippZDogMzUqKiwgMzYrKVxuICAgIGFyZzogKDI5LCAzNClgXCJdXVxuICAgIDM2W1tcImAqIzkxO1JGb3JMb29wIzkzOyogYmFzZSM1ODsjNTg7Kipmb3IqKlxuICAgICAgKjYuMS05LjEqICgqKmlkOiAzNioqKVxuICAgIGFyZzogKDEyLCAyMCwgMzUpYFwiXV1cbiAgICBidWlsdC1pbjpmb3JbXCJgQnVpbHQtSW46XG5mb3JgXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46Zm9yIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMzh7e1wiYCojOTE7UlN0cmluZyM5MzsqICoqIzM0O1N1bSM1ODsjMzQ7KipcbiAgICAgICoxMS41LTEwKiAoKippZDogMzgqKilgXCJ9fVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDM4XG4gICAgNDAoW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqc3VtKipcbiAgICAgICoxMS4xMy0xNSogKCoqaWQ6IDQwKiopYFwiXSlcbiAgICBidWlsdC1pbjpzdW1bXCJgQnVpbHQtSW46XG5zdW1gXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46c3VtIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgNDJ7e1wiYCojOTE7UlN0cmluZyM5MzsqICoqIzM0O1xuIzM0OyoqXG4gICAgICAqMTEuMTgtMjEqICgqKmlkOiA0MioqKWBcIn19XG4gICAlJSBObyBlZGdlcyBmb3VuZCBmb3IgNDJcbiAgICA0NFtbXCJgKiM5MTtSRnVuY3Rpb25DYWxsIzkzOyogYmFzZSM1ODsjNTg7KipjYXQqKlxuICAgICAgKjExLjEtMjIqICgqKmlkOiA0NCoqKVxuICAgIGFyZzogKDM4LCA0MCwgNDIpYFwiXV1cbiAgICBidWlsdC1pbjpjYXRbXCJgQnVpbHQtSW46XG5jYXRgXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46Y2F0IHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgNDZ7e1wiYCojOTE7UlN0cmluZyM5MzsqICoqIzM0O1Byb2R1Y3QjNTg7IzM0OyoqXG4gICAgICAqMTIuNS0xNCogKCoqaWQ6IDQ2KiopYFwifX1cbiAgICUlIE5vIGVkZ2VzIGZvdW5kIGZvciA0NlxuICAgIDQ4KFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKnByb2R1Y3QqKlxuICAgICAgKjEyLjE3LTIzKiAoKippZDogNDgqKilgXCJdKVxuICAgIDUwe3tcImAqIzkxO1JTdHJpbmcjOTM7KiAqKiMzNDtcbiMzNDsqKlxuICAgICAgKjEyLjI2LTI5KiAoKippZDogNTAqKilgXCJ9fVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDUwXG4gICAgNTJbW1wiYCojOTE7UkZ1bmN0aW9uQ2FsbCM5MzsqIGJhc2UjNTg7IzU4OyoqY2F0KipcbiAgICAgICoxMi4xLTMwKiAoKippZDogNTIqKilcbiAgICBhcmc6ICg0NiwgNDgsIDUwKWBcIl1dXG4gICAgMCAtLT58XCJkZWZpbmVkLWJ5XCJ8IDFcbiAgICAwIC0tPnxcImRlZmluZWQtYnlcInwgMlxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ1wifCAxXG4gICAgMiAtLT58XCJyZXR1cm5zLCBhcmdcInwgMFxuICAgIDIgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpfLVxuICAgIGxpbmtTdHlsZSA0IHN0cm9rZTpncmF5O1xuICAgIDMgLS0+fFwiZGVmaW5lZC1ieVwifCA0XG4gICAgMyAtLT58XCJkZWZpbmVkLWJ5XCJ8IDVcbiAgICA1IC0tPnxcInJlYWRzLCBhcmdcInwgNFxuICAgIDUgLS0+fFwicmV0dXJucywgYXJnXCJ8IDNcbiAgICA1IC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46Xy1cbiAgICBsaW5rU3R5bGUgOSBzdHJva2U6Z3JheTtcbiAgICA2IC0tPnxcImRlZmluZWQtYnlcInwgN1xuICAgIDYgLS0+fFwiZGVmaW5lZC1ieVwifCA4XG4gICAgOCAtLT58XCJyZWFkcywgYXJnXCJ8IDdcbiAgICA4IC0tPnxcInJldHVybnMsIGFyZ1wifCA2XG4gICAgOCAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl8tXG4gICAgbGlua1N0eWxlIDE0IHN0cm9rZTpncmF5O1xuICAgIDkgLS0+fFwiZGVmaW5lZC1ieVwifCAxMFxuICAgIDkgLS0+fFwiZGVmaW5lZC1ieVwifCAxMVxuICAgIDExIC0tPnxcInJlYWRzLCBhcmdcInwgMTBcbiAgICAxMSAtLT58XCJyZXR1cm5zLCBhcmdcInwgOVxuICAgIDExIC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46Xy1cbiAgICBsaW5rU3R5bGUgMTkgc3Ryb2tlOmdyYXk7XG4gICAgMTIgLS0+fFwiZGVmaW5lZC1ieVwifCAyMFxuICAgIDE2IC0tPnxcInJlYWRzXCJ8IDlcbiAgICAxOCAtLT58XCJyZWFkcywgYXJnXCJ8IDE2XG4gICAgMTggLS0+fFwicmVhZHMsIGFyZ1wifCAxN1xuICAgIDE4IC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46LVxuICAgIGxpbmtTdHlsZSAyNCBzdHJva2U6Z3JheTtcbiAgICAxOSAtLT58XCJyZXR1cm5zLCBhcmdcInwgMThcbiAgICAyMCAtLT58XCJyZWFkcywgYXJnXCJ8IDEzXG4gICAgMjAgLS0+fFwicmVhZHMsIGFyZ1wifCAxOVxuICAgIDIwIC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46OlxuICAgIGxpbmtTdHlsZSAyOCBzdHJva2U6Z3JheTtcbiAgICAyNCAtLT58XCJyZWFkc1wifCAwXG4gICAgMjQgLS0+fFwicmVhZHNcInwgMjNcbiAgICAyNCAtLT58XCJDRC1UcnVlXCJ8IDM2XG4gICAgbGlua1N0eWxlIDMxIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMjUgLS0+fFwicmVhZHNcInwgMTJcbiAgICAyNSAtLT58XCJDRC1UcnVlXCJ8IDM2XG4gICAgbGlua1N0eWxlIDMzIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMjYgLS0+fFwicmVhZHMsIGFyZ1wifCAyNFxuICAgIDI2IC0tPnxcInJlYWRzLCBhcmdcInwgMjVcbiAgICAyNiAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl9cbiAgICBsaW5rU3R5bGUgMzYgc3Ryb2tlOmdyYXk7XG4gICAgMjYgLS0+fFwiQ0QtVHJ1ZVwifCAzNlxuICAgIGxpbmtTdHlsZSAzNyBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDI3IC0tPnxcInJlYWRzXCJ8IDZcbiAgICAyNyAtLT58XCJDRC1UcnVlXCJ8IDM2XG4gICAgbGlua1N0eWxlIDM5IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMjggLS0+fFwicmVhZHMsIGFyZ1wifCAyNlxuICAgIDI4IC0tPnxcInJlYWRzLCBhcmdcInwgMjdcbiAgICAyOCAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl9cbiAgICBsaW5rU3R5bGUgNDIgc3Ryb2tlOmdyYXk7XG4gICAgMjggLS0+fFwiQ0QtVHJ1ZVwifCAzNlxuICAgIGxpbmtTdHlsZSA0MyBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDIzIC0tPnxcImRlZmluZWQtYnlcInwgMjhcbiAgICAyMyAtLT58XCJkZWZpbmVkLWJ5XCJ8IDI5XG4gICAgMjMgLS0+fFwiQ0QtVHJ1ZVwifCAzNlxuICAgIGxpbmtTdHlsZSA0NiBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDI5IC0tPnxcInJlYWRzLCBhcmdcInwgMjhcbiAgICAyOSAtLT58XCJyZXR1cm5zLCBhcmdcInwgMjNcbiAgICAyOSAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl8tXG4gICAgbGlua1N0eWxlIDQ5IHN0cm9rZTpncmF5O1xuICAgIDI5IC0tPnxcIkNELVRydWVcInwgMzZcbiAgICBsaW5rU3R5bGUgNTAgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAzMSAtLT58XCJyZWFkc1wifCAzXG4gICAgMzEgLS0+fFwicmVhZHNcInwgMzBcbiAgICAzMSAtLT58XCJDRC1UcnVlXCJ8IDM2XG4gICAgbGlua1N0eWxlIDUzIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMzIgLS0+fFwicmVhZHNcInwgMTJcbiAgICAzMiAtLT58XCJDRC1UcnVlXCJ8IDM2XG4gICAgbGlua1N0eWxlIDU1IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMzMgLS0+fFwicmVhZHMsIGFyZ1wifCAzMVxuICAgIDMzIC0tPnxcInJlYWRzLCBhcmdcInwgMzJcbiAgICAzMyAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl9cbiAgICBsaW5rU3R5bGUgNTggc3Ryb2tlOmdyYXk7XG4gICAgMzMgLS0+fFwiQ0QtVHJ1ZVwifCAzNlxuICAgIGxpbmtTdHlsZSA1OSBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDMwIC0tPnxcImRlZmluZWQtYnlcInwgMzNcbiAgICAzMCAtLT58XCJkZWZpbmVkLWJ5XCJ8IDM0XG4gICAgMzAgLS0+fFwiQ0QtVHJ1ZVwifCAzNlxuICAgIGxpbmtTdHlsZSA2MiBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDM0IC0tPnxcInJlYWRzLCBhcmdcInwgMzNcbiAgICAzNCAtLT58XCJyZXR1cm5zLCBhcmdcInwgMzBcbiAgICAzNCAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl8tXG4gICAgbGlua1N0eWxlIDY1IHN0cm9rZTpncmF5O1xuICAgIDM0IC0tPnxcIkNELVRydWVcInwgMzZcbiAgICBsaW5rU3R5bGUgNjYgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAzNSAtLT58XCJhcmdcInwgMjlcbiAgICAzNSAtLT58XCJyZXR1cm5zLCBhcmdcInwgMzRcbiAgICAzNSAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl9cbiAgICBsaW5rU3R5bGUgNjkgc3Ryb2tlOmdyYXk7XG4gICAgMzUgLS0+fFwiQ0QtVHJ1ZVwifCAzNlxuICAgIGxpbmtTdHlsZSA3MCBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDM2IC0tPnxcImFyZ1wifCAxMlxuICAgIDM2IC0tPnxcInJlYWRzLCBhcmdcInwgMjBcbiAgICAzNiAtLT58XCJhcmcsIG5vbi1zdGFuZGFyZC1ldmFsdWF0aW9uXCJ8IDM1XG4gICAgMzYgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpmb3JcbiAgICBsaW5rU3R5bGUgNzQgc3Ryb2tlOmdyYXk7XG4gICAgNDAgLS0+fFwicmVhZHNcInwgMFxuICAgIDQwIC0tPnxcInJlYWRzXCJ8IDIzXG4gICAgNDAgLS4tPnxcInJlYWRzXCJ8IGJ1aWx0LWluOnN1bVxuICAgIGxpbmtTdHlsZSA3NyBzdHJva2U6Z3JheTtcbiAgICA0NCAtLT58XCJyZWFkcywgYXJnXCJ8IDM4XG4gICAgNDQgLS0+fFwicmVhZHMsIGFyZ1wifCA0MFxuICAgIDQ0IC0tPnxcInJlYWRzLCBhcmdcInwgNDJcbiAgICA0NCAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOmNhdFxuICAgIGxpbmtTdHlsZSA4MSBzdHJva2U6Z3JheTtcbiAgICA0OCAtLT58XCJyZWFkc1wifCAzXG4gICAgNDggLS0+fFwicmVhZHNcInwgMzBcbiAgICA1MiAtLT58XCJyZWFkcywgYXJnXCJ8IDQ2XG4gICAgNTIgLS0+fFwicmVhZHMsIGFyZ1wifCA0OFxuICAgIDUyIC0tPnxcInJlYWRzLCBhcmdcInwgNTBcbiAgICA1MiAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOmNhdFxuICAgIGxpbmtTdHlsZSA4NyBzdHJva2U6Z3JheTsiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=
+</code><button type="button">Copy</button></pre>
+
+<p>Following the link output should show the following:</p>
+<pre><code class="mermaid">flowchart LR
+    1{{"`*#91;RNumber#93;* **0**
+      *1.8* (**id: 1**)`"}}
+   %% No edges found for 1
+    0["`*#91;RSymbol#93;* **sum**
+      *1.1-3* (**id: 0**, v: 1)`"]
+    2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
+      *1.1-8* (**id: 2**)
+    arg: (0, 1)`"]]
+    built-in:_-["`Built-In:
+#60;#45;`"]
+    style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    4{{"`*#91;RNumber#93;* **1**
+      *2.12* (**id: 4**)`"}}
+   %% No edges found for 4
+    3["`*#91;RSymbol#93;* **product**
+      *2.1-7* (**id: 3**, v: 4)`"]
+    5[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
+      *2.1-12* (**id: 5**)
+    arg: (3, 4)`"]]
+    7{{"`*#91;RNumber#93;* **7**
+      *3.6* (**id: 7**)`"}}
+   %% No edges found for 7
+    6["`*#91;RSymbol#93;* **w**
+      *3.1* (**id: 6**, v: 7)`"]
+    8[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
+      *3.1-6* (**id: 8**)
+    arg: (6, 7)`"]]
+    10{{"`*#91;RNumber#93;* **10**
+      *4.6-7* (**id: 10**)`"}}
+   %% No edges found for 10
+    9["`*#91;RSymbol#93;* **N**
+      *4.1* (**id: 9**, v: 10)`"]
+    11[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
+      *4.1-7* (**id: 11**)
+    arg: (9, 10)`"]]
+    12["`*#91;RSymbol#93;* **i**
+      *6.6* (**id: 12**, v: 20)`"]
+    13{{"`*#91;RNumber#93;* **1**
+      *6.11* (**id: 13**)`"}}
+   %% No edges found for 13
+    16(["`*#91;RSymbol#93;* **N**
+      *6.14* (**id: 16**)`"])
+    17{{"`*#91;RNumber#93;* **1**
+      *6.16* (**id: 17**)`"}}
+   %% No edges found for 17
+    18[["`*#91;RBinaryOp#93;* base#58;#58;**#45;**
+      *6.14-16* (**id: 18**)
+    arg: (16, 17)`"]]
+    built-in:-["`Built-In:
+#45;`"]
+    style built-in:- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    19[["`*#91;RExpressionList#93;* base#58;#58;**(**
+      *6.13* (**id: 19**)
+    arg: (18)`"]]
+    20[["`*#91;RBinaryOp#93;* base#58;#58;**#58;**
+      *6.11-17* (**id: 20**)
+    arg: (13, 19)`"]]
+    built-in::["`Built-In:
+#58;`"]
+    style built-in:: stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    24(["`*#91;RSymbol#93;* **sum**
+      *7.10-12* (**id: 24**, 36+)`"])
+    25(["`*#91;RSymbol#93;* **i**
+      *7.16* (**id: 25**, 36+)`"])
+    26[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
+      *7.10-16* (**id: 26**, 36+)
+    arg: (24, 25)`"]]
+    built-in:_["`Built-In:
+#43;`"]
+    style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    27(["`*#91;RSymbol#93;* **w**
+      *7.20* (**id: 27**, 36+)`"])
+    28[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
+      *7.10-20* (**id: 28**, 36+)
+    arg: (26, 27)`"]]
+    23["`*#91;RSymbol#93;* **sum**
+      *7.3-5* (**id: 23**, 36+, v: 28)`"]
+    29[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
+      *7.3-20* (**id: 29**, 36+)
+    arg: (23, 28)`"]]
+    31(["`*#91;RSymbol#93;* **product**
+      *8.14-20* (**id: 31**, 36+)`"])
+    32(["`*#91;RSymbol#93;* **i**
+      *8.24* (**id: 32**, 36+)`"])
+    33[["`*#91;RBinaryOp#93;* base#58;#58;**#42;**
+      *8.14-24* (**id: 33**, 36+)
+    arg: (31, 32)`"]]
+    30["`*#91;RSymbol#93;* **product**
+      *8.3-9* (**id: 30**, 36+, v: 33)`"]
+    34[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
+      *8.3-24* (**id: 34**, 36+)
+    arg: (30, 33)`"]]
+    35[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
+      *6.20* (**id: 35**, 36+)
+    arg: (29, 34)`"]]
+    36[["`*#91;RForLoop#93;* base#58;#58;**for**
+      *6.1-9.1* (**id: 36**)
+    arg: (12, 20, 35)`"]]
+    built-in:for["`Built-In:
+for`"]
+    style built-in:for stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    38{{"`*#91;RString#93;* **#34;Sum#58;#34;**
+      *11.5-10* (**id: 38**)`"}}
+   %% No edges found for 38
+    40(["`*#91;RSymbol#93;* **sum**
+      *11.13-15* (**id: 40**)`"])
+    built-in:sum["`Built-In:
+sum`"]
+    style built-in:sum stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    42{{"`*#91;RString#93;* **#34;
+#34;**
+      *11.18-21* (**id: 42**)`"}}
+   %% No edges found for 42
+    44[["`*#91;RFunctionCall#93;* base#58;#58;**cat**
+      *11.1-22* (**id: 44**)
+    arg: (38, 40, 42)`"]]
+    built-in:cat["`Built-In:
+cat`"]
+    style built-in:cat stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    46{{"`*#91;RString#93;* **#34;Product#58;#34;**
+      *12.5-14* (**id: 46**)`"}}
+   %% No edges found for 46
+    48(["`*#91;RSymbol#93;* **product**
+      *12.17-23* (**id: 48**)`"])
+    50{{"`*#91;RString#93;* **#34;
+#34;**
+      *12.26-29* (**id: 50**)`"}}
+   %% No edges found for 50
+    52[["`*#91;RFunctionCall#93;* base#58;#58;**cat**
+      *12.1-30* (**id: 52**)
+    arg: (46, 48, 50)`"]]
+    0 -->|"defined-by"| 1
+    0 -->|"defined-by"| 2
+    2 -->|"reads, arg"| 1
+    2 -->|"returns, arg"| 0
+    2 -.->|"reads, calls"| built-in:_-
+    linkStyle 4 stroke:gray;
+    3 -->|"defined-by"| 4
+    3 -->|"defined-by"| 5
+    5 -->|"reads, arg"| 4
+    5 -->|"returns, arg"| 3
+    5 -.->|"reads, calls"| built-in:_-
+    linkStyle 9 stroke:gray;
+    6 -->|"defined-by"| 7
+    6 -->|"defined-by"| 8
+    8 -->|"reads, arg"| 7
+    8 -->|"returns, arg"| 6
+    8 -.->|"reads, calls"| built-in:_-
+    linkStyle 14 stroke:gray;
+    9 -->|"defined-by"| 10
+    9 -->|"defined-by"| 11
+    11 -->|"reads, arg"| 10
+    11 -->|"returns, arg"| 9
+    11 -.->|"reads, calls"| built-in:_-
+    linkStyle 19 stroke:gray;
+    12 -->|"defined-by"| 20
+    16 -->|"reads"| 9
+    18 -->|"reads, arg"| 16
+    18 -->|"reads, arg"| 17
+    18 -.->|"reads, calls"| built-in:-
+    linkStyle 24 stroke:gray;
+    19 -->|"returns, arg"| 18
+    20 -->|"reads, arg"| 13
+    20 -->|"reads, arg"| 19
+    20 -.->|"reads, calls"| built-in::
+    linkStyle 28 stroke:gray;
+    24 -->|"reads"| 0
+    24 -->|"reads"| 23
+    24 -->|"CD-True"| 36
+    linkStyle 31 stroke:gray,color:gray;
+    25 -->|"reads"| 12
+    25 -->|"CD-True"| 36
+    linkStyle 33 stroke:gray,color:gray;
+    26 -->|"reads, arg"| 24
+    26 -->|"reads, arg"| 25
+    26 -.->|"reads, calls"| built-in:_
+    linkStyle 36 stroke:gray;
+    26 -->|"CD-True"| 36
+    linkStyle 37 stroke:gray,color:gray;
+    27 -->|"reads"| 6
+    27 -->|"CD-True"| 36
+    linkStyle 39 stroke:gray,color:gray;
+    28 -->|"reads, arg"| 26
+    28 -->|"reads, arg"| 27
+    28 -.->|"reads, calls"| built-in:_
+    linkStyle 42 stroke:gray;
+    28 -->|"CD-True"| 36
+    linkStyle 43 stroke:gray,color:gray;
+    23 -->|"defined-by"| 28
+    23 -->|"defined-by"| 29
+    23 -->|"CD-True"| 36
+    linkStyle 46 stroke:gray,color:gray;
+    29 -->|"reads, arg"| 28
+    29 -->|"returns, arg"| 23
+    29 -.->|"reads, calls"| built-in:_-
+    linkStyle 49 stroke:gray;
+    29 -->|"CD-True"| 36
+    linkStyle 50 stroke:gray,color:gray;
+    31 -->|"reads"| 3
+    31 -->|"reads"| 30
+    31 -->|"CD-True"| 36
+    linkStyle 53 stroke:gray,color:gray;
+    32 -->|"reads"| 12
+    32 -->|"CD-True"| 36
+    linkStyle 55 stroke:gray,color:gray;
+    33 -->|"reads, arg"| 31
+    33 -->|"reads, arg"| 32
+    33 -.->|"reads, calls"| built-in:_
+    linkStyle 58 stroke:gray;
+    33 -->|"CD-True"| 36
+    linkStyle 59 stroke:gray,color:gray;
+    30 -->|"defined-by"| 33
+    30 -->|"defined-by"| 34
+    30 -->|"CD-True"| 36
+    linkStyle 62 stroke:gray,color:gray;
+    34 -->|"reads, arg"| 33
+    34 -->|"returns, arg"| 30
+    34 -.->|"reads, calls"| built-in:_-
+    linkStyle 65 stroke:gray;
+    34 -->|"CD-True"| 36
+    linkStyle 66 stroke:gray,color:gray;
+    35 -->|"arg"| 29
+    35 -->|"returns, arg"| 34
+    35 -.->|"reads, calls"| built-in:_
+    linkStyle 69 stroke:gray;
+    35 -->|"CD-True"| 36
+    linkStyle 70 stroke:gray,color:gray;
+    36 -->|"arg"| 12
+    36 -->|"reads, arg"| 20
+    36 -->|"arg, non-standard-evaluation"| 35
+    36 -.->|"reads, calls"| built-in:for
+    linkStyle 74 stroke:gray;
+    40 -->|"reads"| 0
+    40 -->|"reads"| 23
+    40 -.->|"reads"| built-in:sum
+    linkStyle 77 stroke:gray;
+    44 -->|"reads, arg"| 38
+    44 -->|"reads, arg"| 40
+    44 -->|"reads, arg"| 42
+    44 -.->|"reads, calls"| built-in:cat
+    linkStyle 81 stroke:gray;
+    48 -->|"reads"| 3
+    48 -->|"reads"| 30
+    52 -->|"reads, arg"| 46
+    52 -->|"reads, arg"| 48
+    52 -->|"reads, arg"| 50
+    52 -.->|"reads, calls"| built-in:cat
+    linkStyle 87 stroke:gray;
+</code><button type="button">Copy</button></pre>
+
+<p>(The analysis required <em>2.6 ms</em> (including parse and normalize, using the <a href="https://github.com/flowr-analysis/flowr/wiki/Engines">tree-sitter</a> engine) within the generation environment. No <a href="https://github.com/flowr-analysis/flowr/wiki/Signature-Database">signature database</a> is mounted for these generated graphs, so <code>library()</code> calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. <code>acf</code> as <code>stats::acf</code>).)</p>
+  </details>
+  </details>
+</li>
+</ul>
+<p>If you want to use flowR and the features it provides, feel free to check out the:</p>
+<ul>
+<li><a href="https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr">Visual Studio Code</a>/<a href="https://open-vsx.org/extension/code-inspect/vscode-flowr">Positron</a>: provides access to flowR directly in VS Code and Positron (or <a href="https://vscode.dev/">vscode.dev</a>)</li>
+<li><a href="https://github.com/flowr-analysis/rstudio-addin-flowr">RStudio Addin</a>: integrates flowR into <a href="https://posit.co/downloads/">RStudio</a></li>
+<li><a href="https://github.com/flowr-analysis/flowr-r-adapter">R package</a>: use flowR in your R scripts</li>
+<li><a href="https://hub.docker.com/r/eagleoutice/flowr">Docker image</a>: run flowR in a container, this also includes <a href="https://github.com/flowr-analysis/flowr/wiki/Interface#communicating-with-the-server">flowR's server</a></li>
+<li><a href="https://www.npmjs.com/package/@eagleoutice/flowr">NPM package</a>: include flowR in your TypeScript and JavaScript projects</li>
+</ul>
+<p>If you are already using flowR and want to give feedback, please consider filling out our <a href="https://docs.google.com/forms/d/e/1FAIpQLScKFhgnh9LGVU7QzqLvFwZe1oiv_5jNhkIO-G-zND0ppqsMxQ/viewform">feedback form</a>.</p>
+<h2 id="⭐-getting-started" class="tsd-anchor-link">⭐ Getting Started<a href="#⭐-getting-started" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>To get started with <em>flowR</em> and its features, please check out the <a href="https://github.com/flowr-analysis/flowr/wiki/Overview">Overview</a> wiki page.
+The <a href="https://github.com/flowr-analysis/flowr/wiki/Setup">Setup</a> wiki page explains how you can download and setup <em>flowR</em> on your system.
+With docker 🐳️, the following line should be enough (and drop you directly into the read-eval-print loop):</p>
+<pre><code class="shell"><span class="hl-0">docker</span><span class="hl-1"> </span><span class="hl-2">run</span><span class="hl-1"> </span><span class="hl-3">-it</span><span class="hl-1"> </span><span class="hl-3">--rm</span><span class="hl-1"> </span><span class="hl-2">eagleoutice/flowr</span>
+</code><button type="button">Copy</button></pre>
+
+<p>You can enter <span title="Description (Repl Command): Show help information (aliases: :h, :?)"><code>:help</code></span> to gain more information on its capabilities.</p>
+<details>
+<summary>Example REPL session</summary>
+<p><img src="media/repl-demo-opt.gif" alt="Example of a simple REPL session"></p>
+<p>If you want to use the same commands:</p>
+<ol>
+<li>First this runs <code>docker run -it --rm eagleoutice/flowr</code> in a terminal to start the REPL.</li>
+<li>In the REPL, it runs <code>:slicer -c '11@prod' demo.R --diff</code> to slice the example file <code>demo.R</code> for the print statement in line 11.
+Please note that the <code>11</code> refers to the 11th line number to slice for!</li>
+</ol>
+</details>
+<h2 id="📜-more-information" class="tsd-anchor-link">📜 More Information<a href="#📜-more-information" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>For more details on how to use <em>flowR</em> please refer to the <a href="https://github.com/flowr-analysis/flowr/wiki">wiki pages</a>,
+as well as the deployed <a href="https://flowr-analysis.github.io/flowr/doc/">code documentation</a>.
+To cite flowR, please check out the publications below. To specifically refer to the source code,
+please check out flowR's <a href="https://zenodo.org/doi/10.5281/zenodo.13319290">Zenodo archive</a>.</p>
+<h2 id="📃-publications-on-flowr" class="tsd-anchor-link">📃 Publications on flowR<a href="#📃-publications-on-flowr" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>If you are interested in the theoretical background of <em>flowR</em>,
+please check out the following publications (if you find that a paper is missing here, please open <a href="https://github.com/flowr-analysis/flowr/issues/new/choose">a new issue</a>):</p>
+<ul>
+<li>
+<p><a href="https://doi.org/10.1145/3803437.3806402">Supporting the Comprehension of Data Analysis Scripts (FSE '25, Tool)</a><br>
+This refers to an updated tool demonstration of the framework. Preprint available at <a href="https://doi.org/10.48550/arXiv.2604.15963" target="_blank">arXiv:2604.15963</a>.</p>
+<details><summary>BibTeX</summary>
+<pre><code class="bibtex">@article{10.1145/3803437.3806402,
+	author = {Sihler, Florian and Gerstl, Oliver and Pfrenger, Lars and Schubert, Julian and Tichy, Matthias},
+	title = {Supporting the Comprehension of Data Analysis Scripts},
+	year = {2026},
+	doi = {10.1145/3803437.3806402}
+}
+</code><button type="button">Copy</button></pre>
+
+</details>
+</li>
+<li>
+<p><a href="https://doi.org/10.1145/3763087">Statically Analyzing the Dataflow of R Programs (OOPSLA '25)</a><br>
+<strong>Please cite this paper if you are using flowR in your research.</strong></p>
+<details><summary>BibTeX</summary>
+<pre><code class="bibtex">@article{10.1145/3763087,
+	author = {Sihler, Florian and Tichy, Matthias},
+	title = {Statically Analyzing the Dataflow of R Programs},
+	year = {2025},
+	issue_date = {October 2025},
+	publisher = {Association for Computing Machinery},
+	address = {New York, NY, USA},
+	volume = {9},
+	number = {OOPSLA2},
+	url = {https://doi.org/10.1145/3763087},
+	doi = {10.1145/3763087},
+	abstract = {The R programming language is primarily designed for statistical computing and mostly used by researchers without a background in computer science. R provides a wide range of dynamic features and peculiarities that are difficult to analyze statically like dynamic scoping and lazy evaluation with dynamic side effects. At the same time, the R ecosystem lacks sophisticated analysis tools that support researchers in understanding and improving their code.   In this paper, we present a novel static dataflow analysis framework for the R programming language that is capable of handling the dynamic nature of R programs and produces the dataflow graph of given R programs. This graph can be essential in a range of analyses, including program slicing, which we implement as a proof of concept. The core analysis works as a stateful fold over a normalized version of the abstract syntax tree of the R program, which tracks (re-)definitions, values, function calls, side effects, external files, and a dynamic control flow to produce one dataflow graph per program.   We evaluate the correctness of our analysis using output equivalence testing on a manually curated dataset of 779 sensible slicing points from executable real-world R scripts. Additionally, we use a set of systematic test cases based on the capabilities of the R language and the implementation of the R interpreter and measure the runtimes well as the memory consumption on a set of 4,230 real-world R scripts and 20,815 packages available on R’s package manager CRAN.   Furthermore, we evaluate the recall of our program slicer, its accuracy using shrinking, and its improvement over the state of the art. We correctly analyze almost all programs in our equivalence test suite, preserving the identical output for 99.7\% of the manually curated slicing points. On average, we require 576ms to analyze the dataflow and around 213kB to store the graph of a research script.   This shows that our analysis is capable of analyzing real-world sources quickly and correctly. Our slicer achieves an average reduction of 84.8\% of tokens indicating its potential to improve program comprehension.},
+	journal = {Proc. ACM Program. Lang.},
+	month = oct,
+	articleno = {309},
+	numpages = {29},
+	keywords = {Dataflow Analysis, R Programming Language, Static Analysis}
+}
+</code><button type="button">Copy</button></pre>
+
+</details>
+</li>
+<li>
+<p><a href="https://doi.org/10.1145/3691620.3695359">flowR: A Static Program Slicer for R (ASE '24, Tool)</a><br>
+This refers to the tool-demonstration of the <a href="https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr" target="_blank">VS Code Extension</a>.</p>
+<details><summary>BibTeX</summary>
+<pre><code class="bibtex">@inproceedings{DBLP:conf/kbse/SihlerT24,
+  author       = {Florian Sihler and
+                  Matthias Tichy},
+  editor       = {Vladimir Filkov and
+                  Baishakhi Ray and
+                  Minghui Zhou},
+  title        = {flowR: {A} Static Program Slicer for {R}},
+  booktitle    = {Proceedings of the 39th {IEEE/ACM} International Conference on Automated
+                  Software Engineering, {ASE} 2024, Sacramento, CA, USA, October 27
+                  - November 1, 2024},
+  pages        = {2390--2393},
+  publisher    = {{ACM}},
+  year         = {2024},
+  url          = {https://doi.org/10.1145/3691620.3695359},
+  doi          = {10.1145/3691620.3695359},
+  timestamp    = {Mon, 03 Mar 2025 21:16:51 +0100},
+  biburl       = {https://dblp.org/rec/conf/kbse/SihlerT24.bib},
+  bibsource    = {dblp computer science bibliography, https://dblp.org}
+}
+</code><button type="button">Copy</button></pre>
+
+</details>
+</li>
+<li>
+<p><a href="https://doi.org/10.1145/3643991.3644911">On the Anatomy of Real-World R Code for Static Analysis (MSR '24)</a><br>
+This paper lays the foundation for flowR by analyzing the characteristics of real-world R code.</p>
+<details><summary>BibTeX</summary>
+<pre><code class="bibtex">
+
+@inproceedings{DBLP:conf/msr/SihlerPSTDD24,
+  author       = {Florian Sihler and
+                  Lukas Pietzschmann and
+                  Raphael Straub and
+                  Matthias Tichy and
+                  Andor Diera and
+                  Abdelhalim Hafedh Dahou},
+  editor       = {Diomidis Spinellis and
+                  Alberto Bacchelli and
+                  Eleni Constantinou},
+  title        = {On the Anatomy of Real-World {R} Code for Static Analysis},
+  booktitle    = {21st {IEEE/ACM} International Conference on Mining Software Repositories,
+                  {MSR} 2024, Lisbon, Portugal, April 15-16, 2024},
+  pages        = {619--630},
+  publisher    = {{ACM}},
+  year         = {2024},
+  url          = {https://doi.org/10.1145/3643991.3644911},
+  doi          = {10.1145/3643991.3644911},
+  timestamp    = {Sun, 19 Jan 2025 13:31:27 +0100},
+  biburl       = {https://dblp.org/rec/conf/msr/SihlerPSTDD24.bib},
+  bibsource    = {dblp computer science bibliography, https://dblp.org}
+}
+</code><button type="button">Copy</button></pre>
+
+</details>
+</li>
+</ul>
+<p>Works using flowR include:
+<a href="https://doi.org/10.36190/2025.49">Computational Reproducibility of R Code Supplements on OSF</a> and <a href="https://doi.org/10.1109/WI-IAT62293.2024.00037">Multi-View Structural Graph Summaries</a>.</p>
+<h2 id="🚀-contributing" class="tsd-anchor-link">🚀 Contributing<a href="#🚀-contributing" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h2>
+<p>We welcome every contribution! Please check out the <a href="https://github.com/flowr-analysis/flowr/wiki/Onboarding">developer onboarding</a> section in the wiki for all the information you will need.</p>
+<h3 id="contributors" class="tsd-anchor-link">Contributors<a href="#contributors" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<a href="https://github.com/flowr-analysis/flowr/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=flowr-analysis/flowr"  alt="flowR Contributors"/>
+</a>
+<hr>
+<p><em>flowr</em> is actively developed by <a href="https://eagleoutice.github.io/portfolio/">Florian Sihler</a> and (since October 1st 2025) <a href="https://www.linkedin.com/in/oliver-gerstl">Oliver Gerstl</a> under the
+<a href="media/LICENSE">GPLv3 License</a>.<br>
+It is partially supported by the German Research Foundation (DFG) under the grant <a href="https://gepris.dfg.de/gepris/projekt/504226141">504226141</a> (&quot;CodeInspector&quot;)
+and received an unrestricted gift from <a href="https://posit.co/">Posit</a>, the open-source data science company.</p>
+<hr>
+<h3 id="generation-notice" class="tsd-anchor-link">Generation Notice<a href="#generation-notice" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="assets/icons.svg#icon-anchor"></use></svg></a></h3>
+<p>Please notice that this file was generated automatically using the file <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/doc-readme.ts">src/documentation/doc-readme.ts</a> as a source.<br>
+If you want to make changes please edit the source file (the CI will take care of the rest).
+In fact, many files in the <a href="https://github.com/flowr-analysis/flowr/wiki">wiki</a> are generated, so make sure to check for the source file if you want to make changes.</p>
+</div></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div>
+<div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div>
+<details open class="tsd-accordion tsd-page-navigation"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>On This Page</h3></summary>
+<div class="tsd-accordion-details"><a href="#⭐-getting-started"><span>⭐ <wbr/>Getting <wbr/>Started</span></a><a href="#📜-more-information"><span>📜 <wbr/>More <wbr/>Information</span></a><a href="#📃-publications-on-flowr"><span>📃 <wbr/>Publications on flow<wbr/>R</span></a><a href="#🚀-contributing"><span>🚀 <wbr/>Contributing</span></a>
+<ul>
+<li><a href="#contributors"><span>Contributors</span></a></li>
+<li><a href="#generation-notice"><span>Generation <wbr/>Notice</span></a></li></ul></div></details></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="modules.html">@eagleoutice/flowr - v2.13.10</a>
+<ul class="tsd-small-nested-navigation" id="tsd-nav-container">
+<li>Loading...</li></ul></nav></div></div></div><footer>
+<p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>
+<div class="overlay"></div></body></html>

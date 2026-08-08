@@ -1,0 +1,27 @@
+* text=auto eol=lf
+
+*.ai              binary
+*.bmp             binary
+*.eps             binary
+*.gif             binary
+*.gifv            binary
+*.ico             binary
+*.jng             binary
+*.jp2             binary
+*.jpg             binary
+*.jpeg            binary
+*.jpx             binary
+*.jxr             binary
+*.pdf             binary
+*.png             binary
+*.psb             binary
+*.psd             binary
+*.svg             text
+*.svgz            binary
+*.tif             binary
+*.tiff            binary
+*.wbmp            binary
+*.webp            binary
+
+# brotli-compressed signature-database shards: opaque binary, never worth diffing/delta-compressing
+src/data/sigdb/*.br binary -delta

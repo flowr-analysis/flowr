@@ -1,0 +1,417 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>SourceRange | @eagleoutice/flowr - v2.13.10</title><meta name="description" content="Documentation for @eagleoutice/flowr"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="../index.html" class="title">@eagleoutice/flowr - v2.13.10</a>
+<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<ul role="listbox" id="tsd-search-results"></ul>
+<div id="tsd-search-status" aria-live="polite" aria-atomic="true">
+<div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<ul class="tsd-breadcrumb" aria-label="Breadcrumb">
+<li><a href="../modules/src_util_range.html">src/util/range</a></li>
+<li><a href="" aria-current="page">SourceRange</a></li></ul>
+<h1>Variable SourceRange</h1></div>
+<div class="tsd-signature"><span class="tsd-kind-variable">SourceRange</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{</span><br/>    <span class="tsd-kind-call-signature">add</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">combineRanges</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-symbol">...</span><span class="tsd-kind-parameter">ranges</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">compare</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">containsPosition</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">line</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">column</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">equals</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">format</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">range</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">from</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">sl</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">sc</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">el</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">ec</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">fromNode</span><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#fromnodeotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">node</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_model.RNode.html" class="tsd-signature-type tsd-kind-type-alias">RNode</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#fromnodeotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">getEnd</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">range</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourcePosition.html" class="tsd-signature-type tsd-kind-type-alias">SourcePosition</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">getEndLine</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">range</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">getStart</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">range</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourcePosition.html" class="tsd-signature-type tsd-kind-type-alias">SourcePosition</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">getStartLine</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">range</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">innermostNodes</span><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#innermostnodesotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">nodes</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_decorate.RNodeWithParent.html" class="tsd-signature-type tsd-kind-type-alias">RNodeWithParent</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#innermostnodesotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">treatChildAsInner</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_decorate.RNodeWithParent.html" class="tsd-signature-type tsd-kind-type-alias">RNodeWithParent</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#innermostnodesotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">invalid</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">isStrictSubsetOf</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">r1</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">r2</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">isSubsetOf</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">merge</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">rs</span><span class="tsd-signature-symbol">:</span> (<a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span>)<span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-property">name</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;SourceRange&quot;</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">nodesContaining</span><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#nodescontainingotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">nodes</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_decorate.RNodeWithParent.html" class="tsd-signature-type tsd-kind-type-alias">RNodeWithParent</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#nodescontainingotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">line</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">column</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_decorate.RNodeWithParent.html" class="tsd-signature-type tsd-kind-type-alias">RNodeWithParent</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#nodescontainingotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">overlap</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">r1</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">r2</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">startsCompletelyBefore</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div>
+<div class="tsd-comment tsd-typography"><p>Utility functions for <a href="#" class="tsd-kind-variable">source ranges</a>.</p>
+</div>
+<div class="tsd-type-declaration">
+<h4>Type Declaration</h4>
+<ul class="tsd-parameters">
+<li class="tsd-parameter">
+<h5 id="add"><span class="tsd-kind-method">add</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="add-1"><span class="tsd-kind-call-signature">add</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><a href="#add-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Calculates the component-wise sum of two ranges.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">__namedParameters</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li>
+<li><span><span class="tsd-kind-parameter">__namedParameters</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L162">src/util/range.ts:162</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="combineranges"><span class="tsd-kind-method">combineRanges</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="combineranges-1"><span class="tsd-kind-call-signature">combineRanges</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-signature-symbol">...</span><span class="tsd-kind-parameter">ranges</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">[]</span><a href="#combineranges-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Reduces the ranges to those no other one contains, keeping the first of any duplicates. Ranges that merely
+overlap are both kept, as neither contains the other. A non-empty input always yields a non-empty result.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-signature-symbol">...</span><span class="tsd-kind-parameter">ranges</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">[]</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">[]</span></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see">See<a href="#see" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><a href="#merge" class="tsd-kind-method">SourceRange.merge</a> for merging multiple ranges into a single range.</p>
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L214">src/util/range.ts:214</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="compare"><span class="tsd-kind-method">compare</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="compare-1"><span class="tsd-kind-call-signature">compare</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><a href="#compare-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Provides a comparator for <a href="#" class="tsd-kind-variable">SourceRange</a>s that sorts them in ascending order.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">__namedParameters</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li>
+<li><span><span class="tsd-kind-parameter">__namedParameters</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">number</span></h4><p>a positive number if <code>r1</code> comes after <code>r2</code>, a negative number if <code>r1</code> comes before <code>r2</code>, and <code>0</code> if they are equal</p>
+<aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L169">src/util/range.ts:169</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="containsposition"><span class="tsd-kind-method">containsPosition</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="containsposition-1"><span class="tsd-kind-call-signature">containsPosition</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">line</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">column</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#containsposition-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Checks if a given position (line, column) is contained within the range.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">__namedParameters</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li>
+<li><span><span class="tsd-kind-parameter">line</span>: <span class="tsd-signature-type">number</span></span></li>
+<li><span><span class="tsd-kind-parameter">column</span>: <span class="tsd-signature-type">number</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L185">src/util/range.ts:185</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="equals"><span class="tsd-kind-method">equals</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="equals-1"><span class="tsd-kind-call-signature">equals</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#equals-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Checks if two ranges are equal (i.e., they start and end at the same position).</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">__namedParameters</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li>
+<li><span><span class="tsd-kind-parameter">__namedParameters</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L179">src/util/range.ts:179</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="format"><span class="tsd-kind-method">format</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="format-1"><span class="tsd-kind-call-signature">format</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">range</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><a href="#format-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Prints a <a href="#" class="tsd-kind-variable">range</a> as a human-readable string.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">range</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L84">src/util/range.ts:84</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="from"><span class="tsd-kind-method">from</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="from-1"><span class="tsd-kind-call-signature">from</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">sl</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">sc</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">el</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">ec</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><a href="#from-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Creates a source range from the given line and column numbers.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">sl</span>: <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">number</span></span>
+<div class="tsd-comment tsd-typography"><p>start line</p>
+</div></li>
+<li><span><span class="tsd-kind-parameter">sc</span>: <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">number</span></span>
+<div class="tsd-comment tsd-typography"><p>start column</p>
+</div></li>
+<li><span><span class="tsd-kind-parameter">el</span>: <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = sl</span></span>
+<div class="tsd-comment tsd-typography"><p>end line</p>
+</div></li>
+<li><span><span class="tsd-kind-parameter">ec</span>: <span class="tsd-signature-type">string</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol"> = sc</span></span>
+<div class="tsd-comment tsd-typography"><p>end column</p>
+</div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L127">src/util/range.ts:127</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="fromnode"><span class="tsd-kind-method">fromNode</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="fromnode-1"><span class="tsd-kind-call-signature">fromNode</span><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#fromnodeotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">node</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_model.RNode.html" class="tsd-signature-type tsd-kind-type-alias">RNode</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#fromnodeotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#fromnode-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<section class="tsd-panel">
+<h4>Type Parameters</h4>
+<ul class="tsd-type-parameter-list">
+<li><span id="fromnodeotherinfo"><span class="tsd-kind-type-parameter">OtherInfo</span></span></li></ul></section>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">node</span>: <a href="../types/src_r-bridge_lang-4.x_ast_model_model.RNode.html" class="tsd-signature-type tsd-kind-type-alias">RNode</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#fromnodeotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L218">src/util/range.ts:218</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="getend"><span class="tsd-kind-method">getEnd</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getend-1"><span class="tsd-kind-call-signature">getEnd</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">range</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourcePosition.html" class="tsd-signature-type tsd-kind-type-alias">SourcePosition</a><a href="#getend-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Returns the end position of a source range.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">range</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_util_range.SourcePosition.html" class="tsd-signature-type tsd-kind-type-alias">SourcePosition</a></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L111">src/util/range.ts:111</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="getendline"><span class="tsd-kind-method">getEndLine</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getendline-1"><span class="tsd-kind-call-signature">getEndLine</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">range</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><a href="#getendline-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Returns the end line of a source range.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">range</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">number</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L117">src/util/range.ts:117</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="getstart"><span class="tsd-kind-method">getStart</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getstart-1"><span class="tsd-kind-call-signature">getStart</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">range</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourcePosition.html" class="tsd-signature-type tsd-kind-type-alias">SourcePosition</a><a href="#getstart-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Returns the start position of a source range.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">range</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_util_range.SourcePosition.html" class="tsd-signature-type tsd-kind-type-alias">SourcePosition</a></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L99">src/util/range.ts:99</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="getstartline"><span class="tsd-kind-method">getStartLine</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getstartline-1"><span class="tsd-kind-call-signature">getStartLine</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">range</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><a href="#getstartline-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Returns the start line of a source range.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">range</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">number</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L105">src/util/range.ts:105</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="innermostnodes"><span class="tsd-kind-method">innermostNodes</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="innermostnodes-1"><span class="tsd-kind-call-signature">innermostNodes</span><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#innermostnodesotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">nodes</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_decorate.RNodeWithParent.html" class="tsd-signature-type tsd-kind-type-alias">RNodeWithParent</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#innermostnodesotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">treatChildAsInner</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_decorate.RNodeWithParent.html" class="tsd-signature-type tsd-kind-type-alias">RNodeWithParent</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#innermostnodesotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">[]</span><a href="#innermostnodes-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Collects all nodes satisfying the innermost condition: those containing no other of the given nodes.</p>
+<p>Nodes may share a range (a function call and the symbol naming it do), so <code>treatChildAsInner</code> decides that
+tie: with it, a node sharing its parent's range counts as the inner one and the parent drops out; without
+it, both are kept and the caller may pick between them (e.g. by node type).</p>
+<p>A non-empty input always yields a non-empty result: enclosure is a strict order so some node is always minimal,
+and a node carrying no range at all is kept rather than dropped.</p>
+</div>
+<section class="tsd-panel">
+<h4>Type Parameters</h4>
+<ul class="tsd-type-parameter-list">
+<li><span id="innermostnodesotherinfo"><span class="tsd-kind-type-parameter">OtherInfo</span></span></li></ul></section>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">nodes</span>: <span class="tsd-signature-keyword">readonly</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_decorate.RNodeWithParent.html" class="tsd-signature-type tsd-kind-type-alias">RNodeWithParent</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#innermostnodesotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">[]</span></span></li>
+<li><span><span class="tsd-kind-parameter">treatChildAsInner</span>: <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol"> = true</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_decorate.RNodeWithParent.html" class="tsd-signature-type tsd-kind-type-alias">RNodeWithParent</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#innermostnodesotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">[]</span></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see-1">See<a href="#see-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><a href="#nodescontaining" class="tsd-kind-method">SourceRange.nodesContaining</a> which this usually narrows down</p>
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L245">src/util/range.ts:245</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="invalid"><span class="tsd-kind-method">invalid</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="invalid-1"><span class="tsd-kind-call-signature">invalid</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><a href="#invalid-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>returns an invalid source range</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L133">src/util/range.ts:133</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="isstrictsubsetof"><span class="tsd-kind-method">isStrictSubsetOf</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="isstrictsubsetof-1"><span class="tsd-kind-call-signature">isStrictSubsetOf</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">r1</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">r2</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#isstrictsubsetof-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Checks if the first range is a strict subset of the second range (i.e., it is a subset but not equal).</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">r1</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li>
+<li><span><span class="tsd-kind-parameter">r2</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L206">src/util/range.ts:206</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="issubsetof"><span class="tsd-kind-method">isSubsetOf</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="issubsetof-1"><span class="tsd-kind-call-signature">isSubsetOf</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#issubsetof-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Checks if the first range is a subset of the second range.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">__namedParameters</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li>
+<li><span><span class="tsd-kind-parameter">__namedParameters</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L200">src/util/range.ts:200</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="merge"><span class="tsd-kind-method">merge</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="merge-1"><span class="tsd-kind-call-signature">merge</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">rs</span><span class="tsd-signature-symbol">:</span> (<a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span>)<span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><a href="#merge-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Merges multiple source ranges into a single source range that spans from the earliest start to the latest end.
+If you are interested in reducing a set of ranges to those none of the others contains, see <a href="#combineranges" class="tsd-kind-method">combineRanges</a>.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">rs</span>: (<a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span>)<span class="tsd-signature-symbol">[]</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-throws">
+<h4 class="tsd-anchor-link" id="throws">Throws<a href="#throws" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>if no ranges are provided</p>
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L141">src/util/range.ts:141</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="name"><code class="tsd-tag">Readonly</code><span class="tsd-kind-property">name</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">&quot;SourceRange&quot;</span></h5></li>
+<li class="tsd-parameter">
+<h5 id="nodescontaining"><span class="tsd-kind-method">nodesContaining</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="nodescontaining-1"><span class="tsd-kind-call-signature">nodesContaining</span><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#nodescontainingotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">nodes</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-keyword">readonly</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_decorate.RNodeWithParent.html" class="tsd-signature-type tsd-kind-type-alias">RNodeWithParent</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#nodescontainingotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">[]</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">line</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">column</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">number</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_decorate.RNodeWithParent.html" class="tsd-signature-type tsd-kind-type-alias">RNodeWithParent</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#nodescontainingotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">[]</span><a href="#nodescontaining-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>&quot;Fuzzy&quot; position match, as opposed to requiring a node to <em>start</em> exactly at the position.</p>
+</div>
+<section class="tsd-panel">
+<h4>Type Parameters</h4>
+<ul class="tsd-type-parameter-list">
+<li><span id="nodescontainingotherinfo"><span class="tsd-kind-type-parameter">OtherInfo</span></span></li></ul></section>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">nodes</span>: <span class="tsd-signature-keyword">readonly</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_decorate.RNodeWithParent.html" class="tsd-signature-type tsd-kind-type-alias">RNodeWithParent</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#nodescontainingotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">[]</span></span></li>
+<li><span><span class="tsd-kind-parameter">line</span>: <span class="tsd-signature-type">number</span></span></li>
+<li><span><code class="tsd-tag">Optional</code><span class="tsd-kind-parameter">column</span>: <span class="tsd-signature-type">number</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_decorate.RNodeWithParent.html" class="tsd-signature-type tsd-kind-type-alias">RNodeWithParent</a><span class="tsd-signature-symbol">&lt;</span><a class="tsd-signature-type tsd-kind-type-parameter" href="#nodescontainingotherinfo">OtherInfo</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">[]</span></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see-2">See<a href="#see-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p><a href="#innermostnodes" class="tsd-kind-method">SourceRange.innermostNodes</a> to narrow the result down to the deepest matches</p>
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L225">src/util/range.ts:225</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="overlap"><span class="tsd-kind-method">overlap</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="overlap-1"><span class="tsd-kind-call-signature">overlap</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">r1</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">r2</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#overlap-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Checks if the two ranges overlap, i.e. whether neither of them lies completely before the other.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">r1</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li>
+<li><span><span class="tsd-kind-parameter">r2</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L156">src/util/range.ts:156</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="startscompletelybefore"><span class="tsd-kind-method">startsCompletelyBefore</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="startscompletelybefore-1"><span class="tsd-kind-call-signature">startsCompletelyBefore</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">__namedParameters</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#startscompletelybefore-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">__namedParameters</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li>
+<li><span><span class="tsd-kind-parameter">__namedParameters</span>: <a href="../types/src_util_range.SourceRange.html" class="tsd-signature-type tsd-kind-type-alias">SourceRange</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><p>true iff <code>r1</code> starts and ends before <code>r2</code> starts (i.e., if <code>r1</code> and <code>r2</code> do not overlap and <code>r1</code> comes before <code>r2</code></p>
+<aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L152">src/util/range.ts:152</a></li></ul></aside></div></li></ul></li></ul></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L67">src/util/range.ts:67</a></li>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/bbe51f3eaf3b49a857aee938c5896297612e4c22/src/util/range.ts#L79">src/util/range.ts:79</a></li></ul></aside></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div>
+<div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="../modules.html">@eagleoutice/flowr - v2.13.10</a>
+<ul class="tsd-small-nested-navigation" id="tsd-nav-container">
+<li>Loading...</li></ul></nav></div></div></div><footer>
+<p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>
+<div class="overlay"></div></body></html>

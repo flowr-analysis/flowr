@@ -76,7 +76,7 @@ import { processAttach } from '../internal/process/functions/call/built-in/built
 import { processWithEnv } from '../internal/process/functions/call/built-in/built-in-with';
 import { processNamespaceAccess } from '../internal/process/functions/call/built-in/built-in-namespace-access';
 import { processLoadCall } from '../internal/process/functions/call/built-in/built-in-load';
-import { ArgProp, argProp, argsWith, sigLayout, type BuiltInFnInfo } from './built-in-props';
+import { ArgProp, FnSig, type BuiltInFnInfo } from './built-in-props';
 
 export type BuiltInIdentifierProcessor = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -147,10 +147,10 @@ function defaultBuiltInProcessor<OtherInfo>(
 	{ useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	/* a signature states per argument what the individual options state for all of them at once */
-	const layout = sig !== undefined ? sigLayout(sig) : undefined;
+	const layout = sig !== undefined ? FnSig.layout(sig) : undefined;
 	if(layout !== undefined) {
-		forceArgs ??= (layout.any & ArgProp.Forced) !== 0 ? args.map((_, i) => (argProp(layout, i) & ArgProp.Forced) !== 0) : undefined;
-		nse ??= (layout.any & ArgProp.Nse) !== 0 ? argsWith(layout, args.length, ArgProp.Nse) : undefined;
+		forceArgs ??= (layout.any & ArgProp.Forced) !== 0 ? args.map((_, i) => (FnSig.propAt(layout, i) & ArgProp.Forced) !== 0) : undefined;
+		nse ??= (layout.any & ArgProp.Nse) !== 0 ? FnSig.posWith(layout, args.length, ArgProp.Nse) : undefined;
 	}
 	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: useAsProcessor });
 	markArgumentsAsNonStandardEvaluation(res.graph, rootId, processedArguments, nse);
@@ -171,7 +171,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 			}
 		}
 	} else if(layout !== undefined && (layout.any & (ArgProp.Value | ArgProp.Shape)) !== 0) {
-		for(const i of argsWith(layout, processedArguments.length, ArgProp.Value | ArgProp.Shape)) {
+		for(const i of FnSig.posWith(layout, processedArguments.length, ArgProp.Value | ArgProp.Shape)) {
 			const arg = processedArguments[i];
 			if(arg) {
 				res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Reads);

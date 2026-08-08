@@ -250,6 +250,30 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 		});
 	});
 
+	/* what a glob finds is decided when the program runs, so an empty answer is not a missing file */
+	describe('Globs', () => {
+		testQuery('list.files()', 'x <- list.files(pattern = "x_")\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.File, InputType.Glob], trace: InputTraceType.Alias }]
+		});
+		testQuery('Sys.glob()', 'x <- Sys.glob("*.csv")\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.File, InputType.Glob], trace: InputTraceType.Alias }]
+		});
+		/* what the read hands back is file data; that the path it took came from a glob shows on the argument */
+		testQuery('the path a read is given', 'f <- list.files()\nread.csv(f)', [{ type: 'input-sources', criterion: '2@read.csv' }], {
+			'2@read.csv': [{ id: '2@f', types: [InputType.File, InputType.Glob], trace: InputTraceType.Alias }]
+		});
+	});
+
+	/* the command line is chosen when the program is invoked, so it is neither missing nor resolvable */
+	describe('Command line', () => {
+		testQuery('commandArgs()', 'x <- commandArgs(TRUE)\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.Options, InputType.CommandLine], trace: InputTraceType.Alias }]
+		});
+		testQuery('a read of what it named', 'x <- read.csv(commandArgs(TRUE)[1])\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.File], trace: InputTraceType.Alias }]
+		});
+	});
+
 	describe('Constant values', () => {
 		testQuery('Number via variable', 'x <- 42\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
 			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, value: 42 }]

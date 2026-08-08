@@ -11,6 +11,7 @@ import type { IEnvironment, REnvironmentInformation } from '../../environments/e
 import { Identifier, ReferenceType } from '../../environments/identifier';
 import { resolveByName, resolveByNameAnyType } from '../../environments/resolve-by-name';
 import { DfEdge, EdgeType } from '../../graph/edge';
+import { RForLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import type { DataflowGraph } from '../../graph/graph';
 import { onReplacementOperator, type ReplacementOperatorHandlerArgs } from '../../graph/unknown-replacement';
 import { onUnknownSideEffect } from '../../graph/unknown-side-effect';
@@ -209,6 +210,16 @@ export function resolveIdToSingleString(id: NodeId | RNodeWithParent | undefined
 	return element?.type === 'string' && isValue(element.value) ? element.value.str : undefined;
 }
 
+/** the values one element of a sequence may take: a vector contributes its elements, a set what its members do */
+function iteratedElements(value: Value): readonly Value[] {
+	if(value.type === 'vector' && isValue(value.elements)) {
+		return value.elements.flatMap(iteratedElements);
+	} else if(value.type === 'set' && isValue(value.elements)) {
+		return value.elements.flatMap(iteratedElements);
+	}
+	return [value];
+}
+
 /**
  * Please use {@link resolveIdToValue}
  *
@@ -258,7 +269,12 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, env
 						return Top;
 					}
 
-					values.add(value);
+					/* the sequence is what it runs over, so what the name holds is one of its elements */
+					if(def.iterated) {
+						iteratedElements(value).forEach(e => values.add(e));
+					} else {
+						values.add(value);
+					}
 				}
 			}
 		}
@@ -323,6 +339,28 @@ function isParameterDefault(node: RNodeWithParent | undefined, idMap: AstIdMap):
 }
 
 /**
+ * The sequence a use of a `for` loop's variable runs over, `undefined` when `id` is no such use. Every
+ * definition it reads has to be that variable: once anything else writes the name (`i <- i + 1` in the body),
+ * the sequence no longer states what the name holds.
+ */
+function iteratedSequence(id: NodeId, graph: DataflowGraph, idMap: AstIdMap): RNodeWithParent | undefined {
+	let sequence: RNodeWithParent | undefined;
+	for(const [target, edge] of graph.outgoingEdges(id) ?? []) {
+		if(!DfEdge.includesType(edge, EdgeType.Reads)) {
+			continue;
+		}
+		const definition = idMap.get(target);
+		const loop = definition?.info.parent === undefined ? undefined : idMap.get(definition.info.parent);
+		if(!RForLoop.is(loop) || loop.variable.info.id !== definition?.info.id
+			|| (sequence !== undefined && sequence.info.id !== loop.vector.info.id)) {
+			return undefined;
+		}
+		sequence = loop.vector;
+	}
+	return sequence;
+}
+
+/**
  * Please use {@link resolveIdToValue}
  *
  * Tries to resolve the value of a node by traversing the dataflow graph
@@ -340,6 +378,13 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 
 	idMap ??= graph.idMap;
 	guard(idMap !== undefined, 'The ID map is required to get the lineage of a node');
+
+	/* a loop makes the walk below give up, yet the variable of a `for` is precisely its sequence, elementwise */
+	const sequence = iteratedSequence(id, graph, idMap);
+	if(sequence !== undefined) {
+		const value = resolveIdToValue(sequence.info.id, { graph, idMap, ctx, blocked });
+		return isTop(value) ? Top : setFrom(...iteratedElements(value));
+	}
 
 	const queue = new VisitingQueue(10);
 	const clean = ctx.env.makeCleanEnv();

@@ -3,16 +3,14 @@ import type { DecodedFunction } from '../../../../src/project/sigdb/decode';
 import type { PackageSignatureSource } from '../../../../src/project/sigdb/reader';
 import type { BuiltInDefinitions, BuiltInFunctionDefinition } from '../../../../src/dataflow/environments/built-in-config';
 import { getDefaultBuiltInDefinitions } from '../../../../src/dataflow/environments/built-in-config';
-import type { BuiltInFnInfo, CallProps, FnSig } from '../../../../src/dataflow/environments/built-in-props';
+import type { BuiltInFnInfo, CallProps } from '../../../../src/dataflow/environments/built-in-props';
 import {
 	ArgProp,
-	argProp,
-	argsWith,
 	CallProp,
 	ExclusiveCallProps,
+	FnSig,
 	fnInfoFromSignature,
-	InputProps,
-	sigLayout
+	InputProps
 } from '../../../../src/dataflow/environments/built-in-props';
 import { builtInNames, BuiltInIndex, inferFnProps, queryFnProps } from '../../../../src/dataflow/environments/query-fn-props';
 import { DefaultBuiltinConfig, WrittenBuiltinDefinitions } from '../../../../src/dataflow/environments/default-builtin-config';
@@ -54,7 +52,7 @@ const ExpectedLabels: readonly (readonly [Identifier, CallProps])[] = [
 	[Identifier.from(['print', PkgName.Base]), CallProp.Invisible | CallProp.Generic | CallProp.Prints],
 	[Identifier.from(['stop', PkgName.Base]), CallProp.Throws],
 	[Identifier.from(['rm', PkgName.Base]), CallProp.Invisible | CallProp.Scope],
-	[Identifier.from(['set.seed', PkgName.Base]), CallProp.Invisible | CallProp.Random],
+	[Identifier.from(['set.seed', PkgName.Base]), CallProp.Invisible | CallProp.Random | CallProp.Configures],
 	[Identifier.from(['png', PkgName.GrDevices]), CallProp.Invisible | CallProp.Graphics | CallProp.File | CallProp.Writes]
 ];
 
@@ -72,26 +70,26 @@ const ExpectedSigs: readonly (readonly [Identifier, FnSig])[] = [
 describe('Built-in properties', () => {
 	describe('Signature layout', () => {
 		test(label('resolves the declared positions', ['name-normal'], ['other']), () => {
-			const layout = sigLayout(TestSig as NonNullable<typeof TestSig>);
-			assert.strictEqual(argProp(layout, 0), ArgProp.Value);
+			const layout = FnSig.layout(TestSig as NonNullable<typeof TestSig>);
+			assert.strictEqual(FnSig.propAt(layout, 0), ArgProp.Value);
 			assert.strictEqual(layout.rest, 1);
 			assert.strictEqual(layout.alias, -1);
 		});
 		test(label('`...` covers every position from where it appears', ['name-normal'], ['other']), () => {
-			const layout = sigLayout(TestSig as NonNullable<typeof TestSig>);
+			const layout = FnSig.layout(TestSig as NonNullable<typeof TestSig>);
 			/* the `na.rm` entry sits behind the `...`, so it is never matched by position */
 			for(const i of [1, 2, 7]) {
-				assert.strictEqual(argProp(layout, i), ArgProp.Value | ArgProp.Forced, `argument ${i}`);
+				assert.strictEqual(FnSig.propAt(layout, i), ArgProp.Value | ArgProp.Forced, `argument ${i}`);
 			}
-			assert.deepStrictEqual(argsWith(layout, 4, ArgProp.Forced), [1, 2, 3]);
-			assert.deepStrictEqual(argsWith(layout, 4, ArgProp.Alias), []);
+			assert.deepStrictEqual(FnSig.posWith(layout, 4, ArgProp.Forced), [1, 2, 3]);
+			assert.deepStrictEqual(FnSig.posWith(layout, 4, ArgProp.Alias), []);
 		});
 		test(label('an undeclared position states nothing', ['name-normal'], ['other']), () => {
-			assert.strictEqual(argProp(sigLayout([['x', ArgProp.Value]]), 3), 0);
+			assert.strictEqual(FnSig.propAt(FnSig.layout([['x', ArgProp.Value]]), 3), 0);
 		});
 		test(label('the layout is cached per signature object', ['name-normal'], ['other']), () => {
 			const sig = TestSig as NonNullable<typeof TestSig>;
-			assert.strictEqual(sigLayout(sig), sigLayout(sig));
+			assert.strictEqual(FnSig.layout(sig), FnSig.layout(sig));
 		});
 	});
 

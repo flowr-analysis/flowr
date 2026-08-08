@@ -33,6 +33,7 @@ import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/process
 import { log } from '../../../util/log';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionArgument } from '../../../dataflow/graph/graph';
+import { linkPlotsToDevices } from './link-devices';
 
 
 /**
@@ -91,6 +92,10 @@ export async function executeDependenciesQuery({
 		}
 		return [c, results];
 	}))) as { [C in DependencyCategoryName]?: DependencyInfo[] };
+
+	if(results.visualize?.length && results.write?.length) {
+		linkPlotsToDevices(results.write, results.visualize, dataflow, normalize);
+	}
 
 	return {
 		'.meta': {
@@ -230,10 +235,13 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 						resolvedValue = info.stringReplacements[resolvedValue];
 					}
 					const dep = resolvedValue ? d.getDependency(resolvedValue) ?? undefined : undefined;
+					const lexeme = getLexeme(value, arg);
 					finalResults.push(compactRecord({
 						nodeId:             id,
 						functionName,
-						lexemeOfArgument:   getLexeme(value, arg),
+						/* only a value we could not make sense of is worth asking about further */
+						argumentId:         lexeme === undefined ? undefined : arg,
+						lexemeOfArgument:   lexeme,
 						linkedIds:          linked?.length ? linked : undefined,
 						value:              resolvedValue ?? info.defaultValue ?? defaultValue,
 						versionConstraints: dep?.versionConstraints,

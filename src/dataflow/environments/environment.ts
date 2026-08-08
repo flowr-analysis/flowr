@@ -453,6 +453,15 @@ function findGlobalEnvironment(this: void, env: Environment): Environment {
 	return current;
 }
 
+/** Walks up to the built-in environment. */
+function findBuiltInEnvironment(this: void, env: Environment): Environment {
+	let current = env;
+	while(!current.builtInEnv) {
+		current = current.parent;
+	}
+	return current;
+}
+
 /** The `search()` position directly below the global environment; where R attaches by default. */
 export const DefaultAttachPosition = 2;
 
@@ -531,6 +540,8 @@ export const REnvironment = {
 	name:             'REnvironment',
 	/** Walks up to the global environment (`.GlobalEnv`); see {@link findGlobalEnvironment}. */
 	findGlobal:       findGlobalEnvironment,
+	/** Walks up to the built-in environment; see {@link findBuiltInEnvironment}. */
+	findBuiltIn:      findBuiltInEnvironment,
 	/** Attaches a package block at a `search()` position, below the global by default; see {@link attachPackageAt}. */
 	attachAt:         attachPackageAt,
 	/** The `search()` position of a named entry; see {@link searchPositionOf}. */

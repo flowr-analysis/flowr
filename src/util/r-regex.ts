@@ -1,3 +1,4 @@
+import { log } from './log';
 
 /**
  * Represents R's `.standard_regexps` definitions.
@@ -40,6 +41,11 @@ const PosixClassMap = {
 } as const;
 const posixClassRegex = /\[:([a-z]+):]/g;
 
+/** the flags R accepts inside the pattern (`(?i)foo`), which JavaScript only takes next to it */
+const inlineFlags = /^\(\?([imsx]+)\)/;
+/** what a pattern JavaScript cannot compile falls back to, so one bad pattern matches nothing rather than throwing */
+const matchesNothing = /(?!)/;
+
 /**
  * Converts an R regex pattern (which may include POSIX character classes) into a JavaScript RegExp.
  */
@@ -52,5 +58,17 @@ export function parseRRegexPattern(pattern: string): RegExp {
 	if(convertedPattern.startsWith('*') || convertedPattern.startsWith('+')) {
 		convertedPattern = '.' + convertedPattern;
 	}
-	return new RegExp(convertedPattern);
+	let flags = '';
+	const inline = inlineFlags.exec(convertedPattern);
+	if(inline) {
+		/* `x` (extended) has no counterpart, the others carry over by name */
+		flags = inline[1].replaceAll('x', '');
+		convertedPattern = convertedPattern.slice(inline[0].length);
+	}
+	try {
+		return new RegExp(convertedPattern, flags);
+	} catch(e) {
+		log.warn(`R pattern ${JSON.stringify(pattern)} is no JavaScript regex, treating it as matching nothing: ${(e as Error).message}`);
+		return matchesNothing;
+	}
 }

@@ -8,6 +8,7 @@ import { executeDependenciesQuery } from './dependencies-query-executor';
 import type { FunctionInfo } from './function-info/function-info';
 import { LibraryFunctions } from './function-info/library-functions';
 import { SourceFunctions } from './function-info/source-functions';
+import { RemoteFunctions, remoteTarget } from './function-info/remote-functions';
 import { ReadFunctions } from './function-info/read-functions';
 import { WriteFunctions } from './function-info/write-functions';
 import { VisualizeFunctions } from './function-info/visualize-functions';
@@ -72,6 +73,20 @@ export const DefaultDependencyCategories = {
 						});
 					}
 				});
+			}
+		}
+	},
+	'remote': {
+		queryDisplayName:   'Remote Installs',
+		functions:          RemoteFunctions,
+		defaultValue:       Unknown,
+		/* the value is the reference as written, which names the package only implicitly */
+		additionalAnalysis: (_data, _ignoreDefault, _functions, _queryResults, result) => {
+			for(const [at, info] of result.entries()) {
+				const target = remoteTarget(info.value);
+				if(target !== undefined) {
+					result[at] = { ...info, ...target };
+				}
 			}
 		}
 	},
@@ -149,6 +164,11 @@ export interface DependencyInfo extends Record<string, unknown>{
 	/** the called name; an {@link Identifier}, so a namespaced call like `maps::map` keeps its package */
 	functionName:        Identifier
 	linkedIds?:          readonly NodeId[]
+	/**
+	 * the argument the value was read from, under the id the {@link InputSourcesQuery} reports it with: ask that
+	 * query about {@link nodeId} and this entry of its answer says whether the value is a glob, a prompt, ...
+	 */
+	argumentId?:         NodeId
 	/** the lexeme is presented whenever the specific info is {@link Unknown} or {@link Constant} */
 	lexemeOfArgument?:   string;
 	/** The library name, file, source, destination etc. being sourced, read from, or written to. */
@@ -156,6 +176,10 @@ export interface DependencyInfo extends Record<string, unknown>{
 	versionConstraints?: readonly Range[],
 	derivedRange?:       Range,
 	namespaceInfo?:      NamespaceInfo,
+	/** the package the dependency provides, when the {@link value} names it only implicitly (a `user/repo` slug, a clone url) */
+	packageName?:        string
+	/** the revision such a reference pins, the `v1.2` of `user/repo@v1.2` */
+	revision?:           string
 }
 
 function printResultSection(title: string, infos: DependencyInfo[], result: string[], formatter: OutputFormatter): void {

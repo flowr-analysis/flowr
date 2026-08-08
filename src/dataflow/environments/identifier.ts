@@ -104,12 +104,12 @@ export const Identifier = {
 	 * In this scenario, see {@link Identifier.make} instead.
 	 */
 	parse(this: void, str: string): Identifier {
-		const internal = str.includes(':::');
-		const parts = str.split(internal ? ':::' : '::');
-		if(parts.length === 2) {
-			return [parts[1], parts[0], internal];
+		const at = namespaceSeparatorAt(str);
+		if(at < 0) {
+			return str;
 		}
-		return parts[0];
+		const internal = str[at + 2] === ':';
+		return [str.slice(at + (internal ? 3 : 2)), str.slice(0, at), internal] as Identifier;
 	},
 	/**
 	 * Get the name part of the identifier
@@ -272,6 +272,19 @@ export const Identifier = {
 	}
 } as const;
 
+/** The index of the `::` separating namespace from name, skipping backtick-quoted spans; `-1` if there is none. */
+function namespaceSeparatorAt(str: string): number {
+	let quoted = false;
+	for(let i = 0; i < str.length; i++) {
+		if(str[i] === '`') {
+			quoted = !quoted;
+		} else if(!quoted && str[i] === ':' && str[i + 1] === ':') {
+			return i;
+		}
+	}
+	return -1;
+}
+
 /**
  * Well-known R package names used in {@link DefaultBuiltinConfig}.
  * Using a const enum keeps the string values inlined at compile time.
@@ -296,6 +309,7 @@ export const enum PkgName {
 	Fs           = 'fs',
 	Functools    = 'functools',
 	GgPlot2      = 'ggplot2',
+	Here         = 'here',
 	Hmisc        = 'Hmisc',
 	Import       = 'import',
 	Inferference = 'inferference',
@@ -448,6 +462,11 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	 * that the function returns (best-effort: only set when statically detectable).
 	 */
 	readonly returnsEnvState?: REnvironmentInformation
+	/**
+	 * Whether {@link value} names the sequence this identifier iterates over rather than what it holds, as a
+	 * `for` loop's variable does: it takes one element of that sequence at a time.
+	 */
+	readonly iterated?:        boolean
 }
 
 /**

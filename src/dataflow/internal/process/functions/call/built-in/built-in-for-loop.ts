@@ -69,7 +69,8 @@ export function processForLoop<OtherInfo>(
 	const writtenIds = new Set<NodeId>();
 	for(const write of writtenVariable) {
 		writtenIds.add(write.nodeId);
-		headEnvironments = define({ ...write, definedAt: name.info.id, type: ReferenceType.Variable } as (IdentifierDefinition & { name: string }), false, headEnvironments);
+		headEnvironments = define({ ...write, definedAt: name.info.id, type:      ReferenceType.Variable,
+			value:     [vectorArg.info.id], iterated:  true } as (IdentifierDefinition & { name: string }), false, headEnvironments);
 	}
 
 	(data as { environment: REnvironmentInformation }).environment = headEnvironments;

@@ -39,4 +39,9 @@ export interface SliceResult {
 	 * {@link result} is what was reached until then and not the complete slice.
 	 */
 	readonly stoppedEarly?:     boolean
+	/**
+	 * The names the slice reads without defining them, so running it on its own would fail with
+	 * `object 'x' not found`. Empty when the slice is closed under the names it uses.
+	 */
+	readonly freeNames?:        readonly string[]
 }

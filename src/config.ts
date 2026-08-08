@@ -290,6 +290,25 @@ export interface FlowrConfig extends MergeableRecord {
 			readonly versionSelection?:           VersionSelection
 			/** Force an exact version for specific packages (mapping a package name to a version), overriding both the project constraint and the {@link versionSelection} policy; a version missing from the database falls back with a warning (default `{}`). */
 			readonly versionOverrides?:           Record<string, string>
+			/**
+			 * Recovering a package no signature database knows (a CRAN-archived one like `maptools`) from the copy
+			 * installed on this machine: its `DESCRIPTION` states the version, its `NAMESPACE` the exports. Opt-in,
+			 * as it reads directories outside the analyzed project and ties the analysis to what is installed here.
+			 */
+			readonly installedLibrary?:           {
+				/** Consult installed packages at all (default `false`). */
+				readonly enabled:            boolean
+				/** The library directories to search; when empty they are discovered as configured below (default `[]`). */
+				readonly paths?:             string[]
+				/** Search the libraries `R_LIBS_USER`/`R_LIBS`/`R_LIBS_SITE` name (default `true`, ignored when {@link paths} is given). */
+				readonly useEnvironment?:    boolean
+				/** Search a project-local `renv`/`packrat` library (default `true`, ignored when {@link paths} is given). */
+				readonly useProjectLibrary?: boolean
+				/** How far to descend into the nested layout of a project-local library (default `3`). */
+				readonly maxDepth?:          number
+				/** Only recover packages whose name matches one of these regular expressions; empty means any (default `[]`). */
+				readonly packages?:          string[]
+			}
 		}
 		/** Policies for reasoning about dependency versions (independent of how the signature database is loaded). */
 		readonly versionManagement?: {
@@ -437,6 +456,7 @@ export const FlowrDefaultPlugins = [
 	'file:description',
 	'versions:description',
 	'versions:sigdb',
+	'versions:library',
 	'versions:namespace',
 	'versions:renv',
 	'versions:rv',
@@ -581,7 +601,7 @@ export const FlowrConfig = {
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
-				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, linkBaseRCalls: false, linkPackageCalls: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {} },
+				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, linkBaseRCalls: false, linkPackageCalls: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {}, installedLibrary: { enabled: false, paths: [], useEnvironment: true, useProjectLibrary: true, maxDepth: 3, packages: [] } },
 				versionManagement: { linkedVersionGroups: [] },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
@@ -711,8 +731,16 @@ export const FlowrConfig = {
 				additionalPaths:             Joi.array().items(Joi.string()).optional().description('Extra directories or bundle/manifest files searched for signature databases (alongside the shipped default and $FLOWR_SIGDB_DIR); a downloaded full-history bundle placed here is mounted automatically.'),
 				downloadRepo:                Joi.string().optional().description('GitHub owner/repo the full-history bundle is downloaded from via ":signature download" (default "flowr-analysis/flowr", release tag "sigdb-v<flowR-version>").'),
 				autoSync:                    Joi.boolean().optional().description('On startup, re-download shards whose committed sigdb.remote.json hash no longer matches the cache, in the background (default false; opt-in network sync after a git pull).'),
-				versionSelection:            Joi.string().valid(...Object.values(VersionSelection)).optional().description('When a project constrains a dependency, resolve to the newest (default), oldest, or system-installed version satisfying it; system needs R and falls back to newest. Base-R packages always resolve against the assumed R version.'),
-				versionOverrides:            Joi.object().pattern(Joi.string(), Joi.string()).optional().description('Force an exact version for specific packages (name -> version), overriding both the project constraint and the versionSelection policy (default {}).')
+				installedLibrary:            Joi.object({
+					enabled:           Joi.boolean().required().description('Recover packages no signature database knows from their installed copy (default false).'),
+					paths:             Joi.array().items(Joi.string()).optional().description('Library directories to search; when empty they are discovered from the environment and the project.'),
+					useEnvironment:    Joi.boolean().optional().description('Search the libraries R_LIBS_USER/R_LIBS/R_LIBS_SITE name (default true).'),
+					useProjectLibrary: Joi.boolean().optional().description('Search a project-local renv/packrat library (default true).'),
+					maxDepth:          Joi.number().optional().description('How far to descend into the nested layout of a project-local library (default 3).'),
+					packages:          Joi.array().items(Joi.string()).optional().description('Only recover packages whose name matches one of these regular expressions; empty means any.')
+				}).optional().description('Recovering packages no signature database knows from the copy installed on this machine.'),
+				versionSelection: Joi.string().valid(...Object.values(VersionSelection)).optional().description('When a project constrains a dependency, resolve to the newest (default), oldest, or system-installed version satisfying it; system needs R and falls back to newest. Base-R packages always resolve against the assumed R version.'),
+				versionOverrides: Joi.object().pattern(Joi.string(), Joi.string()).optional().description('Force an exact version for specific packages (name -> version), overriding both the project constraint and the versionSelection policy (default {}).')
 			}).description('Resolving library exports from a signature database.'),
 			versionManagement: Joi.object({
 				linkedVersionGroups: Joi.array().items(Joi.array().items(Joi.string())).optional().description('Groups of packages that must resolve to the same version; version guessing intersects each group so its members stay mutually compatible (default []).')

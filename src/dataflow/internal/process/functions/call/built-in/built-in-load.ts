@@ -29,10 +29,9 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import type {
 	PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import {
-	EmptyArgument
+import { RFunctionCall
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { bindArgs, resolveArgToEnvir, signatureParamNames } from './built-in-envir-utils';
+import { resolveArgToEnvir, signatureParamNames } from './built-in-envir-utils';
 
 /**
  * Processes a built-in 'load' function call by retrieving the names of the variables loaded by the given file.
@@ -285,14 +284,14 @@ function sexpTypeToReferenceType(type?: SexpType): ReferenceType{
 function getArguments<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	// prefer R's real `base::load` signature from the database, falling back to the known formals when it is absent
 	const loadParams = signatureParamNames(data, Identifier.make('load', PkgName.Base), ['file', 'envir', 'verbose']);
-	const bound = bindArgs(args, loadParams);
+	const bound = RFunctionCall.matchArgsToParams(args, loadParams);
 
 	const fileArgBound = bound.get('file');
 	const envirArg = bound.get('envir');
 	const verboseArgBound = bound.get('verbose');
 
-	const fileArg = fileArgBound && fileArgBound !== EmptyArgument ? unpackArg(fileArgBound) : undefined;
-	const verboseArg = verboseArgBound && verboseArgBound !== EmptyArgument ? unpackArg(verboseArgBound) : undefined;
+	const fileArg = fileArgBound ? unpackArg(fileArgBound) : undefined;
+	const verboseArg = verboseArgBound ? unpackArg(verboseArgBound) : undefined;
 
 	return { fileArg, envirArg, verboseArg };
 }

@@ -200,10 +200,13 @@ export interface DataflowGraphJson {
  * Linked side effects are used whenever we know that a call may be affected by another one in a way that we cannot
  * grasp from the dataflow perspective (e.g., an indirect dependency based on the currently active graphic device).
  */
-export type UnknownSideEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> };
+export type UnknownSideEffect = NodeId | LinkedUnknownSideEffect;
 
 /** A {@link UnknownSideEffect} that carries a {@link LinkTo} target. */
-export type LinkedUnknownSideEffect = { id: NodeId, linkTo: LinkTo<RegExp> };
+export interface LinkedUnknownSideEffect {
+	readonly id:     NodeId,
+	readonly linkTo: LinkTo<RegExp>
+}
 
 /**
  * Helpers for the {@link UnknownSideEffect} union, which is either a plain {@link NodeId} or a

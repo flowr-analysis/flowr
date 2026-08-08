@@ -80,18 +80,6 @@ function resolveDefsToEnvirResolution<OtherInfo>(
 }
 
 /**
- * Binds call arguments to formal parameter names using R's matching rules: exact name, then partial (pmatch) name, then remaining unnamed args left-to-right.
- * Pass `paramNames` as the full formal parameter list (excluding `...`) so ambiguous prefixes are rejected.
- * Thin alias for {@link RFunctionCall.matchArgumentsToParameters}, which owns the (pure) matching logic.
- */
-export function bindArgs<OtherInfo>(
-	args:       readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
-	paramNames: readonly string[]
-): ReadonlyMap<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>> {
-	return RFunctionCall.matchArgsToParams(args, paramNames);
-}
-
-/**
  * The formal parameter names of the qualified call `id` (a `pkg::fn` {@link Identifier}) from the signature
  * database (excluding `...`), or `fallback` when the database is disabled or does not carry the function. Lets a
  * built-in argument matcher use R's real signature (via {@link ReadOnlyFlowrAnalyzerDependenciesContext#signatureOf})
@@ -139,7 +127,7 @@ export function findReturnsEnvState(defs: readonly IdentifierDefinition[] | unde
 	return defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).returnsEnvState !== undefined)?.returnsEnvState;
 }
 
-/** Resolves a single already-found argument (e.g. from {@link bindArgs}) to an {@link EnvirResolution} when it is a symbol holding a tracked envState. */
+/** Resolves a single already-found argument (e.g. from {@link RFunctionCall.matchArgsToParams}) to an {@link EnvirResolution} when it is a symbol holding a tracked envState. */
 export function resolveArgToEnvir<OtherInfo>(
 	arg:  PotentiallyEmptyRArgument<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
@@ -177,34 +165,15 @@ function stackEnvirResolution<OtherInfo>(
 	return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, isStackEnv: true };
 }
 
-/** Resolves the `argName` argument (default `'envir'`, pmatch against `allParamNames`), falling back to `positionalFallbackIndex`, to an {@link EnvirResolution}. */
+/** Resolves the `argName` argument (default `'envir'`), named with pmatch, to an {@link EnvirResolution}. */
 export function resolveEnvirArg<OtherInfo>(
-	args:                   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
-	data:                   DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	argName                 = 'envir',
-	positionalFallbackIndex?: number,
-	allParamNames:          readonly string[] = [argName]
+	args:    readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	data:    DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	argName  = 'envir'
 ): EnvirResolution<OtherInfo> | undefined {
-	/* named pass: pmatch against the full parameter list */
 	for(const arg of args) {
-		if(arg === EmptyArgument || arg.name === undefined) {
-			continue;
-		}
-		if(findByPrefixIfUnique(arg.name.content, allParamNames) === argName) {
+		if(arg !== EmptyArgument && arg.name !== undefined && findByPrefixIfUnique(arg.name.content, [argName]) === argName) {
 			return resolveArgToEnvir(arg, data);
-		}
-	}
-	/* positional fallback (only when no named match existed) */
-	if(positionalFallbackIndex !== undefined) {
-		let pos = 0;
-		for(const arg of args) {
-			if(arg === EmptyArgument || arg.name !== undefined) {
-				continue;
-			}
-			if(pos === positionalFallbackIndex) {
-				return resolveArgToEnvir(arg, data);
-			}
-			pos++;
 		}
 	}
 	return undefined;

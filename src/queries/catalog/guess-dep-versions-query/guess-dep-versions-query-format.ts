@@ -11,7 +11,7 @@ import { rdrrDocUrl } from '../signature-query/signature-query-executor';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { VersionSelection, type FlowrConfig } from '../../../config';
 import { executeGuessDepVersionsQuery } from './guess-dep-versions-query-executor';
-import type { ConstraintSource, DerivedConstraint } from '../../../project/dependency-version-space';
+import type { ConstraintSource, DerivedConstraint, OrphanReason } from '../../../project/dependency-version-space';
 
 /**
  * Guesses the possible version range of every dependency of a project by combining what the project *declares*
@@ -62,11 +62,25 @@ export const DefaultCandidateCap = 16;
 export type GuessEvidenceSource = ConstraintSource;
 
 /**
- * One provenance-carrying constraint on a dependency's version: where it comes from (`source`/`origin`) and what
- * it requires (`bound`). The set of these on a {@link GuessedDependency} is exactly why the range is what it is, so
- * it can answer "it must be `>= 4.2.0` because ...". This is the resolver's {@link DerivedConstraint}.
+ * The resolver's {@link DerivedConstraint} with its {@link DerivedConstraint.at|call site} resolved to a readable
+ * location, so the evidence answers not only "it must be `>= 4.2.0` because it calls `filter(.by=)`" but also where.
  */
-export type GuessVersionEvidence = DerivedConstraint;
+export interface GuessVersionEvidence extends DerivedConstraint {
+	/** the location of the call that carried the evidence, e.g. `12:3` or `helper.R:12:3` */
+	readonly location?: string;
+}
+
+/** why a package is reported as an orphan: the call that would be undefined without it, and how it was picked */
+export interface OrphanEvidenceView {
+	/** the undefined function that is called, e.g. `ggplot` */
+	readonly function:  string;
+	/** where it is called, e.g. `12:3` */
+	readonly location?: string;
+	/** why this package and not another exporter of the name */
+	readonly reason:    OrphanReason;
+	/** how many packages export the name */
+	readonly exporters: number;
+}
 
 /** one package an orphan call could have meant instead, with the versions of it that fit those calls */
 export interface OrphanAlternativeView {
@@ -131,6 +145,8 @@ export interface GuessedDependency {
 	readonly orphan?:             boolean;
 	/** the undefined orphan function names that inferred this package (only set when {@link orphan}), e.g. `['ggplot']` */
 	readonly orphanFunctions?:    readonly string[];
+	/** per {@link orphanFunctions} entry, where the undefined call is and why it was pinned on this package */
+	readonly orphanEvidence?:     readonly OrphanEvidenceView[];
 	/**
 	 * The other packages that export the {@link orphanFunctions}, each with the versions of it that would fit the
 	 * calls. Attributing an orphan is a guess: the most downloaded exporter wins, and these are the ones it beat,
@@ -443,6 +459,13 @@ export const GuessDepVersionsQueryDefinition = {
 			const dbGe = versionBound(tightestBound(avail, '>='))?.ver, dbLe = versionBound(tightestBound(avail, '<='))?.ver;
 			const dbRange = dbGe !== undefined && dbLe !== undefined ? `, db ${dbGe} - ${dbLe}` : '';
 			result.push(`   ${bold('━ ' + dep.package, formatter)}${tag}  ${range}  ${faint('(' + count + dbRange + ')', formatter)}`);
+			for(const o of dep.orphanEvidence ?? []) {
+				// why the package is inferred at all: the call is undefined without it, plus why it beat another exporter
+				const where = o.location ? ` at ${o.location}` : '';
+				const why = o.reason === 'sole exporter' ? ` ${faint(`(only ${dep.package})`, formatter)}`
+					: o.reason === 'most downloaded' ? ` ${faint(`(most downloaded of ${o.exporters})`, formatter)}` : '';
+				result.push(`      ${color('!', Colors.Yellow, formatter)} ${o.function}()${where} resolves to no definition${why}`);
+			}
 			if(dep.orphanAlternatives?.length) {
 				// attributing an orphan is a guess, so name the exporters it beat and what each of them would fit
 				const alts = dep.orphanAlternatives.map(a => `${a.package} ${a.range}`);
@@ -485,7 +508,9 @@ export const GuessDepVersionsQueryDefinition = {
 				const ge = tightestBound(evs, '>='), le = tightestBound(evs, '<=');
 				const geVer = versionBound(ge)?.ver, leVer = versionBound(le)?.ver;
 				const params = [...new Set(evs.map(e => e.parameter).filter((pm): pm is string => pm !== undefined))];
-				const reasons = [evs.some(e => !e.parameter) ? 'new' : undefined, params.length > 0 ? `params: [${truncatedList(params)}]` : undefined].filter(Boolean).join(', ');
+				const at = evs.find(e => e.location)?.location;
+				const reasons = [evs.some(e => !e.parameter) ? 'new' : undefined, params.length > 0 ? `params: [${truncatedList(params)}]` : undefined,
+					at ? `at ${at}` : undefined].filter(Boolean).join(', ');
 				const name = Identifier.getName(Identifier.parse(fn));
 				const url = rdrrDocUrl(dep.package, name, { base: dep.base, cran: !dep.base });
 				const label = (url ? formatter.hyperlink(name, url, true) : name) + (reasons ? ` (${reasons})` : '');

@@ -24,6 +24,7 @@ import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { S7SyntheticFunArgSuffix } from '../dataflow/internal/process/functions/call/built-in/built-in-s-seven-new-generic';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from './context/flowr-analyzer-dependencies-context';
 import type { ReadonlyFlowrAnalysisProvider } from './flowr-analyzer';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** the pseudo-package standing for the analyzed project itself, never one of its own dependencies */
 export const ProjectPackage = 'current';
@@ -46,6 +47,8 @@ export interface DerivedConstraint {
 	readonly function?:  string;
 	/** the argument/parameter that carried the evidence (for signature constraints) */
 	readonly parameter?: string;
+	/** the call site that carried the evidence, so a bound can point at the line forcing it */
+	readonly at?:        NodeId;
 	/** the version bound this constraint establishes, if any (e.g. `>=1.1.0`, `<=2021-05-31`) */
 	readonly bound?:     string;
 	/**
@@ -64,10 +67,12 @@ export type FnResolver = (fn: string, version: VersionString) => DecodedFunction
 
 /** how a single function of a package is used in the code */
 interface FunctionUsage {
-	/** the union of named argument names across all call sites (drives the lower-bound evidence) */
-	readonly named: Set<string>;
+	/** per named argument used anywhere, the first call supplying it (drives the lower-bound evidence) */
+	readonly named: Map<string, NodeId>;
 	/** one representative argument list per distinct call *shape* (drives signature compatibility) */
 	readonly calls: Map<string, readonly FunctionArgument[]>;
+	/** the first call of the function, absent when only a class use implies it */
+	at?:            NodeId;
 }
 /** per-package function usage, keyed by the function's (unqualified) name */
 export type PackageUsage = Map<string, FunctionUsage>;
@@ -265,7 +270,7 @@ function addClassOwnershipUsage(usage: Map<string, PackageUsage>, deps: ReadOnly
 			}
 			// narrow by the same-named constructor's presence only when it actually resolves (else just mark used)
 			if(!pkgUsage.has(cls) && src.functionByName(owner, cls) !== undefined) {
-				pkgUsage.set(cls, { named: new Set(), calls: new Map([['#0', []]]) });
+				pkgUsage.set(cls, { named: new Map(), calls: new Map([['#0', []]]) });
 			}
 			return;
 		}
@@ -287,19 +292,22 @@ function isSyntheticArgument(arg: FunctionArgument): boolean {
 	return !FunctionArgument.isEmpty(arg) && String(arg.nodeId).endsWith(S7SyntheticFunArgSuffix);
 }
 
-/** record one call of `fn` into `pkgUsage`: union its named argument names and keep one representative per call shape */
-function recordCallUsage(pkgUsage: PackageUsage, fn: string, rawArgs: readonly FunctionArgument[]): void {
+/** record one call of `fn` (made at `at`) into `pkgUsage`: union its named argument names and keep one representative per call shape */
+function recordCallUsage(pkgUsage: PackageUsage, fn: string, rawArgs: readonly FunctionArgument[], at: NodeId): void {
 	let entry = pkgUsage.get(fn);
 	if(entry === undefined) {
-		entry = { named: new Set(), calls: new Map() };
+		entry = { named: new Map(), calls: new Map() };
 		pkgUsage.set(fn, entry);
 	}
+	entry.at ??= at;
 	const args = rawArgs.some(isSyntheticArgument) ? rawArgs.filter(a => !isSyntheticArgument(a)) : rawArgs;
 	const named: string[] = [];
 	let positional = 0;
 	for(const arg of args) {
 		if(FunctionArgument.isNamed(arg)) {
-			entry.named.add(arg.name);
+			if(!entry.named.has(arg.name)) {
+				entry.named.set(arg.name, at);
+			}
 			named.push(arg.name);
 		} else if(FunctionArgument.isPositional(arg)) {
 			positional++;
@@ -330,7 +338,7 @@ export function collectUsage(graph: DataflowGraph, deps?: ReadOnlyFlowrAnalyzerD
 			pkgUsage = new Map();
 			usage.set(pkg, pkgUsage);
 		}
-		recordCallUsage(pkgUsage, Identifier.getName(qualified), vertex.args);
+		recordCallUsage(pkgUsage, Identifier.getName(qualified), vertex.args, id);
 	}
 	if(deps) {
 		addClassOwnershipUsage(usage, deps, graph);
@@ -344,12 +352,23 @@ export function collectUsage(graph: DataflowGraph, deps?: ReadOnlyFlowrAnalyzerD
  */
 const MaxOrphanProviders = 5;
 
+/** why one orphan call was attributed to its package, given that several may export the name */
+export type OrphanReason = 'builtin' | 'sole exporter' | 'most downloaded';
+
+/** one orphan call: the undefined name, where it is called, and why it was pinned on the package */
+export interface OrphanCall {
+	readonly at:        NodeId;
+	readonly reason:    OrphanReason;
+	/** how many packages export the name, the field the {@link OrphanReason} picked from */
+	readonly exporters: number;
+}
+
 /**
  * What the orphan calls of one analyzed program implicated, as {@link collectOrphanUsage} reports it.
  */
 export interface OrphanUsage {
-	/** per package the project does not already know: the orphan function names that pointed at it */
-	readonly attributed:       Map<string, Set<string>>;
+	/** per package the project does not already know: the orphan calls that pointed at it, by function name */
+	readonly attributed:       Map<string, Map<string, OrphanCall>>;
 	/** per such package: the other exporters of those names that lost the pick, most downloaded first */
 	readonly alternatives:     Map<string, string[]>;
 	/** the same calls recorded against every alternative, so a caller can ask which of its versions would fit */
@@ -382,7 +401,7 @@ export interface OrphanUsageOptions {
  */
 export function collectOrphanUsage(graph: DataflowGraph, deps: ReadOnlyFlowrAnalyzerDependenciesContext, usage: Map<string, PackageUsage>, isKnown: (pkg: string) => boolean, options: OrphanUsageOptions = {}): OrphanUsage {
 	const { self, builtinLibraryOf } = options;
-	const attributed = new Map<string, Set<string>>();
+	const attributed = new Map<string, Map<string, OrphanCall>>();
 	const alternatives = new Map<string, string[]>();
 	const alternativeUsage = new Map<string, PackageUsage>();
 	const scopeDefined = collectScopeDefinedNames(graph);
@@ -414,23 +433,28 @@ export function collectOrphanUsage(graph: DataflowGraph, deps: ReadOnlyFlowrAnal
 		const mapped = builtinLibraryOf?.(name);
 		const providers = deps.packagesExporting(name).filter(p => p !== self);
 		const known = providers.filter(isKnown);
-		const pkg = mapped !== undefined && mapped !== self ? mapped
+		const builtin = mapped !== undefined && mapped !== self;
+		const pkg = builtin ? mapped
 			: known.length === 1 ? known[0]
 				: known.length === 0 && providers.length > 0 && providers.length <= MaxOrphanProviders ? providers[0] : undefined;
 		if(pkg === undefined) {
 			continue;
 		}
-		recordCallUsage(atKey(usage, pkg, (): PackageUsage => new Map()), name, vertex.args);
+		recordCallUsage(atKey(usage, pkg, (): PackageUsage => new Map()), name, vertex.args, id);
 		// a package the project already declares or loads is a normal target, not an orphan needing attachment
 		if(isKnown(pkg)) {
 			continue;
 		}
-		atKey(attributed, pkg, () => new Set<string>()).add(name);
+		const reason: OrphanReason = builtin ? 'builtin' : providers.length === 1 ? 'sole exporter' : 'most downloaded';
+		const calls = atKey(attributed, pkg, () => new Map<string, OrphanCall>());
+		if(!calls.has(name)) {
+			calls.set(name, { at: id, reason, exporters: providers.length });
+		}
 		// the exporters that lost, with the same calls recorded, so the guess can report what each of them would fit
 		const losers = providers.filter(p => p !== pkg);
 		alternatives.set(pkg, [...new Set([...alternatives.get(pkg) ?? [], ...losers])]);
 		for(const alt of losers) {
-			recordCallUsage(atKey(alternativeUsage, alt, (): PackageUsage => new Map()), name, vertex.args);
+			recordCallUsage(atKey(alternativeUsage, alt, (): PackageUsage => new Map()), name, vertex.args, id);
 		}
 	}
 	return { attributed, alternatives, alternativeUsage };
@@ -517,10 +541,10 @@ function latestSupporting(src: PackageSignatureSource, pkg: string, timeline: re
 }
 
 /** emit one signature bound: `>=v` only when `v` is after the floor, `<=v` only when before the ceiling */
-function emitSignatureBound(observe: ConstraintObserver, fn: Identifier, v: string | undefined, op: '>=' | '<=', ref: string, verb: string, parameter?: string): void {
+function emitSignatureBound(observe: ConstraintObserver, fn: Identifier, v: string | undefined, op: '>=' | '<=', ref: string, verb: string, from: Pick<DerivedConstraint, 'at' | 'parameter'>): void {
 	if(v !== undefined && (op === '>=' ? RVersion.compare(v, ref) > 0 : RVersion.compare(v, ref) < 0)) {
 		const qualified = Identifier.toString(fn);
-		observe({ source: 'signature', origin: qualified, detail: `${qualified} ${verb} ${v}`, bound: `${op}${v}`, function: qualified, parameter });
+		observe({ source: 'signature', origin: qualified, detail: `${qualified} ${verb} ${v}`, bound: `${op}${v}`, function: qualified, ...from });
 	}
 }
 
@@ -534,12 +558,12 @@ function addSignatureEvidence(observe: ConstraintObserver, src: PackageSignature
 	for(const [fn, use] of usage) {
 		const qualified = Identifier.make(fn, pkg);
 		const present = (v: string) => getFn(fn, v) !== undefined;
-		emitSignatureBound(observe, qualified, earliestSupporting(src, pkg, timeline, present), '>=', floor, 'exists only from');
-		emitSignatureBound(observe, qualified, latestSupporting(src, pkg, timeline, present), '<=', ceiling, 'removed after');
-		for(const arg of use.named) {
+		emitSignatureBound(observe, qualified, earliestSupporting(src, pkg, timeline, present), '>=', floor, 'exists only from', { at: use.at });
+		emitSignatureBound(observe, qualified, latestSupporting(src, pkg, timeline, present), '<=', ceiling, 'removed after', { at: use.at });
+		for(const [arg, at] of use.named) {
 			const supported = (v: string) => argumentSupported(getFn(fn, v), arg);
-			emitSignatureBound(observe, qualified, earliestSupporting(src, pkg, timeline, supported), '>=', floor, `has parameter '${arg}' only from`, arg);
-			emitSignatureBound(observe, qualified, latestSupporting(src, pkg, timeline, supported), '<=', ceiling, `dropped parameter '${arg}' after`, arg);
+			emitSignatureBound(observe, qualified, earliestSupporting(src, pkg, timeline, supported), '>=', floor, `has parameter '${arg}' only from`, { at, parameter: arg });
+			emitSignatureBound(observe, qualified, latestSupporting(src, pkg, timeline, supported), '<=', ceiling, `dropped parameter '${arg}' after`, { at, parameter: arg });
 		}
 	}
 }

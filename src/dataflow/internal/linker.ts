@@ -25,7 +25,7 @@ import {
 } from '../graph/vertex';
 import { resolveByName } from '../environments/resolve-by-name';
 import type { REnvironmentInformation } from '../environments/environment';
-import { findByPrefixIfUnique } from '../../util/prefix';
+import { DotsParameterName, matchArgumentsToParameters } from '../../util/arg-matching';
 import type { ExitPoint } from '../info';
 import { negateControlDependency, doesExitPointPropagateCalls } from '../info';
 import { UnnamedFunctionCallPrefix } from './process/functions/call/unnamed-call-handling';
@@ -84,76 +84,42 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
 	return nameIdShares;
 }
 
+/** the argument names as {@link matchArgumentsToParameters} wants them */
+function argumentNames(args: readonly FunctionArgument[]): (string | undefined)[] {
+	return args.map(a => FunctionArgument.isNamed(a) ? a.name : undefined);
+}
+
 /**
- * Links the given arguments to the given parameters within the given graph.
- * This follows the `pmatch` semantics of R
- * @see https://cran.r-project.org/doc/manuals/R-lang.html#Argument-matching
- * This returns the resolved map from argument ids to parameter ids.
+ * {@link matchArgumentsToParameters|Matches} the arguments to the parameters and links them in the graph,
+ * returning the resolved map from argument ids to parameter ids.
  * If you just want to match by name, use {@link pMatch}.
  */
 export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: readonly RParameter<ParentInformation>[], graph: DataflowGraph): Map<NodeId, NodeId> {
-	const nameArgMap = new Map<string, IdentifierReference>(args.filter(FunctionArgument.isNamed).map(a => [a.name, a] as const));
-	const nameParamMap = new Map<string, RParameter<ParentInformation>>(
-		params.filter(p => p?.name?.content !== undefined)
-			.map(p => [p.name.content, p]));
+	const matched = matchArgumentsToParameters(argumentNames(args), params.map(p => p?.special ? DotsParameterName : p?.name?.content));
 	const maps = new Map<NodeId, NodeId>();
-
-	const specialDotParameter = params.find(p => p.special);
-	const sid = specialDotParameter?.name.info.id;
-
-	// all parameters matched by name
-	const matchedParameters = new Set<string>();
-	const paramNames = nameParamMap.keys().toArray();
-	// first map names
-	for(const [name, { nodeId: argId }] of nameArgMap) {
-		const pmatchName = findByPrefixIfUnique(name, paramNames) ?? name;
-		const param = nameParamMap.get(pmatchName);
-		if(param?.name) {
-			const pid = param.name.info.id;
-			graph.addEdge(argId, pid, EdgeType.DefinesOnCall);
-			graph.addEdge(pid, argId, EdgeType.DefinedByOnCall);
-			maps.set(argId, pid);
-			matchedParameters.add(name);
-		} else if(sid) {
-			graph.addEdge(argId, sid, EdgeType.DefinesOnCall);
-			graph.addEdge(sid, argId, EdgeType.DefinedByOnCall);
-			maps.set(argId, sid);
-		}
-	}
-
-	const remainingParameter = params.filter(p => !p?.name || !matchedParameters.has(p.name.content));
-	const remainingArguments = args.filter(FunctionArgument.isUnnamed);
-
-	for(let i = 0; i < remainingArguments.length; i++) {
-		const arg = remainingArguments[i];
+	for(let i = 0; i < args.length; i++) {
+		const arg = args[i];
 		if(arg === EmptyArgument) {
 			continue;
 		}
+		const param = matched[i];
+		const pid = param === undefined ? undefined : params[param].name?.info.id;
 		const aid = arg.nodeId;
-		if(remainingParameter.length <= i) {
-			if(sid) {
-				graph.addEdge(aid, sid, EdgeType.DefinesOnCall);
-				graph.addEdge(sid, aid, EdgeType.DefinedByOnCall);
-				maps.set(aid, sid);
-			} else {
-				dataflowLogger.warn(`skipping argument ${i} as there is no corresponding parameter - R should block that`);
-			}
+		if(pid === undefined) {
+			dataflowLogger.warn(`skipping argument ${i} (id: ${aid}) as there is no corresponding parameter - R should block that`);
 			continue;
 		}
-		const param = remainingParameter[i];
-		dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${aid}) to parameter "${param.name?.content ?? '??'}"`);
-		if(param.name) {
-			const pid = param.name.info.id;
-			graph.addEdge(aid, pid, EdgeType.DefinesOnCall);
-			graph.addEdge(pid, aid, EdgeType.DefinedByOnCall);
-			maps.set(aid, pid);
-		}
+		graph.addEdge(aid, pid, EdgeType.DefinesOnCall);
+		graph.addEdge(pid, aid, EdgeType.DefinedByOnCall);
+		maps.set(aid, pid);
 	}
 	return maps;
 }
 
 /**
- * Links the given arguments to the given parameters within the given graph by name only.
+ * {@link matchArgumentsToParameters|Matches} the arguments against a parameter specification, returning the
+ * arguments bound to each target. Unlike {@link linkArgumentsOnCall} this touches no graph, so it also works
+ * for a specification without parameters in the AST.
  * @example
  * ```ts
  * const parameterSpec = {
@@ -172,54 +138,20 @@ export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: r
  * or convert them with {@link convertFnArguments}.
  */
 export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[], params: Record<string, Targets>): Map<Targets, NodeId[]> {
-	const nameArgMap = new Map<string, IdentifierReference>(args.filter(FunctionArgument.isNamed).map(a => [a.name, a] as const));
-
-	const maps = new Map<Targets, NodeId[]>();
-	function addToMaps(key: Targets, value: NodeId): void {
-		const e = maps.get(key);
-		if(e) {
-			e.push(value);
-		} else {
-			maps.set(key, [value]);
-		}
-	}
-
-	const sid = params['...'];
 	const paramNames = Object.keys(params);
-
-	// all parameters matched by name
-	const matchedParameters = new Set<string>();
-
-	// first map names
-	for(const [name, { nodeId: argId }] of nameArgMap) {
-		const pmatchName = findByPrefixIfUnique(name, paramNames) ?? name;
-		const param = params[pmatchName];
-		if(param) {
-			addToMaps(param, argId);
-			matchedParameters.add(name);
-		} else if(sid) {
-			addToMaps(sid, argId);
-		}
-	}
-
-	const remainingParameter = paramNames.filter(p => !matchedParameters.has(p));
-	const remainingArguments = args.filter(FunctionArgument.isUnnamed);
-
-	for(let i = 0; i < remainingArguments.length; i++) {
-		const arg = remainingArguments[i];
-		if(arg === EmptyArgument) {
+	const matched = matchArgumentsToParameters(argumentNames(args), paramNames);
+	const maps = new Map<Targets, NodeId[]>();
+	for(let i = 0; i < args.length; i++) {
+		const arg = args[i], param = matched[i];
+		if(arg === EmptyArgument || param === undefined) {
 			continue;
 		}
-		const aid = arg.nodeId;
-		if(remainingParameter.length <= i) {
-			if(sid) {
-				addToMaps(sid, aid);
-			}
-			continue;
-		}
-		const param = params[remainingParameter[i]];
-		if(param) {
-			addToMaps(param, aid);
+		const target = params[paramNames[param]];
+		const known = maps.get(target);
+		if(known) {
+			known.push(arg.nodeId);
+		} else {
+			maps.set(target, [arg.nodeId]);
 		}
 	}
 	return maps;

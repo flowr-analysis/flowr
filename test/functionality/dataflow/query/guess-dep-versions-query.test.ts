@@ -806,9 +806,13 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 			expect(dep).toBeDefined();
 			expect(dep?.orphan).toBe(true);
 			expect(dep?.orphanFunctions).toEqual(['ggplot']);
+			// why it counts as an orphan: where the undefined call is and why ggplot2 got it
+			expect(dep?.orphanEvidence).toEqual([{ function: 'ggplot', location: '1:1', reason: 'builtin', exporters: 1 }]);
 			expect(dep?.used).toBe(true);
 			expect(dep?.minVersion).toBe('3.0.0');
 			expect(boundsFrom(dep, 'signature')).toContain('>=3.0.0');
+			// why that bound: the call supplying `data` in line 1
+			expect(dep?.evidence.find(e => e.source === 'signature' && e.parameter === 'data')?.location).toBe('1:1');
 		});
 
 		test('the ascii summary tells the reader to attach the inferred library', async() => {
@@ -820,6 +824,7 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 			const ascii = await asciiSummaryOfQueryResult(ansiFormatter, 0, await executeQueries({ analyzer }, q), analyzer, q);
 			expect(ascii).toContain('orphan');
 			expect(ascii).toContain('library(ggplot2)');
+			expect(ascii).toContain('ggplot() at 1:1 resolves to no definition');
 		});
 
 		test('the curated map disambiguates a name several packages export (ggplot -> ggplot2)', async() => {

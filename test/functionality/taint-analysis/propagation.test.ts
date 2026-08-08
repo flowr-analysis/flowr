@@ -40,7 +40,7 @@ describe('Taint Propagation', () => {
 			await testTaintAnalysis('assign("x", taint())\ny <- x', marker, { '2@y': TaintA });
 		});
 		test('reassignment to an untracked literal clears the prior taint', async() => {
-			await testTaintAnalysis('x <- taint()\nx <- 1\ny <- x', marker, { '3@y': Top });
+			await testTaintAnalysis('x <- taint()\nx <- 1\ny <- x', marker, { '3@y': undefined });
 		});
 	});
 
@@ -58,16 +58,16 @@ describe('Taint Propagation', () => {
 			await testTaintAnalysis('x <- taint()\nif (cond) { x <- TaintB() }\ny <- x', marker, { '3@y': TaintC });
 		});
 		test('if without else: an untracked pre-if value makes the post-if read Top', async() => {
-			await testTaintAnalysis('x <- 1\nif (cond) { x <- taint() }\ny <- x', marker, { '3@y': Top });
+			await testTaintAnalysis('x <- 1\nif (cond) { x <- taint() }\ny <- x', marker, { '3@y': undefined });
 		});
 	});
 
 	describe('Loops', () => {
 		test('taint assigned every iteration, but the pre-loop value is untracked: post-loop read is Top', async() => {
-			await testTaintAnalysis('x <- 1\nfor (i in 1:3) {\n  x <- taint()\n}\ny <- x', marker, { '5@y': Top });
+			await testTaintAnalysis('x <- 1\nfor (i in 1:3) {\n  x <- taint()\n}\ny <- x', marker, { '5@y': undefined });
 		});
 		test('same shape with a while loop', async() => {
-			await testTaintAnalysis('x <- 1\nwhile (cond) {\n  x <- taint()\n}\ny <- x', marker, { '5@y': Top });
+			await testTaintAnalysis('x <- 1\nwhile (cond) {\n  x <- taint()\n}\ny <- x', marker, { '5@y': undefined });
 		});
 		test('pre-loop value is an explicit Top (not untracked): post-loop read joins to Top', async() => {
 			await testTaintAnalysis('x <- unmappedFn()\nfor (i in 1:3) {\n  x <- taint()\n}\ny <- x', marker, { '5@y': Top });

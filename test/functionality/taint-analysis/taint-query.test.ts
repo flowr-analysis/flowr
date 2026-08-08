@@ -4,8 +4,8 @@ import { executeQueries } from '../../../src/queries/query';
 import { TaintQueryDefinition } from '../../../src/queries/catalog/taint-query/taint-query-format';
 import type { TaintQuery, TaintQueryResult } from '../../../src/queries/catalog/taint-query/taint-query-format';
 import type { AnyPredefinedTaintAnalysisName } from '../../../src/taint-analysis/predefined/predefined';
-import { jsonReplacer } from '../../../src/util/json';
 import { voidFormatter } from '../../../src/util/text/ansi';
+import { jsonReplacer } from '../../../src/util/json';
 
 async function runTaintQuery(code: string, defs: AnyPredefinedTaintAnalysisName[]): Promise<TaintQueryResult<string[]>> {
 	const analyzer = await new FlowrAnalyzerBuilder().setEngine('tree-sitter').build();
@@ -32,18 +32,29 @@ describe('Taint Query', () => {
 			assert.strictEqual(result.results.size, 0);
 		});
 
-		test('finding is reflected in the result entry', async() => {
+		test('findings are reflected in the result entry', async() => {
 			const result = await runTaintQuery('x <- scale(x)\nx <- mean(x)', ['scale']);
-			assert.strictEqual(result.results.get('scale')?.finding, 'Aggregation of scaled data yields a known constant');
-			assert.strictEqual(result.results.get('scale')?.domains.isBottom(), true);
+			const findings = result.results.get('scale')?.findings;
+			assert.strictEqual(result.results.get('scale')?.msg, 'Aggregation of scaled data yields a known constant');
+			assert.deepStrictEqual(findings, [
+				{ nodeId: 10, loc: [2, 6, 2, 12] },
+				{ nodeId: 6, loc: [2, 1, 2, 1] }
+			]);
 		});
 	});
 
 	describe('Result Formatting', () => {
-		test('jsonFormatter renders Bottom domain alongside finding', async() => {
+		test('jsonFormatter renders per-node domains alongside msg and findings', async() => {
 			const result = await runTaintQuery('x <- scale(x)\nx <- mean(x)', ['scale']);
-			const json = JSON.parse(JSON.stringify(TaintQueryDefinition.jsonFormatter(result), jsonReplacer)) as { results: [string, { domains: unknown, finding?: string }][] };
-			assert.deepStrictEqual(json.results, [['scale', { domains: 'bottom', finding: 'Aggregation of scaled data yields a known constant' }]]);
+			const json = JSON.parse(JSON.stringify(TaintQueryDefinition.jsonFormatter(result), jsonReplacer)) as { results: [string, { domains: unknown, findings?: unknown, msg?: string }][] };
+			assert.deepStrictEqual(json.results, [['scale', {
+				domains:  { '0': 'z-Score', '4': 'z-Score', '6': 'bottom', '10': 'bottom' },
+				msg:      'Aggregation of scaled data yields a known constant',
+				findings: [
+					{ nodeId: 10, loc: [2, 6, 2, 12] },
+					{ nodeId: 6, loc: [2, 1, 2, 1] }
+				]
+			}]]);
 		});
 
 		test('jsonFormatter renders normal domain', async() => {
@@ -62,12 +73,13 @@ describe('Taint Query', () => {
 			assert.ok(lines.some(line => line.includes('z-Score')));
 		});
 
-		test('asciiSummarizer reports finding and Bottom state', async() => {
+		test('asciiSummarizer reports msg and each finding location', async() => {
 			const result = await runTaintQuery('x <- scale(x)\nx <- mean(x)', ['scale']);
 			const lines: string[] = [];
 			TaintQueryDefinition.asciiSummarizer(voidFormatter, undefined as never, result, lines);
-			assert.ok(lines.some(line => line.includes('finding: Aggregation of scaled data yields a known constant')));
-			assert.ok(lines.some(line => line.includes('state:')));
+			assert.ok(lines.some(line => line.includes('Aggregation of scaled data yields a known constant')));
+			assert.ok(lines.some(line => line.includes('at 2.6-12')));
+			assert.ok(lines.some(line => line.includes('at 2.1')));
 		});
 	});
 

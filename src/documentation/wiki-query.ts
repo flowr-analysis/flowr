@@ -1222,7 +1222,7 @@ ${
 		content: `
 There are many ways to query a dataflow graph created by flowR.
 For example, you can use the ${ctx.linkPage('wiki/Interface', '`request-query`', 'message-request-query')} message
-with a running flowR server, or the ${getReplCommand('query')} command in the flowR ${ctx.linkPage('wiki/Interface', 'REPL', 'repl')}.
+with a running flowR server, or the ${getReplCommand('query')} command in the flowR ${ctx.linkPage('wiki/Interface', 'REPL', '-using-the-repl')}.
 
 Also, check out the [${FlowrGithubGroupName}/sample-analyzer-project-query](${FlowrGithubBaseRef}/sample-analyzer-project-query) repository for a complete example project using the query API.
 			`.trim()

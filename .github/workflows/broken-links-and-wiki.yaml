@@ -62,7 +62,6 @@ jobs:
           cache: 'true'
           cache-version: '1'
           extra-packages: |
-            any::xmlparsedata
             any::dplyr
             any::readr
 
@@ -172,7 +171,9 @@ jobs:
 
       - name: "🔎 Check the Wiki pages and README for broken links"
         uses: becheran/mlc@v1
-        continue-on-error: true
         if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
         with:
-          args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" --ignore-links "http*://hub.docker.com/r/*" wiki/ README.md
+          args: >-
+            --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*"
+            --ignore-links "http*://hub.docker.com/r/*,http*://*npmjs.com/*,http*://doi.org/*,http*://*linkedin.com/*,http*://*r-bloggers.com/*,http*://*gnu.org/*,http*://linux.die.net/*,http*://mermaid.js.org/*"
+            wiki/ README.md

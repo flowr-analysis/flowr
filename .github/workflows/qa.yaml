@@ -409,7 +409,7 @@ jobs:
     name: "🚀 Build and Deploy Documentation (only on main)"
     if: ${{ always() && !failure() && (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 40
     concurrency:
       group: doc-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true

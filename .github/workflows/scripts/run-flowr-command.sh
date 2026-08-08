@@ -79,8 +79,42 @@ function end_group {
   echo "::endgroup::"
 }
 
+DOC_OUT="doc"
+DOC_REQUIRED_FILES=(
+  "index.html"
+  "hierarchy.html"
+  "modules.html"
+  "assets/style.css"
+  "assets/main.js"
+  "assets/icons.svg"
+  "assets/search.js"
+  "assets/navigation.js"
+)
+DOC_MIN_PAGES=1000
+
+function verify_doc_output {
+  local missing=()
+  local f
+  for f in "${DOC_REQUIRED_FILES[@]}"; do
+    if [ ! -s "$DOC_OUT/$f" ]; then
+      missing+=("$DOC_OUT/$f")
+    fi
+  done
+  if [ ${#missing[@]} -gt 0 ]; then
+    error_message "typedoc produced an incomplete build, missing: ${missing[*]}. Refusing to publish (this would wipe the live documentation)."
+  fi
+
+  local pages
+  pages=$(find "$DOC_OUT" -name '*.html' -type f | wc -l)
+  if [ "$pages" -lt "$DOC_MIN_PAGES" ]; then
+    error_message "typedoc produced only $pages pages (expected at least $DOC_MIN_PAGES). Refusing to publish (this would wipe the live documentation)."
+  fi
+  echo "Documentation looks complete: $pages pages."
+}
+
 group "Ensure node dependencies are installed"
 $NPM_CMD ci
+end_group
 
 if [ "$ACTION" == "doc" ]; then
    # Ensure we run on an Ubuntu runner
@@ -91,17 +125,26 @@ if [ "$ACTION" == "doc" ]; then
    sudo apt-get update
    sudo apt-get install -y graphviz
    end_group
+   export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=8192"
 fi
 
 group "Run action $ACTION"
-$NPM_CMD run $ACTION $OTHER_ARGS
+if ! $NPM_CMD run $ACTION $OTHER_ARGS; then
+   end_group
+   error_message "npm run $ACTION failed"
+fi
 end_group
 
 if [ "$ACTION" == "doc" ]; then
+   group "Verify the generated documentation"
+   verify_doc_output
+   end_group
+
    group "Create documentation commit"
    git config --local user.email "action@github.com"
    git config --local user.name "GitHub Action"
-   git add -f "doc/"
+   touch .nojekyll
+   git add -f ".nojekyll" "$DOC_OUT/"
    if [ -d "wiki/stats/" ]; then git add -f "wiki/stats/"; fi
    git commit -m "Update documentation"
    # make the branch an orphan

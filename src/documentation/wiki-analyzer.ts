@@ -118,7 +118,7 @@ ${
 ${section('Overview', 2)}
 
 No matter whether you want to analyze a single R script, a couple of R notebooks, a complete project, or an R package,
-your journey starts with the ${ctx.link(FlowrAnalyzerBuilder)} (further described in [Builder Configuration](#builder-configuration) below).
+your journey starts with the ${ctx.link(FlowrAnalyzerBuilder)} (further described in [Builder Configuration](#Builder_Configuration) below).
 This builder allows you to configure the analysis in many different ways, for example, by specifying which [plugins](#Plugins) to use or
 what ${ctx.linkPage('wiki/Engines', 'engine')} to use for the analysis.
 
@@ -138,7 +138,7 @@ The builder provides two methods for building the analyzer:
 	which requires that the engine (e.g., TreeSitter) has already been initialized before calling this method.
 	Yet, as Engines only have to be initialized once per process, this method is often more convenient to use.
 
-	For more information on how to configure the builder, please refer to the [Builder Configuration](#builder-configuration) section below.
+	For more information on how to configure the builder, please refer to the [Builder Configuration](#Builder_Configuration) section below.
 
 ${section('Overview of the Analyzer', 3)}
 
@@ -188,12 +188,12 @@ We work on providing a set of example repositories that demonstrate how to use t
 
 ${section('Builder Configuration', 2)}
 
-If you are interested in all available options, have a look at the [Builder Reference](#builder-reference) below.
+If you are interested in all available options, have a look at the [Builder Reference](#Builder_Reference) below.
 The following sections highlight some of the most important configuration options:
 
-1. How to [configure flowR](#configuring-flowr)
-1. How to [configure the engine](#configuring-the-engine)
-2. How to [register plugins](#configuring-plugins)
+1. How to [configure flowR](#Configuring_flowR)
+1. How to [configure the engine](#Configuring_the_Engine)
+2. How to [register plugins](#Configuring_Plugins)
 
 ${section('Configuring flowR', 3)}
 
@@ -286,8 +286,8 @@ Plugins allow you to extend the capabilities of the analyzer in many different w
 For example, they can be used to support other file formats, or to provide new algorithms to determine the loading order of files in a project.
 All plugins have to extend the ${ctx.link(FlowrAnalyzerPlugin)} base class and specify their ${ctx.link('PluginType')}.
 During the analysis, the analyzer will apply all registered plugins of the different types at the appropriate stages of the analysis.
-If you just want to _use_ these plugins, you can usually ignore their [type](#plugin-types) and just register them with the builder as described
-in the [Builder Configuration](#builder-configuration) section above.
+If you just want to _use_ these plugins, you can usually ignore their [type](#Plugin_Types) and just register them with the builder as described
+in the [Builder Configuration](#Builder_Configuration) section above.
 However, if you want to _create_ new plugins, you should be aware of the different plugin types and when they are applied during the analysis.
 
 Currently, flowR supports the following plugin types built-in:
@@ -365,7 +365,7 @@ All loading order plugins should conform to the ${ctx.link(FlowrAnalyzerLoadingO
 
 ${section('How to add a new plugin', 3)}
 
-If you want to make a new plugin you first have to decide which type of plugin you want to create (see [Plugin Types](#plugin-types) above).
+If you want to make a new plugin you first have to decide which type of plugin you want to create (see [Plugin Types](#Plugin_Types) above).
 Then, you must create a new class that extends the corresponding base class (e.g., ${ctx.link(FlowrAnalyzerFilePlugin)} for file loading plugins).
 In general, most plugins operate on the [context information](#Context_Information) provided by the analyzer.
 Usually it is a good idea to have a look at the existing plugins of the same type to get an idea of how to implement your own plugin.
@@ -562,7 +562,7 @@ The cache is maintained by the ${ctx.link(FlowrAnalyzerCache)} class and is used
 Underlying, it relies on the ${ctx.link(PipelineExecutor)} to cache results of different pipeline stages.
 
 Usually, you do not have to worry about the cache, as it is managed automatically by the analyzer.
-If you want to overwrite cache information, the analysis methods in ${ctx.link(FlowrAnalyzer)} (see [Conducting Analyses](#conducting-analyses) above)
+If you want to overwrite cache information, the analysis methods in ${ctx.link(FlowrAnalyzer)} (see [Conducting Analyses](#Conducting_Analyses) above)
 usually provide an optional \`force\` parameter to control whether to use the cache or recompute the results.
 `;
 	}

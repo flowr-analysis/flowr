@@ -716,7 +716,7 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 		name:        'Calls Edge',
 		type:        EdgeType.Calls,
 		description: `Link the [function call](#function-call-vertex) to the [function definition](#function-definition-vertex) that is called. To find all called definitions, 
-		please use the ${ctx.link(getOriginInDfg.name)} function, as explained in ${ctx.linkPage('wiki/Dataflow Graph', 'working with the dataflow graph', 'Working-with-the-Dataflow-Graph')}.
+		please use the ${ctx.link(getOriginInDfg.name)} function, as explained in ${ctx.linkPage('wiki/Dataflow Graph', 'working with the dataflow graph', 'dfg-working')}.
 		If you are interested in the call graph, refer to ${ctx.linkM(FlowrAnalyzer, 'callGraph')} and consult the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph wiki', 'perspectives-cg')} for more information.
 		`,
 		code:             'foo <- function() {}\nfoo()',
@@ -942,7 +942,7 @@ ${details('Simplified Version of the graph', await printDfGraphForCode(treeSitte
 The following vertices types exist:
 
 1. ${getAllVertices().map(
-	([k, v], index) => `[\`${k}\`](#${index + 1}-${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
+	([k, v]) => `[\`${k}\`](#${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
 ).join('\n1. ')}
 
 ${details('Class Diagram', 'All boxes should link to their respective implementation:\n' + codeBlock('mermaid', ctx.mermaid('DataflowGraphVertexInfo', { inlineTypes: ['MergeableRecord'] })))}
@@ -1081,7 +1081,7 @@ ${details('Example: Nested Conditionals', await printDfGraphForCode(treeSitter, 
 
 ${section('Dataflow Information', 2, 'dataflow-information')}
 
-Using _flowR's_ code interface (see the ${ctx.linkPage('wiki/Interface', 'Interface', 'creating-flowr-analyses')} wiki page for more), you can generate the dataflow information
+Using _flowR's_ code interface (see the ${ctx.linkPage('wiki/Interface', 'Interface', 'creating-analyses-with-flowr')} wiki page for more), you can generate the dataflow information
 for a given piece of R code (in this case \`x <- 1; x + 1\`) as follows:
 
 ${codeBlock('ts', `

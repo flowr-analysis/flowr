@@ -41,7 +41,7 @@
     "lint-local": "npm run typecheck && npx eslint --version && npx eslint src/ test/ scripts/ --concurrency=auto --cache --cache-location node_modules/.cache/eslint-local --rule \"no-warning-comments: off\"",
     "lint": "npm run license-compat -- --summary && npm run typecheck && npx eslint --version && npx eslint src/ test/ scripts/ --concurrency=auto --cache --cache-location node_modules/.cache/eslint",
     "license-compat": "license-checker-rseidelsohn --onlyAllow 'MIT;MPL-2.0;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;BlueOak-1.0.0;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'  --clarificationsFile license-clarifications.json",
-    "doc": "typedoc",
+    "doc": "node --max-old-space-size=8192 node_modules/typedoc/dist/cli.js",
     "test": "vitest --exclude \"test/system-tests/**\" --config test/vitest.config.mts",
     "test:verbose": "FLOWR_VERBOSE=true vitest --exclude \"test/system-tests/**\" --config test/vitest.config.mts",
     "test:system": "vitest --dir test/system-tests --config test/system-tests/vitest.config.mts",
@@ -69,8 +69,7 @@
     "includeVersion": true,
     "plugin": [
       "typedoc-umlclass",
-      "typedoc-plugin-missing-exports",
-      "typedoc-theme-hierarchy"
+      "typedoc-plugin-missing-exports"
     ],
     "entryPoints": [
       "src",
@@ -94,18 +93,19 @@
       "typescript",
       "r"
     ],
-    "theme": "hierarchy",
     "out": "doc",
     "readme": "README.md",
     "umlClassDiagram": {
       "type": "detailed",
-      "location": "embed",
+      "location": "local",
       "format": "svg",
       "position": "below",
       "legendType": "none",
-      "hideEmptyMembers": false,
+      "hideEmptyMembers": true,
       "generatorProcessCount": 4
     },
+    "maxTypeConversionDepth": 4,
+    "skipErrorChecking": true,
     "lightHighlightTheme": "light-plus",
     "darkHighlightTheme": "dark-plus",
     "hideGenerator": false,
@@ -213,7 +213,6 @@
     "ts-node": "^10.9.2",
     "typedoc": "^0.28.17",
     "typedoc-plugin-missing-exports": "^4.1.2",
-    "typedoc-theme-hierarchy": "^6.0.0",
     "typedoc-umlclass": "^0.10.2",
     "typescript": "^5.9.3",
     "vitest": "^4.1.8"

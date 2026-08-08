@@ -207,7 +207,7 @@ It is mostly intended for developers that want to extend the capabilities of _fl
 and assumes knowledge of [TypeScript](https://www.typescriptlang.org/) and [R](https://www.r-project.org/).
 If you think parts of the wiki are missing, wrong, or outdated, please do not hesitate to [open a new issue](${NewIssueUrl})!
 In case you are new and want to develop for flowR, please check out the relevant ${ctx.linkPage('wiki/Setup', 'Setup', '-developing-for-flowr')} wiki page
-and the [Contributing Guidelines](${RemoteFlowrFilePathBaseRef}/.github/CONTRIBUTING.md).
+and the [Contributing Guidelines](${RemoteFlowrFilePathBaseRef}.github/CONTRIBUTING.md).
 
 ${block({
 	type:    'NOTE',

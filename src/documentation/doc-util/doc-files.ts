@@ -24,8 +24,8 @@ export { toPosixPath };
 export function getFilePathMd(filePath: string): string {
 	// we go one up as we are in doc-util now :D #convenience
 	const fullpath = require.resolve('../' + filePath);
-	const relative = './' + toPosixPath(path.relative(process.cwd(), fullpath));
-	return `[\`${relative}\`](${RemoteFlowrFilePathBaseRef}${relative})`;
+	const relative = toPosixPath(path.relative(process.cwd(), fullpath));
+	return `[\`./${relative}\`](${flowrSourceFileUrl(relative)})`;
 }
 
 /**
@@ -41,5 +41,15 @@ export function getFileContentFromRoot(path: string): string {
  * Returns a markdown link to the given flowr source file path.
  */
 export function linkFlowRSourceFile(path: string): string {
-	return `[${path}](${RemoteFlowrFilePathBaseRef}/${path})`;
+	return `[${path}](${flowrSourceFileUrl(path)})`;
+}
+
+/**
+ * Returns the remote url for the given flowr source file path,
+ * ensuring exactly one slash between the base ref and the path.
+ */
+export function flowrSourceFileUrl(path: string): string {
+	const base = RemoteFlowrFilePathBaseRef.replace(/\/+$/, '');
+	const suffix = path.startsWith('/') ? path : '/' + path;
+	return base + suffix;
 }

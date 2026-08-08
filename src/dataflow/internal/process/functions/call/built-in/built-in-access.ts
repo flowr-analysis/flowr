@@ -151,7 +151,7 @@ function processNumberBasedAccess<OtherInfo>(
 	const existing = data.environment.current.memory.get(':=');
 	const outInfo = { definitionRootNodes: [] };
 	const tableAssignId = NodeId.toBuiltIn(':=-table');
-	data.environment.current.memory.set(':=', [{
+	data.environment.current.writableMemory.set(':=', [{
 		type:      ReferenceType.BuiltInFunction,
 		definedAt: tableAssignId,
 		cds:       undefined,
@@ -164,7 +164,7 @@ function processNumberBasedAccess<OtherInfo>(
 
 	/* recover the environment */
 	if(existing !== undefined) {
-		data.environment.current.memory.set(':=', existing);
+		data.environment.current.writableMemory.set(':=', existing);
 	}
 	if(head.value && outInfo.definitionRootNodes.length > 0) {
 		markAsAssignment(fnCall.information, { type: ReferenceType.Variable, name: head.value.lexeme ?? '', nodeId: head.value.info.id, definedAt: rootId, cds: [] },

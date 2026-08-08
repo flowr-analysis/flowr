@@ -58,19 +58,21 @@ let environmentIdCounter = 1; // Zero is reserved for built-in environment
 
 /** @see REnvironmentInformation */
 export class Environment implements IEnvironment {
-	readonly id: number;
+	readonly id:           number;
 	/** Optional name for namespaced/non-anonymous environments, please only set if you know what you are doing */
-	n?:          string;
+	n?:                    string;
 	/** which search-path layer this env is (package/namespace/imports), if any */
-	t?:          EnvType;
+	t?:                    EnvType;
 	/** if created by a closure, the node id of that closure */
-	private c?:  NodeId;
-	parent:      Environment;
-	memory:      BuiltInMemory;
-	cache?:      Map<Identifier, IdentifierDefinition[]>;
-	builtInEnv?: true;
+	private c?:            NodeId;
+	parent:                Environment;
+	memory:                BuiltInMemory;
+	cache?:                Map<Identifier, IdentifierDefinition[]>;
+	builtInEnv?:           true;
+	/** {@link memory} is shared with a clone; writing needs {@link writableMemory} to unshare it first */
+	private sharedMemory?: true;
 	/** marks the global environment (`.GlobalEnv`); attached packages (see {@link EnvType}) live below it */
-	globalEnv?:  true;
+	globalEnv?:            true;
 
 	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined) {
 		this.id = isBuiltInDefault ? 0 : environmentIdCounter++;
@@ -106,7 +108,24 @@ export class Environment implements IEnvironment {
 	}
 
 	/**
+	 * This environment's {@link memory}, ready to be written to. Every in-place write must go through this
+	 * rather than through {@link memory} directly, as {@link clone} hands the map itself to the clone and only
+	 * the first writer of either side copies it (copy-on-write).
+	 */
+	public get writableMemory(): BuiltInMemory {
+		if(this.sharedMemory) {
+			this.memory = new Map(this.memory);
+			this.sharedMemory = undefined;
+		}
+		return this.memory;
+	}
+
+	/**
 	 * Create a clone of this environment.
+	 *
+	 * The clone shares this environment's {@link memory} until either side writes to it (see
+	 * {@link writableMemory}); cloning a frame is therefore independent of how many definitions it holds, which
+	 * matters because attached packages contribute frames with thousands of them.
 	 * @param recurseParents     - Whether to also clone parent environments
 	 */
 	public clone(recurseParents: boolean): Environment {
@@ -120,7 +139,8 @@ export class Environment implements IEnvironment {
 		clone.n = this.n;
 		clone.t = this.t;
 		clone.globalEnv = this.globalEnv;
-		clone.memory = new Map(this.memory);
+		clone.memory = this.memory;
+		clone.sharedMemory = this.sharedMemory = true;
 		return clone;
 	}
 
@@ -163,7 +183,7 @@ export class Environment implements IEnvironment {
 		}
 		// When there are defined indices, merge the definitions
 		if(definition.cds === undefined) {
-			this.memory.set(name, [definition]);
+			this.writableMemory.set(name, [definition]);
 		} else {
 			const existing = this.memory.get(name);
 			const inGraphDefinition = definition as InGraphIdentifierDefinition;
@@ -171,12 +191,12 @@ export class Environment implements IEnvironment {
 				existing !== undefined &&
                 inGraphDefinition.cds === undefined
 			) {
-				this.memory.set(name, [inGraphDefinition]);
+				this.writableMemory.set(name, [inGraphDefinition]);
 			} else if(existing === undefined || definition.cds === undefined) {
-				this.memory.set(name, [definition]);
+				this.writableMemory.set(name, [definition]);
 			} else {
 				/* the array may be shared with clones, so replace instead of push */
-				this.memory.set(name, [...existing, definition]);
+				this.writableMemory.set(name, [...existing, definition]);
 			}
 		}
 	}
@@ -224,13 +244,13 @@ export class Environment implements IEnvironment {
 		let found = false;
 		do{
 			if(current.memory.has(name)) {
-				current.memory.set(name, [definition]);
+				current.writableMemory.set(name, [definition]);
 				found = true;
 				break;
 			}
 			// `<<-` falls back to the global env, never an attached package below it
 			if(current.globalEnv) {
-				current.memory.set(name, [definition]);
+				current.writableMemory.set(name, [definition]);
 				found = true;
 				break;
 			}
@@ -240,7 +260,7 @@ export class Environment implements IEnvironment {
 		} while(!current.builtInEnv);
 		if(!found) {
 			guard(last !== undefined, () => `Could not find global scope for ${name}`);
-			last.memory.set(name, [definition]);
+			last.writableMemory.set(name, [definition]);
 		}
 		return newEnvironment;
 	}
@@ -338,6 +358,17 @@ export class Environment implements IEnvironment {
 		const [thisLayers, thisBase] = splitLibraryLayers(this);
 		const [otherLayers, otherBase] = splitLibraryLayers(other);
 
+		// Neither branch changed the block, so the union below would rebuild an identical chain -- at the price of a
+		// fresh frame per attached package. This is the common case (every statement after a `library` call merges
+		// two environments that still hold its layers), so the check pays for itself many times over.
+		if(otherLayers.length === 0 || sameLayers(thisLayers, otherLayers)) {
+			const base = thisBase.append(otherBase);
+			if(base === thisBase) {
+				return this;
+			}
+			return relinkLayers(thisLayers.map(l => l.clone(false)), base);
+		}
+
 		// `other` first so its packages end up nearest global (most recently attached is nearest, cf. R `search()`)
 		const merged = new Map<string, Environment>();
 		for(const layers of [otherLayers, thisLayers]) {
@@ -346,22 +377,18 @@ export class Environment implements IEnvironment {
 				const existing = merged.get(key);
 				if(existing === undefined) {
 					merged.set(key, layer.clone(false));
-				} else {
+				} else if(existing.memory !== layer.memory) {
 					for(const [name, value] of layer.memory) {
 						const old = existing.memory.get(name);
-						existing.memory.set(name, old ? uniqueMergeValuesInDefinitions(old, value) : value);
+						if(old !== value) {
+							existing.writableMemory.set(name, old ? uniqueMergeValuesInDefinitions(old, value) : value);
+						}
 					}
 				}
 			}
 		}
 
-		const uniqueLayers = Array.from(merged.values());
-		let current = thisBase.append(otherBase);
-		for(let i = uniqueLayers.length - 1; i >= 0; i--) {
-			uniqueLayers[i].parent = current;
-			current = uniqueLayers[i];
-		}
-		return current;
+		return relinkLayers(Array.from(merged.values()), thisBase.append(otherBase));
 	}
 
 	public remove(id: Identifier) {
@@ -376,7 +403,7 @@ export class Environment implements IEnvironment {
 		const definition = this.memory.get(name);
 		let cont = true;
 		if(definition !== undefined) {
-			this.memory.delete(name);
+			this.writableMemory.delete(name);
 			this.cache?.delete(name);
 			cont = !definition.every(d => happensInEveryBranch(d.cds));
 		}
@@ -511,6 +538,25 @@ export const REnvironment = {
 	/** The packages on the search path; see {@link attachedPackagesOf}. */
 	attachedPackages: attachedPackagesOf,
 } as const;
+
+/**
+ * Whether two package blocks hold the same packages, in the same order, with the same definitions. Frames cloned
+ * from one another keep the same {@link Environment#memory} map until one of them is written to (see
+ * {@link Environment#clone}), so comparing the maps by identity recognizes untouched blocks without scanning them.
+ */
+function sameLayers(this: void, a: readonly Environment[], b: readonly Environment[]): boolean {
+	return a.length === b.length && a.every((l, i) => l === b[i] || (l.t === b[i].t && l.n === b[i].n && l.memory === b[i].memory));
+}
+
+/** Stacks `layers` (top first) on top of `base`, returning the new top of the chain. The layers must not be shared. */
+function relinkLayers(this: void, layers: readonly Environment[], base: Environment): Environment {
+	let current = base;
+	for(let i = layers.length - 1; i >= 0; i--) {
+		layers[i].parent = current;
+		current = layers[i];
+	}
+	return current;
+}
 
 /** Splits a package block (a contiguous run of attached-package layers, see {@link EnvType}) into its layers and the env below them. */
 function splitLibraryLayers(this: void, env: Environment): [Environment[], Environment] {

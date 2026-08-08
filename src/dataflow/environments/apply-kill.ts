@@ -53,7 +53,7 @@ function weakenName(env: Environment, name: Identifier, cds: readonly ControlDep
 		if(ns === undefined || current.n === ns) {
 			const defs = current.memory.get(plainName);
 			if(defs !== undefined && defs.some(d => !isBuiltInDef(d))) {
-				current.memory.set(plainName, defs.map(d => isBuiltInDef(d) ? d : weakenDefinition(d, cds)));
+				current.writableMemory.set(plainName, defs.map(d => isBuiltInDef(d) ? d : weakenDefinition(d, cds)));
 				current.cache?.delete(plainName);
 			}
 		}
@@ -68,7 +68,7 @@ function weakenAll(env: Environment, cds: readonly ControlDependency[]): void {
 	}
 	for(const [key, defs] of env.memory) {
 		if(defs.some(d => !isBuiltInDef(d))) {
-			env.memory.set(key, defs.map(d => isBuiltInDef(d) ? d : weakenDefinition(d, cds)));
+			env.writableMemory.set(key, defs.map(d => isBuiltInDef(d) ? d : weakenDefinition(d, cds)));
 		}
 	}
 	env.cache?.clear();
@@ -85,9 +85,9 @@ function removeAllInFrame(env: Environment): void {
 		}
 		const kept = defs.filter(isBuiltInDef);
 		if(kept.length === 0) {
-			env.memory.delete(key);
+			env.writableMemory.delete(key);
 		} else {
-			env.memory.set(key, kept);
+			env.writableMemory.set(key, kept);
 		}
 	}
 	env.cache?.clear();

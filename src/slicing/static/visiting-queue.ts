@@ -89,7 +89,7 @@ export class VisitingQueue {
 		if(this.gas === undefined || this.untilGasCheck-- > 0) {
 			return this.stoppedEarly;
 		}
-		this.untilGasCheck = GasCheckEvery;
+		this.untilGasCheck = GasCheckEvery - 1;
 		if(!this.stoppedEarly && this.gas.checkGas(GasFeatureKey.Slicer) >= GasLevel.Critical) {
 			this.stoppedEarly = true;
 			slicerLogger.warn(`slicing ran out of gas, the slice is incomplete (${GasWikiRef})`);

@@ -314,18 +314,23 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		if(cached !== undefined) {
 			return cached;
 		}
+		const sources = this.loadSources();
+		const seen = new Set<string>();
 		const owners: string[] = [];
-		for(const src of this.loadSources()) {
+		for(const src of sources) {
 			for(const pkg of ExportIndex.owners(ExportIndex.of(src).get(name))) {
-				if(!owners.includes(pkg) && !this.isSelfPackage(pkg)) {
+				if(!seen.has(pkg) && !this.isSelfPackage(pkg)) {
+					seen.add(pkg);
 					owners.push(pkg);
 				}
 			}
 		}
 		// each source's list is already sorted; a merge of several needs one more pass to be globally ordered
-		if(owners.length > 1 && this.loadSources().length > 1) {
-			const of = (pkg: string) => this.loadSources().reduce((m, s) => Math.max(m, s.has(pkg) ? s.downloads(pkg) : 0), 0);
-			owners.sort((a, b) => of(b) - of(a) || a.localeCompare(b));
+		if(owners.length > 1 && sources.length > 1) {
+			/* the comparator runs O(n log n) times, so each package is counted once up front */
+			const downloads = new Map(owners.map(pkg =>
+				[pkg, sources.reduce((m, s) => Math.max(m, s.has(pkg) ? s.downloads(pkg) : 0), 0)]));
+			owners.sort((a, b) => (downloads.get(b) as number) - (downloads.get(a) as number) || a.localeCompare(b));
 		}
 		this.exportsByName.set(name, owners);
 		return owners;

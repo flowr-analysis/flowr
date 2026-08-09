@@ -37,8 +37,10 @@ export interface StaticSliceQueryResult extends BaseQueryResult {
 	 * This implies that multiple slice queries with the same query configuration will _not_ be re-executed.
 	 */
 	results: Record<string,
-		Omit<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>, keyof PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>> |
-		Omit<PipelineOutput<typeof DEFAULT_SLICE_WITHOUT_RECONSTRUCT_PIPELINE>, keyof PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>>
+		(Omit<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>, keyof PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>> |
+		Omit<PipelineOutput<typeof DEFAULT_SLICE_WITHOUT_RECONSTRUCT_PIPELINE>, keyof PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>>)
+		/** the packages the slice calls into, only set with {@link SliceQueryOptions#reportPackages} */
+		& { packages?: readonly string[] }
 	>
 }
 

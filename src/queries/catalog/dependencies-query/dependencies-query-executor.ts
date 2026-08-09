@@ -93,8 +93,9 @@ export async function executeDependenciesQuery({
 		return [c, results];
 	}))) as { [C in DependencyCategoryName]?: DependencyInfo[] };
 
-	if(results.visualize?.length && results.write?.length) {
-		linkPlotsToDevices(results.write, results.visualize, dataflow, normalize);
+	/* also without a device: a plot on screen has no file, but still has the addons drawn onto it */
+	if(results.visualize?.length) {
+		linkPlotsToDevices(results.write ?? [], results.visualize, dataflow, normalize);
 	}
 
 	return {

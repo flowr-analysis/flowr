@@ -9,6 +9,7 @@ import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { label } from '../../../_helper/label';
+import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { loadNodesForNamespace } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-library';
 import { EnvType, REnvironment, builtInEnvJsonReplacer } from '../../../../../src/dataflow/environments/environment';
 import type { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
@@ -279,6 +280,20 @@ describe('Link libraries', withTreeSitter(ts => {
 		expect(await loads('f <- function() library("pkgA")\nf()\nlibrary("pkgA")\npkgA::fa()')).toBe(2);
 		expect(await loads('library("pkgA")\nf <- function() library("pkgA")\nf()\npkgA::fa()')).toBe(2);
 		expect(await loads('f <- function() library("pkgA")\nf()\npkgA::fa()')).toBe(1);
+	});
+
+	// what a selection needs is not what the program loads: a `library()` nothing calls into does not count
+	test('Dataflow.packagesOf reports what the selection calls into', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+		analyzer.context().deps.addDependency(new Package({ name: 'ggplot2', namespaceInfo: namespaceInfo }));
+		analyzer.addRequest('library(ggplot2)\nlibrary(unused)\np <- ggplot()\nx <- 1\n');
+		const df = await analyzer.dataflow();
+		const ast = await analyzer.normalize();
+		const all = new Set(ast.idMap.keys());
+		expect([...Dataflow.packagesOf(all, df.graph)]).toEqual(['ggplot2']);
+		// the call is what makes the package needed, so a selection without it needs nothing
+		const withoutCall = new Set([...all].filter(id => ast.idMap.get(id)?.lexeme !== 'ggplot'));
+		expect([...Dataflow.packagesOf(withoutCall, df.graph)]).toEqual([]);
 	});
 
 	test('Branch merge keeps every possibly attached package, deduplicated', async() => {

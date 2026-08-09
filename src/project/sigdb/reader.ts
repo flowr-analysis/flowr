@@ -342,6 +342,14 @@ export class SigDatabase implements PackageSignatureSource {
 	private static readonly BlobCacheCap = 2048;
 	/** a version's function indices plus its `name -> index` view; FIFO-bounded like {@link blobCache} */
 	private readonly versionFnCache = new Map<string, { blob: PkgBlob, idxs: readonly number[], byName?: ReadonlyMap<string, number> }>();
+	/**
+	 * Which names a package can offer at all, as sorted dictionary ids -- integers, so the whole database of
+	 * them costs a few MB where the parsed blobs cost hundreds. Filled for a package the first time its blob is
+	 * read, so a later lookup for a name it does not have answers without touching the file again.
+	 */
+	private readonly nameIdsOfBlob = new Map<number, Int32Array>();
+	/** dictionary id per name asked for, so only the names someone actually queried are ever resolved */
+	private readonly nameIds = new Map<string, number>();
 	/** reverse index `S3 class -> owning package`, over every package's latest version; built once (see {@link classOwner}) */
 	private classIndex:        Map<string, string> | undefined;
 	private readonly fd:       number;
@@ -437,7 +445,49 @@ export class SigDatabase implements PackageSignatureSource {
 		if(this.fd === NoFile) {
 			return undefined;   // an in-memory database starts out with every blob cached
 		}
-		return SigDatabase.cache(this.blobCache, blobIdx, this.readBlobAt(this.index.blobs[blobIdx]));
+		const blob = this.readBlobAt(this.index.blobs[blobIdx]);
+		if(!this.nameIdsOfBlob.has(blobIdx)) {
+			this.nameIdsOfBlob.set(blobIdx, Int32Array.from(new Set(blob.fns.map(fn => fn[0]))).sort());
+		}
+		return SigDatabase.cache(this.blobCache, blobIdx, blob);
+	}
+
+	/** the dictionary id of `name`, or `-1` if the dictionary does not hold it, so no package can offer it */
+	private nameId(name: string): number {
+		let id = this.nameIds.get(name);
+		if(id === undefined) {
+			this.nameIds.set(name, id = this.strings.indexOf(name));
+		}
+		return id;
+	}
+
+	/**
+	 * Whether `pkg` can offer `name` in any of its versions, answered from {@link nameIdsOfBlob} alone.
+	 * `true` whenever nothing is known about the package yet, so this only ever skips work that would have
+	 * found nothing: the ids cover every function record, of which a version selects a subset.
+	 */
+	private mayOffer(pkg: string, name: string): boolean {
+		const blobIdx = this.index.pkgs[pkg];
+		const ids = blobIdx === undefined ? undefined : this.nameIdsOfBlob.get(blobIdx);
+		if(ids === undefined) {
+			return true;
+		}
+		const id = this.nameId(name);
+		if(id < 0) {
+			return false;
+		}
+		let lo = 0, hi = ids.length - 1;
+		while(lo <= hi) {
+			const mid = (lo + hi) >> 1;
+			if(ids[mid] === id) {
+				return true;
+			} else if(ids[mid] < id) {
+				lo = mid + 1;
+			} else {
+				hi = mid - 1;
+			}
+		}
+		return false;
 	}
 
 	/** store `value` under `key`, dropping the oldest entry first once the cache sits at {@link BlobCacheCap} */
@@ -536,6 +586,9 @@ export class SigDatabase implements PackageSignatureSource {
 	}
 
 	public functionByName(pkg: string, name: string, version?: string): DecodedFunction | undefined {
+		if(!this.mayOffer(pkg, name)) {
+			return undefined;
+		}
 		const r = this.versionFns(pkg, version);
 		if(r === undefined) {
 			return undefined;

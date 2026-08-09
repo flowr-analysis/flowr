@@ -5,13 +5,14 @@ import { getOriginInDfg } from '../origin/dfg-get-origin';
 import { GraphHelper } from './graph-helper';
 import { CallGraph } from './call-graph';
 import { computeCallGraphSummaries, propagateTransitiveSideEffects } from '../internal/process/functions/call/built-in/transitive-side-effects';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { DataflowGraphVertexInfo } from './vertex';
-import { FunctionCallVertex } from './vertex';
+import { FunctionCallVertex, VertexType } from './vertex';
 import { Identifier } from '../environments/identifier';
 import { Resolve } from '../environments/resolve-helper';
 import { RLoopConstructs } from '../../r-bridge/lang-4.x/ast/model/model';
+import { isBaseRPackage } from '../../util/r-base-packages';
 
 /**
  * This is the root helper object to work with the {@link DataflowGraph}.
@@ -21,6 +22,8 @@ import { RLoopConstructs } from '../../r-bridge/lang-4.x/ast/model/model';
  * - {@link Dataflow.edge} - for working with the edges in the dataflow graph,
  * - {@link Dataflow.qualify} - for the package-qualified `pkg::fn` identifier of a call from its id and graph,
  * - {@link Dataflow.resolve} - for resolving a name against an environment,
+ * - {@link Dataflow.packagesOf} - for the packages a set of nodes (e.g. a slice) calls into,
+ * - {@link Dataflow.valueIsUsed}/{@link Dataflow.hasComputedArguments} - for what a call does with, and gets as, values,
  */
 export const Dataflow = {
 	name:  'Dataflow',
@@ -83,6 +86,58 @@ export const Dataflow = {
 			FunctionCallVertex.is(vertex) ? vertex.name : undefined,
 			qualifyBaseR
 		);
+	},
+	/**
+	 * The packages the given nodes call into, as {@link Dataflow.qualify} resolves every call among them.
+	 * This is what a selection needs, which is not what the program loads: a `library()` whose exports the
+	 * selection never calls does not make the package needed. Base R is left out unless `includeBaseR`.
+	 * @param nodes        - the ids to consider, e.g. the result of a slice
+	 * @param graph        - the graph the ids belong to
+	 * @param includeBaseR - whether to also report base-R packages
+	 */
+	packagesOf(this: void, nodes: Iterable<NodeId>, graph: DataflowGraph, includeBaseR = false): Set<string> {
+		const packages = new Set<string>();
+		for(const id of nodes) {
+			if(!FunctionCallVertex.is(graph.getVertex(id))) {
+				continue;
+			}
+			const qualified = Dataflow.qualify(id, graph, includeBaseR);
+			const pkg = qualified === undefined ? undefined : Identifier.getNamespace(qualified);
+			if(pkg !== undefined && (includeBaseR || !isBaseRPackage(pkg))) {
+				packages.add(pkg);
+			}
+		}
+		return packages;
+	},
+	/**
+	 * Whether the call's result is passed on -- assigned, handed to another call, returned -- rather than left
+	 * for R to auto-print. A bare `anova(a, b)` is an output the program reports; the `summary(m)` of
+	 * `x <- summary(m)` is not.
+	 *
+	 * Only an edge that carries the value counts. A plain {@link EdgeType.Reads} does not: it also chains the
+	 * calls that share a side effect, which would report `plot(x)` as consumed by the `lines(y)` drawn after it.
+	 */
+	valueIsUsed(this: void, id: NodeId, graph: DataflowGraph): boolean {
+		const consuming = EdgeType.Argument | EdgeType.Returns | EdgeType.DefinedBy;
+		for(const [, edge] of graph.ingoingEdges(id) ?? []) {
+			if((edge.types & consuming) !== 0) {
+				return true;
+			}
+		}
+		return false;
+	},
+	/**
+	 * Whether any argument of the call carries a value the program worked out, rather than only literals the
+	 * author typed: `cat("starting\n")` is a log line, `cat("n =", length(m))` is a finding.
+	 * A call among the arguments counts as computed, even one over literals such as `paste("a", "b")`.
+	 */
+	hasComputedArguments(this: void, id: NodeId, graph: DataflowGraph): boolean {
+		for(const [target] of graph.outgoingEdges(id) ?? []) {
+			if(!NodeId.isBuiltIn(target) && graph.getVertex(target)?.tag !== VertexType.Value) {
+				return true;
+			}
+		}
+		return false;
 	},
 	/**
 	 * Interprocedural propagation of escaped side effects (attached packages, `<<-` definitions) to their callers.

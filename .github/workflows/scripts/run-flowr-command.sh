@@ -113,7 +113,11 @@ function verify_doc_output {
 }
 
 group "Ensure node dependencies are installed"
-$NPM_CMD ci
+if [ -d node_modules ]; then
+   echo "node_modules is present, skipping the install"
+else
+   $NPM_CMD ci
+fi
 end_group
 
 if [ "$ACTION" == "doc" ]; then

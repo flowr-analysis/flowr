@@ -150,10 +150,11 @@ jobs:
           key: sigdb-bundles-${{ hashFiles('src/data/sigdb/sigdb.remote.json') }}
 
       - name: "⬇️ Sync the Signature Database"
-        # the tests degrade gracefully without it, but then every sigdb-backed path is skipped rather than checked
+        # without a database every sigdb-backed test skips instead of checking anything; run through the same
+        # script as the tests so the node dependencies are installed once and reused by both
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npm run sync:sigdb
+        run: bash .github/workflows/scripts/run-flowr-command.sh sync:sigdb
 
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"

@@ -340,6 +340,8 @@ export class SigDatabase implements PackageSignatureSource {
 	/** parsed blobs by blob index so repeated lookups skip the re-read + JSON.parse; FIFO-bounded to cap memory */
 	private readonly blobCache = new Map<number, PkgBlob>();
 	private static readonly BlobCacheCap = 2048;
+	/** a version's function indices plus its `name -> index` view; FIFO-bounded like {@link blobCache} */
+	private readonly versionFnCache = new Map<string, { blob: PkgBlob, idxs: readonly number[], byName?: ReadonlyMap<string, number> }>();
 	/** reverse index `S3 class -> owning package`, over every package's latest version; built once (see {@link classOwner}) */
 	private classIndex:        Map<string, string> | undefined;
 	private readonly fd:       number;
@@ -435,15 +437,19 @@ export class SigDatabase implements PackageSignatureSource {
 		if(this.fd === NoFile) {
 			return undefined;   // an in-memory database starts out with every blob cached
 		}
-		const blob = this.readBlobAt(this.index.blobs[blobIdx]);
-		if(this.blobCache.size >= SigDatabase.BlobCacheCap) {
-			const oldest = this.blobCache.keys().next().value;
+		return SigDatabase.cache(this.blobCache, blobIdx, this.readBlobAt(this.index.blobs[blobIdx]));
+	}
+
+	/** store `value` under `key`, dropping the oldest entry first once the cache sits at {@link BlobCacheCap} */
+	private static cache<K, V>(cache: Map<K, V>, key: K, value: V): V {
+		if(cache.size >= SigDatabase.BlobCacheCap) {
+			const oldest = cache.keys().next().value;
 			if(oldest !== undefined) {
-				this.blobCache.delete(oldest);
+				cache.delete(oldest);
 			}
 		}
-		this.blobCache.set(blobIdx, blob);
-		return blob;
+		cache.set(key, value);
+		return value;
 	}
 
 	/** seek to a byte range, read + decode the package blob there (no caching) */
@@ -501,15 +507,27 @@ export class SigDatabase implements PackageSignatureSource {
 	}
 
 	/** resolve a package version to its blob and the function-record indices of that version (the shared prologue of {@link functions}/{@link functionByName}) */
-	private versionFns(pkg: string, version?: string): { blob: PkgBlob, idxs: readonly number[] } | undefined {
+	private versionFns(pkg: string, version?: string): { blob: PkgBlob, idxs: readonly number[], byName?: ReadonlyMap<string, number> } | undefined {
 		const blob = this.blob(pkg);
 		const meta = this.index.meta[pkg];
 		if(!blob || !meta) {
 			return undefined;
 		}
+		// keyed on the resolved version, so `undefined` and the version it stands for share one entry
 		const ver = resolveVersion(blob, meta[0], version);
-		const idxs = ver !== undefined ? versionFnIndices(blob, ver) : undefined;
-		return idxs !== undefined ? { blob, idxs } : undefined;
+		if(ver === undefined) {
+			return undefined;
+		}
+		const key = `${pkg}\0${ver}`;
+		const cached = this.versionFnCache.get(key);
+		if(cached !== undefined) {
+			return cached;
+		}
+		const idxs = versionFnIndices(blob, ver);
+		if(idxs === undefined) {
+			return undefined;
+		}
+		return SigDatabase.cache(this.versionFnCache, key, { blob, idxs });
 	}
 
 	public functions(pkg: string, version?: string): DecodedFunction[] | undefined {
@@ -519,9 +537,22 @@ export class SigDatabase implements PackageSignatureSource {
 
 	public functionByName(pkg: string, name: string, version?: string): DecodedFunction | undefined {
 		const r = this.versionFns(pkg, version);
-		// compare the stored name-string index and decode only the match, rather than the whole package
-		const hit = r?.idxs.find(i => this.strings[r.blob.fns[i][0]] === name);
-		return hit !== undefined && r !== undefined ? decodeFunction(this.strings, r.blob, hit) : undefined;
+		if(r === undefined) {
+			return undefined;
+		}
+		if(r.byName === undefined) {
+			const byName = new Map<string, number>();
+			for(const i of r.idxs) {
+				const fn = this.strings[r.blob.fns[i][0]];
+				// first record wins, as the linear scan did
+				if(!byName.has(fn)) {
+					byName.set(fn, i);
+				}
+			}
+			r.byName = byName;
+		}
+		const hit = r.byName.get(name);
+		return hit !== undefined ? decodeFunction(this.strings, r.blob, hit) : undefined;
 	}
 
 	public transitiveCallees(pkg: string, name: string, version?: string): string[] | undefined {

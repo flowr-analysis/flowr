@@ -10,6 +10,7 @@ import type { REnvironmentInformation } from '../environments/environment';
 import type { DataflowGraphVertexInfo } from './vertex';
 import { FunctionCallVertex } from './vertex';
 import { Identifier } from '../environments/identifier';
+import { Resolve } from '../environments/resolve-helper';
 import { RLoopConstructs } from '../../r-bridge/lang-4.x/ast/model/model';
 
 /**
@@ -19,6 +20,7 @@ import { RLoopConstructs } from '../../r-bridge/lang-4.x/ast/model/model';
  * - {@link Dataflow.views} - for working with specific views of the dataflow graph (e.g., the call graph),
  * - {@link Dataflow.edge} - for working with the edges in the dataflow graph,
  * - {@link Dataflow.qualify} - for the package-qualified `pkg::fn` identifier of a call from its id and graph,
+ * - {@link Dataflow.resolve} - for resolving a name against an environment,
  */
 export const Dataflow = {
 	name:  'Dataflow',
@@ -55,7 +57,12 @@ export const Dataflow = {
 	 * Returns the origin of a vertex in the dataflow graph
 	 * @see {@link getOriginInDfg} - for the underlying function
 	 */
-	origin: getOriginInDfg,
+	origin:  getOriginInDfg,
+	/**
+	 * Name and value resolution.
+	 * @see {@link Resolve} - the helper object itself, which documents which entry point to reach for
+	 */
+	resolve: Resolve,
 	/**
 	 * The qualified identifier of the call with the given id, or `undefined` if it does not resolve to a package
 	 * export and is not itself already namespaced (with `purrr` loaded, a `map()` call yields

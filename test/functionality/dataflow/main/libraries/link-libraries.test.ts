@@ -9,6 +9,7 @@ import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { label } from '../../../_helper/label';
+import { loadNodesForNamespace } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-library';
 import { EnvType, REnvironment, builtInEnvJsonReplacer } from '../../../../../src/dataflow/environments/environment';
 import type { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
@@ -259,6 +260,26 @@ describe('Link libraries', withTreeSitter(ts => {
 			},
 			expectIsSubgraph: true, resolveIdsAsCriterion: true
 		});
+
+	// a conditional attach keeps R's order: if the branch ran, `b` was attached last and is searched first
+	test('Branch merge keeps R\'s attach order when one branch attached more', async() => {
+		expect(await loadedPackages(ts, 'library(a)\nif(u) library(b)')).toEqual(['b', 'a']);
+		expect(await loadedPackages(ts, 'library(a)\nif(u) { library(b); library(c) }')).toEqual(['c', 'b', 'a']);
+		expect(await loadedPackages(ts, 'library(a)\nif(u) library(b) else library(b)')).toEqual(['b', 'a']);
+	});
+
+	// R attaches from inside a function to the global search path, and a second `library()` of an already
+	// attached package is a no-op there, so both call sites are provenance for the one search-path entry
+	test('A load inside a function and a later top-level load both count', async() => {
+		const loads = async(code: string) => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+			analyzer.addRequest(code);
+			return loadNodesForNamespace((await analyzer.dataflow()).environment, 'pkgA').length;
+		};
+		expect(await loads('f <- function() library("pkgA")\nf()\nlibrary("pkgA")\npkgA::fa()')).toBe(2);
+		expect(await loads('library("pkgA")\nf <- function() library("pkgA")\nf()\npkgA::fa()')).toBe(2);
+		expect(await loads('f <- function() library("pkgA")\nf()\npkgA::fa()')).toBe(1);
+	});
 
 	test('Branch merge keeps every possibly attached package, deduplicated', async() => {
 		const overlap = await loadedPackages(ts, 'if(u){ library(a); library(b) } else { library(b); library(c) }');

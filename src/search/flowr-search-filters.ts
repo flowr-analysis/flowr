@@ -324,20 +324,32 @@ function evalTree(tree: BooleanNode, data: FilterData): boolean {
 }
 
 /**
- * Evaluates the given filter expression against the provided data.
+ * Resolve a filter expression to the function that tests one element.
+ * Nothing here depends on the element, so a search over `n` elements should do this once instead of `n` times:
+ * a bare {@link VertexType}/{@link RType} filter otherwise builds a {@link FlowrFilterCombinator} per element.
+ * @see {@link evalFilter} - the one-shot form, if you only test a single element
  */
-export function evalFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>, data: FilterData): boolean {
+export function prepareFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>): (data: FilterData) => boolean {
 	if(filter instanceof FlowrFilterCombinator) {
-		return evalTree(filter.get(), data);
+		const tree = filter.get();
+		return data => evalTree(tree, data);
 	} else if(typeof filter === 'string' && ValidFlowrFilters.has(filter)) {
 		const handler = FlowrFilters[filter as FlowrFilter];
-		return handler(data.element, undefined as unknown as FlowrFilterArgs<FlowrFilter>, data.data);
+		return data => handler(data.element, undefined as unknown as FlowrFilterArgs<FlowrFilter>, data.data);
 	} else if(typeof filter === 'object' && 'name' in filter) {
 		const handler = FlowrFilters[filter.name];
 		const args = ('args' in filter ? filter.args : undefined) as unknown as never;
-		return handler(data.element, args, data.data);
+		return data => handler(data.element, args, data.data);
 	} else {
-		const tree = FlowrFilterCombinator.is(filter);
-		return evalTree(tree.get(), data);
+		const tree = FlowrFilterCombinator.is(filter).get();
+		return data => evalTree(tree, data);
 	}
+}
+
+/**
+ * Evaluates the given filter expression against the provided data.
+ * @see {@link prepareFilter} - resolve once when testing more than one element
+ */
+export function evalFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>, data: FilterData): boolean {
+	return prepareFilter(filter)(data);
 }

@@ -165,6 +165,12 @@ export interface DependencyInfo extends Record<string, unknown>{
 	functionName:        Identifier
 	linkedIds?:          readonly NodeId[]
 	/**
+	 * The other statements that build this output: for a plot, the addons drawn onto it and, when it lands in a
+	 * file, the device opener and closer around it. Answers *which statements produce this output* without
+	 * rebuilding it from {@link linkedIds}.
+	 */
+	parts?:              readonly NodeId[]
+	/**
 	 * the argument the value was read from, under the id the {@link InputSourcesQuery} reports it with: ask that
 	 * query about {@link nodeId} and this entry of its answer says whether the value is a glob, a prompt, ...
 	 */

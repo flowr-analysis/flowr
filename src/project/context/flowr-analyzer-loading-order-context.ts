@@ -61,12 +61,30 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 	private readonly guesses:   (readonly RParseRequest[])[] = [];
 	/** just the base collection of requests we know nothing about the order! */
 	private readonly unordered: RParseRequest[] = [];
+	/** what {@link unordered} already holds, so the same file is never analyzed (and reconstructed) twice */
+	private readonly seen = new Set<string>();
 
 	public reset(): void {
 		this.knownOrder = undefined;
 		this.guesses.length = 0;
 		this.unordered.length = 0;
+		this.seen.clear();
 		this.rerunRequired = this.plugins.length > 0;
+	}
+
+	/**
+	 * Registers `request` as unordered unless the same one is already there, reporting whether it was new.
+	 * Project discovery and the implicit-source scan reach the same file from both ends, so a file otherwise
+	 * lands in the loading order more than once and every later step repeats it.
+	 */
+	private register(request: RParseRequest): boolean {
+		const key = `${request.request}\u0000${request.content}`;
+		if(this.seen.has(key)) {
+			return false;
+		}
+		this.seen.add(key);
+		this.unordered.push(request);
+		return true;
 	}
 
 	/**
@@ -76,7 +94,9 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 	 * This is a batched version of {@link addRequest}.
 	 */
 	public addRequests(requests: readonly RParseRequest[]): void {
-		this.unordered.push(...requests);
+		if(!requests.map(r => this.register(r)).some(Boolean)) {
+			return;
+		}
 		if(this.knownOrder || this.guesses.length > 0) {
 			loadingOrderLog.warn(`Adding requests ${requests.map(r => r.request).join(', ')} after known order!`);
 			this.rerunRequired = true;
@@ -90,7 +110,9 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 	 * If you want to add multiple requests, consider using {@link addRequests} instead for efficiency.
 	 */
 	public addRequest(request: RParseRequest): void  {
-		this.unordered.push(request);
+		if(!this.register(request)) {
+			return;
+		}
 		if(this.knownOrder || this.guesses.length > 0) {
 			loadingOrderLog.warn(`Adding request ${request.request} ${request.content} after known order!`);
 			this.rerunRequired = true;

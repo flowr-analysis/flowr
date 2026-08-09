@@ -291,6 +291,18 @@ export const RNode = {
 		return node.info.id;
 	},
 	/**
+	 * An identity for `node` that two analyses of the same source agree on, unlike {@link RNode.getId|the numeric
+	 * id}, which only means something within the analysis that handed it out. Made of the file the node came
+	 * from, where it starts, and what it is: `<file>:<line>:<column>:<type>`.
+	 *
+	 * This survives re-analyzing the same text, not editing it -- an edit above the node moves it.
+	 * `undefined` for a node that carries no location (an artificial node, e.g. a built-in).
+	 */
+	stableId(this: void, node: RNode<ParentInformation>): string | undefined {
+		const location = node.location;
+		return location === undefined ? undefined : `${node.info.file ?? ''}:${location[0]}:${location[1]}:${node.type}`;
+	},
+	/**
 	 * The source range the whole subtree of `node` covers, from the first position any of its nodes starts at to
 	 * the last one any of them ends at. Unlike {@link SourceRange.fromNode} this does not stop at what the node
 	 * itself is written as: the span of the `<-` in a multi-line assignment is the whole assignment.

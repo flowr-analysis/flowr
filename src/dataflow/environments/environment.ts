@@ -208,9 +208,13 @@ export class Environment implements IEnvironment {
 		// navigate to parent until either before built-in or matching namespace
 		const newEnvironment = this.clone(false);
 		let current = newEnvironment;
-		do{
+		/* the match has to be re-checked after every step: a post-condition on `current.n` would end the loop on
+		 * the very layer it was looking for, before the body could define anything in it */
+		for(;;) {
 			if(current.n === ns) {
-				current.define(definition);
+				/* every layer walked here is a fresh clone, and `apply` copies the shared memory on write,
+				 * so this adds to the layer in place -- `define` would clone and the definition would be lost */
+				current.apply(Identifier.getName(definition.name), definition);
 				return newEnvironment;
 			} else if(current.parent && !current.parent.builtInEnv) {
 				// clone parent
@@ -219,7 +223,7 @@ export class Environment implements IEnvironment {
 			} else {
 				break;
 			}
-		} while(current.n !== ns);
+		}
 		// we did not find the namespace, so we inject a new environment here
 		log.warn(`Defining ${Identifier.getName(definition.name)} in namespace ${ns}, which did not exist yet in the environment chain => create (r should fail or we miss attachment).`);
 		const env = new Environment(current.parent);
@@ -358,25 +362,42 @@ export class Environment implements IEnvironment {
 		const [thisLayers, thisBase] = splitLibraryLayers(this);
 		const [otherLayers, otherBase] = splitLibraryLayers(other);
 
-		// Neither branch changed the block, so the union below would rebuild an identical chain -- at the price of a
-		// fresh frame per attached package. This is the common case (every statement after a `library` call merges
-		// two environments that still hold its layers), so the check pays for itself many times over.
-		if(otherLayers.length === 0 || sameLayers(thisLayers, otherLayers)) {
+		/*
+		 * One block is the other plus the packages attached since (blocks grow at the front), so their union is
+		 * the longer one and it is already in R's order: the most recently attached package is searched first,
+		 * `library(a); library(b)` resolves `b` before `a`. This is the overwhelmingly common case, since every
+		 * statement after a `library` call merges two environments that still hold its layers.
+		 */
+		const keep = layersEndWith(thisLayers, otherLayers) ? thisLayers
+			: layersEndWith(otherLayers, thisLayers) ? otherLayers : undefined;
+		if(keep !== undefined) {
 			const base = thisBase.append(otherBase);
-			if(base === thisBase) {
+			if(keep === thisLayers && base === thisBase) {
 				return this;
 			}
-			return relinkLayers(thisLayers.map(l => l.clone(false)), base);
+			return relinkLayers(keep.map(l => l.clone(false)), base);
 		}
 
-		// `other` first so its packages end up nearest global (most recently attached is nearest, cf. R `search()`)
-		const merged = new Map<string, Environment>();
-		for(const layers of [otherLayers, thisLayers]) {
+		/*
+		 * Neither block is recognizably an extension of the other, so union them. The longer attach history goes
+		 * first so its order survives and the other block only contributes what it alone saw: R searches the most
+		 * recently attached package first, and only the longer block still records that order.
+		 * Keyed by type and then by name, rather than by a `t:n` string built for every layer of every merge.
+		 */
+		const order: Environment[] = [];
+		const merged = new Map<EnvType | undefined, Map<string | undefined, Environment>>();
+		for(const layers of thisLayers.length > otherLayers.length ? [thisLayers, otherLayers] : [otherLayers, thisLayers]) {
 			for(const layer of layers) {
-				const key = `${layer.t}:${layer.n}`;
-				const existing = merged.get(key);
+				let byName = merged.get(layer.t);
+				if(byName === undefined) {
+					byName = new Map();
+					merged.set(layer.t, byName);
+				}
+				const existing = byName.get(layer.n);
 				if(existing === undefined) {
-					merged.set(key, layer.clone(false));
+					const cloned = layer.clone(false);
+					byName.set(layer.n, cloned);
+					order.push(cloned);
 				} else if(existing.memory !== layer.memory) {
 					for(const [name, value] of layer.memory) {
 						const old = existing.memory.get(name);
@@ -388,7 +409,7 @@ export class Environment implements IEnvironment {
 			}
 		}
 
-		return relinkLayers(Array.from(merged.values()), thisBase.append(otherBase));
+		return relinkLayers(order, thisBase.append(otherBase));
 	}
 
 	public remove(id: Identifier) {
@@ -551,12 +572,27 @@ export const REnvironment = {
 } as const;
 
 /**
- * Whether two package blocks hold the same packages, in the same order, with the same definitions. Frames cloned
- * from one another keep the same {@link Environment#memory} map until one of them is written to (see
- * {@link Environment#clone}), so comparing the maps by identity recognizes untouched blocks without scanning them.
+ * Whether the package block `layers` ends with `tail`, i.e. `tail` is `layers` without some of the attachments
+ * made since. A block grows at the front ({@link attachPackageAt} inserts at `search()` position 2), so this is
+ * the shape two branches take when one of them attached more packages than the other. Equal blocks qualify.
+ *
+ * Frames cloned from one another keep the same {@link Environment#memory} map until one of them is written to
+ * (see {@link Environment#clone}), so comparing the maps by identity recognizes untouched blocks without
+ * scanning them; blocks that only happen to hold equal definitions are treated as different, which merely costs
+ * the general union below.
  */
-function sameLayers(this: void, a: readonly Environment[], b: readonly Environment[]): boolean {
-	return a.length === b.length && a.every((l, i) => l === b[i] || (l.t === b[i].t && l.n === b[i].n && l.memory === b[i].memory));
+function layersEndWith(this: void, layers: readonly Environment[], tail: readonly Environment[]): boolean {
+	const offset = layers.length - tail.length;
+	if(offset < 0) {
+		return false;
+	}
+	for(let i = 0; i < tail.length; i++) {
+		const l = layers[offset + i], t = tail[i];
+		if(l !== t && (l.t !== t.t || l.n !== t.n || l.memory !== t.memory)) {
+			return false;
+		}
+	}
+	return true;
 }
 
 /** Stacks `layers` (top first) on top of `base`, returning the new top of the chain. The layers must not be shared. */

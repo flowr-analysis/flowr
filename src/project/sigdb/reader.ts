@@ -340,6 +340,16 @@ export class SigDatabase implements PackageSignatureSource {
 	/** parsed blobs by blob index so repeated lookups skip the re-read + JSON.parse; FIFO-bounded to cap memory */
 	private readonly blobCache = new Map<number, PkgBlob>();
 	private static readonly BlobCacheCap = 2048;
+	/** a version's function indices plus its `name -> index` view; FIFO-bounded like {@link blobCache} */
+	private readonly versionFnCache = new Map<string, { blob: PkgBlob, idxs: readonly number[], byName?: ReadonlyMap<string, number> }>();
+	/**
+	 * Which names a package can offer at all, as sorted dictionary ids -- integers, so the whole database of
+	 * them costs a few MB where the parsed blobs cost hundreds. Filled for a package the first time its blob is
+	 * read, so a later lookup for a name it does not have answers without touching the file again.
+	 */
+	private readonly nameIdsOfBlob = new Map<number, Int32Array>();
+	/** dictionary id per name asked for, so only the names someone actually queried are ever resolved */
+	private readonly nameIds = new Map<string, number>();
 	/** reverse index `S3 class -> owning package`, over every package's latest version; built once (see {@link classOwner}) */
 	private classIndex:        Map<string, string> | undefined;
 	private readonly fd:       number;
@@ -436,14 +446,60 @@ export class SigDatabase implements PackageSignatureSource {
 			return undefined;   // an in-memory database starts out with every blob cached
 		}
 		const blob = this.readBlobAt(this.index.blobs[blobIdx]);
-		if(this.blobCache.size >= SigDatabase.BlobCacheCap) {
-			const oldest = this.blobCache.keys().next().value;
-			if(oldest !== undefined) {
-				this.blobCache.delete(oldest);
+		if(!this.nameIdsOfBlob.has(blobIdx)) {
+			this.nameIdsOfBlob.set(blobIdx, Int32Array.from(new Set(blob.fns.map(fn => fn[0]))).sort());
+		}
+		return SigDatabase.cache(this.blobCache, blobIdx, blob);
+	}
+
+	/** the dictionary id of `name`, or `-1` if the dictionary does not hold it, so no package can offer it */
+	private nameId(name: string): number {
+		let id = this.nameIds.get(name);
+		if(id === undefined) {
+			this.nameIds.set(name, id = this.strings.indexOf(name));
+		}
+		return id;
+	}
+
+	/**
+	 * Whether `pkg` can offer `name` in any of its versions, answered from {@link nameIdsOfBlob} alone.
+	 * `true` whenever nothing is known about the package yet, so this only ever skips work that would have
+	 * found nothing: the ids cover every function record, of which a version selects a subset.
+	 */
+	private mayOffer(pkg: string, name: string): boolean {
+		const blobIdx = this.index.pkgs[pkg];
+		const ids = blobIdx === undefined ? undefined : this.nameIdsOfBlob.get(blobIdx);
+		if(ids === undefined) {
+			return true;
+		}
+		const id = this.nameId(name);
+		if(id < 0) {
+			return false;
+		}
+		let lo = 0, hi = ids.length - 1;
+		while(lo <= hi) {
+			const mid = (lo + hi) >> 1;
+			if(ids[mid] === id) {
+				return true;
+			} else if(ids[mid] < id) {
+				lo = mid + 1;
+			} else {
+				hi = mid - 1;
 			}
 		}
-		this.blobCache.set(blobIdx, blob);
-		return blob;
+		return false;
+	}
+
+	/** store `value` under `key`, dropping the oldest entry first once the cache sits at {@link BlobCacheCap} */
+	private static cache<K, V>(cache: Map<K, V>, key: K, value: V): V {
+		if(cache.size >= SigDatabase.BlobCacheCap) {
+			const oldest = cache.keys().next().value;
+			if(oldest !== undefined) {
+				cache.delete(oldest);
+			}
+		}
+		cache.set(key, value);
+		return value;
 	}
 
 	/** seek to a byte range, read + decode the package blob there (no caching) */
@@ -501,15 +557,27 @@ export class SigDatabase implements PackageSignatureSource {
 	}
 
 	/** resolve a package version to its blob and the function-record indices of that version (the shared prologue of {@link functions}/{@link functionByName}) */
-	private versionFns(pkg: string, version?: string): { blob: PkgBlob, idxs: readonly number[] } | undefined {
+	private versionFns(pkg: string, version?: string): { blob: PkgBlob, idxs: readonly number[], byName?: ReadonlyMap<string, number> } | undefined {
 		const blob = this.blob(pkg);
 		const meta = this.index.meta[pkg];
 		if(!blob || !meta) {
 			return undefined;
 		}
+		// keyed on the resolved version, so `undefined` and the version it stands for share one entry
 		const ver = resolveVersion(blob, meta[0], version);
-		const idxs = ver !== undefined ? versionFnIndices(blob, ver) : undefined;
-		return idxs !== undefined ? { blob, idxs } : undefined;
+		if(ver === undefined) {
+			return undefined;
+		}
+		const key = `${pkg}\0${ver}`;
+		const cached = this.versionFnCache.get(key);
+		if(cached !== undefined) {
+			return cached;
+		}
+		const idxs = versionFnIndices(blob, ver);
+		if(idxs === undefined) {
+			return undefined;
+		}
+		return SigDatabase.cache(this.versionFnCache, key, { blob, idxs });
 	}
 
 	public functions(pkg: string, version?: string): DecodedFunction[] | undefined {
@@ -518,10 +586,26 @@ export class SigDatabase implements PackageSignatureSource {
 	}
 
 	public functionByName(pkg: string, name: string, version?: string): DecodedFunction | undefined {
+		if(!this.mayOffer(pkg, name)) {
+			return undefined;
+		}
 		const r = this.versionFns(pkg, version);
-		// compare the stored name-string index and decode only the match, rather than the whole package
-		const hit = r?.idxs.find(i => this.strings[r.blob.fns[i][0]] === name);
-		return hit !== undefined && r !== undefined ? decodeFunction(this.strings, r.blob, hit) : undefined;
+		if(r === undefined) {
+			return undefined;
+		}
+		if(r.byName === undefined) {
+			const byName = new Map<string, number>();
+			for(const i of r.idxs) {
+				const fn = this.strings[r.blob.fns[i][0]];
+				// first record wins, as the linear scan did
+				if(!byName.has(fn)) {
+					byName.set(fn, i);
+				}
+			}
+			r.byName = byName;
+		}
+		const hit = r.byName.get(name);
+		return hit !== undefined ? decodeFunction(this.strings, r.blob, hit) : undefined;
 	}
 
 	public transitiveCallees(pkg: string, name: string, version?: string): string[] | undefined {

@@ -35,10 +35,11 @@ function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Part
 		if(key === '.meta') {
 			continue;
 		}
-		out[key] = value.map(({ nodeId, linkedIds, argumentId, ...rest }) => ({
+		out[key] = value.map(({ nodeId, linkedIds, argumentId, parts, ...rest }) => ({
 			nodeId:     decode(nodeId),
 			linkedIds:  linkedIds?.map(decode),
 			argumentId: argumentId === undefined ? undefined : decode(argumentId),
+			parts:      parts?.map(decode),
 			...rest
 		}));
 	}
@@ -471,9 +472,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				'pdf("a.pdf")\nplot(x)\nlines(y)\ndev.off()\nplot(onScreen)', {
 					write:     [{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' }],
 					visualize: [
-						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf' },
+						/* `parts` says what it takes to produce the file: the addons, and the device around them */
+						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['3@lines', '1@pdf', '4@dev.off'] },
 						{ nodeId: '5@plot', functionName: 'plot' },
-						{ nodeId: '3@lines', functionName: 'lines', value: 'a.pdf', linkedIds: ['2@plot'] }
+						{ nodeId: '3@lines', functionName: 'lines', value: 'a.pdf', linkedIds: ['2@plot'], parts: ['1@pdf', '4@dev.off'] }
 					]
 				});
 			testQuery('each device takes the plots of its own block',
@@ -483,8 +485,77 @@ describe('Dependencies Query', withTreeSitter(parser => {
 						{ nodeId: '4@png', functionName: 'png', value: 'b.png' }
 					],
 					visualize: [
-						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf' },
-						{ nodeId: '5@hist', functionName: 'hist', value: 'b.png' }
+						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['1@pdf', '3@dev.off'] },
+						{ nodeId: '5@hist', functionName: 'hist', value: 'b.png', parts: ['4@png', '6@dev.off'] }
+					]
+				});
+			// closing the device ends the plot, so what is drawn after it builds whatever is open then
+			testQuery('an addon after the close does not build the closed file',
+				'pdf("a.pdf")\nplot(x)\ndev.off()\nlines(y)', {
+					write:     [{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' }],
+					visualize: [
+						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['1@pdf', '3@dev.off'] },
+						{ nodeId: '4@lines', functionName: 'lines', linkedIds: ['2@plot'] }
+					]
+				});
+			testQuery('an addon of the next device does not build the previous file',
+				'pdf("a.pdf")\nplot(x)\ndev.off()\npng("b.png")\nlines(y)\ndev.off()', {
+					write: [
+						{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' },
+						{ nodeId: '4@png', functionName: 'png', value: 'b.png' }
+					],
+					visualize: [
+						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['1@pdf', '3@dev.off'] },
+						{ nodeId: '5@lines', functionName: 'lines', value: 'b.png', linkedIds: ['2@plot'], parts: ['4@png', '6@dev.off'] }
+					]
+				});
+			/*
+			 * Closing the inner device hands drawing back to the outer one, which still shows its own plot, so
+			 * `lines(outer)` builds `plot(x)` and its file -- checked against R, where it draws without error.
+			 */
+			testQuery('an addon after a nested close builds the plot the restored device shows',
+				'pdf("a.pdf")\nplot(x)\npng("in.png")\nplot(y)\nlines(inner)\ndev.off()\nlines(outer)\ndev.off()', {
+					write: [
+						{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' },
+						{ nodeId: '3@png', functionName: 'png', value: 'in.png' }
+					],
+					visualize: [
+						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['7@lines', '1@pdf', '8@dev.off'] },
+						{ nodeId: '4@plot', functionName: 'plot', value: 'in.png', parts: ['5@lines', '3@png', '6@dev.off'] },
+						{ nodeId: '5@lines', functionName: 'lines', value: 'in.png', linkedIds: ['4@plot'], parts: ['3@png', '6@dev.off'] },
+						/* the dataflow links it into the inner device, the restored device is what it really draws on */
+						{ nodeId: '7@lines', functionName: 'lines', value: 'a.pdf', linkedIds: ['4@plot'], parts: ['1@pdf', '8@dev.off'] }
+					]
+				});
+			testQuery('a device nested in another keeps its own plots and parts',
+				'pdf("a.pdf")\nplot(x)\npng("in.png")\nplot(y)\nlines(inner)\ndev.off()\ndev.off()', {
+					write: [
+						{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' },
+						{ nodeId: '3@png', functionName: 'png', value: 'in.png' }
+					],
+					visualize: [
+						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['1@pdf', '7@dev.off'] },
+						{ nodeId: '4@plot', functionName: 'plot', value: 'in.png', parts: ['5@lines', '3@png', '6@dev.off'] },
+						{ nodeId: '5@lines', functionName: 'lines', value: 'in.png', linkedIds: ['4@plot'], parts: ['3@png', '6@dev.off'] }
+					]
+				});
+			testQuery('each creation of a device takes its own addons',
+				'pdf("a.pdf")\nplot(x)\nlines(y)\nplot(w)\ntext(t)\ndev.off()', {
+					write:     [{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' }],
+					visualize: [
+						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['3@lines', '1@pdf', '6@dev.off'] },
+						{ nodeId: '4@plot', functionName: 'plot', value: 'a.pdf', parts: ['5@text', '1@pdf', '6@dev.off'] },
+						{ nodeId: '3@lines', functionName: 'lines', value: 'a.pdf', linkedIds: ['2@plot'], parts: ['1@pdf', '6@dev.off'] },
+						{ nodeId: '5@text', functionName: 'text', value: 'a.pdf', linkedIds: ['4@plot'], parts: ['1@pdf', '6@dev.off'] }
+					]
+				});
+			// a device left open still names its file, there is just no closer to report
+			testQuery('an unclosed device still names the file it collects',
+				'pdf("a.pdf")\nplot(x)\nlines(y)', {
+					write:     [{ nodeId: '1@pdf', functionName: 'pdf', value: 'a.pdf' }],
+					visualize: [
+						{ nodeId: '2@plot', functionName: 'plot', value: 'a.pdf', parts: ['3@lines', '1@pdf'] },
+						{ nodeId: '3@lines', functionName: 'lines', value: 'a.pdf', linkedIds: ['2@plot'], parts: ['1@pdf'] }
 					]
 				});
 		});
@@ -508,7 +579,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('a theme keeps its own package', 'plot()\nggthemes::theme_wsj()', {
 				library:   [{ nodeId: '2@theme_wsj', functionName: '::', value: 'ggthemes' }],
 				visualize: [
-					{ nodeId: '1@plot', functionName: 'plot' },
+					{ nodeId: '1@plot', functionName: 'plot', parts: ['2@ggthemes::theme_wsj'] },
 					{ nodeId: '2@ggthemes::theme_wsj', functionName: Identifier.make('theme_wsj', 'ggthemes'), linkedIds: [1] }
 				]
 			});
@@ -523,18 +594,19 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		});
 		describe('Modification', () => {
 			for(const f of ['coord_trans', 'scale_colour_hue', 'tinyplot_add']) {
+				/* the creation reports what is drawn onto it, even without a device to write it to */
 				testQuery(f, `plot()\n${f}(x, y, z)`, { visualize: [
-					{ nodeId: '1@plot', functionName: 'plot' },
+					{ nodeId: '1@plot', functionName: 'plot', parts: [`2@${f}`] },
 					{ nodeId: `2@${f}`, functionName: f, linkedIds: [1] }
 				] });
 			}
 			testQuery('complex', 'plot()\nx <- 2\ncat(x)\ncoord_trans(x, y, z)', { visualize: [
-				{ nodeId: '1@plot', functionName: 'plot' },
+				{ nodeId: '1@plot', functionName: 'plot', parts: ['4@coord_trans'] },
 				{ nodeId: '4@coord_trans', functionName: 'coord_trans', linkedIds: [1] }
 			] }, { enabledCategories: ['visualize'] } );
 			testQuery('multiple', 'plot()\nx <- 2\ncat(x)\ncoord_trans(x, y, z)\nplot()\ntinyplot_add(x, y, z)', { visualize: [
-				{ nodeId: '1@plot', functionName: 'plot' },
-				{ nodeId: '5@plot', functionName: 'plot' },
+				{ nodeId: '1@plot', functionName: 'plot', parts: ['4@coord_trans'] },
+				{ nodeId: '5@plot', functionName: 'plot', parts: ['6@tinyplot_add'] },
 				{ nodeId: '4@coord_trans', functionName: 'coord_trans', linkedIds: [1] },
 				{ nodeId: '6@tinyplot_add', functionName: 'tinyplot_add', linkedIds: [18] }
 			] }, { enabledCategories: ['visualize'] } );

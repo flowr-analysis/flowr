@@ -3,8 +3,8 @@ import { type DataflowGraph, FunctionArgument } from '../../../dataflow/graph/gr
 import { visitCfgInReverseOrder } from '../../../control-flow/simple-visitor';
 import { type DataflowGraphVertexFunctionCall, FunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
-import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
-import { Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
+import { resolveByNameAnyType } from '../../../dataflow/environments/resolve-by-name';
+import { Identifier } from '../../../dataflow/environments/identifier';
 import { assertUnreachable } from '../../../util/assert';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -60,7 +60,7 @@ export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, grap
          * for performance and scoping reasons, flowR will not identify the global linkage,
          * including any potential built-in mapping.
          */
-		const reResolved = resolveByName(info.name, info.environment, ReferenceType.Unknown);
+		const reResolved = resolveByNameAnyType(info.name, info.environment);
 		if(reResolved?.some(t => NodeId.isBuiltIn(t.definedAt))) {
 			builtIn = true;
 		}

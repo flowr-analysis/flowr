@@ -5,6 +5,7 @@ import type {
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { SlicingCriterion, type SlicingCriteria } from '../../slicing/criterion/parse';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard, isNotUndefined } from '../../util/assert';
 import { SourceRange } from '../../util/range';
 import { type Query, type SupportedQuery, executeQueries, SupportedQueries } from '../../queries/query';
@@ -54,8 +55,13 @@ async function generateAll(data: ReadonlyFlowrAnalysisProvider): Promise<FlowrSe
 
 async function getAllNodes(data: ReadonlyFlowrAnalysisProvider): Promise<RNodeWithParent[]> {
 	const normalize = await data.normalize();
-	return [...new Map([...normalize.idMap.values()].map(n => [n.info.id, n]))
-		.values()];
+	// the id map holds some nodes under more than one id, so dedup; filled in place to skip the two
+	// intermediate arrays a spread plus `map` would build
+	const byId = new Map<NodeId, RNodeWithParent>();
+	for(const n of normalize.idMap.values()) {
+		byId.set(n.info.id, n);
+	}
+	return [...byId.values()];
 }
 
 

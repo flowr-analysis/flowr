@@ -55,7 +55,8 @@ export class BiMap<K, V extends object> implements Map<K, V> {
 			return false;
 		}
 		this.k2v.delete(key);
-		this.v2k?.delete(value);
+		/* another key may still hold this value, so dropping just its entry would lose a live mapping */
+		this.staleReverse();
 		this.size = this.k2v.size;
 		return true;
 	}
@@ -89,10 +90,24 @@ export class BiMap<K, V extends object> implements Map<K, V> {
 	}
 
 	public set(key: K, value: V): this {
+		const replaced = this.k2v.get(key);
 		this.k2v.set(key, value);
-		this.v2k?.set(value, key);
+		if(replaced !== undefined && replaced !== value) {
+			/* the value this key held may now be unreachable, so its reverse entry cannot stand */
+			this.staleReverse();
+		} else {
+			this.v2k?.set(value, key);
+		}
 		this.size = this.k2v.size;
 		return this;
+	}
+
+	/** the reverse direction can no longer be maintained in place, so re-derive it (at once if eager) */
+	private staleReverse(): void {
+		this.v2k = undefined;
+		if(this.eager) {
+			this.reverse();
+		}
 	}
 
 	public values(): MapIterator<V> {

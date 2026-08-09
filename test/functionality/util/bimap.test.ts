@@ -52,6 +52,37 @@ describe('BiMap', () => {
 		}
 	});
 
+	/*
+	 * Two keys may hold the same value, and a key may be re-pointed at another value. Both leave the reverse
+	 * direction unable to answer from the mutation alone, so it has to be re-derived rather than patched.
+	 */
+	test('a value still held by another key keeps its reverse entry', () => {
+		for(const mode of ['lazy', 'eager'] as const) {
+			const map = new BiMap<string, { v: string }>(undefined, mode);
+			map.set('x', a);
+			map.set('y', a);
+			assert.strictEqual(map.getKey(a), 'y', mode);
+			map.delete('x');
+			assert.strictEqual(map.getKey(a), 'y', `${mode}: 'y' still holds it`);
+			assert.isTrue(map.hasValue(a), mode);
+			map.delete('y');
+			assert.isUndefined(map.getKey(a), `${mode}: nothing holds it now`);
+			assert.isFalse(map.hasValue(a), mode);
+		}
+	});
+
+	test('re-pointing a key drops the value it held', () => {
+		for(const mode of ['lazy', 'eager'] as const) {
+			const map = new BiMap<string, { v: string }>(undefined, mode);
+			map.set('x', a);
+			assert.strictEqual(map.getKey(a), 'x', mode);
+			map.set('x', b);
+			assert.strictEqual(map.getKey(b), 'x', mode);
+			assert.isUndefined(map.getKey(a), `${mode}: nothing holds the old value`);
+			assert.isFalse(map.hasValue(a), mode);
+		}
+	});
+
 	test('a later key for the same value wins', () => {
 		const map = new BiMap<string, { v: string }>();
 		map.set('x', a);

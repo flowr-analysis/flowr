@@ -142,6 +142,19 @@ jobs:
             any::dplyr
             any::readr
 
+      - name: "💾 Cache the Signature Database Bundles"
+        uses: actions/cache@v4
+        with:
+          # only the bundles, the shards unpacked next to them are re-derived on demand
+          path: ~/.cache/flowr/sigdb/bundles
+          key: sigdb-bundles-${{ hashFiles('src/data/sigdb/sigdb.remote.json') }}
+
+      - name: "⬇️ Sync the Signature Database"
+        # the tests degrade gracefully without it, but then every sigdb-backed path is skipped rather than checked
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run sync:sigdb
+
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
 

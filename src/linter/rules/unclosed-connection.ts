@@ -12,8 +12,10 @@ import { EdgeType } from '../../dataflow/graph/edge';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../dataflow/logger';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
-import type { DependencyInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
+import { OpenConnectionFunctions } from '../../queries/catalog/dependencies-query/function-info/open-connection-functions';
+import { CloseConnectionFunctions } from '../../queries/catalog/dependencies-query/function-info/close-connection-functions';
+import { CallContextQuerySubKindResult } from '../../queries/catalog/call-context-query/call-context-query-format';
 
 export type UnclosedConnectionResult = LintingResult;
 
@@ -22,16 +24,30 @@ export type UnclosedConnectionConfig = MergeableRecord;
 export type UnclosedConnectionMetadata = MergeableRecord;
 
 
-
-
 export const UNCLOSED_CONNECTION = {
-	createSearch:        () => Q.fromQuery([ { type: 'dependencies', 'enabledCategories': ['openConnection', 'closeConnection'] }]),
+	createSearch: () => Q.fromQuery([ {
+		'type': 'call-context',
+		'callName': `^${OpenConnectionFunctions.map(element => {
+			return element.name;
+		}).join('|')}$`,
+		'kind': 'connection',
+		'subkind': 'openConnection'
+	},
+	{
+		'type': 'call-context',
+		'callName': `^${CloseConnectionFunctions.map(element => {
+				return element.name;
+			}).join('|')}$`,
+		'kind': 'connection',
+		'subkind': 'closeConnection'
+  }]),
 	processSearchResult: async(elements, _config, data) => {
 		const dataflow = await data.dataflow();
-		const dependencies = (elements.enrichmentContent(Enrichment.QueryData).queries as { dependencies: { openConnection: DependencyInfo[], closeConnection: DependencyInfo[] } }).dependencies;
+		const dependencies = (elements.enrichmentContent(Enrichment.QueryData).queries['call-context'].kinds as { connection: { subkinds: { openConnection: CallContextQuerySubKindResult[], closeConnection: CallContextQuerySubKindResult[] } } }).connection.subkinds;
+		//Todo: kann nicht einfach undefined returnen
 		//Map: [NodeId of open-call, NodeId of the variable that it defines]
 		const openedByDefiningVar: Map<NodeId, NodeId> = dependencies.openConnection.filter(element => {
-			const origins = getOriginInDfg(dataflow.graph, element.nodeId);
+			const origins = getOriginInDfg(dataflow.graph, element.id);
 			if(isNotUndefined(origins)) {
 				const builtIn = origins.every(e => e.type === OriginType.BuiltInFunctionOrigin);
 				if(!builtIn){
@@ -40,13 +56,13 @@ export const UNCLOSED_CONNECTION = {
 			}
 			return true;
 		}).map(element => {
-				const h = dataflow.graph.ingoingEdges(element.nodeId);
+				const h = dataflow.graph.ingoingEdges(element.id);
 				if(isUndefined(h)){
 					return undefined;
 				}
 				for(const [toNode, edge] of h){
 					if(edge.types === EdgeType.DefinedBy){
-						return [element.nodeId, toNode];
+						return [element.id, toNode];
 					}
 				}
 			}).filter(element => {
@@ -57,7 +73,7 @@ export const UNCLOSED_CONNECTION = {
 			}, new Map<NodeId, NodeId>());
 		//Map: [ NodeId of defining symbol that it closes, NodeId of close-call]
 		const closedArg = dependencies.closeConnection.filter(element => {
-			const origins = getOriginInDfg(dataflow.graph, element.nodeId);
+			const origins = getOriginInDfg(dataflow.graph, element.id);
 			if(isNotUndefined(origins)) {
 				const builtIn = origins.every(e => e.type === OriginType.BuiltInFunctionOrigin);
 				if(!builtIn){
@@ -66,8 +82,7 @@ export const UNCLOSED_CONNECTION = {
 			}
 			return true;
 		}).map(element => {
-				console.log('incoming ids from element', element.nodeId);
-				return dataflow.graph.getVertex(element.nodeId) as DataflowGraphVertexFunctionCall;
+				return dataflow.graph.getVertex(element.id) as DataflowGraphVertexFunctionCall;
 			}).map(element => {
 				const closeParamMap = {
 					'...': '...'
@@ -76,6 +91,7 @@ export const UNCLOSED_CONNECTION = {
 				const mappedToStop = mapping.get('...');
 				if(isUndefined(mappedToStop) || mappedToStop.length === 0 || isUndefined(mappedToStop[0])){
 					dataflowLogger.warn(`Argument of call with id ${element.id} could not be resolved`);
+					console.log('here is the problem, b')
 					return undefined;
 				}
 				const oldArgId = mappedToStop[0];

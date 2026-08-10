@@ -5,9 +5,14 @@ import { LintingResultCertainty } from '../../../src/linter/linter-format';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('unclosed-connection', () => {
-		assertLinter('All closed', parser, `zz <- textConnection(E)
-readLines(zz, 2)
-close(zz)`,
+		assertLinter('All closed', parser, `a <- textConnection(A)
+readLines(a, 2)
+file <- file()
+b <- textConnection(B)
+
+close(a)
+close(b)
+close(file)`,
 		'unclosed-connection',
 		[]
 		);
@@ -38,7 +43,7 @@ close(b)`,
 			loc:       [1, 6, 1, 23]
 		}]
 		);
-		assertLinter('Openend and closed', parser, `a <- 4+3
+		assertLinter('Openend and closed in different branches', parser, `a <- 4+3
 if(x){
 	a <- textConnection(A)
 	b <- textConnection(B)
@@ -60,7 +65,7 @@ if(y){
 			loc:       [4, 7, 4, 23]
 		}]
 		);
-		assertLinter('::::', parser, `a <- 4+3
+		assertLinter('Nested branches - not necessarily closed', parser, `a <- 4+3
 if(x){
 	a <- textConnection(A)
 	b <- textConnection(B)
@@ -76,6 +81,25 @@ if(x){
 		{
 			certainty: LintingResultCertainty.Uncertain,
 			loc:       [4, 7, 4, 23]
+		}]
+		);
+		assertLinter('Nested branches - not closed', parser, `if(x){
+	a <- 4
+	while(a > 0){
+		b <- textConnection(A)
+		readLines(b, 2)
+		a <- a - 1
+	}
+	close(b)
+} 
+else {
+	a <- textConnection(A)
+	close(a)
+}`,
+		'unclosed-connection',
+		[{
+			certainty: LintingResultCertainty.Uncertain,
+			loc:       [4, 8, 4, 24]
 		}]
 		);
 	});

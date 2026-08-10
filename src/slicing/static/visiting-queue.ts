@@ -27,6 +27,8 @@ export class VisitingQueue {
 	private readonly gas?:           ReadOnlyFlowrAnalyzerGasContext;
 	private stoppedEarly            = false;
 	private untilGasCheck           = 0;
+	/** entries dequeued, see {@link SliceProgress} */
+	private visited                 = 0;
 
 	constructor(threshold: number, cache?: Map<Fingerprint, Set<NodeId>>, isGraphVertex?: (id: NodeId) => boolean, gas?: ReadOnlyFlowrAnalyzerGasContext) {
 		this.threshold = threshold;
@@ -73,6 +75,7 @@ export class VisitingQueue {
 	}
 
 	public next(): NodeToSlice {
+		this.visited++;
 		return this.queue.pop() as NodeToSlice;
 	}
 
@@ -108,11 +111,11 @@ export class VisitingQueue {
 		return this.cachedCallTargets.get(id) as Set<DataflowGraphVertexInfo>;
 	}
 
-	public status(): Readonly<Pick<SliceResult, 'timesHitThreshold' | 'result' | 'stoppedEarly'>> {
+	public status(): Readonly<Pick<SliceResult, 'timesHitThreshold' | 'result' | 'stoppedEarly' | 'progress'>> {
 		return {
 			timesHitThreshold: this.timesHitThreshold,
 			result:            new Set([...this.seen.values(), ...this.seenByCache]),
-			...(this.stoppedEarly ? { stoppedEarly: true } : {})
+			...(this.stoppedEarly ? { stoppedEarly: true, progress: { visited: this.visited, frontier: this.queue.length } } : {})
 		};
 	}
 }

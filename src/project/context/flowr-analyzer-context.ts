@@ -305,14 +305,17 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	/** delegate request addition */
 	public addRequests(requests: readonly RAnalysisRequest[]): void {
 		this.files.addRequests(requests);
+		this.gas.reset();
 	}
 
 	public addFile(f: string | FlowrFileProvider | RParseRequestFromFile): void {
 		this.files.addFile(f);
+		this.gas.reset();
 	}
 
 	public addFiles(f: (string | FlowrFileProvider | RParseRequestFromFile)[]): void {
 		this.files.addFiles(f);
+		this.gas.reset();
 	}
 
 	/**
@@ -341,6 +344,8 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		this.files.receive(event);
 		this.deps.receive(event);
 		this.inc.receive(event);
+		/* what became stale is analyzed again, and that gets the full contingent */
+		this.gas.receive(event);
 	}
 }
 

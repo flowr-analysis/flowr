@@ -831,14 +831,20 @@ export const FlowrConfig = {
 		gas: Joi.object({
 			thresholds: Joi.object({
 				memory: Joi.object({
-					problematic: Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Problematic is returned.'),
-					critical:    Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Critical is returned.')
-				}).optional().description('Heap-usage fraction thresholds (0-1).'),
+					problematic: Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Problematic is returned, for every feature without an entry of its own.'),
+					critical:    Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Critical is returned, for every feature without an entry of its own.')
+				}).pattern(Joi.string(), Joi.object({
+					problematic: Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Problematic is returned for this feature.'),
+					critical:    Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Critical is returned for this feature.')
+				})).optional().description('Heap-usage fraction thresholds (0-1), either shared or given per feature key (with `default` covering the rest).'),
 				timeMs: Joi.object({
-					problematic: Joi.number().min(0).optional().description('Elapsed ms above which Problematic is returned.'),
-					critical:    Joi.number().min(0).optional().description('Elapsed ms above which Critical is returned.')
-				}).optional().description('Elapsed analysis time thresholds in milliseconds.')
-			}).optional().description('Shared thresholds for all gas checks (scaled by per-feature factor).'),
+					problematic: Joi.number().min(0).optional().description('Elapsed ms above which Problematic is returned, for every feature without an entry of its own.'),
+					critical:    Joi.number().min(0).optional().description('Elapsed ms above which Critical is returned, for every feature without an entry of its own.')
+				}).pattern(Joi.string(), Joi.object({
+					problematic: Joi.number().min(0).optional().description('Elapsed ms above which Problematic is returned for this feature.'),
+					critical:    Joi.number().min(0).optional().description('Elapsed ms above which Critical is returned for this feature.')
+				})).optional().description('Elapsed analysis time thresholds in milliseconds, either shared or given per feature key (with `default` covering the rest).')
+			}).optional().description('Thresholds for all gas checks (scaled by per-feature factor), boundable per feature.'),
 			features:     Joi.object().pattern(Joi.string(), Joi.number().min(0).optional()).optional().description('Per-feature sensitivity factors. 0 or absent disables gas checking for that feature. A factor of 2 makes the feature twice as sensitive. Recognised keys: `source`, `side-effect-linking`, `linter`, `slicer`.'),
 			heapProvider: Joi.function().optional().description('Custom heap statistics source (programmatic configs only), overriding the built-in v8/performance.memory detection.')
 		}).optional().description(`Resource-usage guard (gas) configuration. All feature factors default to 0 (disabled). See ${GasWikiRef}.`)

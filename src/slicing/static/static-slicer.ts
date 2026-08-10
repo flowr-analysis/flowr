@@ -16,6 +16,7 @@ import { Dataflow } from '../../dataflow/graph/df-helper';
 import { SliceDirection } from '../../util/slice-direction';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { GasOverrides } from '../../gas';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 
@@ -51,6 +52,11 @@ export interface StaticSliceOptions {
 	 * Defaults to `false` (slicing stops at the function-definition boundary, the historic behavior).
 	 */
 	readonly includeCallees?: boolean
+	/**
+	 * Gas bounds for this slice (see {@link GasOverrides}), on top of the enclosing operation's.
+	 * A slice always gets a contingent of its own, so it is never billed for the analysis or the slices before it.
+	 */
+	readonly gas?:            GasOverrides
 }
 
 /**
@@ -78,7 +84,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 	}
 
-	const queue = new VisitingQueue(threshold, cache, id => graph.hasVertex(id), ctx.gas);
+	const queue = new VisitingQueue(threshold, cache, id => graph.hasVertex(id), ctx.gas.scope(options.gas));
 
 	let minNesting = Number.MAX_SAFE_INTEGER;
 	const sliceSeedIds = new Set<NodeId>();
@@ -238,12 +244,13 @@ export function staticDice(
 	endIds: readonly NodeId[],
 	threshold = 75,
 	includeCallees = false,
+	gas?: GasOverrides,
 ): Readonly<SliceResult> {
 	guard(startIds.length > 0 && endIds.length > 0, 'must have at least one start and one end id for dicing');
-	const backward = staticSlice({ ctx, info, ast, ids: endIds, direction: SliceDirection.Backward, threshold, includeCallees });
+	const backward = staticSlice({ ctx, info, ast, ids: endIds, direction: SliceDirection.Backward, threshold, includeCallees, gas });
 	// reduce to backward result and invert edges in one pass; original info kept for sliceForCall
 	const invertedReduced = Dataflow.reduceAndInvertGraph(info.graph, backward.result, ctx.env.makeCleanEnv());
-	const forward = staticSlice({ ctx, info, ast, ids: startIds, direction: SliceDirection.Backward, threshold, sliceGraph: invertedReduced });
+	const forward = staticSlice({ ctx, info, ast, ids: startIds, direction: SliceDirection.Backward, threshold, sliceGraph: invertedReduced, gas });
 	// explicit intersection handles seed nodes that landed outside the reduced graph
 	const result = new Set<NodeId>();
 	for(const id of forward.result) {
@@ -255,7 +262,13 @@ export function staticDice(
 		timesHitThreshold: forward.timesHitThreshold + backward.timesHitThreshold,
 		result,
 		slicedFor:         [...startIds, ...endIds],
-		...(forward.stoppedEarly || backward.stoppedEarly ? { stoppedEarly: true } : {})
+		...(forward.stoppedEarly || backward.stoppedEarly ? {
+			stoppedEarly: true,
+			progress:     {
+				visited:  (forward.progress?.visited ?? 0) + (backward.progress?.visited ?? 0),
+				frontier: (forward.progress?.frontier ?? 0) + (backward.progress?.frontier ?? 0)
+			}
+		} : {})
 	};
 }
 

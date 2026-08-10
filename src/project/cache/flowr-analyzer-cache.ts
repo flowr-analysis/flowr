@@ -108,6 +108,11 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		if(force) {
 			this.reset();
 		}
+		/* the contingent belongs to the analysis, so stepping the tape starts one of its own */
+		return this.args.context.gas.withGas(undefined, () => this.stepTapeUntil(until));
+	}
+
+	private async stepTapeUntil<T>(until: () => T | undefined): Promise<T> {
 		let g: T | undefined;
 		while((g = until()) === undefined && this.pipeline.hasNextStep()) {
 			await this.pipeline.nextStep();

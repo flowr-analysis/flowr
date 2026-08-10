@@ -492,11 +492,17 @@ ${ctx.hierarchy(FlowrAnalyzerGasContext, { showImplSnippet: false })}
 Expensive analysis sites ask for the current resource pressure with
 ${ctx.linkM(FlowrAnalyzerGasContext, 'checkGas', { codeFont: true, realNameWrapper: 'i' })}, passing the name of the feature they are about to run
 (see ${ctx.link('GasFeatureKey')}), and may then degrade or skip their work.
-The level combines the current heap usage and the time elapsed since the analysis started (or since the last
-${ctx.linkM(FlowrAnalyzerContext, 'reset')}, which also resets the gas clock via
-${ctx.linkM(FlowrAnalyzerGasContext, 'reset', { codeFont: true, realNameWrapper: 'i' })}),
-each scaled by the per-feature factor from \`config.gas.features\`.
+The level combines the current heap usage and the time elapsed within the contingent of the current operation,
+each scaled by the per-feature factor from \`config.gas.features\` and compared against the thresholds
+configured for that key (see ${ctx.link('GasThresholdSpec')}).
 Registered ${ctx.link(FlowrAnalyzerGasPlugin)}s may escalate the level for any key.
+
+Every operation gets a contingent of its own, and anything beginning a new analysis (an added file, a cache
+invalidation, a ${ctx.linkM(FlowrAnalyzerContext, 'reset')}) restarts it. To restart it between your own
+phases, call ${ctx.linkM(FlowrAnalyzerGasContext, 'reset', { codeFont: true, realNameWrapper: 'i' })} on the
+writeable context (\`analyzer.context().gas.reset()\`). To bound a single call, pass \`gas\` overrides to it
+(\`analyzer.query([...], { gas: { slicer: { critical: 30_000 } } })\`) or derive a bounded view with
+${ctx.linkM(FlowrAnalyzerGasContext, 'scope', { codeFont: true, realNameWrapper: 'i' })}.
 
 ${
 	block({

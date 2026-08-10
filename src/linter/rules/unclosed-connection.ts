@@ -13,6 +13,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { dataflowLogger } from '../../dataflow/logger';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
 import type { DependencyInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
 
 export type UnclosedConnectionResult = LintingResult;
 
@@ -29,16 +30,16 @@ export const UNCLOSED_CONNECTION = {
 		const dataflow = await data.dataflow();
 		const dependencies = (elements.enrichmentContent(Enrichment.QueryData).queries as { dependencies: { openConnection: DependencyInfo[], closeConnection: DependencyInfo[] } }).dependencies;
 		//Map: [NodeId of open-call, NodeId of the variable that it defines]
-		const openedByDefiningVar: Map<NodeId, NodeId> = dependencies.openConnection/*.filter(element => {
-			/*const origins = getOriginInDfg(dataflow.graph, element.nodeId);
+		const openedByDefiningVar: Map<NodeId, NodeId> = dependencies.openConnection.filter(element => {
+			const origins = getOriginInDfg(dataflow.graph, element.nodeId);
 			if(isNotUndefined(origins)) {
 				const builtIn = origins.every(e => e.type === OriginType.BuiltInFunctionOrigin);
 				if(!builtIn){
 					return false;
 				}
-			}*/
-			/*return true;
-		})*/.map(element => {
+			}
+			return true;
+		}).map(element => {
 				const h = dataflow.graph.ingoingEdges(element.nodeId);
 				if(isUndefined(h)){
 					return undefined;
@@ -55,7 +56,7 @@ export const UNCLOSED_CONNECTION = {
 				return map;
 			}, new Map<NodeId, NodeId>());
 		//Map: [ NodeId of defining symbol that it closes, NodeId of close-call]
-		const closedArg = dependencies.closeConnection/*.filter(element => {
+		const closedArg = dependencies.closeConnection.filter(element => {
 			const origins = getOriginInDfg(dataflow.graph, element.nodeId);
 			if(isNotUndefined(origins)) {
 				const builtIn = origins.every(e => e.type === OriginType.BuiltInFunctionOrigin);
@@ -64,7 +65,7 @@ export const UNCLOSED_CONNECTION = {
 				}
 			}
 			return true;
-		})*/.map(element => {
+		}).map(element => {
 				console.log('incoming ids from element', element.nodeId);
 				return dataflow.graph.getVertex(element.nodeId) as DataflowGraphVertexFunctionCall;
 			}).map(element => {
@@ -110,32 +111,14 @@ export const UNCLOSED_CONNECTION = {
 						if(openedByDefiningVar.has(element.node.info.id)){
 							const ident = openedByDefiningVar.get(element.node.info.id);
 							if(closedArg.has(ident)){
-								return false;
-								/////////
-							/*const closeEdges = dataflow.graph.outgoingEdges(closedArg.get(ident))
-							if(isUndefined(closeEdges)){
-								return false;
-							}
-								const closeSet = closeEdges.entries().reduce((set, [node, edge]) => {
-									if(edge.types === EdgeType.NonStandardEvaluation){
-										set.add(node)
-									}
-									return set;
-								}, new Set())
-
-							const openEdges = dataflow.graph.outgoingEdges(closedArg.get(element.node.info.id))
-							const openSet = openEdges?.entries().reduce((set, [node, edge]) => {
-									if(edge.types === EdgeType.NonStandardEvaluation){
-										set.add(node)
-									}
-									return set;
-								}, new Set()) ?? new Set()
-							if(openSet.isSubsetOf(closeSet) && closeSet.isSubsetOf(openSet)){
-								return false;
-							} else {
-								return true;
-							}*/
-							//////////
+								const closeCall = closedArg.get(ident);
+								const closeCallDependencies = new Set(dataflow.graph.getVertex(closeCall)?.cds)
+								const openCallDependencies = new Set(dataflow.graph.getVertex(element.node.info.id)?.cds)
+								if(openCallDependencies.isSubsetOf(closeCallDependencies) && closeCallDependencies.isSubsetOf(openCallDependencies)){
+									return false;
+								} else {
+									return true; 
+								}
 							} else {
 								return true;
 							}

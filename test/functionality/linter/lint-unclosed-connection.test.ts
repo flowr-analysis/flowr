@@ -53,11 +53,11 @@ if(y){
 		'unclosed-connection',
 		[{
 			certainty: LintingResultCertainty.Uncertain,
-			loc:       [4, 6, 4, 22]
+			loc:       [3, 7, 3, 23]
 		},
 		{
 			certainty: LintingResultCertainty.Uncertain,
-			loc:       [5, 6, 5, 22]
+			loc:       [4, 7, 4, 23]
 		}]
 		);
 		assertLinter('::::', parser, `a <- 4+3
@@ -71,11 +71,11 @@ if(x){
 		'unclosed-connection',
 		[{
 			certainty: LintingResultCertainty.Uncertain,
-			loc:       [4, 6, 4, 22]
+			loc:       [3, 7, 3, 23]
 		},
 		{
 			certainty: LintingResultCertainty.Uncertain,
-			loc:       [5, 6, 5, 22]
+			loc:       [4, 7, 4, 23]
 		}]
 		);
 	});

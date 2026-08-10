@@ -252,9 +252,13 @@ function flowrOnlyFunctionInfo(env: REnvironmentInformation | undefined, pkg: st
 	if(info === undefined || (info.props === undefined && info.sig === undefined)) {
 		return undefined;
 	}
+	const namespace = definition.name === undefined ? undefined : Identifier.getNamespace(definition.name);
+	if(pkg !== undefined && namespace !== undefined && namespace !== pkg) {
+		return undefined;
+	}
 	return {
 		name,
-		package:    pkg ?? (definition.name === undefined ? undefined : Identifier.getNamespace(definition.name)) ?? 'base',
+		package:    namespace ?? pkg ?? 'base',
 		flowrOnly:  true,
 		exported:   true,
 		properties: [],

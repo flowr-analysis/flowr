@@ -14,7 +14,7 @@ import { BuiltInEvalName } from './built-in-eval-name';
 import { NseArguments } from '../internal/process/functions/call/known-call-handling';
 import { DataMaskingFunctionIdentifiers } from './data-masking-functions';
 import { ArgProp, CallProp, type FnSig } from './built-in-props';
-import { AttachedBasePackages } from '../../util/r-base-packages';
+import { AttachedBasePackages, baseRExportOwner } from '../../util/r-base-packages';
 
 /** Which stack environment an env-returning/-transforming builtin denotes (see {@link StackEnvBuiltins}). */
 export enum StackEnvKind {
@@ -41,6 +41,48 @@ export const StackEnvBuiltins = {
 	'.BaseEnv':          StackEnvKind.Base,
 	'.BaseNamespaceEnv': StackEnvKind.Base
 } as const satisfies Record<string, StackEnvKind>;
+
+/**
+ * The package owning each plotting function no base-R package exports; a name listed nowhere stays bare.
+ * A built-in without a package answers to any `pkg::name`, which is how `base::ggplot` used to resolve.
+ */
+export const PlotFunctionPackages: Readonly<Record<string, readonly string[]>> = {
+	ggplot2:    ['ggplot', 'qplot', 'quickplot', 'autoplot'],
+	plotly:     ['ggplotly', 'plot_ly'],
+	ggExtra:    ['ggMarginal'],
+	ggcorrplot: ['ggcorrplot'],
+	forecast:   ['ggseasonplot'],
+	ggdendro:   ['ggdendrogram'],
+	ggmap:      ['qmap'],
+	gridExtra:  ['grid.arrange'],
+	factoextra: ['fviz_pca_biplot', 'fviz_pca', 'fviz_pca_ind', 'fviz_pca_var', 'fviz_screeplot',
+		'fviz_mca_biplot', 'fviz_mca', 'fviz_mca_ind', 'fviz_mca_var', 'fviz_cluster', 'fviz_dend'],
+	survminer: ['ggsurvplot'],
+	tinyplot:  ['tinyplot', 'plt', 'tinyplot_add', 'plt_add'],
+	lattice:   ['xyplot', 'bwplot', 'stripplot', 'dotplot', 'histogram', 'splom', 'trellis.device'],
+	maps:      ['map'],
+	leaflet:   ['leaflet'],
+	tmap:      ['tm_shape'],
+	pheatmap:  ['pheatmap'],
+	vioplot:   ['vioplot'],
+	gplots:    ['heatmap.2', 'textplot', 'boxplot2'],
+	DHARMa:    ['plotSimulatedResiduals'],
+	magick:    ['image_graph', 'image_draw'],
+	ragg:      ['agg_png', 'agg_jpeg', 'agg_tiff', 'agg_ppm', 'agg_webp', 'agg_capture'],
+	rasterpdf: ['raster_pdf']
+};
+
+const PlotFunctionOwner: ReadonlyMap<string, string> = new Map(
+	Object.entries(PlotFunctionPackages).flatMap(([pkg, names]) => names.map(n => [n, pkg] as const))
+);
+
+/** `names` under the package exporting each: base R from the shipped data, the rest from {@link PlotFunctionPackages}. */
+export function namespacePlotFunctions(names: readonly string[]): (Identifier | string)[] {
+	return names.map(n => {
+		const pkg = baseRExportOwner(n) ?? PlotFunctionOwner.get(n);
+		return pkg === undefined ? n : Identifier.make(n, pkg);
+	});
+}
 
 export const GgPlotCreate = [
 	'ggplot', 'ggplotly', 'ggMarginal', 'ggcorrplot', 'ggseasonplot', 'ggdendrogram', 'qmap', 'qplot', 'quickplot', 'autoplot', 'grid.arrange',
@@ -506,7 +548,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['force', 'identity']),
 		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', keepArgumentOut: true, props: CallProp.Pure, sig: [['x', ArgProp.Alias | ArgProp.Forced]] }, assumePrimitive: false },
 	// graphics base
-	{ type:      'function', names:     PlotCreate,
+	{ type:      'function', names:     namespacePlotFunctions(PlotCreate),
 		processor: BuiltInProcName.Default,
 		config:    {
 			forceArgs:             'all',
@@ -524,7 +566,7 @@ export const WrittenBuiltinDefinitions = [
 			props: CallProp.Graphics
 		}, assumePrimitive: true },
 	// graphics addons
-	{ type:      'function', names:     PlotAddons,
+	{ type:      'function', names:     namespacePlotFunctions(PlotAddons),
 		processor: BuiltInProcName.Default,             config:    {
 			forceArgs:     'all',
 			treatAsFnCall: {
@@ -555,7 +597,7 @@ export const WrittenBuiltinDefinitions = [
 	// plot tags
 	{
 		type:      'function',
-		names:     GgPlotAddons,
+		names:     namespacePlotFunctions(GgPlotAddons),
 		processor: BuiltInProcName.Default,
 		config:    {
 			libFn:                 true,
@@ -568,7 +610,7 @@ export const WrittenBuiltinDefinitions = [
 		}, assumePrimitive: true },
 	{
 		type:      'function',
-		names:     TinyPlotAddons,
+		names:     namespacePlotFunctions(TinyPlotAddons),
 		processor: BuiltInProcName.Default,
 		config:    {
 			libFn:                 true,

@@ -246,7 +246,7 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 				name,
 				unit:  '#',
 				value: plotValue(measurement),
-				extra: `mean: ${measurement.mean}, std: ${measurement.std}`
+				extra: `mean: ${measurement.mean.toFixed(4)}, std: ${measurement.std.toFixed(4)}`
 			});
 		}
 	}
@@ -254,13 +254,13 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 		name:  'reduction (characters)',
 		unit:  '#',
 		value: plotValue(ultimate.reduction.numberOfCharacters),
-		extra: `mean: ${ultimate.reduction.numberOfCharacters.mean}, std: ${ultimate.reduction.numberOfCharacters.std}`
+		extra: `mean: ${ultimate.reduction.numberOfCharacters.mean.toFixed(4)}, std: ${ultimate.reduction.numberOfCharacters.std.toFixed(4)}`
 	});
 	data.push({
 		name:  'reduction (normalized tokens)',
 		unit:  '#',
 		value: plotValue(ultimate.reduction.numberOfNormalizedTokens),
-		extra: `mean: ${ultimate.reduction.numberOfNormalizedTokens.mean}, std: ${ultimate.reduction.numberOfNormalizedTokens.std}`
+		extra: `mean: ${ultimate.reduction.numberOfNormalizedTokens.mean.toFixed(4)}, std: ${ultimate.reduction.numberOfNormalizedTokens.std.toFixed(4)}`
 	});
 	if(ultimate.controlFlow) {
 		data.push({

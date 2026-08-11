@@ -275,7 +275,8 @@
 		{ id: 'builtins', title: 'Built-in definitions', about: 'how the built-ins are handled', perVersion: true },
 		{ id: 'calibration', title: 'Machine calibration', about: 'runtime of the fixed synthetic workload' },
 		{ id: 'other', title: 'Other', about: '' },
-		{ id: 'sigdb', title: 'Signature database', about: 'the package signatures this version ships', perVersion: true, facts: true }
+		{ id: 'sigdb', title: 'Signature database', about: 'the package signatures this version ships', perVersion: true, facts: true },
+		{ id: 'tests', title: 'Test suite', about: 'the labeled tests and what they cover', perVersion: true, facts: true }
 	];
 
 	const PER_SLICE = ['static slicing', 'reconstruct code'];
@@ -288,6 +289,9 @@
 		// the database counters are sizes and counts alike, so they have to be claimed before either
 		if(n.startsWith('signature database')) {
 			return 'sigdb';
+		}
+		if(n === 'tests' || n.startsWith('tests ')) {
+			return 'tests';
 		}
 		// the totals dwarf the single phases and add nothing the phases do not show
 		if(n.startsWith('total ')) {

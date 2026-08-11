@@ -86,6 +86,17 @@ jobs:
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
 
+      - name: "⬆️ Upload Test Label Details"
+        # the test job is a matrix, so only one leg may claim the artifact name
+        if: matrix.os == 'ubuntu-latest' && matrix.r-version == '4.5.0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-label-details
+          path: |
+            coverage/flowr-test-details.json
+            coverage/flowr-test-results.json
+          if-no-files-found: warn
+
       - name: "⬆️ Upload Coverage Reports to Codecov"
         uses: codecov/codecov-action@v4
         with:
@@ -348,6 +359,24 @@ jobs:
           name: benchmark-results-artificial-r-shell
           path: benchmark-ai-r-shell/
 
+      - name: "🧪 Add the Test Counters (artificial-r-shell)"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-ai-r-shell/artificial/artificial-summarized-graph.json"
+
+      - name: "🌍 Load Versions to Use"
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+
+      - name: "⬇️ Get the Test Label Details"
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: test-label-details
+          path: test-labels/
+
       # currently we have a duplication, add your benchmark names here and in `performance-test` and check the qa.yaml
       # Furthermore, you have to update the git reset command when pushing!
       - name: "🥄 Merge and Produce Performance Results (artificial, r-shell)"
@@ -373,6 +402,9 @@ jobs:
           name: benchmark-results-real-world-r-shell
           path: benchmark-rw-r-shell/
 
+      - name: "🧪 Add the Test Counters (real-world-r-shell)"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-rw-r-shell/real-world/real-world-summarized-graph.json"
+
       - name: "🥄 Merge and Produce Performance Results (real-world, r-shell)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
@@ -395,6 +427,9 @@ jobs:
         with:
           name: benchmark-results-artificial-tree-sitter
           path: benchmark-ai-tree-sitter/
+
+      - name: "🧪 Add the Test Counters (artificial-tree-sitter)"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-ai-tree-sitter/artificial/artificial-summarized-graph.json"
 
       # currently we have a duplication, add your benchmark names here and in `performance-test` and check the qa.yaml
       # Furthermore, you have to update the git reset command when pushing!
@@ -421,6 +456,9 @@ jobs:
           name: benchmark-results-real-world-tree-sitter
           path: benchmark-rw-tree-sitter/
 
+      - name: "🧪 Add the Test Counters (real-world-tree-sitter)"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-rw-tree-sitter/real-world/real-world-summarized-graph.json"
+
       - name: "🥄 Merge and Produce Performance Results (real-world, tree-sitter)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
@@ -443,7 +481,7 @@ jobs:
 
       - name: "🗜️ Compact the benchmark data"
         # the action pretty prints the history, one line per run keeps the file and its diffs small
-        run: npx ts-node --transpile-only scripts/compact-benchmark-data.ts
+        run: bash .github/workflows/scripts/run-flowr-command.sh benchmark:compact
 
       - name: "⬆️ Push benchmark results"
         # we manipulate the name of the last commit message

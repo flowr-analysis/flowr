@@ -18,7 +18,7 @@ interface BenchStats {
 	betterOf(name: string, unit: string): string;
 	shortName(name: string): string;
 	tagLabel(tag: string): string;
-	GROUPS: readonly { id: string, perVersion?: boolean }[];
+	GROUPS: readonly { id: string, perVersion?: boolean, facts?: boolean }[];
 }
 
 /* the page is not part of the TypeScript project, so it is loaded by path rather than imported */
@@ -79,7 +79,7 @@ describe('Benchmark page helpers', () => {
 		assert.strictEqual(S.groupOf('memory (df-shapes)', 'KiB'), 'memory');
 		assert.strictEqual(S.groupOf('something new', 'weird'), 'other', 'unknown metrics still get a home');
 		assert.ok(!S.GROUPS.some(g => g.id === 'totals'), 'the totals get no chart of their own');
-		assert.deepStrictEqual(S.GROUPS.filter(g => g.perVersion).map(g => g.id), ['features', 'builtins', 'sigdb'],
+		assert.deepStrictEqual(S.GROUPS.filter(g => g.perVersion).map(g => g.id), ['features', 'builtins', 'sigdb', 'tests'],
 			'only what the flowR version itself carries is independent of the suite');
 		assert.strictEqual(S.betterOf('data frame shapes (exact)', '#'), 'up');
 		assert.strictEqual(S.betterOf('data frame shapes (top)', '#'), 'down');
@@ -102,7 +102,12 @@ describe('Benchmark page helpers', () => {
 		assert.strictEqual(S.betterOf('signature database size (full history)', 'KiB'), 'flat',
 			'a larger database is not a regression');
 		assert.strictEqual(S.groupOf('memory (df-graph)', 'KiB'), 'memory', 'the other sizes stay where they were');
-		assert.strictEqual(S.GROUPS[S.GROUPS.length - 1].id, 'sigdb', 'the database is the final chart');
+		assert.strictEqual(S.GROUPS[S.GROUPS.length - 1].id, 'tests', 'the test suite is the final tile');
+		assert.strictEqual(S.groupOf('tests', '#'), 'tests');
+		assert.strictEqual(S.groupOf('tests (dataflow)', '#'), 'tests');
+		assert.strictEqual(S.groupOf('tests overall', '#'), 'tests', 'the total of a run belongs to its tile');
+		assert.deepStrictEqual(S.GROUPS.filter(g => g.facts).map(g => g.id), ['sigdb', 'tests'],
+			'only what never moves between runs is stated instead of plotted');
 		assert.strictEqual(S.shortName('signature database functions (older only)'), 'functions (older only)',
 			'the chart is already titled for the database');
 	});

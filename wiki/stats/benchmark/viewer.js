@@ -11,7 +11,7 @@
 	const ui = {};
 	for(const id of ['theme', 'suite', 'engine', 'range', 'mode', 'baseline', 'baselineOut', 'smooth', 'smoothOut',
 		'band', 'calibrate', 'charts', 'status', 'tooltip', 'rangeNote', 'calibrationNote', 'sourceNote',
-		'baselineField', 'calibrateField', 'dlSuite', 'dlCsv', 'dlAll']) {
+		'baselineField', 'calibrateField', 'dlSuite', 'dlCsv', 'dlAll', 'lock', 'resetLayout']) {
 		ui[id] = el(id.replace(/[A-Z]/g, c => '-' + c.toLowerCase()));
 	}
 
@@ -103,7 +103,8 @@
 
 	function extraOf(run, name) {
 		const b = run.benches.find(x => x.name === name);
-		return b && b.extra ? String(b.extra) : '';
+		/* older runs stated a full double, which is unreadable next to a rounded value */
+		return b && b.extra ? String(b.extra).replace(/\d+\.\d{4,}/g, m => Number(m).toFixed(3)) : '';
 	}
 
 	/**
@@ -137,6 +138,133 @@
 			}
 		}
 		return out;
+	}
+
+	/** how the reader arranged the tiles, kept across visits but never required to be there */
+	const collapsed = new Set();
+	let order = [];
+	let locked = false;
+
+	function readStore(key, fallback) {
+		try {
+			return JSON.parse(localStorage.getItem(key)) ?? fallback;
+		} catch{
+			return fallback;
+		}
+	}
+
+	function writeStore(key, value) {
+		try {
+			localStorage.setItem(key, JSON.stringify(value));
+		} catch{ /* private mode, the choice just does not outlive the visit */ }
+	}
+
+	function loadLayout() {
+		for(const id of readStore('flowr-bench-collapsed', [])) {
+			collapsed.add(String(id));
+		}
+		order = readStore('flowr-bench-order', []).map(String);
+		locked = readStore('flowr-bench-locked', true) !== false;
+	}
+
+	function setCollapsed(id, on) {
+		if(on) {
+			collapsed.add(id);
+		} else {
+			collapsed.delete(id);
+		}
+		writeStore('flowr-bench-collapsed', [...collapsed]);
+		render();
+	}
+
+	/** the groups in the reader's order, with anything they never moved left where it was */
+	function orderedGroups() {
+		const byId = new Map(S.GROUPS.map(g => [g.id, g]));
+		const out = [];
+		for(const id of order) {
+			if(byId.has(id)) {
+				out.push(byId.get(id));
+				byId.delete(id);
+			}
+		}
+		for(const group of S.GROUPS) {
+			if(byId.has(group.id)) {
+				out.push(group);
+			}
+		}
+		return out;
+	}
+
+	function moveTile(from, to) {
+		const ids = orderedGroups().map(g => g.id);
+		const at = ids.indexOf(from);
+		const before = ids.indexOf(to);
+		if(at < 0 || before < 0 || at === before) {
+			return;
+		}
+		ids.splice(before, 0, ids.splice(at, 1)[0]);
+		order = ids;
+		writeStore('flowr-bench-order', order);
+		render();
+	}
+
+	function makeDraggable(fig, group) {
+		if(locked) {
+			return;
+		}
+		fig.setAttribute('draggable', 'true');
+		fig.addEventListener('dragstart', ev => {
+			fig.classList.add('dragging');
+			if(ev.dataTransfer) {
+				ev.dataTransfer.effectAllowed = 'move';
+				ev.dataTransfer.setData('text/plain', group.id);
+			}
+		});
+		fig.addEventListener('dragend', () => fig.classList.remove('dragging'));
+		fig.addEventListener('dragover', ev => {
+			ev.preventDefault();
+			fig.classList.add('drop-target');
+		});
+		fig.addEventListener('dragleave', () => fig.classList.remove('drop-target'));
+		fig.addEventListener('drop', ev => {
+			ev.preventDefault();
+			fig.classList.remove('drop-target');
+			const from = ev.dataTransfer ? ev.dataTransfer.getData('text/plain') : '';
+			if(from && from !== group.id) {
+				moveTile(from, group.id);
+			}
+		});
+	}
+
+	function foldButton(group, on) {
+		const b = document.createElement('button');
+		b.type = 'button';
+		b.className = 'fold' + (on ? ' open' : '');
+		b.title = on ? 'show this again' : 'fold this away';
+		b.setAttribute('aria-label', b.title);
+		b.setAttribute('aria-expanded', String(!on));
+		const chevron = tag('svg', { class: 'chevron', viewBox: '0 0 12 12', 'aria-hidden': 'true' });
+		chevron.appendChild(tag('path', { d: 'M3 4.5 L6 8 L9 4.5' }));
+		b.appendChild(chevron);
+		b.addEventListener('click', () => setCollapsed(group.id, !on));
+		return b;
+	}
+
+	/** the caption head: the title, its chip, and the controls of the tile */
+	function captionHead(group, folded) {
+		const cap = document.createElement('figcaption');
+		const head = document.createElement('span');
+		head.className = 'head';
+		head.appendChild(Object.assign(document.createElement('span'), { className: 'title', textContent: group.title }));
+		if(group.perVersion) {
+			head.appendChild(Object.assign(document.createElement('span'), {
+				className: 'chip', title: 'a property of the flowR version, identical for every suite and engine',
+				textContent: 'independent of data suite'
+			}));
+		}
+		head.appendChild(foldButton(group, folded));
+		cap.appendChild(head);
+		return cap;
 	}
 
 	const colors = new Map();
@@ -330,7 +458,7 @@
 	}
 
 	/** the breakdowns that are drawn as bars below the chart rather than as lines in it */
-	const isBar = name => /^linting rules \(|^signature database base functions \(/.test(String(name));
+	const isBar = name => /^linting rules \(|^signature database base functions \(|^tests \(/.test(String(name));
 
 	function drawGroup(group, series, runs, bumps, all) {
 		all = all || series;
@@ -357,15 +485,7 @@
 		}
 
 		const fig = document.createElement('figure');
-		const cap = document.createElement('figcaption');
-		cap.textContent = group.title;
-		// these count what the analyzed version of flowR carries, the suite and the engine do not change them
-		if(group.perVersion) {
-			cap.appendChild(Object.assign(document.createElement('span'), {
-				className: 'chip', title: 'a property of the flowR version, identical for every suite and engine',
-				textContent: 'independent of data suite'
-			}));
-		}
+		const cap = captionHead(group, false);
 		const dirs = new Set(series.map(s => s.better));
 		const dir = dirs.size === 1 ? betterText(series[0].better) : '';
 		const units = [...new Set(series.map(s => s.unit).filter(Boolean))].join(', ');
@@ -388,7 +508,7 @@
 				className: 'empty', textContent: 'no data in this range'
 			}));
 			ui.charts.appendChild(fig);
-			return;
+			return fig;
 		}
 
 		// the axis follows the lines, the error band is clipped to it. A standard deviation
@@ -411,7 +531,7 @@
 			}));
 			fig.appendChild(legendOf(group, series, off));
 			ui.charts.appendChild(fig);
-			return;
+			return fig;
 		}
 
 		const t = S.ticks(lo, hi, 5);
@@ -532,6 +652,7 @@
 			});
 		}
 		ui.charts.appendChild(fig);
+		return fig;
 	}
 
 	/** the breakdowns drawn as bars: parts of a whole that overlap, so a pie would lie about them */
@@ -545,6 +666,12 @@
 		sigdb: {
 			parent: 'signature database base functions', part: /^signature database base functions \((.*)\)$/, label: t => t,
 			more:   'kinds of information', note: 'what a base-R entry carries as of '
+		},
+		/* a test may cover several parts of the analysis */
+		tests: {
+			parent: 'tests overall', part: /^tests \((.*)\)$/, label: t => t,
+			more:   'parts', note: 'labeled tests per part as of ', top: 7,
+			link:   { href: 'https://github.com/flowr-analysis/flowr/wiki/Capabilities', text: 'capabilities' }
 		}
 	};
 
@@ -558,7 +685,7 @@
 		const parent = series.find(s => s.name === spec.parent);
 		const tags = series
 			.map(s => ({ part: spec.part.exec(s.name), value: s.values[i] }))
-			.filter(t => t.part && typeof t.value === 'number')
+			.filter(t => t.part && typeof t.value === 'number' && t.value > 0)
 			.map(t => ({ label: spec.label(t.part[1]), value: t.value }))
 			.sort((a, b) => b.value - a.value);
 		if(!tags.length) {
@@ -567,11 +694,15 @@
 		const max = tags[0].value || 1;
 		const box = document.createElement('div');
 		box.className = 'composition tags';
-		const shownTags = barsExpanded.has(group.id) ? tags : tags.slice(0, 3);
+		const top = spec.top || 3;
+		const shownTags = barsExpanded.has(group.id) ? tags : tags.slice(0, top);
 		const list = document.createElement('ul');
+		const whole = parent && typeof parent.values[i] === 'number' ? parent.values[i] : 0;
 		shownTags.forEach((tag, rank) => {
 			const li = document.createElement('li');
-			li.appendChild(Object.assign(document.createElement('span'), { className: 'tag-name', textContent: tag.label }));
+			const share = whole > 0 ? (tag.value / whole * 100).toFixed(1) + '% of ' + fmtFact(whole, '#') : '';
+			const name = Object.assign(document.createElement('span'), { className: 'tag-name', textContent: tag.label });
+			li.appendChild(name);
 			const bar = document.createElement('span');
 			bar.className = 'tag-bar s' + (parent ? parent.color : 0);
 			bar.style.width = (tag.value / max * 100) + '%';
@@ -581,13 +712,22 @@
 			track.className = 'tag-track';
 			track.appendChild(bar);
 			li.appendChild(track);
-			li.appendChild(Object.assign(document.createElement('span'), { className: 'tag-value', textContent: String(tag.value) }));
+			const value = Object.assign(document.createElement('span'), { className: 'tag-value', textContent: String(tag.value) });
+			li.appendChild(value);
+			if(share) {
+				for(const cell of [name, track, value]) {
+					noteTooltip(cell, {
+						run: runs[i], color: parent ? parent.color : 0, label: tag.label,
+						value: fmtFact(tag.value, '#'), notes: [share, spec.note.replace(/ as of $/, '')]
+					});
+				}
+			}
 			list.appendChild(li);
 		});
 		box.appendChild(list);
 		const foot = document.createElement('div');
 		foot.className = 'tags-foot';
-		if(tags.length > 3) {
+		if(tags.length > top) {
 			const open = barsExpanded.has(group.id);
 			const more = document.createElement('button');
 			more.type = 'button';
@@ -596,7 +736,7 @@
 			const chevron = tag('svg', { class: 'chevron', viewBox: '0 0 12 12', 'aria-hidden': 'true' });
 			chevron.appendChild(tag('path', { d: 'M3 4.5 L6 8 L9 4.5' }));
 			more.appendChild(chevron);
-			more.appendChild(document.createTextNode(open ? 'show the top 3' : 'all ' + tags.length + ' ' + spec.more));
+			more.appendChild(document.createTextNode(open ? 'show the top ' + top : 'all ' + tags.length + ' ' + spec.more));
 			more.addEventListener('click', () => {
 				if(open) {
 					barsExpanded.delete(group.id);
@@ -610,9 +750,16 @@
 			});
 			foot.appendChild(more);
 		}
-		foot.appendChild(Object.assign(document.createElement('p'), {
+		const note = Object.assign(document.createElement('p'), {
 			className: 'note', textContent: spec.note + S.runLabel(runs[i])
-		}));
+		});
+		if(spec.link) {
+			note.appendChild(document.createTextNode(', see the '));
+			note.appendChild(Object.assign(document.createElement('a'), {
+				href: spec.link.href, textContent: spec.link.text, target: '_blank', rel: 'noopener'
+			}));
+		}
+		foot.appendChild(note);
 		box.appendChild(foot);
 		return box;
 	}
@@ -720,8 +867,62 @@
 				[/^signature database functions \((.*)\)$/, 'function records per kind of bundle']
 			],
 			track: 'signature database size'
+		},
+		tests: {
+			lead: [['tests overall', 'tests in total'], ['tests', 'of them labeled']],
+			rest: [],
+			splits: [],
+			trend: 'tests overall',
+			track: null
 		}
 	};
+
+	/** the history of one stated number, zero based, so the tile also shows how it got there */
+	function timelineOf(s, runs, color, onPick, mark) {
+		const w = 300, h = 40, padX = 4, padT = 5, padB = 11;
+		const points = s.values.map((v, i) => [i, v]).filter(p => typeof p[1] === 'number');
+		if(points.length < 1) {
+			return null;
+		}
+		const hi = Math.max(...points.map(p => p[1]), 0) || 1;
+		const last = s.values.length - 1;
+		const x = i => padX + (last < 1 ? (w - 2 * padX) / 2 : i / last * (w - 2 * padX));
+		const y = v => h - padB - v / hi * (h - padT - padB);
+		const box = document.createElement('div');
+		box.className = 'timeline';
+		const svg = tag('svg', { class: 's' + (color === undefined ? s.color : color), viewBox: '0 0 ' + w + ' ' + h, role: 'img',
+			'aria-label': 'how ' + s.name + ' developed over the releases' });
+		svg.appendChild(tag('line', { class: 'timeline-base', x1: padX, y1: h - padB, x2: w - padX, y2: h - padB }));
+		for(const seg of S.segments(s.values)) {
+			const pts = seg.map(i => [x(i), y(s.values[i])]);
+			if(pts.length > 1) {
+				svg.appendChild(tag('path', { class: 'timeline-area',
+					d: S.smoothPath(pts) + 'L' + pts[pts.length - 1][0] + ' ' + (h - padB) + 'L' + pts[0][0] + ' ' + (h - padB) + 'Z' }));
+			}
+			svg.appendChild(tag('path', { class: 'timeline-line', d: S.smoothPath(pts) }));
+		}
+		const at = points.find(p => p[0] === mark) || points[points.length - 1];
+		svg.appendChild(tag('circle', { class: 'timeline-dot', cx: x(at[0]), cy: y(at[1]), r: 2.2 }));
+		const first = points[0], final = points[points.length - 1];
+		svg.appendChild(tag('text', { class: 'timeline-tick', x: x(first[0]), y: h - 3 }, S.runLabel(runs[first[0]])));
+		if(final[0] !== first[0]) {
+			svg.appendChild(tag('text', { class: 'timeline-tick', x: x(final[0]), y: h - 3, 'text-anchor': 'end' },
+				S.runLabel(runs[final[0]])));
+		}
+		if(onPick) {
+			const nearest = ev => {
+				const rect = svg.getBoundingClientRect();
+				const px = (ev.clientX - rect.left) / (rect.width || 1) * w;
+				const i = Math.round((px - padX) / (w - 2 * padX) * Math.max(1, last));
+				return points.reduce((best, p) => Math.abs(p[0] - i) < Math.abs(best[0] - i) ? p : best, points[0])[0];
+			};
+			svg.addEventListener('pointermove', ev => onPick(nearest(ev)));
+			svg.addEventListener('pointerleave', () => onPick(undefined));
+			svg.classList.add('pickable');
+		}
+		box.appendChild(svg);
+		return box;
+	}
 
 	function fmtFact(v, unit) {
 		if(unit === 'KiB') {
@@ -750,7 +951,7 @@
 
 	/** the rebuild points as buttons, so one can step through what every database version held */
 	function historyOf(group, series, runs, at, spec, box) {
-		const points = rebuilds(series, spec.track);
+		const points = spec.track ? rebuilds(series, spec.track) : [];
 		if(points.length === 0) {
 			return null;
 		}
@@ -778,6 +979,22 @@
 		return row;
 	}
 
+	/** stated numbers of one run, as `[series name, label]` pairs, skipping whatever the run does not carry */
+	function factGrid(series, rows, at, cls) {
+		const dl = document.createElement('dl');
+		dl.className = cls;
+		for(const [name, label] of rows || []) {
+			const s = series.find(x => x.name === name);
+			const v = s ? s.values[at] : null;
+			if(typeof v !== 'number') {
+				continue;
+			}
+			dl.appendChild(Object.assign(document.createElement('dt'), { textContent: fmtFact(v, s.unit) }));
+			dl.appendChild(Object.assign(document.createElement('dd'), { textContent: label }));
+		}
+		return dl.children.length ? dl : null;
+	}
+
 	/**
 	 * A quantity that only moves when it is rebuilt says nothing as a curve. This states the numbers of the
 	 * newest run instead, with a donut per split and the releases that changed them.
@@ -790,28 +1007,25 @@
 		at = at === undefined || at < 0 || at >= runs.length ? runs.length - 1 : at;
 		const box = document.createElement('div');
 		box.className = 'facts';
-		const grid = (rows, cls) => {
-			const dl = document.createElement('dl');
-			dl.className = cls;
-			for(const [name, label] of rows) {
-				const s = series.find(x => x.name === name);
-				const v = s ? s.values[at] : null;
-				if(typeof v !== 'number') {
-					continue;
-				}
-				dl.appendChild(Object.assign(document.createElement('dt'), { textContent: fmtFact(v, s.unit) }));
-				dl.appendChild(Object.assign(document.createElement('dd'), { textContent: label }));
-			}
-			return dl.children.length ? dl : null;
-		};
-		const lead = grid(spec.lead, 'lead');
+		const lead = factGrid(series, spec.lead, at, 'lead');
 		if(!lead) {
 			return null;
 		}
 		box.appendChild(lead);
-		const rest = grid(spec.rest, 'rest');
+		const rest = factGrid(series, spec.rest, at, 'rest');
 		if(rest) {
 			box.appendChild(rest);
+		}
+		const trend = spec.trend ? series.find(x => x.name === spec.trend) : null;
+		const barParent = BARS[group.id] ? series.find(x => x.name === BARS[group.id].parent) : undefined;
+		const timeline = trend ? timelineOf(trend, runs, barParent ? barParent.color : undefined, i => {
+			const next = factsOf(group, series, runs, i);
+			if(next && box.parentNode) {
+				box.parentNode.replaceChild(next, box);
+			}
+		}, at) : null;
+		if(timeline) {
+			box.appendChild(timeline);
 		}
 		const splits = document.createElement('div');
 		splits.className = 'splits';
@@ -883,6 +1097,48 @@
 			box.appendChild(b);
 		});
 		return box;
+	}
+
+	function placeTooltip(ev) {
+		const t = ui.tooltip;
+		t.hidden = false;
+		const box = t.getBoundingClientRect();
+		t.style.left = Math.min(window.innerWidth - box.width - 8, Math.max(8, ev.clientX + 16)) + 'px';
+		t.style.top = Math.min(window.innerHeight - box.height - 8, Math.max(8, ev.clientY + 16)) + 'px';
+	}
+
+	/** the same panel and the same layout the charts use, so a breakdown answers as fast and reads the same */
+	function noteTooltip(node, spec) {
+		node.addEventListener('pointerenter', ev => {
+			const t = ui.tooltip;
+			t.textContent = '';
+			t.appendChild(Object.assign(document.createElement('div'), {
+				className: 'head', textContent: S.runLabel(spec.run) + ' | ' + fmtDate(spec.run.date)
+			}));
+			const table = document.createElement('table');
+			const tr = document.createElement('tr');
+			const sw = document.createElement('td');
+			const dot = document.createElement('span');
+			dot.className = 'swatch s' + spec.color;
+			sw.appendChild(dot);
+			tr.appendChild(sw);
+			tr.appendChild(Object.assign(document.createElement('td'), { className: 'name', textContent: spec.label }));
+			tr.appendChild(Object.assign(document.createElement('td'), { textContent: spec.value }));
+			table.appendChild(tr);
+			t.appendChild(table);
+			for(const line of spec.notes) {
+				t.appendChild(Object.assign(document.createElement('div'), { className: 'msg', textContent: line }));
+			}
+			placeTooltip(ev);
+		});
+		node.addEventListener('pointermove', ev => {
+			if(!ui.tooltip.hidden) {
+				placeTooltip(ev);
+			}
+		});
+		node.addEventListener('pointerleave', () => {
+			ui.tooltip.hidden = true;
+		});
 	}
 
 	function tooltip(ev, group, series, run, i) {
@@ -957,10 +1213,7 @@
 		}));
 		t.appendChild(Object.assign(document.createElement('div'), { className: 'msg', textContent: group.title + ', click to open the commit' }));
 
-		t.hidden = false;
-		const box = t.getBoundingClientRect();
-		t.style.left = Math.min(window.innerWidth - box.width - 8, Math.max(8, ev.clientX + 16)) + 'px';
-		t.style.top = Math.min(window.innerHeight - box.height - 8, Math.max(8, ev.clientY + 16)) + 'px';
+		placeTooltip(ev);
 	}
 
 	/* ---------- downloads ---------- */
@@ -1037,7 +1290,8 @@
 			}));
 			return;
 		}
-		for(const group of S.GROUPS) {
+		const folded = [];
+		for(const group of orderedGroups()) {
 			const series = [];
 			for(const [name, unit] of metrics) {
 				if(S.groupOf(name, unit) === group.id) {
@@ -1046,9 +1300,21 @@
 			}
 			assignColors(series);
 			const lines = series.filter(s => !isBar(s.name));
-			if(lines.length) {
-				drawGroup(group, lines, runs, bumps, series);
+			if(!lines.length) {
+				continue;
 			}
+			if(collapsed.has(group.id)) {
+				folded.push(group);
+			} else {
+				makeDraggable(drawGroup(group, lines, runs, bumps, series), group);
+			}
+		}
+		for(const group of folded) {
+			const fig = document.createElement('figure');
+			fig.className = 'folded';
+			fig.appendChild(captionHead(group, true));
+			ui.charts.appendChild(fig);
+			makeDraggable(fig, group);
 		}
 	}
 
@@ -1107,6 +1373,20 @@
 	ui.dlCsv.addEventListener('click', downloadCsv);
 
 	initTheme();
+	loadLayout();
+	ui.lock.checked = locked;
+	ui.lock.addEventListener('change', () => {
+		locked = ui.lock.checked;
+		writeStore('flowr-bench-locked', locked);
+		render();
+	});
+	ui.resetLayout.addEventListener('click', () => {
+		collapsed.clear();
+		order = [];
+		writeStore('flowr-bench-collapsed', []);
+		writeStore('flowr-bench-order', []);
+		render();
+	});
 
 	if(!S) {
 		say('stats.js did not load, so the charts cannot be drawn.', true);

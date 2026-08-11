@@ -162,6 +162,15 @@ jobs:
       - name: "⚙️ Run System Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:system -- --no-watch"
 
+      - name: "⬆️ Upload Test Label Details"
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-label-details
+          path: |
+            coverage/flowr-test-details.json
+            coverage/flowr-test-results.json
+          if-no-files-found: warn
+
       - name: "⬆️ Upload Coverage Reports to Codecov"
         if: github.ref == 'refs/heads/main'
         uses: codecov/codecov-action@v4
@@ -315,12 +324,30 @@ jobs:
           git config --local user.name "GitHub Action"
           git pull
 
+      - name: "🌍 Load Versions to Use"
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+
+      - name: "⬇️ Get the Test Label Details"
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: test-label-details
+          path: test-labels/
+
       # currently we have a duplication, add your benchmark names here and in `performance-test` and check the release.yaml
       - name: "⬇️ Get benchmark Artifacts (artificial, r-shell)"
         uses: actions/download-artifact@v4
         with:
           name: benchmark-results-artificial-r-shell
           path: benchmark-ai-r-shell/
+
+      - name: "🧪 Add the Test Counters (artificial-r-shell)"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-ai-r-shell/artificial/artificial-summarized-graph.json"
 
       - name: "🥄 Merge and Produce Performance Results (artificial, r-shell)"
         uses: benchmark-action/github-action-benchmark@v1
@@ -346,6 +373,9 @@ jobs:
           name: benchmark-results-real-world-r-shell
           path: benchmark-rw-r-shell
 
+      - name: "🧪 Add the Test Counters (real-world-r-shell)"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-rw-r-shell/real-world/real-world-summarized-graph.json"
+
       - name: "🥄 Merge and Produce Performance Results (real-world, r-shell)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
@@ -370,6 +400,9 @@ jobs:
           name: benchmark-results-artificial-tree-sitter
           path: benchmark-ai-tree-sitter/
 
+      - name: "🧪 Add the Test Counters (artificial-tree-sitter)"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-ai-tree-sitter/artificial/artificial-summarized-graph.json"
+
       - name: "🥄 Merge and Produce Performance Results (artificial, tree-sitter)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
@@ -393,6 +426,9 @@ jobs:
         with:
           name: benchmark-results-real-world-tree-sitter
           path: benchmark-rw-tree-sitter
+
+      - name: "🧪 Add the Test Counters (real-world-tree-sitter)"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-rw-tree-sitter/real-world/real-world-summarized-graph.json"
 
       - name: "🥄 Merge and Produce Performance Results (real-world, tree-sitter)"
         uses: benchmark-action/github-action-benchmark@v1

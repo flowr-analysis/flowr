@@ -1,6 +1,6 @@
 import type { DataflowProcessorInformation } from './processor';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { IdentifierReference } from './environments/identifier';
+import type { BrandedIdentifier, IdentifierReference } from './environments/identifier';
 import type { REnvironmentInformation } from './environments/environment';
 import { DataflowGraph } from './graph/graph';
 import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../util/diff';
@@ -126,9 +126,9 @@ export type KillReference =
 	/** a statically known name (carries {@link IdentifierReference#cds|cds} for conditional removals) */
 	| { readonly kind: 'named', readonly reference: IdentifierReference }
 	/** the whole current scope is cleared, e.g., `rm(list = ls())` */
-	| { readonly kind: 'all', readonly cds?: readonly ControlDependency[] }
+	| { readonly kind: 'all', readonly cds?: readonly ControlDependency[], readonly except?: ReadonlySet<BrandedIdentifier> }
 	/** a not statically resolvable set of names, e.g., `rm(list = someVector)` */
-	| { readonly kind: 'unknown', readonly cds?: readonly ControlDependency[] };
+	| { readonly kind: 'unknown', readonly cds?: readonly ControlDependency[], readonly except?: ReadonlySet<BrandedIdentifier> };
 
 /** The control flow information for the current DataflowInformation. */
 export interface DataflowCfgInformation {
@@ -225,18 +225,23 @@ export function happensInEveryBranch(cds: readonly ControlDependency[] | undefin
 }
 
 function coversSet(cds: ReadonlySet<ControlDependency> | readonly ControlDependency[]) {
-	const trues = new Set();
-	const falses = new Set();
-
+	/* as deep as the surrounding branches, so the pairwise scan beats any set */
 	for(const { id, when } of cds) {
-		if(when) {
-			trues.add(id);
-		} else if(when === false){
-			falses.add(id);
+		if(when !== true && when !== false) {
+			continue;
+		}
+		let counterpart = false;
+		for(const other of cds) {
+			if(other.id === id && other.when === !when) {
+				counterpart = true;
+				break;
+			}
+		}
+		if(!counterpart) {
+			return false;
 		}
 	}
-
-	return trues.symmetricDifference(falses).size === 0;
+	return true;
 }
 
 /**

@@ -36,8 +36,9 @@ export const Resolve = {
 	toSingleString: resolveIdToSingleString,
 	/** The same, for the arguments of a call. */
 	argument:       {
+		name:         'argument',
 		/** The argument's name. */
-		name:         resolveIdToArgName,
+		toName:       resolveIdToArgName,
 		/** The argument's value. */
 		value:        resolveIdToArgValue,
 		/** The argument's value as a vector of strings. */

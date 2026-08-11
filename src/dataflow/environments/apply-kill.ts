@@ -5,25 +5,59 @@
 import type { ControlDependency, KillReference } from '../info';
 import { happensInEveryBranch, negateControlDependency } from '../info';
 import type { Environment, REnvironmentInformation } from './environment';
-import type { IdentifierDefinition, IdentifierReference } from './identifier';
+import type { BrandedIdentifier, IdentifierDefinition, IdentifierReference } from './identifier';
 import { Identifier, ReferenceType } from './identifier';
 
 /**
- * Drops the kills that a later write revives: a re-definition cancels a pending `named` removal of that name,
- * and any write cancels a wholesale (`all`/`unknown`) removal. Used when bubbling kills out of an expression
- * list so a merging parent only sees the removals still in effect at the list's exit.
+ * Accounts for the writes after a kill: a re-definition revives a `named` removal (dropping it), a conditional
+ * one only revives it in its branch, and a wholesale (`all`/`unknown`) removal stays but spares the names written
+ * after it.
  */
 export function cancelRevivedKills(kills: readonly KillReference[], writes: readonly IdentifierReference[]): KillReference[] {
-	const written = new Set<Identifier>();
+	const written = new Set<BrandedIdentifier>();
+	const writtenMaybe = new Map<BrandedIdentifier, ControlDependency[]>();
 	for(const w of writes) {
-		if(w.name !== undefined) {
-			written.add(w.name);
+		if(w.name === undefined) {
+			continue;
+		}
+		const name = Identifier.getName(w.name);
+		written.add(name);
+		if(!happensInEveryBranch(w.cds)) {
+			const cds = writtenMaybe.get(name);
+			if(cds) {
+				cds.push(...w.cds as ControlDependency[]);
+			} else {
+				writtenMaybe.set(name, [...w.cds as ControlDependency[]]);
+			}
+		} else {
+			writtenMaybe.delete(name);
 		}
 	}
 	if(written.size === 0) {
 		return kills as KillReference[];
 	}
-	return kills.filter(k => k.kind === 'named' && k.reference.name !== undefined && !written.has(k.reference.name));
+	/* conditional writes that cover every branch together revive the name just as an unconditional one does */
+	for(const [name, cds] of writtenMaybe) {
+		if(happensInEveryBranch(cds)) {
+			writtenMaybe.delete(name);
+		}
+	}
+	const remaining: KillReference[] = [];
+	for(const kill of kills) {
+		if(kill.kind === 'named') {
+			const name = kill.reference.name === undefined ? undefined : Identifier.getName(kill.reference.name);
+			const maybeCds = name === undefined ? undefined : writtenMaybe.get(name);
+			if(maybeCds !== undefined) {
+				/* the removal still stands wherever the conditional re-definition did not happen */
+				remaining.push({ kind: 'named', reference: { ...kill.reference, cds: mergeCds(kill.reference.cds, maybeCds.map(negateControlDependency)) } });
+			} else if(name === undefined || !written.has(name)) {
+				remaining.push(kill);
+			}
+		} else {
+			remaining.push({ ...kill, except: kill.except ? written.union(kill.except) : written });
+		}
+	}
+	return remaining;
 }
 
 function isBuiltInDef(d: IdentifierDefinition): boolean {
@@ -61,12 +95,15 @@ function weakenName(env: Environment, name: Identifier, cds: readonly ControlDep
 	}
 }
 
-/** attaches `cds` to every user definition in the current frame */
-function weakenAll(env: Environment, cds: readonly ControlDependency[]): void {
+/** attaches `cds` to every user definition in the current frame, except the re-defined names */
+function weakenAll(env: Environment, cds: readonly ControlDependency[], except?: ReadonlySet<BrandedIdentifier>): void {
 	if(env.builtInEnv) {
 		return;
 	}
 	for(const [key, defs] of env.memory) {
+		if(except?.has(key)) {
+			continue;
+		}
 		if(defs.some(d => !isBuiltInDef(d))) {
 			env.writableMemory.set(key, defs.map(d => isBuiltInDef(d) ? d : weakenDefinition(d, cds)));
 		}
@@ -74,13 +111,13 @@ function weakenAll(env: Environment, cds: readonly ControlDependency[]): void {
 	env.cache?.clear();
 }
 
-/** removes every user definition from the current frame (e.g., `rm(list = ls())`) */
-function removeAllInFrame(env: Environment): void {
+/** removes every user definition from the current frame (e.g., `rm(list = ls())`), except the re-defined names */
+function removeAllInFrame(env: Environment, except?: ReadonlySet<BrandedIdentifier>): void {
 	if(env.builtInEnv) {
 		return;
 	}
 	for(const [key, defs] of env.memory) {
-		if(defs.every(isBuiltInDef)) {
+		if(except?.has(key) || defs.every(isBuiltInDef)) {
 			continue;
 		}
 		const kept = defs.filter(isBuiltInDef);
@@ -132,13 +169,13 @@ export function applyKills(env: REnvironmentInformation, kills: readonly KillRef
 				break;
 			case 'all':
 				if(happensInEveryBranch(kill.cds)) {
-					removeAllInFrame(current);
+					removeAllInFrame(current, kill.except);
 				} else {
-					weakenAll(current, (kill.cds ?? []).map(negateControlDependency));
+					weakenAll(current, (kill.cds ?? []).map(negateControlDependency), kill.except);
 				}
 				break;
 			case 'unknown':
-				weakenAll(current, kill.cds ?? []);
+				weakenAll(current, kill.cds ?? [], kill.except);
 				break;
 		}
 	}

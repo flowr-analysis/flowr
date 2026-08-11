@@ -21,6 +21,7 @@ import { handleReplacementOperator } from '../../../../../graph/unknown-replacem
 import { S7DispatchSeparator } from './built-in-s-seven-dispatch';
 import { toUnnamedArgument } from '../argument/make-argument';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { FunctionArgument } from '../../../../../graph/graph';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
@@ -132,11 +133,14 @@ export function processReplacementFunction<OtherInfo>(
 		}
 	}
 
-	if(firstArg) {
+	if(firstArg?.type === RType.Symbol) {
 		res = {
 			...res,
-			in: [...res.in, { name: firstArg.lexeme, type: ReferenceType.Variable, nodeId: firstArg.info.id, cds: data.cds }]
+			in: [...res.in, { name: firstArg.content, type: ReferenceType.Variable, nodeId: firstArg.info.id, cds: data.cds }]
 		};
+	} else if(firstArg !== undefined && RAccess.is(firstArg)) {
+		/* a nested target (e.g. `a$b$c <- 5`) is no variable read, it is read through its own accessor */
+		res.graph.addEdge(firstArg.info.id, NodeId.toBuiltIn(firstArg.operator), EdgeType.Reads);
 	}
 
 	// dispatches actually as S3:

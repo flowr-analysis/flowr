@@ -1,6 +1,7 @@
 import type { BrandedIdentifier, IdentifierDefinition, IdentifierReference } from './identifier';
 import { Identifier, ReferenceType } from './identifier';
 import type { DataflowGraph } from '../graph/graph';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
 import type { Environment, REnvironmentInformation } from './environment';
 import { resolveByName } from './resolve-by-name';
@@ -63,14 +64,16 @@ function replaceDefinitions(env: Environment, key: BrandedIdentifier, toUpdate: 
 }
 
 /**
- * Attaches the given control dependencies to the given definitions within the environment chain.
+ * Attaches the given control dependencies to the definition made by `nodeId` within the environment chain.
+ * Definitions of the same name made elsewhere survive whenever the conditional definition does not happen.
  * Copy-on-write: definitions are replaced, never mutated in place, so previously cloned
  * environments (e.g., snapshots stored in the dataflow graph) keep their state.
  */
-function applyCdsToDefinitions(environments: REnvironmentInformation, name: Identifier, type: ReferenceType, definitions: readonly IdentifierDefinition[], defaultCd: readonly ControlDependency[] | undefined): void {
+function applyCdsToDefinitions(environments: REnvironmentInformation, name: Identifier, type: ReferenceType, definitions: readonly IdentifierDefinition[], nodeId: NodeId, defaultCd: readonly ControlDependency[] | undefined): void {
 	const toUpdate = new Set<IdentifierDefinition>();
 	for(const definition of definitions) {
-		if(definition.type !== ReferenceType.BuiltInFunction && definition.type !== ReferenceType.BuiltInConstant
+		if(definition.nodeId === nodeId
+			&& definition.type !== ReferenceType.BuiltInFunction && definition.type !== ReferenceType.BuiltInConstant
 			&& (defaultCd !== undefined || definition.cds === undefined)) {
 			toUpdate.add(definition);
 		}
@@ -98,14 +101,14 @@ function applyCdsToDefinitions(environments: REnvironmentInformation, name: Iden
 
 /**
  * Marks the reference as maybe (i.e., as controlled by a set of {@link IdentifierReference#cds|control dependencies}).
- * With `includeDefs`, the cds are also attached (copy-on-write) to the definitions the reference
- * resolves to, see {@link applyCdsToDefinitions}.
+ * With `includeDefs`, the cds are also attached (copy-on-write) to the definition the reference
+ * itself made, see {@link applyCdsToDefinitions}.
  */
 export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency[] | undefined = undefined): IdentifierReference {
 	if(includeDefs && ref.name) {
 		const definitions = resolveByName(ref.name, environments, ref.type);
 		if(definitions && definitions.length > 0) {
-			applyCdsToDefinitions(environments, ref.name, ref.type, definitions, defaultCd);
+			applyCdsToDefinitions(environments, ref.name, ref.type, definitions, ref.nodeId, defaultCd);
 		}
 	}
 	const node = graph.getVertex(ref.nodeId);

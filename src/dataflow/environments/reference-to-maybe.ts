@@ -3,55 +3,15 @@ import { Identifier, ReferenceType } from './identifier';
 import type { DataflowGraph } from '../graph/graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
+import { appendCds, withCds } from '../info';
 import type { Environment, REnvironmentInformation } from './environment';
 import { resolveByName } from './resolve-by-name';
 import { VertexType } from '../graph/vertex';
 import { S7DispatchSeparator } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
 
-function appToCdsUnique(target: ControlDependency[], toAdd: readonly ControlDependency[] | undefined): void{
-	if(!toAdd) {
-		return;
-	}
-	for(const c of toAdd) {
-		let found = false;
-		for(const tc of target) {
-			if(tc.id === c.id && tc.when === c.when) {
-				found = true;
-				break;
-			}
-		}
-		if(!found) {
-			target.push(c);
-		}
-	}
-}
-
-function concatCdsUnique(target: ControlDependency[], toAdd: readonly ControlDependency[] | undefined): ControlDependency[] {
-	if(!toAdd) {
-		return target;
-	}
-	const result = Array.from(target);
-	for(const c of toAdd) {
-		let found = false;
-		for(const tc of target) {
-			if(tc.id === c.id && tc.when === c.when) {
-				found = true;
-				break;
-			}
-		}
-		if(!found) {
-			result.push(c);
-		}
-	}
-	return result;
-}
-
-/** copy of the definition with the given cds attached */
-function withAppliedCds(definition: IdentifierDefinition, defaultCd: readonly ControlDependency[] | undefined): IdentifierDefinition {
-	return {
-		...definition,
-		cds: definition.cds ? concatCdsUnique(definition.cds, defaultCd) : (defaultCd ? Array.from(defaultCd) : [])
-	};
+/** copy of the definition with the given cds attached, marking it as maybe */
+export function withAppliedCds(definition: IdentifierDefinition, defaultCd: readonly ControlDependency[] | undefined): IdentifierDefinition {
+	return { ...definition, cds: withCds(definition.cds, defaultCd) };
 }
 
 /** replaces the definitions stored under the given key by copies carrying the additional cds */
@@ -114,14 +74,14 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 	const node = graph.getVertex(ref.nodeId);
 	if(node) {
 		if(node.cds) {
-			appToCdsUnique(node.cds, defaultCd);
+			appendCds(node.cds, defaultCd);
 		} else {
 			node.cds = defaultCd ? Array.from(defaultCd) : [];
 		}
 	}
 	if(ref.cds) {
 		if(defaultCd) {
-			return { ...ref, cds: concatCdsUnique(ref.cds, defaultCd) };
+			return { ...ref, cds: withCds(ref.cds, defaultCd) };
 		}
 	} else {
 		return { ...ref, cds: defaultCd ? Array.from(defaultCd) : [] };
@@ -149,14 +109,14 @@ export function applyCdsToAllInGraphButConstants(graph: DataflowGraph, reference
 			continue;
 		}
 		if(v.cds) {
-			appToCdsUnique(v.cds, cds);
+			appendCds(v.cds, cds);
 		} else {
 			v.cds = Array.from(cds);
 		}
 	}
 	for(const ref of references) {
 		if(ref.cds) {
-			appToCdsUnique(ref.cds, cds);
+			appendCds(ref.cds, cds);
 		} else {
 			ref.cds = Array.from(cds);
 		}
@@ -172,7 +132,7 @@ export function applyCdToReferences(references: readonly IdentifierReference[], 
 	}
 	for(const ref of references) {
 		if(ref.cds) {
-			appToCdsUnique(ref.cds, cds);
+			appendCds(ref.cds, cds);
 		} else {
 			ref.cds = Array.from(cds);
 		}

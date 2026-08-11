@@ -294,7 +294,10 @@ ${printPublications()}
 
 ## 🚀 Contributing
 
-We welcome every contribution! Please check out the ${ctx.linkPage('wiki/Onboarding', 'developer onboarding')} section in the wiki for all the information you will need.
+We welcome every contribution! The ${ctx.linkPage('wiki/Onboarding', 'developer onboarding')} page has everything you need to get started.
+With **R** and **Node.js** installed, \`npm run setup:dev\` checks your prerequisites, installs the dependencies, and configures the git hooks.
+The [contributing guidelines](${FlowrGithubBaseRef}/flowr/tree/main/.github/CONTRIBUTING.md) explain our commit conventions,
+and ${ctx.linkPage('wiki/Linting and Testing')} shows how to run the tests.
 
 ### Contributors
 

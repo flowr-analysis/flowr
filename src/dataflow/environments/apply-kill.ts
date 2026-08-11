@@ -3,10 +3,11 @@
  * @module
  */
 import type { ControlDependency, KillReference } from '../info';
-import { happensInEveryBranch, negateControlDependency } from '../info';
+import { happensInEveryBranch, negateControlDependency, withCds } from '../info';
 import type { Environment, REnvironmentInformation } from './environment';
 import type { BrandedIdentifier, IdentifierDefinition, IdentifierReference } from './identifier';
 import { Identifier, ReferenceType } from './identifier';
+import { withAppliedCds } from './reference-to-maybe';
 
 /**
  * Accounts for the writes after a kill: a re-definition revives a `named` removal (dropping it), a conditional
@@ -49,7 +50,7 @@ export function cancelRevivedKills(kills: readonly KillReference[], writes: read
 			const maybeCds = name === undefined ? undefined : writtenMaybe.get(name);
 			if(maybeCds !== undefined) {
 				/* the removal still stands wherever the conditional re-definition did not happen */
-				remaining.push({ kind: 'named', reference: { ...kill.reference, cds: mergeCds(kill.reference.cds, maybeCds.map(negateControlDependency)) } });
+				remaining.push({ kind: 'named', reference: { ...kill.reference, cds: withCds(kill.reference.cds, maybeCds.map(negateControlDependency)) } });
 			} else if(name === undefined || !written.has(name)) {
 				remaining.push(kill);
 			}
@@ -64,21 +65,6 @@ function isBuiltInDef(d: IdentifierDefinition): boolean {
 	return d.type === ReferenceType.BuiltInFunction || d.type === ReferenceType.BuiltInConstant;
 }
 
-function mergeCds(base: readonly ControlDependency[] | undefined, toAdd: readonly ControlDependency[]): ControlDependency[] {
-	const result = base ? Array.from(base) : [];
-	for(const c of toAdd) {
-		if(!result.some(e => e.id === c.id && e.when === c.when)) {
-			result.push(c);
-		}
-	}
-	return result;
-}
-
-/** copy-on-write copy of the definition carrying the additional cds, marking it as maybe */
-function weakenDefinition(def: IdentifierDefinition, cds: readonly ControlDependency[]): IdentifierDefinition {
-	return { ...def, cds: mergeCds(def.cds, cds) };
-}
-
 /** attaches `cds` to every user definition of `name` along the environment chain */
 function weakenName(env: Environment, name: Identifier, cds: readonly ControlDependency[]): void {
 	const [plainName, ns] = Identifier.toArray(name);
@@ -87,7 +73,7 @@ function weakenName(env: Environment, name: Identifier, cds: readonly ControlDep
 		if(ns === undefined || current.n === ns) {
 			const defs = current.memory.get(plainName);
 			if(defs !== undefined && defs.some(d => !isBuiltInDef(d))) {
-				current.writableMemory.set(plainName, defs.map(d => isBuiltInDef(d) ? d : weakenDefinition(d, cds)));
+				current.writableMemory.set(plainName, defs.map(d => isBuiltInDef(d) ? d : withAppliedCds(d, cds)));
 				current.cache?.delete(plainName);
 			}
 		}
@@ -105,7 +91,7 @@ function weakenAll(env: Environment, cds: readonly ControlDependency[], except?:
 			continue;
 		}
 		if(defs.some(d => !isBuiltInDef(d))) {
-			env.writableMemory.set(key, defs.map(d => isBuiltInDef(d) ? d : weakenDefinition(d, cds)));
+			env.writableMemory.set(key, defs.map(d => isBuiltInDef(d) ? d : withAppliedCds(d, cds)));
 		}
 	}
 	env.cache?.clear();
@@ -192,8 +178,8 @@ export function makeKillsMaybe(kills: readonly KillReference[] | undefined, cds:
 	}
 	return kills.map(k => {
 		if(k.kind === 'named') {
-			return { kind: 'named', reference: { ...k.reference, cds: mergeCds(k.reference.cds, cds) } };
+			return { kind: 'named', reference: { ...k.reference, cds: withCds(k.reference.cds, cds) } };
 		}
-		return { ...k, cds: mergeCds(k.cds, cds) };
+		return { ...k, cds: withCds(k.cds, cds) };
 	});
 }

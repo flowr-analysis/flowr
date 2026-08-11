@@ -28,6 +28,30 @@ export interface ControlDependency {
 	readonly file?:        string
 }
 
+/** Whether the two control dependencies trigger on the same condition and branch. */
+function sameControlDependency(a: ControlDependency, b: ControlDependency): boolean {
+	return a.id === b.id && a.when === b.when;
+}
+
+/** Appends the given control dependencies to `target`, skipping the ones that are already in there. */
+export function appendCds(target: ControlDependency[], toAdd: readonly ControlDependency[] | undefined): void {
+	if(!toAdd) {
+		return;
+	}
+	for(const add of toAdd) {
+		if(!target.some(have => sameControlDependency(have, add))) {
+			target.push(add);
+		}
+	}
+}
+
+/** A copy of `base` with `toAdd` appended, skipping the control dependencies that are already in there. */
+export function withCds(base: readonly ControlDependency[] | undefined, toAdd: readonly ControlDependency[] | undefined): ControlDependency[] {
+	const result = base ? Array.from(base) : [];
+	appendCds(result, toAdd);
+	return result;
+}
+
 /**
  * Negates the given control dependency (i.e., flips the `when` flag).
  * This keeps undefined `when` values intact as undefined.

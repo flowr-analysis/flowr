@@ -97,6 +97,17 @@
 	box-sizing: border-box;
 }
 
+/* every animation here is decoration, so it goes away for anyone who asked for that */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		transition-duration: .01ms !important;
+		animation-duration: .01ms !important;
+		scroll-behavior: auto !important;
+	}
+}
+
 /* our own display rules would otherwise win against the hidden attribute */
 [hidden] {
 	display: none !important;
@@ -201,22 +212,86 @@ main {
 	}
 }
 
-fieldset {
+/* every control section folds away, and states what it holds while it is folded */
+.panel {
 	margin: 0;
-	padding: .7rem .8rem .8rem;
+	padding: .55rem .8rem;
 	border: 1px solid var(--border);
 	border-radius: 10px;
 	background: var(--panel);
 	box-shadow: var(--shadow);
 }
 
-legend {
-	padding: 0 .35rem;
+.panel[open] {
+	padding-bottom: .8rem;
+}
+
+.panel > summary {
+	display: flex;
+	align-items: baseline;
+	gap: .45rem;
+	cursor: pointer;
+	list-style: none;
+	min-width: 0;
+}
+
+.panel > summary::-webkit-details-marker {
+	display: none;
+}
+
+/* the chevron is the marker, it turns with the section */
+.panel > summary::after {
+	content: "";
+	flex: none;
+	margin-left: auto;
+	width: .42rem;
+	height: .42rem;
+	border-right: 1.5px solid var(--muted);
+	border-bottom: 1.5px solid var(--muted);
+	transform: translateY(-1px) rotate(45deg);
+	transition: transform .12s ease;
+}
+
+.panel[open] > summary::after {
+	transform: translateY(1px) rotate(-135deg);
+}
+
+.panel > summary:hover::after,
+.panel > summary:focus-visible::after {
+	border-color: var(--accent);
+}
+
+.panel > summary:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+	border-radius: 6px;
+}
+
+.panel-title {
+	flex: none;
 	font-size: .72rem;
 	font-weight: 600;
 	letter-spacing: .08em;
 	text-transform: uppercase;
 	color: var(--muted);
+}
+
+/* what the section says while it is closed, cut rather than wrapped */
+.digest {
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	font-size: .76rem;
+	color: var(--muted);
+}
+
+.panel[open] .digest {
+	display: none;
+}
+
+.panel[open] > summary {
+	margin-bottom: .55rem;
 }
 
 .field {
@@ -340,6 +415,29 @@ figure {
 	border-radius: 10px;
 	box-shadow: var(--shadow);
 	min-width: 0;
+	transition: border-color .12s ease, box-shadow .12s ease;
+}
+
+figure:hover {
+	border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+/* a redraw replaces every tile, so they arrive instead of blinking into place */
+@keyframes rise {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+}
+
+figure,
+.folded-row {
+	animation: rise .16s ease-out;
+}
+
+/* a folded tile is a button in all but name, so it answers to the pointer like one */
+figure.folded:hover {
+	border-color: var(--accent);
 }
 
 figcaption {
@@ -517,6 +615,7 @@ svg {
 	opacity: .07;
 }
 
+/* no easing here: the cursor line snaps from run to run, and a sliding dot would trail behind it */
 .dot {
 	fill: var(--c);
 	stroke: var(--panel);
@@ -666,6 +765,40 @@ svg {
 	font-size: .8rem;
 	box-shadow: var(--shadow);
 	backdrop-filter: blur(2px);
+	transition: opacity .1s ease, transform .1s ease;
+}
+
+#tooltip[hidden] {
+	/* the attribute already hides it, this only keeps the fade from starting at the wrong place */
+	opacity: 0;
+}
+
+/* a finger covers the point it touches, so on a phone the panel sits at the bottom edge instead */
+#tooltip.sheet {
+	left: .5rem;
+	right: .5rem;
+	bottom: .5rem;
+	top: auto;
+	max-width: none;
+	padding: .5rem .6rem calc(.5rem + env(safe-area-inset-bottom, 0px));
+	border-radius: 12px;
+	background: color-mix(in srgb, var(--panel) 96%, transparent);
+	font-size: .82rem;
+}
+
+#tooltip.sheet .head {
+	font-size: .9rem;
+}
+
+/* the sheet is reachable, unlike the panel that follows a mouse */
+#tooltip.sheet {
+	pointer-events: auto;
+}
+
+#tooltip .open-commit {
+	display: inline-block;
+	margin-top: .15rem;
+	color: var(--accent);
 }
 
 #tooltip .head {
@@ -675,6 +808,13 @@ svg {
 #tooltip .msg {
 	color: var(--muted);
 	overflow-wrap: anywhere;
+}
+
+/* the commit keeps to its line and is cut rather than reflowing the panel under the pointer */
+#tooltip .commit {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 
 #tooltip table {
@@ -702,6 +842,66 @@ svg {
 /* the values line up on their last digit, so a 100 reads taller than an 11 */
 #tooltip td:last-child {
 	text-align: right;
+}
+
+/* a touch is coarser than a mouse: thicker lines, larger points, a cursor one can actually see */
+@media (pointer: coarse), (max-width: 900px) {
+	.line {
+		stroke-width: 2.6;
+	}
+
+	.line.ssum {
+		stroke-dasharray: 6 4;
+	}
+
+	.dot {
+		stroke-width: 1.6;
+	}
+
+	.cursor {
+		stroke-width: 1.6;
+		opacity: .8;
+	}
+
+	.grid {
+		stroke-width: 1.2;
+	}
+
+	.axis {
+		font-size: 11px;
+	}
+
+	/* the chart reads a horizontal drag, the page keeps the vertical one */
+	figure svg {
+		touch-action: pan-y;
+	}
+
+	/* a finger needs something to hit */
+	.legend button {
+		padding: .25rem .5rem;
+	}
+
+	.point,
+	.fold {
+		min-height: 1.9rem;
+	}
+}
+
+/* the sections slide open where the browser can interpolate to a content-sized box */
+@supports (interpolate-size: allow-keywords) {
+	:root {
+		interpolate-size: allow-keywords;
+	}
+
+	.panel::details-content {
+		block-size: 0;
+		overflow: hidden;
+		transition: block-size .18s ease, content-visibility .18s allow-discrete;
+	}
+
+	.panel[open]::details-content {
+		block-size: auto;
+	}
 }
 
 #tooltip td.msg {
@@ -879,6 +1079,18 @@ footer {
 	stroke-width: 1;
 }
 
+/* the releases, as faint as the sparkline is small */
+.timeline-marker {
+	stroke: var(--muted);
+	stroke-width: 1;
+	stroke-dasharray: 2 3;
+	opacity: .5;
+}
+
+.timeline-marker.minor {
+	opacity: .3;
+}
+
 .timeline-area {
 	fill: var(--c);
 	opacity: .1;
@@ -909,12 +1121,27 @@ footer {
 	border-top: 1px solid var(--border);
 }
 
+/* the state picker belongs to the numbers above it, so it sits on the same separator the rest uses */
 .history {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
-	gap: .35rem;
+	gap: .3rem .45rem;
 	margin-top: .6rem;
+	padding-top: .5rem;
+	border-top: 1px solid var(--border);
+}
+
+.history > .note:first-child {
+	font-size: .72rem;
+	font-weight: 600;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+}
+
+/* what follows the picker explains it, so it keeps to the far side */
+.history > .note:last-child {
+	margin-left: auto;
 }
 
 .point {
@@ -944,9 +1171,23 @@ footer {
 .point-select {
 	width: auto;
 	max-width: 100%;
-	padding: .15rem .4rem;
+	padding: .12rem 1.4rem .12rem .45rem;
+	border-radius: 999px;
 	font-size: .75rem;
 	font-variant-numeric: tabular-nums;
+	color: var(--fg);
+	/* the arrow of the control, drawn rather than left to the platform, so it matches the chips next to it */
+	appearance: none;
+	background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+		linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+	background-position: right .72rem center, right .5rem center;
+	background-size: .22rem .22rem, .22rem .22rem;
+	background-repeat: no-repeat;
+}
+
+.point-select:hover,
+.point-select:focus-visible {
+	border-color: var(--accent);
 }
 
 .facts dt.missing {

@@ -12,7 +12,8 @@
 	for(const id of ['theme', 'suite', 'engine', 'range', 'mode', 'baseline', 'baselineOut', 'smooth', 'smoothOut',
 		'band', 'calibrate', 'charts', 'status', 'tooltip', 'rangeNote', 'calibrationNote', 'sourceNote',
 		'baselineField', 'calibrateField', 'dlSuite', 'dlCsv', 'dlAll', 'lock', 'resetLayout', 'copyLink',
-		'fullscreen']) {
+		'fullscreen', 'panelData', 'panelView', 'panelLayout', 'panelDownload',
+		'digestData', 'digestView', 'digestLayout', 'digestDownload']) {
 		ui[id] = el(id.replace(/[A-Z]/g, c => '-' + c.toLowerCase()));
 	}
 
@@ -189,6 +190,8 @@
 	 * than the last one did would otherwise never reach a reader who has folded anything before.
 	 */
 	const FOLDED_STORE = 'flowr-bench-folded-2';
+	/** which sections of the sidebar the reader left open */
+	const PANEL_STORE = 'flowr-bench-panels';
 
 	/** the tiles that start folded away, the detail one only opens when looking for it */
 	function foldedByDefault() {
@@ -202,6 +205,92 @@
 		}
 		order = readStore('flowr-bench-order', []).map(String);
 		locked = readStore('flowr-bench-locked', true) !== false;
+	}
+
+	/* ---------- the control panels ---------- */
+
+	/** the sections of the sidebar, in the order they appear */
+	const PANELS = ['data', 'view', 'layout', 'download'];
+	/** below this width the sidebar sits above the charts, where four open sections push them off the screen */
+	const NARROW = '(max-width: 900px)';
+
+	const panelOf = id => ui['panel' + id[0].toUpperCase() + id.slice(1)];
+	const digestOf = id => ui['digest' + id[0].toUpperCase() + id.slice(1)];
+
+	function narrow() {
+		return typeof window.matchMedia === 'function' && window.matchMedia(NARROW).matches;
+	}
+
+	/** which sections are open when no link and no earlier visit say otherwise */
+	function panelsByDefault() {
+		return narrow() ? [] : PANELS.slice();
+	}
+
+	function openPanels() {
+		return PANELS.filter(id => panelOf(id).open);
+	}
+
+	function setPanels(ids) {
+		for(const id of PANELS) {
+			panelOf(id).open = ids.includes(id);
+		}
+	}
+
+	/** whether the reader said which sections they want, which no change of the window may overrule */
+	let panelsChosen = false;
+
+	function initPanels() {
+		const stored = readStore(PANEL_STORE, null);
+		panelsChosen = stored !== null;
+		setPanels(stored ?? panelsByDefault());
+		for(const id of PANELS) {
+			panelOf(id).addEventListener('toggle', () => {
+				panelsChosen = true;
+				writeStore(PANEL_STORE, openPanels());
+				writeUrl();
+				writeDigests();
+			});
+		}
+		/* turning a phone, or dragging a window across the threshold, changes what fits */
+		if(typeof window.matchMedia === 'function') {
+			const watch = window.matchMedia(NARROW);
+			const react = () => {
+				if(!panelsChosen) {
+					setPanels(panelsByDefault());
+					writeDigests();
+				}
+			};
+			if(watch.addEventListener) {
+				watch.addEventListener('change', react);
+			}
+		}
+	}
+
+	/** a word for a choice, short enough that four of them fit next to their section title */
+	function digestParts(id) {
+		const range = ui.range.options[ui.range.selectedIndex];
+		const win = Number(ui.smooth.value) || 1;
+		switch(id) {
+			case 'data':
+				return [ui.suite.value, ui.engine.value, (range ? range.textContent : '').toLowerCase()];
+			case 'view':
+				return [
+					ui.mode.value === 'delta' ? 'delta vs. last ' + (Number(ui.baseline.value) || 3) : 'absolute',
+					win > 1 ? 'median of ' + win : '',
+					ui.band.checked ? 'band' : '',
+					!ui.calibrateField.hidden && ui.calibrate.checked ? 'calibrated' : ''
+				];
+			case 'layout':
+				return [locked ? 'locked' : 'draggable', collapsed.size ? collapsed.size + ' folded' : ''];
+			default:
+				return ['JSON', 'CSV', 'data.js'];
+		}
+	}
+
+	function writeDigests() {
+		for(const id of PANELS) {
+			digestOf(id).textContent = digestParts(id).filter(Boolean).join(' \u00b7 ');
+		}
 	}
 
 	/* ---------- the view in the address ---------- */
@@ -244,8 +333,10 @@
 		if(order.length) {
 			p.set('order', order.join(','));
 		}
-		if(collapsed.size) {
-			p.set('folded', [...collapsed].join(','));
+		/* the default set is what a bare link already shows, only a different one is worth stating */
+		const fold = [...collapsed].sort().join(',');
+		if(fold !== foldedByDefault().slice().sort().join(',')) {
+			p.set('folded', fold || 'none');
 		}
 		if(barsExpanded.size) {
 			p.set('open', [...barsExpanded].join(','));
@@ -253,6 +344,10 @@
 		const off = S.encodeGroups(hidden);
 		if(off) {
 			p.set('hidden', off);
+		}
+		const open = openPanels();
+		if(open.join(',') !== panelsByDefault().join(',')) {
+			p.set('panels', open.join(',') || 'none');
 		}
 		const hash = p.toString();
 		const next = hash ? '#' + hash : location.pathname + location.search;
@@ -290,7 +385,8 @@
 		}
 		if(p.has('folded')) {
 			collapsed.clear();
-			for(const id of p.get('folded').split(',').filter(Boolean)) {
+			const fold = p.get('folded');
+			for(const id of fold === 'none' ? [] : fold.split(',').filter(Boolean)) {
 				collapsed.add(id);
 			}
 		}
@@ -305,6 +401,11 @@
 			for(const [id, set] of S.decodeGroups(p.get('hidden'))) {
 				hidden.set(id, set);
 			}
+		}
+		if(p.has('panels')) {
+			const open = p.get('panels');
+			setPanels(open === 'none' ? [] : open.split(',').filter(Boolean));
+			panelsChosen = true;
 		}
 		locked = ui.lock.checked;
 	}
@@ -809,7 +910,7 @@
 					d.setAttribute('cy', String(y(v)));
 				}
 			}
-			tooltip(ev, group, shown, runs[i], i);
+			tooltip(ev, shown, runs[i], i);
 		});
 		const leave = () => {
 			cursor.setAttribute('visibility', 'hidden');
@@ -818,6 +919,9 @@
 		};
 		svg.addEventListener('pointerleave', leave);
 		svg.addEventListener('click', ev => {
+			if(touching()) {
+				return; // a tap is how one reads a value here, the sheet carries the link instead
+			}
 			const url = runs[at(ev)].commit.url;
 			if(url) {
 				window.open(url, '_blank', 'noopener');
@@ -1093,6 +1197,17 @@
 		const svg = tag('svg', { class: 's' + (color === undefined ? s.color : color), viewBox: '0 0 ' + w + ' ' + h, role: 'img',
 			'aria-label': 'how ' + s.name + ' developed over the releases' });
 		svg.appendChild(tag('line', { class: 'timeline-base', x1: padX, y1: h - padB, x2: w - padX, y2: h - padB }));
+		/* the same releases the charts mark, so a stated number sits on the same timeline as a measured one */
+		for(const b of S.releaseBumps(runs)) {
+			if(b.index >= 0 && b.index <= last) {
+				const guide = tag('line', {
+					class: 'timeline-marker ' + b.kind, x1: x(b.index), x2: x(b.index), y1: padT - 2, y2: h - padB
+				});
+				guide.appendChild(tag('title', {}, (b.kind === 'major' ? 'major release ' : 'minor release ') + b.version
+					+ ', ' + fmtDate(runs[b.index].date)));
+				svg.appendChild(guide);
+			}
+		}
 		for(const seg of S.segments(s.values)) {
 			const pts = seg.map(i => [x(i), y(s.values[i])]);
 			if(pts.length > 1) {
@@ -1109,17 +1224,30 @@
 			svg.appendChild(tag('text', { class: 'timeline-tick', x: x(final[0]), y: h - 3, 'text-anchor': 'end' },
 				S.runLabel(runs[final[0]])));
 		}
-		if(onPick) {
-			const nearest = ev => {
-				const rect = svg.getBoundingClientRect();
-				const px = (ev.clientX - rect.left) / (rect.width || 1) * w;
-				const i = Math.round((px - padX) / (w - 2 * padX) * Math.max(1, last));
-				return points.reduce((best, p) => Math.abs(p[0] - i) < Math.abs(best[0] - i) ? p : best, points[0])[0];
-			};
-			svg.addEventListener('pointermove', ev => onPick(nearest(ev)));
-			svg.addEventListener('pointerleave', () => onPick(undefined));
-			svg.classList.add('pickable');
-		}
+		const nearest = ev => {
+			const rect = svg.getBoundingClientRect();
+			const px = (ev.clientX - rect.left) / (rect.width || 1) * w;
+			const i = Math.round((px - padX) / (w - 2 * padX) * Math.max(1, last));
+			return points.reduce((best, p) => Math.abs(p[0] - i) < Math.abs(best[0] - i) ? p : best, points[0])[0];
+		};
+		/* the sparkline is a chart too, so it answers the pointer with the run it is over */
+		svg.addEventListener('pointermove', ev => {
+			const i = nearest(ev);
+			if(onPick) {
+				onPick(i);
+			}
+			showNote(ev, {
+				run: runs[i], color: color === undefined ? s.color : color, label: s.label || s.name,
+				value: fmtFact(s.values[i], s.unit), notes: [s.name === (s.label || s.name) ? '' : s.name]
+			});
+		});
+		svg.addEventListener('pointerleave', () => {
+			if(onPick) {
+				onPick(undefined);
+			}
+			ui.tooltip.hidden = true;
+		});
+		svg.classList.add('pickable');
 		box.appendChild(svg);
 		return box;
 	}
@@ -1332,38 +1460,57 @@
 		return box;
 	}
 
+	/** how many series a sheet on a phone states before it would cover the chart */
+	const TOUCH_ROWS = 5;
+
+	/** a finger covers what it points at, and a phone has no room next to it either */
+	function touching() {
+		return typeof window.matchMedia === 'function'
+			&& (window.matchMedia('(pointer: coarse)').matches || window.matchMedia(NARROW).matches);
+	}
+
 	function placeTooltip(ev) {
 		const t = ui.tooltip;
 		t.hidden = false;
+		if(touching()) {
+			// a sheet at the bottom of the screen, out of the way of the hand
+			t.classList.add('sheet');
+			t.style.left = '';
+			t.style.top = '';
+			return;
+		}
+		t.classList.remove('sheet');
 		const box = t.getBoundingClientRect();
 		t.style.left = Math.min(window.innerWidth - box.width - 8, Math.max(8, ev.clientX + 16)) + 'px';
 		t.style.top = Math.min(window.innerHeight - box.height - 8, Math.max(8, ev.clientY + 16)) + 'px';
 	}
 
 	/** the same panel and the same layout the charts use, so a breakdown answers as fast and reads the same */
+	function showNote(ev, spec) {
+		const t = ui.tooltip;
+		t.textContent = '';
+		t.appendChild(Object.assign(document.createElement('div'), {
+			className: 'head', textContent: S.runLabel(spec.run) + ' | ' + fmtDate(spec.run.date)
+		}));
+		const table = document.createElement('table');
+		const tr = document.createElement('tr');
+		const sw = document.createElement('td');
+		const dot = document.createElement('span');
+		dot.className = 'swatch s' + spec.color;
+		sw.appendChild(dot);
+		tr.appendChild(sw);
+		tr.appendChild(Object.assign(document.createElement('td'), { className: 'name', textContent: spec.label }));
+		tr.appendChild(Object.assign(document.createElement('td'), { textContent: spec.value }));
+		table.appendChild(tr);
+		t.appendChild(table);
+		for(const line of spec.notes.filter(Boolean)) {
+			t.appendChild(Object.assign(document.createElement('div'), { className: 'msg', textContent: line }));
+		}
+		placeTooltip(ev);
+	}
+
 	function noteTooltip(node, spec) {
-		node.addEventListener('pointerenter', ev => {
-			const t = ui.tooltip;
-			t.textContent = '';
-			t.appendChild(Object.assign(document.createElement('div'), {
-				className: 'head', textContent: S.runLabel(spec.run) + ' | ' + fmtDate(spec.run.date)
-			}));
-			const table = document.createElement('table');
-			const tr = document.createElement('tr');
-			const sw = document.createElement('td');
-			const dot = document.createElement('span');
-			dot.className = 'swatch s' + spec.color;
-			sw.appendChild(dot);
-			tr.appendChild(sw);
-			tr.appendChild(Object.assign(document.createElement('td'), { className: 'name', textContent: spec.label }));
-			tr.appendChild(Object.assign(document.createElement('td'), { textContent: spec.value }));
-			table.appendChild(tr);
-			t.appendChild(table);
-			for(const line of spec.notes) {
-				t.appendChild(Object.assign(document.createElement('div'), { className: 'msg', textContent: line }));
-			}
-			placeTooltip(ev);
-		});
+		node.addEventListener('pointerenter', ev => showNote(ev, spec));
 		node.addEventListener('pointermove', ev => {
 			if(!ui.tooltip.hidden) {
 				placeTooltip(ev);
@@ -1374,7 +1521,7 @@
 		});
 	}
 
-	function tooltip(ev, group, series, run, i) {
+	function tooltip(ev, series, run, i) {
 		const t = ui.tooltip;
 		const isDelta = ui.mode.value === 'delta';
 		t.textContent = '';
@@ -1390,11 +1537,14 @@
 		const decimals = decimalsFor(series.map(s => s.values[i]));
 
 		// the rows follow the lines, the highest value on top
-		const rows = series.slice().sort((a, b) => {
+		const sorted = series.slice().sort((a, b) => {
 			const av = typeof a.values[i] === 'number' ? a.values[i] : -Infinity;
 			const bv = typeof b.values[i] === 'number' ? b.values[i] : -Infinity;
 			return bv - av;
 		});
+		/* a sheet on a phone may not grow past the chart it explains, so it states the largest series only */
+		const brief = touching();
+		const rows = brief ? sorted.slice(0, TOUCH_ROWS) : sorted;
 
 		const table = document.createElement('table');
 		for(const s of rows) {
@@ -1426,7 +1576,7 @@
 			const raw = s.raw[i];
 			const share = !isDelta && v !== null && chartSum > 0 && parts.length > 1 && s.name !== SUM_NAME
 				? (Math.abs(v) / chartSum * 100).toFixed(1) + '% of this chart' : '';
-			const note = [
+			const note = brief ? '' : [
 				isDelta && raw !== null ? 'raw ' + fmt(raw, s.unit) : '',
 				raw !== null && s.values[i] !== null && !isDelta && Math.abs(raw - s.values[i]) > 1e-9 ? 'raw ' + fmt(raw, s.unit) : '',
 				share,
@@ -1442,13 +1592,30 @@
 			}
 		}
 		t.appendChild(table);
+		if(sorted.length > rows.length) {
+			t.appendChild(Object.assign(document.createElement('div'), {
+				className: 'msg', textContent: (sorted.length - rows.length) + ' smaller series not shown'
+			}));
+		}
 
-		const msg = String(run.commit.message || '').split('\n')[0];
-		t.appendChild(Object.assign(document.createElement('div'), {
-			className:   'msg',
-			textContent: String(run.commit.id || '').slice(0, 8) + ' ' + (msg.length > 80 ? msg.slice(0, 80) + '...' : msg)
-		}));
-		t.appendChild(Object.assign(document.createElement('div'), { className: 'msg', textContent: group.title + ', click to open the commit' }));
+		/* one line, whatever its length: a title that wraps pushes the numbers around as the pointer moves */
+		const about = document.createElement('div');
+		about.className = 'msg commit';
+		about.textContent = String(run.commit.id || '').slice(0, 8) + ' ' + S.commitTitle(run.commit.message);
+		about.title = S.commitTitle(run.commit.message);
+		t.appendChild(about);
+		if(!brief) {
+			/* the panel sits on the chart it belongs to, so naming it again says nothing */
+			t.appendChild(Object.assign(document.createElement('div'), {
+				className: 'msg', textContent: 'click to open the commit'
+			}));
+		} else if(run.commit.url) {
+			/* a tap on the chart reads values, so the commit needs a target of its own */
+			t.appendChild(Object.assign(document.createElement('a'), {
+				className: 'msg open-commit', href: run.commit.url, target: '_blank', rel: 'noopener',
+				textContent: 'open the commit'
+			}));
+		}
 
 		placeTooltip(ev);
 	}
@@ -1489,6 +1656,7 @@
 
 	function render() {
 		writeUrl();
+		writeDigests();
 		const { runs, offset } = visible();
 		ui.charts.textContent = '';
 		ui.baselineField.hidden = ui.mode.value !== 'delta';
@@ -1623,6 +1791,7 @@
 
 	initTheme();
 	initFullscreen();
+	initPanels();
 	loadLayout();
 	ui.lock.checked = locked;
 	ui.lock.addEventListener('change', () => {
@@ -1654,6 +1823,17 @@
 			say('Copy this link: ' + link, true);
 		}
 	});
+
+	/* a finger never leaves a chart, so a tap anywhere else puts the sheet away */
+	document.addEventListener('pointerdown', ev => {
+		const t = ui.tooltip;
+		if(t.hidden || !t.classList.contains('sheet')) {
+			return;
+		}
+		if(!t.contains(ev.target) && !(ev.target instanceof Element && ev.target.closest('#charts svg'))) {
+			t.hidden = true;
+		}
+	}, true);
 
 	/* a pasted link, or the back button, has to arrive at the view it names */
 	window.addEventListener('hashchange', () => {

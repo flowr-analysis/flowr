@@ -18,6 +18,7 @@ interface BenchStats {
 	ticks(min: number, max: number, count: number): { lo: number, hi: number, step: number, values: number[] };
 	groupOf(name: string, unit: string): string;
 	betterOf(name: string, unit: string): string;
+	commitTitle(message: string): string;
 	shortName(name: string): string;
 	tagLabel(tag: string): string;
 	logTicks(min: number, max: number): { lo: number, hi: number, step: number, values: number[], log: boolean };
@@ -68,6 +69,12 @@ describe('Benchmark page helpers', () => {
 		assert.deepStrictEqual(S.parseVersion('[release:patch] 2.13.12 fix: ggplot'),
 			{ major: 2, minor: 13, patch: 12, text: '2.13.12' });
 		assert.strictEqual(S.parseVersion('no version here'), null);
+		assert.strictEqual(S.commitTitle('[release:patch] 2.13.14 Uselist fixes, Improved Benchmarks'),
+			'[patch] 2.13.14 Uselist fixes, Improved Benchmarks', 'the word release says nothing here');
+		assert.strictEqual(S.commitTitle('[release:minor] 2.13.0 Guessing Dep. Versions\n\nthe body'),
+			'[minor] 2.13.0 Guessing Dep. Versions', 'the first line is the whole title');
+		assert.strictEqual(S.commitTitle('fix: a plain commit'), 'fix: a plain commit');
+		assert.strictEqual(S.commitTitle(''), '');
 		const runs = ['2.13.1 a', '2.13.2 b', '2.14.0 c', 'nothing', '3.0.0 d'].map(m => ({ commit: { message: m } }));
 		assert.deepStrictEqual(S.releaseBumps(runs).map(b => b.version + ' ' + b.kind), ['2.14.0 minor', '3.0.0 major'],
 			'patches are too frequent to mark');

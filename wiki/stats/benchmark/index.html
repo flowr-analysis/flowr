@@ -42,8 +42,9 @@
 
 <main>
 	<aside id="controls">
-		<fieldset>
-			<legend>Data</legend>
+		<details class="panel" id="panel-data" open>
+			<summary><span class="panel-title">Data</span><span class="digest" id="digest-data"></span></summary>
+
 			<label class="field">
 				<span>Suite</span>
 				<select id="suite"></select>
@@ -62,10 +63,11 @@
 				</select>
 			</label>
 			<p class="hint" id="range-note"></p>
-		</fieldset>
+		</details>
 
-		<fieldset>
-			<legend>View</legend>
+		<details class="panel" id="panel-view" open>
+			<summary><span class="panel-title">View</span><span class="digest" id="digest-view"></span></summary>
+
 			<label class="field">
 				<span>Values</span>
 				<select id="mode">
@@ -90,10 +92,11 @@
 				<span>Divide by calibration</span>
 			</label>
 			<p class="hint" id="calibration-note" hidden></p>
-		</fieldset>
+		</details>
 
-		<fieldset>
-			<legend>Layout</legend>
+		<details class="panel" id="panel-layout" open>
+			<summary><span class="panel-title">Layout</span><span class="digest" id="digest-layout"></span></summary>
+
 			<label class="check">
 				<input id="lock" type="checkbox">
 				<span>Lock the tiles</span>
@@ -103,16 +106,17 @@
 				<button type="button" id="copy-link" title="copy a link that restores this view">Copy link</button>
 			</div>
 			<p class="hint">Unlock to drag the tiles into another order. The corner button folds tiles away.</p>
-		</fieldset>
+		</details>
 
-		<fieldset>
-			<legend>Download</legend>
+		<details class="panel" id="panel-download" open>
+			<summary><span class="panel-title">Download</span><span class="digest" id="digest-download"></span></summary>
+
 			<div class="buttons">
 				<button type="button" id="dl-suite">Suite JSON</button>
 				<button type="button" id="dl-csv">Visible CSV</button>
 				<button type="button" id="dl-all">Full data.js</button>
 			</div>
-		</fieldset>
+		</details>
 	</aside>
 
 	<section id="charts"></section>

@@ -165,6 +165,16 @@
 		return m ? { major: +m[1], minor: +m[2], patch: +m[3], text: m[1] + '.' + m[2] + '.' + m[3] } : null;
 	}
 
+	/**
+	 * The first line of a commit message, with the release marker shortened: every release says
+	 * `[release:patch]`, and in a tooltip about releases the word `release` is the only part that carries
+	 * nothing. `[release:minor] 2.13.0 Guessing Dep. Versions` reads as `[minor] 2.13.0 Guessing Dep. Versions`.
+	 */
+	function commitTitle(message) {
+		return String(message || '').split('\n')[0].trim()
+			.replace(/^\[release:(patch|minor|major)]/i, '[$1]');
+	}
+
 	/** what the x axis shows for a run: the release version, else the short commit id */
 	function runLabel(run) {
 		const v = parseVersion(run && run.commit && run.commit.message);
@@ -549,7 +559,7 @@
 
 	root.BenchStats = {
 		median, rollingMedian, baselineOf, toPercentDelta, calibrationFactors, applyFactors,
-		parseVersion, runLabel, shortName, tagLabel, releaseBumps, segments, smoothPath, ticks, groupOf, betterOf,
+		parseVersion, runLabel, commitTitle, shortName, tagLabel, releaseBumps, segments, smoothPath, ticks, groupOf, betterOf,
 		logTicks, tickIndices, fitLabels, stateChanges, pickColors, mergeInfoSuites, encodeGroups, decodeGroups, GROUPS
 	};
 })(typeof globalThis === 'undefined' ? this : globalThis);

@@ -28,6 +28,7 @@ export interface BenchmarkCliOptions {
 	'sampling-strategy':         string
 	cfg?:                        boolean
 	cg?:                         boolean
+	'no-extra-phases'?:          boolean
 }
 
 const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [], {
@@ -108,7 +109,8 @@ async function benchmark() {
 		'--sampling-strategy', options['sampling-strategy'],
 		...(options.seed ? ['--seed', options.seed] : []),
 		...(options.cfg ? ['--cfg'] : []),
-		...(options.cg ? ['--cg'] : [])
+		...(options.cg ? ['--cg'] : []),
+		...(options['no-extra-phases'] ? ['--no-extra-phases'] : [])
 	]);
 
 	const runs = options.runs ?? 1;

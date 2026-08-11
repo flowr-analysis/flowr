@@ -5,7 +5,7 @@ import { summarizeSlicerStats } from './process';
 import { guard } from '../../../util/assert';
 import { escape } from '../../../util/text/ansi';
 import { jsonReplacer } from '../../../util/json';
-import type { BenchmarkMemoryMeasurement, CommonSlicerMeasurements, PerSliceMeasurements, PerSliceStats, SlicerStats } from '../../stats/stats';
+import type { AdditionalSlicerMeasurements, BenchmarkMemoryMeasurement, CommonSlicerMeasurements, PerSliceMeasurements, PerSliceStats, SlicerStats } from '../../stats/stats';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import { stats2string } from '../../stats/print';
 
@@ -33,6 +33,13 @@ export async function processRunMeasurement(line: Buffer, fileNum: number, lineN
 			),
 			commonMeasurements: new Map(
 				(got.stats.commonMeasurements as unknown as [CommonSlicerMeasurements, string][])
+					.map(([k, v]) => {
+						guard(v.endsWith('n'), 'Expected a bigint');
+						return [k, BigInt(v.slice(0, -1))];
+					})
+			),
+			additionalMeasurements: new Map(
+				(got.stats.additionalMeasurements as unknown as [AdditionalSlicerMeasurements, string][] ?? [])
 					.map(([k, v]) => {
 						guard(v.endsWith('n'), 'Expected a bigint');
 						return [k, BigInt(v.slice(0, -1))];

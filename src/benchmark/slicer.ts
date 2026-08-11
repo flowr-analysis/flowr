@@ -14,6 +14,7 @@ import type { PipelineExecutor } from '../core/pipeline-executor';
 import { guard } from '../util/assert';
 import { withoutWhitespace } from '../util/text/strings';
 import type {
+	AdditionalSlicerMeasurements,
 	BenchmarkMemoryMeasurement,
 	CommonSlicerMeasurements,
 	ElapsedTime,
@@ -37,7 +38,8 @@ import {
 } from '../r-bridge/retriever';
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
 import { collectAllSlicingCriteria, type SlicingCriteriaFilter } from '../slicing/criterion/collect-all';
-import { getSizeOfDfGraph, safeSizeOf } from './stats/size-of';
+import { getSizeOfCfGraph, getSizeOfDfGraph, safeSizeOf } from './stats/size-of';
+import { countFeatures } from './stats/feature-counts';
 import type { AutoSelectPredicate } from '../reconstruct/auto-select/auto-select-defaults';
 import type { KnownParser, KnownParserName, KnownParserType } from '../r-bridge/parser';
 import type { SyntaxNode, Tree } from 'web-tree-sitter';
@@ -57,6 +59,9 @@ import { type FlowrAnalyzerContext, contextFromInput } from '../project/context/
 import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import { CallGraph } from '../dataflow/graph/call-graph';
+import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
+import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
+import { runCalibration } from './calibration';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -113,8 +118,12 @@ export class BenchmarkSlicer {
 	private readonly commonMeasurements   = new Measurements<CommonSlicerMeasurements>();
 	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>();
 	private readonly deltas               = new Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>();
+	/** filled by {@link measureAdditionalPhases}, only holds the phases that did not fail */
+	private readonly additionalMeasurements = new Map<AdditionalSlicerMeasurements, ElapsedTime>();
 	private readonly parserName: KnownParserName;
 	private context:             FlowrAnalyzerContext | undefined;
+	private config:              FlowrConfig | undefined;
+	private request:             RParseRequestFromFile | RParseRequestFromText | undefined;
 	private stats:               SlicerStats | undefined;
 	private loadedXml:           string | KnownParserType[] | undefined;
 	private dataflow:            DataflowInformation | undefined;
@@ -152,6 +161,8 @@ export class BenchmarkSlicer {
 				}
 			}
 		);
+		this.config = config;
+		this.request = request;
 		this.context = contextFromInput({ ...request }, config);
 		this.executor = createSlicePipeline(this.parser, {
 			context:   this.context,
@@ -232,10 +243,11 @@ export class BenchmarkSlicer {
 		const split = loadedContent.split('\n');
 		const nonWhitespace = withoutWhitespace(loadedContent).length;
 		this.stats = {
-			perSliceMeasurements: this.perSliceMeasurements,
-			memory:               this.deltas,
+			perSliceMeasurements:   this.perSliceMeasurements,
+			additionalMeasurements: this.additionalMeasurements,
+			memory:                 this.deltas,
 			request,
-			input:                {
+			input:                  {
 				numberOfLines:                             split.length,
 				numberOfNonEmptyLines:                     split.filter(l => l.trim().length > 0).length,
 				numberOfCharacters:                        loadedContent.length,
@@ -254,13 +266,18 @@ export class BenchmarkSlicer {
 				numberOfFunctionDefinitions: numberOfDefinitions,
 				sizeOfObject:                getSizeOfDfGraph(this.dataflow.graph),
 			},
+			features: countFeatures(),
 
 			// these are all properly initialized in finish()
-			commonMeasurements:      new Map<CommonSlicerMeasurements, ElapsedTime>(),
-			retrieveTimePerToken:    { raw: 0, normalized: 0 },
-			normalizeTimePerToken:   { raw: 0, normalized: 0 },
-			dataflowTimePerToken:    { raw: 0, normalized: 0 },
-			totalCommonTimePerToken: { raw: 0, normalized: 0 }
+			commonMeasurements:         new Map<CommonSlicerMeasurements, ElapsedTime>(),
+			retrieveTimePerToken:       { raw: 0, normalized: 0 },
+			normalizeTimePerToken:      { raw: 0, normalized: 0 },
+			dataflowTimePerToken:       { raw: 0, normalized: 0 },
+			totalCommonTimePerToken:    { raw: 0, normalized: 0 },
+			retrieveTimePer100Lines:    0,
+			normalizeTimePer100Lines:   0,
+			dataflowTimePer100Lines:    0,
+			totalCommonTimePer100Lines: 0
 		};
 	}
 
@@ -335,6 +352,13 @@ export class BenchmarkSlicer {
 		const ast = this.normalizedAst;
 
 		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, this.context as FlowrAnalyzerContext, undefined, undefined, true));
+		if(this.stats) {
+			this.stats.controlFlow = {
+				numberOfVertices: this.controlFlow.graph.vertices(true).size,
+				numberOfEdges:    [...this.controlFlow.graph.edges().values()].reduce((a, e) => a + e.size, 0),
+				sizeOfObject:     getSizeOfCfGraph(this.controlFlow.graph)
+			};
+		}
 	}
 
 	public extractCG(): void {
@@ -435,6 +459,62 @@ export class BenchmarkSlicer {
 		this.stats.dataFrameShape = stats;
 
 		return stats;
+	}
+
+	/**
+	 * Measure the phases that are not part of the slicing itself: the dependencies query, the linter,
+	 * and the synthetic {@link runCalibration | calibration} workload.
+	 *
+	 * These run *after* all other steps and are excluded from the {@link CommonSlicerMeasurements} (and hence from
+	 * the `total`), so that they cannot distort any of the existing measurements.
+	 * A failing phase is logged and skipped, it never aborts the benchmark.
+	 */
+	public async measureAdditionalPhases(): Promise<void> {
+		this.totalStopwatch.pause();
+		try {
+			this.guardActive();
+			const analyzer = await this.buildAnalyzerForAdditionalPhases();
+			if(analyzer !== undefined) {
+				await this.measureAdditional('dependencies query', () => analyzer.query([{ type: 'dependencies' }]));
+				await this.measureAdditional('linter run', () => analyzer.query([{ type: 'linter' }]));
+			}
+			await this.measureAdditional('calibration', () => runCalibration());
+		} catch(e: unknown) {
+			benchmarkLogger.error(`failed to measure the additional phases: ${e instanceof Error ? e.message : String(e)}`);
+		} finally {
+			this.totalStopwatch.resume();
+		}
+	}
+
+	/**
+	 * The additional phases work on the analyzer api, so we have to set up an analyzer for the same request.
+	 * All of its analyses happen before the measurement starts.
+	 */
+	private async buildAnalyzerForAdditionalPhases(): Promise<ReadonlyFlowrAnalysisProvider | undefined> {
+		try {
+			guard(this.config !== undefined && this.request !== undefined, 'need to call init before the additional phases');
+			const analyzer = new FlowrAnalyzerBuilder()
+				.setParser(this.parser)
+				.setConfig(this.config)
+				.buildSync();
+			analyzer.addRequest({ ...this.request });
+			await analyzer.runFull();
+			return analyzer;
+		} catch(e: unknown) {
+			benchmarkLogger.error(`failed to set up the analyzer for the additional phases: ${e instanceof Error ? e.message : String(e)}`);
+			return undefined;
+		}
+	}
+
+	private async measureAdditional(keyToMeasure: AdditionalSlicerMeasurements, measurement: () => unknown): Promise<void> {
+		const start = process.hrtime.bigint();
+		try {
+			await measurement();
+		} catch(e: unknown) {
+			benchmarkLogger.error(`failed to measure '${keyToMeasure}': ${e instanceof Error ? e.message : String(e)}`);
+			return;
+		}
+		this.additionalMeasurements.set(keyToMeasure, process.hrtime.bigint() - start);
 	}
 
 	private getInferredRange<T>(value: SetRangeDomain<T> | PosIntervalDomain): number {
@@ -612,6 +692,13 @@ export class BenchmarkSlicer {
 			raw:        dataFrameShapeTime / this.stats.input.numberOfRTokens,
 			normalized: dataFrameShapeTime / this.stats.input.numberOfNormalizedTokens,
 		};
+
+		const per100Lines = 100 / this.stats.input.numberOfLines;
+		this.stats.retrieveTimePer100Lines = retrieveTime * per100Lines;
+		this.stats.normalizeTimePer100Lines = normalizeTime * per100Lines;
+		this.stats.dataflowTimePer100Lines = dataflowTime * per100Lines;
+		this.stats.totalCommonTimePer100Lines = (retrieveTime + normalizeTime + dataflowTime) * per100Lines;
+		this.stats.controlFlowTimePer100Lines = Number.isNaN(controlFlowTime) ? undefined : controlFlowTime * per100Lines;
 
 		return {
 			stats:     this.stats,

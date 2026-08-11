@@ -37,7 +37,8 @@ export const benchmarkOptions = [
 	{ name: 'per-file-time-limit',       type: Number,  description: 'Time limit in milliseconds to process single file (disabled by default)', defaultValue: undefined, typeLabel: '{underline number}' },
 	{ name: 'sampling-strategy',         type: String,  description: 'Which strategy to use, when sampling is enabled', defaultValue: 'random', typeLabel: '{underline random/equidistant}' },
 	{ name: 'cfg',           alias: 'c', type: Boolean, description: 'Extract the control flow graph of the file (benchmark it too)' },
-	{ name: 'cg',                        type: Boolean, description: 'Extract the call graph of the file (benchmark it too)' }
+	{ name: 'cg',                        type: Boolean, description: 'Extract the call graph of the file (benchmark it too)' },
+	{ name: 'no-extra-phases',           type: Boolean, description: 'Skip the dependencies query, the linter run and the calibration, which cost suite runtime', defaultValue: false },
 ] as const satisfies OptionDefinition[];
 
 export const benchmarkHelperOptions = [
@@ -55,6 +56,7 @@ export const benchmarkHelperOptions = [
 	{ name: 'max-slices',                type: Number,  description: 'If file has more than passed number of slices, the file is not processed', defaultValue: -1, typeLabel: '{underline number}' },
 	{ name: 'threshold',     alias: 't', type: Number,  description: 'How many re-visits of the same node are ok?', defaultValue: undefined, typeLabel: '{underline number}' },
 	{ name: 'sampling-strategy',         type: String,  description: 'Which strategy to use, when sampling is enabled', defaultValue: 'random', typeLabel: '{underline random/equidistant}' },
+	{ name: 'no-extra-phases',           type: Boolean, description: 'Skip the dependencies query, the linter run and the calibration, which cost suite runtime', defaultValue: false },
 	{ name: 'seed',                      type: String,  description: 'The random seed for sampling the slicing criteria if a maximum is set' },
 ] as const satisfies OptionDefinition[];
 

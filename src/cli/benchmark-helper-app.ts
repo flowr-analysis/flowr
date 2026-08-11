@@ -23,6 +23,7 @@ export interface SingleBenchmarkCliOptions {
 	'max-slices':                number
 	cfg:                         boolean
 	cg:                          boolean
+	'no-extra-phases':           boolean
 	threshold?:                  number
 	'sampling-strategy':         string
 	seed?:                       string
@@ -110,6 +111,11 @@ async function benchmark() {
 			console.log(`${prefix} Performing shape inference for data frames`);
 			slicer.inferDataFrameShapes();
 			console.log(`${prefix} Completed data frame shape inference`);
+		}
+
+		console.log(`${prefix} Measuring the additional phases (dependencies query, linter, calibration)`);
+		if(!options['no-extra-phases']) {
+			await slicer.measureAdditionalPhases();
 		}
 
 		const { stats } = slicer.finish();

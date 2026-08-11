@@ -14,6 +14,14 @@ export type CommonSlicerMeasurements = typeof CommonSlicerMeasurements[number];
 export const PerSliceMeasurements = ['static slicing', 'reconstruct code', 'total'] as const;
 export type PerSliceMeasurements = typeof PerSliceMeasurements[number];
 
+/**
+ * Measurements that are taken *after* all {@link CommonSlicerMeasurements} and hence do not count towards them
+ * (especially not towards the `total`).
+ * They may be missing if the corresponding phase failed or was never run.
+ */
+export const AdditionalSlicerMeasurements = ['dependencies query', 'linter run', 'calibration'] as const;
+export type AdditionalSlicerMeasurements = typeof AdditionalSlicerMeasurements[number];
+
 export type ElapsedTime = bigint;
 
 export interface PerSliceStats {
@@ -45,6 +53,28 @@ export interface SlicerStatsDataflow<T = number> {
 	numberOfFunctionDefinitions: T
 	/* size of object in bytes as measured by v8 serialization */
 	sizeOfObject:                T
+}
+
+/** what the benchmarked flowR version carries, counted once per run */
+export interface FlowrFeatureCounts {
+	lintingRules:                      number
+	queries:                           number
+	builtinDefinitions:                number
+	/** built-ins handled by the default processor, which only reads its arguments */
+	builtinDefinitionsDefault:         number
+	/** built-ins with a processor of their own */
+	builtinDefinitionsCustom:          number
+	/** built-ins that also carry a value solver, see the built-in eval handlers */
+	builtinDefinitionsWithEvalHandler: number
+	/** how many linting rules carry each tag, a rule usually carries several */
+	lintingRulesByTag:                 Record<string, number>
+}
+
+export interface SlicerStatsControlFlow<T = number> {
+	numberOfVertices: T
+	numberOfEdges:    T
+	/* size of object in bytes as measured by v8 serialization */
+	sizeOfObject:     T
 }
 
 export interface SlicerStatsDfShape<T = number> {
@@ -94,10 +124,14 @@ export interface BenchmarkMemoryMeasurement<T = number> extends MergeableRecord 
 export interface SlicerStats {
 	commonMeasurements:          Map<CommonSlicerMeasurements, ElapsedTime>
 	perSliceMeasurements:        Map<SlicingCriteria, PerSliceStats>
+	/** measured after all {@link commonMeasurements}, see {@link AdditionalSlicerMeasurements} */
+	additionalMeasurements:      Map<AdditionalSlicerMeasurements, ElapsedTime>
 	memory:                      Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>,
 	request:                     RParseRequestFromFile | RParseRequestFromText
 	input:                       SlicerStatsInput
 	dataflow:                    SlicerStatsDataflow
+	features?:                   FlowrFeatureCounts
+	controlFlow?:                SlicerStatsControlFlow
 	dataFrameShape?:             SlicerStatsDfShape
 	retrieveTimePerToken:        TimePerToken<number>
 	normalizeTimePerToken:       TimePerToken<number>
@@ -106,4 +140,10 @@ export interface SlicerStats {
 	controlFlowTimePerToken?:    TimePerToken<number>
 	callGraphTimePerToken?:      TimePerToken<number>
 	dataFrameShapeTimePerToken?: TimePerToken<number>
+	/** time in nanoseconds per 100 lines of the input, the pendant to {@link retrieveTimePerToken} */
+	retrieveTimePer100Lines:     number
+	normalizeTimePer100Lines:    number
+	dataflowTimePer100Lines:     number
+	totalCommonTimePer100Lines:  number
+	controlFlowTimePer100Lines?: number
 }

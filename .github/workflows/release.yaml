@@ -441,6 +441,10 @@ jobs:
       - name: "⬆️ Pull latest to avoid conflicts"
         run: git pull origin main --no-edit
 
+      - name: "🗜️ Compact the benchmark data"
+        # the action pretty prints the history, one line per run keeps the file and its diffs small
+        run: npx ts-node --transpile-only scripts/compact-benchmark-data.ts
+
       - name: "⬆️ Push benchmark results"
         # we manipulate the name of the last commit message
         run: |

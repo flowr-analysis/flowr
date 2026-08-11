@@ -316,6 +316,7 @@ jobs:
         with:
           name: benchmark-results-${{ matrix.name }}-${{ matrix.parser }}
           path: test/performance/results/
+          if-no-files-found: error
     outputs:
       version: ${{ needs.release.outputs.version }}
 

@@ -295,6 +295,7 @@ jobs:
         with:
           name: benchmark-results-${{ matrix.name }}-${{ matrix.parser }}
           path: test/performance/results/
+          if-no-files-found: error
 
   performance-test-upload:
     name: "⬆️ Upload Performance Test Results"

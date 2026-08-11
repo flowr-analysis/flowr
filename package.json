@@ -49,7 +49,7 @@
     "test:full": "npm run test-full",
     "test:bench": "vitest bench --config test/vitest.config.mts",
     "test-full": "npm run test:coverage -- --no-watch -- --make-summary --test-installation",
-    "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2 $3 $4; cd ../../; }; func",
+    "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh \"$@\"; }; func",
     "test:performance": "npm run performance-test --",
     "test:docker": "func() { b() { docker build ${1:+--network=$1} -t flowr-docker-test -f \"$2\" .; }; r() { docker run --rm ${1:+--network=$1} flowr-docker-test --version; }; for df in scripts/Dockerfile scripts/Dockerfile-NoR; do echo \"=== building $df ===\"; b '' \"$df\" || { echo '(retrying with --network=host: bridge networking unavailable)'; b host \"$df\"; } || return 1; echo \"=== smoke-testing $df ===\"; r '' || r host || return 1; done; }; func",
     "detect-circular-deps": "npx madge  --extensions ts,tsx --circular src/",

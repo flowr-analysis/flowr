@@ -50,5 +50,12 @@ echo -e "  * Running: \"${CMD[*]}\"...\033[33m"
 "${CMD[@]}"
 echo -e "\033[0m  * Done (written to ${OUTPUT_FILE}${ULTIMATE_SUMMARY_SUFFIX})."
 
+# the CI consumes the graph summary, so refuse to report success without it
+GRAPH_SUMMARY="${OUTPUT_FILE}-graph.json"
+if [[ ! -s "${GRAPH_SUMMARY}" ]]; then
+  printf "Suite \"%s\" produced no graph summary at \"%s\".\n" "${SUITE_NAME}" "${GRAPH_SUMMARY}" >&2
+  exit 3
+fi
+
 # step out
 cd ..

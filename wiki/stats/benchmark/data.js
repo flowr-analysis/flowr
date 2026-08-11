@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786457783485,
+  "lastUpdate": 1786457787358,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -21920,134 +21920,6 @@ window.BENCHMARK_DATA = {
             "username": "EagleoutIce"
           },
           "distinct": true,
-          "id": "2b2a899bb137bbe37158d8b89b5d9ab797377c87",
-          "message": "[release:patch] Improved Closure Slicing, DFG docs, and Support for the Car Package (Release v2.1.9)",
-          "timestamp": "2024-12-21T19:20:34+01:00",
-          "tree_id": "5021a4d182f712192184590249ccca759e5c2361",
-          "url": "https://github.com/flowr-analysis/flowr/commit/2b2a899bb137bbe37158d8b89b5d9ab797377c87"
-        },
-        "date": 1734806436813,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "Retrieve AST from R code",
-            "value": 240.29553246,
-            "unit": "ms",
-            "range": 43.566698252490966,
-            "extra": "median: 218.97ms"
-          },
-          {
-            "name": "Normalize R AST",
-            "value": 18.887684059999998,
-            "unit": "ms",
-            "range": 14.011413326184593,
-            "extra": "median: 12.50ms"
-          },
-          {
-            "name": "Produce dataflow information",
-            "value": 75.87755006,
-            "unit": "ms",
-            "range": 71.20775670773445,
-            "extra": "median: 34.78ms"
-          },
-          {
-            "name": "Total per-file",
-            "value": 8196.63913376,
-            "unit": "ms",
-            "range": 29495.910083125105,
-            "extra": "median: 987.76ms"
-          },
-          {
-            "name": "Static slicing",
-            "value": 16.277712909531544,
-            "unit": "ms",
-            "range": 44.55798671432273,
-            "extra": "median: 3.20ms"
-          },
-          {
-            "name": "Reconstruct code",
-            "value": 0.24983815231539427,
-            "unit": "ms",
-            "range": 0.14603721736587416,
-            "extra": "median: 0.15ms"
-          },
-          {
-            "name": "Total per-slice",
-            "value": 16.535243500004896,
-            "unit": "ms",
-            "range": 44.592894451465924,
-            "extra": "median: 3.36ms"
-          },
-          {
-            "name": "failed to reconstruct/re-parse",
-            "value": 0,
-            "unit": "#",
-            "extra": "out of 12710 slices"
-          },
-          {
-            "name": "times hit threshold",
-            "value": 0,
-            "unit": "#"
-          },
-          {
-            "name": "reduction (characters)",
-            "value": 0.8675079502314259,
-            "unit": "#",
-            "extra": "std: 0.09672370351664435"
-          },
-          {
-            "name": "reduction (normalized tokens)",
-            "value": 0.8039272829076662,
-            "unit": "#",
-            "extra": "std: 0.13958898876719777"
-          },
-          {
-            "name": "memory (df-graph)",
-            "value": 99.374609375,
-            "unit": "KiB",
-            "range": 113.04110172670963,
-            "extra": "median: 49.92"
-          },
-          {
-            "name": "queries",
-            "unit": "#",
-            "value": 9
-          },
-          {
-            "name": "built-in definitions",
-            "unit": "#",
-            "value": 46
-          },
-          {
-            "name": "built-in definitions (default handler)",
-            "unit": "#",
-            "value": 15
-          },
-          {
-            "name": "built-in definitions (own handler)",
-            "unit": "#",
-            "value": 27
-          },
-          {
-            "name": "built-in definitions (with eval handler)",
-            "unit": "#",
-            "value": 0
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "florian.sihler@uni-ulm.de",
-            "name": "Florian Sihler",
-            "username": "EagleoutIce"
-          },
-          "committer": {
-            "email": "florian.sihler@uni-ulm.de",
-            "name": "Florian Sihler",
-            "username": "EagleoutIce"
-          },
-          "distinct": true,
           "id": "193493e9fb030ea261ae5f34cb1637c1dbdc8c0c",
           "message": "[release:patch] First support for pointer analysis (named list arguments with `$`) (Release v2.1.10)",
           "timestamp": "2025-01-05T09:27:15+01:00",
@@ -43486,6 +43358,514 @@ window.BENCHMARK_DATA = {
             "name": "tests (output)",
             "unit": "#",
             "value": 11
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "5f76f4bdab2a2a7239b2d5e369c1c91cdc0461e7",
+          "message": "[release:patch] 2.13.14 Uselist fixes, Improved Benchmarks",
+          "timestamp": "2026-08-11T15:42:38+02:00",
+          "tree_id": "1c781f71978204b2e15709b0c279a878eb065d8c",
+          "url": "https://github.com/flowr-analysis/flowr/commit/5f76f4bdab2a2a7239b2d5e369c1c91cdc0461e7"
+        },
+        "date": 1786457787345,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 251.71891,
+            "range": "42.423341117235665",
+            "unit": "ms",
+            "extra": "mean: 264.79ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 16.684041,
+            "range": "10.64679142672129",
+            "unit": "ms",
+            "extra": "mean: 19.75ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 48.978901,
+            "range": "30.635605128911376",
+            "unit": "ms",
+            "extra": "mean: 54.55ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 464.547889,
+            "range": "732.1900294081674",
+            "unit": "ms",
+            "extra": "mean: 678.75ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 3.877912,
+            "range": "2.897653331097426",
+            "unit": "ms",
+            "extra": "mean: 4.53ms"
+          },
+          {
+            "name": "Infer data frame shapes",
+            "value": 19.351438,
+            "range": "54.05046438847477",
+            "unit": "ms",
+            "extra": "mean: 32.26ms"
+          },
+          {
+            "name": "Extract call graph",
+            "value": 2.078697,
+            "range": "2.1592819665003535",
+            "unit": "ms",
+            "extra": "mean: 2.76ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 0.206034,
+            "range": "0.7485201430179589",
+            "unit": "ms",
+            "extra": "mean: 0.51ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.170308,
+            "range": "0.22596674021784055",
+            "unit": "ms",
+            "extra": "mean: 0.24ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 0.443617,
+            "range": "0.8650949827635983",
+            "unit": "ms",
+            "extra": "mean: 0.76ms"
+          },
+          {
+            "name": "Dependencies query",
+            "value": 14.255416,
+            "range": "9.309991765840168",
+            "unit": "ms",
+            "extra": "mean: 17.15ms"
+          },
+          {
+            "name": "Linter run",
+            "value": 76.21692,
+            "range": "72.15192444666242",
+            "unit": "ms",
+            "extra": "mean: 92.83ms"
+          },
+          {
+            "name": "Calibration",
+            "value": 14.915849,
+            "range": "2.0097803087885495",
+            "unit": "ms",
+            "extra": "mean: 15.46ms"
+          },
+          {
+            "name": "Retrieve AST per 100 lines",
+            "value": 178.29299568345323,
+            "range": "240.98032513568546",
+            "unit": "ms",
+            "extra": "mean: 244.95ms"
+          },
+          {
+            "name": "Normalize AST per 100 lines",
+            "value": 12.3803,
+            "range": "7.513652774937507",
+            "unit": "ms",
+            "extra": "mean: 13.70ms"
+          },
+          {
+            "name": "Dataflow per 100 lines",
+            "value": 32.67089777777778,
+            "range": "19.096439010022433",
+            "unit": "ms",
+            "extra": "mean: 37.05ms"
+          },
+          {
+            "name": "Control flow per 100 lines",
+            "value": 2.5178397727272728,
+            "range": "2.9804529822489862",
+            "unit": "ms",
+            "extra": "mean: 3.39ms"
+          },
+          {
+            "name": "Static slicing per 100 lines",
+            "value": 0.1539685185185185,
+            "range": "1.1675608293036674",
+            "unit": "ms",
+            "extra": "mean: 0.50ms"
+          },
+          {
+            "name": "Reconstruct code per 100 lines",
+            "value": 0.12200105263157894,
+            "range": "0.3390458466505034",
+            "unit": "ms",
+            "extra": "mean: 0.20ms"
+          },
+          {
+            "name": "Total common per 100 lines",
+            "value": 228.4068848101266,
+            "range": "262.8021710346619",
+            "unit": "ms",
+            "extra": "mean: 295.71ms"
+          },
+          {
+            "name": "Total per-slice per 100 lines",
+            "value": 0.31901942446043163,
+            "range": "1.4275766271607142",
+            "unit": "ms",
+            "extra": "mean: 0.70ms"
+          },
+          {
+            "name": "linting rules",
+            "value": 18,
+            "unit": "#"
+          },
+          {
+            "name": "queries",
+            "value": 29,
+            "unit": "#"
+          },
+          {
+            "name": "built-in definitions",
+            "value": 251,
+            "unit": "#"
+          },
+          {
+            "name": "built-in definitions (default handler)",
+            "value": 137,
+            "unit": "#"
+          },
+          {
+            "name": "built-in definitions (own handler)",
+            "value": 99,
+            "unit": "#"
+          },
+          {
+            "name": "built-in definitions (with eval handler)",
+            "value": 23,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (deprecated)",
+            "value": 1,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (smell)",
+            "value": 10,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (usability)",
+            "value": 5,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (reproducibility)",
+            "value": 8,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (robustness)",
+            "value": 4,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (bug)",
+            "value": 4,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (quickfix)",
+            "value": 5,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (readability)",
+            "value": 3,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (style)",
+            "value": 2,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (security)",
+            "value": 3,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (performance)",
+            "value": 2,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (documentation)",
+            "value": 2,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (experimental)",
+            "value": 2,
+            "unit": "#"
+          },
+          {
+            "name": "number of files",
+            "value": 140,
+            "unit": "#"
+          },
+          {
+            "name": "number of slices",
+            "value": 29191,
+            "unit": "#"
+          },
+          {
+            "name": "input lines",
+            "value": 140,
+            "range": "197.76653662893548",
+            "unit": "#",
+            "extra": "mean: 205.06"
+          },
+          {
+            "name": "input tokens (normalized)",
+            "value": 789,
+            "range": "1152.8662445206305",
+            "unit": "#",
+            "extra": "mean: 1156.53"
+          },
+          {
+            "name": "dataflow vertices",
+            "value": 490,
+            "range": "727.3836710416032",
+            "unit": "#",
+            "extra": "mean: 724.37"
+          },
+          {
+            "name": "dataflow edges",
+            "value": 882,
+            "range": "1396.4800976061936",
+            "unit": "#",
+            "extra": "mean: 1319.96"
+          },
+          {
+            "name": "dataflow calls",
+            "value": 189,
+            "range": "275.29426658447824",
+            "unit": "#",
+            "extra": "mean: 278.45"
+          },
+          {
+            "name": "dataflow function definitions",
+            "value": 0,
+            "range": "3.0497574343155986",
+            "unit": "#",
+            "extra": "mean: 1.36"
+          },
+          {
+            "name": "control flow vertices",
+            "value": 1041,
+            "range": "1815.1184387622463",
+            "unit": "#",
+            "extra": "mean: 1594.56"
+          },
+          {
+            "name": "control flow edges",
+            "value": 1040,
+            "range": "1816.099238992007",
+            "unit": "#",
+            "extra": "mean: 1595.44"
+          },
+          {
+            "name": "files with data frames",
+            "value": 214,
+            "unit": "#",
+            "extra": "out of 280 files"
+          },
+          {
+            "name": "data frame operations",
+            "value": 9322,
+            "unit": "#",
+            "extra": "mean: 33.29 per file"
+          },
+          {
+            "name": "data frame operation nodes",
+            "value": 7430,
+            "unit": "#",
+            "extra": "mean: 26.54 per file"
+          },
+          {
+            "name": "data frame value nodes",
+            "value": 20046,
+            "unit": "#",
+            "extra": "mean: 71.59 per file"
+          },
+          {
+            "name": "data frame constraints",
+            "value": 3796,
+            "unit": "#",
+            "extra": "mean: 13.56 per file"
+          },
+          {
+            "name": "data frame shapes (exact)",
+            "value": 36,
+            "unit": "#",
+            "extra": "mean: 0.13 per file"
+          },
+          {
+            "name": "data frame shapes (bottom)",
+            "value": 0,
+            "unit": "#",
+            "extra": "mean: 0.00 per file"
+          },
+          {
+            "name": "data frame shapes (top)",
+            "value": 2446,
+            "unit": "#",
+            "extra": "mean: 8.74 per file"
+          },
+          {
+            "name": "memory (df-shapes)",
+            "value": 226.7958984375,
+            "range": "10367.742349984435",
+            "unit": "KiB",
+            "extra": "mean: 2790.67"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 29191 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (lines)",
+            "value": 0.9387755102040817,
+            "unit": "#",
+            "extra": "mean: 0.8861, std: 0.0753"
+          },
+          {
+            "name": "reduction (dataflow vertices)",
+            "value": 0.9477611940298507,
+            "unit": "#",
+            "extra": "mean: 0.8750, std: 0.1239"
+          },
+          {
+            "name": "reduction no fluff (characters)",
+            "value": 0.935269000853971,
+            "unit": "#",
+            "extra": "mean: 0.8466, std: 0.1370"
+          },
+          {
+            "name": "reduction no fluff (normalized tokens)",
+            "value": 0.9250645994832041,
+            "unit": "#",
+            "extra": "mean: 0.8374, std: 0.1431"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.9539748953974896,
+            "unit": "#",
+            "extra": "mean: 0.8793, std: 0.1119"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.9269521410579346,
+            "unit": "#",
+            "extra": "mean: 0.8403, std: 0.1412"
+          },
+          {
+            "name": "memory (cfg-graph)",
+            "value": 23.3681640625,
+            "range": "46.27014402432756",
+            "unit": "KiB",
+            "extra": "mean: 38.80"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 51.1396484375,
+            "range": "91.24534380944625",
+            "unit": "KiB",
+            "extra": "mean: 80.67"
+          },
+          {
+            "name": "tests overall",
+            "value": 8877,
+            "unit": "#"
+          },
+          {
+            "name": "tests",
+            "value": 2298,
+            "unit": "#"
+          },
+          {
+            "name": "tests (dataflow)",
+            "value": 620,
+            "unit": "#"
+          },
+          {
+            "name": "tests (query)",
+            "value": 366,
+            "unit": "#"
+          },
+          {
+            "name": "tests (slice)",
+            "value": 365,
+            "unit": "#"
+          },
+          {
+            "name": "tests (desugar-shell)",
+            "value": 300,
+            "unit": "#"
+          },
+          {
+            "name": "tests (desugar-tree-sitter)",
+            "value": 290,
+            "unit": "#"
+          },
+          {
+            "name": "tests (controlflow)",
+            "value": 218,
+            "unit": "#"
+          },
+          {
+            "name": "tests (resolve)",
+            "value": 216,
+            "unit": "#"
+          },
+          {
+            "name": "tests (other)",
+            "value": 195,
+            "unit": "#"
+          },
+          {
+            "name": "tests (call-graph)",
+            "value": 33,
+            "unit": "#"
+          },
+          {
+            "name": "tests (output)",
+            "value": 11,
+            "unit": "#"
           }
         ]
       }

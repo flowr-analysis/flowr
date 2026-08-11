@@ -1,9 +1,10 @@
 import { CfgEdge, type CfgExpressionVertex, type CfgStatementVertex, CfgVertex, type ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
+import { Identifier } from '../dataflow/environments/identifier';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import { type DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
-import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexUse, type DataflowGraphVertexValue, type DataflowGraphVertexVariableDefinition, FunctionCallVertex, VertexType } from '../dataflow/graph/vertex';
+import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexUse, type DataflowGraphVertexValue, type DataflowGraphVertexVariableDefinition, FunctionCallVertex, VertexType } from '../dataflow/graph/vertex';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
 import { type NoInfo, RLoopConstructs, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
@@ -18,6 +19,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import type { RNull } from '../r-bridge/lang-4.x/convert-values';
+import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
 import { guard, isNotUndefined } from '../util/assert';
 import { Record } from '../util/record';
 import type { AbsintContext, AbstractSemantics } from './abstract-semantics';
@@ -587,6 +589,43 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		}
 	}
 
+	protected handleConditionBranch(state: MultiValueStateDomain<Partial<Domains>>, conditionVertex: DataflowGraphVertexArgument, branch: typeof RTrue | typeof RFalse): MultiValueStateDomain<Partial<Domains>> {
+		if(FunctionCallVertex.is(conditionVertex) && conditionVertex.args.every(FunctionArgument.isNotEmpty)) {
+			const name = Identifier.getName(conditionVertex.name);
+			const isNot = Identifier.matches(name, ['base', '!']);
+			const isAnd = Identifier.matches(name, ['base', '&&']) || Identifier.matches(name, ['base', '&']);
+			const isOr = Identifier.matches(name, ['base', '||']) || Identifier.matches(name, ['base', '|']);
+
+			if(isNot && conditionVertex.args.length === 1) {
+				const childVertex = this.getDataflowGraph(conditionVertex.args[0].nodeId);
+
+				if(childVertex !== undefined) {
+					return this.handleConditionBranch(state, childVertex, branch === RTrue ? RFalse : RTrue);
+				}
+			} else if((isAnd || isOr) && conditionVertex.args.length === 2) {
+				const leftVertex = this.getDataflowGraph(conditionVertex.args[0].nodeId);
+				const rightVertex = this.getDataflowGraph(conditionVertex.args[1].nodeId);
+
+				if(leftVertex !== undefined && rightVertex !== undefined) {
+					const leftState = this.handleConditionBranch(state, leftVertex, branch);
+					const rightState = this.handleConditionBranch(state, rightVertex, branch);
+
+					if(branch === RTrue && isAnd || branch === RFalse && isOr) {
+						return leftState.meet(rightState);
+					} else if(branch === RTrue && isOr || branch === RFalse && isAnd) {
+						return leftState.join(rightState);
+					}
+				}
+			}
+		}
+		const newState = state.create(state.value);
+
+		for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
+			semantics.handleConditionBranch?.(this.getState(type, newState), conditionVertex, this.getContext(type), branch);
+		}
+		return newState;
+	}
+
 	/** Gets all AST nodes for the predecessor vertices that are leaf nodes and exit vertices with the connecting edges */
 	protected getPredecessorNodes(vertexId: NodeId, pathEdges: CfgEdge[] = []): { id: NodeId, edges: CfgEdge[] }[] {
 		return this.config.controlFlow.graph.outgoingEdges(vertexId)?.entries()  // outgoing dependency edges are ingoing CFG edges
@@ -609,20 +648,18 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 			.map(pred => {
 				const predState = this.trace.get(pred.id);
 				const controlEdge = pred.edges.find(CfgEdge.isControlDependency);
-				const dfgVertex = this.getDataflowGraph(CfgVertex.getRootId(vertex));
 
-				if(predState !== undefined && controlEdge !== undefined && dfgVertex !== undefined) {
-					const condition = CfgEdge.unpackCause(controlEdge);
-					const branchType = CfgEdge.unpackWhen(controlEdge);
-
-					const newState = predState.create(predState.value);
-
-					for(const [type, semantics] of Record.properties(this.analysis.semantics)) {
-						semantics.handleConditionBranch?.(this.getState(type, newState), dfgVertex, this.getContext(type), condition, branchType);
-					}
-					return newState;
+				if(predState === undefined || controlEdge === undefined) {
+					return predState;
 				}
-				return predState;
+				const branchType = CfgEdge.unpackWhen(controlEdge);
+				const condition = CfgEdge.unpackCause(controlEdge);
+				const conditionVertex = this.getDataflowGraph(condition);
+
+				if(conditionVertex === undefined) {
+					return predState;
+				}
+				return this.handleConditionBranch(predState, conditionVertex, branchType);
 			}).filter(isNotUndefined);
 	}
 

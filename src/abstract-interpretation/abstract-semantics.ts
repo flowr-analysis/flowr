@@ -266,10 +266,9 @@ export interface AbstractSemantics<Domain extends StateDomain> {
 	 * Handles a control flow edge that is only taken if a condition evaluates to a specific value,
 	 * allowing to refine the abstract state with the information gained from the taken branch.
 	 * @param state     - The abstract state to apply the semantics to
-	 * @param vertex    - The dataflow graph vertex of the node the branch leads to
+	 * @param vertex    - The dataflow graph vertex of the condition of the branch
 	 * @param ctx       - The context of the abstract interpretation analysis
-	 * @param condition - The ID of the condition guarding the branch
 	 * @param branch    - Whether the branch is taken if the condition evaluates to `TRUE` or to `FALSE`
 	 */
-	handleConditionBranch?(state: Domain, vertex: DataflowGraphVertexArgument, ctx: AbsintContext<Domain>, condition: NodeId, branch: typeof RTrue | typeof RFalse): void;
+	handleConditionBranch?(state: Domain, vertex: DataflowGraphVertexArgument, ctx: AbsintContext<Domain>, branch: typeof RTrue | typeof RFalse): void;
 }

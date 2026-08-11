@@ -4,7 +4,7 @@ import { Dataflow } from '../dataflow/graph/df-helper';
 import { FunctionCallVertex, type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import type { RLogicalValue } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { RFalse, RNull, RNumberValue, RStringValue, RTrue } from '../r-bridge/lang-4.x/convert-values';
+import type { RNull, RNumberValue, RStringValue, RFalse, RTrue  } from '../r-bridge/lang-4.x/convert-values';
 import { Record } from '../util/record';
 import type { AbsintContext, AbstractSemantics } from './abstract-semantics';
 import type { AnyAbstractDomain } from './domains/abstract-domain';
@@ -28,19 +28,28 @@ interface ConstantSemantics<Domain extends StateDomain> {
 }
 
 /**
+ * A mapping from the (possibly namespaced) name of an R function to the semantics to apply for calls of that function.
+ * The special key `other` defines the semantics to apply for all calls that are not matched by any of the other names.
+ * @template Domain  - Type of the state abstract domain the semantics are defined for
+ * @template Handler - The name of the {@link AbstractSemantics} handler the mapped semantics belong to
+ */
+type CallSemanticsMapping<Domain extends StateDomain, Handler extends keyof AbstractSemantics<Domain>> =
+	Record<IdentifierString, AbstractSemantics<Domain>[Handler]> & { readonly other?: AbstractSemantics<Domain>[Handler] };
+
+/**
  * The abstract semantics of concrete R functions, mapping the (possibly namespaced) name of a function to the semantics to apply for calls of that function.
  * The names of the functions are parsed as {@link Identifier}, so that names like `dplyr::filter`, `filter`, or `*::filter` can be used.
  * @template Domain - Type of the state abstract domain the semantics are defined for
  */
 interface CallSemantics<Domain extends StateDomain> {
 	/** The abstract semantics of normal function calls, such as `data.frame(id = 1:5)` */
-	readonly functionCalls?:      Record<IdentifierString, AbstractSemantics<Domain>['handleFunctionCall']>;
+	readonly functionCalls?:      CallSemanticsMapping<Domain, 'handleFunctionCall'>;
 	/** The abstract semantics of replacement calls, such as `names(x) <- "id"` */
-	readonly replacementCall?:    Record<IdentifierString, AbstractSemantics<Domain>['handleReplacementCall']>;
+	readonly replacementCall?:    CallSemanticsMapping<Domain, 'handleReplacementCall'>;
 	/** The abstract semantics of access calls, such as `x[1]` or `x$id` */
-	readonly accessCalls?:        Record<IdentifierString, AbstractSemantics<Domain>['handleAccessCall']>;
+	readonly accessCalls?:        CallSemanticsMapping<Domain, 'handleAccessCall'>;
 	/** The abstract semantics of conditions, refining the abstract state in the branches guarded by a call of the respective function */
-	readonly conditionSemantics?: Record<IdentifierString, AbstractSemantics<Domain>['handleConditionBranch']>;
+	readonly conditionSemantics?: CallSemanticsMapping<Domain, 'handleConditionBranch'>;
 }
 
 /**
@@ -73,7 +82,7 @@ type CallSemanticsDefinition<Domain extends StateDomain> = {
  * @template Key    - The type of the call semantics entry to get the applier function type for
  */
 interface CallSemanticsEntry<Domain extends StateDomain, Key extends keyof CallSemantics<Domain> = keyof CallSemantics<Domain>> {
-	readonly identifier: Identifier;
+	readonly identifier: Identifier | 'other';
 	readonly applier:    CallSemanticsApplier<CallSemantics<Domain>[Key]>;
 }
 
@@ -168,10 +177,13 @@ export class ValueSemantics<Domain extends StateDomain<AnyAbstractDomain>> imple
 	}
 
 	/** Applies the abstract semantics defined for the function call guarding a branch, if the called function is supported (see {@link CallSemantics}) */
-	public handleConditionBranch(state: Domain, vertex: DataflowGraphVertexArgument, ctx: AbsintContext<Domain>, condition: NodeId, branch: typeof RTrue | typeof RFalse): void {
+	public handleConditionBranch(state: Domain, vertex: DataflowGraphVertexArgument, ctx: AbsintContext<Domain>, branch: typeof RTrue | typeof RFalse): void {
 		if(FunctionCallVertex.is(vertex)) {
 			const applySemantics = this.getSemantics('conditionSemantics', vertex, ctx);
-			applySemantics?.(state, vertex, ctx, condition, branch);
+			applySemantics?.(state, vertex, ctx, branch);
+		} else {
+			const applySemantics = this.getDefaultSemantics('conditionSemantics');
+			applySemantics?.(state, vertex, ctx, branch);
 		}
 	}
 
@@ -184,13 +196,13 @@ export class ValueSemantics<Domain extends StateDomain<AnyAbstractDomain>> imple
 	 */
 	protected getSemantics<Key extends keyof CallSemantics<Domain>>(type: Key, vertex: DataflowGraphVertexFunctionCall, ctx: AbsintContext<Domain>): CallSemanticsApplier<CallSemantics<Domain>[Key]> | undefined {
 		const name = Dataflow.qualify(vertex.id, ctx.dfg, false) ?? vertex.name;
-
-		if(name === undefined) {
-			return;
-		}
 		const candidates = this.callSemantics[type]?.get(Identifier.getName(name)) ?? [];
 		const semantics = candidates.find(({ identifier }) => Identifier.matches(name, identifier));
 
-		return semantics?.applier;
+		return semantics?.applier ?? this.getDefaultSemantics(type);
+	}
+
+	private getDefaultSemantics<Key extends keyof CallSemantics<Domain>>(type: Key): CallSemanticsApplier<CallSemantics<Domain>[Key]> | undefined {
+		return this.callSemantics[type]?.get('other')?.find(({ identifier }) => identifier === 'other')?.applier;
 	}
 }

@@ -30,6 +30,13 @@ t <- 2`,
 			loc:       [1, 6, 1, 23]
 		}]
 		);
+		assertLinter('Closed with new definer', parser, `a <- textConnection(AB)
+b <- a
+c <- b
+close(c)`,
+		'unclosed-connection',
+		[]
+		);
 		assertLinter('Not necessarily closed', parser, `a <- textConnection(AB)
 b <- textConnection(E)
 if(x){

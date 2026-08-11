@@ -1149,8 +1149,9 @@
 			className: 'head', textContent: S.runLabel(run) + ' | ' + fmtDate(run.date)
 		}));
 
-		// what a phase takes of its chart
-		const chartSum = series.reduce((a, s) => a + (typeof s.values[i] === 'number' ? Math.abs(s.values[i]) : 0), 0);
+		// what a phase takes of its chart, the sum row being the whole rather than a part of it
+		const parts = series.filter(s => s.name !== SUM_NAME);
+		const chartSum = parts.reduce((a, s) => a + (typeof s.values[i] === 'number' ? Math.abs(s.values[i]) : 0), 0);
 
 		// one precision for the whole tooltip, so the values can be compared at a glance
 		const decimals = decimalsFor(series.map(s => s.values[i]));
@@ -1187,7 +1188,7 @@
 			table.appendChild(tr);
 			const extra = s.name === SUM_NAME ? extraSum(run, series.filter(o => o.name !== SUM_NAME), s.unit, i) : extraOf(run, s.name);
 			const raw = s.raw[i];
-			const share = !isDelta && v !== null && chartSum > 0 && series.length > 1
+			const share = !isDelta && v !== null && chartSum > 0 && parts.length > 1 && s.name !== SUM_NAME
 				? (Math.abs(v) / chartSum * 100).toFixed(1) + '% of this chart' : '';
 			const note = [
 				isDelta && raw !== null ? 'raw ' + fmt(raw, s.unit) : '',

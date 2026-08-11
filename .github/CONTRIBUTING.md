@@ -64,6 +64,17 @@ git config --local core.hooksPath .githooks/
 Experience showed that this should be done,
 even when an app like [GitHub Desktop](https://desktop.github.com/) installs the hooks for you.
 
+These are the hooks and what they do for you:
+
+| Hook | When | What it does |
+| ---- | ---- | ------------ |
+| `pre-commit` | on every commit | Refuses staged focused tests (`describe.only`, `test.only`, ...) and leftover merge conflict markers. Both take milliseconds. |
+| `commit-msg` | on every commit | Runs [commitlint](https://commitlint.js.org/) against our commit conventions (see below). |
+| `pre-push` | on every push | Lints the project with `--fix`. If the last commit is a release commit it runs the full `npm run checkup` instead. If your working tree is dirty it does this in a throwaway clone, so only what you actually push is checked, and copies lint fixes back into your tree. |
+| `post-checkout`, `post-merge`, `post-commit` | after those operations | Run their git-lfs counterpart and remind you when `package.json` changed, so you know that a `npm ci` is due. |
+
+If a hook stands in your way, `git commit --no-verify` and `git push --no-verify` skip it, but please only do that when you know why.
+
 <details>
 <summary> Test if the installation was successful </summary>
 

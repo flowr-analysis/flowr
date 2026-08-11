@@ -108,7 +108,14 @@ export function processTryCatch<OtherInfo>(
 			info.graph.addEdge(rootId, e.nodeId, EdgeType.Returns);
 		}
 	}
-	return info;
+	/* block and finally are evaluated in the enclosing environment, so their definitions have to bubble up */
+	const escaping: IdentifierReference[] = [];
+	for(const arg of res.processedArguments) {
+		if(arg && (blockArg.has(arg.entryPoint) || finallyArg.has(arg.entryPoint))) {
+			escaping.push(...arg.out);
+		}
+	}
+	return escaping.length > 0 ? { ...info, out: info.out.concat(escaping) } : info;
 }
 
 function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: DataflowInformation, data: DataflowProcessorInformation<ParentInformation & OtherInfo>): NodeId | undefined {

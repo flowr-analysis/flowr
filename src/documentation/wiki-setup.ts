@@ -1,6 +1,7 @@
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
+import { minimumNodeMajor } from '../util/node-version';
 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Setup
@@ -76,7 +77,7 @@ Again, you only require this for the ${ctx.linkPage('wiki/Engines', '`r-shell` e
 ### Installing Node.js
 
 Furthermore, you need the [node package manager](https://www.npmjs.com/) (for Linux, we recommend using [nvm](https://github.com/nvm-sh/nvm)).
-To work, we currently rely on node versions starting from \`22.x\`.
+To work, we currently rely on node versions starting from \`${minimumNodeMajor()}.x\` (as declared by the \`engines.node\` field of the [package.json](${RemoteFlowrFilePathBaseRef}package.json)).
 
 ### Installing _flowR_
 

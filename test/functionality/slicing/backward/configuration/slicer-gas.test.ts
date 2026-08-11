@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import { SemVer } from 'semver';
 import { withTreeSitter } from '../../../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
@@ -82,13 +82,19 @@ describe('Slicing under gas', withTreeSitter(ts => {
 			const analyzer = await boundedAnalyzer();
 			const ast = await analyzer.normalize();
 			const info = await analyzer.dataflow();
-			await spend(50); // the analysis and the slices before
+			/* the clock is driven by hand from here on, so a slow machine cannot spend the contingent for us */
+			vi.useFakeTimers({ now: Date.now() });
+			try {
+				vi.advanceTimersByTime(50); // the analysis and the slices before
 
-			for(let i = 0; i < 3; i++) {
-				const result = staticSlice({ ctx: analyzer.context(), info, ast, ids: [SlicingCriterion.parse('3@y', ast.idMap)] });
-				expect(result.stoppedEarly, `slice ${i} must get a contingent of its own`).toBeUndefined();
-				expect(result.result.size).toBeGreaterThan(1);
-				await spend(30);
+				for(let i = 0; i < 3; i++) {
+					const result = staticSlice({ ctx: analyzer.context(), info, ast, ids: [SlicingCriterion.parse('3@y', ast.idMap)] });
+					expect(result.stoppedEarly, `slice ${i} must get a contingent of its own`).toBeUndefined();
+					expect(result.result.size).toBeGreaterThan(1);
+					vi.advanceTimersByTime(30);
+				}
+			} finally {
+				vi.useRealTimers();
 			}
 		});
 

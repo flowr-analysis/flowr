@@ -66,6 +66,7 @@ import { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { SourceRange } from '../util/range';
 import { Dataflow } from '../dataflow/graph/df-helper';
+import { Resolve } from '../dataflow/environments/resolve-helper';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
 async function subExplanation(parser: KnownParser, ctx: GeneralDocContext, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
@@ -1255,6 +1256,9 @@ FlowR also provides various helper objects (with the same name as the correspond
 * ${ctx.link(DfEdge, undefined, { type: 'variable' })} to get helpful functions wrt. edges (see [below](#dfg-resolving-values))
 * ${ctx.link(Identifier, undefined, { type: 'variable' })} to get helpful functions wrt. identifiers
 * ${ctx.link(FunctionArgument, undefined, { type: 'variable' })} to get helpful functions wrt. function arguments
+* ${ctx.link(Resolve, undefined, { type: 'variable' })} (also reachable as \`Dataflow.resolve\`) to resolve a name against an environment or a node to its value.
+  The entry points differ a lot in cost, so take the narrowest one that answers your question: \`byName\` walks the environment layers once and is served from the layer cache,
+  \`byNameAndType\` additionally filters and merges the definitions of every layer it passes, and \`toValue\` as well as the \`argument\` family run the evaluator on top of a resolution.
 
 Some of these functions have been explained in their respective wiki pages. However, some are part of the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph API')} and so we explain them here.
 If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities', 'capabilities')} page.

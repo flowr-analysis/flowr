@@ -2,6 +2,9 @@
   "name": "@eagleoutice/flowr",
   "version": "2.13.13",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
+  "engines": {
+    "node": ">=22"
+  },
   "types": "dist/src/index.d.ts",
   "repository": {
     "type": "git",
@@ -12,7 +15,7 @@
     "url": "https://github.com/flowr-analysis/flowr/issues"
   },
   "scripts": {
-    "setup:dev": "git lfs fetch && npm ci && git config --local core.hooksPath .githooks/ && git push --dry-run",
+    "setup:dev": "npm ci && ts-node --transpile-only scripts/setup-dev.ts",
     "main": "npm run build:bundle-flowr && node dist/src/cli/flowr.min.js",
     "flowr": "npm run main --",
     "flowr:dev": "npm run sync:sigdb && npm run gen:base-packages && npm run main-dev --",
@@ -23,6 +26,8 @@
     "benchmark-helper": "ts-node src/cli/benchmark-helper-app.ts",
     "benchmark": "npm run build-dev && node dist/src/cli/benchmark-app.js",
     "summarizer": "ts-node src/cli/summarizer-app.ts",
+    "benchmark:test-counts": "ts-node --transpile-only scripts/test-label-counts.ts",
+    "benchmark:compact": "ts-node --transpile-only scripts/compact-benchmark-data.ts",
     "export-quads": "ts-node src/cli/export-quads-app.ts",
     "capabilities-markdown": "ts-node src/documentation/doc-capabilities.ts",
     "wiki": "ts-node src/cli/wiki.ts",
@@ -48,8 +53,8 @@
     "test:coverage": "npm run test -- --coverage",
     "test:full": "npm run test-full",
     "test:bench": "vitest bench --config test/vitest.config.mts",
-    "test-full": "npm run test:coverage -- --no-watch -- --make-summary --test-installation",
-    "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2 $3 $4; cd ../../; }; func",
+    "test-full": "npm run test:coverage -- --no-watch --reporter=default --reporter=json --outputFile.json=coverage/flowr-test-results.json -- --make-summary --test-installation",
+    "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh \"$@\"; }; func",
     "test:performance": "npm run performance-test --",
     "test:docker": "func() { b() { docker build ${1:+--network=$1} -t flowr-docker-test -f \"$2\" .; }; r() { docker run --rm ${1:+--network=$1} flowr-docker-test --version; }; for df in scripts/Dockerfile scripts/Dockerfile-NoR; do echo \"=== building $df ===\"; b '' \"$df\" || { echo '(retrying with --network=host: bridge networking unavailable)'; b host \"$df\"; } || return 1; echo \"=== smoke-testing $df ===\"; r '' || r host || return 1; done; }; func",
     "detect-circular-deps": "npx madge  --extensions ts,tsx --circular src/",

@@ -11,6 +11,7 @@ import { convertFnArguments, patchFunctionCall } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
 import { ReferenceType } from '../../../../../environments/identifier';
+import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { resolveEnvirArg, routeWrittenToCustomEnv } from './built-in-envir-utils';
@@ -80,16 +81,22 @@ export function processLocal<OtherInfo>(
 		origin:                BuiltInProcName.Local
 	});
 
+	const resultEnvironment = envirResolution ? data.environment : popLocalEnvironment(dfExpr.environment);
+	/* definitions of the local scope vanish with it, only what escaped it (e.g. via `<<-`) may bubble up */
+	const escaping = envirResolution ? dfExpr.out : dfExpr.out.filter(
+		o => o.name !== undefined && resolveByName(o.name, resultEnvironment, o.type)?.some(d => d.nodeId === o.nodeId)
+	);
+
 	const ingoing = dfEnv.in.concat(dfExpr.in, dfEnv.unknownReferences, dfExpr.unknownReferences);
 	ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
 	const baseResult = {
 		hooks:             dfExpr.hooks.concat(dfEnv.hooks),
-		environment:       envirResolution ? data.environment : popLocalEnvironment(dfExpr.environment),
+		environment:       resultEnvironment,
 		exitPoints:        dfEnv.exitPoints.concat(dfExpr.exitPoints),
 		graph:             dfEnv.graph.mergeWith(dfExpr.graph),
 		entryPoint:        rootId,
 		in:                ingoing,
-		out:               dfExpr.out.concat(dfEnv.out),
+		out:               escaping.concat(dfEnv.out),
 		unknownReferences: []
 	};
 

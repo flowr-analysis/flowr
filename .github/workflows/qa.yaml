@@ -162,6 +162,15 @@ jobs:
       - name: "⚙️ Run System Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:system -- --no-watch"
 
+      - name: "⬆️ Upload Test Label Details"
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-label-details
+          path: |
+            coverage/flowr-test-details.json
+            coverage/flowr-test-results.json
+          if-no-files-found: warn
+
       - name: "⬆️ Upload Coverage Reports to Codecov"
         if: github.ref == 'refs/heads/main'
         uses: codecov/codecov-action@v4
@@ -264,7 +273,7 @@ jobs:
       fail-fast: true
       matrix:
         # currently we have a duplication, add your benchmark names here and in `performance-test-upload`
-        name: ['artificial', 'social-science']
+        name: ['artificial', 'real-world']
         parser: ["tree-sitter", "r-shell"]
     steps:
       - name: "🛒 Checkout Repository"
@@ -295,6 +304,7 @@ jobs:
         with:
           name: benchmark-results-${{ matrix.name }}-${{ matrix.parser }}
           path: test/performance/results/
+          if-no-files-found: error
 
   performance-test-upload:
     name: "⬆️ Upload Performance Test Results"
@@ -314,12 +324,30 @@ jobs:
           git config --local user.name "GitHub Action"
           git pull
 
+      - name: "🌍 Load Versions to Use"
+        run: bash .github/workflows/scripts/global-configuration.sh
+
+      - name: "⬇️ Use Node.js"
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.ACTION_NODE_VERSION }}
+
+      - name: "⬇️ Get the Test Label Details"
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: test-label-details
+          path: test-labels/
+
       # currently we have a duplication, add your benchmark names here and in `performance-test` and check the release.yaml
       - name: "⬇️ Get benchmark Artifacts (artificial, r-shell)"
         uses: actions/download-artifact@v4
         with:
           name: benchmark-results-artificial-r-shell
           path: benchmark-ai-r-shell/
+
+      - name: "🧪 Add the Test Counters (artificial-r-shell)"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-ai-r-shell/artificial/artificial-summarized-graph.json"
 
       - name: "🥄 Merge and Produce Performance Results (artificial, r-shell)"
         uses: benchmark-action/github-action-benchmark@v1
@@ -339,18 +367,21 @@ jobs:
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
 
-      - name: "⬇️ Get benchmark Artifacts (social-science, r-shell)"
+      - name: "⬇️ Get benchmark Artifacts (real-world, r-shell)"
         uses: actions/download-artifact@v4
         with:
-          name: benchmark-results-social-science-r-shell
-          path: benchmark-ss-r-shell
+          name: benchmark-results-real-world-r-shell
+          path: benchmark-rw-r-shell
 
-      - name: "🥄 Merge and Produce Performance Results (social-science, r-shell)"
+      - name: "🧪 Add the Test Counters (real-world-r-shell)"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-rw-r-shell/real-world/real-world-summarized-graph.json"
+
+      - name: "🥄 Merge and Produce Performance Results (real-world, r-shell)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: '"social-science" Benchmark Suite'
+          name: '"real-world" Benchmark Suite'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ss-r-shell/social-science/social-science-summarized-graph.json
+          output-file-path: benchmark-rw-r-shell/real-world/real-world-summarized-graph.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-alert: false
           summary-always: false
@@ -368,6 +399,9 @@ jobs:
         with:
           name: benchmark-results-artificial-tree-sitter
           path: benchmark-ai-tree-sitter/
+
+      - name: "🧪 Add the Test Counters (artificial-tree-sitter)"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-ai-tree-sitter/artificial/artificial-summarized-graph.json"
 
       - name: "🥄 Merge and Produce Performance Results (artificial, tree-sitter)"
         uses: benchmark-action/github-action-benchmark@v1
@@ -387,18 +421,21 @@ jobs:
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
 
-      - name: "⬇️ Get benchmark Artifacts (social-science, tree-sitter)"
+      - name: "⬇️ Get benchmark Artifacts (real-world, tree-sitter)"
         uses: actions/download-artifact@v4
         with:
-          name: benchmark-results-social-science-tree-sitter
-          path: benchmark-ss-tree-sitter
+          name: benchmark-results-real-world-tree-sitter
+          path: benchmark-rw-tree-sitter
 
-      - name: "🥄 Merge and Produce Performance Results (social-science, tree-sitter)"
+      - name: "🧪 Add the Test Counters (real-world-tree-sitter)"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-rw-tree-sitter/real-world/real-world-summarized-graph.json"
+
+      - name: "🥄 Merge and Produce Performance Results (real-world, tree-sitter)"
         uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: '"social-science" Benchmark Suite (tree-sitter)'
+          name: '"real-world" Benchmark Suite (tree-sitter)'
           tool: 'customSmallerIsBetter'
-          output-file-path: benchmark-ss-tree-sitter/social-science/social-science-summarized-graph.json
+          output-file-path: benchmark-rw-tree-sitter/real-world/real-world-summarized-graph.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fail-on-alert: false
           summary-always: false

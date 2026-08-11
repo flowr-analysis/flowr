@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { assert, describe, test } from 'vitest';
+import { infoGraphPath, isInfoEntry } from '../../../src/benchmark/summarizer/second-phase/graph';
 
 /** the helpers of the benchmark page, which ships as a plain script and registers itself globally */
 interface BenchStats {
@@ -25,6 +26,7 @@ interface BenchStats {
 	stateChanges(rows: readonly (readonly (number | null)[])[]): number[];
 	pickColors(names: readonly string[], known: ReadonlyMap<string, number> | null, palette: number,
 		taken?: Iterable<number>): Map<string, number>;
+	mergeInfoSuites(entries: Record<string, unknown[]>): Record<string, unknown[]>;
 	encodeGroups(map: ReadonlyMap<string, ReadonlySet<string>>): string;
 	decodeGroups(text: string): Map<string, Set<string>>;
 	GROUPS: readonly { id: string, perVersion?: boolean, facts?: boolean, folded?: boolean, log?: boolean }[];
@@ -131,8 +133,7 @@ describe('Benchmark page helpers', () => {
 		for(const [name, unit] of [
 			['Retrieve AST per 100 lines', 'ms'], ['Total common per 100 lines', 'ms'],
 			['reduction (lines)', '#'], ['reduction no fluff (characters)', '#'],
-			['memory (df-shapes)', 'KiB'], ['dataflow calls', '#'], ['control flow function definitions', '#'],
-			['Calibration', 'ms']
+			['memory (df-shapes)', 'KiB'], ['dataflow calls', '#'], ['control flow function definitions', '#']
 		] as const) {
 			assert.ok(!drawn.has(S.groupOf(name, unit)), `${name} is recorded, but it gets no chart`);
 		}
@@ -144,8 +145,9 @@ describe('Benchmark page helpers', () => {
 		] as const) {
 			assert.ok(drawn.has(S.groupOf(name, unit)), `${name} belongs on the page`);
 		}
-		assert.deepStrictEqual(S.GROUPS.filter(g => g.folded).map(g => g.id), ['volume', 'dataframes'],
+		assert.deepStrictEqual(S.GROUPS.filter(g => g.folded).map(g => g.id), ['volume', 'dataframes', 'calibration'],
 			'the detail tiles start folded away');
+		assert.strictEqual(S.groupOf('Calibration', 'ms'), 'calibration', 'the synthetic workload keeps its own tile');
 		assert.deepStrictEqual(S.GROUPS.filter(g => g.log).map(g => g.id), ['volume'],
 			'only the corpus, whose series differ by orders of magnitude, is drawn logarithmically');
 	});
@@ -245,6 +247,48 @@ describe('Benchmark page helpers', () => {
 					`${suite} draws ${count} series in the ${group} chart, which ${palette} colours cannot keep apart`);
 			}
 		}
+	});
+
+	test('upload the counters where nothing alerts on them', () => {
+		for(const [name, unit] of [
+			['linting rules', '#'], ['linting rules (smell)', '#'], ['queries', '#'],
+			['built-in definitions', '#'], ['signature database functions', '#'], ['signature database size', 'KiB'],
+			['number of files', '#'], ['input lines', '#'], ['dataflow vertices', '#'], ['control flow edges', '#'],
+			['data frame constraints', '#'], ['tests', '#'], ['tests (dataflow)', '#'], ['tests overall', '#']
+		] as const) {
+			assert.ok(isInfoEntry({ name, unit }), `${name} grows with the release, that is no regression`);
+		}
+		for(const [name, unit] of [
+			['Produce dataflow information', 'ms'], ['Total per-file', 'ms'], ['Dataflow per 100 lines', 'ms'],
+			['Calibration', 'ms'], ['memory (df-graph)', 'KiB'], ['memory (cfg-graph)', 'KiB'],
+			['reduction (characters)', '#'], ['reduction (normalized tokens)', '#'],
+			['failed to reconstruct/re-parse', '#'], ['times hit threshold', '#']
+		] as const) {
+			assert.ok(!isInfoEntry({ name, unit }), `${name} getting worse is worth an alert`);
+		}
+		assert.strictEqual(infoGraphPath('out/real-world-summarized-graph.json'), 'out/real-world-summarized-graph-info.json');
+	});
+
+	test('merge the counters back into the suite they belong to', () => {
+		const run = (id: string, date: number, benches: { name: string, unit: string, value: number }[]) =>
+			({ commit: { id }, date, benches });
+		const entries = {
+			'"real-world" Benchmark Suite':        [run('a', 1, [{ name: 'Parse', unit: 'ms', value: 3 }])],
+			'"real-world" Benchmark Suite [info]': [
+				run('a', 1, [{ name: 'linting rules', unit: '#', value: 70 }]),
+				run('b', 2, [{ name: 'linting rules', unit: '#', value: 71 }])
+			]
+		} as unknown as Record<string, { commit: { id: string }, date: number, benches: { name: string }[] }[]>;
+		S.mergeInfoSuites(entries);
+		assert.deepStrictEqual(Object.keys(entries), ['"real-world" Benchmark Suite'], 'the page shows one suite');
+		const runs = entries['"real-world" Benchmark Suite'];
+		assert.strictEqual(runs.length, 2, 'a counter run without a measured run of its own still counts');
+		assert.deepStrictEqual(runs[0].benches.map(b => b.name), ['Parse', 'linting rules'],
+			'the counters join the run of the same commit');
+		assert.deepStrictEqual(runs.map(r => r.date), [1, 2], 'the runs stay in order');
+		const alone = { 'x [info]': [run('a', 1, [])] } as unknown as Record<string, unknown[]>;
+		S.mergeInfoSuites(alone);
+		assert.deepStrictEqual(Object.keys(alone), ['x'], 'counters without measurements still name their suite');
 	});
 
 	test('keep the per-chart choices in a link', () => {

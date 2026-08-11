@@ -198,11 +198,6 @@
 		return out;
 	}
 
-	/** the major releases among {@link releaseBumps} */
-	function majorBumps(runs) {
-		return releaseBumps(runs).filter(b => b.kind === 'major');
-	}
-
 	/** consecutive stretches of present values, so gaps are never bridged */
 	function segments(values) {
 		const out = [];
@@ -383,6 +378,45 @@
 		return out;
 	}
 
+	/**
+	 * The counters of a suite are uploaded under a suite of their own, so that a release with more linting
+	 * rules is never called a performance regression. The page shows one suite, so the two are merged back
+	 * here: an info run joins the run of the same commit, and stands on its own if there is none.
+	 */
+	const INFO_SUFFIX = ' [info]';
+
+	function mergeInfoSuites(entries) {
+		for(const key of Object.keys(entries)) {
+			if(!key.endsWith(INFO_SUFFIX)) {
+				continue;
+			}
+			const base = key.slice(0, -INFO_SUFFIX.length);
+			const info = entries[key];
+			delete entries[key];
+			if(!entries[base]) {
+				entries[base] = info;
+				continue;
+			}
+			const runs = entries[base];
+			const byCommit = new Map(runs.map(r => [String((r.commit || {}).id || ''), r]));
+			for(const run of info) {
+				const at = byCommit.get(String((run.commit || {}).id || ''));
+				if(!at) {
+					runs.push(run);
+					continue;
+				}
+				const known = new Set(at.benches.map(b => b.name));
+				for(const b of run.benches) {
+					if(!known.has(b.name)) {
+						at.benches.push(b);
+					}
+				}
+			}
+			runs.sort((a, b) => a.date - b.date);
+		}
+		return entries;
+	}
+
 	/** `id:a~b;id2:c` for a map of sets, the shape the page keeps its per-chart choices in */
 	function encodeGroups(map) {
 		return [...map].filter(([, set]) => set && set.size)
@@ -416,6 +450,7 @@
 		{ id: 'dataframes', title: 'Data frame shapes', about: 'what the shape inference sees and how precise it is', folded: true },
 		{ id: 'features', title: 'Feature set', about: 'the linting rules, their tags, and the queries this version carries', perVersion: true },
 		{ id: 'builtins', title: 'Built-in definitions', about: 'how the built-ins are handled', perVersion: true },
+		{ id: 'calibration', title: 'Machine calibration', about: 'runtime of the fixed synthetic workload', folded: true },
 		{ id: 'other', title: 'Other', about: '' },
 		{ id: 'sigdb', title: 'Signature database', about: 'the package signatures this version ships', perVersion: true, facts: true },
 		{ id: 'tests', title: 'Test suite', about: 'the labeled tests and what they cover', perVersion: true, facts: true }
@@ -514,8 +549,8 @@
 
 	root.BenchStats = {
 		median, rollingMedian, baselineOf, toPercentDelta, calibrationFactors, applyFactors,
-		parseVersion, runLabel, shortName, tagLabel, majorBumps, releaseBumps, segments, smoothPath, ticks, groupOf, betterOf,
-		logTicks, tickIndices, fitLabels, stateChanges, pickColors, encodeGroups, decodeGroups, GROUPS
+		parseVersion, runLabel, shortName, tagLabel, releaseBumps, segments, smoothPath, ticks, groupOf, betterOf,
+		logTicks, tickIndices, fitLabels, stateChanges, pickColors, mergeInfoSuites, encodeGroups, decodeGroups, GROUPS
 	};
 })(typeof globalThis === 'undefined' ? this : globalThis);
 

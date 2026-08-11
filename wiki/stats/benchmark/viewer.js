@@ -93,6 +93,7 @@
 				entries[suite] = runs;
 			}
 		}
+		S.mergeInfoSuites(entries);
 		return Object.keys(entries).length ? { entries, lastUpdate: raw.lastUpdate } : null;
 	}
 
@@ -131,8 +132,9 @@
 	}
 
 	/**
-	 * The parts state a second number in their `extra`, the median or the mean of the files of that run.
-	 * Summing them gives the sum row the same figure, as long as every part states the same kind.
+	 * Every part states a second statistic in its `extra`, today the median of the files of that run.
+	 * Adding those up gives the sum row a companion to its own number, as long as every part states the
+	 * same kind. It is the sum of the medians, which is not the median of the sum, hence the wording.
 	 */
 	function extraSum(run, parts, unit, i) {
 		let label = null, total = 0;
@@ -147,7 +149,7 @@
 			label = m[1];
 			total += Number(m[2]);
 		}
-		return label === null ? '' : label + ': ' + fmt(total, unit);
+		return label === null ? '' : 'sum of the ' + label + 's: ' + fmt(total, unit);
 	}
 
 	/** metric name to unit, in order of first appearance, over the visible runs */
@@ -182,6 +184,12 @@
 		} catch{ /* private mode, the choice just does not outlive the visit */ }
 	}
 
+	/**
+	 * Where the folded tiles are kept. The name carries a number: a page that starts more tiles folded
+	 * than the last one did would otherwise never reach a reader who has folded anything before.
+	 */
+	const FOLDED_STORE = 'flowr-bench-folded-2';
+
 	/** the tiles that start folded away, the detail one only opens when looking for it */
 	function foldedByDefault() {
 		return S.GROUPS.filter(g => g.folded).map(g => g.id);
@@ -189,7 +197,7 @@
 
 	function loadLayout() {
 		/* only a reader who folded something has a list of their own, everyone else gets the default */
-		for(const id of readStore('flowr-bench-collapsed', null) ?? foldedByDefault()) {
+		for(const id of readStore(FOLDED_STORE, null) ?? foldedByDefault()) {
 			collapsed.add(String(id));
 		}
 		order = readStore('flowr-bench-order', []).map(String);
@@ -307,7 +315,7 @@
 		} else {
 			collapsed.delete(id);
 		}
-		writeStore('flowr-bench-collapsed', [...collapsed]);
+		writeStore(FOLDED_STORE, [...collapsed]);
 		render();
 	}
 
@@ -1629,7 +1637,7 @@
 		}
 		order = [];
 		barsExpanded.clear();
-		writeStore('flowr-bench-collapsed', [...collapsed]);
+		writeStore(FOLDED_STORE, [...collapsed]);
 		writeStore('flowr-bench-order', []);
 		render();
 	});

@@ -21,11 +21,44 @@ function ms(nanoseconds: number): number {
 }
 
 /**
- * The median is a lot less sensitive to the load of the machine that produced the measurement than the mean,
- * hence we plot the median whenever there is one and only report the mean as additional information.
+ * Every plotted number is the mean, so that one series never mixes two statistics: a run that switches
+ * to the median steps up or down by the skew of the corpus, which reads as a change that never happened.
+ * The median travels along as additional information, see {@link plotExtra}.
  */
 function plotValue(measurement: SummarizedMeasurement): number {
-	return Number.isFinite(measurement.median) ? measurement.median : measurement.mean;
+	return Number.isFinite(measurement.mean) ? measurement.mean : measurement.median;
+}
+
+/** the statistics a plotted mean is worth nothing without, stated on hover */
+function plotExtra(measurement: SummarizedMeasurement, digits = 2, scale = 1, unit = ''): string {
+	const say = (v: number) => (v * scale).toFixed(digits) + unit;
+	return `median: ${say(measurement.median)}, std: ${say(measurement.std)}`;
+}
+
+/**
+ * Whether an entry describes what the release *is* rather than how fast it *was*.
+ *
+ * The benchmark action compares every entry it uploads against the release before and calls a value that grew
+ * a regression. That is right for a runtime and wrong for a counter: a release with ten more linting rules or a
+ * larger signature database is not slower. Those entries are written to {@link infoGraphPath} instead and are
+ * uploaded under a suite of their own, where nothing alerts on them. The page merges the two back together.
+ *
+ * The failures are counters too, but a run that fails to re-parse more slices than the one before is exactly
+ * what an alert is for, so they stay with the measurements.
+ */
+export function isInfoEntry({ name, unit }: Pick<BenchmarkGraphEntry, 'name' | 'unit'>): boolean {
+	if(name.startsWith(SigDbPrefix)) {
+		return true; // the database ships with the release, its size is not this run being slow
+	}
+	if(unit === 'ms' || name.startsWith('memory')) {
+		return false; // a runtime or a size the analysis has to hold, both worth an alert
+	}
+	return unit === '#' && !/^(reduction|failed|times hit)/.test(name);
+}
+
+/** where the counters of `path` go, next to it, so that one upload can alert and the other cannot */
+export function infoGraphPath(path: string): string {
+	return path.replace(/(\.json)?$/, m => '-info' + (m || '.json'));
 }
 
 function timeEntry(name: string, measurement: SummarizedMeasurement | undefined): BenchmarkGraphEntry | undefined {
@@ -37,7 +70,7 @@ function timeEntry(name: string, measurement: SummarizedMeasurement | undefined)
 		unit:  'ms',
 		value: ms(plotValue(measurement)),
 		range: String(ms(measurement.std)),
-		extra: `mean: ${ms(measurement.mean).toFixed(2)}ms`
+		extra: plotExtra(measurement, 2, 1 / 1e6, 'ms')
 	};
 }
 
@@ -184,7 +217,7 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 				unit:  '#',
 				value: plotValue(measurement),
 				range: String(measurement.std),
-				extra: `mean: ${measurement.mean.toFixed(2)}`
+				extra: plotExtra(measurement)
 			});
 		}
 	}
@@ -212,7 +245,7 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 				name,
 				unit:  '#',
 				value: measurement.total,
-				extra: `mean: ${measurement.mean.toFixed(2)} per file`
+				extra: `mean: ${measurement.mean.toFixed(2)} per file, median: ${measurement.median.toFixed(2)}`
 			});
 		}
 		data.push({
@@ -220,7 +253,7 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 			unit:  'KiB',
 			value: plotValue(shapes.sizeOfInfo) / 1024,
 			range: String(shapes.sizeOfInfo.std / 1024),
-			extra: `mean: ${(shapes.sizeOfInfo.mean / 1024).toFixed(2)}`
+			extra: plotExtra(shapes.sizeOfInfo, 2, 1 / 1024, ' KiB')
 		});
 	}
 	data.push({
@@ -246,7 +279,7 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 				name,
 				unit:  '#',
 				value: plotValue(measurement),
-				extra: `mean: ${measurement.mean.toFixed(4)}, std: ${measurement.std.toFixed(4)}`
+				extra: plotExtra(measurement, 4)
 			});
 		}
 	}
@@ -254,13 +287,13 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 		name:  'reduction (characters)',
 		unit:  '#',
 		value: plotValue(ultimate.reduction.numberOfCharacters),
-		extra: `mean: ${ultimate.reduction.numberOfCharacters.mean.toFixed(4)}, std: ${ultimate.reduction.numberOfCharacters.std.toFixed(4)}`
+		extra: plotExtra(ultimate.reduction.numberOfCharacters, 4)
 	});
 	data.push({
 		name:  'reduction (normalized tokens)',
 		unit:  '#',
 		value: plotValue(ultimate.reduction.numberOfNormalizedTokens),
-		extra: `mean: ${ultimate.reduction.numberOfNormalizedTokens.mean.toFixed(4)}, std: ${ultimate.reduction.numberOfNormalizedTokens.std.toFixed(4)}`
+		extra: plotExtra(ultimate.reduction.numberOfNormalizedTokens, 4)
 	});
 	if(ultimate.controlFlow) {
 		data.push({
@@ -268,7 +301,7 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 			unit:  'KiB',
 			value: plotValue(ultimate.controlFlow.sizeOfObject) / 1024,
 			range: String(ultimate.controlFlow.sizeOfObject.std / 1024),
-			extra: `mean: ${(ultimate.controlFlow.sizeOfObject.mean / 1024).toFixed(2)}`
+			extra: plotExtra(ultimate.controlFlow.sizeOfObject, 2, 1 / 1024, ' KiB')
 		});
 	}
 	data.push({
@@ -276,12 +309,13 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 		unit:  'KiB',
 		value: plotValue(ultimate.dataflow.sizeOfObject) / 1024,
 		range: String(ultimate.dataflow.sizeOfObject.std / 1024),
-		extra: `mean: ${(ultimate.dataflow.sizeOfObject.mean / 1024).toFixed(2)}`
+		extra: plotExtra(ultimate.dataflow.sizeOfObject, 2, 1 / 1024, ' KiB')
 	});
 
 	// the database is a property of the release, not of a file, so it is counted once and comes last
 	data.push(...signatureDatabaseEntries(await countSignatureDatabase()));
 
-	// write the output file
-	fs.writeFileSync(outputGraphPath, JSON.stringify(data, jsonReplacer));
+	/* the counters go into a file of their own, see infoGraphPath */
+	fs.writeFileSync(outputGraphPath, JSON.stringify(data.filter(e => !isInfoEntry(e)), jsonReplacer));
+	fs.writeFileSync(infoGraphPath(outputGraphPath), JSON.stringify(data.filter(isInfoEntry), jsonReplacer));
 }

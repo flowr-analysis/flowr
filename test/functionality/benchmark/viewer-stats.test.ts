@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { assert, describe, test } from 'vitest';
@@ -18,7 +19,20 @@ interface BenchStats {
 	betterOf(name: string, unit: string): string;
 	shortName(name: string): string;
 	tagLabel(tag: string): string;
-	GROUPS: readonly { id: string, perVersion?: boolean, facts?: boolean }[];
+	logTicks(min: number, max: number): { lo: number, hi: number, step: number, values: number[], log: boolean };
+	tickIndices(n: number, count: number): number[];
+	fitLabels(spans: readonly (readonly [number, number])[]): boolean[];
+	stateChanges(rows: readonly (readonly (number | null)[])[]): number[];
+	pickColors(names: readonly string[], known: ReadonlyMap<string, number> | null, palette: number,
+		taken?: Iterable<number>): Map<string, number>;
+	encodeGroups(map: ReadonlyMap<string, ReadonlySet<string>>): string;
+	decodeGroups(text: string): Map<string, Set<string>>;
+	GROUPS: readonly { id: string, perVersion?: boolean, facts?: boolean, folded?: boolean, log?: boolean }[];
+}
+
+/** the history the page ships with, one entry per suite */
+interface BenchmarkData {
+	entries: Record<string, { benches: { name: string, unit: string }[] }[]>;
 }
 
 /* the page is not part of the TypeScript project, so it is loaded by path rather than imported */
@@ -76,7 +90,7 @@ describe('Benchmark page helpers', () => {
 		assert.strictEqual(S.groupOf('dataflow edges', '#'), 'graphs');
 		assert.strictEqual(S.groupOf('data frame constraints', '#'), 'dataframes');
 		assert.strictEqual(S.groupOf('Infer data frame shapes', 'ms'), 'per-file', 'the phase stays with the phases');
-		assert.strictEqual(S.groupOf('memory (df-shapes)', 'KiB'), 'memory');
+		assert.strictEqual(S.groupOf('memory (df-shapes)', 'KiB'), 'memory-detail', 'the memory chart is about the graphs');
 		assert.strictEqual(S.groupOf('something new', 'weird'), 'other', 'unknown metrics still get a home');
 		assert.ok(!S.GROUPS.some(g => g.id === 'totals'), 'the totals get no chart of their own');
 		assert.deepStrictEqual(S.GROUPS.filter(g => g.perVersion).map(g => g.id), ['features', 'builtins', 'sigdb', 'tests'],
@@ -110,5 +124,137 @@ describe('Benchmark page helpers', () => {
 			'only what never moves between runs is stated instead of plotted');
 		assert.strictEqual(S.shortName('signature database functions (older only)'), 'functions (older only)',
 			'the chart is already titled for the database');
+	});
+
+	test('keep the measurements that are recorded but not drawn off the page', () => {
+		const drawn = new Set(S.GROUPS.map(g => g.id));
+		for(const [name, unit] of [
+			['Retrieve AST per 100 lines', 'ms'], ['Total common per 100 lines', 'ms'],
+			['reduction (lines)', '#'], ['reduction no fluff (characters)', '#'],
+			['memory (df-shapes)', 'KiB'], ['dataflow calls', '#'], ['control flow function definitions', '#'],
+			['Calibration', 'ms']
+		] as const) {
+			assert.ok(!drawn.has(S.groupOf(name, unit)), `${name} is recorded, but it gets no chart`);
+		}
+		for(const [name, unit] of [
+			['reduction (characters)', '#'], ['reduction (normalized tokens)', '#'], ['reduction (dataflow vertices)', '#'],
+			['memory (df-graph)', 'KiB'], ['memory (cfg-graph)', 'KiB'],
+			['dataflow vertices', '#'], ['dataflow edges', '#'], ['control flow vertices', '#'], ['control flow edges', '#'],
+			['Produce dataflow information', 'ms'], ['data frame constraints', '#'], ['number of files', '#']
+		] as const) {
+			assert.ok(drawn.has(S.groupOf(name, unit)), `${name} belongs on the page`);
+		}
+		assert.deepStrictEqual(S.GROUPS.filter(g => g.folded).map(g => g.id), ['volume', 'dataframes'],
+			'the detail tiles start folded away');
+		assert.deepStrictEqual(S.GROUPS.filter(g => g.log).map(g => g.id), ['volume'],
+			'only the corpus, whose series differ by orders of magnitude, is drawn logarithmically');
+	});
+
+	test('space a logarithmic axis over the decades it covers', () => {
+		const t = S.logTicks(3, 9000);
+		assert.ok(t.lo <= 3 && t.hi >= 9000, 'the axis contains the data');
+		assert.deepStrictEqual(t.values, [...t.values].sort((a, b) => a - b), 'the ticks rise');
+		assert.ok(t.values.every(v => /^[125]0*$/.test(String(v))), `1, 2 and 5 of every decade, got ${t.values.join(',')}`);
+		assert.strictEqual(t.values[0], t.lo);
+		assert.strictEqual(t.values[t.values.length - 1], t.hi);
+		const flat = S.logTicks(7, 7);
+		assert.ok(flat.hi > flat.lo, 'a series that never moves still needs an axis');
+	});
+
+	test('label the run axis', () => {
+		const ticks = S.tickIndices(100, 6);
+		assert.strictEqual(ticks[0], 0, 'the oldest run in the range starts the axis');
+		assert.strictEqual(ticks[ticks.length - 1], 99, 'the newest run always carries its label');
+		assert.deepStrictEqual(ticks, [...ticks].sort((a, b) => a - b), 'the ticks read from left to right');
+		assert.strictEqual(new Set(ticks).size, ticks.length, 'no run is labeled twice');
+		assert.ok(ticks.length <= 8, `six ticks plus the newest is enough, got ${ticks.length}`);
+		assert.deepStrictEqual(S.tickIndices(1, 6), [0], 'a single run is its own newest one');
+		assert.deepStrictEqual(S.tickIndices(2, 6), [0, 1]);
+		assert.deepStrictEqual(S.tickIndices(0, 6), [], 'nothing to label without runs');
+		for(const n of [3, 7, 12, 13, 41, 96]) {
+			assert.strictEqual(S.tickIndices(n, 6)[S.tickIndices(n, 6).length - 1], n - 1,
+				`the newest of ${n} runs is labeled`);
+		}
+	});
+
+	test('fit the release labels next to each other', () => {
+		assert.deepStrictEqual(S.fitLabels([[0, 20], [10, 20], [100, 20]]), [false, true, true],
+			'the newer of two labels that touch keeps its place');
+		assert.deepStrictEqual(S.fitLabels([[0, 20], [30, 20]]), [true, true]);
+		assert.deepStrictEqual(S.fitLabels([]), []);
+		const crowded = S.fitLabels([[0, 30], [5, 30], [10, 30], [15, 30]]);
+		assert.strictEqual(crowded[crowded.length - 1], true, 'the newest release is never the one dropped');
+	});
+
+	test('merge the runs that state the same thing', () => {
+		assert.deepStrictEqual(S.stateChanges([[1, 1, 2, 2, 2, 3]]), [0, 2, 5]);
+		assert.deepStrictEqual(S.stateChanges([[1, 1, 1], [5, 6, 6]]), [0, 1],
+			'a state ends as soon as any of the numbers differs');
+		assert.deepStrictEqual(S.stateChanges([[1, null, 1]]), [0], 'a run that states nothing keeps the state');
+		assert.deepStrictEqual(S.stateChanges([[null, null]]), [], 'nothing stated is no state at all');
+		assert.deepStrictEqual(S.stateChanges([]), []);
+	});
+
+	test('give every series of a chart its own colour', () => {
+		const known = new Map([['a', 3], ['b', 3], ['c', 7]]);
+		const picked = S.pickColors(['a', 'b', 'c'], known, 12);
+		assert.strictEqual(picked.get('a'), 3, 'the colour a name already has is kept');
+		assert.strictEqual(picked.get('c'), 7);
+		assert.strictEqual(new Set(picked.values()).size, 3, 'the clash is moved out of the way');
+		assert.deepStrictEqual([...S.pickColors(['x'], known, 12, [0, 1]).values()], [2],
+			'what the chart already uses is left alone');
+		const many = S.pickColors(Array.from({ length: 12 }, (_, i) => 'm' + i), null, 12);
+		assert.strictEqual(new Set(many.values()).size, 12, 'a full palette is used exactly once each');
+		assert.strictEqual(S.pickColors([], null, 12).size, 0);
+		assert.strictEqual(known.get('b'), 3, 'the colours known so far are not rewritten');
+	});
+
+	test('the palette holds a colour for every line of the largest chart', () => {
+		const at = (file: string) => path.join(process.cwd(), 'wiki/stats/benchmark', file);
+		const palette = Number(/const PALETTE = (\d+)/.exec(fs.readFileSync(at('viewer.js'), 'utf-8'))?.[1]);
+		assert.ok(palette > 0, 'the viewer states the size of its palette');
+		const classes = new Set([...fs.readFileSync(at('style.css'), 'utf-8').matchAll(/^\.s(\d+)\s*\{/gm)]
+			.map(m => Number(m[1])));
+		assert.strictEqual(classes.size, palette, 'every colour of the palette needs a class of its own');
+		for(let i = 0; i < palette; i++) {
+			assert.ok(classes.has(i), `.s${i} is missing from the stylesheet`);
+		}
+		/* the breakdowns are drawn as bars in the colour of their parent, so they need none */
+		const isBar = (name: string) => /^linting rules \(|^signature database base functions \(|^tests \(/.test(name);
+		/* the page assigns its data to `window`, which node does not have */
+		const global = globalThis as unknown as { window?: unknown, BENCHMARK_DATA: BenchmarkData };
+		global.window ??= globalThis;
+		createRequire(__filename)(at('data.js'));
+		for(const [suite, runs] of Object.entries(global.BENCHMARK_DATA.entries)) {
+			const units = new Map<string, string>();
+			for(const run of runs) {
+				for(const b of run.benches) {
+					units.set(b.name, b.unit);
+				}
+			}
+			const perGroup = new Map<string, number>();
+			for(const [name, unit] of units) {
+				if(isBar(name)) {
+					continue;
+				}
+				const group = S.groupOf(name, unit);
+				perGroup.set(group, (perGroup.get(group) ?? 0) + 1);
+			}
+			for(const [group, count] of perGroup) {
+				assert.ok(count <= palette,
+					`${suite} draws ${count} series in the ${group} chart, which ${palette} colours cannot keep apart`);
+			}
+		}
+	});
+
+	test('keep the per-chart choices in a link', () => {
+		const map = new Map([['per-file', new Set(['Parse', 'memory (df-graph)'])], ['tests', new Set<string>()]]);
+		const text = S.encodeGroups(map);
+		assert.strictEqual(text, 'per-file:Parse~memory (df-graph)', 'an empty choice is nothing to state');
+		const back = S.decodeGroups(text);
+		assert.deepStrictEqual([...back.keys()], ['per-file']);
+		assert.deepStrictEqual([...(back.get('per-file') ?? [])], ['Parse', 'memory (df-graph)']);
+		assert.strictEqual(S.decodeGroups('').size, 0);
+		assert.strictEqual(S.decodeGroups('nonsense').size, 0, 'a broken link shows the page, not an error');
 	});
 });

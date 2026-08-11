@@ -5,6 +5,18 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>flowR Benchmark History</title>
 	<meta name="description" content="Performance history of the flowR static analyzer for R, measured on every release.">
+	<script>
+		/* the stored theme has to sit on the element before the first paint, or the page flashes the other one */
+		(function() {
+			try {
+				var url = new URLSearchParams(location.hash.replace(/^#/, ''));
+				var theme = url.get('theme') || localStorage.getItem('flowr-bench-theme');
+				if(theme === 'light' || theme === 'dark') {
+					document.documentElement.setAttribute('data-theme', theme);
+				}
+			} catch(e) { /* private mode keeps the system theme */ }
+		})();
+	</script>
 	<link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -70,7 +82,7 @@
 				<input id="smooth" type="range" min="1" max="15" step="2" value="1">
 			</label>
 			<label class="check">
-				<input id="band" type="checkbox" checked>
+				<input id="band" type="checkbox">
 				<span>Error band (standard deviation)</span>
 			</label>
 			<label class="check" id="calibrate-field" hidden>
@@ -88,8 +100,9 @@
 			</label>
 			<div class="buttons">
 				<button type="button" id="reset-layout">Reset layout</button>
+				<button type="button" id="copy-link" title="copy a link that restores this view">Copy link</button>
 			</div>
-			<p class="hint">Unlock to drag the tiles into another order. The arrow in a corner folds a tile away.</p>
+			<p class="hint">Unlock to drag the tiles into another order. The corner button folds tiles away.</p>
 		</fieldset>
 
 		<fieldset>
@@ -110,6 +123,7 @@
 	<a href="https://github.com/flowr-analysis/flowr/wiki">wiki</a> |
 	<a href="https://github.com/flowr-analysis/flowr/wiki/Interface">interface docs</a> |
 	<span id="source-note"></span>
+	<button type="button" id="fullscreen" aria-pressed="false">Fullscreen</button>
 </footer>
 
 <div id="tooltip" hidden></div>

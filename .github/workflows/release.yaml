@@ -353,15 +353,6 @@ jobs:
           git fetch --tags origin main
           git pull origin main
 
-      - name: "⬇️ Get benchmark Artifacts (artificial, r-shell)"
-        uses: actions/download-artifact@v4
-        with:
-          name: benchmark-results-artificial-r-shell
-          path: benchmark-ai-r-shell/
-
-      - name: "🧪 Add the Test Counters (artificial-r-shell)"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-ai-r-shell/artificial/artificial-summarized-graph.json"
-
       - name: "🌍 Load Versions to Use"
         run: bash .github/workflows/scripts/global-configuration.sh
 
@@ -370,12 +361,22 @@ jobs:
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
 
+      # the counters need node and the labels, so both have to be there before the first suite is touched
       - name: "⬇️ Get the Test Label Details"
         uses: actions/download-artifact@v4
         continue-on-error: true
         with:
           name: test-label-details
           path: test-labels/
+
+      - name: "⬇️ Get benchmark Artifacts (artificial, r-shell)"
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-results-artificial-r-shell
+          path: benchmark-ai-r-shell/
+
+      - name: "🧪 Add the Test Counters (artificial-r-shell)"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "benchmark:test-counts -- --results test-labels/flowr-test-results.json test-labels/flowr-test-details.json benchmark-ai-r-shell/artificial/artificial-summarized-graph.json"
 
       # currently we have a duplication, add your benchmark names here and in `performance-test` and check the qa.yaml
       # Furthermore, you have to update the git reset command when pushing!

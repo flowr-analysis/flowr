@@ -20,6 +20,12 @@
 	--c10: #8c510a;
 	--c11: #4d7d00;
 	--c12: #a11a5b;
+	--c13: #5b5bd6;
+	--c14: #0099a8;
+	--c15: #f2778f;
+	--c16: #6b7280;
+	--c17: #24478f;
+	--c18: #46a03c;
 	color-scheme: light;
 }
 
@@ -45,6 +51,12 @@
 	--c10: #d9b38c;
 	--c11: #b9d94a;
 	--c12: #8fb8ff;
+	--c13: #a3a0ff;
+	--c14: #40c9d8;
+	--c15: #ff9fb0;
+	--c16: #9aa5b8;
+	--c17: #7f9cff;
+	--c18: #7bd455;
 	color-scheme: dark;
 }
 
@@ -71,6 +83,12 @@
 		--c10: #d9b38c;
 		--c11: #b9d94a;
 		--c12: #8fb8ff;
+		--c13: #a3a0ff;
+		--c14: #40c9d8;
+		--c15: #ff9fb0;
+		--c16: #9aa5b8;
+		--c17: #7f9cff;
+		--c18: #7bd455;
 		color-scheme: dark;
 	}
 }
@@ -381,14 +399,26 @@ figcaption .title {
 	transform: rotate(0deg);
 }
 
-figure.folded {
+/* the tiles the reader folded away, as chips in one row instead of a column each */
+.folded-row {
 	grid-column: 1 / -1;
-	padding: .45rem .8rem;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: .5rem;
+	min-width: 0;
+}
+
+figure.folded {
+	padding: .35rem .7rem;
+	max-width: 100%;
 }
 
 figure.folded figcaption {
 	margin: 0;
 	color: var(--muted);
+	font-size: .85rem;
+	font-weight: 500;
 }
 
 figure[draggable="true"] figcaption .title {
@@ -493,6 +523,11 @@ svg {
 	stroke-width: 1.2;
 }
 
+/* several series can start in the same release, so their points must not melt into one blob */
+.dot.lone {
+	stroke-width: 1.6;
+}
+
 .cursor {
 	stroke: var(--muted);
 	stroke-width: 1;
@@ -594,6 +629,30 @@ svg {
 	--c: var(--c12);
 }
 
+.s12 {
+	--c: var(--c13);
+}
+
+.s13 {
+	--c: var(--c14);
+}
+
+.s14 {
+	--c: var(--c15);
+}
+
+.s15 {
+	--c: var(--c16);
+}
+
+.s16 {
+	--c: var(--c17);
+}
+
+.s17 {
+	--c: var(--c18);
+}
+
 #tooltip {
 	position: fixed;
 	z-index: 10;
@@ -664,11 +723,19 @@ svg {
 }
 
 footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .4rem;
 	margin-top: 1.5rem;
 	padding-top: .8rem;
 	border-top: 1px solid var(--border);
 	font-size: .8rem;
 	color: var(--muted);
+}
+
+#fullscreen {
+	margin-left: auto;
 }
 
 @media (max-width: 560px) {
@@ -722,6 +789,12 @@ footer {
 	fill: var(--fg);
 	font-size: 20px;
 	font-weight: 600;
+}
+
+/* what the donut is about, above it, so the number in its middle has a subject */
+.composition .subject {
+	flex-basis: 100%;
+	margin: 0;
 }
 
 .composition ul {
@@ -865,6 +938,20 @@ footer {
 .point.on {
 	border-color: var(--accent);
 	color: var(--fg);
+}
+
+/* a long history does not fit into a row of buttons */
+.point-select {
+	width: auto;
+	max-width: 100%;
+	padding: .15rem .4rem;
+	font-size: .75rem;
+	font-variant-numeric: tabular-nums;
+}
+
+.facts dt.missing {
+	color: var(--muted);
+	font-weight: 500;
 }
 
 .composition.tags {

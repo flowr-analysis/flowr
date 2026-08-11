@@ -11,7 +11,8 @@
 	const ui = {};
 	for(const id of ['theme', 'suite', 'engine', 'range', 'mode', 'baseline', 'baselineOut', 'smooth', 'smoothOut',
 		'band', 'calibrate', 'charts', 'status', 'tooltip', 'rangeNote', 'calibrationNote', 'sourceNote',
-		'baselineField', 'calibrateField', 'dlSuite', 'dlCsv', 'dlAll', 'lock', 'resetLayout']) {
+		'baselineField', 'calibrateField', 'dlSuite', 'dlCsv', 'dlAll', 'lock', 'resetLayout', 'copyLink',
+		'fullscreen']) {
 		ui[id] = el(id.replace(/[A-Z]/g, c => '-' + c.toLowerCase()));
 	}
 
@@ -38,7 +39,29 @@
 		} catch{ /* ignore */ }
 		ui.theme.value = ['light', 'dark', 'system'].includes(stored) ? stored : 'system';
 		setTheme(ui.theme.value);
-		ui.theme.addEventListener('change', () => setTheme(ui.theme.value));
+		ui.theme.addEventListener('change', () => {
+			setTheme(ui.theme.value);
+			writeUrl();
+		});
+	}
+
+	/** the whole page, so a dashboard can fill a screen of its own */
+	function initFullscreen() {
+		if(!document.documentElement.requestFullscreen) {
+			ui.fullscreen.remove();
+			return;
+		}
+		const sync = () => {
+			const on = Boolean(document.fullscreenElement);
+			ui.fullscreen.textContent = on ? 'Leave fullscreen' : 'Fullscreen';
+			ui.fullscreen.setAttribute('aria-pressed', String(on));
+		};
+		ui.fullscreen.addEventListener('click', () => {
+			const step = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+			Promise.resolve(step).catch(e => say('The browser refused to switch the fullscreen: ' + e, true));
+		});
+		document.addEventListener('fullscreenchange', sync);
+		sync();
 	}
 
 	function say(text, bad) {
@@ -159,12 +182,123 @@
 		} catch{ /* private mode, the choice just does not outlive the visit */ }
 	}
 
+	/** the tiles that start folded away, the detail one only opens when looking for it */
+	function foldedByDefault() {
+		return S.GROUPS.filter(g => g.folded).map(g => g.id);
+	}
+
 	function loadLayout() {
-		for(const id of readStore('flowr-bench-collapsed', [])) {
+		/* only a reader who folded something has a list of their own, everyone else gets the default */
+		for(const id of readStore('flowr-bench-collapsed', null) ?? foldedByDefault()) {
 			collapsed.add(String(id));
 		}
 		order = readStore('flowr-bench-order', []).map(String);
 		locked = readStore('flowr-bench-locked', true) !== false;
+	}
+
+	/* ---------- the view in the address ---------- */
+
+	/** the controls that make up a view, so a link can carry the whole dashboard */
+	const VALUE_KEYS = ['suite', 'engine', 'range', 'mode', 'baseline', 'smooth'];
+	const CHECK_KEYS = ['band', 'calibrate', 'lock'];
+	/** what the page shows when no link says otherwise, filled once the data is known */
+	const defaults = {};
+	let urlReady = false;
+
+	function rememberDefaults() {
+		for(const key of VALUE_KEYS) {
+			defaults[key] = ui[key].value;
+		}
+		for(const key of CHECK_KEYS) {
+			defaults[key] = ui[key].checked;
+		}
+	}
+
+	/** everything the reader chose, as a hash, so the address of the page is the dashboard */
+	function writeUrl() {
+		if(!urlReady) {
+			return;
+		}
+		const p = new URLSearchParams();
+		for(const key of VALUE_KEYS) {
+			if(ui[key].value !== defaults[key]) {
+				p.set(key, ui[key].value);
+			}
+		}
+		for(const key of CHECK_KEYS) {
+			if(ui[key].checked !== defaults[key]) {
+				p.set(key, ui[key].checked ? '1' : '0');
+			}
+		}
+		if(ui.theme.value !== 'system') {
+			p.set('theme', ui.theme.value);
+		}
+		if(order.length) {
+			p.set('order', order.join(','));
+		}
+		if(collapsed.size) {
+			p.set('folded', [...collapsed].join(','));
+		}
+		if(barsExpanded.size) {
+			p.set('open', [...barsExpanded].join(','));
+		}
+		const off = S.encodeGroups(hidden);
+		if(off) {
+			p.set('hidden', off);
+		}
+		const hash = p.toString();
+		const next = hash ? '#' + hash : location.pathname + location.search;
+		if(next !== location.hash && !(hash === '' && location.hash === '')) {
+			history.replaceState(null, '', next);
+		}
+	}
+
+	/** a link wins over what the last visit left behind, an empty hash changes nothing */
+	function applyUrl() {
+		const p = new URLSearchParams(location.hash.replace(/^#/, ''));
+		for(const key of VALUE_KEYS) {
+			const v = p.get(key);
+			if(v === null) {
+				continue;
+			}
+			ui[key].value = v;
+			if(ui[key].value !== v) {
+				ui[key].value = defaults[key]; // the link names something this data does not have
+			}
+		}
+		for(const key of CHECK_KEYS) {
+			const v = p.get(key);
+			if(v !== null) {
+				ui[key].checked = v !== '0';
+			}
+		}
+		const theme = p.get('theme');
+		if(theme && ['light', 'dark', 'system'].includes(theme)) {
+			ui.theme.value = theme;
+			setTheme(theme);
+		}
+		if(p.has('order')) {
+			order = p.get('order').split(',').filter(Boolean);
+		}
+		if(p.has('folded')) {
+			collapsed.clear();
+			for(const id of p.get('folded').split(',').filter(Boolean)) {
+				collapsed.add(id);
+			}
+		}
+		if(p.has('open')) {
+			barsExpanded.clear();
+			for(const id of p.get('open').split(',').filter(Boolean)) {
+				barsExpanded.add(id);
+			}
+		}
+		if(p.has('hidden')) {
+			hidden.clear();
+			for(const [id, set] of S.decodeGroups(p.get('hidden'))) {
+				hidden.set(id, set);
+			}
+		}
+		locked = ui.lock.checked;
 	}
 
 	function setCollapsed(id, on) {
@@ -268,22 +402,39 @@
 	}
 
 	const colors = new Map();
-	const PALETTE = 12;
+	/** as many colours as the stylesheet defines, one more than the largest chart has lines */
+	const PALETTE = 18;
 	/** the group ids whose bar breakdown is unfolded (see {@link barsOf}) */
 	const barsExpanded = new Set();
 
-	/** every metric keeps its colour across charts, and within a chart no two share one */
-	function assignColors(series) {
-		const taken = new Set();
+	/**
+	 * Every metric keeps its colour across the charts, and within one chart no two ever share one.
+	 * `taken` collects what this chart already uses, so a second call adds to the first.
+	 */
+	function assignColors(series, taken) {
+		taken = taken || new Set();
+		const picked = S.pickColors(series.map(s => s.name), colors, PALETTE, taken);
 		for(const s of series) {
-			let c = colors.has(s.name) ? colors.get(s.name) : colors.size % PALETTE;
-			for(let i = 0; taken.has(c) && i < PALETTE; i++) {
-				c = (c + 1) % PALETTE;
+			s.color = picked.get(s.name);
+			taken.add(s.color);
+			if(!colors.has(s.name)) {
+				colors.set(s.name, s.color);
 			}
-			colors.set(s.name, c);
-			taken.add(c);
-			s.color = c;
 		}
+		return taken;
+	}
+
+	/** no two parts of one donut may share a colour, whatever the series behind them carry */
+	function distinctParts(parts) {
+		/* a part with a fixed colour, such as the muted rest of a whole, keeps it and claims nothing */
+		const wanted = new Map();
+		parts.forEach((p, i) => {
+			if(!p.cls) {
+				wanted.set(String(i), typeof p.color === 'number' ? p.color : 0);
+			}
+		});
+		const picked = S.pickColors([...wanted.keys()], wanted, PALETTE);
+		return parts.map((p, i) => p.cls ? p : { ...p, cls: 's' + picked.get(String(i)) });
 	}
 
 	/** the suite keys are `"<name>" Benchmark Suite (<engine>)`, the engine defaults to r-shell */
@@ -323,6 +474,24 @@
 			}
 		}
 		return null;
+	}
+
+	/** a calibration this flat, or measured this rarely, would divide every run by the same number */
+	const CALIBRATION_MIN_RUNS = 5, CALIBRATION_MIN_SPREAD = 1.05;
+
+	/**
+	 * The name of the calibration if dividing by it would change the picture, null otherwise: it needs
+	 * several runs to compare and a machine that actually differed between them.
+	 */
+	function usableCalibration(runs, name) {
+		if(!name) {
+			return null;
+		}
+		const values = runs.map(r => valueOf(r, name)).filter(v => typeof v === 'number' && v > 0);
+		if(values.length < CALIBRATION_MIN_RUNS) {
+			return null;
+		}
+		return Math.max(...values) / Math.min(...values) >= CALIBRATION_MIN_SPREAD ? name : null;
 	}
 
 	/**
@@ -419,11 +588,16 @@
 	const SUM_NAME = 'sum';
 
 	/** only the phases add up to something meaningful, a sum of ratios or counters would not */
+	/** the phases every analysis walks through, the ones the sum of the per-file chart adds up */
+	const CORE_PHASES = ['Retrieve AST from R code', 'Normalize R AST', 'Produce dataflow information',
+		'Extract control flow graph'];
+
 	function sumSeries(group, series, n) {
 		if(!['per-file', 'per-slice'].includes(group.id) || ui.mode.value === 'delta') {
 			return null;
 		}
-		const parts = series;
+		/* the later phases are optional work, so adding them in would compare different analyses */
+		const parts = group.id === 'per-file' ? series.filter(s => CORE_PHASES.includes(s.name)) : series;
 		if(parts.length < 2) {
 			return null;
 		}
@@ -438,8 +612,10 @@
 			values.push(total);
 		}
 		return {
-			name: SUM_NAME, label: SUM_NAME, unit: parts[0].unit, better: 'down', color: 'sum',
-			raw: values, values, err: values.map(() => null), baseline: null
+			name:  SUM_NAME,
+			label: SUM_NAME + ' (' + parts.map(s => s.label).join(' + ') + ')',
+			unit:  parts[0].unit, better: 'down', color: 'sum',
+			raw:   values, values, err: values.map(() => null), baseline: null
 		};
 	}
 
@@ -490,8 +666,11 @@
 		const dir = dirs.size === 1 ? betterText(series[0].better) : '';
 		const units = [...new Set(series.map(s => s.unit).filter(Boolean))].join(', ');
 		const sub = Object.assign(document.createElement('span'), { className: 'sub' });
-		const parts = [group.about, group.facts ? '' : isDelta ? 'percent against the median of the last ' + (Number(ui.baseline.value) || 3) + ' releases' : units]
-			.filter(Boolean);
+		const parts = [
+			group.about,
+			group.facts ? '' : isDelta ? 'percent against the median of the last ' + (Number(ui.baseline.value) || 3) + ' releases' : units,
+			group.log && !isDelta && !group.facts ? 'logarithmic axis' : ''
+		].filter(Boolean);
 		sub.textContent = parts.join(' | ');
 		if(dir) {
 			sub.appendChild(document.createTextNode(parts.length ? ' | ' : ''));
@@ -513,7 +692,7 @@
 
 		// the axis follows the lines, the error band is clipped to it. A standard deviation
 		// larger than the value itself is common here and would flatten every curve.
-		let lo = 0, hi = 0, any = false;
+		let lo = 0, hi = 0, any = false, least = Infinity;
 		for(const s of shown) {
 			for(const v of s.values) {
 				if(v === null) {
@@ -522,6 +701,9 @@
 				any = true;
 				lo = Math.min(lo, v);
 				hi = Math.max(hi, v);
+				if(v > 0) {
+					least = Math.min(least, v);
+				}
 			}
 		}
 		const svg = tag('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': group.title });
@@ -534,37 +716,40 @@
 			return fig;
 		}
 
-		const t = S.ticks(lo, hi, 5);
+		// a chart whose series differ by orders of magnitude says nothing on a linear axis, but a delta
+		// crosses zero, which no logarithm can place
+		const log = Boolean(group.log) && !isDelta && isFinite(least) && lo >= 0;
+		const t = log ? S.logTicks(least, hi) : S.ticks(lo, hi, 5);
 		const n = runs.length;
 		const x = i => PAD_L + (n < 2 ? (W - PAD_L - PAD_R) / 2 : i / (n - 1) * (W - PAD_L - PAD_R));
-		const y = v => PAD_T + (1 - (v - t.lo) / (t.hi - t.lo || 1)) * (H - PAD_T - PAD_B);
+		const axisSpan = log ? Math.log10(t.hi) - Math.log10(t.lo) : t.hi - t.lo;
+		const place = v => log ? Math.log10(Math.min(Math.max(v, t.lo), t.hi)) - Math.log10(t.lo) : v - t.lo;
+		const y = v => PAD_T + (1 - place(v) / (axisSpan || 1)) * (H - PAD_T - PAD_B);
 
 		for(const v of t.values) {
 			svg.appendChild(tag('line', { class: v === 0 ? 'zero' : 'grid', x1: PAD_L, x2: W - PAD_R, y1: y(v), y2: y(v) }));
 			svg.appendChild(tag('text', { class: 'axis', x: PAD_L - 6, y: y(v) + 3, 'text-anchor': 'end' },
-				isDelta ? v.toFixed(0) + '%' : fmtTick(v, t.step)));
+				isDelta ? v.toFixed(0) + '%' : log ? fmtShort(v) : fmtTick(v, t.step)));
 		}
 
 		// major and minor releases, patches are too frequent to mark
-		let lastLabel = -Infinity;
-		for(const b of bumps) {
-			if(b.index >= 0 && b.index < n) {
-				const at = x(b.index);
-				const guide = tag('line', { class: 'marker ' + b.kind, x1: at, x2: at, y1: PAD_T - 6, y2: H - PAD_B });
-				guide.appendChild(tag('title', {}, (b.kind === 'major' ? 'major release ' : 'minor release ') + b.version
-					+ ', ' + fmtDate(runs[b.index].date)));
-				svg.appendChild(guide);
-				const text = b.kind === 'major' ? 'v' + b.version : b.version.replace(/\.\d+$/, '');
-				// roughly five pixels per character, enough to keep the labels apart
-				if(at - lastLabel >= text.length * 5 + 6) {
-					svg.appendChild(tag('text', { class: 'axis release ' + b.kind, x: at + 3, y: PAD_T - 8 }, text));
-					lastLabel = at;
-				}
+		const marks = bumps.filter(b => b.index >= 0 && b.index < n).map(b => ({
+			b, at: x(b.index), text: b.kind === 'major' ? 'v' + b.version : b.version.replace(/\.\d+$/, '')
+		}));
+		// roughly five pixels per character, enough to keep the labels apart
+		const fits = S.fitLabels(marks.map(m => [m.at, m.text.length * 5 + 6]));
+		marks.forEach((m, k) => {
+			const guide = tag('line', { class: 'marker ' + m.b.kind, x1: m.at, x2: m.at, y1: PAD_T - 6, y2: H - PAD_B });
+			guide.appendChild(tag('title', {}, (m.b.kind === 'major' ? 'major release ' : 'minor release ') + m.b.version
+				+ ', ' + fmtDate(runs[m.b.index].date)));
+			svg.appendChild(guide);
+			if(fits[k]) {
+				svg.appendChild(tag('text', { class: 'axis release ' + m.b.kind, x: m.at + 3, y: PAD_T - 8 }, m.text));
 			}
-		}
+		});
 
-		const step = Math.max(1, Math.ceil(n / 6));
-		for(let i = 0; i < n; i += step) {
+		// the newest run is what one looks at first, so it always carries its label
+		for(const i of S.tickIndices(n, 6)) {
 			svg.appendChild(tag('text', {
 				class: 'axis', x: x(i), y: H - 17, 'text-anchor': i === 0 ? 'start' : x(i) > W - PAD_R - 24 ? 'end' : 'middle'
 			}, S.runLabel(runs[i])));
@@ -582,7 +767,8 @@
 					svg.appendChild(tag('path', { class: 'band ' + cls, d: S.smoothPath(up) + S.smoothPath(down).replace(/^M/, 'L') + 'Z' }));
 				}
 				if(pts.length === 1) {
-					svg.appendChild(tag('circle', { class: 'dot ' + cls, cx: pts[0][0], cy: pts[0][1], r: 3 }));
+					/* a measurement only one release has cannot be a line, so it has to read as a point */
+					svg.appendChild(tag('circle', { class: 'dot lone ' + cls, cx: pts[0][0], cy: pts[0][1], r: 3.6 }));
 				} else {
 					svg.appendChild(tag('path', { class: 'line ' + cls, d: S.smoothPath(pts) }));
 				}
@@ -714,13 +900,14 @@
 			li.appendChild(track);
 			const value = Object.assign(document.createElement('span'), { className: 'tag-value', textContent: String(tag.value) });
 			li.appendChild(value);
-			if(share) {
-				for(const cell of [name, track, value]) {
-					noteTooltip(cell, {
-						run: runs[i], color: parent ? parent.color : 0, label: tag.label,
-						value: fmtFact(tag.value, '#'), notes: [share, spec.note.replace(/ as of $/, '')]
-					});
-				}
+			/* the release and its date belong to every bar, the share only where there is a whole */
+			for(const cell of [name, track, value]) {
+				noteTooltip(cell, {
+					run: runs[i], color: parent ? parent.color : 0, label: tag.label,
+					value: fmtFact(tag.value, '#'),
+					notes: [share, spec.note.replace(/ as of $/, ''), 'as of ' + S.runLabel(runs[i]) + ', ' + fmtDate(runs[i].date)]
+						.filter(Boolean)
+				});
 			}
 			list.appendChild(li);
 		});
@@ -743,6 +930,7 @@
 				} else {
 					barsExpanded.add(group.id);
 				}
+				writeUrl();
 				const next = barsOf(group, series, runs, at);
 				if(next && box.parentNode) {
 					box.parentNode.replaceChild(next, box);
@@ -751,7 +939,7 @@
 			foot.appendChild(more);
 		}
 		const note = Object.assign(document.createElement('p'), {
-			className: 'note', textContent: spec.note + S.runLabel(runs[i])
+			className: 'note', textContent: spec.note + S.runLabel(runs[i]) + ' (' + fmtDate(runs[i].date) + ')'
 		});
 		if(spec.link) {
 			note.appendChild(document.createTextNode(', see the '));
@@ -785,7 +973,10 @@
 	function donutOf(parts, total, aria, runs, at) {
 		const box = document.createElement('div');
 		box.className = 'composition';
+		/* the number in the middle means nothing without the thing it counts */
+		box.appendChild(Object.assign(document.createElement('p'), { className: 'note subject', textContent: aria }));
 		const svg = tag('svg', { viewBox: '0 0 120 120', class: 'donut', role: 'img', 'aria-label': aria });
+		svg.appendChild(tag('title', {}, fmtShort(total) + ' ' + aria));
 		let from = 0;
 		for(const part of parts) {
 			const to = from + part.value / total;
@@ -829,12 +1020,12 @@
 			return null;
 		}
 		const rest = Math.max(0, total - def - own);
-		const parts = [
-			{ label: 'default handler', value: def, cls: 's' + (series.find(x => x.name.includes('default handler'))?.color ?? 0) },
-			{ label: 'own handler', value: own, cls: 's' + (series.find(x => x.name.includes('own handler'))?.color ?? 1) },
+		const parts = distinctParts([
+			{ label: 'default handler', value: def, color: series.find(x => x.name.includes('default handler'))?.color ?? 0 },
+			{ label: 'own handler', value: own, color: series.find(x => x.name.includes('own handler'))?.color ?? 1 },
 			{ label: 'constants and replacements', value: rest, cls: 'ssum' }
-		].filter(p => p.value > 0);
-		return donutOf(parts, total, 'composition of the built-in definitions', runs, at);
+		].filter(p => p.value > 0));
+		return donutOf(parts, total, 'built-in definitions by kind of handler', runs, at);
 	}
 
 	/**
@@ -842,10 +1033,10 @@
 	 * partition them. The packages do not, they are described by several kinds at once, so they get no donut.
 	 */
 	function splitDonut(series, runs, at, part, aria) {
-		const parts = series
+		const parts = distinctParts(series
 			.map(s => ({ m: part.exec(s.name), s }))
 			.filter(p => p.m && typeof p.s.values[at] === 'number' && p.s.values[at] > 0)
-			.map(p => ({ label: p.m[1], value: p.s.values[at], cls: 's' + p.s.color }));
+			.map(p => ({ label: p.m[1], value: p.s.values[at], color: p.s.color })));
 		const total = parts.reduce((a, p) => a + p.value, 0);
 		return total ? donutOf(parts, total, aria, runs, at) : null;
 	}
@@ -866,10 +1057,11 @@
 			splits: [
 				[/^signature database functions \((.*)\)$/, 'function records per kind of bundle']
 			],
-			track: 'signature database size'
+			track:   'signature database',
+			history: 'database'
 		},
 		tests: {
-			lead: [['tests overall', 'tests in total'], ['tests', 'of them labeled']],
+			lead: [['tests overall', 'tests in total'], ['tests', 'of them labeled', true]],
 			rest: [],
 			splits: [],
 			trend: 'tests overall',
@@ -931,22 +1123,16 @@
 		return Math.round(v).toLocaleString('en-US');
 	}
 
-	/** indices of the runs at which the tracked value changed, i.e. the releases that shipped a new database */
+	/**
+	 * Indices of the runs at which the group started to state something else, i.e. the releases that shipped a
+	 * new database. Two releases that state exactly the same numbers are one state, so they are merged into one
+	 * point, and the tracked value alone would call a rebuild that changed nothing a new state.
+	 */
 	function rebuilds(series, name) {
-		const s = series.find(x => x.name === name);
-		const out = [];
-		let prev = null;
-		for(let i = 0; s && i < s.values.length; i++) {
-			const v = s.values[i];
-			if(typeof v !== 'number') {
-				continue;
-			}
-			if(prev === null || Math.abs(v - prev) > 1e-9) {
-				out.push(i);
-			}
-			prev = v;
-		}
-		return out;
+		const tracked = series.filter(s => s.name === name || s.name.startsWith(name));
+		const use = tracked.length ? tracked : series;
+		/* the raw numbers, so neither the delta nor the smoothing turns every run into a state of its own */
+		return S.stateChanges(use.map(s => s.raw));
 	}
 
 	/** the rebuild points as buttons, so one can step through what every database version held */
@@ -957,39 +1143,78 @@
 		}
 		const row = document.createElement('div');
 		row.className = 'history';
-		row.appendChild(Object.assign(document.createElement('span'), { className: 'note', textContent: 'database' }));
+		row.appendChild(Object.assign(document.createElement('span'), { className: 'note', textContent: spec.history || 'version' }));
 		const current = points.filter(i => i <= at).pop();
-		for(const i of points) {
+		const show = i => {
+			const next = factsOf(group, series, runs, i);
+			if(next && box.parentNode) {
+				box.parentNode.replaceChild(next, box);
+			}
+		};
+		/** a point spans from its own release up to the one before the next point */
+		const spanOf = i => {
 			const last = points[points.indexOf(i) + 1];
-			const upTo = S.runLabel(runs[(last === undefined ? runs.length : last) - 1]);
+			const upTo = runs[(last === undefined ? runs.length : last) - 1];
 			const label = S.runLabel(runs[i]);
+			const end = S.runLabel(upTo);
+			return {
+				label: label === end ? label : label + ' to ' + end,
+				title: label === end ? fmtDate(runs[i].date) : fmtDate(runs[i].date) + ' to ' + fmtDate(upTo.date)
+			};
+		};
+		// a handful of steps read best as buttons, a long history only fits into a list
+		if(points.length > 6) {
+			const select = document.createElement('select');
+			select.className = 'point-select';
+			for(const i of points) {
+				const span = spanOf(i);
+				const option = Object.assign(document.createElement('option'), {
+					value: String(i), textContent: span.label, title: span.title
+				});
+				option.selected = i === current;
+				select.appendChild(option);
+			}
+			select.addEventListener('change', () => show(Number(select.value)));
+			row.appendChild(select);
+			row.appendChild(Object.assign(document.createElement('span'), {
+				className: 'note', textContent: points.length + ' states'
+			}));
+			return row;
+		}
+		for(const i of points) {
+			const span = spanOf(i);
 			const b = document.createElement('button');
 			b.type = 'button';
 			b.className = 'point' + (i === current ? ' on' : '');
-			b.textContent = label === upTo ? label : label + ' to ' + upTo;
-			b.title = fmtDate(runs[i].date);
-			b.addEventListener('click', () => {
-				const next = factsOf(group, series, runs, i);
-				if(next && box.parentNode) {
-					box.parentNode.replaceChild(next, box);
-				}
-			});
+			b.textContent = span.label;
+			b.title = span.title;
+			b.addEventListener('click', () => show(i));
 			row.appendChild(b);
 		}
 		return row;
 	}
 
-	/** stated numbers of one run, as `[series name, label]` pairs, skipping whatever the run does not carry */
+	/**
+	 * Stated numbers of one run, as `[series name, label, always]` rows. A row is skipped where the run
+	 * carries no number for it, unless it is marked `always`, which states the gap instead of hiding it.
+	 */
 	function factGrid(series, rows, at, cls) {
 		const dl = document.createElement('dl');
 		dl.className = cls;
-		for(const [name, label] of rows || []) {
+		for(const [name, label, always] of rows || []) {
 			const s = series.find(x => x.name === name);
 			const v = s ? s.values[at] : null;
-			if(typeof v !== 'number') {
+			if(typeof v !== 'number' && !always) {
 				continue;
 			}
-			dl.appendChild(Object.assign(document.createElement('dt'), { textContent: fmtFact(v, s.unit) }));
+			const dt = Object.assign(document.createElement('dt'), {
+				textContent: typeof v === 'number' ? fmtFact(v, s.unit) : 'n/a'
+			});
+			if(typeof v !== 'number') {
+				dt.className = 'missing';
+				dt.title = 'this release did not record the number';
+			}
+			dl.appendChild(dt);
 			dl.appendChild(Object.assign(document.createElement('dd'), { textContent: label }));
 		}
 		return dl.children.length ? dl : null;
@@ -1172,7 +1397,10 @@
 			dot.className = 'swatch s' + s.color;
 			sw.appendChild(dot);
 			tr.appendChild(sw);
-			tr.appendChild(Object.assign(document.createElement('td'), { className: 'name', textContent: s.label || s.name }));
+			/* the labels are short forms, the measurement they stand for is one hover away */
+			tr.appendChild(Object.assign(document.createElement('td'), {
+				className: 'name', textContent: s.label || s.name, title: s.name
+			}));
 			const val = document.createElement('td');
 			if(v === null) {
 				val.textContent = 'n/a';
@@ -1252,6 +1480,7 @@
 	/* ---------- render ---------- */
 
 	function render() {
+		writeUrl();
 		const { runs, offset } = visible();
 		ui.charts.textContent = '';
 		ui.baselineField.hidden = ui.mode.value !== 'delta';
@@ -1267,13 +1496,11 @@
 		const all = allRuns();
 		ui.rangeNote.textContent = runs.length + ' of ' + all.length + ' runs, ' + fmtDate(runs[0].date) + ' to ' + fmtDate(runs[runs.length - 1].date) + '.';
 
-		const calib = calibrationMetric(runs);
+		const calib = usableCalibration(runs, calibrationMetric(runs));
 		ui.calibrateField.hidden = !calib;
 		ui.calibrationNote.hidden = !calib;
 		if(!calib) {
 			ui.calibrate.checked = false;
-			ui.calibrateField.remove();
-			ui.calibrationNote.remove();
 		} else {
 			ui.calibrationNote.textContent = 'A fixed synthetic workload runs in the same CI job, so "' + calib
 				+ '" measures how fast or loaded that machine was. Dividing the other series by it cancels the machine out.';
@@ -1299,8 +1526,10 @@
 					series.push(build(runs, name, unit, name === calib ? null : factors));
 				}
 			}
-			assignColors(series);
 			const lines = series.filter(s => !isBar(s.name));
+			/* the lines pick their colours first, so a long breakdown never pushes two of them together */
+			const taken = assignColors(lines);
+			assignColors(series.filter(s => isBar(s.name)), taken);
 			if(!lines.length) {
 				continue;
 			}
@@ -1310,12 +1539,18 @@
 				makeDraggable(drawGroup(group, lines, runs, bumps, series), group);
 			}
 		}
-		for(const group of folded) {
-			const fig = document.createElement('figure');
-			fig.className = 'folded';
-			fig.appendChild(captionHead(group, true));
-			ui.charts.appendChild(fig);
-			makeDraggable(fig, group);
+		// the folded tiles sit as chips in one row at the end, so they cost a line rather than a column
+		if(folded.length) {
+			const row = document.createElement('div');
+			row.className = 'folded-row';
+			for(const group of folded) {
+				const fig = document.createElement('figure');
+				fig.className = 'folded';
+				fig.appendChild(captionHead(group, true));
+				row.appendChild(fig);
+				makeDraggable(fig, group);
+			}
+			ui.charts.appendChild(row);
 		}
 	}
 
@@ -1353,6 +1588,11 @@
 			return;
 		}
 		fillSuiteControls(Object.keys(data.entries));
+		// the defaults are only known once the suites are, and a link wins over them
+		rememberDefaults();
+		applyUrl();
+		ui.lock.checked = locked;
+		urlReady = true;
 		const suites = Object.keys(data.entries);
 		ui.sourceNote.textContent = suites.length + ' suites'
 			+ (data.lastUpdate ? ', last update ' + fmtDate(data.lastUpdate) : '');
@@ -1374,6 +1614,7 @@
 	ui.dlCsv.addEventListener('click', downloadCsv);
 
 	initTheme();
+	initFullscreen();
 	loadLayout();
 	ui.lock.checked = locked;
 	ui.lock.addEventListener('change', () => {
@@ -1383,10 +1624,37 @@
 	});
 	ui.resetLayout.addEventListener('click', () => {
 		collapsed.clear();
+		for(const id of foldedByDefault()) {
+			collapsed.add(id);
+		}
 		order = [];
-		writeStore('flowr-bench-collapsed', []);
+		barsExpanded.clear();
+		writeStore('flowr-bench-collapsed', [...collapsed]);
 		writeStore('flowr-bench-order', []);
 		render();
+	});
+	ui.copyLink.addEventListener('click', () => {
+		writeUrl();
+		const link = location.href;
+		const done = () => {
+			say('The link to this view is in the clipboard.');
+			setTimeout(() => say(''), 4000);
+		};
+		if(navigator.clipboard && navigator.clipboard.writeText) {
+			navigator.clipboard.writeText(link).then(done, () => say('The link could not be copied: ' + link, true));
+		} else {
+			say('Copy this link: ' + link, true);
+		}
+	});
+
+	/* a pasted link, or the back button, has to arrive at the view it names */
+	window.addEventListener('hashchange', () => {
+		if(!data) {
+			return;
+		}
+		applyUrl();
+		ui.lock.checked = locked;
+		renderSafe();
 	});
 
 	if(!S) {

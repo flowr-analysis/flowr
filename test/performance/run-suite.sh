@@ -45,7 +45,7 @@ if [[ "${EXTRA}" == "no-extra-phases" ]]; then
   SKIP_EXTRA=(--no-extra-phases)
 fi
 
-CMD=(npm run benchmark -- --cfg --cg "${SKIP_EXTRA[@]}" --parallel "${PARALLEL}" --runs "${RUNS}" --output "${RAW_OUTPUT}" --parser "${PARSER}" "${FILES_DIR}")
+CMD=(npm run benchmark -- --cfg --cg --dataframe-shape-inference "${SKIP_EXTRA[@]}" --parallel "${PARALLEL}" --runs "${RUNS}" --output "${RAW_OUTPUT}" --parser "${PARSER}" "${FILES_DIR}")
 
 echo -e "  * Running: \"${CMD[*]}\"...\033[33m"
 "${CMD[@]}"

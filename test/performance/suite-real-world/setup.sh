@@ -23,8 +23,8 @@ for attempt in 1 2 3 4 5; do
   sleep "$((attempt * 15))"
 done
 
-# read all files to extract from static/social-science-pkg-files.txt
-readarray -t USE < <(cat static/social-science-pkg-files.txt)
+# read all files to extract from static/real-world-pkg-files.txt
+readarray -t USE < <(cat static/real-world-pkg-files.txt)
 
 for i in "${!USE[@]}"; do
   USE[$i]="SocialScience/${USE[$i]}"

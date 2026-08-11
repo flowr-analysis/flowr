@@ -141,7 +141,8 @@
 
 	const colors = new Map();
 	const PALETTE = 12;
-	let tagsExpanded = false;
+	/** the group ids whose bar breakdown is unfolded (see {@link barsOf}) */
+	const barsExpanded = new Set();
 
 	/** every metric keeps its colour across charts, and within a chart no two share one */
 	function assignColors(series) {
@@ -183,7 +184,7 @@
 	/** the most realistic combination is the default */
 	function fillSuiteControls(keys) {
 		const parts = keys.map(splitKey);
-		fillOptions(ui.suite, [...new Set(parts.map(p => p.suite))], 'social-science');
+		fillOptions(ui.suite, [...new Set(parts.map(p => p.suite))], 'real-world');
 		fillOptions(ui.engine, [...new Set(parts.map(p => p.engine))], 'tree-sitter');
 	}
 
@@ -328,7 +329,8 @@
 		return from <= to ? { from, to } : null;
 	}
 
-	const isTag = name => /^linting rules \(/.test(String(name));
+	/** the breakdowns that are drawn as bars below the chart rather than as lines in it */
+	const isBar = name => /^linting rules \(|^signature database base functions \(/.test(String(name));
 
 	function drawGroup(group, series, runs, bumps, all) {
 		all = all || series;
@@ -344,6 +346,7 @@
 			const clip = s => ({ ...s, values: s.values.slice(span.from, span.to + 1), err: s.err.slice(span.from, span.to + 1), raw: s.raw.slice(span.from, span.to + 1) });
 			shown = shown.map(clip);
 			series = series.map(s => shown.find(o => o.name === s.name) || s);
+			all = all.map(clip);
 		}
 
 		// the phases add up to the analysis, so their sum is worth a line of its own
@@ -356,11 +359,18 @@
 		const fig = document.createElement('figure');
 		const cap = document.createElement('figcaption');
 		cap.textContent = group.title;
+		// these count what the analyzed version of flowR carries, the suite and the engine do not change them
+		if(group.perVersion) {
+			cap.appendChild(Object.assign(document.createElement('span'), {
+				className: 'chip', title: 'a property of the flowR version, identical for every suite and engine',
+				textContent: 'independent of data suite'
+			}));
+		}
 		const dirs = new Set(series.map(s => s.better));
 		const dir = dirs.size === 1 ? betterText(series[0].better) : '';
 		const units = [...new Set(series.map(s => s.unit).filter(Boolean))].join(', ');
 		const sub = Object.assign(document.createElement('span'), { className: 'sub' });
-		const parts = [group.about, isDelta ? 'percent against the median of the last ' + (Number(ui.baseline.value) || 3) + ' releases' : units]
+		const parts = [group.about, group.facts ? '' : isDelta ? 'percent against the median of the last ' + (Number(ui.baseline.value) || 3) + ' releases' : units]
 			.filter(Boolean);
 		sub.textContent = parts.join(' | ');
 		if(dir) {
@@ -371,6 +381,15 @@
 		}
 		cap.appendChild(sub);
 		fig.appendChild(cap);
+
+		if(group.facts) {
+			const panel = factsOf(group, all, runs);
+			fig.appendChild(panel || Object.assign(document.createElement('p'), {
+				className: 'empty', textContent: 'no data in this range'
+			}));
+			ui.charts.appendChild(fig);
+			return;
+		}
 
 		// the axis follows the lines, the error band is clipped to it. A standard deviation
 		// larger than the value itself is common here and would flatten every curve.
@@ -515,18 +534,32 @@
 		ui.charts.appendChild(fig);
 	}
 
-	/**
-	 * The rule tags overlap, a rule usually carries several, so they are bars rather than a pie.
-	 * Returns null while the history does not carry them.
-	 */
-	function tagBarsOf(series, runs, at) {
+	/** the breakdowns drawn as bars: parts of a whole that overlap, so a pie would lie about them */
+	const BARS = {
+		/* a linting rule usually carries several tags */
+		features: {
+			parent: 'linting rules', part: /^linting rules \((.*)\)$/, label: t => S.tagLabel(t),
+			more:   'tags', note: 'rules per tag as of '
+		},
+		/* a function record carries as many of these as it has information for */
+		sigdb: {
+			parent: 'signature database base functions', part: /^signature database base functions \((.*)\)$/, label: t => t,
+			more:   'kinds of information', note: 'what a base-R entry carries as of '
+		}
+	};
+
+	function barsOf(group, series, runs, at) {
+		const spec = BARS[group.id];
+		if(!spec) {
+			return null;
+		}
 		const i = at === undefined || at < 0 || at >= runs.length ? runs.length - 1 : at;
-		/* the bars break down the linting rules, so they carry that series' colour */
-		const parent = series.find(s => s.name === 'linting rules');
+		/* the bars break down one series, so they carry its colour */
+		const parent = series.find(s => s.name === spec.parent);
 		const tags = series
-			.filter(s => /^linting rules \(/.test(s.name))
-			.map(s => ({ label: S.tagLabel(s.name.replace(/^linting rules \(|\)$/g, '')), value: s.values[i] }))
-			.filter(t => typeof t.value === 'number')
+			.map(s => ({ part: spec.part.exec(s.name), value: s.values[i] }))
+			.filter(t => t.part && typeof t.value === 'number')
+			.map(t => ({ label: spec.label(t.part[1]), value: t.value }))
 			.sort((a, b) => b.value - a.value);
 		if(!tags.length) {
 			return null;
@@ -534,7 +567,7 @@
 		const max = tags[0].value || 1;
 		const box = document.createElement('div');
 		box.className = 'composition tags';
-		const shownTags = tagsExpanded ? tags : tags.slice(0, 3);
+		const shownTags = barsExpanded.has(group.id) ? tags : tags.slice(0, 3);
 		const list = document.createElement('ul');
 		shownTags.forEach((tag, rank) => {
 			const li = document.createElement('li');
@@ -555,17 +588,22 @@
 		const foot = document.createElement('div');
 		foot.className = 'tags-foot';
 		if(tags.length > 3) {
+			const open = barsExpanded.has(group.id);
 			const more = document.createElement('button');
 			more.type = 'button';
-			more.className = 'unfold' + (tagsExpanded ? ' open' : '');
-			more.setAttribute('aria-expanded', String(tagsExpanded));
+			more.className = 'unfold' + (open ? ' open' : '');
+			more.setAttribute('aria-expanded', String(open));
 			const chevron = tag('svg', { class: 'chevron', viewBox: '0 0 12 12', 'aria-hidden': 'true' });
 			chevron.appendChild(tag('path', { d: 'M3 4.5 L6 8 L9 4.5' }));
 			more.appendChild(chevron);
-			more.appendChild(document.createTextNode(tagsExpanded ? 'show the top 3' : 'all ' + tags.length + ' tags'));
+			more.appendChild(document.createTextNode(open ? 'show the top 3' : 'all ' + tags.length + ' ' + spec.more));
 			more.addEventListener('click', () => {
-				tagsExpanded = !tagsExpanded;
-				const next = tagBarsOf(series, runs, at);
+				if(open) {
+					barsExpanded.delete(group.id);
+				} else {
+					barsExpanded.add(group.id);
+				}
+				const next = barsOf(group, series, runs, at);
 				if(next && box.parentNode) {
 					box.parentNode.replaceChild(next, box);
 				}
@@ -573,7 +611,7 @@
 			foot.appendChild(more);
 		}
 		foot.appendChild(Object.assign(document.createElement('p'), {
-			className: 'note', textContent: 'rules per tag as of ' + S.runLabel(runs[i])
+			className: 'note', textContent: spec.note + S.runLabel(runs[i])
 		}));
 		box.appendChild(foot);
 		return box;
@@ -590,29 +628,56 @@
 			+ 'L' + x3 + ' ' + y3 + 'A' + inner + ' ' + inner + ' 0 ' + large + ' 0 ' + x4 + ' ' + y4 + 'Z';
 	}
 
-	/**
-	 * The built-in definitions are a whole made of parts, which a line chart does not show.
-	 * The donut states the composition of the newest run in the range.
-	 */
-	function compositionOf(group, series, runs, at) {
-		if(!runs.length) {
-			return null;
+	/** a count short enough for the middle of a donut, so millions do not overflow it */
+	function fmtShort(v) {
+		const a = Math.abs(v);
+		return a >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : a >= 1e4 ? Math.round(v / 1e3) + 'k' : String(Math.round(v));
+	}
+
+	/** the parts of a whole as a donut plus a legend, the parts must not overlap or the shares would lie */
+	function donutOf(parts, total, aria, runs, at) {
+		const box = document.createElement('div');
+		box.className = 'composition';
+		const svg = tag('svg', { viewBox: '0 0 120 120', class: 'donut', role: 'img', 'aria-label': aria });
+		let from = 0;
+		for(const part of parts) {
+			const to = from + part.value / total;
+			const path = tag('path', { class: 'slice ' + part.cls, d: slicePath(from, to, 60, 60, 55, 32) });
+			path.appendChild(tag('title', {}, part.label + ': ' + part.value + ' of ' + total));
+			svg.appendChild(path);
+			from = to;
 		}
-		if(group.id === 'features') {
-			return tagBarsOf(series, runs, at);
+		svg.appendChild(tag('text', { class: 'donut-center', x: 60, y: 64, 'text-anchor': 'middle' }, fmtShort(total)));
+		box.appendChild(svg);
+
+		const list = document.createElement('ul');
+		for(const part of parts) {
+			const li = document.createElement('li');
+			const dot = document.createElement('span');
+			dot.className = 'swatch ' + part.cls;
+			li.appendChild(dot);
+			li.appendChild(document.createTextNode(part.label + ': ' + fmtShort(part.value) + ' (' + (part.value / total * 100).toFixed(0) + '%)'));
+			list.appendChild(li);
 		}
-		if(group.id !== 'builtins') {
-			return null;
-		}
-		at = at === undefined || at < 0 || at >= runs.length ? runs.length - 1 : at;
-		const value = name => {
-			const s = series.find(x => x.name === name);
-			const v = s ? s.values[at] : null;
-			return typeof v === 'number' ? v : null;
-		};
-		const total = value('built-in definitions');
-		const def = value('built-in definitions (default handler)');
-		const own = value('built-in definitions (own handler)');
+		const caption = document.createElement('p');
+		caption.className = 'note';
+		caption.textContent = 'as of ' + S.runLabel(runs[at]) + ', ' + fmtDate(runs[at].date);
+		box.appendChild(list);
+		box.appendChild(caption);
+		return box;
+	}
+
+	/** the value a series carries at `at`, null if it has none there */
+	function valueAt(series, name, at) {
+		const s = series.find(x => x.name === name);
+		const v = s ? s.values[at] : null;
+		return typeof v === 'number' ? v : null;
+	}
+
+	function builtinDonut(series, runs, at) {
+		const total = valueAt(series, 'built-in definitions', at);
+		const def = valueAt(series, 'built-in definitions (default handler)', at);
+		const own = valueAt(series, 'built-in definitions (own handler)', at);
 		if(!total || def === null || own === null) {
 			return null;
 		}
@@ -622,35 +687,174 @@
 			{ label: 'own handler', value: own, cls: 's' + (series.find(x => x.name.includes('own handler'))?.color ?? 1) },
 			{ label: 'constants and replacements', value: rest, cls: 'ssum' }
 		].filter(p => p.value > 0);
+		return donutOf(parts, total, 'composition of the built-in definitions', runs, at);
+	}
 
+	/**
+	 * Every function record the database stores sits in exactly one bundle, so the kinds of bundle do
+	 * partition them. The packages do not, they are described by several kinds at once, so they get no donut.
+	 */
+	function splitDonut(series, runs, at, part, aria) {
+		const parts = series
+			.map(s => ({ m: part.exec(s.name), s }))
+			.filter(p => p.m && typeof p.s.values[at] === 'number' && p.s.values[at] > 0)
+			.map(p => ({ label: p.m[1], value: p.s.values[at], cls: 's' + p.s.color }));
+		const total = parts.reduce((a, p) => a + p.value, 0);
+		return total ? donutOf(parts, total, aria, runs, at) : null;
+	}
+
+	/** the groups that state their numbers instead of plotting them, see {@link factsOf} */
+	const FACTS = {
+		sigdb: {
+			lead: [
+				['signature database package versions', 'package versions'],
+				['signature database packages', 'packages'],
+				['signature database functions', 'functions']
+			],
+			rest: [
+				['signature database base functions', 'base R functions'],
+				['signature database base parameters', 'base R parameters'],
+				['signature database size', 'size']
+			],
+			splits: [
+				[/^signature database functions \((.*)\)$/, 'function records per kind of bundle']
+			],
+			track: 'signature database size'
+		}
+	};
+
+	function fmtFact(v, unit) {
+		if(unit === 'KiB') {
+			return v >= 1024 ? (v / 1024).toFixed(1) + ' MiB' : Math.round(v) + ' KiB';
+		}
+		return Math.round(v).toLocaleString('en-US');
+	}
+
+	/** indices of the runs at which the tracked value changed, i.e. the releases that shipped a new database */
+	function rebuilds(series, name) {
+		const s = series.find(x => x.name === name);
+		const out = [];
+		let prev = null;
+		for(let i = 0; s && i < s.values.length; i++) {
+			const v = s.values[i];
+			if(typeof v !== 'number') {
+				continue;
+			}
+			if(prev === null || Math.abs(v - prev) > 1e-9) {
+				out.push(i);
+			}
+			prev = v;
+		}
+		return out;
+	}
+
+	/** the rebuild points as buttons, so one can step through what every database version held */
+	function historyOf(group, series, runs, at, spec, box) {
+		const points = rebuilds(series, spec.track);
+		if(points.length === 0) {
+			return null;
+		}
+		const row = document.createElement('div');
+		row.className = 'history';
+		row.appendChild(Object.assign(document.createElement('span'), { className: 'note', textContent: 'database' }));
+		const current = points.filter(i => i <= at).pop();
+		for(const i of points) {
+			const last = points[points.indexOf(i) + 1];
+			const upTo = S.runLabel(runs[(last === undefined ? runs.length : last) - 1]);
+			const label = S.runLabel(runs[i]);
+			const b = document.createElement('button');
+			b.type = 'button';
+			b.className = 'point' + (i === current ? ' on' : '');
+			b.textContent = label === upTo ? label : label + ' to ' + upTo;
+			b.title = fmtDate(runs[i].date);
+			b.addEventListener('click', () => {
+				const next = factsOf(group, series, runs, i);
+				if(next && box.parentNode) {
+					box.parentNode.replaceChild(next, box);
+				}
+			});
+			row.appendChild(b);
+		}
+		return row;
+	}
+
+	/**
+	 * A quantity that only moves when it is rebuilt says nothing as a curve. This states the numbers of the
+	 * newest run instead, with a donut per split and the releases that changed them.
+	 */
+	function factsOf(group, series, runs, at) {
+		const spec = FACTS[group.id];
+		if(!spec || !runs.length) {
+			return null;
+		}
+		at = at === undefined || at < 0 || at >= runs.length ? runs.length - 1 : at;
 		const box = document.createElement('div');
-		box.className = 'composition';
-		const svg = tag('svg', { viewBox: '0 0 120 120', class: 'donut', role: 'img', 'aria-label': 'composition of the built-in definitions' });
-		let from = 0;
-		for(const part of parts) {
-			const to = from + part.value / total;
-			const path = tag('path', { class: 'slice ' + part.cls, d: slicePath(from, to, 60, 60, 55, 32) });
-			path.appendChild(tag('title', {}, part.label + ': ' + part.value + ' of ' + total));
-			svg.appendChild(path);
-			from = to;
+		box.className = 'facts';
+		const grid = (rows, cls) => {
+			const dl = document.createElement('dl');
+			dl.className = cls;
+			for(const [name, label] of rows) {
+				const s = series.find(x => x.name === name);
+				const v = s ? s.values[at] : null;
+				if(typeof v !== 'number') {
+					continue;
+				}
+				dl.appendChild(Object.assign(document.createElement('dt'), { textContent: fmtFact(v, s.unit) }));
+				dl.appendChild(Object.assign(document.createElement('dd'), { textContent: label }));
+			}
+			return dl.children.length ? dl : null;
+		};
+		const lead = grid(spec.lead, 'lead');
+		if(!lead) {
+			return null;
 		}
-		svg.appendChild(tag('text', { class: 'donut-center', x: 60, y: 64, 'text-anchor': 'middle' }, String(total)));
-		box.appendChild(svg);
+		box.appendChild(lead);
+		const rest = grid(spec.rest, 'rest');
+		if(rest) {
+			box.appendChild(rest);
+		}
+		const splits = document.createElement('div');
+		splits.className = 'splits';
+		for(const [part, aria] of spec.splits) {
+			const donut = splitDonut(series, runs, at, part, aria);
+			if(donut) {
+				splits.appendChild(donut);
+			}
+		}
+		if(splits.children.length) {
+			box.appendChild(splits);
+		}
+		const bars = barsOf(group, series, runs, at);
+		if(bars) {
+			box.appendChild(bars);
+		}
+		const history = historyOf(group, series, runs, at, spec, box);
+		if(history) {
+			box.appendChild(history);
+		}
+		return box;
+	}
 
-		const list = document.createElement('ul');
-		for(const part of parts) {
-			const li = document.createElement('li');
-			const dot = document.createElement('span');
-			dot.className = 'swatch ' + part.cls;
-			li.appendChild(dot);
-			li.appendChild(document.createTextNode(part.label + ': ' + part.value + ' (' + (part.value / total * 100).toFixed(0) + '%)'));
-			list.appendChild(li);
+	/**
+	 * A group whose numbers are a whole made of parts, which a line chart does not show.
+	 * The donut and the bars state the composition of the newest run in the range.
+	 */
+	function compositionOf(group, series, runs, at) {
+		if(!runs.length) {
+			return null;
 		}
-		const caption = document.createElement('p');
-		caption.className = 'note';
-		caption.textContent = 'as of ' + S.runLabel(runs[at]) + ', ' + fmtDate(runs[at].date);
-		box.appendChild(list);
-		box.appendChild(caption);
+		at = at === undefined || at < 0 || at >= runs.length ? runs.length - 1 : at;
+		const donut = group.id === 'builtins' ? builtinDonut(series, runs, at) : null;
+		const bars = barsOf(group, series, runs, at);
+		if(!donut) {
+			return bars;
+		}
+		if(!bars) {
+			return donut;
+		}
+		const box = document.createElement('div');
+		box.appendChild(donut);
+		box.appendChild(bars);
 		return box;
 	}
 
@@ -841,7 +1045,7 @@
 				}
 			}
 			assignColors(series);
-			const lines = series.filter(s => !isTag(s.name));
+			const lines = series.filter(s => !isBar(s.name));
 			if(lines.length) {
 				drawGroup(group, lines, runs, bumps, series);
 			}

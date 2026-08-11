@@ -3,6 +3,9 @@ import fs from 'fs';
 import type { MergeableRecord } from '../../../util/objects';
 import { jsonReplacer } from '../../../util/json';
 import type { SummarizedMeasurement } from '../../../util/summarizer';
+import { countFeatures } from '../../stats/feature-counts';
+import { countSignatureDatabase } from '../../stats/sigdb-counts';
+import type { SigDbCounts } from '../../stats/stats';
 
 interface BenchmarkGraphEntry extends MergeableRecord {
 	name:   string,
@@ -38,12 +41,63 @@ function timeEntry(name: string, measurement: SummarizedMeasurement | undefined)
 	};
 }
 
+const SigDbPrefix = 'signature database';
+
+/** bytes to KiB */
+function kib(bytes: number): number {
+	return bytes / 1024;
+}
+
+/**
+ * What the signature database of the benchmarked release carries. It describes the machine, not a single
+ * measurement, so it is counted here, once, after every measured phase, and a machine without a mounted
+ * database simply contributes nothing.
+ */
+function signatureDatabaseEntries(counts: SigDbCounts | undefined): BenchmarkGraphEntry[] {
+	if(counts === undefined) {
+		return [];
+	}
+	const data: BenchmarkGraphEntry[] = [];
+	const count = (name: string, value: number | undefined) => {
+		if(typeof value === 'number') {
+			data.push({ name: `${SigDbPrefix} ${name}`, unit: '#', value });
+		}
+	};
+	const bytes = (name: string, value: number | undefined) => {
+		if(typeof value === 'number') {
+			data.push({ name: `${SigDbPrefix} ${name}`, unit: 'KiB', value: kib(value) });
+		}
+	};
+	count('bundles', counts.bundles);
+	for(const [kind, value] of Object.entries(counts.bundlesByKind ?? {})) {
+		count(`bundles (${kind})`, value);
+	}
+	count('packages', counts.packages);
+	count('package versions', counts.packageVersions);
+	count('functions', counts.functions);
+	for(const [kind, value] of Object.entries(counts.functionsByKind ?? {})) {
+		count(`functions (${kind})`, value);
+	}
+	count('base functions', counts.base?.functions);
+	count('base parameters', counts.base?.parameters);
+	for(const [carries, value] of Object.entries(counts.base?.functionsCarrying ?? {})) {
+		count(`base functions (${carries})`, value);
+	}
+	bytes('size', counts.size);
+	for(const [kind, value] of Object.entries(counts.sizeByKind ?? {})) {
+		bytes(`size (${kind})`, value);
+	}
+	bytes('size (dictionaries)', counts.sizeOfDictionaries);
+	bytes('size (manifests)', counts.sizeOfManifests);
+	return data;
+}
+
 /**
  * Write the graph output for the ultimate slicer stats to a file
  * @param ultimate - The ultimate slicer stats
  * @param outputGraphPath - The path to write the graph output to
  */
-export function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath: string) {
+export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath: string) {
 	console.log(`Producing benchmark graph data (${outputGraphPath})...`);
 
 	const data: BenchmarkGraphEntry[] = [];
@@ -82,20 +136,22 @@ export function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath:
 		}
 	}
 
-	// what the analyzed version of flowR itself carries, so a release also shows how the feature set grew
+	// what the analyzed version of flowR itself carries, so a release also shows how the feature set grew.
+	// It describes the version, not the suite, so it is counted here, once, instead of in every benchmarked file.
+	const features = countFeatures();
 	for(const [name, value] of [
-		['linting rules', ultimate.features?.lintingRules],
-		['queries', ultimate.features?.queries],
-		['built-in definitions', ultimate.features?.builtinDefinitions],
-		['built-in definitions (default handler)', ultimate.features?.builtinDefinitionsDefault],
-		['built-in definitions (own handler)', ultimate.features?.builtinDefinitionsCustom],
-		['built-in definitions (with eval handler)', ultimate.features?.builtinDefinitionsWithEvalHandler]
+		['linting rules', features.lintingRules],
+		['queries', features.queries],
+		['built-in definitions', features.builtinDefinitions],
+		['built-in definitions (default handler)', features.builtinDefinitionsDefault],
+		['built-in definitions (own handler)', features.builtinDefinitionsCustom],
+		['built-in definitions (with eval handler)', features.builtinDefinitionsWithEvalHandler]
 	] as const) {
 		if(typeof value === 'number') {
 			data.push({ name, unit: '#', value });
 		}
 	}
-	for(const [tag, value] of Object.entries(ultimate.features?.lintingRulesByTag ?? {})) {
+	for(const [tag, value] of Object.entries(features.lintingRulesByTag)) {
 		if(typeof value === 'number') {
 			data.push({ name: `linting rules (${tag})`, unit: '#', value });
 		}
@@ -131,6 +187,41 @@ export function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath:
 				extra: `mean: ${measurement.mean.toFixed(2)}`
 			});
 		}
+	}
+	// what the data frame shape inference sees and how precise it is, so a change in its precision becomes visible
+	const shapes = ultimate.dataFrameShape;
+	if(shapes) {
+		const files = shapes.numberOfDataFrameFiles + shapes.numberOfNonDataFrameFiles;
+		data.push({
+			name:  'files with data frames',
+			unit:  '#',
+			value: shapes.numberOfDataFrameFiles,
+			extra: `out of ${files} files`
+		});
+		// only a few files of a suite use data frames at all, so the median over all files would be zero
+		for(const [name, measurement] of [
+			['data frame operations', shapes.numberOfOperations],
+			['data frame operation nodes', shapes.numberOfOperationNodes],
+			['data frame value nodes', shapes.numberOfValueNodes],
+			['data frame constraints', shapes.numberOfTotalConstraints],
+			['data frame shapes (exact)', shapes.numberOfTotalExact],
+			['data frame shapes (bottom)', shapes.numberOfTotalBottom],
+			['data frame shapes (top)', shapes.numberOfTotalTop]
+		] as const) {
+			data.push({
+				name,
+				unit:  '#',
+				value: measurement.total,
+				extra: `mean: ${measurement.mean.toFixed(2)} per file`
+			});
+		}
+		data.push({
+			name:  'memory (df-shapes)',
+			unit:  'KiB',
+			value: plotValue(shapes.sizeOfInfo) / 1024,
+			range: String(shapes.sizeOfInfo.std / 1024),
+			extra: `mean: ${(shapes.sizeOfInfo.mean / 1024).toFixed(2)}`
+		});
 	}
 	data.push({
 		name:  'failed to reconstruct/re-parse',
@@ -188,6 +279,8 @@ export function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath:
 		extra: `mean: ${(ultimate.dataflow.sizeOfObject.mean / 1024).toFixed(2)}`
 	});
 
+	// the database is a property of the release, not of a file, so it is counted once and comes last
+	data.push(...signatureDatabaseEntries(await countSignatureDatabase()));
 
 	// write the output file
 	fs.writeFileSync(outputGraphPath, JSON.stringify(data, jsonReplacer));

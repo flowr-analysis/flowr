@@ -6,7 +6,6 @@ import type {
 	PerSliceMeasurements,
 	SlicerStats,
 	SlicerStatsDfShape,
-	FlowrFeatureCounts,
 	SlicerStatsControlFlow,
 	SlicerStatsDataflow,
 	SlicerStatsInput
@@ -111,7 +110,6 @@ export interface UltimateSlicerStats {
 	reductionNoFluff:             Reduction<SummarizedMeasurement>
 	input:                        SlicerStatsInput<SummarizedMeasurement>
 	dataflow:                     SlicerStatsDataflow<SummarizedMeasurement>
-	features?:                    FlowrFeatureCounts
 	controlFlow?:                 SlicerStatsControlFlow<SummarizedMeasurement>
 	dataFrameShape?:              SummarizedDfShapeStats<SummarizedMeasurement>
 }

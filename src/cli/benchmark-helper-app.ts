@@ -109,8 +109,13 @@ async function benchmark() {
 
 		if(options['dataframe-shape-inference']) {
 			console.log(`${prefix} Performing shape inference for data frames`);
-			slicer.inferDataFrameShapes();
-			console.log(`${prefix} Completed data frame shape inference`);
+			// the inference is not what the benchmark is about, so a failure costs its numbers and nothing else
+			try {
+				slicer.inferDataFrameShapes();
+				console.log(`${prefix} Completed data frame shape inference`);
+			} catch(e: unknown) {
+				console.log(`${prefix} Skipping data frame shape inference: ${e instanceof Error ? e.message : String(e)}`);
+			}
 		}
 
 		console.log(`${prefix} Measuring the additional phases (dependencies query, linter, calibration)`);

@@ -119,6 +119,14 @@
 		'built-in definitions (default handler)':   'default handler',
 		'built-in definitions (own handler)':       'own handler',
 		'built-in definitions (with eval handler)': 'with eval handler',
+		'files with data frames':      'files',
+		'data frame operations':       'operations',
+		'data frame operation nodes':  'operation nodes',
+		'data frame value nodes':      'value nodes',
+		'data frame constraints':      'constraints',
+		'data frame shapes (exact)':   'exact',
+		'data frame shapes (bottom)':  'bottom',
+		'data frame shapes (top)':     'top',
 		'Retrieve AST from R code':     'Parse',
 		'Normalize R AST':              'Normalize',
 		'Produce dataflow information': 'Dataflow',
@@ -131,6 +139,11 @@
 
 	/** the measurement names read like sentences, this keeps the charts legible */
 	function shortName(name) {
+		// the chart is already titled for the database, so its series only need to say what they count
+		const sig = /^signature database (.+)$/.exec(String(name));
+		if(sig) {
+			return sig[1];
+		}
 		const per = /^(.*?)( per 100 lines)$/.exec(String(name));
 		if(per) {
 			return shortName(per[1]) + per[2];
@@ -252,15 +265,17 @@
 	const GROUPS = [
 		{ id: 'per-file', title: 'Per-file phases', about: 'time the analysis spends on one input file' },
 		{ id: 'per-slice', title: 'Per-slice phases', about: 'time per computed slice' },
-		{ id: 'memory', title: 'Memory', about: 'size of the dataflow graph' },
+		{ id: 'memory', title: 'Memory', about: 'size of what the analysis keeps around' },
 		{ id: 'reduction', title: 'Slice reduction', about: 'how much of the input a slice drops' },
 		{ id: 'failures', title: 'Failures and thresholds', about: 'slices that could not be re-parsed and threshold hits' },
 		{ id: 'volume', title: 'Corpus size', about: 'how much input the suite covers' },
 		{ id: 'graphs', title: 'Graph size', about: 'how large the graphs the analysis builds are' },
-		{ id: 'features', title: 'Feature set', about: 'the linting rules, their tags, and the queries this version carries' },
-		{ id: 'builtins', title: 'Built-in definitions', about: 'how the built-ins are handled' },
+		{ id: 'dataframes', title: 'Data frame shapes', about: 'what the shape inference sees and how precise it is' },
+		{ id: 'features', title: 'Feature set', about: 'the linting rules, their tags, and the queries this version carries', perVersion: true },
+		{ id: 'builtins', title: 'Built-in definitions', about: 'how the built-ins are handled', perVersion: true },
 		{ id: 'calibration', title: 'Machine calibration', about: 'runtime of the fixed synthetic workload' },
-		{ id: 'other', title: 'Other', about: '' }
+		{ id: 'other', title: 'Other', about: '' },
+		{ id: 'sigdb', title: 'Signature database', about: 'the package signatures this version ships', perVersion: true, facts: true }
 	];
 
 	const PER_SLICE = ['static slicing', 'reconstruct code'];
@@ -269,6 +284,10 @@
 		const n = String(name || '').toLowerCase();
 		if(n.includes('calibration')) {
 			return 'calibration';
+		}
+		// the database counters are sizes and counts alike, so they have to be claimed before either
+		if(n.startsWith('signature database')) {
+			return 'sigdb';
 		}
 		// the totals dwarf the single phases and add nothing the phases do not show
 		if(n.startsWith('total ')) {
@@ -288,6 +307,10 @@
 		}
 		if(n.includes('failed') || n.includes('threshold')) {
 			return 'failures';
+		}
+		// the timing of the inference stays with the other phases, only its counts get their own chart
+		if(unit === '#' && n.includes('data frame')) {
+			return 'dataframes';
 		}
 		if(/^(dataflow|control flow) (vertices|edges|calls|function definitions)$/.test(n)) {
 			return 'graphs';
@@ -310,8 +333,15 @@
 	/** 'down' if a smaller value is better, 'up' if a larger one is, 'flat' if neither */
 	function betterOf(name, unit) {
 		const n = String(name || '').toLowerCase();
-		if(n.includes('reduction')) {
+		// a larger database is neither better nor worse, it just describes more
+		if(n.startsWith('signature database')) {
+			return 'flat';
+		}
+		if(n.includes('reduction') || n === 'data frame shapes (exact)') {
 			return 'up';
+		}
+		if(n === 'data frame shapes (top)' || n === 'data frame shapes (bottom)') {
+			return 'down';
 		}
 		if(n.includes('calibration') || n.includes('number of')) {
 			return 'flat';

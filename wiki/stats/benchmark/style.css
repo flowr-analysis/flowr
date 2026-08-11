@@ -337,6 +337,18 @@ figcaption .sub {
 	color: var(--muted);
 }
 
+figcaption .chip {
+	display: inline-block;
+	margin-left: .4rem;
+	padding: .05rem .4rem;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	font-weight: 500;
+	font-size: .7rem;
+	color: var(--muted);
+	vertical-align: middle;
+}
+
 svg {
 	width: 100%;
 	height: auto;
@@ -669,6 +681,78 @@ footer {
 	margin: 0;
 	font-size: .78rem;
 	color: var(--muted);
+}
+
+.facts {
+	margin-top: .4rem;
+}
+
+.facts dl {
+	display: grid;
+	margin: 0;
+	gap: .1rem 1.4rem;
+	grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+	grid-auto-flow: column;
+	grid-template-rows: auto auto;
+}
+
+.facts dt {
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.1;
+}
+
+.facts dd {
+	margin: 0;
+	color: var(--muted);
+	font-size: .78rem;
+}
+
+.facts .lead dt {
+	font-size: 1.5rem;
+}
+
+.facts .rest {
+	margin-top: .7rem;
+}
+
+.facts .rest dt {
+	font-size: .95rem;
+}
+
+.facts .composition {
+	border-top: 1px solid var(--border);
+}
+
+.history {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .35rem;
+	margin-top: .6rem;
+}
+
+.point {
+	padding: .15rem .55rem;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: var(--sunk);
+	color: var(--muted);
+	font-size: .75rem;
+	font-variant-numeric: tabular-nums;
+	transition: color .12s ease, border-color .12s ease, background .12s ease;
+}
+
+.point:hover,
+.point:focus-visible {
+	background: var(--panel);
+	border-color: var(--accent);
+	color: var(--fg);
+}
+
+.point.on {
+	border-color: var(--accent);
+	color: var(--fg);
 }
 
 .composition.tags {

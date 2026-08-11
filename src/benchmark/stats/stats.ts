@@ -70,6 +70,52 @@ export interface FlowrFeatureCounts {
 	lintingRulesByTag:                 Record<string, number>
 }
 
+/**
+ * What the entries of the base-R bundle carry, counted by walking its function records once.
+ * Only that one bundle is walked, it is the part every install ships and the only one small enough
+ * to read without unpacking megabytes (see {@link SigDbCounts}).
+ */
+export interface SigDbBaseCounts {
+	/** unique function records in the bundle's pool (a record shared by several versions counts once) */
+	readonly functions:         number
+	/** total number of parameters over all of those records */
+	readonly parameters:        number
+	/**
+	 * how many of the records carry each piece of information: a parameter list, a call graph, a source
+	 * location, a help topic, and one entry per function property flag the format defines
+	 */
+	readonly functionsCarrying: Record<string, number>
+}
+
+/**
+ * What the signature database mounted on the benchmarking machine carries, counted once per run.
+ * `undefined` when no database is mounted. Bundles are the distinct shards of the discovered manifests
+ * (a shard a second manifest ships again is counted once), and a *kind* is a shard's temporal tier.
+ */
+export interface SigDbCounts {
+	/** distinct shards over all discovered bundles */
+	readonly bundles:            number
+	/** how many bundles each kind contributes, e.g. `latest only` or `full history` */
+	readonly bundlesByKind:      Record<string, number>
+	/** distinct package names the database describes */
+	readonly packages:           number
+	/** package versions the bundles store, summed (a kind-wise split would overlap, so there is none) */
+	readonly packageVersions:    number
+	/** function records the bundles store, summed over the bundles */
+	readonly functions:          number
+	/** function records per kind, a partition: every record belongs to exactly one bundle */
+	readonly functionsByKind:    Record<string, number>
+	/** bytes the bundles of each kind occupy on disk, in the codec this runtime reads */
+	readonly sizeByKind:         Record<string, number>
+	/** bytes of the shared string dictionaries */
+	readonly sizeOfDictionaries: number
+	/** bytes of the manifests themselves */
+	readonly sizeOfManifests:    number
+	/** bytes of everything the database occupies */
+	readonly size:               number
+	readonly base?:              SigDbBaseCounts
+}
+
 export interface SlicerStatsControlFlow<T = number> {
 	numberOfVertices: T
 	numberOfEdges:    T
@@ -130,7 +176,6 @@ export interface SlicerStats {
 	request:                     RParseRequestFromFile | RParseRequestFromText
 	input:                       SlicerStatsInput
 	dataflow:                    SlicerStatsDataflow
-	features?:                   FlowrFeatureCounts
 	controlFlow?:                SlicerStatsControlFlow
 	dataFrameShape?:             SlicerStatsDfShape
 	retrieveTimePerToken:        TimePerToken<number>

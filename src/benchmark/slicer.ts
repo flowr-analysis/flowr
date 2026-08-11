@@ -39,7 +39,6 @@ import {
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
 import { collectAllSlicingCriteria, type SlicingCriteriaFilter } from '../slicing/criterion/collect-all';
 import { getSizeOfCfGraph, getSizeOfDfGraph, safeSizeOf } from './stats/size-of';
-import { countFeatures } from './stats/feature-counts';
 import type { AutoSelectPredicate } from '../reconstruct/auto-select/auto-select-defaults';
 import type { KnownParser, KnownParserName, KnownParserType } from '../r-bridge/parser';
 import type { SyntaxNode, Tree } from 'web-tree-sitter';
@@ -266,7 +265,6 @@ export class BenchmarkSlicer {
 				numberOfFunctionDefinitions: numberOfDefinitions,
 				sizeOfObject:                getSizeOfDfGraph(this.dataflow.graph),
 			},
-			features: countFeatures(),
 
 			// these are all properly initialized in finish()
 			commonMeasurements:         new Map<CommonSlicerMeasurements, ElapsedTime>(),

@@ -18,7 +18,7 @@ interface BenchStats {
 	betterOf(name: string, unit: string): string;
 	shortName(name: string): string;
 	tagLabel(tag: string): string;
-	GROUPS: readonly { id: string }[];
+	GROUPS: readonly { id: string, perVersion?: boolean }[];
 }
 
 /* the page is not part of the TypeScript project, so it is loaded by path rather than imported */
@@ -74,10 +74,36 @@ describe('Benchmark page helpers', () => {
 		assert.strictEqual(S.groupOf('built-in definitions (own handler)', '#'), 'builtins');
 		assert.strictEqual(S.groupOf('linting rules (smell)', '#'), 'features');
 		assert.strictEqual(S.groupOf('dataflow edges', '#'), 'graphs');
+		assert.strictEqual(S.groupOf('data frame constraints', '#'), 'dataframes');
+		assert.strictEqual(S.groupOf('Infer data frame shapes', 'ms'), 'per-file', 'the phase stays with the phases');
+		assert.strictEqual(S.groupOf('memory (df-shapes)', 'KiB'), 'memory');
 		assert.strictEqual(S.groupOf('something new', 'weird'), 'other', 'unknown metrics still get a home');
 		assert.ok(!S.GROUPS.some(g => g.id === 'totals'), 'the totals get no chart of their own');
+		assert.deepStrictEqual(S.GROUPS.filter(g => g.perVersion).map(g => g.id), ['features', 'builtins', 'sigdb'],
+			'only what the flowR version itself carries is independent of the suite');
+		assert.strictEqual(S.betterOf('data frame shapes (exact)', '#'), 'up');
+		assert.strictEqual(S.betterOf('data frame shapes (top)', '#'), 'down');
 		assert.strictEqual(S.betterOf('Total per-file', 'ms'), 'down');
 		assert.strictEqual(S.betterOf('reduction (characters)', '#'), 'up');
 		assert.strictEqual(S.betterOf('number of files', '#'), 'flat');
+	});
+
+	test('group the signature database counters', () => {
+		for(const name of ['signature database bundles', 'signature database bundles (older only)',
+			'signature database packages', 'signature database package versions', 'signature database functions',
+			'signature database functions (latest only)', 'signature database base functions',
+			'signature database base functions (deprecated)', 'signature database base parameters']) {
+			assert.strictEqual(S.groupOf(name, '#'), 'sigdb', `${name} belongs to the database chart`);
+			assert.strictEqual(S.betterOf(name, '#'), 'flat', `${name} is neither better nor worse when it grows`);
+		}
+		// the sizes must not fall into the memory chart, which is about the graphs of one analysis
+		assert.strictEqual(S.groupOf('signature database size', 'KiB'), 'sigdb');
+		assert.strictEqual(S.groupOf('signature database size (dictionaries)', 'KiB'), 'sigdb');
+		assert.strictEqual(S.betterOf('signature database size (full history)', 'KiB'), 'flat',
+			'a larger database is not a regression');
+		assert.strictEqual(S.groupOf('memory (df-graph)', 'KiB'), 'memory', 'the other sizes stay where they were');
+		assert.strictEqual(S.GROUPS[S.GROUPS.length - 1].id, 'sigdb', 'the database is the final chart');
+		assert.strictEqual(S.shortName('signature database functions (older only)'), 'functions (older only)',
+			'the chart is already titled for the database');
 	});
 });

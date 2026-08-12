@@ -12,6 +12,7 @@
 	for(const id of ['theme', 'suite', 'engine', 'range', 'mode', 'baseline', 'baselineOut', 'smooth', 'smoothOut',
 		'band', 'calibrate', 'charts', 'status', 'tooltip', 'rangeNote', 'calibrationNote', 'sourceNote',
 		'baselineField', 'calibrateField', 'dlSuite', 'dlCsv', 'dlAll', 'lock', 'resetLayout', 'copyLink',
+		'latest', 'watchNote',
 		'fullscreen', 'panelData', 'panelView', 'panelLayout', 'panelDownload',
 		'digestData', 'digestView', 'digestLayout', 'digestDownload']) {
 		ui[id] = el(id.replace(/[A-Z]/g, c => '-' + c.toLowerCase()));
@@ -46,29 +47,413 @@
 		});
 	}
 
-	/** the whole page, so a dashboard can fill a screen of its own */
+	/** whether the page is filling the screen, whichever name the browser gave that */
+	function filling() {
+		return Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+	}
+
+	/** set once a link asked for fullscreen, which only a gesture of the reader can actually grant */
+	let wantsFullscreen = false;
+
+	/**
+	 * The whole page, so a dashboard can fill a screen of its own. Safari still only knows the prefixed
+	 * form, and a page in a frame that was not allowed to do this has to say so by not offering it.
+	 *
+	 * A link can carry the state, but no browser lets a page that just loaded take the screen: it needs
+	 * a gesture. So a link that asks for it says so and takes the first click the reader makes.
+	 */
 	function initFullscreen() {
-		if(!document.documentElement.requestFullscreen) {
+		const root = document.documentElement;
+		const request = root.requestFullscreen || root.webkitRequestFullscreen;
+		const leave = document.exitFullscreen || document.webkitExitFullscreen;
+		const allowed = document.fullscreenEnabled ?? document.webkitFullscreenEnabled ?? true;
+		if(!request || !leave || !allowed) {
 			ui.fullscreen.remove();
 			return;
 		}
 		const sync = () => {
-			const on = Boolean(document.fullscreenElement);
-			ui.fullscreen.textContent = on ? 'Leave fullscreen' : 'Fullscreen';
-			ui.fullscreen.setAttribute('aria-pressed', String(on));
+			ui.fullscreen.textContent = filling() ? 'Leave fullscreen' : 'Fullscreen';
+			ui.fullscreen.setAttribute('aria-pressed', String(filling()));
+			if(filling()) {
+				clearAsk(); // however the screen was granted, the ask for it is answered
+			}
+			writeUrl();
 		};
+		const toggle = () => Promise.resolve(filling() ? leave.call(document) : request.call(root));
 		ui.fullscreen.addEventListener('click', () => {
-			const step = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
-			Promise.resolve(step).catch(e => say('The browser refused to switch the fullscreen: ' + e, true));
+			toggle().catch(e => say('The browser refused to switch the fullscreen: ' + e, true));
 		});
-		document.addEventListener('fullscreenchange', sync);
+		for(const type of ['fullscreenchange', 'webkitfullscreenchange']) {
+			document.addEventListener(type, sync);
+		}
+		/*
+		 * `click` and `keyup`, not their down halves: a browser grants the screen on the gesture it
+		 * considers finished, and asking on `pointerdown` is refused outright. The button carries the
+		 * same request of its own, so a click on it is left to that one rather than answered twice.
+		 */
+		const arm = ev => {
+			if(!wantsFullscreen || filling() || ui.fullscreen.contains(ev.target)) {
+				return;
+			}
+			wantsFullscreen = false;
+			/* the gesture was not one this browser accepts, so the button, which always is, stays lit */
+			toggle().then(clearAsk, () => showAsk('Use the Fullscreen button below to go fullscreen'));
+		};
+		for(const type of ['click', 'keyup']) {
+			document.addEventListener(type, arm);
+		}
 		sync();
+	}
+
+	/** the ask a link left for the reader, which only a gesture of theirs can answer */
+	function showAsk(text) {
+		say(text);
+		ui.status.classList.add('ask');
+		ui.status.title = 'this link asked for fullscreen, which every browser grants only on a click';
+		ui.fullscreen.classList.add('asked');
+	}
+
+	/** the ask is answered, or no longer worth making, so nothing of it stays behind */
+	function clearAsk() {
+		wantsFullscreen = false;
+		if(ui.fullscreen.isConnected) {
+			ui.fullscreen.classList.remove('asked');
+		}
+		/* only the ask clears itself, an update notice below it is somebody else's line */
+		if(ui.status.classList.contains('ask')) {
+			ui.status.title = '';
+			say('');
+		}
+	}
+
+	/**
+	 * A link that asks for the screen has to say so. No browser lets a page take the screen without a
+	 * gesture of the reader, and a click the page dispatches itself is not one, so this waits for a real
+	 * one rather than pretending it can do without.
+	 */
+	function offerFullscreen() {
+		if(!wantsFullscreen || filling() || !ui.fullscreen.isConnected) {
+			wantsFullscreen = false;
+			return;
+		}
+		showAsk('Click anywhere to go to fullscreen');
 	}
 
 	function say(text, bad) {
 		ui.status.textContent = text;
 		ui.status.className = 'status' + (bad ? ' bad' : '');
 		ui.status.hidden = !text;
+	}
+
+	/* ---------- dom ---------- */
+
+	function dom(name, props, ...kids) {
+		const n = Object.assign(document.createElement(name), props || {});
+		for(const kid of kids) {
+			if(kid !== null && kid !== undefined && kid !== false) {
+				n.append(kid);
+			}
+		}
+		return n;
+	}
+
+	/** replaces a node with a freshly built one, at most once per frame */
+	function swapper(node) {
+		let current = node, make = null, pending = false;
+		return next => {
+			make = next;
+			if(pending) {
+				return;
+			}
+			pending = true;
+			requestAnimationFrame(() => {
+				pending = false;
+				const built = make();
+				if(built && current.parentNode) {
+					current.parentNode.replaceChild(built, current);
+					current = built;
+				}
+			});
+		};
+	}
+
+	function replaceNode(node, built) {
+		if(built && node.parentNode) {
+			node.parentNode.replaceChild(built, node);
+		}
+	}
+
+	/* ---------- staying current ---------- */
+
+	/** how often a page that is left open asks whether a release has written a new history */
+	const CHECK_EVERY = 10 * 60 * 1000;
+	/** the history as main has it, which a page served from an older build does not */
+	const MAIN_DATA = 'https://raw.githubusercontent.com/flowr-analysis/flowr/main/wiki/stats/benchmark/data.js';
+	/** the history is a megabyte and grows, so a body past this is dropped rather than held */
+	const MAX_DATA = 64 * 1024 * 1024;
+	/** long enough for a megabyte on a bad connection, short enough that nothing waits on it forever */
+	const NET_TIMEOUT = 20000;
+
+	/** every request this page makes gives up rather than hanging, whatever the network is doing */
+	async function fetchSoon(url, opts, ms) {
+		const stop = typeof AbortController === 'function' ? new AbortController() : null;
+		const timer = window.setTimeout(() => stop && stop.abort(), ms || NET_TIMEOUT);
+		try {
+			return await fetch(url, Object.assign({}, opts, stop ? { signal: stop.signal } : {}));
+		} finally {
+			window.clearTimeout(timer);
+		}
+	}
+
+	/**
+	 * The first `limit` bytes of an answer, after which the rest is cancelled. The one number this page
+	 * needs to compare two histories sits in the first line of a file that is a megabyte long.
+	 */
+	async function firstBytes(res, limit) {
+		if(!res.body || typeof res.body.getReader !== 'function') {
+			return (await res.text()).slice(0, limit);
+		}
+		const reader = res.body.getReader();
+		const decoder = new TextDecoder();
+		let text = '';
+		try {
+			while(text.length < limit) {
+				const { value, done } = await reader.read();
+				if(done) {
+					break;
+				}
+				text += decoder.decode(value, { stream: true });
+			}
+		} finally {
+			void reader.cancel();
+		}
+		return text;
+	}
+
+	/**
+	 * The assignment `data.js` is, as data. Parsed rather than run: whatever this page downloads, it does
+	 * not execute it.
+	 */
+	function parseData(text) {
+		const from = text.indexOf('{');
+		const to = text.lastIndexOf('}');
+		if(from < 0 || to <= from) {
+			return null;
+		}
+		try {
+			return JSON.parse(text.slice(from, to + 1));
+		} catch{
+			return null;
+		}
+	}
+
+	/** how current a history is: what it says of itself, and failing that the newest run it carries */
+	function freshnessOf(raw) {
+		const said = Number(raw && raw.lastUpdate);
+		if(isFinite(said) && said > 0) {
+			return said;
+		}
+		let newest = 0;
+		for(const list of Object.values(raw && raw.entries && typeof raw.entries === 'object' ? raw.entries : {})) {
+			for(const run of Array.isArray(list) ? list : []) {
+				const at = new Date(run && run.date).getTime();
+				if(isFinite(at)) {
+					newest = Math.max(newest, at);
+				}
+			}
+		}
+		return newest;
+	}
+
+	/** how current the history shown right now is, whichever of the two it came from */
+	let shownFreshness = 0;
+	/**
+	 * Where the history on the page came from, as far as the page can tell. It knows what it shipped with
+	 * and what main has; a history that is ahead of main was published from something that is not main.
+	 */
+	const ORIGINS = {
+		main:    ['from flowR main', 'this page shipped with an older history, so the one on main is shown instead'],
+		same:    ['as on flowR main', 'the history this page shipped with is the one main has'],
+		ahead:   ['ahead of flowR main, so from another branch',
+			'this page shipped with a history newer than main\'s, so it was published from a branch of its own'],
+		shipped: ['as published with this page', 'the history this page was built with'],
+		unknown: ['as published with this page, main not reachable',
+			'main could not be asked, so whether this history is the current one is unknown']
+	};
+	let origin = 'shipped';
+	/** set while a newer history is being taken on board, which nothing else should announce meanwhile */
+	let adopting = false;
+
+	/** what main says its history was last written, without downloading the megabyte that follows */
+	async function mainFreshness() {
+		const res = await fetchSoon(MAIN_DATA, { cache: 'no-store' });
+		if(!res.ok) {
+			return 0;
+		}
+		const head = await firstBytes(res, 16 * 1024);
+		const at = /"lastUpdate"\s*:\s*(\d+)/.exec(head);
+		return at ? Number(at[1]) : 0;
+	}
+
+	/**
+	 * A page is served from the build it was published with, and main may already carry a newer history
+	 * than that. Whichever is newer wins. Anything at all going wrong, from being offline to an answer
+	 * that is not a history, leaves the one this page shipped with in place.
+	 */
+	async function adoptNewer() {
+		if(typeof fetch !== 'function') {
+			return;
+		}
+		adopting = true;
+		try {
+			const there = await mainFreshness();
+			if(!there) {
+				origin = 'unknown';
+				showSource();
+				return;
+			}
+			if(there <= shownFreshness) {
+				origin = there === shownFreshness ? 'same' : 'ahead';
+				showSource();
+				return;
+			}
+			const res = await fetchSoon(MAIN_DATA, { cache: 'no-store' });
+			const size = Number(res.headers.get('content-length'));
+			if(!res.ok || (isFinite(size) && size > MAX_DATA)) {
+				origin = 'unknown';
+				showSource();
+				return;
+			}
+			const raw = parseData(await res.text());
+			/* the number in the head has to hold up in the body, which `load` refuses if it is not a history */
+			if(!raw || freshnessOf(raw) <= shownFreshness) {
+				origin = 'unknown';
+				showSource();
+				return;
+			}
+			const was = origin;
+			origin = 'main';
+			if(!load(raw)) {
+				origin = was;
+				showSource();
+			}
+		} catch{
+			/* offline or blocked: the page has a history to show, it just cannot say whether it is the current one */
+			origin = 'unknown';
+			showSource();
+		} finally {
+			adopting = false;
+		}
+	}
+	/** how long the reader has to have done nothing before a reload they did not ask for is not in the way */
+	const IDLE_ENOUGH = 45 * 1000;
+
+	/**
+	 * What the server says about `data.js` as it stands now, null if it will not say. `HEAD` is enough
+	 * where it is served, and the length of the answer stands in where it is not.
+	 */
+	async function historyStamp() {
+		for(const method of ['HEAD', 'GET']) {
+			try {
+				const res = await fetch('data.js', { method, cache: 'no-store' });
+				if(!res.ok) {
+					continue;
+				}
+				const tag = res.headers.get('etag') || res.headers.get('last-modified') || res.headers.get('content-length');
+				if(tag) {
+					return tag;
+				}
+				if(method === 'GET') {
+					return String((await res.text()).length);
+				}
+			} catch{ /* offline, or a server that refuses the method, so try the next one */ }
+		}
+		return null;
+	}
+
+	/**
+	 * A release writes a new `data.js` next to this page, which a page that has been open since yesterday
+	 * does not have. The address carries the whole view, so a reload lands on the same dashboard; it still
+	 * waits until the reader is not in the middle of reading something.
+	 */
+	/** what the page is doing about staying current, so nobody has to wonder whether it still is */
+	function sayWatch(text, title) {
+		ui.watchNote.textContent = text;
+		ui.watchNote.title = title || '';
+	}
+
+	function watchForUpdates() {
+		if(typeof fetch !== 'function' || !/^https?:$/.test(location.protocol)) {
+			// opened from disk, where there is nothing to ask
+			sayWatch('auto-update off', 'this page was opened from a file, so there is no server to ask');
+			return;
+		}
+		const watching = () => sayWatch('auto-update on', 'checks every ' + Math.round(CHECK_EVERY / 60000)
+			+ ' minutes, and whenever this tab comes back to the front, whether a release published a newer history');
+		watching();
+		let known = null, offered = false, touched = Date.now();
+		for(const type of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'scroll']) {
+			window.addEventListener(type, () => {
+				touched = Date.now();
+			}, { passive: true });
+		}
+		const offer = () => {
+			offered = true;
+			/* this line takes the status bar over, so whatever was asking there is asking no more */
+			clearAsk();
+			const reload = dom('button', { type: 'button', className: 'reload', textContent: 'Reload' });
+			reload.addEventListener('click', () => location.reload());
+			ui.status.textContent = '';
+			ui.status.className = 'status';
+			ui.status.hidden = false;
+			ui.status.append('A newer benchmark history was published. ', reload);
+			sayWatch('update found', 'the page reloads itself once this tab is in the background or you have been idle');
+			const idle = window.setInterval(() => {
+				if(document.hidden || Date.now() - touched > IDLE_ENOUGH) {
+					window.clearInterval(idle);
+					location.reload();
+				}
+			}, 5000);
+		};
+		/**
+		 * Main writes its history before a build of this page carries it, so it is asked as well. Not
+		 * while the page is still taking a newer one on board, and not before it shows anything at all:
+		 * either way it would announce a history that is already on its way.
+		 */
+		const mainIsAhead = async () => {
+			if(adopting || !shownFreshness) {
+				return false;
+			}
+			try {
+				return await mainFreshness() > shownFreshness;
+			} catch{
+				return false; // main being out of reach says nothing about this page being stale
+			}
+		};
+		const check = async () => {
+			if(offered || adopting) {
+				return;
+			}
+			const now = await historyStamp();
+			if(!now) {
+				sayWatch('auto-update unavailable', 'the server did not answer, so this page cannot tell whether it is current');
+				return;
+			}
+			if((known !== null && now !== known) || await mainIsAhead()) {
+				offer();
+				return;
+			}
+			known = now;
+			watching(); // an answer after a silent one says the page is looking again
+		};
+		void check();
+		window.setInterval(() => void check(), CHECK_EVERY);
+		/* coming back to the tab is the moment a stale page is most obvious */
+		document.addEventListener('visibilitychange', () => {
+			if(!document.hidden) {
+				void check();
+			}
+		});
 	}
 
 	/* ---------- data ---------- */
@@ -95,7 +480,20 @@
 			}
 		}
 		S.mergeInfoSuites(entries);
+		/* only now is a run complete, merging the info suite in adds measurements to it */
+		for(const runs of Object.values(entries)) {
+			for(const run of runs) {
+				indexRun(run);
+			}
+		}
 		return Object.keys(entries).length ? { entries, lastUpdate: raw.lastUpdate } : null;
+	}
+
+	/** the measurements by name, not enumerable so the downloads still state the run verbatim */
+	function indexRun(run) {
+		Object.defineProperty(run, 'by', {
+			value: new Map(run.benches.map(b => [b.name, b])), configurable: true
+		});
 	}
 
 	function allRuns() {
@@ -115,21 +513,21 @@
 	}
 
 	function valueOf(run, name) {
-		const b = run.benches.find(x => x.name === name);
+		const b = run.by.get(name);
 		const v = b ? Number(b.value) : NaN;
 		return isFinite(v) ? v : null;
 	}
 
 	function rangeOf(run, name) {
-		const b = run.benches.find(x => x.name === name);
+		const b = run.by.get(name);
 		const v = b && b.range !== undefined ? Math.abs(Number(b.range)) : NaN;
 		return isFinite(v) && v > 0 ? v : null;
 	}
 
 	function extraOf(run, name) {
-		const b = run.benches.find(x => x.name === name);
+		const b = run.by.get(name);
 		/* older runs stated a full double, which is unreadable next to a rounded value */
-		return b && b.extra ? String(b.extra).replace(/\d+\.\d{4,}/g, m => Number(m).toFixed(3)) : '';
+		return b && b.extra ? String(b.extra).replace(/\d+\.\d{3,}/g, m => Number(m).toFixed(2)) : '';
 	}
 
 	/**
@@ -276,7 +674,7 @@
 			case 'view':
 				return [
 					ui.mode.value === 'delta' ? 'delta vs. last ' + (Number(ui.baseline.value) || 3) : 'absolute',
-					win > 1 ? 'median of ' + win : '',
+					win > 1 ? 'smoothed over ' + win : '',
 					ui.band.checked ? 'band' : '',
 					!ui.calibrateField.hidden && ui.calibrate.checked ? 'calibrated' : ''
 				];
@@ -330,6 +728,10 @@
 		if(ui.theme.value !== 'system') {
 			p.set('theme', ui.theme.value);
 		}
+		/* the screen a dashboard fills is part of the dashboard, even if only a click can grant it */
+		if(filling() || wantsFullscreen) {
+			p.set('full', '1');
+		}
 		if(order.length) {
 			p.set('order', order.join(','));
 		}
@@ -380,6 +782,7 @@
 			ui.theme.value = theme;
 			setTheme(theme);
 		}
+		wantsFullscreen = p.get('full') === '1';
 		if(p.has('order')) {
 			order = p.get('order').split(',').filter(Boolean);
 		}
@@ -417,7 +820,7 @@
 			collapsed.delete(id);
 		}
 		writeStore(FOLDED_STORE, [...collapsed]);
-		render();
+		renderSafe();
 	}
 
 	/** the groups in the reader's order, with anything they never moved left where it was */
@@ -448,7 +851,7 @@
 		ids.splice(before, 0, ids.splice(at, 1)[0]);
 		order = ids;
 		writeStore('flowr-bench-order', order);
-		render();
+		renderSafe();
 	}
 
 	function makeDraggable(fig, group) {
@@ -480,10 +883,10 @@
 	}
 
 	function foldButton(group, on) {
-		const b = document.createElement('button');
-		b.type = 'button';
-		b.className = 'fold' + (on ? ' open' : '');
-		b.title = on ? 'show this again' : 'fold this away';
+		const b = dom('button', {
+			type: 'button', className: 'fold' + (on ? ' open' : ''),
+			title: on ? 'show this again' : 'fold this away'
+		});
 		b.setAttribute('aria-label', b.title);
 		b.setAttribute('aria-expanded', String(!on));
 		const chevron = tag('svg', { class: 'chevron', viewBox: '0 0 12 12', 'aria-hidden': 'true' });
@@ -495,19 +898,15 @@
 
 	/** the caption head: the title, its chip, and the controls of the tile */
 	function captionHead(group, folded) {
-		const cap = document.createElement('figcaption');
-		const head = document.createElement('span');
-		head.className = 'head';
-		head.appendChild(Object.assign(document.createElement('span'), { className: 'title', textContent: group.title }));
+		const head = dom('span', { className: 'head' }, dom('span', { className: 'title', textContent: group.title }));
 		if(group.perVersion) {
-			head.appendChild(Object.assign(document.createElement('span'), {
+			head.append(dom('span', {
 				className: 'chip', title: 'a property of the flowR version, identical for every suite and engine',
 				textContent: 'independent of data suite'
 			}));
 		}
-		head.appendChild(foldButton(group, folded));
-		cap.appendChild(head);
-		return cap;
+		head.append(foldButton(group, folded));
+		return dom('figcaption', {}, head);
 	}
 
 	const colors = new Map();
@@ -621,26 +1020,31 @@
 			const v = valueOf(r, name);
 			return typeof v === 'number' ? v * scale : v;
 		});
-		const win = Number(ui.smooth.value) || 1;
+		/* a breakdown states what one release ships, so there is nothing across releases to smooth */
+		const win = isBar(name) ? 1 : Number(ui.smooth.value) || 1;
 		const cal = S.applyFactors(raw, factors);
-		let values = S.rollingMedian(cal, win);
-		let err = S.rollingMedian(S.applyFactors(runs.map(r => {
+		let values = S.rollingSmooth(cal, win);
+		/* a spread cannot be negative, whatever a line fitted through it says at the borders */
+		let err = S.rollingSmooth(S.applyFactors(runs.map(r => {
 			const e = rangeOf(r, name);
 			return typeof e === 'number' ? e * scale : e;
-		}), factors), win);
+		}), factors), win).map(e => e === null ? null : Math.max(0, e));
 		let baseline = null;
 		if(ui.mode.value === 'delta') {
 			baseline = S.baselineOf(values, Number(ui.baseline.value) || 3);
-			const scale = isFinite(baseline) && baseline !== 0 ? 100 / Math.abs(baseline) : 0;
+			const perCent = isFinite(baseline) && baseline !== 0 ? 100 / Math.abs(baseline) : 0;
 			values = S.toPercentDelta(values, baseline);
-			err = err.map(e => e === null ? null : e * scale);
+			err = err.map(e => e === null ? null : e * perCent);
 		}
 		return { name, label: S.shortName(name), unit, better: S.betterOf(name, unit), raw, values, err, baseline, color: 0 };
 	}
 
 	/* ---------- formatting ---------- */
 
-	/** how many decimals a set of values needs, so one tooltip does not mix 2.21 with 0.256 */
+	/**
+	 * How many decimals a set of values needs, so one tooltip does not mix 2.21 with 0.256. Never more
+	 * than two: the third is noise of the smoothing rather than anything a run measured.
+	 */
 	function decimalsFor(values) {
 		let max = 0;
 		for(const v of values) {
@@ -648,7 +1052,7 @@
 				max = Math.max(max, Math.abs(v));
 			}
 		}
-		return max >= 100 ? 1 : max >= 1 ? 2 : 3;
+		return max >= 100 ? 1 : 2;
 	}
 
 	function fmt(v, unit, decimals) {
@@ -656,11 +1060,16 @@
 			return 'n/a';
 		}
 		const a = Math.abs(v);
-		/* counters are whole things, only a median between two runs can land in between */
-		const s = unit === '#' ? (Number.isInteger(v) ? String(v) : v.toFixed(1))
+		/* counters are whole things, only a value smoothed across runs can land in between */
+		const s = unit === '#' ? (nearlyWhole(v) ? String(Math.round(v)) : v.toFixed(1))
 			: typeof decimals === 'number' ? v.toFixed(decimals)
-				: a >= 1000 ? v.toFixed(0) : a >= 10 ? v.toFixed(1) : a >= 1 ? v.toFixed(2) : v.toFixed(3);
+				: a >= 1000 ? v.toFixed(0) : a >= 10 ? v.toFixed(1) : v.toFixed(2);
 		return unit ? s + ' ' + unit : s;
+	}
+
+	/** a count that only floating point arithmetic pushed off a whole number, such as 10.000000000000002 */
+	function nearlyWhole(v) {
+		return Math.abs(v - Math.round(v)) < 1e-6 * Math.max(1, Math.abs(v));
 	}
 
 	/** axis labels stay short, a tick never needs more than one decimal */
@@ -745,62 +1154,77 @@
 	/** the breakdowns that are drawn as bars below the chart rather than as lines in it */
 	const isBar = name => /^linting rules \(|^signature database base functions \(|^tests \(/.test(String(name));
 
-	function drawGroup(group, series, runs, bumps, all) {
-		all = all || series;
-		const isDelta = ui.mode.value === 'delta';
-		const off = hidden.get(group.id) || new Set();
-		let shown = series.filter(s => !off.has(s.name));
-
-		// a chart only spans what it has data for, an empty stretch would just waste the axis
+	/** a chart only spans what it has data for, an empty stretch would just waste the axis */
+	function clipToSpan(shown, series, all, runs, bumps) {
 		const span = dataSpan(shown);
-		if(span) {
-			runs = runs.slice(span.from, span.to + 1);
-			bumps = bumps.map(b => ({ ...b, index: b.index - span.from }));
-			const clip = s => ({ ...s, values: s.values.slice(span.from, span.to + 1), err: s.err.slice(span.from, span.to + 1), raw: s.raw.slice(span.from, span.to + 1) });
-			shown = shown.map(clip);
-			series = series.map(s => shown.find(o => o.name === s.name) || s);
-			all = all.map(clip);
+		if(!span) {
+			return { shown, series, all, runs, bumps };
 		}
+		const clip = s => ({ ...s, values: s.values.slice(span.from, span.to + 1), err: s.err.slice(span.from, span.to + 1), raw: s.raw.slice(span.from, span.to + 1) });
+		const cut = shown.map(clip);
+		return {
+			shown:  cut,
+			series: series.map(s => cut.find(o => o.name === s.name) || s),
+			all:    all.map(clip),
+			runs:   runs.slice(span.from, span.to + 1),
+			bumps:  bumps.map(b => ({ ...b, index: b.index - span.from }))
+		};
+	}
 
-		// the phases add up to the analysis, so their sum is worth a line of its own
-		const sum = sumSeries(group, shown, runs.length);
-		if(sum) {
-			shown = shown.concat(sum);
-			series = series.concat(sum);
+	/**
+	 * What one plotted point is. A measurement that varies over the files or slices of a run is uploaded
+	 * as their mean, with the median and the standard deviation in its `extra`; a counter is the exact
+	 * number that release carries. Saying which is which is the difference between a curve one can act on
+	 * and a curve one can only look at.
+	 */
+	function statisticOf(series, runs) {
+		const extraFor = name => {
+			for(let i = runs.length - 1; i >= 0; i--) {
+				if(runs[i].by.has(name)) {
+					return extraOf(runs[i], name);
+				}
+			}
+			return '';
+		};
+		let mean = 0, exact = 0;
+		for(const s of series) {
+			if(s.name === SUM_NAME) {
+				continue;
+			}
+			if(/^(mean|median):/.test(extraFor(s.name))) {
+				mean++;
+			} else {
+				exact++;
+			}
 		}
+		if(!mean) {
+			return exact ? 'exact count per release' : '';
+		}
+		return mean && exact ? 'mean per release where one was measured, median on hover' : 'mean per release, median on hover';
+	}
 
-		const fig = document.createElement('figure');
-		const cap = captionHead(group, false);
+	/** what the caption says below the title: the subject, the statistic, the unit, and what is good */
+	function subtitleOf(group, series, runs, isDelta) {
 		const dirs = new Set(series.map(s => s.better));
 		const dir = dirs.size === 1 ? betterText(series[0].better) : '';
 		const units = [...new Set(series.map(s => s.unit).filter(Boolean))].join(', ');
-		const sub = Object.assign(document.createElement('span'), { className: 'sub' });
+		const statistic = group.facts ? '' : statisticOf(series, runs);
 		const parts = [
 			group.about,
+			statistic,
 			group.facts ? '' : isDelta ? 'percent against the median of the last ' + (Number(ui.baseline.value) || 3) + ' releases' : units,
 			group.log && !isDelta && !group.facts ? 'logarithmic axis' : ''
 		].filter(Boolean);
-		sub.textContent = parts.join(' | ');
+		const sub = dom('span', { className: 'sub', textContent: parts.join(' | ') });
 		if(dir) {
-			sub.appendChild(document.createTextNode(parts.length ? ' | ' : ''));
 			// the direction is what one looks for, so the word carries the weight
-			sub.appendChild(Object.assign(document.createElement('b'), { textContent: dir.split(' ')[0] }));
-			sub.appendChild(document.createTextNode(dir.slice(dir.indexOf(' '))));
+			sub.append(parts.length ? ' | ' : '', dom('b', { textContent: dir.split(' ')[0] }), dir.slice(dir.indexOf(' ')));
 		}
-		cap.appendChild(sub);
-		fig.appendChild(cap);
+		return sub;
+	}
 
-		if(group.facts) {
-			const panel = factsOf(group, all, runs);
-			fig.appendChild(panel || Object.assign(document.createElement('p'), {
-				className: 'empty', textContent: 'no data in this range'
-			}));
-			ui.charts.appendChild(fig);
-			return fig;
-		}
-
-		// the axis follows the lines, the error band is clipped to it. A standard deviation
-		// larger than the value itself is common here and would flatten every curve.
+	/** the range the axis has to cover, `least` being the smallest value a logarithmic one can start at */
+	function extentOf(shown) {
 		let lo = 0, hi = 0, any = false, least = Infinity;
 		for(const s of shown) {
 			for(const v of s.values) {
@@ -815,35 +1239,38 @@
 				}
 			}
 		}
-		const svg = tag('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': group.title });
-		if(!any) {
-			fig.appendChild(Object.assign(document.createElement('p'), {
-				className: 'empty', textContent: shown.length ? 'no data in this range' : 'all series hidden'
-			}));
-			fig.appendChild(legendOf(group, series, off));
-			ui.charts.appendChild(fig);
-			return fig;
-		}
+		return { lo, hi, any, least };
+	}
 
-		// a chart whose series differ by orders of magnitude says nothing on a linear axis, but a delta
-		// crosses zero, which no logarithm can place
-		const log = Boolean(group.log) && !isDelta && isFinite(least) && lo >= 0;
-		const t = log ? S.logTicks(least, hi) : S.ticks(lo, hi, 5);
-		const n = runs.length;
-		const x = i => PAD_L + (n < 2 ? (W - PAD_L - PAD_R) / 2 : i / (n - 1) * (W - PAD_L - PAD_R));
-		const axisSpan = log ? Math.log10(t.hi) - Math.log10(t.lo) : t.hi - t.lo;
+	/**
+	 * The ticks of a chart and the two functions that place a run and a value on it. A chart whose series
+	 * differ by orders of magnitude says nothing on a linear axis, but a delta crosses zero, which no
+	 * logarithm can place.
+	 */
+	function axisOf(group, extent, n, isDelta) {
+		const log = Boolean(group.log) && !isDelta && isFinite(extent.least) && extent.lo >= 0;
+		const t = log ? S.logTicks(extent.least, extent.hi) : S.ticks(extent.lo, extent.hi, 5);
+		const span = log ? Math.log10(t.hi) - Math.log10(t.lo) : t.hi - t.lo;
 		const place = v => log ? Math.log10(Math.min(Math.max(v, t.lo), t.hi)) - Math.log10(t.lo) : v - t.lo;
-		const y = v => PAD_T + (1 - place(v) / (axisSpan || 1)) * (H - PAD_T - PAD_B);
+		return {
+			t, log,
+			x: i => PAD_L + (n < 2 ? (W - PAD_L - PAD_R) / 2 : i / (n - 1) * (W - PAD_L - PAD_R)),
+			y: v => PAD_T + (1 - place(v) / (span || 1)) * (H - PAD_T - PAD_B)
+		};
+	}
 
-		for(const v of t.values) {
-			svg.appendChild(tag('line', { class: v === 0 ? 'zero' : 'grid', x1: PAD_L, x2: W - PAD_R, y1: y(v), y2: y(v) }));
-			svg.appendChild(tag('text', { class: 'axis', x: PAD_L - 6, y: y(v) + 3, 'text-anchor': 'end' },
-				isDelta ? v.toFixed(0) + '%' : log ? fmtShort(v) : fmtTick(v, t.step)));
+	function drawGrid(svg, axis, isDelta) {
+		for(const v of axis.t.values) {
+			svg.appendChild(tag('line', { class: v === 0 ? 'zero' : 'grid', x1: PAD_L, x2: W - PAD_R, y1: axis.y(v), y2: axis.y(v) }));
+			svg.appendChild(tag('text', { class: 'axis', x: PAD_L - 6, y: axis.y(v) + 3, 'text-anchor': 'end' },
+				isDelta ? v.toFixed(0) + '%' : axis.log ? fmtShort(v) : fmtTick(v, axis.t.step)));
 		}
+	}
 
-		// major and minor releases, patches are too frequent to mark
-		const marks = bumps.filter(b => b.index >= 0 && b.index < n).map(b => ({
-			b, at: x(b.index), text: b.kind === 'major' ? 'v' + b.version : b.version.replace(/\.\d+$/, '')
+	/** major and minor releases, patches are too frequent to mark */
+	function drawMarkers(svg, bumps, runs, axis) {
+		const marks = bumps.filter(b => b.index >= 0 && b.index < runs.length).map(b => ({
+			b, at: axis.x(b.index), text: b.kind === 'major' ? 'v' + b.version : b.version.replace(/\.\d+$/, '')
 		}));
 		// roughly five pixels per character, enough to keep the labels apart
 		const fits = S.fitLabels(marks.map(m => [m.at, m.text.length * 5 + 6]));
@@ -856,23 +1283,33 @@
 				svg.appendChild(tag('text', { class: 'axis release ' + m.b.kind, x: m.at + 3, y: PAD_T - 8 }, m.text));
 			}
 		});
+	}
 
+	function drawDates(svg, runs, axis) {
+		const n = runs.length;
 		// the newest run is what one looks at first, so it always carries its label
 		for(const i of S.tickIndices(n, 6)) {
 			svg.appendChild(tag('text', {
-				class: 'axis', x: x(i), y: H - 17, 'text-anchor': i === 0 ? 'start' : x(i) > W - PAD_R - 24 ? 'end' : 'middle'
+				class: 'axis', x: axis.x(i), y: H - 17, 'text-anchor': i === 0 ? 'start' : axis.x(i) > W - PAD_R - 24 ? 'end' : 'middle'
 			}, S.runLabel(runs[i])));
 		}
 		svg.appendChild(tag('text', { class: 'axis', x: (PAD_L + W - PAD_R) / 2, y: H - 4, 'text-anchor': 'middle' },
 			'version, ' + fmtDate(runs[0].date) + ' to ' + fmtDate(runs[n - 1].date)));
+	}
 
-		shown.forEach(s => {
+	/**
+	 * One path per stretch without holes. The error band is clipped to the axis: a standard deviation
+	 * larger than the value itself is common here and would flatten every curve.
+	 */
+	function drawSeries(svg, shown, axis) {
+		const t = axis.t;
+		for(const s of shown) {
 			const cls = 's' + s.color;
 			for(const seg of S.segments(s.values)) {
-				const pts = seg.map(i => [x(i), y(s.values[i])]);
+				const pts = seg.map(i => [axis.x(i), axis.y(s.values[i])]);
 				if(ui.band.checked && seg.some(i => s.err[i] !== null)) {
-					const up = seg.map(i => [x(i), y(Math.min(t.hi, s.values[i] + (s.err[i] || 0)))]);
-					const down = seg.map(i => [x(i), y(Math.max(t.lo, s.values[i] - (s.err[i] || 0)))]).reverse();
+					const up = seg.map(i => [axis.x(i), axis.y(Math.min(t.hi, s.values[i] + (s.err[i] || 0)))]);
+					const down = seg.map(i => [axis.x(i), axis.y(Math.max(t.lo, s.values[i] - (s.err[i] || 0)))]).reverse();
 					svg.appendChild(tag('path', { class: 'band ' + cls, d: S.smoothPath(up) + S.smoothPath(down).replace(/^M/, 'L') + 'Z' }));
 				}
 				if(pts.length === 1) {
@@ -882,8 +1319,12 @@
 					svg.appendChild(tag('path', { class: 'line ' + cls, d: S.smoothPath(pts) }));
 				}
 			}
-		});
+		}
+	}
 
+	/** the guide line, a dot per series, the tooltip, and the commit behind a click */
+	function wireCursor(svg, shown, runs, axis) {
+		const n = runs.length;
 		const cursor = tag('line', { class: 'cursor', x1: 0, x2: 0, y1: PAD_T, y2: H - PAD_B, visibility: 'hidden' });
 		svg.appendChild(cursor);
 		const dots = shown.map(s => {
@@ -891,7 +1332,6 @@
 			svg.appendChild(d);
 			return { s, d };
 		});
-
 		const at = ev => {
 			const box = svg.getBoundingClientRect();
 			const px = (ev.clientX - box.left) / (box.width || 1) * W;
@@ -899,25 +1339,24 @@
 		};
 		svg.addEventListener('pointermove', ev => {
 			const i = at(ev);
-			cursor.setAttribute('x1', String(x(i)));
-			cursor.setAttribute('x2', String(x(i)));
+			cursor.setAttribute('x1', String(axis.x(i)));
+			cursor.setAttribute('x2', String(axis.x(i)));
 			cursor.setAttribute('visibility', 'visible');
 			for(const { s, d } of dots) {
 				const v = s.values[i];
 				d.setAttribute('visibility', v === null ? 'hidden' : 'visible');
 				if(v !== null) {
-					d.setAttribute('cx', String(x(i)));
-					d.setAttribute('cy', String(y(v)));
+					d.setAttribute('cx', String(axis.x(i)));
+					d.setAttribute('cy', String(axis.y(v)));
 				}
 			}
 			tooltip(ev, shown, runs[i], i);
 		});
-		const leave = () => {
+		svg.addEventListener('pointerleave', () => {
 			cursor.setAttribute('visibility', 'hidden');
 			dots.forEach(({ d }) => d.setAttribute('visibility', 'hidden'));
 			ui.tooltip.hidden = true;
-		};
-		svg.addEventListener('pointerleave', leave);
+		});
 		svg.addEventListener('click', ev => {
 			if(touching()) {
 				return; // a tap is how one reads a value here, the sheet carries the link instead
@@ -927,29 +1366,70 @@
 				window.open(url, '_blank', 'noopener');
 			}
 		});
+		return at;
+	}
+
+	function drawGroup(group, series, runs, bumps, all, into) {
+		const isDelta = ui.mode.value === 'delta';
+		const off = hidden.get(group.id) || new Set();
+		const cut = clipToSpan(series.filter(s => !off.has(s.name)), series, all || series, runs, bumps);
+		let shown = cut.shown;
+		series = cut.series;
+		all = cut.all;
+		runs = cut.runs;
+		bumps = cut.bumps;
+
+		// the phases add up to the analysis, so their sum is worth a line of its own
+		const sum = sumSeries(group, shown, runs.length);
+		if(sum) {
+			shown = shown.concat(sum);
+			series = series.concat(sum);
+		}
+
+		const fig = document.createElement('figure');
+		const cap = captionHead(group, false);
+		cap.appendChild(subtitleOf(group, series, runs, isDelta));
+		fig.appendChild(cap);
+
+		if(group.facts) {
+			fig.appendChild(factsOf(group, all, runs)
+				|| dom('p', { className: 'empty', textContent: 'no data in this range' }));
+			into.appendChild(fig);
+			return fig;
+		}
+
+		const extent = extentOf(shown);
+		if(!extent.any) {
+			fig.appendChild(dom('p', {
+				className: 'empty', textContent: shown.length ? 'no data in this range' : 'all series hidden'
+			}));
+			fig.appendChild(legendOf(group, series, off));
+			into.appendChild(fig);
+			return fig;
+		}
+
+		const svg = tag('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': group.title });
+		const axis = axisOf(group, extent, runs.length, isDelta);
+		drawGrid(svg, axis, isDelta);
+		drawMarkers(svg, bumps, runs, axis);
+		drawDates(svg, runs, axis);
+		drawSeries(svg, shown, axis);
+		const at = wireCursor(svg, shown, runs, axis);
 
 		fig.appendChild(svg);
 		fig.appendChild(legendOf(group, series, off));
-		let share = compositionOf(group, all, runs);
+		const share = compositionOf(group, all, runs);
 		if(share) {
 			fig.appendChild(share);
 			// the detail follows the pointer, so it always describes the run under the cursor
-			svg.addEventListener('mousemove', ev => {
-				const next = compositionOf(group, all, runs, at(ev));
-				if(next) {
-					fig.replaceChild(next, share);
-					share = next;
-				}
+			const swap = swapper(share);
+			svg.addEventListener('pointermove', ev => {
+				const i = at(ev);
+				swap(() => compositionOf(group, all, runs, i));
 			});
-			svg.addEventListener('mouseleave', () => {
-				const back = compositionOf(group, all, runs);
-				if(back) {
-					fig.replaceChild(back, share);
-					share = back;
-				}
-			});
+			svg.addEventListener('pointerleave', () => swap(() => compositionOf(group, all, runs)));
 		}
-		ui.charts.appendChild(fig);
+		into.appendChild(fig);
 		return fig;
 	}
 
@@ -973,14 +1453,18 @@
 		}
 	};
 
-	function barsOf(group, series, runs, at) {
+	/**
+	 * The bars of one run. `lead` is the colour class of the donut they stand next to: the bars break down
+	 * the same thing it does, so a colour of their own would read as a second, unrelated quantity.
+	 */
+	function barsOf(group, series, runs, at, lead) {
 		const spec = BARS[group.id];
 		if(!spec) {
 			return null;
 		}
 		const i = at === undefined || at < 0 || at >= runs.length ? runs.length - 1 : at;
-		/* the bars break down one series, so they carry its colour */
 		const parent = series.find(s => s.name === spec.parent);
+		const cls = lead || 's' + (parent ? parent.color : 0);
 		const tags = series
 			.map(s => ({ part: spec.part.exec(s.name), value: s.values[i] }))
 			.filter(t => t.part && typeof t.value === 'number' && t.value > 0)
@@ -990,52 +1474,40 @@
 			return null;
 		}
 		const max = tags[0].value || 1;
-		const box = document.createElement('div');
-		box.className = 'composition tags';
+		const box = dom('div', { className: 'composition tags' });
 		const top = spec.top || 3;
 		const shownTags = barsExpanded.has(group.id) ? tags : tags.slice(0, top);
-		const list = document.createElement('ul');
+		const list = dom('ul');
 		const whole = parent && typeof parent.values[i] === 'number' ? parent.values[i] : 0;
-		shownTags.forEach((tag, rank) => {
-			const li = document.createElement('li');
-			const share = whole > 0 ? (tag.value / whole * 100).toFixed(1) + '% of ' + fmtFact(whole, '#') : '';
-			const name = Object.assign(document.createElement('span'), { className: 'tag-name', textContent: tag.label });
-			li.appendChild(name);
-			const bar = document.createElement('span');
-			bar.className = 'tag-bar s' + (parent ? parent.color : 0);
-			bar.style.width = (tag.value / max * 100) + '%';
+		shownTags.forEach((entry, rank) => {
+			const share = whole > 0 ? (entry.value / whole * 100).toFixed(1) + '% of ' + fmtFact(whole, '#') : '';
+			const name = dom('span', { className: 'tag-name', textContent: entry.label });
+			const bar = dom('span', { className: 'tag-bar ' + cls });
+			bar.style.width = (entry.value / max * 100) + '%';
 			/* one colour, fading down the ranking, so the order reads without turning into a second palette */
 			bar.style.opacity = String(Math.max(0.4, 1 - rank * 0.6 / Math.max(1, shownTags.length - 1)).toFixed(2));
-			const track = document.createElement('span');
-			track.className = 'tag-track';
-			track.appendChild(bar);
-			li.appendChild(track);
-			const value = Object.assign(document.createElement('span'), { className: 'tag-value', textContent: String(tag.value) });
-			li.appendChild(value);
+			const track = dom('span', { className: 'tag-track' }, bar);
+			const value = dom('span', { className: 'tag-value', textContent: fmtFact(entry.value, '#') });
 			/* the release and its date belong to every bar, the share only where there is a whole */
 			for(const cell of [name, track, value]) {
 				noteTooltip(cell, {
-					run: runs[i], color: parent ? parent.color : 0, label: tag.label,
-					value: fmtFact(tag.value, '#'),
+					run: runs[i], color: cls, label: entry.label,
+					value: fmtFact(entry.value, '#'),
 					notes: [share, spec.note.replace(/ as of $/, ''), 'as of ' + S.runLabel(runs[i]) + ', ' + fmtDate(runs[i].date)]
 						.filter(Boolean)
 				});
 			}
-			list.appendChild(li);
+			list.appendChild(dom('li', {}, name, track, value));
 		});
 		box.appendChild(list);
-		const foot = document.createElement('div');
-		foot.className = 'tags-foot';
+		const foot = dom('div', { className: 'tags-foot' });
 		if(tags.length > top) {
 			const open = barsExpanded.has(group.id);
-			const more = document.createElement('button');
-			more.type = 'button';
-			more.className = 'unfold' + (open ? ' open' : '');
-			more.setAttribute('aria-expanded', String(open));
 			const chevron = tag('svg', { class: 'chevron', viewBox: '0 0 12 12', 'aria-hidden': 'true' });
 			chevron.appendChild(tag('path', { d: 'M3 4.5 L6 8 L9 4.5' }));
-			more.appendChild(chevron);
-			more.appendChild(document.createTextNode(open ? 'show the top ' + top : 'all ' + tags.length + ' ' + spec.more));
+			const more = dom('button', { type: 'button', className: 'unfold' + (open ? ' open' : '') },
+				chevron, open ? 'show the top ' + top : 'all ' + tags.length + ' ' + spec.more);
+			more.setAttribute('aria-expanded', String(open));
 			more.addEventListener('click', () => {
 				if(open) {
 					barsExpanded.delete(group.id);
@@ -1043,19 +1515,15 @@
 					barsExpanded.add(group.id);
 				}
 				writeUrl();
-				const next = barsOf(group, series, runs, at);
-				if(next && box.parentNode) {
-					box.parentNode.replaceChild(next, box);
-				}
+				replaceNode(box, barsOf(group, series, runs, at, lead));
 			});
 			foot.appendChild(more);
 		}
-		const note = Object.assign(document.createElement('p'), {
+		const note = dom('p', {
 			className: 'note', textContent: spec.note + S.runLabel(runs[i]) + ' (' + fmtDate(runs[i].date) + ')'
 		});
 		if(spec.link) {
-			note.appendChild(document.createTextNode(', see the '));
-			note.appendChild(Object.assign(document.createElement('a'), {
+			note.append(', see the ', dom('a', {
 				href: spec.link.href, textContent: spec.link.text, target: '_blank', rel: 'noopener'
 			}));
 		}
@@ -1083,10 +1551,11 @@
 
 	/** the parts of a whole as a donut plus a legend, the parts must not overlap or the shares would lie */
 	function donutOf(parts, total, aria, runs, at) {
-		const box = document.createElement('div');
-		box.className = 'composition';
+		const box = dom('div', { className: 'composition' });
+		/* what the bars beside this donut take their colour from, see {@link barsOf} */
+		box.dataset.lead = parts.length ? parts[0].cls : '';
 		/* the number in the middle means nothing without the thing it counts */
-		box.appendChild(Object.assign(document.createElement('p'), { className: 'note subject', textContent: aria }));
+		box.appendChild(dom('p', { className: 'note subject', textContent: aria }));
 		const svg = tag('svg', { viewBox: '0 0 120 120', class: 'donut', role: 'img', 'aria-label': aria });
 		svg.appendChild(tag('title', {}, fmtShort(total) + ' ' + aria));
 		let from = 0;
@@ -1100,20 +1569,14 @@
 		svg.appendChild(tag('text', { class: 'donut-center', x: 60, y: 64, 'text-anchor': 'middle' }, fmtShort(total)));
 		box.appendChild(svg);
 
-		const list = document.createElement('ul');
+		const list = dom('ul');
 		for(const part of parts) {
-			const li = document.createElement('li');
-			const dot = document.createElement('span');
-			dot.className = 'swatch ' + part.cls;
-			li.appendChild(dot);
-			li.appendChild(document.createTextNode(part.label + ': ' + fmtShort(part.value) + ' (' + (part.value / total * 100).toFixed(0) + '%)'));
-			list.appendChild(li);
+			list.appendChild(dom('li', {}, dom('span', { className: 'swatch ' + part.cls }),
+				part.label + ': ' + fmtShort(part.value) + ' (' + (part.value / total * 100).toFixed(0) + '%)'));
 		}
-		const caption = document.createElement('p');
-		caption.className = 'note';
-		caption.textContent = 'as of ' + S.runLabel(runs[at]) + ', ' + fmtDate(runs[at].date);
-		box.appendChild(list);
-		box.appendChild(caption);
+		box.append(list, dom('p', {
+			className: 'note', textContent: 'as of ' + S.runLabel(runs[at]) + ', ' + fmtDate(runs[at].date)
+		}));
 		return box;
 	}
 
@@ -1281,12 +1744,7 @@
 		row.className = 'history';
 		row.appendChild(Object.assign(document.createElement('span'), { className: 'note', textContent: spec.history || 'version' }));
 		const current = points.filter(i => i <= at).pop();
-		const show = i => {
-			const next = factsOf(group, series, runs, i);
-			if(next && box.parentNode) {
-				box.parentNode.replaceChild(next, box);
-			}
-		};
+		const show = i => replaceNode(box, factsOf(group, series, runs, i));
 		/** a point spans from its own release up to the one before the next point */
 		const spanOf = i => {
 			const last = points[points.indexOf(i) + 1];
@@ -1335,23 +1793,19 @@
 	 * carries no number for it, unless it is marked `always`, which states the gap instead of hiding it.
 	 */
 	function factGrid(series, rows, at, cls) {
-		const dl = document.createElement('dl');
-		dl.className = cls;
+		const dl = dom('dl', { className: cls });
 		for(const [name, label, always] of rows || []) {
 			const s = series.find(x => x.name === name);
 			const v = s ? s.values[at] : null;
 			if(typeof v !== 'number' && !always) {
 				continue;
 			}
-			const dt = Object.assign(document.createElement('dt'), {
-				textContent: typeof v === 'number' ? fmtFact(v, s.unit) : 'n/a'
-			});
-			if(typeof v !== 'number') {
-				dt.className = 'missing';
-				dt.title = 'this release did not record the number';
-			}
-			dl.appendChild(dt);
-			dl.appendChild(Object.assign(document.createElement('dd'), { textContent: label }));
+			const known = typeof v === 'number';
+			dl.append(dom('dt', {
+				textContent: known ? fmtFact(v, s.unit) : 'n/a',
+				className:   known ? '' : 'missing',
+				title:       known ? '' : 'this release did not record the number'
+			}), dom('dd', { textContent: label }));
 		}
 		return dl.children.length ? dl : null;
 	}
@@ -1379,27 +1833,25 @@
 		}
 		const trend = spec.trend ? series.find(x => x.name === spec.trend) : null;
 		const barParent = BARS[group.id] ? series.find(x => x.name === BARS[group.id].parent) : undefined;
-		const timeline = trend ? timelineOf(trend, runs, barParent ? barParent.color : undefined, i => {
-			const next = factsOf(group, series, runs, i);
-			if(next && box.parentNode) {
-				box.parentNode.replaceChild(next, box);
-			}
-		}, at) : null;
+		const swap = swapper(box);
+		const timeline = trend ? timelineOf(trend, runs, barParent ? barParent.color : undefined,
+			i => swap(() => factsOf(group, series, runs, i)), at) : null;
 		if(timeline) {
 			box.appendChild(timeline);
 		}
-		const splits = document.createElement('div');
-		splits.className = 'splits';
+		const splits = dom('div', { className: 'splits' });
+		let leadColor = '';
 		for(const [part, aria] of spec.splits) {
 			const donut = splitDonut(series, runs, at, part, aria);
 			if(donut) {
+				leadColor = leadColor || donut.dataset.lead;
 				splits.appendChild(donut);
 			}
 		}
 		if(splits.children.length) {
 			box.appendChild(splits);
 		}
-		const bars = barsOf(group, series, runs, at);
+		const bars = barsOf(group, series, runs, at, leadColor);
 		if(bars) {
 			box.appendChild(bars);
 		}
@@ -1434,17 +1886,12 @@
 	}
 
 	function legendOf(group, series, off) {
-		const box = document.createElement('div');
-		box.className = 'legend';
-		series.forEach(s => {
-			const b = document.createElement('button');
-			b.type = 'button';
-			b.className = off.has(s.name) ? 'off' : '';
-			b.title = [s.name, s.unit, betterText(s.better)].filter(Boolean).join(', ') + '. Click to toggle.';
-			const sw = document.createElement('span');
-			sw.className = 'swatch s' + s.color;
-			b.appendChild(sw);
-			b.appendChild(document.createTextNode(s.label || s.name));
+		const box = dom('div', { className: 'legend' });
+		for(const s of series) {
+			const b = dom('button', {
+				type: 'button', className: off.has(s.name) ? 'off' : '',
+				title: [s.name, s.unit, betterText(s.better)].filter(Boolean).join(', ') + '. Click to toggle.'
+			}, dom('span', { className: 'swatch s' + s.color }), s.label || s.name);
 			b.addEventListener('click', () => {
 				const set = hidden.get(group.id) || new Set();
 				if(set.has(s.name)) {
@@ -1453,10 +1900,10 @@
 					set.add(s.name);
 				}
 				hidden.set(group.id, set);
-				render();
+				renderSafe();
 			});
 			box.appendChild(b);
-		});
+		}
 		return box;
 	}
 
@@ -1485,26 +1932,32 @@
 		t.style.top = Math.min(window.innerHeight - box.height - 8, Math.max(8, ev.clientY + 16)) + 'px';
 	}
 
+	/** the run every row below it describes */
+	function tipHead(run) {
+		return dom('div', { className: 'head', textContent: S.runLabel(run) + ' | ' + fmtDate(run.date) });
+	}
+
+	/** a colour is either the index a series was given or the class a breakdown already carries */
+	function swatchClass(color) {
+		return 'swatch ' + (typeof color === 'number' ? 's' + color : color);
+	}
+
+	/** one row: the colour of the series, what it is called, and what it says */
+	function tipRow(color, label, value, title) {
+		const cell = typeof value === 'string' ? { textContent: value } : { textContent: value.text, className: value.cls || '' };
+		return dom('tr',
+			{}, dom('td', {}, dom('span', { className: swatchClass(color) })),
+			dom('td', { className: 'name', textContent: label, title: title || '' }),
+			dom('td', cell));
+	}
+
 	/** the same panel and the same layout the charts use, so a breakdown answers as fast and reads the same */
 	function showNote(ev, spec) {
 		const t = ui.tooltip;
 		t.textContent = '';
-		t.appendChild(Object.assign(document.createElement('div'), {
-			className: 'head', textContent: S.runLabel(spec.run) + ' | ' + fmtDate(spec.run.date)
-		}));
-		const table = document.createElement('table');
-		const tr = document.createElement('tr');
-		const sw = document.createElement('td');
-		const dot = document.createElement('span');
-		dot.className = 'swatch s' + spec.color;
-		sw.appendChild(dot);
-		tr.appendChild(sw);
-		tr.appendChild(Object.assign(document.createElement('td'), { className: 'name', textContent: spec.label }));
-		tr.appendChild(Object.assign(document.createElement('td'), { textContent: spec.value }));
-		table.appendChild(tr);
-		t.appendChild(table);
+		t.append(tipHead(spec.run), dom('table', {}, tipRow(spec.color, spec.label, spec.value)));
 		for(const line of spec.notes.filter(Boolean)) {
-			t.appendChild(Object.assign(document.createElement('div'), { className: 'msg', textContent: line }));
+			t.append(dom('div', { className: 'msg', textContent: line }));
 		}
 		placeTooltip(ev);
 	}
@@ -1525,9 +1978,7 @@
 		const t = ui.tooltip;
 		const isDelta = ui.mode.value === 'delta';
 		t.textContent = '';
-		t.appendChild(Object.assign(document.createElement('div'), {
-			className: 'head', textContent: S.runLabel(run) + ' | ' + fmtDate(run.date)
-		}));
+		t.appendChild(tipHead(run));
 
 		// what a phase takes of its chart, the sum row being the whole rather than a part of it
 		const parts = series.filter(s => s.name !== SUM_NAME);
@@ -1549,29 +2000,19 @@
 		const table = document.createElement('table');
 		for(const s of rows) {
 			const v = s.values[i];
-			const tr = document.createElement('tr');
-			const sw = document.createElement('td');
-			const dot = document.createElement('span');
-			dot.className = 'swatch s' + s.color;
-			sw.appendChild(dot);
-			tr.appendChild(sw);
-			/* the labels are short forms, the measurement they stand for is one hover away */
-			tr.appendChild(Object.assign(document.createElement('td'), {
-				className: 'name', textContent: s.label || s.name, title: s.name
-			}));
-			const val = document.createElement('td');
+			let val;
 			if(v === null) {
-				val.textContent = 'n/a';
-				val.className = 'msg';
+				val = { text: 'n/a', cls: 'msg' };
 			} else if(isDelta) {
-				val.textContent = (v > 0 ? '+' : '') + v.toFixed(2) + '%';
-				val.className = s.better === 'flat' || Math.abs(v) < 0.05 ? ''
-					: (v > 0) === (s.better === 'up') ? 'good' : 'bad';
+				val = {
+					text: (v > 0 ? '+' : '') + v.toFixed(2) + '%',
+					cls:  s.better === 'flat' || Math.abs(v) < 0.05 ? '' : (v > 0) === (s.better === 'up') ? 'good' : 'bad'
+				};
 			} else {
-				val.textContent = fmt(v, s.unit, decimals);
+				val = { text: fmt(v, s.unit, decimals) };
 			}
-			tr.appendChild(val);
-			table.appendChild(tr);
+			/* the labels are short forms, the measurement they stand for is one hover away */
+			table.appendChild(tipRow(s.color, s.label || s.name, val, s.name));
 			const extra = s.name === SUM_NAME ? extraSum(run, series.filter(o => o.name !== SUM_NAME), s.unit, i) : extraOf(run, s.name);
 			const raw = s.raw[i];
 			const share = !isDelta && v !== null && chartSum > 0 && parts.length > 1 && s.name !== SUM_NAME
@@ -1583,35 +2024,31 @@
 				extra
 			].filter(Boolean).join(', ');
 			if(note) {
-				const nr = document.createElement('tr');
-				nr.appendChild(document.createElement('td'));
-				const td = Object.assign(document.createElement('td'), { className: 'msg', textContent: note });
+				const td = dom('td', { className: 'msg', textContent: note });
 				td.colSpan = 2;
-				nr.appendChild(td);
-				table.appendChild(nr);
+				table.appendChild(dom('tr', {}, dom('td'), td));
 			}
 		}
 		t.appendChild(table);
 		if(sorted.length > rows.length) {
-			t.appendChild(Object.assign(document.createElement('div'), {
-				className: 'msg', textContent: (sorted.length - rows.length) + ' smaller series not shown'
-			}));
+			t.append(dom('div', { className: 'msg', textContent: (sorted.length - rows.length) + ' smaller series not shown' }));
+		}
+		/* the plotted number is the mean of the run, which only the note beside it would otherwise say */
+		if(!brief && rows.some(s => /^(mean|median):/.test(extraOf(run, s.name)))) {
+			t.append(dom('div', { className: 'msg', textContent: 'values are means, their medians are in the notes' }));
 		}
 
 		/* one line, whatever its length: a title that wraps pushes the numbers around as the pointer moves */
-		const about = document.createElement('div');
-		about.className = 'msg commit';
-		about.textContent = String(run.commit.id || '').slice(0, 8) + ' ' + S.commitTitle(run.commit.message);
-		about.title = S.commitTitle(run.commit.message);
-		t.appendChild(about);
+		t.append(dom('div', {
+			className: 'msg commit', title: S.commitTitle(run.commit.message),
+			textContent: String(run.commit.id || '').slice(0, 8) + ' ' + S.commitTitle(run.commit.message)
+		}));
 		if(!brief) {
 			/* the panel sits on the chart it belongs to, so naming it again says nothing */
-			t.appendChild(Object.assign(document.createElement('div'), {
-				className: 'msg', textContent: 'click to open the commit'
-			}));
+			t.append(dom('div', { className: 'msg', textContent: 'click to open the commit' }));
 		} else if(run.commit.url) {
 			/* a tap on the chart reads values, so the commit needs a target of its own */
-			t.appendChild(Object.assign(document.createElement('a'), {
+			t.append(dom('a', {
 				className: 'msg open-commit', href: run.commit.url, target: '_blank', rel: 'noopener',
 				textContent: 'open the commit'
 			}));
@@ -1654,23 +2091,58 @@
 
 	/* ---------- render ---------- */
 
+	/** the release this page is about, which is the one a reader looks for before anything else */
+	function showLatest(run) {
+		if(!run) {
+			ui.latest.hidden = true;
+			return;
+		}
+		const label = S.runLabel(run);
+		const name = run.commit.url
+			? dom('a', { className: 'version', href: run.commit.url, textContent: label, target: '_blank', rel: 'noopener' })
+			: dom('span', { className: 'version', textContent: label });
+		/* the line has room for the number and no more, so the rest of what it says waits for a hover */
+		name.title = 'newest release, ' + fmtDate(run.date) + ': ' + S.commitTitle(run.commit.message);
+		ui.latest.hidden = false;
+		ui.latest.replaceChildren(name);
+	}
+
+	/**
+	 * What decides which tiles the page has and in which order, as opposed to what they draw. A redraw
+	 * that leaves this alone is one the reader should not see arriving, see the `rise` animation.
+	 */
+	function layoutKey() {
+		return [selectedKey(), ui.range.value, ui.mode.value, orderedGroups().map(g => g.id).join(','),
+			[...collapsed].sort().join(','), S.encodeGroups(hidden)].join('|');
+	}
+
+	let drawnLayout = null;
+
+	/**
+	 * Draws every tile into a fragment and puts that in place of the old ones in one step. Emptying the
+	 * charts first and filling them afterwards collapses the page to nothing in between, which a slider
+	 * one drags turns into a flicker and a jumping scroll position.
+	 */
 	function render() {
 		writeUrl();
 		writeDigests();
 		const { runs, offset } = visible();
-		ui.charts.textContent = '';
+		const frame = document.createDocumentFragment();
 		ui.baselineField.hidden = ui.mode.value !== 'delta';
 		ui.baselineOut.textContent = ui.baseline.value;
 		const win = Number(ui.smooth.value) || 1;
 		ui.smoothOut.textContent = win === 1 ? 'off' : win + ' runs';
 
+		const all = allRuns();
 		if(!runs.length) {
 			ui.rangeNote.textContent = selectedKey() ? 'No runs in this range.' : 'This suite was not measured with this engine.';
-			ui.charts.appendChild(Object.assign(document.createElement('p'), { className: 'empty', textContent: 'No runs in this range.' }));
+			/* whatever the range hides, the header must not go on naming a release of the suite before */
+			showLatest(all[all.length - 1]);
+			ui.charts.replaceChildren(dom('p', { className: 'empty', textContent: 'No runs in this range.' }));
 			return;
 		}
-		const all = allRuns();
 		ui.rangeNote.textContent = runs.length + ' of ' + all.length + ' runs, ' + fmtDate(runs[0].date) + ' to ' + fmtDate(runs[runs.length - 1].date) + '.';
+		showLatest(all[all.length - 1]);
 
 		const calib = usableCalibration(runs, calibrationMetric(runs));
 		ui.calibrateField.hidden = !calib;
@@ -1689,9 +2161,7 @@
 
 		const metrics = metricsOf(runs);
 		if(!metrics.size) {
-			ui.charts.appendChild(Object.assign(document.createElement('p'), {
-				className: 'empty', textContent: 'These runs carry no measurements.'
-			}));
+			ui.charts.replaceChildren(dom('p', { className: 'empty', textContent: 'These runs carry no measurements.' }));
 			return;
 		}
 		const folded = [];
@@ -1712,22 +2182,28 @@
 			if(collapsed.has(group.id)) {
 				folded.push(group);
 			} else {
-				makeDraggable(drawGroup(group, lines, runs, bumps, series), group);
+				makeDraggable(drawGroup(group, lines, runs, bumps, series, frame), group);
 			}
 		}
 		// the folded tiles sit as chips in one row at the end, so they cost a line rather than a column
 		if(folded.length) {
-			const row = document.createElement('div');
-			row.className = 'folded-row';
+			const row = dom('div', { className: 'folded-row' });
 			for(const group of folded) {
-				const fig = document.createElement('figure');
-				fig.className = 'folded';
-				fig.appendChild(captionHead(group, true));
+				const fig = dom('figure', { className: 'folded' }, captionHead(group, true));
 				row.appendChild(fig);
 				makeDraggable(fig, group);
 			}
-			ui.charts.appendChild(row);
+			frame.appendChild(row);
 		}
+		/* only a tile the reader did not have before is worth animating in */
+		const key = layoutKey();
+		if(key !== drawnLayout) {
+			for(const node of frame.children) {
+				node.classList.add('rise');
+			}
+			drawnLayout = key;
+		}
+		ui.charts.replaceChildren(frame);
 	}
 
 	let pending = false;
@@ -1757,11 +2233,33 @@
 		}
 	}
 
-	function load(raw) {
-		data = validate(raw);
+	/** what the history on the page is and where it came from */
+	function showSource() {
 		if(!data) {
-			say('data.js could not be read, it should assign window.BENCHMARK_DATA with an "entries" object.', true);
+			ui.sourceNote.textContent = '';
+			ui.sourceNote.title = '';
 			return;
+		}
+		const [what, why] = ORIGINS[origin] || ORIGINS.shipped;
+		ui.sourceNote.textContent = Object.keys(data.entries).length + ' suites'
+			+ (data.lastUpdate ? ', last update ' + fmtDate(data.lastUpdate) : '') + ', ' + what;
+		ui.sourceNote.title = why;
+	}
+
+	/** puts a history on the page, or leaves the one that is already there if this is not one */
+	function load(raw) {
+		const next = validate(raw);
+		if(!next) {
+			if(!data) {
+				say('data.js could not be read, it should assign window.BENCHMARK_DATA with an "entries" object.', true);
+			}
+			return false;
+		}
+		data = next;
+		shownFreshness = freshnessOf(raw);
+		/* a history that did load answers whatever complaint was on the page about one that did not */
+		if(ui.status.classList.contains('bad')) {
+			say('');
 		}
 		fillSuiteControls(Object.keys(data.entries));
 		// the defaults are only known once the suites are, and a link wins over them
@@ -1769,10 +2267,10 @@
 		applyUrl();
 		ui.lock.checked = locked;
 		urlReady = true;
-		const suites = Object.keys(data.entries);
-		ui.sourceNote.textContent = suites.length + ' suites'
-			+ (data.lastUpdate ? ', last update ' + fmtDate(data.lastUpdate) : '');
+		showSource();
+		offerFullscreen();
 		renderSafe();
+		return true;
 	}
 
 	for(const input of [ui.mode, ui.baseline, ui.smooth, ui.band, ui.calibrate, ui.suite, ui.engine, ui.range]) {
@@ -1792,12 +2290,13 @@
 	initTheme();
 	initFullscreen();
 	initPanels();
+	watchForUpdates();
 	loadLayout();
 	ui.lock.checked = locked;
 	ui.lock.addEventListener('change', () => {
 		locked = ui.lock.checked;
 		writeStore('flowr-bench-locked', locked);
-		render();
+		renderSafe();
 	});
 	ui.resetLayout.addEventListener('click', () => {
 		collapsed.clear();
@@ -1808,7 +2307,7 @@
 		barsExpanded.clear();
 		writeStore(FOLDED_STORE, [...collapsed]);
 		writeStore('flowr-bench-order', []);
-		render();
+		renderSafe();
 	});
 	ui.copyLink.addEventListener('click', () => {
 		writeUrl();
@@ -1842,6 +2341,8 @@
 		}
 		applyUrl();
 		ui.lock.checked = locked;
+		/* the link may newly ask for the screen, which is nothing to do behind the reader's back */
+		offerFullscreen();
 		renderSafe();
 	});
 
@@ -1853,6 +2354,12 @@
 	if(window.BENCHMARK_DATA) {
 		start(window.BENCHMARK_DATA);
 	} else {
-		say('No benchmark data found next to this page, data.js is missing.', true);
+		say('No benchmark data found next to this page, data.js is missing. Looking on main instead.', true);
 	}
+	/* the page is drawn from what it shipped with first, and only then asks main whether it has newer */
+	void adoptNewer().then(() => {
+		if(!data) {
+			say('No benchmark data found next to this page, and main did not answer with any either.', true);
+		}
+	});
 })();

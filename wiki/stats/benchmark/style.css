@@ -146,11 +146,48 @@ header {
 	text-decoration: none;
 }
 
+/* a grid is only as wide as its widest row, which puts the release above the end of the intro */
+.titles {
+	display: inline-grid;
+	max-width: 90ch;
+}
+
+.title-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0 1.5rem;
+}
+
 .intro {
 	margin: .15rem 0 0;
-	max-width: 90ch;
 	font-size: .82rem;
 	color: var(--muted);
+}
+
+/* the release this page is about, which is what a reader looks for first */
+/* the size of the title it shares its line with, so the two read as one heading */
+.latest {
+	margin: 0 0 0 auto;
+	font-size: 1.15rem;
+	line-height: 1.2;
+	white-space: nowrap;
+}
+
+/* a link that carries its own weight instead of an underline, which would fight the title beside it */
+.latest .version {
+	color: var(--fg);
+	opacity: .35;
+	font-weight: 700;
+	font-variant-numeric: tabular-nums;
+	text-decoration: none;
+	transition: opacity .18s ease;
+}
+
+.latest .version:hover,
+.latest .version:focus-visible {
+	opacity: 1;
 }
 
 .theme {
@@ -178,6 +215,42 @@ header {
 
 .status.bad {
 	border-color: var(--c2);
+}
+
+/*
+ * A link asked for the screen, which only the reader's next click can grant. Nothing happens until they
+ * make one, so the ask has to be the loudest thing on the page rather than a line they read past.
+ */
+.status.ask {
+	border-color: var(--c1);
+	border-left-width: 5px;
+	color: var(--fg);
+	font-weight: 600;
+	animation: ask 1.4s ease-in-out infinite;
+}
+
+@keyframes ask {
+	50% {
+		box-shadow: 0 0 0 3px var(--sunk);
+		border-color: var(--c5);
+	}
+}
+
+/* the page reloads itself once the reader is idle, this is for whoever does not want to wait */
+.status .reload {
+	margin-left: .2rem;
+	padding: .15rem .55rem;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: var(--bg);
+	color: inherit;
+	font: inherit;
+	font-size: .85rem;
+	cursor: pointer;
+}
+
+.status .reload:hover {
+	border-color: var(--c1);
 }
 
 main {
@@ -422,7 +495,11 @@ figure:hover {
 	border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
 }
 
-/* a redraw replaces every tile, so they arrive instead of blinking into place */
+/*
+ * Tiles that were not on the page before arrive instead of blinking into place. Only those: a redraw
+ * replaces every tile, and a slider one drags redraws on every step, which would fade the whole page in
+ * over and over. The class is set by `render` only where the set of tiles actually changed.
+ */
 @keyframes rise {
 	from {
 		opacity: 0;
@@ -430,8 +507,8 @@ figure:hover {
 	}
 }
 
-figure,
-.folded-row {
+figure.rise,
+.folded-row.rise {
 	animation: rise .16s ease-out;
 }
 
@@ -934,8 +1011,22 @@ footer {
 	color: var(--muted);
 }
 
+/* whether the page is still watching for a newer history, and why not where it is not */
+#watch-note {
+	cursor: help;
+	border-bottom: 1px dotted var(--border);
+}
+
 #fullscreen {
 	margin-left: auto;
+}
+
+/* the button the notice is about, so the eye that follows the notice lands on something */
+#fullscreen.asked {
+	border-color: var(--c1);
+	color: var(--fg);
+	font-weight: 600;
+	animation: ask 1.4s ease-in-out infinite;
 }
 
 @media (max-width: 560px) {

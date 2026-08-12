@@ -22,7 +22,10 @@
 <body>
 <header>
 	<div class="titles">
-		<h1><a href="https://github.com/flowr-analysis/flowr">flowR</a> benchmark history</h1>
+		<div class="title-row">
+			<h1><a href="https://github.com/flowr-analysis/flowr">flowR</a> benchmark history</h1>
+			<p class="latest" id="latest" hidden></p>
+		</div>
 		<p class="intro">
 			One point per release, measured on a shared CI runner.
 			<a href="https://github.com/flowr-analysis/flowr/wiki">Wiki</a>
@@ -80,7 +83,7 @@
 				<input id="baseline" type="range" min="1" max="25" step="1" value="3">
 			</label>
 			<label class="field" id="smooth-field">
-				<span>Rolling median window: <output id="smooth-out">1 run</output></span>
+				<span>Smoothing window: <output id="smooth-out">1 run</output></span>
 				<input id="smooth" type="range" min="1" max="15" step="2" value="1">
 			</label>
 			<label class="check">
@@ -126,7 +129,8 @@
 	<a href="https://github.com/flowr-analysis/flowr">flowr-analysis/flowr</a> |
 	<a href="https://github.com/flowr-analysis/flowr/wiki">wiki</a> |
 	<a href="https://github.com/flowr-analysis/flowr/wiki/Interface">interface docs</a> |
-	<span id="source-note"></span>
+	<span id="source-note"></span> |
+	<span id="watch-note"></span>
 	<button type="button" id="fullscreen" aria-pressed="false">Fullscreen</button>
 </footer>
 

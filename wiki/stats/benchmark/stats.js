@@ -42,6 +42,111 @@
 		});
 	}
 
+	/** the fitted value at `at` of the weighted least squares line through the points, null if there is none */
+	function weightedLine(xs, ys, ws, at) {
+		let sw = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
+		for(let k = 0; k < xs.length; k++) {
+			const w = ws[k];
+			if(!(w > 0)) {
+				continue;
+			}
+			sw += w;
+			sx += w * xs[k];
+			sy += w * ys[k];
+			sxx += w * xs[k] * xs[k];
+			sxy += w * xs[k] * ys[k];
+		}
+		if(!(sw > 0)) {
+			return null;
+		}
+		const det = sw * sxx - sx * sx;
+		if(!isFinite(det) || Math.abs(det) < 1e-12) {
+			return sy / sw; // the window carries no slope, so its weighted mean is all it says
+		}
+		const slope = (sw * sxy - sx * sy) / det;
+		return (sy - slope * sx) / sw + slope * at;
+	}
+
+	/**
+	 * One smoothed point, fitted from the releases within `half` of it. The weight of a release falls off
+	 * with its distance (tricube), and `trust` weighs a release that the first pass found to be an outlier
+	 * down. Positions are taken relative to `i`, so the fit at `i` is the intercept.
+	 */
+	function fitPoint(values, i, half, trust) {
+		const xs = [], ys = [], ws = [];
+		for(let j = Math.max(0, i - half); j <= Math.min(values.length - 1, i + half); j++) {
+			if(num(values[j]) === null) {
+				continue;
+			}
+			const u = Math.abs(j - i) / (half + 1);
+			const w = Math.pow(1 - u * u * u, 3) * (trust ? trust[j] : 1);
+			if(w > 0) {
+				xs.push(j - i);
+				ys.push(values[j]);
+				ws.push(w);
+			}
+		}
+		if(xs.length === 0) {
+			return null;
+		}
+		if(xs.length < 3) {
+			let sw = 0, sy = 0;
+			for(let k = 0; k < xs.length; k++) {
+				sw += ws[k];
+				sy += ws[k] * ys[k];
+			}
+			return sw > 0 ? sy / sw : null; // two releases carry no slope one should extrapolate from
+		}
+		return weightedLine(xs, ys, ws, 0);
+	}
+
+	/**
+	 * How much each release should count in the fit, from how far it lies off the rolling median. The
+	 * median is what decides, not the fit itself: a line follows an outlying release at the border of the
+	 * data far enough to call it typical, which is exactly the release a decision rests on.
+	 */
+	function trustOf(values, window) {
+		const rough = rollingMedian(values, window);
+		const off = values.map((v, i) => num(v) === null || rough[i] === null ? null : Math.abs(v - rough[i]));
+		const spread = median(off);
+		return off.map(d => {
+			if(d === null) {
+				return 0;
+			}
+			if(!isFinite(spread) || spread <= 0) {
+				return d === 0 ? 1 : 0; // every release states the same, so the one that does not is the outlier
+			}
+			const u = d / (6 * spread);
+			return u >= 1 ? 0 : Math.pow(1 - u * u, 2);
+		});
+	}
+
+	/**
+	 * Robust local linear smoothing over a centered window of `window` releases.
+	 *
+	 * A rolling median is robust, but it repeats the middle value of its window: a series that rises by
+	 * one per release reads one release behind, and the newest point, the one a decision rests on, is the
+	 * one it flattens most. This fits a line through the window instead, weighted by distance from the
+	 * release it describes and by how far each release lies off the rolling median, so a trend survives
+	 * and a single noisy run still does not set the curve. Holes stay holes, so a metric that did not
+	 * exist yet does not grow a fake value.
+	 */
+	function rollingSmooth(values, window) {
+		const w = Math.max(1, Math.floor(window || 1));
+		if(w <= 1) {
+			return values.slice();
+		}
+		const half = Math.max(1, Math.floor(w / 2));
+		const trust = trustOf(values, w);
+		return values.map((v, i) => {
+			if(num(v) === null) {
+				return null;
+			}
+			const fit = fitPoint(values, i, half, trust);
+			return fit === null ? v : fit;
+		});
+	}
+
 	/** median of the last `n` finite values, i.e. the baseline of the most recent releases */
 	function baselineOf(values, n) {
 		const count = Math.max(1, Math.floor(n || 1));
@@ -116,22 +221,22 @@
 
 	/** the measurements are named after what the code does, the charts name the step */
 	const SHORT = {
-		'built-in definitions (default handler)':   'default handler',
-		'built-in definitions (own handler)':       'own handler',
-		'built-in definitions (with eval handler)': 'with eval handler',
-		'reduction (characters)':        'in characters',
-		'reduction (normalized tokens)': 'in normalized tokens',
-		'reduction (dataflow vertices)': 'in DF vertices',
-		'memory (df-graph)':             'dataflow graph',
-		'memory (cfg-graph)':            'control flow graph',
-		'files with data frames':      'files',
-		'data frame operations':       'operations',
-		'data frame operation nodes':  'operation nodes',
-		'data frame value nodes':      'value nodes',
-		'data frame constraints':      'constraints',
-		'data frame shapes (exact)':   'exact',
-		'data frame shapes (bottom)':  'bottom',
-		'data frame shapes (top)':     'top',
+		'built-in definitions (default handler)':   'Default handler',
+		'built-in definitions (own handler)':       'Own handler',
+		'built-in definitions (with eval handler)': 'With eval handler',
+		'reduction (characters)':        'Characters',
+		'reduction (normalized tokens)': 'Normalized tokens',
+		'reduction (dataflow vertices)': 'Dataflow vertices',
+		'memory (df-graph)':             'Dataflow graph',
+		'memory (cfg-graph)':            'Control flow graph',
+		'files with data frames':      'Files',
+		'data frame operations':       'Operations',
+		'data frame operation nodes':  'Operation nodes',
+		'data frame value nodes':      'Value nodes',
+		'data frame constraints':      'Constraints',
+		'data frame shapes (exact)':   'Exact',
+		'data frame shapes (bottom)':  'Bottom',
+		'data frame shapes (top)':     'Top',
 		'Retrieve AST from R code':     'Parse',
 		'Normalize R AST':              'Normalize',
 		'Produce dataflow information': 'Dataflow',
@@ -144,19 +249,25 @@
 		'Reconstruct code':             'Reconstruct'
 	};
 
+	/** the measurements are named in whatever case the code that records them uses, a label is one case */
+	function capitalize(label) {
+		return label.charAt(0).toUpperCase() + label.slice(1);
+	}
+
 	/** the measurement names read like sentences, this keeps the charts legible */
 	function shortName(name) {
 		// the chart is already titled for the database, so its series only need to say what they count
 		const sig = /^signature database (.+)$/.exec(String(name));
 		if(sig) {
-			return sig[1];
+			return capitalize(sig[1]);
 		}
 		const per = /^(.*?)( per 100 lines)$/.exec(String(name));
 		if(per) {
 			return shortName(per[1]) + per[2];
 		}
-		return SHORT[name] || String(name).replace(/^(produce|extract|retrieve)\s+/i, m => m[0].toUpperCase() + m.slice(1).trimEnd() + ' ')
-			.replace(/\s+information$/i, '');
+		return SHORT[name] || capitalize(String(name)
+			.replace(/^(produce|extract|retrieve)\s+/i, m => m[0].toUpperCase() + m.slice(1).trimEnd() + ' ')
+			.replace(/\s+information$/i, ''));
 	}
 
 	/** version carried by a release commit message, null if there is none */
@@ -558,7 +669,7 @@
 	}
 
 	root.BenchStats = {
-		median, rollingMedian, baselineOf, toPercentDelta, calibrationFactors, applyFactors,
+		median, rollingMedian, rollingSmooth, baselineOf, toPercentDelta, calibrationFactors, applyFactors,
 		parseVersion, runLabel, commitTitle, shortName, tagLabel, releaseBumps, segments, smoothPath, ticks, groupOf, betterOf,
 		logTicks, tickIndices, fitLabels, stateChanges, pickColors, mergeInfoSuites, encodeGroups, decodeGroups, GROUPS
 	};

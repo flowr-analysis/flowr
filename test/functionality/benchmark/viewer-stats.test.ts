@@ -8,6 +8,7 @@ import { infoGraphPath, isInfoEntry } from '../../../src/benchmark/summarizer/se
 interface BenchStats {
 	median(values: readonly (number | null)[]): number;
 	rollingMedian(values: readonly (number | null)[], window: number): (number | null)[];
+	rollingSmooth(values: readonly (number | null)[], window: number): (number | null)[];
 	baselineOf(values: readonly (number | null)[], n: number): number;
 	toPercentDelta(values: readonly (number | null)[], baseline: number): (number | null)[];
 	calibrationFactors(values: readonly (number | null)[]): number[];
@@ -51,6 +52,22 @@ describe('Benchmark page helpers', () => {
 		assert.deepStrictEqual(S.rollingMedian([1, null, 3], 3), [1, null, 3], 'holes stay holes');
 	});
 
+	test('smooth a series without flattening it', () => {
+		assert.deepStrictEqual(S.rollingSmooth([1, 2, 3], 1), [1, 2, 3], 'a window of one changes nothing');
+		assert.deepStrictEqual(S.rollingSmooth([1, null, 3], 3), [1, null, 3], 'holes stay holes');
+		/* a line has nothing to smooth away, and the borders have to state it too */
+		const line = S.rollingSmooth([1, 2, 3, 4, 5, 6, 7], 5) as number[];
+		line.forEach((v, i) => assert.ok(Math.abs(v - (i + 1)) < 1e-9, `a straight line survives at ${i}, got ${v}`));
+		/* the rolling median repeats the middle of its window, so the newest release reads one behind */
+		assert.strictEqual((S.rollingMedian([1, 2, 3, 4, 5, 6, 7], 5) as number[])[6], 6, 'which is what it used to do');
+		/* an outlying newest release is not what the curve should follow either */
+		const spiked = S.rollingSmooth([1, 2, 3, 4, 5, 6, 20], 5) as number[];
+		assert.ok(spiked[6] > 4 && spiked[6] < 9, `the newest release is not chased, got ${spiked[6]}`);
+		/* one spike does not move a series that is otherwise flat */
+		const spike = S.rollingSmooth([1, 1, 1, 1, 9, 1, 1, 1, 1], 5) as number[];
+		assert.ok(Math.abs(spike[4] - 1) < 0.5, `a spike is pulled back to the level around it, got ${spike[4]}`);
+	});
+
 	test('relate a series to its recent baseline', () => {
 		assert.strictEqual(S.baselineOf([1, 2, 3, 10, 20, 30], 3), 20);
 		assert.deepStrictEqual(S.toPercentDelta([50, 100, 150], 100), [-50, 0, 50]);
@@ -90,6 +107,9 @@ describe('Benchmark page helpers', () => {
 	test('name and group the measurements', () => {
 		assert.strictEqual(S.shortName('Retrieve AST from R code'), 'Parse');
 		assert.strictEqual(S.shortName('Dataflow per 100 lines'), 'Dataflow per 100 lines');
+		/* the measurements are named in whatever case records them, the labels are one case */
+		assert.strictEqual(S.shortName('dataflow vertices'), 'Dataflow vertices');
+		assert.strictEqual(S.shortName('reduction (characters)'), 'Characters', 'and say what they are, not how');
 		assert.strictEqual(S.tagLabel('smell'), 'Code smell');
 		assert.strictEqual(S.tagLabel('shiny'), 'Shiny', 'an unknown tag still reads as a word');
 		assert.strictEqual(S.groupOf('Produce dataflow information', 'ms'), 'per-file');
@@ -131,7 +151,7 @@ describe('Benchmark page helpers', () => {
 		assert.strictEqual(S.groupOf('tests overall', '#'), 'tests', 'the total of a run belongs to its tile');
 		assert.deepStrictEqual(S.GROUPS.filter(g => g.facts).map(g => g.id), ['sigdb', 'tests'],
 			'only what never moves between runs is stated instead of plotted');
-		assert.strictEqual(S.shortName('signature database functions (older only)'), 'functions (older only)',
+		assert.strictEqual(S.shortName('signature database functions (older only)'), 'Functions (older only)',
 			'the chart is already titled for the database');
 	});
 

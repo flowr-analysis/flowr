@@ -51,6 +51,11 @@ import type { FlowrFileProvider } from '../../../src/project/context/flowr-file'
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { SliceDirection } from '../../../src/util/slice-direction';
 import { CallGraph } from '../../../src/dataflow/graph/call-graph';
+import { reviveJson } from '../../../src/util/json-persistence';
+import type { DataflowInformation } from '../../../src/dataflow/info';
+import { FlowrFile } from '../../../src/project/context/flowr-file';
+import type { FlowrAnalyzerContext } from '../../../src/project/context/flowr-analyzer-context';
+import { persistDataflowGraph } from '../../../src/project/incremental/incremental-dataflow-graph/dataflow-persist';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>, timeout?: number) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -373,6 +378,23 @@ function cropIfTooLong(str: string): string {
 }
 
 /**
+ * Asserts that persisting the given dataflow information and reviving it again produces a graph equal to the freshly computed one.
+ */
+function assertPersistedDataflowGraphMatches(
+	analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>,
+	normalize: NormalizedAst,
+	df: DataflowInformation
+): void {
+	const filePath = normalize.ast.files[0]?.filePath ?? FlowrFile.INLINE_PATH;
+	const ctx = analyzer.inspectContext() as FlowrAnalyzerContext;
+	persistDataflowGraph(df, ctx, filePath);
+	const persisted = ctx.inc.getPersistedDataflowGraphOf(filePath);
+	guard(persisted !== undefined, () => `expected a persisted dataflow graph for ${filePath} after persisting it`);
+	const revivedDf = reviveJson<DataflowInformation>(persisted, ctx);
+	assert.deepStrictEqual(revivedDf.graph, df.graph, `persisted/revived dataflow graph differs from the freshly computed one for ${filePath}`);
+}
+
+/**
  * Your best friend whenever you want to test whether the dataflow graph produced by flowR is as expected.
  *
  * You may want to have a look at the {@link DataflowTestConfiguration} to see what you can configure.
@@ -412,7 +434,10 @@ export function assertDataflow(
 		}
 
 		const normalize = await analyzer.normalize();
-		const graph = userConfig?.context === 'call-graph' ? CallGraph.dropTransitiveEdges(await analyzer.callGraph()) : (await analyzer.dataflow()).graph;
+		const df = await analyzer.dataflow();
+		const graph = userConfig?.context === 'call-graph' ? CallGraph.dropTransitiveEdges(await analyzer.callGraph()) : df.graph;
+
+		assertPersistedDataflowGraphMatches(analyzer, normalize, df);
 
 		// assign the same id map to the expected graph, so that resolves work as expected
 		expected.setIdMap(normalize.idMap);

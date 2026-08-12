@@ -306,6 +306,7 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.ClassGenerator:
 			case BuiltInProcName.DefineArgument:
 			case BuiltInProcName.Switch:
+			case BuiltInProcName.TableAssignmentPlaceholder:
 				return this.onDefaultFunctionCall({ call });
 			case BuiltInProcName.Load:
 				return this.onLoadCall({ call });

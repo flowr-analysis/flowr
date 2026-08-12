@@ -325,6 +325,9 @@ ${codeBlock('json', JSON.stringify(
 						minFiles:        1,
 					},
 				},
+				dataflow: {
+					activated: false,
+				},
 			},
 			gas: {
 				thresholds: {

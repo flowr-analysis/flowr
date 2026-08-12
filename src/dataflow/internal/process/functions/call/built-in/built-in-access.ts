@@ -25,7 +25,12 @@ interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
 }
 
-function tableAssignmentProcessor<OtherInfo>(
+/**
+ * Processor bound to a temporary `:=` entry in the environment (see {@link processNumberBasedAccess})
+ * so that table-assignment calls triggered during access processing (e.g., `a[i] <- v`) are routed
+ * through here instead of the default `:=` handling.
+ */
+export function tableAssignmentProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,

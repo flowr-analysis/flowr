@@ -10,6 +10,8 @@ import { produceDataFlowGraph } from '../../../../dataflow/extractor';
 import type { KnownParserType, Parser } from '../../../../r-bridge/parser';
 import type { FlowrAnalyzerContext } from '../../../../project/context/flowr-analyzer-context';
 import { Dataflow } from '../../../../dataflow/graph/df-helper';
+import { persistDataflowGraph, reconstructPersistedDataflowGraph } from '../../../../project/incremental/incremental-dataflow-graph/dataflow-persist';
+import { FlowrFile } from '../../../../project/context/flowr-file';
 
 const staticDataflowCommon = {
 	name:        'dataflow',
@@ -26,7 +28,23 @@ const staticDataflowCommon = {
 } as const;
 
 function processor(results: { normalize?: NormalizedAst }, input: { parser?: Parser<KnownParserType>, context?: FlowrAnalyzerContext }) {
-	return produceDataFlowGraph(input.parser as Parser<KnownParserType>, results.normalize as NormalizedAst, input.context as FlowrAnalyzerContext);
+	const ctx = input.context as FlowrAnalyzerContext;
+	const filePath = (results.normalize as NormalizedAst).ast.files[0]?.filePath ?? FlowrFile.INLINE_PATH;
+
+	if(!ctx.inc.handleShouldReparseDataflow(filePath, ctx)) {
+		const reused = reconstructPersistedDataflowGraph(ctx, filePath);
+		if(reused) {
+			return reused;
+		}
+	}
+
+	const df = produceDataFlowGraph(input.parser as Parser<KnownParserType>, results.normalize as NormalizedAst, ctx);
+
+	if(ctx.config.incremental.dataflow.activated) {
+		persistDataflowGraph(df, ctx, filePath);
+	}
+
+	return df;
 }
 
 export const STATIC_DATAFLOW = {

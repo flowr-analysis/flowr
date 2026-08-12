@@ -16,6 +16,7 @@ export interface ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
 
 	getOldParseResultOf(filePath: FilePath): Parser.Tree | undefined;
 	getOldContentOf(filePath: FilePath): string | undefined;
+	getPersistedDataflowGraphOf(filePath: FilePath): string | undefined;
 }
 
 /**
@@ -41,6 +42,7 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 	 */
 	private changedFilesWithOldContent: Map<FilePath, string | undefined> = new Map();
 	private oldParseResults:            Map<FilePath, Parser.Tree> = new Map();
+	private persistedDataflowGraphs:    Map<FilePath, string> = new Map();
 	private readonly lastKnownMtime:    Map<FilePath, number> = new Map();
 
 
@@ -51,6 +53,7 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 	public reset(): void {
 		this.changedFilesWithOldContent = new Map();
 		this.oldParseResults = new Map();
+		this.persistedDataflowGraphs = new Map();
 	}
 
 	handleFileInvalidate(filePath: FilePath, oldContent: string | undefined): void {
@@ -128,6 +131,13 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 			: checks.every(check => check(filePath, ctx));
 	}
 
+	handleShouldReparseDataflow(filePath: FilePath, ctx: FlowrAnalyzerContext): boolean {
+		if(!ctx.config.incremental.dataflow.activated) {
+			return true;
+		}
+		return this.handleShouldReparse(filePath, ctx);
+	}
+
 	receive(event: InvalidationEvent): void {
 		const type = event.type;
 		switch(type) {
@@ -171,5 +181,13 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 
 	public setLastKnownMtime(filePath: FilePath, mtimeMs: number): void {
 		this.lastKnownMtime.set(filePath, mtimeMs);
+	}
+
+	public storePersistedDataflowGraph(filePath: FilePath, serialized: string): void {
+		this.persistedDataflowGraphs.set(filePath, serialized);
+	}
+
+	public getPersistedDataflowGraphOf(filePath: FilePath): string | undefined {
+		return this.persistedDataflowGraphs.get(filePath);
 	}
 }

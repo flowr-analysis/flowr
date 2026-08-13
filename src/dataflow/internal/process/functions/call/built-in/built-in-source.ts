@@ -1,4 +1,5 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
+import { appendEnvironment } from '../../../../../environments/append';
 import { DataflowInformation } from '../../../../../info';
 import { DropPathsOption, type FlowrLaxSourcingOptions, InferWorkingDirectory } from '../../../../../../config';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -348,4 +349,24 @@ export function standaloneSourceFile<OtherInfo>(
 		environment:    information.environment,
 		referenceChain: [...data.referenceChain, file.filePath]
 	}, information, false);
+}
+
+/**
+ * Folds the results of analyzing sourced code back into the information of the call that asked for it, which
+ * `eval` and the string templates both need: the code contributes everything it reads, writes, and leaves open.
+ */
+export function mergeSourced(information: DataflowInformation, sourced: readonly DataflowInformation[]): DataflowInformation {
+	if(sourced.length === 0) {
+		return information;
+	}
+	return {
+		...information,
+		graph:             sourced.reduce((acc, r) => acc.mergeWith(r.graph), information.graph),
+		environment:       sourced.reduce((acc, r) => appendEnvironment(acc, r.environment), information.environment),
+		in:                information.in.concat(sourced.flatMap(r => r.in)),
+		out:               information.out.concat(sourced.flatMap(r => r.out)),
+		unknownReferences: information.unknownReferences.concat(sourced.flatMap(r => r.unknownReferences)),
+		exitPoints:        information.exitPoints.concat(sourced.flatMap(r => r.exitPoints)),
+		hooks:             information.hooks.concat(sourced.flatMap(r => r.hooks))
+	};
 }

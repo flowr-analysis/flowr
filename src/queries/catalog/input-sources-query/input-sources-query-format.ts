@@ -78,7 +78,7 @@ export interface InputSourcesQueryResult extends BaseQueryResult {
 function inputSourcesQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'input-sources'> {
 	const criterion = sliceCriteriaParser(line[0]);
 	if(!criterion || criterion.length !== 1) {
-		output.stderr(output.formatter.format('Invalid provenance query format, a single slicing criterion must be given in the form "(criterion1)"',
+		output.stderr(output.formatter.format('Invalid input sources query format, a single slicing criterion must be given in the form "(criterion1)"',
 			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
 		return { query: [] };
 	}

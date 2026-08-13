@@ -30,7 +30,7 @@ describe('Namespace loading, import::from and box::use', withTreeSitter(ts => {
 	assertDataflow(label('import::from attaches only the named symbol', ['library-loading', 'search-path']), ts,
 		'import::from(pkgA, fa)\nfa()\nfb()',
 		emptyGraph().addEdge('2@fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls),
-		{ ...withPkg, mustNotHaveEdges: [[fbBuiltIn, '3@fb']] });
+		{ ...withPkg, mustNotHaveEdges: [['3@fb', fbBuiltIn]] });
 
 	assertDataflow(label('import::from alias binds under the new name', ['library-loading', 'search-path']), ts,
 		'import::from(pkgA, keep = fa)\nkeep()',
@@ -40,7 +40,7 @@ describe('Namespace loading, import::from and box::use', withTreeSitter(ts => {
 	assertDataflow(label('bare use(pkg, a) attaches only the named symbol (extra-args form)', ['library-loading', 'search-path']), ts,
 		'use(pkgA, fa)\nfa()\nfb()',
 		emptyGraph().addEdge('2@fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls),
-		{ ...withPkg, mustNotHaveEdges: [[fbBuiltIn, '3@fb']] });
+		{ ...withPkg, mustNotHaveEdges: [['3@fb', fbBuiltIn]] });
 
 	assertDataflow(label('bare use(pkg) attaches every export (extra-args form)', ['library-loading', 'search-path']), ts,
 		'use(pkgA)\nfa()\nfb()',
@@ -52,7 +52,7 @@ describe('Namespace loading, import::from and box::use', withTreeSitter(ts => {
 	assertDataflow(label('box::use[a] attaches only the bracketed symbol', ['library-loading', 'search-path']), ts,
 		'box::use(pkgA[fa])\nfa()\nfb()',
 		emptyGraph().addEdge('2@fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls),
-		{ ...withPkg, mustNotHaveEdges: [[fbBuiltIn, '3@fb']] });
+		{ ...withPkg, mustNotHaveEdges: [['3@fb', fbBuiltIn]] });
 
 	assertDataflow(label('box::use[...] attaches every export', ['library-loading', 'search-path']), ts,
 		'box::use(pkgA[...])\nfa()\nfb()',

@@ -1,5 +1,6 @@
 /** Shared utilities for built-in functions that interact with tracked R environments. */
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { RValue } from '../../../../../eval/values/r-value';
 import type { DataflowInformation } from '../../../../../info';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -16,11 +17,10 @@ import type { REnvironmentInformation } from '../../../../../environments/enviro
 import { DefaultAttachPosition, REnvironment } from '../../../../../environments/environment';
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
 import { resolveNodeToStackEnv } from './built-in-stack-env';
-import { resolveIdToValue, resolveIdToSingleString } from '../../../../../eval/resolve/alias-tracking';
+import { resolveIdToSingleString } from '../../../../../eval/resolve/alias-tracking';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { foldStringCall, PasteLikeCalls } from '../../../../../eval/resolve/resolve-strings';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import { valueSetGuard } from '../../../../../eval/values/general';
-import type { Value } from '../../../../../eval/values/r-value';
 import { dataflowLogger } from '../../../../../logger';
 
 /** A tracked env is a real stack environment (not a private custom env) when its current layer is the global or the built-in/base env. */
@@ -100,7 +100,7 @@ export function resolveConstantString<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): string | undefined {
-	const info = { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx, full: true };
+	const info = NodeValue.infoOf(data);
 	const unshadowed = new Map<string, boolean>();
 	const fold = (n: RNode<OtherInfo & ParentInformation>): string | undefined => {
 		if(!RFunctionCall.isNamed(n)) {
@@ -220,20 +220,6 @@ function clampAttachPosition(pos: number): number | undefined {
 	return Number.isFinite(pos) ? Math.max(DefaultAttachPosition, Math.trunc(pos)) : undefined;
 }
 
-/** The number a value denotes, directly or as the single point of an interval (how a numeric literal resolves). */
-function scalarNumber(value: Value): number | undefined {
-	if(value.type === 'number') {
-		return 'num' in value.value ? value.value.num : undefined;
-	}
-	if(value.type === 'interval' && value.startInclusive && value.endInclusive
-		&& value.start.type === 'number' && 'num' in value.start.value
-		&& value.end.type === 'number' && 'num' in value.end.value
-		&& value.start.value.num === value.end.value.num) {
-		return value.start.value.num;
-	}
-	return undefined;
-}
-
 /**
  * The `search()` position the `pos` argument of a `library()` call requests, either given as a number or as the name of
  * an existing entry (`pos = "package:base"`). Returns `undefined` when there is no such argument, its value is unknown
@@ -247,19 +233,19 @@ export function resolveAttachPosition<OtherInfo>(
 	if(posId === undefined) {
 		return undefined;
 	}
-	const values = valueSetGuard(resolveIdToValue(posId, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx }));
-	if(values?.type !== 'set' || values.elements.length !== 1) {
+	const element = NodeValue.soleOf(posId, data);
+	if(element === undefined) {
 		return undefined;
 	}
-	const element = values.elements[0];
-	const asNumber = scalarNumber(element);
+	const asNumber = RValue.numberOf(element);
 	if(asNumber !== undefined) {
 		return clampAttachPosition(asNumber);
 	}
-	if(element.type === 'string' && 'str' in element.value) {
-		const found = REnvironment.searchPosition(data.environment.current, element.value.str);
+	const asString = RValue.stringOf(element);
+	if(asString !== undefined) {
+		const found = REnvironment.searchPosition(data.environment.current, asString);
 		if(found === undefined) {
-			dataflowLogger.warn(`search-path entry '${element.value.str}' does not exist, attaching at the default position`);
+			dataflowLogger.warn(`search-path entry '${asString}' does not exist, attaching at the default position`);
 			return undefined;
 		}
 		return clampAttachPosition(found);

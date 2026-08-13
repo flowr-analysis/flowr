@@ -78,5 +78,9 @@ export const RFunctionCall = {
 			}
 		}
 		return bound;
+	},
+	/** The one argument a call was given, `undefined` unless there is exactly one and it is not empty. */
+	soleArgument<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[]): RArgument<Info> | undefined {
+		return args.length === 1 && args[0] !== EmptyArgument ? args[0] : undefined;
 	}
 } as const;

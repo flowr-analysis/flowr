@@ -1,6 +1,9 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
-import { processKnownFunctionCall } from '../known-call-handling';
+import { markArgumentsAsNonStandardEvaluation, NseArguments, NseKind, processKnownFunctionCall } from '../known-call-handling';
+import { Nse, Unquote } from '../nse';
+import { DataMaskingFunctionNames } from '../../../../../environments/data-masking-functions';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { log, LogLevel } from '../../../../../../util/log';
 import { unpackArg } from '../argument/unpack-argument';
 import { processAsNamedCall } from '../../../process-named-call';
@@ -14,7 +17,7 @@ import type { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import {
@@ -170,6 +173,46 @@ export function processAssignmentLike<OtherInfo>(
 	);
 }
 
+/** Within a data-masking call `a := b` is rlang's name-value pair, not data.table's assignment. */
+function isMaskedNamePair<OtherInfo>(
+	name:   RSymbol<OtherInfo & ParentInformation>,
+	rootId: NodeId,
+	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>
+): boolean {
+	if(Identifier.getName(name.content) !== ':=') {
+		return false;
+	}
+	const idMap = data.completeAst.idMap;
+	let parent = idMap.get(rootId)?.info.parent;
+	while(parent !== undefined) {
+		const node = idMap.get(parent);
+		if(node === undefined) {
+			return false;
+		} else if(RArgument.is(node)) {
+			parent = node.info.parent;
+		} else {
+			return RFunctionCall.isNamed(node) && DataMaskingFunctionNames.has(Identifier.getName(node.functionName.content));
+		}
+	}
+	return false;
+}
+
+/** Analyzes `a := b` as the named argument it is. */
+function processMaskedNamePair<OtherInfo>(
+	name:   RSymbol<OtherInfo & ParentInformation>,
+	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>
+): DataflowInformation {
+	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' });
+	const target = args[0];
+	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, NseArguments.First, {
+		kind:      NseKind.DataMasked,
+		evaluated: Nse.unquoted(target === EmptyArgument ? undefined : target?.value, Unquote.Rlang)
+	});
+	return information;
+}
+
 /**
  * Processes an assignment, i.e., `<target> <- <source>`.
  * Handling it as a function call \`&lt;-\` `(<target>, <source>)`.
@@ -183,6 +226,10 @@ export function processAssignment<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: AssignmentConfiguration
 ): DataflowInformation {
+	if(isMaskedNamePair(name, rootId, data)) {
+		return processMaskedNamePair(name, args, rootId, data);
+	}
+
 	if(!config.mayHaveMoreArgs && args.length !== 2) {
 		dataflowLogger.warn(`Assignment ${Identifier.toString(name.content)} has something else than 2 arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
@@ -565,12 +612,8 @@ export function markAsAssignment<OtherInfo>(
 	}
 	information.graph.addEdge(nid, rootIdOfAssignment, EdgeType.DefinedBy);
 	// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
-	const out = information.graph.outgoingEdges(nodeToDefine.nodeId);
-	for(const [id, edge] of (out ?? [])) {
-		edge.types &= ~EdgeType.Reads;
-		if(edge.types === 0) {
-			out?.delete(id);
-		}
+	for(const [id] of [...information.graph.outgoingEdges(nodeToDefine.nodeId) ?? []]) {
+		information.graph.removeEdgeType(nodeToDefine.nodeId, id, EdgeType.Reads);
 	}
 }
 

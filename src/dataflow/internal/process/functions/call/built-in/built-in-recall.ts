@@ -2,7 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -42,8 +42,8 @@ export function processRecall<OtherInfo>(
 
 	// If requested, treat Recall as an unknown side effect when a single argument is provided and it is not the numeric literal 0.
 	if(config?.unknownOnNonZeroArg) {
-		if(args.length === 1 && args[0] !== EmptyArgument && args[0].value) {
-			const v = args[0].value;
+		const v = RFunctionCall.soleArgument(args)?.value;
+		if(v) {
 			// only allow the normal recall handling if the single arg is the literal 0
 			if(!(v.type === RType.Number && (v as RNumber).content.num === 0)) {
 				handleUnknownSideEffect(information.graph, information.environment, rootId);

@@ -1,6 +1,7 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
+import { Nse, Unquote } from '../nse';
 import { guard } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -20,6 +21,7 @@ import { processAssignment } from './built-in-assignment';
 import type { BrandedIdentifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { log } from '../../../../../../util/log';
+import type { DataflowGraph } from '../../../../../graph/graph';
 
 /**
  * Configuration options for the basic R pipe
@@ -40,6 +42,24 @@ interface PipeConfiguration {
 	rhsMightBeSymbol?:   boolean;
 }
 
+
+/** Piping the data in shifts the arguments, so the call's own `all-but-first` marking misses them. */
+function markPipedDataMask<OtherInfo>(rhs: RFunctionCall<OtherInfo & ParentInformation>, graph: DataflowGraph): void {
+	for(const arg of rhs.arguments) {
+		if(arg === EmptyArgument) {
+			continue;
+		}
+		RNode.visitAst<OtherInfo & ParentInformation>(arg, node => {
+			if(Nse.isUnquote(node, Unquote.Rlang)) {
+				return true;
+			}
+			if(RSymbol.is(node) && Nse.suppliedByMask(graph, node.info.id)) {
+				graph.addEdge(rhs.info.id, node.info.id, EdgeType.NonStandardEvaluation);
+			}
+			return false;
+		});
+	}
+}
 
 /**
  * Support for R's pipe functions like `|>` or magrittr's `%>%`
@@ -136,18 +156,7 @@ export function processPipe<OtherInfo>(
 		}
 
 		if(RFunctionCall.isNamed(rhs) && DataMaskingFunctionNames.has(Identifier.getName(rhs.functionName.content))) {
-			for(const arg of rhs.arguments) {
-				if(arg === EmptyArgument) {
-					continue;
-				}
-				/* only the symbols may name columns, the rest is evaluated in the caller's frame */
-				RNode.visitAst<OtherInfo & ParentInformation>(arg, node => {
-					if(RSymbol.is(node)) {
-						information.graph.addEdge(rhs.info.id, node.info.id, EdgeType.NonStandardEvaluation);
-					}
-					return false;
-				});
-			}
+			markPipedDataMask(rhs, information.graph);
 		}
 
 	} else {

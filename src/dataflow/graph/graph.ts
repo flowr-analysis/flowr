@@ -443,6 +443,34 @@ export class DataflowGraph<
 	}
 
 	/**
+	 * Takes `type` off the edge `fromId -> toId`, dropping the edge itself once it states nothing.
+	 * An edge with no type is no edge: every removal has to go through here so none is left behind.
+	 */
+	public removeEdgeType(fromId: NodeId, toId: NodeId, type: EdgeType | number): this {
+		const from = NodeId.normalize(fromId), to = NodeId.normalize(toId);
+		const targets = this.edgeInformation.get(from);
+		const edge = targets?.get(to);
+		if(edge === undefined || targets === undefined) {
+			return this;
+		}
+		edge.types &= ~type;
+		if(edge.types !== 0) {
+			/* the reverse index holds this very object, so a narrowed type is already visible through it */
+			return this;
+		}
+		targets.delete(to);
+		if(targets.size === 0) {
+			this.edgeInformation.delete(from);
+		}
+		const into = this.incomingIndex?.get(to);
+		into?.delete(from);
+		if(into?.size === 0) {
+			this.incomingIndex?.delete(to);
+		}
+		return this;
+	}
+
+	/**
 	 * Adds a new vertex to the graph, for ease of use, some arguments are optional and filled automatically.
 	 * @param vertex - The vertex to add
 	 * @param fallbackEnv - A clean environment to use if no environment is given in the vertex

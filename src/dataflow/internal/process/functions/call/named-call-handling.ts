@@ -36,11 +36,13 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 /**
  * Marks the given function call node as only calling built-in functions.
  */
-export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId): void {
+export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId, keepEnvironment = false): void {
 	const v = graph.getVertex(rootId);
 	if(v?.tag === VertexType.FunctionCall) {
 		v.onlyBuiltin = true;
-		v.environment = undefined;
+		if(!keepEnvironment) {
+			v.environment = undefined;
+		}
 	}
 }
 
@@ -57,8 +59,11 @@ export function processNamedCall<OtherInfo>(
 	const resolved = resolveByName(name.content, data.environment, ReferenceType.Function) ?? [];
 	let defaultProcessor = resolved.length === 0;
 
+	/* a call whose meaning a later pass looks up in its environment has to keep it */
+	const keepEnvironment = resolved.some(r => r.type === ReferenceType.BuiltInFunction && r.config?.keepEnvironment === true);
+
 	/* if this call will be marked as built-in only (see below), its vertex needs no environment snapshot */
-	if(resolved.length > 0
+	if(resolved.length > 0 && !keepEnvironment
 		&& resolved.every(r => r.type === ReferenceType.BuiltInFunction && typeof r.processor === 'function')
 		&& resolved.some(r => r.type === ReferenceType.BuiltInFunction && r.config?.libFn !== true)) {
 		data = { ...data, builtInNoEnv: rootId };
@@ -81,7 +86,7 @@ export function processNamedCall<OtherInfo>(
 		information = mergeInformation(information, call.information);
 	} else if(information && builtIn) {
 		// mark the function call as built in only
-		markAsOnlyBuiltIn(information.graph, rootId);
+		markAsOnlyBuiltIn(information.graph, rootId, keepEnvironment);
 	}
 
 	// on demand: materialize the built-in vertex for any package export this call resolves to and, when we

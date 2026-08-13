@@ -32,6 +32,7 @@ import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
 const transitiveSideEffectRounds = 32;
 import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
 import { Identifier } from './environments/identifier';
+import { Quoted } from './internal/process/functions/call/quoted';
 import { SourceRange } from '../util/range';
 import { dataflowLogger } from './logger';
 import { GasFeatureKey, GasLevel, GasWikiRef } from '../gas';
@@ -190,6 +191,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	}
 	// link on-demand-materialized package exports back to their `library()` loaders
 	linkMaterializedExportsToLoaders(df.graph, df.environment);
+	Quoted.finalize(df.graph, completeAst.idMap, () => extractCfgQuick(completeAst).graph);
 
 	(df as { cfgQuick?: ControlFlowInformation }).cfgQuick = resolveLinkToSideEffects(completeAst, df.graph, ctx);
 

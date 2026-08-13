@@ -22,6 +22,8 @@ export enum BuiltInProcName {
 	DefaultReadAllArgs = 'builtin:d-ra',
 	/** for `eval` calls, see {@link processEvalCall} */
 	Eval = 'builtin:eval',
+	/** for string templates carrying R code, see {@link processStringTemplate} */
+	StringTemplate = 'builtin:string-template',
 	/** for expression lists, see {@link processExpressionList} */
 	ExpressionList = 'builtin:el',
 	/** for `for` loops, see {@link processForLoop} */

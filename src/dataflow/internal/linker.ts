@@ -1,4 +1,6 @@
 import { DefaultMap } from '../../util/collections/defaultmap';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RFunctionCall, EmptyArgument  } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isNotUndefined } from '../../util/assert';
 import { expensiveTrace } from '../../util/log';
 import type { BuiltIn } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -14,7 +16,6 @@ import { type DataflowGraph, FunctionArgument } from '../graph/graph';
 import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowLogger } from '../logger';
-import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { DfEdge, EdgeType } from '../graph/edge';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import {
@@ -445,6 +446,40 @@ export function getAllLinkedFunctionDefinitions(
  * @param maybeForRemaining                  - Each input that can not be linked, will be added to `givenInputs`. If this flag is `true`, it will be marked as `maybe`.
  * @returns the given inputs, possibly extended with the remaining inputs (those of `referencesToLinkAgainstEnvironment` that could not be linked against the environment)
  */
+/**
+ * Links every name in the expression rooted at `expr` against `environment`, as if it were written there, and
+ * hands back what stays unresolved. This is how an expression that was captured elsewhere is read here.
+ */
+export function linkExpressionIn<Info>(this: void, graph: DataflowGraph, expr: NodeId, environment: REnvironmentInformation, idMap: AstIdMap<Info & ParentInformation>): readonly IdentifierReference[] {
+	const node = idMap.get(expr);
+	if(node === undefined) {
+		return [];
+	}
+	const references: IdentifierReference[] = [];
+	const callees = new Set<NodeId>();
+	RNode.visitAst<Info & ParentInformation>(node, inner => {
+		if(RFunctionCall.isNamed(inner)) {
+			callees.add(inner.functionName.info.id);
+			references.push({ nodeId: inner.functionName.info.id, name: inner.functionName.content, cds: undefined, type: ReferenceType.Function });
+		} else if(inner.type === RType.Symbol && !callees.has(inner.info.id)) {
+			references.push({ nodeId: inner.info.id, name: inner.content, cds: undefined, type: ReferenceType.Variable });
+		}
+		return false;
+	});
+	const unresolved: IdentifierReference[] = [];
+	linkInputs(references, environment, unresolved, graph, false);
+	return unresolved;
+}
+
+/**
+ * This method links a set of read variables to definitions in an environment.
+ * @param referencesToLinkAgainstEnvironment - The set of references to link against the environment
+ * @param environmentInformation             - The environment information to link against
+ * @param givenInputs                        - The existing list of inputs that might be extended
+ * @param graph                              - The graph to enter the found links
+ * @param maybeForRemaining                  - Each input that can not be linked, will be added to `givenInputs`. If this flag is `true`, it will be marked as `maybe`.
+ * @returns the given inputs, possibly extended with the remaining inputs (those of `referencesToLinkAgainstEnvironment` that could not be linked against the environment)
+ */
 export function linkInputs(referencesToLinkAgainstEnvironment: readonly IdentifierReference[], environmentInformation: REnvironmentInformation, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean): IdentifierReference[] {
 	for(const bodyInput of referencesToLinkAgainstEnvironment) {
 		const probableTarget = bodyInput.name ? resolveByName(bodyInput.name, environmentInformation, bodyInput.type) : undefined;
@@ -566,3 +601,36 @@ export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: r
 		}
 	}
 }
+
+/** The open references a function definition still carries into its closure. */
+export const ClosureRefs = {
+	name: 'ClosureRefs',
+	/**
+	 * Resolves the open ingoing references of a definition called anonymously at `callId` against `environment`,
+	 * links what resolves, and leaves only the references that stay open.
+	 */
+	resolveOpenIngoing(this: void, graph: DataflowGraph, callId: NodeId, definition: DataflowGraphVertexFunctionDefinition, environment: REnvironmentInformation): void {
+		const remainingIn: IdentifierReference[] = [];
+		for(const ingoing of definition.subflow.in) {
+			const resolved = ingoing.name ? resolveByName(ingoing.name, environment, ingoing.type) : undefined;
+			if(resolved === undefined) {
+				remainingIn.push(ingoing);
+				continue;
+			}
+			expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${ingoing.nodeId} in closure of function definition ${callId}`);
+			let allBuiltIn = true;
+			const inId = ingoing.nodeId;
+			for(const { nodeId, type } of resolved) {
+				graph.addEdge(inId, nodeId, EdgeType.Reads);
+				graph.addEdge(callId, nodeId, EdgeType.Reads); // because the def. is the anonymous call
+				if(!isReferenceType(type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
+					allBuiltIn = false;
+				}
+			}
+			if(allBuiltIn) {
+				remainingIn.push(ingoing);
+			}
+		}
+		definition.subflow.in = remainingIn;
+	}
+} as const;

@@ -189,9 +189,11 @@ export const FnSig = {
  */
 export interface BuiltInFnInfo {
 	/** the parameters and what each of their arguments is used for */
-	readonly sig?:   FnSig
+	readonly sig?:             FnSig
 	/** bitfield of {@link CallProp} */
-	readonly props?: CallProps
+	readonly props?:           CallProps
+	/** keep the environment on the call vertex, for a later pass to look names up in */
+	readonly keepEnvironment?: boolean
 }
 
 /** A {@link FnSig} in the form the call processors use it, see {@link sigLayout}. */
@@ -251,7 +253,7 @@ const SigDbProps: Readonly<Record<string, CallProp>> = {
 };
 
 /** the callees that make the calling function itself a generic ({@link CallProp.Generic}) */
-const DispatchCallees: ReadonlySet<string> = new Set(['UseMethod', 'standardGeneric', 'S7_dispatch']);
+export const DispatchCallees: ReadonlySet<string> = new Set(['UseMethod', 'standardGeneric', 'S7_dispatch']);
 
 /**
  * The part of a {@link BuiltInFnInfo} that the signature database already knows: the parameter names in order

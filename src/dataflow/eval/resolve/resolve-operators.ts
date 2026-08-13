@@ -6,7 +6,7 @@ import { isRNumberValue, unliftRValue } from '../../../util/r-value';
 import type { BuiltInEvalHandlerArgs } from '../../environments/built-in';
 import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-constants';
 import { Top, type Value } from '../values/r-value';
-import { valueSetGuard } from '../values/general';
+import { soleValue, valueSetGuard } from '../values/general';
 import { resolveIdToValue } from './alias-tracking';
 
 /** the scalar an operand folds to, with a logical counting as its `0`/`1` just like R would coerce it */
@@ -110,6 +110,5 @@ export function resolveAsGroup(args: BuiltInEvalHandlerArgs): Value {
 		return Top;
 	}
 	/* unwrap the set again, as the caller of a handler wraps the returned value in one */
-	const values = valueSetGuard(resolveIdToValue(node.children[0], args));
-	return values?.elements.length === 1 ? values.elements[0] : Top;
+	return soleValue(valueSetGuard(resolveIdToValue(node.children[0], args))) ?? Top;
 }

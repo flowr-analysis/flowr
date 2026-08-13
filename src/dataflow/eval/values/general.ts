@@ -27,6 +27,19 @@ export function valueSetGuard(a: Lift<ValueSet<Value[]>>): ValueSet<Value[]> | u
 	return (isBottom(a) || isTop(a)) ? undefined : a;
 }
 
+export function soleValue(this: void, set: ValueSet<Value[]> | undefined): Value | undefined;
+export function soleValue<T extends Value['type']>(this: void, set: ValueSet<Value[]> | undefined, type: T): Extract<Value, { type: T }> | undefined;
+/**
+ * The one value a set holds, `undefined` unless it holds exactly one, optionally of the given kind.
+ * @param set  - the set to take the value from
+ * @param type - the kind the value has to have, any kind if unset
+ * @returns the sole value, `undefined` if the set holds another number of them or another kind
+ */
+export function soleValue<T extends Value['type']>(this: void, set: ValueSet<Value[]> | undefined, type?: T): Value | undefined {
+	const only = set?.elements.length === 1 ? set.elements[0] : undefined;
+	return only !== undefined && (type === undefined || only.type === type) ? only : undefined;
+}
+
 /**
  * Constructs an Abstract Value from a normal TS value
  * @param a - ts value

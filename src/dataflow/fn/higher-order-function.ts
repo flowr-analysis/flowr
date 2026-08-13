@@ -8,10 +8,9 @@ import {
 } from '../graph/vertex';
 import { isNotUndefined } from '../../util/assert';
 import { DfEdge, EdgeType } from '../graph/edge';
-import { resolveIdToValue } from '../eval/resolve/alias-tracking';
+import { NodeValue } from '../eval/resolve/node-value';
 import { VariableResolve } from '../../config';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { valueSetGuard } from '../eval/values/general';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): boolean {
@@ -54,7 +53,7 @@ function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition
 			if(arg === EmptyArgument) {
 				continue;
 			}
-			const value = valueSetGuard(resolveIdToValue(arg.nodeId, { graph, idMap: graph.idMap, resolve: VariableResolve.Alias, full: true, ctx }));
+			const value = NodeValue.inGraph.setOf(arg.nodeId, graph, ctx, { resolve: VariableResolve.Alias });
 			if(value?.elements.some(e => e.type === 'function-definition')) {
 				return true;
 			}

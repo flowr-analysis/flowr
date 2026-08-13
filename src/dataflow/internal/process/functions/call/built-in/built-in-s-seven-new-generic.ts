@@ -22,7 +22,7 @@ import type { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/as
 import { isNotUndefined } from '../../../../../../util/assert';
 import type { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { Identifier } from '../../../../../environments/identifier';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
 import { VertexType } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
@@ -64,7 +64,7 @@ export function processS7NewGeneric<OtherInfo>(
 	if(!genName) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const n = resolveIdToValue(genName.info.id, { environment: data.environment, resolve: data.ctx.config.solver.variables, idMap: data.completeAst.idMap, full: true, ctx: data.ctx });
+	const n = NodeValue.of(genName.info.id, data);
 	const accessedIdentifiers: string[] = [];
 	if(n.type === 'set') {
 		for(const elem of n.elements) {

@@ -15,11 +15,10 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { expensiveTrace } from '../../../../../../util/log';
-import { sourceRequest } from './built-in-source';
+import { mergeSourced, sourceRequest } from './built-in-source';
 import { EdgeType } from '../../../../../graph/edge';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { appendEnvironment } from '../../../../../environments/append';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { isUndefined } from '../../../../../../util/assert';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -103,16 +102,7 @@ export function processEvalCall<OtherInfo>(
 				information.graph.addEdge(rootId, e.nodeId, EdgeType.Returns);
 			}
 		}
-		return {
-			graph:             result.reduce((acc, r) => acc.mergeWith(r.graph), information.graph),
-			environment:       result.reduce((acc, r) => appendEnvironment(acc, r.environment), information.environment),
-			entryPoint:        rootId,
-			out:               information.out.concat(result.flatMap(r => r.out)),
-			in:                information.in.concat(result.flatMap(r => r.in)),
-			unknownReferences: information.unknownReferences.concat(result.flatMap(r => r.unknownReferences)),
-			exitPoints:        information.exitPoints.concat(result.flatMap(r => r.exitPoints)),
-			hooks:             information.hooks.concat(result.flatMap(r => r.hooks)),
-		};
+		return mergeSourced({ ...information, entryPoint: rootId }, result);
 	}
 
 	expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(args)} for eval is currently not supported, skipping`);

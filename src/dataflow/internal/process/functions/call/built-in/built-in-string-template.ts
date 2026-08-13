@@ -9,10 +9,9 @@ import { Identifier } from '../../../../../environments/identifier';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { appendEnvironment } from '../../../../../environments/append';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { sourceRequest } from './built-in-source';
+import { mergeSourced, sourceRequest } from './built-in-source';
 import { linkInputs } from '../../../../linker';
 
 /** Arguments naming the scope the template runs against, which we cannot follow. */
@@ -71,10 +70,16 @@ export function interpolationsOf(template: string, open: string, close: string, 
 	return found;
 }
 
-/** The delimiter a literal `.open`/`.close` argument asks for, the configured one when it is absent. */
-function delimiterOf(bound: ReadonlyMap<string, { readonly value?: unknown }>, name: string, fallback: string): string {
-	const value = bound.get(name)?.value as { type?: RType, content?: { str?: string } } | undefined;
-	return value?.type === RType.String && value.content?.str !== undefined ? value.content.str : fallback;
+/** The argument given under `name`, `undefined` if the call does not name it. */
+function namedArgument<Info>(args: readonly PotentiallyEmptyRArgument<Info>[], name: string): RArgument<Info> | undefined {
+	return args.find((a): a is RArgument<Info> => a !== EmptyArgument && a.name !== undefined
+		&& Identifier.getName(a.name.content) === name);
+}
+
+/** The string a named argument spells out, `undefined` unless it is a literal. */
+function literalOf<Info>(args: readonly PotentiallyEmptyRArgument<Info>[], name: string): string | undefined {
+	const value = namedArgument(args, name)?.value;
+	return value?.type === RType.String ? value.content.str : undefined;
 }
 
 /**
@@ -91,14 +96,12 @@ export function processStringTemplate<OtherInfo>(
 ): DataflowInformation {
 	const { information } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.StringTemplate });
 	/* these are only ever given by name, and matching them positionally would swallow the template itself */
-	const named = new Map(args.filter(a => a !== EmptyArgument && a.name !== undefined)
-		.map(a => [Identifier.getName((a as RArgument<OtherInfo & ParentInformation>).name?.content as Identifier), a as RArgument<OtherInfo & ParentInformation>]));
-	if(RedirectingParameters.some(p => named.has(p))) {
+	if(RedirectingParameters.some(p => namedArgument(args, p) !== undefined)) {
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
 	}
-	const open = delimiterOf(named, '.open', config.open ?? '{');
-	const close = delimiterOf(named, '.close', config.close ?? '}');
+	const open = literalOf(args, '.open') ?? config.open ?? '{';
+	const close = literalOf(args, '.close') ?? config.close ?? '}';
 
 	const results: DataflowInformation[] = [];
 	for(const arg of args) {
@@ -114,16 +117,5 @@ export function processStringTemplate<OtherInfo>(
 			results.push(result);
 		}
 	}
-	if(results.length === 0) {
-		return information;
-	}
-	return {
-		...information,
-		graph:             results.reduce((acc, r) => acc.mergeWith(r.graph), information.graph),
-		environment:       results.reduce((acc, r) => appendEnvironment(acc, r.environment), information.environment),
-		in:                information.in.concat(results.flatMap(r => r.in)),
-		out:               information.out.concat(results.flatMap(r => r.out)),
-		unknownReferences: information.unknownReferences.concat(results.flatMap(r => r.unknownReferences)),
-		hooks:             information.hooks.concat(results.flatMap(r => r.hooks))
-	};
+	return mergeSourced(information, results);
 }

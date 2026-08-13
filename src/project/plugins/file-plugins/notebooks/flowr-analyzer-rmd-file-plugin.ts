@@ -1,11 +1,4 @@
-import type { PathLike } from 'fs';
-import { SemVer } from 'semver';
-import type { FlowrAnalyzerContext } from '../../../context/flowr-analyzer-context';
-import type { FlowrFileProvider } from '../../../context/flowr-file';
-import { FlowrAnalyzerFilePlugin } from '../flowr-analyzer-file-plugin';
-import { FlowrRMarkdownFile } from '../files/flowr-rmarkdown-file';
-import { platformBasename } from '../../../../dataflow/internal/process/functions/call/built-in/built-in-source';
-
+import { FlowrAnalyzerRMarkdownFilePlugin } from './flowr-analyzer-rmarkdown-file-plugin';
 
 /* `.Rmarkdown` is the knitr-only variant used by blogdown and quarto */
 export const RmdPattern = /\.(rmd|rmarkdown)$/i;
@@ -13,26 +6,15 @@ export const RmdPattern = /\.(rmd|rmarkdown)$/i;
 /**
  * The plugin provides support for R Markdown (`.rmd`) files
  */
-export class FlowrAnalyzerRmdFilePlugin extends FlowrAnalyzerFilePlugin {
+export class FlowrAnalyzerRmdFilePlugin extends FlowrAnalyzerRMarkdownFilePlugin {
 	public readonly name =    'rmd-file-plugin';
 	public readonly description = 'Parses R Markdown files';
-	public readonly version = new SemVer('0.1.0');
-	private readonly pattern: RegExp;
 
 	/**
 	 * Creates a new instance of the R Markdown file plugin.
 	 * @param filePattern - The pattern to identify R Markdown files, see {@link RmdPattern} for the default pattern.
 	 */
 	constructor(filePattern: RegExp = RmdPattern) {
-		super();
-		this.pattern = filePattern;
-	}
-
-	public applies(file: PathLike): boolean {
-		return this.pattern.test(platformBasename(file.toString()));
-	}
-
-	protected process(ctx: FlowrAnalyzerContext, arg: FlowrFileProvider<string>): FlowrRMarkdownFile {
-		return FlowrRMarkdownFile.from(arg, ctx);
+		super(filePattern);
 	}
 }

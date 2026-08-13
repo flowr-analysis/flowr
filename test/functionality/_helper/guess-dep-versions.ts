@@ -21,8 +21,10 @@ export interface ScenarioVersion {
 	readonly date?:      string;
 	/** exported function to its parameter names (use `'...'` for a variadic) */
 	readonly fns?:       Readonly<Record<string, readonly string[]>>;
-	/** declared dependency to its version constraint (e.g. `>= 1.0.0`) */
+	/** declared dependency to its version constraint (e.g. `>= 1.0.0`), recorded as an `Imports` */
 	readonly deps?:      Readonly<Record<string, string>>;
+	/** like {@link deps}, but recorded as a `Suggests`, which a load does not have to satisfy */
+	readonly suggests?:  Readonly<Record<string, string>>;
 	readonly cran?:      boolean;
 	/** S3 classes this version OWNS (must also be an exported function name in {@link fns}); see {@link FnProp.S3Owner} */
 	readonly s3Classes?: readonly string[];
@@ -68,7 +70,10 @@ function versionInfo(v: ScenarioVersion): SigVersionInfo {
 	return {
 		cran: v.cran ?? true,
 		functions,
-		...(v.deps ? { dependencies: Object.entries(v.deps).map(([name, constraint]) => ({ name, type: DepType.Imports, constraint })) } : {}),
+		...(v.deps || v.suggests ? { dependencies: [
+			...Object.entries(v.deps ?? {}).map(([name, constraint]) => ({ name, type: DepType.Imports, constraint })),
+			...Object.entries(v.suggests ?? {}).map(([name, constraint]) => ({ name, type: DepType.Suggests, constraint }))
+		] } : {}),
 		...(v.date ? { date: dayMs(v.date) } : {})
 	};
 }

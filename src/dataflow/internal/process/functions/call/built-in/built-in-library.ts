@@ -25,6 +25,7 @@ import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { Package } from '../../../../../../project/plugins/package-version-plugins/package';
+import { attachedAlongside } from '../../../../../../project/attached-packages';
 import { getCallables, type NamespaceInfo } from '../../../../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { convertFnArguments } from '../common';
 import { pMatch } from '../../../../linker';
@@ -471,7 +472,12 @@ export function attachDependencyToEnvironment(dependency: Package, envInfo: REnv
 	importsEnv = recImports(importsEnv, dependency.namespaceInfo, ctx, new Set());
 	const namespaceEnv = new Environment(importsEnv).asLibrary(pack, EnvType.Namespace)
 		.defineAll(exports.map(exp => exportDefinition(pack, exp, definedAt)));
-	return { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, namespaceEnv, importsEnv, spec.pos) };
+	const attached = { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, namespaceEnv, importsEnv, spec.pos) };
+	/* whatever R puts on the search path with it, `pack` first so a dependency cycle stays finite (the guard above stops it) */
+	return attachedAlongside(pack, ctx.deps.signatureSources()).reduce((env, alongside) => {
+		const dependency = ctx.deps.getDependency(alongside);
+		return dependency === undefined ? env : attachDependencyToEnvironment(dependency, env, ctx, spec, definedAt);
+	}, attached);
 }
 
 /** A namespace-only load is subsumed by any layer for `pack`; a full attach ignores a mere {@link EnvType.LoadedNamespace}. */

@@ -312,8 +312,19 @@ ${codeBlock('json', JSON.stringify(
 					}
 				}
 			},
-			incrementalParsing: {
-				activated: false,
+			incremental: {
+				alwaysIncremental: false,
+				parsing:           {
+					activated:  false,
+					heuristics: {
+						activated:       true,
+						mtime:           true,
+						linesFrom:       500,
+						bytesFrom:       50_000,
+						alwaysWithEdits: false,
+						minFiles:        1,
+					},
+				},
 			},
 			gas: {
 				thresholds: {

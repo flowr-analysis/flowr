@@ -62,7 +62,6 @@ jobs:
           cache: 'true'
           cache-version: '1'
           extra-packages: |
-            any::xmlparsedata
             any::dplyr
             any::readr
 
@@ -170,9 +169,23 @@ jobs:
             **/*.md.tmp
             **/*-Old.*
 
-      - name: "🔎 Check the Wiki pages and README for broken links"
-        uses: becheran/mlc@v1
+      - name: "🔎 Check the Wiki pages for broken external links"
+        uses: becheran/mlc@v1.2.0
         continue-on-error: true
         if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
         with:
-          args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" --ignore-links "http*://hub.docker.com/r/*" wiki/ README.md
+          args: >-
+            --throttle 25 --ignore-path "wiki/stats"
+            --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*"
+            --ignore-links "http*://hub.docker.com/r/*,http*://*npmjs.com/*,http*://doi.org/*,http*://*linkedin.com/*,http*://*r-bloggers.com/*,http*://*gnu.org/*,http*://linux.die.net/*,http*://mermaid.js.org/*"
+            wiki/
+
+      - name: "🔎 Check the README for broken external links"
+        uses: becheran/mlc@v1.2.0
+        continue-on-error: true
+        if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
+        with:
+          args: >-
+            --throttle 25 --files "./README.md"
+            --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*"
+            --ignore-links "http*://hub.docker.com/r/*,http*://*npmjs.com/*,http*://doi.org/*,http*://*linkedin.com/*,http*://*r-bloggers.com/*,http*://*gnu.org/*,http*://linux.die.net/*,http*://mermaid.js.org/*"

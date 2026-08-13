@@ -12,10 +12,12 @@ import type { RShell } from '../../r-bridge/shell';
 import type { ValidWikiDocumentTargetsNoSuffix } from '../../cli/wiki';
 import type { PathLike } from 'fs';
 import {
+	flowrSourceFileUrl,
 	FlowrDockerRef,
 	FlowrGithubRef,
 	FlowrNpmRef,
 	FlowrPositron, FlowrRAdapter, FlowrRStudioAddin,
+	FlowrSiteBaseRef,
 	FlowrVsCode,
 	FlowrWikiBaseRef
 } from '../doc-util/doc-files';
@@ -79,8 +81,8 @@ export const ConstantWikiLinkInfo = {
 	'flowr:positron':      { url: FlowrPositron, name: 'flowR extension for Positron' },
 	'flowr:rstudio-addin': { url: FlowrRStudioAddin, name: 'flowR RStudio Addin' },
 	'flowr:radapter':      { url: FlowrRAdapter, name: 'flowR R Adapter' },
-	'flowr:benchmarks':    { url: 'https://flowr-analysis.github.io/flowr/wiki/stats/benchmark', name: 'flowR benchmark page' },
-	'flowr:docs':          { url: 'https://flowr-analysis.github.io/flowr/docs', name: 'flowR code docs' },
+	'flowr:benchmarks':    { url: `${FlowrSiteBaseRef}/wiki/stats/benchmark`, name: 'flowR benchmark page' },
+	'flowr:docs':          { url: `${FlowrSiteBaseRef}/doc/`, name: 'flowR code docs' },
 	'flowr:zenodo':        { url: 'https://zenodo.org/doi/10.5281/zenodo.13319290', name: 'flowR on Zenodo' },
 } as const;
 
@@ -428,15 +430,18 @@ export function makeDocContextForTypes(
 				const i = ConstantWikiLinkInfo[pageName as keyof typeof ConstantWikiLinkInfo];
 				link = i.url;
 				text ??= i.name;
+			} else if(pageName.startsWith('wiki/')) {
+				link = `${FlowrWikiBaseRef}/${pageName.slice('wiki/'.length).replaceAll(' ', '-')}`;
 			} else {
-				link = `${FlowrGithubRef}/${pageName.toLowerCase().replaceAll(' ', '-')}`;
+				link = flowrSourceFileUrl(/\.[a-z0-9]+$/i.test(pageName) ? pageName : pageName + '.md');
 			}
 			text ??= pageName.split('/').pop() ?? pageName;
 			return `[${text}](${link}${segment ? '#' + segment : ''})`;
 		},
 		linkCode(this: void, path: PathLike, lineNumber?: number): string {
-			const lnk = lineNumber ? `${path.toString()}#L${lineNumber}` : path.toString();
-			return `[${path.toString()}](${encodeURIComponent(lnk)})`;
+			const p = path.toString();
+			const lnk = flowrSourceFileUrl(p) + (lineNumber ? `#L${lineNumber}` : '');
+			return `[${p}](${encodeURI(lnk)})`;
 		},
 		cliOption<
 			ScriptName extends keyof typeof scripts | 'flowr',

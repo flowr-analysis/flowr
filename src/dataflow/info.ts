@@ -1,6 +1,6 @@
 import type { DataflowProcessorInformation } from './processor';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { IdentifierReference } from './environments/identifier';
+import type { BrandedIdentifier, IdentifierReference } from './environments/identifier';
 import type { REnvironmentInformation } from './environments/environment';
 import { DataflowGraph } from './graph/graph';
 import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../util/diff';
@@ -26,6 +26,30 @@ export interface ControlDependency {
 	 * any file-exist assumptions made
 	 */
 	readonly file?:        string
+}
+
+/** Whether the two control dependencies trigger on the same condition and branch. */
+function sameControlDependency(a: ControlDependency, b: ControlDependency): boolean {
+	return a.id === b.id && a.when === b.when;
+}
+
+/** Appends the given control dependencies to `target`, skipping the ones that are already in there. */
+export function appendCds(target: ControlDependency[], toAdd: readonly ControlDependency[] | undefined): void {
+	if(!toAdd) {
+		return;
+	}
+	for(const add of toAdd) {
+		if(!target.some(have => sameControlDependency(have, add))) {
+			target.push(add);
+		}
+	}
+}
+
+/** A copy of `base` with `toAdd` appended, skipping the control dependencies that are already in there. */
+export function withCds(base: readonly ControlDependency[] | undefined, toAdd: readonly ControlDependency[] | undefined): ControlDependency[] {
+	const result = base ? Array.from(base) : [];
+	appendCds(result, toAdd);
+	return result;
 }
 
 /**
@@ -126,9 +150,9 @@ export type KillReference =
 	/** a statically known name (carries {@link IdentifierReference#cds|cds} for conditional removals) */
 	| { readonly kind: 'named', readonly reference: IdentifierReference }
 	/** the whole current scope is cleared, e.g., `rm(list = ls())` */
-	| { readonly kind: 'all', readonly cds?: readonly ControlDependency[] }
+	| { readonly kind: 'all', readonly cds?: readonly ControlDependency[], readonly except?: ReadonlySet<BrandedIdentifier> }
 	/** a not statically resolvable set of names, e.g., `rm(list = someVector)` */
-	| { readonly kind: 'unknown', readonly cds?: readonly ControlDependency[] };
+	| { readonly kind: 'unknown', readonly cds?: readonly ControlDependency[], readonly except?: ReadonlySet<BrandedIdentifier> };
 
 /** The control flow information for the current DataflowInformation. */
 export interface DataflowCfgInformation {
@@ -225,18 +249,23 @@ export function happensInEveryBranch(cds: readonly ControlDependency[] | undefin
 }
 
 function coversSet(cds: ReadonlySet<ControlDependency> | readonly ControlDependency[]) {
-	const trues = new Set();
-	const falses = new Set();
-
+	/* as deep as the surrounding branches, so the pairwise scan beats any set */
 	for(const { id, when } of cds) {
-		if(when) {
-			trues.add(id);
-		} else if(when === false){
-			falses.add(id);
+		if(when !== true && when !== false) {
+			continue;
+		}
+		let counterpart = false;
+		for(const other of cds) {
+			if(other.id === id && other.when === !when) {
+				counterpart = true;
+				break;
+			}
+		}
+		if(!counterpart) {
+			return false;
 		}
 	}
-
-	return trues.symmetricDifference(falses).size === 0;
+	return true;
 }
 
 /**

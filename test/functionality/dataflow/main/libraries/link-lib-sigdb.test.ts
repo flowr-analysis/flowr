@@ -527,4 +527,40 @@ describe('auto-attach the project\'s declared DESCRIPTION dependencies (solver.s
 		const { analyzer } = await analyzeProject(dir, linkDescConfig());
 		expect(analyzer.inspectContext().deps.getDependencies().map(d => d.name)).toContain('cranpkg');
 	});
+
+	describe('Packages attached alongside', () => {
+		/** `dependent` depends on `carrier`, and `tidyverse` stands for a meta-package attaching a core set */
+		function attachDb(): SigDatabase {
+			const b = new SigDbBuilder();
+			b.addPackage('carrier', { latest: '1.0.0' });
+			b.addVersion('carrier', '1.0.0', ver([expFn('carried')]));
+			b.addPackage('hidden', { latest: '1.0.0' });
+			b.addVersion('hidden', '1.0.0', ver([expFn('hiddenfn')]));
+			b.addPackage('dependent', { latest: '1.0.0' });
+			b.addVersion('dependent', '1.0.0', { ...ver([expFn('dependentfn')]),
+				dependencies: [{ name: 'carrier', type: DepType.Depends }, { name: 'hidden', type: DepType.Suggests }] });
+			b.addPackage('dplyr', { latest: '1.0.0' });
+			b.addVersion('dplyr', '1.0.0', ver([expFn('mutate')]));
+			b.addPackage('tidyverse', { latest: '2.0.0' });
+			b.addVersion('tidyverse', '2.0.0', { ...ver([expFn('tidyverse_update')]),
+				dependencies: [{ name: 'dplyr', type: DepType.Imports }] });
+			return SigDatabase.fromMemory(b.build({ date: '2026-05-23', generated: 0 }));
+		}
+
+		test(label('what a package depends on is attached with it, what it only suggests is not', ['library-loading', 'search-path'], ['dataflow']), async() => {
+			const { df } = await analyze(ts, 'library(dependent)\ncarried()\nhiddenfn()', attachDb());
+			expect(callResolvesTo(df, 'carried', 'carrier', 'carried')).toBe(true);
+			expect(callResolvesTo(df, 'hiddenfn', 'hidden', 'hiddenfn')).toBe(false);
+		});
+
+		test(label('a meta-package attaches the core set no metadata states', ['library-loading', 'search-path'], ['dataflow']), async() => {
+			const { df } = await analyze(ts, 'library(tidyverse)\nmutate(d)', attachDb());
+			expect(callResolvesTo(df, 'mutate', 'dplyr', 'mutate')).toBe(true);
+		});
+
+		test(label('loading a namespace attaches nothing alongside', ['library-loading', 'search-path'], ['dataflow']), async() => {
+			const { df } = await analyze(ts, 'requireNamespace("dependent")\ncarried()', attachDb());
+			expect(callResolvesTo(df, 'carried', 'carrier', 'carried')).toBe(false);
+		});
+	});
 }));

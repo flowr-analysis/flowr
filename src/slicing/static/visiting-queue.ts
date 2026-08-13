@@ -3,6 +3,12 @@ import type { NodeToSlice, SliceResult } from './slicer-types';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
+import type { ReadOnlyFlowrAnalyzerGasContext } from '../../project/context/flowr-analyzer-gas-context';
+import { GasFeatureKey, GasLevel, GasWikiRef } from '../../gas';
+import { slicerLogger } from './static-slicer';
+
+/** How many nodes the traversal visits between two {@link GasFeatureKey.Slicer|gas} checks. */
+const GasCheckEvery = 512;
 
 export class VisitingQueue {
 	private readonly threshold:      number;
@@ -18,11 +24,17 @@ export class VisitingQueue {
 	private cachedCallTargets:       Map<NodeId, Set<DataflowGraphVertexInfo>> = new Map();
 	/** whether the dataflow graph has a vertex for an id, i.e. whether the traversal could continue from it */
 	private readonly isGraphVertex?: (id: NodeId) => boolean;
+	private readonly gas?:           ReadOnlyFlowrAnalyzerGasContext;
+	private stoppedEarly            = false;
+	private untilGasCheck           = 0;
+	/** entries dequeued, see {@link SliceProgress} */
+	private visited                 = 0;
 
-	constructor(threshold: number, cache?: Map<Fingerprint, Set<NodeId>>, isGraphVertex?: (id: NodeId) => boolean) {
+	constructor(threshold: number, cache?: Map<Fingerprint, Set<NodeId>>, isGraphVertex?: (id: NodeId) => boolean, gas?: ReadOnlyFlowrAnalyzerGasContext) {
 		this.threshold = threshold;
 		this.cache     = cache;
 		this.isGraphVertex = isGraphVertex;
+		this.gas = gas;
 	}
 
 	/**
@@ -63,11 +75,29 @@ export class VisitingQueue {
 	}
 
 	public next(): NodeToSlice {
+		this.visited++;
 		return this.queue.pop() as NodeToSlice;
 	}
 
+	/** Whether there is anything left to visit, which the traversal is out of gas for as soon as it is exhausted. */
 	public nonEmpty(): boolean {
-		return this.queue.length > 0;
+		return this.queue.length > 0 && !this.outOfGas();
+	}
+
+	/**
+	 * The traversal is synchronous, so a caller can only bound it from within. Gas is polled every
+	 * {@link GasCheckEvery} nodes, which keeps even an enabled check off the per-node path.
+	 */
+	private outOfGas(): boolean {
+		if(this.gas === undefined || this.untilGasCheck-- > 0) {
+			return this.stoppedEarly;
+		}
+		this.untilGasCheck = GasCheckEvery - 1;
+		if(!this.stoppedEarly && this.gas.checkGas(GasFeatureKey.Slicer) >= GasLevel.Critical) {
+			this.stoppedEarly = true;
+			slicerLogger.warn(`slicing ran out of gas, the slice is incomplete (${GasWikiRef})`);
+		}
+		return this.stoppedEarly;
 	}
 
 	public hasId(id: NodeId): boolean {
@@ -81,10 +111,11 @@ export class VisitingQueue {
 		return this.cachedCallTargets.get(id) as Set<DataflowGraphVertexInfo>;
 	}
 
-	public status(): Readonly<Pick<SliceResult, 'timesHitThreshold' | 'result'>> {
+	public status(): Readonly<Pick<SliceResult, 'timesHitThreshold' | 'result' | 'stoppedEarly' | 'progress'>> {
 		return {
 			timesHitThreshold: this.timesHitThreshold,
-			result:            new Set([...this.seen.values(), ...this.seenByCache])
+			result:            new Set([...this.seen.values(), ...this.seenByCache]),
+			...(this.stoppedEarly ? { stoppedEarly: true, progress: { visited: this.visited, frontier: this.queue.length } } : {})
 		};
 	}
 }

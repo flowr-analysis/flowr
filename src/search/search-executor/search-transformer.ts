@@ -1,6 +1,6 @@
 import type { FlowrSearchElement, FlowrSearchElements, FlowrSearchTransformerNodeBase } from '../flowr-search';
 import type { LastOfArray, Tail2TypesOrUndefined, TailOfArray } from '../../util/collections/arrays';
-import { type FlowrFilterExpression, evalFilter } from '../flowr-search-filters';
+import { type FlowrFilterExpression, prepareFilter } from '../flowr-search-filters';
 import type { FlowrSearchGeneratorNode } from './search-generators';
 import { runSearch } from '../flowr-search-executor';
 import type { FlowrSearch } from '../flowr-search-builder';
@@ -145,8 +145,11 @@ async function getFilter<Elements extends FlowrSearchElement<ParentInformation>[
 		filter: FlowrFilterExpression
 	}): Promise<CascadeEmpty<Elements, Elements | []>> {
 	const dataflow = await data.dataflow();
+	// neither depends on the element, so build them once rather than n times
+	const test = prepareFilter(filter);
+	const shared = { dataflow };
 	return elements.mutate(
-		e => e.filter(e => evalFilter(filter, { element: e, data: { dataflow } })) as Elements
+		e => e.filter(e => test({ element: e, data: shared })) as Elements
 	) as unknown as CascadeEmpty<Elements, Elements | []>;
 }
 

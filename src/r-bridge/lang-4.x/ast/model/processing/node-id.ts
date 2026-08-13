@@ -19,6 +19,12 @@ export type BuiltIn<T extends string = string> = `built-in:${T}`;
  * The default ids are numeric, but we use a branded type to avoid confusion with other numeric types.
  * Custom ids or scoped ids can be strings, but they will be normalized to numbers if they are numeric strings.
  */
+/** whether the id starts as a number does, which `+id` alone does not tell: it turns a blank string into `0` */
+function startsNumeric(id: string): boolean {
+	const c = id.charCodeAt(0);
+	return c >= 48 && c <= 57 /* 0-9 */ || c === 45 /* - */ || c === 43 /* + */ || c === 46 /* . */;
+}
+
 export const NodeId = {
 	name: 'NodeId',
 	/**
@@ -26,9 +32,7 @@ export const NodeId = {
 	 * This allows us to use numeric ids without storing them as strings, while still allowing custom string ids if needed.
 	 */
 	normalize(this: void, id: NodeId): NodeId {
-		// check if string is number
-		if(typeof id === 'string') {
-			/* typescript is a beautiful converter */
+		if(typeof id === 'string' && startsNumeric(id)) {
 			const num = +id;
 			if(!Number.isNaN(num)) {
 				return num;

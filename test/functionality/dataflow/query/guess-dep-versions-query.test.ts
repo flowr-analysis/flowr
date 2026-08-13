@@ -782,6 +782,69 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		}
 	});
 
+	test('the assumed R version says where it comes from', async() => {
+		const scenario: GuessScenario = {
+			code:     'library(pkgA)\nfa(x)',
+			packages: { pkgA: { versions: { '1.0.0': { date: '2020-01-01', fns: { fa: ['x'] } } } } },
+			query:    { packages: ['pkgA'] }
+		};
+		const detected = await runGuess(ts, scenario);
+		// nothing states an R version, so none is assumed and none is reported
+		expect(detected.rVersion).toBeUndefined();
+		expect(detected.rVersionOrigin).toBeUndefined();
+		const pinned = await runGuess(ts, { ...scenario, config: assumedR('4.0.5') });
+		expect(pinned.rVersion).toBe('4.0.5');
+		expect(pinned.rVersionOrigin).toBe('config');
+	});
+
+	test('a requirement on a package outside the assignment is reported instead of silently passing', async() => {
+		// pkgA needs helper, which is neither declared nor used, so nothing here can settle that requirement
+		const scenario: GuessScenario = {
+			code:     'library(pkgA)\nfa(x)',
+			packages: {
+				pkgA:   { versions: { '1.0.0': { date: '2020-01-01', fns: { fa: ['x'] }, deps: { helper: '>= 2.0.0' } } } },
+				helper: { versions: { '1.0.0': { date: '2020-01-01', fns: { fh: [] } } } }
+			},
+			query: { packages: ['pkgA'], explode: {} }
+		};
+		const assignments = (await runGuess(ts, scenario)).assignments;
+		expect(assignments?.[0].versions).toEqual({ pkgA: '1.0.0' });
+		expect(assignments?.[0].unverified).toEqual(['pkgA 1.0.0 requires helper >= 2.0.0']);
+	});
+
+	test('a suggested package neither rejects an assignment nor counts as unverified', async() => {
+		const scenario: GuessScenario = {
+			code:     'library(pkgA)\nlibrary(pkgB)\nfa(x)\nfb(y)',
+			packages: {
+				pkgA: { versions: { '1.0.0': { date: '2020-01-01', fns: { fa: ['x'] }, suggests: { pkgB: '>= 2.0.0' } } } },
+				pkgB: { versions: { '1.0.0': { date: '2020-01-01', fns: { fb: ['y'] } } } }
+			},
+			query: { packages: ['pkgA', 'pkgB'], explode: {} }
+		};
+		const assignments = (await runGuess(ts, scenario)).assignments;
+		expect(assignments).toEqual([{ versions: { pkgA: '1.0.0', pkgB: '1.0.0' } }]);
+	});
+
+	test('a package nothing narrows says so, so its range is not read as a constraint', async() => {
+		const scenario: GuessScenario = {
+			code:     'library(pkgA)\nfa(x)',
+			packages: { pkgA: { versions: {
+				'1.0.0': { date: '2020-01-01', fns: { fa: ['x'] } },
+				'2.0.0': { date: '2021-01-01', fns: { fa: ['x'] } }
+			} } },
+			query: { packages: ['pkgA'] }
+		};
+		expect((await guessDep(ts, scenario, 'pkgA'))?.constrained).toBe(false);
+		// the parameter `x` only exists from 2.0.0, so naming it narrows the guess
+		const narrowed: GuessScenario = { ...scenario, code:     'library(pkgA)\nfa(x = 1)', packages: { pkgA: { versions: {
+			'1.0.0': { date: '2020-01-01', fns: { fa: ['other'] } },
+			'2.0.0': { date: '2021-01-01', fns: { fa: ['x'] } }
+		} } } };
+		const dep = await guessDep(ts, narrowed, 'pkgA');
+		expect(dep?.constrained).toBeUndefined();
+		expect(dep?.range).toBe('2.0.0');
+	});
+
 	test('without a signature database the query explains why it cannot guess', async() => {
 		const res = await runGuess(ts, {
 			code:     'library(dplyr)',
@@ -806,9 +869,13 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 			expect(dep).toBeDefined();
 			expect(dep?.orphan).toBe(true);
 			expect(dep?.orphanFunctions).toEqual(['ggplot']);
+			// why it counts as an orphan: where the undefined call is and why ggplot2 got it
+			expect(dep?.orphanEvidence).toEqual([{ function: 'ggplot', location: '1:1', reason: 'builtin', exporters: 1 }]);
 			expect(dep?.used).toBe(true);
 			expect(dep?.minVersion).toBe('3.0.0');
 			expect(boundsFrom(dep, 'signature')).toContain('>=3.0.0');
+			// why that bound: the call supplying `data` in line 1
+			expect(dep?.evidence.find(e => e.source === 'signature' && e.parameter === 'data')?.location).toBe('1:1');
 		});
 
 		test('the ascii summary tells the reader to attach the inferred library', async() => {
@@ -820,6 +887,7 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 			const ascii = await asciiSummaryOfQueryResult(ansiFormatter, 0, await executeQueries({ analyzer }, q), analyzer, q);
 			expect(ascii).toContain('orphan');
 			expect(ascii).toContain('library(ggplot2)');
+			expect(ascii).toContain('ggplot() at 1:1 resolves to no definition');
 		});
 
 		test('the curated map disambiguates a name several packages export (ggplot -> ggplot2)', async() => {

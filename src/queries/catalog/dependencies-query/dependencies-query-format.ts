@@ -8,6 +8,7 @@ import { executeDependenciesQuery } from './dependencies-query-executor';
 import type { FunctionInfo } from './function-info/function-info';
 import { LibraryFunctions } from './function-info/library-functions';
 import { SourceFunctions } from './function-info/source-functions';
+import { RemoteFunctions, remoteTarget } from './function-info/remote-functions';
 import { ReadFunctions } from './function-info/read-functions';
 import { WriteFunctions } from './function-info/write-functions';
 import { VisualizeFunctions } from './function-info/visualize-functions';
@@ -27,7 +28,10 @@ import { CallProp } from '../../../dataflow/environments/built-in-props';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 
+/** The value could not be resolved, e.g. a path assembled at runtime. Such a dependency may be missing or fetchable. */
 export const Unknown = 'unknown';
+/** The value resolved, but to data given inline rather than to a path (`matrix(0, 2, 2)`, `data.frame(a = 1)`). */
+export const Constant = 'constant';
 
 export interface DependencyCategorySettings {
 	queryDisplayName?:   string
@@ -69,6 +73,20 @@ export const DefaultDependencyCategories = {
 						});
 					}
 				});
+			}
+		}
+	},
+	'remote': {
+		queryDisplayName:   'Remote Installs',
+		functions:          RemoteFunctions,
+		defaultValue:       Unknown,
+		/* the value is the reference as written, which names the package only implicitly */
+		additionalAnalysis: (_data, _ignoreDefault, _functions, _queryResults, result) => {
+			for(const [at, info] of result.entries()) {
+				const target = remoteTarget(info.value);
+				if(target !== undefined) {
+					result[at] = { ...info, ...target };
+				}
 			}
 		}
 	},
@@ -146,13 +164,28 @@ export interface DependencyInfo extends Record<string, unknown>{
 	/** the called name; an {@link Identifier}, so a namespaced call like `maps::map` keeps its package */
 	functionName:        Identifier
 	linkedIds?:          readonly NodeId[]
-	/** the lexeme is presented whenever the specific info is of {@link Unknown} */
+	/**
+	 * The other statements that build this output: for a plot, the addons drawn onto it and, when it lands in a
+	 * file, the device opener and closer around it. Answers *which statements produce this output* without
+	 * rebuilding it from {@link linkedIds}.
+	 */
+	parts?:              readonly NodeId[]
+	/**
+	 * the argument the value was read from, under the id the {@link InputSourcesQuery} reports it with: ask that
+	 * query about {@link nodeId} and this entry of its answer says whether the value is a glob, a prompt, ...
+	 */
+	argumentId?:         NodeId
+	/** the lexeme is presented whenever the specific info is {@link Unknown} or {@link Constant} */
 	lexemeOfArgument?:   string;
 	/** The library name, file, source, destination etc. being sourced, read from, or written to. */
 	value?:              string
 	versionConstraints?: readonly Range[],
 	derivedRange?:       Range,
 	namespaceInfo?:      NamespaceInfo,
+	/** the package the dependency provides, when the {@link value} names it only implicitly (a `user/repo` slug, a clone url) */
+	packageName?:        string
+	/** the revision such a reference pins, the `v1.2` of `user/repo@v1.2` */
+	revision?:           string
 }
 
 function printResultSection(title: string, infos: DependencyInfo[], result: string[], formatter: OutputFormatter): void {
@@ -163,7 +196,9 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 	// one line per dependency: the value (package/file) up front, its function + node as a faint provenance suffix
 	for(const i of infos) {
 		const fn = Identifier.getName(i.functionName);
-		const value = i.value !== undefined ? bold(i.value, formatter) : faint('<unresolved>', formatter);
+		/* neither names a resource: inline data is resolved but no path, `unknown` is a path we could not resolve */
+		const stands = i.value === Constant ? '<inline data>' : i.value === Unknown || i.value === undefined ? '<unresolved>' : undefined;
+		const value = stands !== undefined ? faint(stands, formatter) : bold(i.value as string, formatter);
 		const version = i.derivedRange !== undefined ? ` ${faint(i.derivedRange.format(), formatter)}` : '';
 		const linked = i.linkedIds ? `, linked ${i.linkedIds.join(', ')}` : '';
 		result.push(`     ${value}${version} ${faint(`via ${fn} (node ${i.nodeId}${linked})`, formatter)}`);

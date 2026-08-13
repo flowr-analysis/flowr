@@ -14,10 +14,7 @@ import { FlowrAnalyzerPackageVersionsSigDbPlugin } from '../project/plugins/pack
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { FlowrAnalyzerDependenciesContext } from '../project/context/flowr-analyzer-dependencies-context';
 import type { KnownParser } from '../r-bridge/parser';
-
-function cranDatabaseAvailable(): boolean {
-	return defaultSigDbPath('current') !== undefined || defaultSigDbPath('full') !== undefined;
-}
+import { warnMissingSigDb } from './doc-util/doc-sigdb';
 
 /** point the resolver at your own database (a file path or manifest) */
 function usePackageDatabase(parser: KnownParser) {
@@ -210,8 +207,7 @@ export class WikiSignatureDatabase extends DocMaker<'wiki/Signature Database.md'
 	 * leaves the committed page untouched, so the workflow reports no change and publishes nothing.
 	 */
 	public override async make(args: Parameters<DocMaker<'wiki/Signature Database.md'>['make']>[0]): Promise<boolean> {
-		if(!cranDatabaseAvailable()) {
-			console.log(`  [${this.getTarget()}] skipped: no CRAN sigdb present (not downloaded); keeping the committed page`);
+		if(warnMissingSigDb(this.getTarget())) {
 			return false;
 		}
 		return super.make(args);

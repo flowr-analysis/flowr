@@ -7,6 +7,7 @@ import type {
 import { availableVersionEntries, getSharedSigSourceSync, SigDatabaseSet, type AvailableVersion, type PackageSignatureSource, type ShardStatus } from '../../../project/sigdb/reader';
 import { isDateBound, releaseDateBound } from '../../../project/sigdb/sigdb-version';
 import { DepType, DepTypeNames, type LibraryExports } from '../../../project/sigdb/schema';
+import { attachedAlongside } from '../../../project/attached-packages';
 import { defaultSigDbPaths } from '../../../project/sigdb/manifest';
 import type { DecodedFunction } from '../../../project/sigdb/decode';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
@@ -251,9 +252,13 @@ function flowrOnlyFunctionInfo(env: REnvironmentInformation | undefined, pkg: st
 	if(info === undefined || (info.props === undefined && info.sig === undefined)) {
 		return undefined;
 	}
+	const namespace = definition.name === undefined ? undefined : Identifier.getNamespace(definition.name);
+	if(pkg !== undefined && namespace !== undefined && namespace !== pkg) {
+		return undefined;
+	}
 	return {
 		name,
-		package:    pkg ?? (definition.name === undefined ? undefined : Identifier.getNamespace(definition.name)) ?? 'base',
+		package:    namespace ?? pkg ?? 'base',
 		flowrOnly:  true,
 		exported:   true,
 		properties: [],
@@ -476,6 +481,7 @@ export function signaturePackageInfo(src: PackageSignatureSource, pkg: string, r
 	const deps = (src.dependencies(pkg, resolved) ?? src.dependencies(pkg) ?? [])
 		.map(d => ({ type: DepTypeNames[d.type], name: d.name, ...(d.constraint ? { constraint: d.constraint } : {}) }));
 	const release = src.releaseDate(pkg, resolved);
+	const attaches = attachedAlongside(pkg, [src], resolved);
 	return {
 		name:          pkg,
 		version:       exports.version,
@@ -492,6 +498,7 @@ export function signaturePackageInfo(src: PackageSignatureSource, pkg: string, r
 		deprecated:    exports.deprecated,
 		...(base && src.coreVersions(pkg) ? { coreVersions: src.coreVersions(pkg)?.map(v => v.str) } : {}),
 		dependencies:  deps,
+		...(attaches.length > 0 ? { attaches } : {}),
 		functions:     fns.map(f => decodedToView(pkg, f, exports.version, { cran: exports.cran, base }))
 	};
 }

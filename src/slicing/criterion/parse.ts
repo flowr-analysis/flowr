@@ -11,10 +11,7 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 /** An optional `(file-regex)` suffix restricting a criterion to nodes stemming from a matching file. */
 type FileFilterSuffix = '' | `(${string})`;
 
-/**
- * Either `line:column`, `line~column`, `line@variable-name`, or `$id`; all but `$id` accept a trailing
- * `(file-regex)`. See {@link SlicingCriterion.tryParse} for what each of them resolves to.
- */
+/** see {@link SlicingCriterion.tryParse} for what each of these formats resolves to */
 export type SlicingCriterion = `${number}:${number}${FileFilterSuffix}` | `${number}~${number}${FileFilterSuffix}`
 	| `${number}^${FileFilterSuffix}` | `${number}@${string}` | `$${NodeId | number}`;
 
@@ -30,10 +27,17 @@ export const SlicingCriterion = {
 	 * @see {@link SlicingCriterion.parse} to parse a slicing criterion to a node ID
 	 */
 	isValid(this: void, criterion: unknown): criterion is SlicingCriterion {
-		return typeof criterion === 'string' && /^(-?\d+([:~]\d+|\^|@.+)|\$.+)$/.test(criterion);
+		if(typeof criterion !== 'string') {
+			return false;
+		} else if(criterion.startsWith('$')) {
+			return criterion.length > 1;
+		}
+		/* the file filter is optional on every form, so validate what remains once it is split off */
+		const split = splitFileFilter(criterion);
+		return split !== undefined && /^-?\d+([:~]\d+|\^|@.+)$/.test(split.rest);
 	},
 	/**
-	 * Takes a criterion in the form of `line:column`, `line~column`, or `line@variable-name` and returns the corresponding node id
+	 * Resolves a slicing criterion to the corresponding node id.
 	 * @see {@link SlicingCriterion.tryParse} for a version that does not throw an error
 	 */
 	parse(this: void, criterion: SlicingCriterion, idMap: AstIdMap): NodeId {
@@ -45,22 +49,8 @@ export const SlicingCriterion = {
 	},
 	/**
 	 * Tries to resolve a slicing criterion to an id, but does not throw an error if it fails.
-	 *
-	 * | Criterion | Resolves to |
-	 * | --------- | ----------- |
-	 * | `2@x`      | `x` in line 2, preferring a call over the symbol it refers to |
-	 * | `2@[3]x`   | the 3rd occurrence of `x` in line 2 (by column); `[-1]` for the last |
-	 * | `2:5`      | the element *starting* at line 2, column 5 |
-	 * | `2~5`      | the innermost element *containing* line 2, column 5 |
-	 * | `2^`       | the top-level statement line 2 belongs to, the first one when several share the line |
-	 * | `$42`      | the node with the normalized id 42 |
-	 *
-	 * A negative line counts from the end of the input (`-1` being the last line). Every criterion but `$id`
-	 * accepts a trailing `(file-regex)` (e.g. `2@x(tmp/.*)`) restricting it to a matching file.
-	 *
-	 * Lines, columns, and the `[n]` occurrence are all *1-based*, so a `0` anywhere (`2:0`, `0@x`, `2@[0]x`)
-	 * addresses nothing and resolves to `undefined` -- it is not a wildcard for the whole line. A criterion
-	 * always denotes at most a single node; use one criterion per node to select several.
+	 * The formats and what each of them resolves to are documented in the
+	 * {@link https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion|wiki}.
 	 * @see {@link SlicingCriterion.parse} for the version that throws an error
 	 */
 	tryParse(this: void, criterion: SlicingCriterion | NodeId, idMap: AstIdMap): NodeId | undefined {
@@ -104,10 +94,7 @@ export const SlicingCriterion = {
 	}
 } as const;
 
-/**
- * A slicing criterion is a list of single slicing criteria, which can be in the form of `line:column`,
- * `line~column`, `line@variable-name`, or `$id`.
- */
+/** several {@link SlicingCriterion}s, all of which are sliced for at once */
 export type SlicingCriteria = SlicingCriterion[];
 
 
@@ -219,10 +206,11 @@ function topLevelStatementToId<OtherInfo>(line: number, idMap: AstIdMap<OtherInf
 
 /**
  * Splits the optional trailing `(file-regex)` off a criterion (e.g. `2@x(tmp/.*)`), which restricts it to nodes
- * originating from a matching file. Returns `undefined` if the regex is malformed.
+ * originating from a matching file. The regex may contain escaped parentheses (`3^(a\(b\)\.R)`).
+ * Returns `undefined` if the regex is malformed.
  */
 function splitFileFilter(criterion: string): { rest: string, file: RegExp | undefined } | undefined {
-	const match = /^(.*)\(([^()]*)\)$/.exec(criterion);
+	const match = /^([^()]*)\(((?:\\.|[^()])*)\)$/.exec(criterion);
 	if(match === null) {
 		return { rest: criterion, file: undefined };
 	}

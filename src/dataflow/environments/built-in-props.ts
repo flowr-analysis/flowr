@@ -93,7 +93,18 @@ export enum CallProp {
 	 * argument marked {@link ArgProp.Bounds}. So nothing an argument carries reaches the result, which is what
 	 * lets the input-sources query stop tracing at `length(x)` or `match.arg(arg, choices)`.
 	 */
-	Narrows   = 1 << 22
+	Narrows   = 1 << 22,
+	/**
+	 * sets ambient state later calls read back: the working directory, environment variables, options, the
+	 * locale, the RNG seed. The counterpart of {@link CallProp.Ambient}; a call doing both states both.
+	 */
+	Configures = 1 << 23,
+	/** ends what an opener started: a graphics device, a connection, a sink. Narrower than {@link CallProp.Graphics}. */
+	Closes     = 1 << 24,
+	/** yields the paths it matches at run time rather than one it was handed (`list.files`, `Sys.glob`); empty is an answer */
+	Glob       = 1 << 25,
+	/** hands back what the program was invoked with, as `commandArgs` and the option parsers built on it do */
+	CommandLine = 1 << 26
 }
 
 /**
@@ -102,7 +113,8 @@ export enum CallProp {
  */
 export const ImpureProps = CallProp.MayPure | CallProp.Scope | CallProp.NonDet | CallProp.Random | CallProp.Ambient
 	| CallProp.File | CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang
-	| CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes | CallProp.Prints;
+	| CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes | CallProp.Prints
+	| CallProp.Configures | CallProp.Closes | CallProp.CommandLine;
 
 /**
  * Which {@link CallProp} bits rule each other out, as `[bit, everything stating it forbids]`. A definition
@@ -121,7 +133,8 @@ export const ExclusiveCallProps: readonly (readonly [bit: CallProp, forbidden: C
  * looks for.
  */
 export const InputProps = CallProp.NonDet | CallProp.Random | CallProp.Ambient | CallProp.File
-	| CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang | CallProp.User;
+	| CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang | CallProp.User
+	| CallProp.CommandLine;
 
 /**
  * The {@link CallProp} bits the signature database states itself, so {@link fnInfoFromSignature} can read them
@@ -141,7 +154,8 @@ export const FileInputProps = CallProp.File | CallProp.Reads;
  */
 export const PropagatedProps = CallProp.Throws | CallProp.Scope | CallProp.NonDet | CallProp.Prints
 	| CallProp.Random | CallProp.Ambient | CallProp.File | CallProp.TempFile | CallProp.Network | CallProp.Process
-	| CallProp.Ffi | CallProp.Lang | CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes;
+	| CallProp.Ffi | CallProp.Lang | CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes
+	| CallProp.Configures | CallProp.CommandLine;
 
 /** a bitfield of {@link ArgProp} */
 export type ArgProps = number;
@@ -154,6 +168,19 @@ export type CallProps = number;
  * by their full name only.
  */
 export type FnSig = [name: string, props: ArgProps][];
+
+/**
+ * Utility functions for {@link FnSig|function signatures}.
+ */
+export const FnSig = {
+	name:    'FnSig',
+	/** The positional view of a signature; see {@link sigLayout}. */
+	layout:  sigLayout,
+	/** The roles of the argument at a position; see {@link argProp}. */
+	propAt:  argProp,
+	/** The positions carrying any of the given roles; see {@link argsWith}. */
+	posWith: argsWith
+} as const;
 
 /**
  * Semantics of a built-in that hold no matter which processor handles the call. The remaining facts already
@@ -185,7 +212,7 @@ const layouts = new WeakMap<FnSig, SigLayout>();
  * The positional view of a {@link FnSig}, computed on first use and cached per signature object,
  * so declaring a signature costs nothing until a call actually needs it.
  */
-export function sigLayout(sig: FnSig): SigLayout {
+function sigLayout(this: void, sig: FnSig): SigLayout {
 	let layout = layouts.get(sig);
 	if(layout === undefined) {
 		const props = sig.map(p => p[1]);
@@ -201,15 +228,15 @@ export function sigLayout(sig: FnSig): SigLayout {
 }
 
 /** The {@link ArgProp} bits of the argument at `index`, with `...` covering every position from where it appears. */
-export function argProp({ props, rest }: SigLayout, index: number): ArgProps {
+function argProp(this: void, { props, rest }: SigLayout, index: number): ArgProps {
 	return (rest >= 0 && index >= rest ? props[rest] : props[index]) ?? 0;
 }
 
 /** The positions of the first `count` arguments that carry any of `prop`. */
-export function argsWith(layout: SigLayout, count: number, prop: ArgProps): number[] {
+function argsWith(this: void, layout: SigLayout, count: number, prop: ArgProps): number[] {
 	const found: number[] = [];
 	for(let i = 0; i < count; i++) {
-		if((argProp(layout, i) & prop) !== 0) {
+		if((FnSig.propAt(layout, i) & prop) !== 0) {
 			found.push(i);
 		}
 	}

@@ -3,9 +3,9 @@ import { codeBlock } from './doc-util/doc-code';
 import {
 	FlowrCodecovRef,
 	FlowrGithubBaseRef,
-	FlowrSiteBaseRef,
 	FlowrWikiBaseRef,
 	getFilePathMd,
+	linkFlowRSourceFile,
 	RemoteFlowrFilePathBaseRef
 } from './doc-util/doc-files';
 import { block } from './doc-util/doc-structure';
@@ -24,7 +24,7 @@ export class WikiLintingAndTesting extends DocMaker<'wiki/Linting and Testing.md
 	protected text({ ctx }: DocMakerArgs): string {
 		return `
 For the latest code coverage information, see [codecov.io](${FlowrCodecovRef}), 
-for the latest benchmark results, see the [benchmark results](${FlowrSiteBaseRef}/wiki/stats/benchmark) wiki page.
+for the latest benchmark results, see the ${ctx.linkPage('flowr:benchmarks', 'benchmark results')} wiki page.
 
 - [🏨 Testing Suites](#testing-suites)
   - [🧪 Functionality Tests](#functionality-tests)
@@ -88,7 +88,7 @@ It is up to the [ci](#ci-pipeline) to run the tests on different systems to ensu
 <a id='test-structure'></a>
 #### 🏗️ Test Structure
 
-All functionality tests are to be located under [test/functionality](${RemoteFlowrFilePathBaseRef}/test/functionality).
+All functionality tests are to be located under [test/functionality](${RemoteFlowrFilePathBaseRef}test/functionality).
 
 This folder contains three special and important elements:
 
@@ -127,7 +127,7 @@ and it is probably best to have a look at existing tests in that area to get an 
 Various helper functions are available to ease in writing tests with common behaviors, like testing for dataflow, slicing or query results. 
 These can be found in [the \`_helper\` subdirectory](${RemoteFlowrFilePathBaseRef}test/functionality/_helper).
 
-For example, an [existing test](${RemoteFlowrFilePathBaseRef}test/functionality/dataflow/processing-of-elements/atomic/dataflow-atomic.test.ts) that tests the dataflow graph of a simple variable looks like this:
+For example, an [existing test](${RemoteFlowrFilePathBaseRef}test/functionality/dataflow/main/atomic/dataflow-atomic.test.ts) that tests the dataflow graph of a simple variable looks like this:
 ${codeBlock('typescript', `
 assertDataflow(label('simple variable', ['name-normal']), shell,
 	'x', emptyGraph().use('0', 'x')
@@ -186,7 +186,7 @@ To run them, issue:
 
 ${codeBlock('shell', 'npm run performance-test')}
 
-See [test/performance](${RemoteFlowrFilePathBaseRef}test/performance) for more information on the suites, how to run them, and their results. If you are interested in the results of the benchmarks, see [here](${FlowrSiteBaseRef}/wiki/stats/benchmark).
+See ${linkFlowRSourceFile('test/performance')} for more information on the suites, how to run them, and their results. If you are interested in the results of the benchmarks, see ${ctx.linkPage('flowr:benchmarks', 'here')}.
 
 <a id='testing-within-your-ide'></a>
 ### 📝 Testing Within Your IDE
@@ -214,18 +214,18 @@ Otherwise, the tests will not be instantiated.
 <a id='ci-pipeline'></a>
 ## 🪈 CI Pipeline
 
-We have several workflows defined in [.github/workflows](${RemoteFlowrFilePathBaseRef}/.github/workflows/).
+We have several workflows defined in ${linkFlowRSourceFile('.github/workflows')}.
 We explain the most important workflows in the following:
 
-- [qa.yaml](${RemoteFlowrFilePathBaseRef}/.github/workflows/qa.yaml) is the main workflow that will run different steps depending on several factors. It is responsible for:
+- ${linkFlowRSourceFile('.github/workflows/qa.yaml')} is the main workflow that will run different steps depending on several factors. It is responsible for:
   - running the [functionality](#functionality-tests) and [performance tests](#performance-tests)
-    - uploading the results to the [benchmark page](${FlowrSiteBaseRef}/wiki/stats/benchmark) for releases
+    - uploading the results to the ${ctx.linkPage('flowr:benchmarks', 'benchmark page')} for releases
     - running the [functionality tests](#functionality-tests) on different operating systems (Windows, macOS, Linux) and with different versions of R
     - reporting code coverage
   - running the [linter](#linting) and reporting its results
-  - deploying the documentation to [GitHub Pages](${FlowrSiteBaseRef}/doc/)
-- [release.yaml](${RemoteFlowrFilePathBaseRef}/.github/workflows/release.yaml) is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to ${ctx.linkPage('flowr:docker', 'docker hub')}.
-- [broken-links-and-wiki.yaml](${RemoteFlowrFilePathBaseRef}/.github/workflows/broken-links-and-wiki.yaml) repeatedly tests that all links are not dead!
+  - deploying the documentation to ${ctx.linkPage('flowr:docs', 'GitHub Pages')}
+- ${linkFlowRSourceFile('.github/workflows/release.yaml')} is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to ${ctx.linkPage('flowr:docker', 'docker hub')}.
+- ${linkFlowRSourceFile('.github/workflows/broken-links-and-wiki.yaml')} repeatedly tests that all links are not dead!
  
 <a id='linting'></a>
 ## 🧹 Linting
@@ -235,11 +235,11 @@ The main one:
 
 ${codeBlock('shell', 'npm run lint')}
 
-And a weaker version of the first (allowing for *todo* comments) which is run automatically in the [pre-push githook](${RemoteFlowrFilePathBaseRef}/.githooks/pre-push) as explained in the [CONTRIBUTING.md](${RemoteFlowrFilePathBaseRef}/.github/CONTRIBUTING.md):
+And a weaker version of the first (allowing for *todo* comments) which is run automatically in the [pre-push githook](${RemoteFlowrFilePathBaseRef}.githooks/pre-push) as explained in the [CONTRIBUTING.md](${RemoteFlowrFilePathBaseRef}.github/CONTRIBUTING.md):
 
 ${codeBlock('shell', 'npm run lint-local')}
 
-Besides checking coding style (as defined in the [package.json](${RemoteFlowrFilePathBaseRef}/package.json)), the *full* linter runs the [license checker](#license-checker).
+Besides checking coding style (as defined in the [package.json](${RemoteFlowrFilePathBaseRef}package.json)), the *full* linter runs the [license checker](#license-checker).
 
 In case you are unaware,
 eslint can automatically fix several linting problems[](https://eslint.org/docs/latest/use/command-line-interface#fix-problems).
@@ -259,7 +259,7 @@ However, in case you think that the linter is wrong, please do not hesitate to o
 <a id='license-checker'></a>
 ### 🪪 License Checker
 
-*flowR* is licensed under the [GPLv3 License](${FlowrGithubBaseRef}/flowr/blob/main/LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [\`license-compat\`](${RemoteFlowrFilePathBaseRef}/package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](${FlowrGithubBaseRef}/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).
+*flowR* is licensed under the [GPLv3 License](${FlowrGithubBaseRef}/flowr/blob/main/LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [\`license-compat\`](${RemoteFlowrFilePathBaseRef}package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](${FlowrGithubBaseRef}/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).
 
 <a id='debugging'></a>
 ## 🐛 Debugging

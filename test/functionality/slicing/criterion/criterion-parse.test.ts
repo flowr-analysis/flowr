@@ -120,11 +120,13 @@ describe('Slicing criteria', withTreeSitter(ts => {
 	});
 
 	describe('isValid', () => {
-		test.each(['2:5', '2~5', '2^', '-1^', '2@x', '2@[2]x', '-1@x', '2@x(tmp/.*)', '$42'])('accepts %s', criterion => {
+		test.each(['2:5', '2~5', '2^', '-1^', '2@x', '2@[2]x', '-1@x', '$42',
+			/* the file filter is legal on every form, not just on `@` */
+			'2@x(tmp/.*)', '12^(a$)', '2:5(a$)', '2~5(a$)', '2^(a\\(b\\)\\.R)'])('accepts %s', criterion => {
 			expect(SlicingCriterion.isValid(criterion)).toBe(true);
 		});
 
-		test.each(['nonsense', 'xx2@y', '2', '', '@x'])('rejects %s', criterion => {
+		test.each(['nonsense', 'xx2@y', '2', '', '@x', '2^([)'])('rejects %s', criterion => {
 			expect(SlicingCriterion.isValid(criterion)).toBe(false);
 		});
 	});
@@ -174,6 +176,18 @@ describe('Slicing criteria', withTreeSitter(ts => {
 			expect(inA?.info.file).toMatch(/a\.R$/);
 			expect(inB?.info.file).toMatch(/b\.R$/);
 			expect(inA?.info.id).not.toBe(inB?.info.id);
+		});
+
+		test('parentheses escaped for the regex belong to the filter, not to the criterion', async() => {
+			const idMap = await multiFileIdMap();
+			expect(nodeOf('1:1(a\\.R$|x\\(y\\))', idMap)?.info.file).toMatch(/a\.R$/);
+		});
+
+		test('works on the forms other than line@name', async() => {
+			const idMap = await multiFileIdMap();
+			for(const criterion of ['1^(b\\.R$)', '1:1(b\\.R$)', '1~1(b\\.R$)'] as const) {
+				expect(nodeOf(criterion, idMap)?.info.file, criterion).toMatch(/b\.R$/);
+			}
 		});
 
 		test('a file that matches nothing resolves to nothing', async() => {

@@ -200,10 +200,13 @@ export interface DataflowGraphJson {
  * Linked side effects are used whenever we know that a call may be affected by another one in a way that we cannot
  * grasp from the dataflow perspective (e.g., an indirect dependency based on the currently active graphic device).
  */
-export type UnknownSideEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> };
+export type UnknownSideEffect = NodeId | LinkedUnknownSideEffect;
 
 /** A {@link UnknownSideEffect} that carries a {@link LinkTo} target. */
-export type LinkedUnknownSideEffect = { id: NodeId, linkTo: LinkTo<RegExp> };
+export interface LinkedUnknownSideEffect {
+	readonly id:     NodeId,
+	readonly linkTo: LinkTo<RegExp>
+}
 
 /**
  * Helpers for the {@link UnknownSideEffect} union, which is either a plain {@link NodeId} or a
@@ -269,8 +272,9 @@ export class DataflowGraph<
 	private vertexInformation: DataflowGraphVertices<Vertex> = new Map<NodeId, Vertex>();
 	/** All edges in the complete graph (including those nested in function definition) */
 	private edgeInformation:   Map<NodeId, OutgoingEdges<Edge>> = new Map<NodeId, OutgoingEdges<Edge>>();
-	/* the reverse of `edgeInformation`, built on demand and dropped whenever an edge is added: rebuilding it per
-	 * lookup made every caller asking for the ingoing edges of many nodes scan the whole graph once per node */
+	/* the reverse of `edgeInformation`, built on demand, then kept up to date by `addEdge` and dropped only on a
+	 * bulk write (`mergeEdges`, `fromJson`): rebuilding it per lookup made every caller asking for the ingoing
+	 * edges of many nodes scan the whole graph once per node */
 	private incomingIndex?:    Map<NodeId, IngoingEdges<Edge>>;
 
 	private readonly types: Map<Vertex['tag'], NodeId[]> = new Map<Vertex['tag'], NodeId[]>();
@@ -475,19 +479,29 @@ export class DataflowGraph<
 		if(fromId === toId) {
 			return this;
 		}
-		this.incomingIndex = undefined;
+		const fromEdges = this.edgeInformation.get(fromId);
+		const existing = fromEdges?.get(toId);
+		if(existing !== undefined) {
+			/* the reverse index holds this very object, so a widened type is already visible through it */
+			existing.types |= type;
+			return this;
+		}
 
-		let fromEdges = this.edgeInformation.get(fromId);
+		const added = { types: type } as Edge;
 		if(fromEdges === undefined) {
-			fromEdges = new Map([[toId, { types: type } as Edge]]);
-			this.edgeInformation.set(fromId, fromEdges);
+			this.edgeInformation.set(fromId, new Map([[toId, added]]));
 		} else {
-			const existing = fromEdges.get(toId);
-			if(existing === undefined) {
-				fromEdges.set(toId, { types: type } as Edge);
-			} else {
-				existing.types |= type;
-			}
+			fromEdges.set(toId, added);
+		}
+		/*
+		 * carry the new edge into the reverse index rather than dropping it: construction interleaves `addEdge`
+		 * with `ingoingEdges`, and rebuilding costs a pass over every edge in the graph each time
+		 */
+		const into = this.incomingIndex?.get(toId);
+		if(into !== undefined) {
+			into.set(fromId, added);
+		} else {
+			this.incomingIndex?.set(toId, new Map([[fromId, added]]));
 		}
 		return this;
 	}

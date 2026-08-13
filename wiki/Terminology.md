@@ -27,9 +27,12 @@ Weiser originally defined it as a combination of a line number and a set of vari
 | `line@[n]variable` | `12@[2]product` | the `n`-th occurrence of the variable in that line, counted from the left (`12@[1]product` being the leftmost). Use a negative `n` to count from the right, `12@[-1]product` being the last one. |
 | `line:column`      | `12:5`          | a single variable or point in the program that *starts* at the given point.                                                                                                                     |
 | `line~column`      | `12~5`          | the innermost element that *contains* the given point, even if it starts somewhere else. Useful whenever you have a position (e.g. a cursor) rather than the start of an element.               |
+| `line^`            | `12^`           | the whole top-level statement that line 12 belongs to, i.e. what has to be excised to drop the line. When several statements share the line (`a <- 1; b <- 2`), the one starting first wins.    |
 | `$id`              | `$42`           | this criteria is probably best used internally and refers to the unique id assigned by *flowR*                                                                                                  |
 
 For every format, a negative line counts from the end of the input, `-1` being the last line (e.g. `-1@product`).
+
+Lines, columns, and the `[n]` occurrence are all *1-based*, so a `0` anywhere (`12:0`, `0@product`, `12@[0]product`) addresses nothing and resolves to nothing&nbsp;-- it is not a wildcard for the whole line. A criterion always denotes at most a single element; use one criterion per element to select several.
 
 Additionally, every format but `$id` accepts a trailing `(file-regex)` which restricts the criterion to elements stemming from a matching file. This only matters for multi-file analyses, in which several files may well share a line 12: `12@product(tmp/.*\.R$)` picks the `product` of line 12 in a file below `tmp/`.
 

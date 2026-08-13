@@ -576,6 +576,12 @@ export interface ReconstructionResult {
 	linesWithAutoSelected: number
 	/** warnings raised while inlining `source()` calls (only set when {@link Selection#inlineSources} is active) */
 	inlineWarnings?:       InlineWarning[]
+	/**
+	 * The reconstructed files, in loading order, each with the path it came from (absent for inline code).
+	 * `code` holds the same parts, joined into one string when only a single file was reconstructed.
+	 * Not set by the inlinings, whose whole purpose is to produce one self-contained text.
+	 */
+	files?:                readonly { path: string | undefined, code: string }[]
 }
 
 /** Removes a redundant outer `{ }` block (de-indenting its content) if present. */
@@ -675,6 +681,7 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 
 	return {
 		code:                  indices.length === 1 ? results[0] : results,
+		files:                 indices.map((i, k) => ({ path: ast.ast.files[i].filePath, code: results[k] })),
 		linesWithAutoSelected: linesWithAutoSelected.size
 	};
 }

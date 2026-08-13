@@ -9,6 +9,8 @@ const FlowrFaqTopics = {
 	'editor.configs':    '⚙️ Recommended Editor Configs'
 } as const;
 
+const FlowrFaqMainTitle = '💮 <i>flowR</i> FAQ';
+
 type Topic = keyof typeof FlowrFaqTopics;
 /**
  * Manage all questions and answers by topic.
@@ -57,7 +59,7 @@ export class FaqStore {
 	toMarkdown(): string {
 		return `
 ${collapsibleToc({
-	['💮 *flowR* FAQ']: {
+	[FlowrFaqMainTitle]: {
 		[FlowrFaqTopics['flowr.development']]: {},
 		[FlowrFaqTopics['flowr.use']]:         {}
 	},
@@ -69,7 +71,7 @@ ${collapsibleToc({
 	}
 })}
 
-${section('💮 <i>flowR</i> FAQ', 2)}
+${section(FlowrFaqMainTitle, 2)}
 
 ${this.printAllTopics(/^flowr.*$/)}
 

@@ -64,5 +64,6 @@ export function processRepeatLoop<OtherInfo>(
 
 	information.exitPoints = filterOutLoopExitPoints(information.exitPoints);
 
-	return information;
+	/* the body is evaluated in the enclosing environment, so its definitions have to bubble up */
+	return { ...information, out: information.out.concat(body.out) };
 }

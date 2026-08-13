@@ -11,7 +11,7 @@ import * as semver from 'semver';
 
 /**
  * Guards that reconstruction always emits valid, re-parseable R: for representative constructs seen in the
- * social-science benchmark suite we slice at *every* variable criterion, reconstruct, and hand the result back
+ * real-world benchmark suite we slice at *every* variable criterion, reconstruct, and hand the result back
  * to R. If reconstruction ever produced code R cannot parse (the benchmark's `failedToRepParse`), one of these
  * would fail. Samples deliberately mix in CRLF line endings so both the parser and reconstructor stay robust.
  */

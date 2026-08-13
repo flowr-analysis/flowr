@@ -38,7 +38,7 @@ Primarily, _flowR_ provides a dataflow analysis framework for the [*R*](https://
 Its subcomponents (like the custom ${ctx.link(RShell)}) or the internals of the static ${ctx.link(DataflowGraph)}) 
 are not important if you simply wish to use _flowR_.
 If you wish to use _flowR_, check out one of its extensions (e.g., the ${ctx.linkPage('flowr:vscode', 'VS Code extension')}),
-the [REPL and server interfaces](#using-_flowr_-from-the-outside) or its coding API with the
+the [REPL and server interfaces](#using-flowr-from-the-outside) or its coding API with the
 ${ctx.link(FlowrAnalyzer)}. 
 
 The benchmark module is only of interest if you want to benchmark/measure the runtime performance and reduction of the slicer.
@@ -112,7 +112,7 @@ The supported requests are documented alongside the internal documentation, see 
 <details>
     <summary>Small demonstration using netcat</summary>
 
-![Example of a simple netcat session](gif/server-demo.gif)
+![Example of a simple netcat session](gif/server-demo-opt.gif)
 
 <details>
   <summary>Used <a href="https://github.com/charmbracelet/vhs">vhs</a> code</summary>

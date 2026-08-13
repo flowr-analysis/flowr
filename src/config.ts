@@ -290,6 +290,25 @@ export interface FlowrConfig extends MergeableRecord {
 			readonly versionSelection?:           VersionSelection
 			/** Force an exact version for specific packages (mapping a package name to a version), overriding both the project constraint and the {@link versionSelection} policy; a version missing from the database falls back with a warning (default `{}`). */
 			readonly versionOverrides?:           Record<string, string>
+			/**
+			 * Recovering a package no signature database knows (a CRAN-archived one like `maptools`) from the copy
+			 * installed on this machine: its `DESCRIPTION` states the version, its `NAMESPACE` the exports. Opt-in,
+			 * as it reads directories outside the analyzed project and ties the analysis to what is installed here.
+			 */
+			readonly installedLibrary?:           {
+				/** Consult installed packages at all (default `false`). */
+				readonly enabled:            boolean
+				/** The library directories to search; when empty they are discovered as configured below (default `[]`). */
+				readonly paths?:             string[]
+				/** Search the libraries `R_LIBS_USER`/`R_LIBS`/`R_LIBS_SITE` name (default `true`, ignored when {@link paths} is given). */
+				readonly useEnvironment?:    boolean
+				/** Search a project-local `renv`/`packrat` library (default `true`, ignored when {@link paths} is given). */
+				readonly useProjectLibrary?: boolean
+				/** How far to descend into the nested layout of a project-local library (default `3`). */
+				readonly maxDepth?:          number
+				/** Only recover packages whose name matches one of these regular expressions; empty means any (default `[]`). */
+				readonly packages?:          string[]
+			}
 		}
 		/** Policies for reasoning about dependency versions (independent of how the signature database is loaded). */
 		readonly versionManagement?: {
@@ -357,8 +376,39 @@ export interface FlowrConfig extends MergeableRecord {
 		}
 	}
 
-	readonly incrementalParsing: {
-		readonly activated: boolean;
+	readonly incremental: {
+		/**
+		 * Always take the incremental path, regardless of heuristics
+		 */
+		readonly alwaysIncremental: boolean;
+
+		readonly parsing: {
+			readonly activated: boolean;
+
+			readonly heuristics: {
+				readonly activated:       boolean;
+				/**
+				 * Skip reparsing entirely if the file's modification time is unchanged since the last parse
+				 */
+				readonly mtime:           boolean;
+				/**
+				 * Only consider incremental parsing for files with at least this many lines
+				 */
+				readonly linesFrom:       number;
+				/**
+				 * Only consider incremental parsing for files with at least this many bytes
+				 */
+				readonly bytesFrom:       number;
+				/**
+				 * Always take the incremental path whenever there is a computed edit region, regardless of the other thresholds
+				 */
+				readonly alwaysWithEdits: boolean;
+				/**
+				 * Only apply these heuristics once the project has at least this many files loaded
+				 */
+				readonly minFiles:        number
+			}
+		}
 	}
 
 	/**
@@ -437,6 +487,7 @@ export const FlowrDefaultPlugins = [
 	'file:description',
 	'versions:description',
 	'versions:sigdb',
+	'versions:library',
 	'versions:namespace',
 	'versions:renv',
 	'versions:rv',
@@ -581,7 +632,7 @@ export const FlowrConfig = {
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
-				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, linkBaseRCalls: false, linkPackageCalls: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {} },
+				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, linkBaseRCalls: false, linkPackageCalls: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {}, installedLibrary: { enabled: false, paths: [], useEnvironment: true, useProjectLibrary: true, maxDepth: 3, packages: [] } },
 				versionManagement: { linkedVersionGroups: [] },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
@@ -609,8 +660,19 @@ export const FlowrConfig = {
 					}
 				}
 			},
-			incrementalParsing: {
-				activated: false,
+			incremental: {
+				alwaysIncremental: false,
+				parsing:           {
+					activated:  false,
+					heuristics: {
+						activated:       true,
+						mtime:           true,
+						linesFrom:       500,
+						bytesFrom:       50_000,
+						alwaysWithEdits: false,
+						minFiles:        1,
+					}
+				}
 			},
 			gas: {
 				thresholds: {
@@ -711,8 +773,16 @@ export const FlowrConfig = {
 				additionalPaths:             Joi.array().items(Joi.string()).optional().description('Extra directories or bundle/manifest files searched for signature databases (alongside the shipped default and $FLOWR_SIGDB_DIR); a downloaded full-history bundle placed here is mounted automatically.'),
 				downloadRepo:                Joi.string().optional().description('GitHub owner/repo the full-history bundle is downloaded from via ":signature download" (default "flowr-analysis/flowr", release tag "sigdb-v<flowR-version>").'),
 				autoSync:                    Joi.boolean().optional().description('On startup, re-download shards whose committed sigdb.remote.json hash no longer matches the cache, in the background (default false; opt-in network sync after a git pull).'),
-				versionSelection:            Joi.string().valid(...Object.values(VersionSelection)).optional().description('When a project constrains a dependency, resolve to the newest (default), oldest, or system-installed version satisfying it; system needs R and falls back to newest. Base-R packages always resolve against the assumed R version.'),
-				versionOverrides:            Joi.object().pattern(Joi.string(), Joi.string()).optional().description('Force an exact version for specific packages (name -> version), overriding both the project constraint and the versionSelection policy (default {}).')
+				installedLibrary:            Joi.object({
+					enabled:           Joi.boolean().required().description('Recover packages no signature database knows from their installed copy (default false).'),
+					paths:             Joi.array().items(Joi.string()).optional().description('Library directories to search; when empty they are discovered from the environment and the project.'),
+					useEnvironment:    Joi.boolean().optional().description('Search the libraries R_LIBS_USER/R_LIBS/R_LIBS_SITE name (default true).'),
+					useProjectLibrary: Joi.boolean().optional().description('Search a project-local renv/packrat library (default true).'),
+					maxDepth:          Joi.number().optional().description('How far to descend into the nested layout of a project-local library (default 3).'),
+					packages:          Joi.array().items(Joi.string()).optional().description('Only recover packages whose name matches one of these regular expressions; empty means any.')
+				}).optional().description('Recovering packages no signature database knows from the copy installed on this machine.'),
+				versionSelection: Joi.string().valid(...Object.values(VersionSelection)).optional().description('When a project constrains a dependency, resolve to the newest (default), oldest, or system-installed version satisfying it; system needs R and falls back to newest. Base-R packages always resolve against the assumed R version.'),
+				versionOverrides: Joi.object().pattern(Joi.string(), Joi.string()).optional().description('Force an exact version for specific packages (name -> version), overriding both the project constraint and the versionSelection policy (default {}).')
 			}).description('Resolving library exports from a signature database.'),
 			versionManagement: Joi.object({
 				linkedVersionGroups: Joi.array().items(Joi.array().items(Joi.string())).optional().description('Groups of packages that must resolve to the same version; version guessing intersects each group so its members stay mutually compatible (default []).')
@@ -744,21 +814,38 @@ export const FlowrConfig = {
 				}).description('Configuration options for reading data frame shapes from loaded external data files, such as CSV files.')
 			}).description('The configuration of the shape inference for data frames.')
 		}).description('The configuration options for abstract interpretation.'),
-		incrementalParsing: Joi.object({
-			activated: Joi.boolean().description('If set, incremental parsing will be used.')
+		incremental: Joi.object({
+			alwaysIncremental: Joi.boolean().description('Always take the incremental path, regardless of heuristics.'),
+			parsing:           Joi.object({
+				activated:  Joi.boolean().description('If set, incremental parsing will be used.'),
+				heuristics: Joi.object({
+					activated:       Joi.boolean().optional().description('If set, the heuristics for incremental parsing will be used.'),
+					mtime:           Joi.boolean().optional().description('Skip reparsing entirely if the file\'s modification time is unchanged since the last parse.'),
+					linesFrom:       Joi.number().min(0).optional().description('Only consider incremental parsing for files with at least this many lines.'),
+					bytesFrom:       Joi.number().min(0).optional().description('Only consider incremental parsing for files with at least this many bytes.'),
+					alwaysWithEdits: Joi.boolean().optional().description('Always take the incremental path whenever there is a computed edit region, regardless of the other thresholds.'),
+					minFiles:        Joi.number().min(1).optional().description('Only apply these heuristics once the project has at least this many files loaded.'),
+				}),
+			}),
 		}),
 		gas: Joi.object({
 			thresholds: Joi.object({
 				memory: Joi.object({
-					problematic: Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Problematic is returned.'),
-					critical:    Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Critical is returned.')
-				}).optional().description('Heap-usage fraction thresholds (0-1).'),
+					problematic: Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Problematic is returned, for every feature without an entry of its own.'),
+					critical:    Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Critical is returned, for every feature without an entry of its own.')
+				}).pattern(Joi.string(), Joi.object({
+					problematic: Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Problematic is returned for this feature.'),
+					critical:    Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Critical is returned for this feature.')
+				})).optional().description('Heap-usage fraction thresholds (0-1), either shared or given per feature key (with `default` covering the rest).'),
 				timeMs: Joi.object({
-					problematic: Joi.number().min(0).optional().description('Elapsed ms above which Problematic is returned.'),
-					critical:    Joi.number().min(0).optional().description('Elapsed ms above which Critical is returned.')
-				}).optional().description('Elapsed analysis time thresholds in milliseconds.')
-			}).optional().description('Shared thresholds for all gas checks (scaled by per-feature factor).'),
-			features:     Joi.object().pattern(Joi.string(), Joi.number().min(0).optional()).optional().description('Per-feature sensitivity factors. 0 or absent disables gas checking for that feature. A factor of 2 makes the feature twice as sensitive. Recognised keys: `source`, `side-effect-linking`, `linter`.'),
+					problematic: Joi.number().min(0).optional().description('Elapsed ms above which Problematic is returned, for every feature without an entry of its own.'),
+					critical:    Joi.number().min(0).optional().description('Elapsed ms above which Critical is returned, for every feature without an entry of its own.')
+				}).pattern(Joi.string(), Joi.object({
+					problematic: Joi.number().min(0).optional().description('Elapsed ms above which Problematic is returned for this feature.'),
+					critical:    Joi.number().min(0).optional().description('Elapsed ms above which Critical is returned for this feature.')
+				})).optional().description('Elapsed analysis time thresholds in milliseconds, either shared or given per feature key (with `default` covering the rest).')
+			}).optional().description('Thresholds for all gas checks (scaled by per-feature factor), boundable per feature.'),
+			features:     Joi.object().pattern(Joi.string(), Joi.number().min(0).optional()).optional().description('Per-feature sensitivity factors. 0 or absent disables gas checking for that feature. A factor of 2 makes the feature twice as sensitive. Recognised keys: `source`, `side-effect-linking`, `linter`, `slicer`.'),
 			heapProvider: Joi.function().optional().description('Custom heap statistics source (programmatic configs only), overriding the built-in v8/performance.memory detection.')
 		}).optional().description(`Resource-usage guard (gas) configuration. All feature factors default to 0 (disabled). See ${GasWikiRef}.`)
 	}).description('The configuration file format for flowR.'),

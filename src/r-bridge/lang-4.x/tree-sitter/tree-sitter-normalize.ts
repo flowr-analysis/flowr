@@ -83,6 +83,17 @@ export function makeTreeSitterStrict() {
 	nonErrorChildren = nonErrorChildrenStrict;
 }
 
+function makeDefaultInfo(node: SyntaxNode, fullRange: SourceRange, fullLexeme: string) {
+	return {
+		info: {
+			fullRange,
+			adToks: [],
+			fullLexeme,
+			tsId:   node.id
+		}
+	};
+}
+
 function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 	if(!node) {
 		return {
@@ -108,17 +119,9 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 			textCache ??= node.text;
 			return textCache;
 		};
-		const makeDefaultInfo = () => ({
-			info: {
-				fullRange:  range,
-				adToks:     [],
-				fullLexeme: text(),
-				tsId:       node.id
-			}
-		});
 		let defaultInfoCache: ReturnType<typeof makeDefaultInfo> | undefined = undefined;
 		const defaultInfo = () => {
-			defaultInfoCache ??= makeDefaultInfo();
+			defaultInfoCache ??= makeDefaultInfo(node, range, text());
 			return defaultInfoCache;
 		};
 		switch(node.type as TreeSitterType) {

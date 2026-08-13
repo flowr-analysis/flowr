@@ -17,6 +17,23 @@ export interface HappensBeforeQueryResult extends BaseQueryResult {
 	readonly results: Record<string, Ternary>;
 }
 
+/**
+ * How an answer of the {@link HappensBeforeQuery} is keyed: the two criteria it was asked about, so that both
+ * the executor writing an answer and anyone reading one spell the key the same way.
+ */
+export const HappensBeforeKey = {
+	name: 'HappensBeforeKey',
+	/** The key the answer for `a` and `b` is stored under. */
+	of(this: void, a: SlicingCriterion, b: SlicingCriterion): string {
+		return `${a}<${b}`;
+	},
+	/** The two criteria a key was built from. */
+	criteria(this: void, key: string): { a: string, b: string } {
+		const at = key.indexOf('<');
+		return at < 0 ? { a: key, b: '' } : { a: key.slice(0, at), b: key.slice(at + 1) };
+	}
+} as const;
+
 export const HappensBeforeQueryDefinition = {
 	title:           'Happens-Before Query',
 	executor:        executeHappensBefore,
@@ -24,7 +41,7 @@ export const HappensBeforeQueryDefinition = {
 		const out = queryResults as QueryResults<'happens-before'>['happens-before'];
 		result.push(`Query: ${bold('happens-before', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [fingerprint, value] of Object.entries(out.results)) {
-			const { a, b } = JSON.parse(fingerprint) as HappensBeforeQuery;
+			const { a, b } = HappensBeforeKey.criteria(fingerprint);
 			result.push(`   ╰ ${bold(a, formatter)} happens before ${bold(b, formatter)}: ${value}`);
 		}
 		return true;

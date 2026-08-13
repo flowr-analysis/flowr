@@ -8,6 +8,7 @@ import { attachDependencyToEnvironment, attachExportVertex } from './built-in-li
 import { define } from '../../../../../environments/define';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import type { IdentifierReference, InGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import type { BuiltInMemory } from '../../../../../environments/built-in';
 
 /**
  * The function-definition vertices a `call` resolves to (via {@link EdgeType.Calls}).
@@ -137,25 +138,39 @@ function attachedPackages(_id: NodeId, fdef: DataflowGraphVertexFunctionDefiniti
 	return packages;
 }
 
-/** The non-built-in definitions a function body lets escape to an outer scope (e.g. a `<<-` super-assignment). */
-function escapedDefinitions(_id: NodeId, fdef: DataflowGraphVertexFunctionDefinition): NodeId[] {
-	const defs: NodeId[] = [];
-	// skip the function's own frame; outer-scope definitions escaped
+/** The scopes outside a function's own frame, i.e. those a definition of its body can have escaped into. */
+function* escapeTargetFrames(fdef: DataflowGraphVertexFunctionDefinition): Generator<Environment> {
 	for(let e: Environment | undefined = fdef.subflow.environment.current.parent; e !== undefined && !e.builtInEnv; e = e.parent) {
-		for(const definitions of e.memory.values()) {
-			for(const def of definitions) {
-				if(!NodeId.isBuiltIn(def.nodeId)) {
-					defs.push(def.nodeId);
-				}
+		yield e;
+	}
+}
+
+/**
+ * The non-built-in definitions a function body lets escape to an outer scope (e.g. a `<<-` super-assignment),
+ * as a callback for {@link computeCallGraphSummaries}. Nested definitions share their outer frames, and a frame is
+ * dominated by the built-ins it holds, so filtering each frame once per pass saves the bulk of the work.
+ */
+function escapedDefinitions(this: void): (id: NodeId, fdef: DataflowGraphVertexFunctionDefinition) => readonly NodeId[] {
+	const perFrame = new Map<BuiltInMemory, readonly NodeId[]>();
+	return (_id, fdef) => {
+		const defs: NodeId[] = [];
+		for(const e of escapeTargetFrames(fdef)) {
+			let escaped = perFrame.get(e.memory);
+			if(escaped === undefined) {
+				escaped = [...e.memory.values()].flatMap(ds => ds.filter(d => !NodeId.isBuiltIn(d.nodeId)).map(d => d.nodeId));
+				perFrame.set(e.memory, escaped);
+			}
+			for(const d of escaped) {
+				defs.push(d);
 			}
 		}
-	}
-	return defs;
+		return defs;
+	};
 }
 
 /** Emits {@link EdgeType.SideEffectOnCall} edges for definitions that escape a function transitively. */
 function propagateTransitiveDefinitions(graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext): void {
-	const summary = computeCallGraphSummaries(graph, escapedDefinitions);
+	const summary = computeCallGraphSummaries(graph, escapedDefinitions());
 	for(const [id, vertex] of graph.vertices(true)) {
 		if(vertex.tag !== VertexType.FunctionCall) {
 			continue;
@@ -210,11 +225,16 @@ function propagateTransitivePackages(graph: DataflowGraph, environment: REnviron
 /** Maps each escaped definition's node id to its full (name-carrying) definition. */
 function escapedDefinitionMap(graph: DataflowGraph): Map<NodeId, InGraphIdentifierDefinition & { name: string }> {
 	const map = new Map<NodeId, InGraphIdentifierDefinition & { name: string }>();
+	const seen = new Set<BuiltInMemory>();
 	for(const [, vertex] of graph.vertices(true)) {
 		if(vertex.tag !== VertexType.FunctionDefinition) {
 			continue;
 		}
-		for(let e: Environment | undefined = vertex.subflow.environment.current.parent; e !== undefined && !e.builtInEnv; e = e.parent) {
+		for(const e of escapeTargetFrames(vertex)) {
+			if(seen.has(e.memory)) {
+				continue;   // a frame shared with an already-visited definition contributes the same entries
+			}
+			seen.add(e.memory);
 			for(const definitions of e.memory.values()) {
 				for(const def of definitions) {
 					if(!NodeId.isBuiltIn(def.nodeId) && def.name !== undefined) {
@@ -233,7 +253,7 @@ function escapedDefinitionMap(graph: DataflowGraph): Map<NodeId, InGraphIdentifi
  * @returns the enriched environment and whether it grew (so the extractor can re-resolve open reads and re-run).
  */
 function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment: REnvironmentInformation): { environment: REnvironmentInformation, grew: boolean, names: Set<string> } {
-	const summary = computeCallGraphSummaries(graph, escapedDefinitions);
+	const summary = computeCallGraphSummaries(graph, escapedDefinitions());
 	const defs = escapedDefinitionMap(graph);
 	const names = new Set<string>();
 	let grew = false;

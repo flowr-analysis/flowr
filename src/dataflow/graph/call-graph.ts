@@ -12,6 +12,11 @@ import { DfEdge, EdgeType } from './edge';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { DefaultMap } from '../../util/collections/defaultmap';
 import { GraphHelper } from './graph-helper';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import { Identifier } from '../environments/identifier';
 
 /**
  * A call graph is a dataflow graph where all vertices are function calls.
@@ -189,6 +194,78 @@ function processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefi
 }
 
 
+/** Follows the `Calls` edges from `seeds`, collecting everything they reach in `reached`. */
+function followCalls(graph: CallGraph, seeds: Iterable<NodeId>, reached: Set<NodeId>): void {
+	const toVisit = Array.from(seeds);
+	while(toVisit.length > 0) {
+		const current = toVisit.pop() as NodeId;
+		if(reached.has(current)) {
+			continue;
+		}
+		reached.add(current);
+		for(const [target, edge] of graph.outgoingEdges(current) ?? []) {
+			if(DfEdge.includesType(edge, EdgeType.Calls)) {
+				toVisit.push(target);
+			}
+		}
+	}
+}
+
+/** The names the reached calls go by, which are the generics a method of the program may be dispatched to for. */
+function reachedCallNames(graph: CallGraph, reached: ReadonlySet<NodeId>): Set<string> {
+	const names = new Set<string>();
+	for(const id of reached) {
+		const vertex = graph.getVertex(id);
+		if(vertex?.tag === VertexType.FunctionCall) {
+			names.add(Identifier.getName(vertex.name));
+		}
+	}
+	return names;
+}
+
+/** Whether `name` is a `<generic>.<class>` of a generic that is called, as `print.foo` is when `print` is. */
+function mayBeDispatchedTo(name: string, generics: ReadonlySet<string>): boolean {
+	for(let dot = name.indexOf('.'); dot > 0; dot = name.indexOf('.', dot + 1)) {
+		if(generics.has(name.slice(0, dot))) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * The unreached function definitions that may still run: one the code hands to another call (a callback, an
+ * S4 method, a shiny handler), and one bound to a `<generic>.<class>` name of a generic the program calls.
+ */
+function mayRunAnyway(graph: CallGraph, reached: ReadonlySet<NodeId>): NodeId[] {
+	const idMap = graph.idMap;
+	if(idMap === undefined) {
+		return [];
+	}
+	const seeds: NodeId[] = [];
+	let generics: Set<string> | undefined;
+	for(const [id, vertex] of graph.vertices(true)) {
+		if(vertex.tag !== VertexType.FunctionDefinition || reached.has(id)) {
+			continue;
+		}
+		const node = idMap.get(id);
+		if(node === undefined) {
+			continue;
+		}
+		const parent = RNode.directParent(node, idMap);
+		if(parent?.type === RType.Argument) {
+			seeds.push(id);
+			continue;
+		}
+		const bound = RBinaryOp.is(parent) ? RNode.lexeme(parent.lhs) : undefined;
+		generics ??= reachedCallNames(graph, reached);
+		if(bound !== undefined && mayBeDispatchedTo(bound, generics)) {
+			seeds.push(id);
+		}
+	}
+	return seeds;
+}
+
 /**
  * Helper object for call-graphs, you can compute new call graphs based on {@link CallGraph.compute}.
  * @see {@link Dataflow}
@@ -225,6 +302,38 @@ export const CallGraph = {
 		}
 
 		return result;
+	},
+
+	/** The calls the program makes on its own: those outside of any function definition. */
+	entryPoints(this: void, graph: CallGraph): Set<NodeId> {
+		const entries = new Set<NodeId>();
+		const idMap = graph.idMap;
+		if(idMap === undefined) {
+			return entries;
+		}
+		for(const [id, vertex] of graph.vertices(true)) {
+			const node = vertex.tag === VertexType.FunctionCall ? idMap.get(id) : undefined;
+			if(node !== undefined && RFunctionDefinition.wrappingFunctionDefinition(node, idMap) === undefined) {
+				entries.add(id);
+			}
+		}
+		return entries;
+	},
+
+	/**
+	 * The calls no execution starting at the top level reaches: those in a function nothing (transitively) calls.
+	 * What {@link mayRunAnyway} may still run is left out, so a call reported here really does not run.
+	 */
+	unreachableCalls(this: void, graph: CallGraph): NodeId[] {
+		const reached = new Set<NodeId>();
+		followCalls(graph, CallGraph.entryPoints(graph), reached);
+		for(let seeds = mayRunAnyway(graph, reached); seeds.length > 0; seeds = mayRunAnyway(graph, reached)) {
+			followCalls(graph, seeds, reached);
+		}
+		return graph.vertices(true)
+			.filter(([id, vertex]) => vertex.tag === VertexType.FunctionCall && !reached.has(id))
+			.map(([id]) => id)
+			.toArray();
 	},
 
 	/**

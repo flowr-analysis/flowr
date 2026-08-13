@@ -15,7 +15,7 @@ import {
 	FunctionArgument,
 	type OutgoingEdges
 } from '../../dataflow/graph/graph';
-import { resolveByName } from '../../dataflow/environments/resolve-by-name';
+import { Resolve } from '../../dataflow/environments/resolve-helper';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../../dataflow/environments/identifier';
@@ -43,7 +43,7 @@ export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, 
 
 	const name = callerInfo.name;
 	guard(name !== undefined, () => `name of id: ${callerInfo.id} can not be found in id map`);
-	const functionCallDefs = resolveByName(name, activeEnvironment, ReferenceType.Unknown)?.filter(d => !NodeId.isBuiltIn(d.definedAt))?.map(d => d.nodeId) ?? [];
+	const functionCallDefs = Resolve.byName(name, activeEnvironment)?.filter(d => !NodeId.isBuiltIn(d.definedAt))?.map(d => d.nodeId) ?? [];
 
 	for(const [target, outgoingEdge] of outgoingEdges[1].entries()) {
 		if(DfEdge.includesType(outgoingEdge, EdgeType.Calls)) {
@@ -85,7 +85,7 @@ function linkCallTargets(
 		for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
 			// resolve them in the active env
 			if(openIn.name) {
-				const resolved = resolveByName(openIn.name, activeEnvironment, ReferenceType.Unknown);
+				const resolved = Resolve.byName(openIn.name, activeEnvironment);
 				for(const res of resolved ?? []) {
 					updatePotentialAddition(queue, functionCallTarget.id, res.nodeId, activeEnvironment, activeEnvironmentFingerprint);
 				}
@@ -172,7 +172,7 @@ export function sliceReachesFunctionInterface(fnDefId: NodeId, graph: DataflowGr
 		if(open.name === undefined || !queue.hasId(open.nodeId)) {
 			continue;
 		}
-		const resolved = resolveByName(open.name, definitionEnvironment, open.type ?? ReferenceType.Unknown);
+		const resolved = Resolve.byNameAndType(open.name, definitionEnvironment, open.type ?? ReferenceType.Unknown);
 		if(resolved?.some(d => !NodeId.isBuiltIn(d.nodeId))) {
 			return true;
 		}

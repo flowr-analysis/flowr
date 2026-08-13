@@ -9,6 +9,10 @@ import type { BuiltInProcName } from '../dataflow/environments/built-in-proc-nam
 import type { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { looselyCompareObjects } from '../util/objects';
 import { searchLogger } from './search-executor/search-generators';
+import { queryFnProps } from '../dataflow/environments/query-fn-props';
+import type { CallProp, CallProps } from '../dataflow/environments/built-in-props';
+import { Dataflow } from '../dataflow/graph/df-helper';
+import { REnvironment } from '../dataflow/environments/environment';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
 interface FlowrFilterWithArgs<Filter extends FlowrFilterName, Args extends FlowrFilterArgs<Filter>> {
@@ -42,7 +46,13 @@ export enum FlowrFilter {
 	 * Only returns search elements whose file path matches the given regular expression.
 	 * This filter accepts {@link FilePathFilterArgs}, which includes the file path regex to test against.
 	 */
-	FilePathFilter = 'file-path-filter'
+	FilePathFilter = 'file-path-filter',
+	/**
+	 * Only returns function calls whose {@link CallProp} bits match the given mask, so that _every call that asks
+	 * the user_ or _every call that closes a device_ can be searched for without naming a single function.
+	 * This filter accepts {@link CallPropsArgs}.
+	 */
+	CallProps = 'call-props'
 }
 export type FlowrFilterFunction <T> = (e: FlowrSearchElement<ParentInformation>, args: T, data: { dataflow: DataflowInformation }) => boolean;
 
@@ -75,7 +85,21 @@ export const FlowrFilters = {
 		const file = e.node.info.file;
 		const rx = args.filePathRegex instanceof RegExp ? args.filePathRegex : new RegExp(args.filePathRegex);
 		return rx.test(file ?? '');
-	}) satisfies FlowrFilterFunction<FilePathFilterArgs>
+	}) satisfies FlowrFilterFunction<FilePathFilterArgs>,
+	[FlowrFilter.CallProps]: ((e: FlowrSearchElement<ParentInformation>, args: CallPropsArgs, data: { dataflow: DataflowInformation }) => {
+		const graph = data.dataflow.graph;
+		const vertex = graph.getVertex(e.node.info.id);
+		if(vertex?.tag !== VertexType.FunctionCall) {
+			return false;
+		}
+		/* what the call resolved to decides, as a definition in the analyzed code shadows the built-in; a call
+		 * flowR settled on the built-ins keeps no environment, and a later redefinition must not speak for it */
+		const known = vertex.environment ?? data.dataflow.environment;
+		const environment = vertex.onlyBuiltin ? { level: 0, current: REnvironment.findBuiltIn(known.current) } : known;
+		const name = Dataflow.qualify(e.node.info.id, graph, false) ?? vertex.name;
+		const props = queryFnProps(name, { environment })?.props ?? 0;
+		return args.matchType === 'every' ? (props & args.props) === args.props : (props & args.props) !== 0;
+	}) satisfies FlowrFilterFunction<CallPropsArgs>
 } as const;
 export type FlowrFilterArgs<F extends FlowrFilter> = typeof FlowrFilters[F] extends FlowrFilterFunction<infer Args> ? Args : never;
 
@@ -97,6 +121,12 @@ export interface OriginKindArgs {
 }
 export interface FilePathFilterArgs {
 	filePathRegex: string | RegExp
+}
+export interface CallPropsArgs {
+	/** the {@link CallProp} bits to look for, e.g. `CallProp.User | CallProp.Closes` */
+	props:      CallProps;
+	/** whether a call has to carry every bit of {@link props} or just one of them (the default) */
+	matchType?: 'some' | 'every'
 }
 
 type ValidFilterTypes<F extends FlowrFilter = FlowrFilter> = FlowrFilterName | FlowrFilterWithArgs<F, FlowrFilterArgs<F>> | RType | VertexType;
@@ -294,20 +324,32 @@ function evalTree(tree: BooleanNode, data: FilterData): boolean {
 }
 
 /**
- * Evaluates the given filter expression against the provided data.
+ * Resolve a filter expression to the function that tests one element.
+ * Nothing here depends on the element, so a search over `n` elements should do this once instead of `n` times:
+ * a bare {@link VertexType}/{@link RType} filter otherwise builds a {@link FlowrFilterCombinator} per element.
+ * @see {@link evalFilter} - the one-shot form, if you only test a single element
  */
-export function evalFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>, data: FilterData): boolean {
+export function prepareFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>): (data: FilterData) => boolean {
 	if(filter instanceof FlowrFilterCombinator) {
-		return evalTree(filter.get(), data);
+		const tree = filter.get();
+		return data => evalTree(tree, data);
 	} else if(typeof filter === 'string' && ValidFlowrFilters.has(filter)) {
 		const handler = FlowrFilters[filter as FlowrFilter];
-		return handler(data.element, undefined as unknown as FlowrFilterArgs<FlowrFilter>, data.data);
+		return data => handler(data.element, undefined as unknown as FlowrFilterArgs<FlowrFilter>, data.data);
 	} else if(typeof filter === 'object' && 'name' in filter) {
 		const handler = FlowrFilters[filter.name];
 		const args = ('args' in filter ? filter.args : undefined) as unknown as never;
-		return handler(data.element, args, data.data);
+		return data => handler(data.element, args, data.data);
 	} else {
-		const tree = FlowrFilterCombinator.is(filter);
-		return evalTree(tree.get(), data);
+		const tree = FlowrFilterCombinator.is(filter).get();
+		return data => evalTree(tree, data);
 	}
+}
+
+/**
+ * Evaluates the given filter expression against the provided data.
+ * @see {@link prepareFilter} - resolve once when testing more than one element
+ */
+export function evalFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>, data: FilterData): boolean {
+	return prepareFilter(filter)(data);
 }

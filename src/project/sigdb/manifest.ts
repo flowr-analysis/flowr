@@ -98,6 +98,11 @@ const SigDbScopeOrder: readonly SigDbScope[] = ['full', 'current', 'base'];
 /** layouts a bundled sigdb may sit in, relative to a search root -- the root itself (e.g. a `$FLOWR_SIGDB_DIR` data mount), then the dev `src`, build `dist` and data-dir layouts */
 const SigDbSubDirs = ['', 'data/sigdb', 'src/data/sigdb', 'dist/src/data/sigdb'];
 
+/** a `<scope>.manifest.json`, in any of the codecs we can read */
+const ManifestFilePattern = new RegExp(`\\.manifest\\.json${CompressedExtPattern}$`);
+/** a `<name>.sigs.ndjson` bundle, in any of the codecs we can read */
+const BundleFilePattern = new RegExp(`${SigDbExt.replace(/\./g, '\\.')}${CompressedExtPattern}$`);
+
 function sigDbBundleDirs(): string[] {
 	if(typeof fs?.readdirSync !== 'function') {
 		return [];
@@ -207,12 +212,12 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 			} catch{
 				continue;   // directory does not exist on this root
 			}
+			const dir = path.join(base, sub);
 			for(const file of entries) {
-				const full = path.join(base, sub, file);
-				if(new RegExp(`\\.manifest\\.json${CompressedExtPattern}$`).test(file)) {
-					keep(manifests, stripCompressedExt(file), full, path.join(base, sub));
-				} else if(new RegExp(`${SigDbExt.replace(/\./g, '\\.')}${CompressedExtPattern}$`).test(file) && !file.includes('.dict' + SigDbExt)) {
-					keep(standalones, stripCompressedExt(file), full, path.join(base, sub));
+				if(ManifestFilePattern.test(file)) {
+					keep(manifests, stripCompressedExt(file), path.join(dir, file), dir);
+				} else if(BundleFilePattern.test(file) && !file.includes('.dict' + SigDbExt)) {
+					keep(standalones, stripCompressedExt(file), path.join(dir, file), dir);
 				}
 			}
 		}

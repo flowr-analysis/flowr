@@ -60,7 +60,8 @@ function linkOnSymbol<OtherInfo>(rootId: NodeId, filteredArgs: readonly Function
 			// If the target directly maps to a function definition AST, try to link arguments to parameters
 			let linked = data.completeAst.idMap.get(def.nodeId) as RFunctionDefinition<ParentInformation> | undefined;
 			if(linked?.type !== RType.FunctionDefinition) {
-				for(const vid of (def as InGraphIdentifierDefinition).value as NodeId[]) {
+				const values = (def as InGraphIdentifierDefinition).value;
+				for(const vid of Array.isArray(values) ? values : []) {
 					const candidate = data.completeAst.idMap.get(vid) as RFunctionDefinition<ParentInformation> | undefined;
 					if(candidate && candidate.type === RType.FunctionDefinition) {
 						linked = candidate;

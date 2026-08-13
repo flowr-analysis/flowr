@@ -212,13 +212,14 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				const inputSame = `x ${op} x`;
 
 				const capabilities = OperatorDatabase[op].capabilities;
-				if(capabilities.includes('non-strict-logical-operators')) {
+				/* only `&&` and `||` short-circuit, the vectorized `&`/`|` evaluate both operands */
+				if(op === '&&' || op === '||') {
 					assertDataflow(label(`${inputDifferent} (different variables)`, ['name-normal', ...capabilities]),
 						shell,
 						inputDifferent,
 						emptyGraph()
 							.use(0, 'x')
-							.use(1, 'y', { cds: [{ id: 2, when: op === '&&' || op === '&' }] })
+							.use(1, 'y', { cds: [{ id: 2, when: op === '&&' }] })
 							.call(2, op, [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn(op)] })
 							.calls(2, NodeId.toBuiltIn(op))
 							.reads(2, 0)
@@ -228,7 +229,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 						shell, inputSame,
 						emptyGraph()
 							.use(0, 'x')
-							.use(1, 'x', { cds: [{ id: 2, when: op === '&&' || op === '&' }] })
+							.use(1, 'x', { cds: [{ id: 2, when: op === '&&' }] })
 							.call(2, op, [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn(op)] })
 							.calls(2, NodeId.toBuiltIn(op))
 							.reads(2, 0)

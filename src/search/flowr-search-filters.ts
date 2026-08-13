@@ -294,33 +294,44 @@ interface FilterData {
 	readonly data:    { dataflow: DataflowInformation }
 }
 
-const evalVisit = {
-	and: ({ left, right }: BooleanBinaryNode<BooleanNode>, data: FilterData) =>
-		evalTree(left, data) && evalTree(right, data),
-	or: ({ left, right }: BooleanBinaryNode<BooleanNode>, data: FilterData) =>
-		evalTree(left, data) || evalTree(right, data),
-	xor: ({ left, right }: BooleanBinaryNode<BooleanNode>, data: FilterData) =>
-		evalTree(left, data) !== evalTree(right, data),
-	not: ({ operand }: BooleanUnaryNode<BooleanNode>, data: FilterData) =>
-		!evalTree(operand, data),
-	'r-type': ({ value }: LeafRType, { element }: FilterData) =>
-		element.node.type === value,
-	'vertex-type': ({ value }: LeafVertexType, { data, element }: FilterData) =>
-		data.dataflow.graph.getVertex(element.node.info.id)?.tag === value,
-	'special': ({ value }: LeafSpecial, { data, element }: FilterData) => {
+/** A filter expression resolved to the function testing one element. */
+export type PreparedFilter = (element: FlowrSearchElement<ParentInformation>, data: { dataflow: DataflowInformation }) => boolean;
+
+const compileVisit = {
+	and: ({ left, right }: BooleanBinaryNode<BooleanNode>): PreparedFilter => {
+		const l = compileTree(left), r = compileTree(right);
+		return (e, d) => l(e, d) && r(e, d);
+	},
+	or: ({ left, right }: BooleanBinaryNode<BooleanNode>): PreparedFilter => {
+		const l = compileTree(left), r = compileTree(right);
+		return (e, d) => l(e, d) || r(e, d);
+	},
+	xor: ({ left, right }: BooleanBinaryNode<BooleanNode>): PreparedFilter => {
+		const l = compileTree(left), r = compileTree(right);
+		return (e, d) => l(e, d) !== r(e, d);
+	},
+	not: ({ operand }: BooleanUnaryNode<BooleanNode>): PreparedFilter => {
+		const o = compileTree(operand);
+		return (e, d) => !o(e, d);
+	},
+	'r-type': ({ value }: LeafRType): PreparedFilter =>
+		e => e.node.type === value,
+	'vertex-type': ({ value }: LeafVertexType): PreparedFilter =>
+		(e, d) => d.dataflow.graph.getVertex(e.node.info.id)?.tag === value,
+	'special': ({ value }: LeafSpecial): PreparedFilter => {
 		const name = typeof value === 'string' ? value : value.name;
 		const args = typeof value === 'string' ? undefined as unknown as FlowrFilterArgs<FlowrFilter> : value.args;
-		const getHandler = FlowrFilters[name];
-		if(getHandler) {
-			return getHandler(element, args, data);
+		const handler = FlowrFilters[name];
+		if(!handler) {
+			throw new Error(`Couldn't find special filter with name ${name}`);
 		}
-		throw new Error(`Couldn't find special filter with name ${name}`);
+		return (e, d) => handler(e, args, d);
 	}
 };
 
-function evalTree(tree: BooleanNode, data: FilterData): boolean {
+function compileTree(tree: BooleanNode): PreparedFilter {
 	/* we ensure that the types fit */
-	return evalVisit[tree.type](tree as never, data);
+	return compileVisit[tree.type](tree as never);
 }
 
 /**
@@ -329,20 +340,18 @@ function evalTree(tree: BooleanNode, data: FilterData): boolean {
  * a bare {@link VertexType}/{@link RType} filter otherwise builds a {@link FlowrFilterCombinator} per element.
  * @see {@link evalFilter} - the one-shot form, if you only test a single element
  */
-export function prepareFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>): (data: FilterData) => boolean {
+export function prepareFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>): PreparedFilter {
 	if(filter instanceof FlowrFilterCombinator) {
-		const tree = filter.get();
-		return data => evalTree(tree, data);
+		return compileTree(filter.get());
 	} else if(typeof filter === 'string' && ValidFlowrFilters.has(filter)) {
 		const handler = FlowrFilters[filter as FlowrFilter];
-		return data => handler(data.element, undefined as unknown as FlowrFilterArgs<FlowrFilter>, data.data);
+		return (e, d) => handler(e, undefined as unknown as FlowrFilterArgs<FlowrFilter>, d);
 	} else if(typeof filter === 'object' && 'name' in filter) {
 		const handler = FlowrFilters[filter.name];
 		const args = ('args' in filter ? filter.args : undefined) as unknown as never;
-		return data => handler(data.element, args, data.data);
+		return (e, d) => handler(e, args, d);
 	} else {
-		const tree = FlowrFilterCombinator.is(filter).get();
-		return data => evalTree(tree, data);
+		return compileTree(FlowrFilterCombinator.is(filter).get());
 	}
 }
 
@@ -351,5 +360,5 @@ export function prepareFilter<Filter extends FlowrFilter>(filter: FlowrFilterExp
  * @see {@link prepareFilter} - resolve once when testing more than one element
  */
 export function evalFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>, data: FilterData): boolean {
-	return prepareFilter(filter)(data);
+	return prepareFilter(filter)(data.element, data.data);
 }

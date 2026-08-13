@@ -148,6 +148,16 @@ export const UNDEFINED_SYMBOL = {
 			...AttachedBasePackages.map(n => deps.getDependency(n)).filter(isNotUndefined)
 		];
 
+		const exportedByLoaded = new Map<string, boolean>();
+		const isExportedByLoadedPackage = (name: string): boolean => {
+			let known = exportedByLoaded.get(name);
+			if(known === undefined) {
+				known = loadedPackages.some(p => p.has(name));
+				exportedByLoaded.set(name, known);
+			}
+			return known;
+		};
+
 		// hint an unloaded package that exports `name` (e.g. `ggplot` -> `ggplot2`), from the package database
 		const attached = new Set(AttachedBasePackages);
 		const hintPackagesFor = (name: string): string[] =>
@@ -210,7 +220,7 @@ export const UNDEFINED_SYMBOL = {
 				return suppress('loadedPackage');
 			}
 			// exported by a package in scope (`pkg::fn`, a loaded package, or a default-attached base package)
-			if(namespace !== undefined ? deps.getDependency(namespace)?.has(name) === true : loadedPackages.some(p => p.has(name))) {
+			if(namespace !== undefined ? deps.getDependency(namespace)?.has(name) === true : isExportedByLoadedPackage(name)) {
 				return suppress('loadedPackage');
 			}
 			// forward-referenced closure binding flowR's dataflow did not link (unconditional bindings only)

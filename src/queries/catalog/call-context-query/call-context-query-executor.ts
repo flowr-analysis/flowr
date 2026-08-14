@@ -1,4 +1,4 @@
-import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import { FunctionArgument, type DataflowGraph } from '../../../dataflow/graph/graph';
 import type {
 	CallContextQuery,
 	CallContextQueryKindResult,
@@ -26,6 +26,7 @@ import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { ArrayQueue } from '../../../util/collections/queue';
 import { baseRExportOwner } from '../../../util/r-base-packages';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
+import { isNotUndefined } from '../../../util/assert';
 
 function makeReport(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>): CallContextQueryKindResult {
 	const result: CallContextQueryKindResult = {};
@@ -364,6 +365,37 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 				continue;
 			} else if(query.ignoreParameterValues && isParameterDefaultValue(nodeId, ast)) {
 				continue;
+			}
+			if(query.reliesOn){
+				const reliesOn = new RegExp(query.reliesOn.toString());
+				const visitedNodes: Set<NodeId> = new Set();
+				const argDep = info.args.map(element => {
+					return FunctionArgument.getId(element);
+				}).filter(element => {
+					return isNotUndefined(element);
+				});
+				let doesRelyOn = false;
+				while(argDep.length > 0){
+					const dep = argDep.pop() as NodeId;
+					if(visitedNodes.has(dep)){
+						continue;
+					} else {
+						visitedNodes.add(dep);
+					}
+					const v = dataflow.graph.getVertex(dep);
+					if((v?.tag === VertexType.FunctionCall && reliesOn.test(Identifier.getName(v.name)))){
+						doesRelyOn = true;
+						break;
+					} else {
+						const additionalDependencies = dataflow.graph.outgoingEdges(dep)?.keys().toArray() ?? [] as NodeId[];
+						for(const elem of additionalDependencies){
+							argDep.push(elem);
+						}
+					}
+				}
+				if(!doesRelyOn){
+					continue;
+				}
 			}
 			let linkedIds: Set<NodeId | { id: NodeId, info: object }> | undefined = undefined;
 			if(cfg && 'linkTo' in query && query.linkTo !== undefined) {

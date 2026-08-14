@@ -164,4 +164,9 @@ describe('Call Context Query', withTreeSitter(parser => {
 		testQuery('Print calls', 'print(1)', [q('pr')], r([{ id: 3, name: 'print' }]));
 		testQuery('With compaction optimization', 'print(1)', new Array(10000).fill(q('print')), r([{ id: 3, name: 'print' }]));
 	});
+	describe('Ask for args', () => {
+		testQuery('Arg is call', 'print(getOption("x", default = 1)); print(4)', [q(/print/, { reliesOn: 'getOption' })], r([{ id: 9, name: 'print' }]));
+		testQuery('Arg relies on call', 'b <- getOption("x", default = 1); a <- 4 + b; print(a); print(4)', [q(/print/, { reliesOn: 'getOption' })], r([{ id: 17, name: 'print' }]));
+		testQuery('Arg relies on call +', 'a <- 4 + 3; b <- 3; c <- 4+b; a <- 8; print(a); print(b); print(c)', [q(/print/, { reliesOn: '\\+' })], r([{ id: 27, name: 'print' }]));
+	});
 }));

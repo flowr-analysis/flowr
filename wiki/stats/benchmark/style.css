@@ -832,16 +832,17 @@ svg {
 #tooltip {
 	position: fixed;
 	z-index: 10;
-	max-width: 24rem;
+	/* wide enough for a note to fit on one line, never wider than the window it has to stay inside */
+	max-width: min(30rem, calc(100vw - 1rem));
 	pointer-events: none;
-	background: color-mix(in srgb, var(--panel) 88%, transparent);
+	/* opaque: a chart read through the numbers that explain it is unreadable twice over */
+	background: var(--panel);
 	color: var(--fg);
 	border: 1px solid var(--border);
 	border-radius: 8px;
 	padding: .45rem .55rem;
 	font-size: .8rem;
 	box-shadow: var(--shadow);
-	backdrop-filter: blur(2px);
 	transition: opacity .1s ease, transform .1s ease;
 }
 
@@ -859,7 +860,7 @@ svg {
 	max-width: none;
 	padding: .5rem .6rem calc(.5rem + env(safe-area-inset-bottom, 0px));
 	border-radius: 12px;
-	background: color-mix(in srgb, var(--panel) 96%, transparent);
+	background: var(--panel);
 	font-size: .82rem;
 }
 
@@ -913,12 +914,23 @@ svg {
 
 #tooltip td.name {
 	white-space: normal;
+	overflow-wrap: anywhere;
 	width: 100%;
 }
 
 /* the values line up on their last digit, so a 100 reads taller than an 11 */
 #tooltip td:last-child {
 	text-align: right;
+}
+
+/* a series the sum of this chart does not contain, dimmed so the rows that do add up stand out */
+#tooltip tr.faint {
+	opacity: .6;
+}
+
+/* the swatch keeps its hue, but a duller one, so the row reads as an aside and not as another part */
+#tooltip tr.faint .swatch {
+	filter: saturate(.55);
 }
 
 /* a touch is coarser than a mouse: thicker lines, larger points, a cursor one can actually see */
@@ -981,8 +993,10 @@ svg {
 	}
 }
 
+/* the notes are sentences, and a sentence that may not wrap pushes the table out of the panel around it */
 #tooltip td.msg {
 	text-align: left;
+	white-space: normal;
 }
 
 .good {

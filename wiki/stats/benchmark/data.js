@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786691599709,
+  "lastUpdate": 1786691600477,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -87483,6 +87483,301 @@ window.BENCHMARK_DATA = {
             "value": 46,
             "unit": "#",
             "extra": "mean: 0.52 per file, median: 0.00"
+          },
+          {
+            "name": "tests overall",
+            "value": 9023,
+            "unit": "#"
+          },
+          {
+            "name": "tests",
+            "value": 2365,
+            "unit": "#"
+          },
+          {
+            "name": "tests (dataflow)",
+            "value": 684,
+            "unit": "#"
+          },
+          {
+            "name": "tests (query)",
+            "value": 366,
+            "unit": "#"
+          },
+          {
+            "name": "tests (slice)",
+            "value": 365,
+            "unit": "#"
+          },
+          {
+            "name": "tests (desugar-shell)",
+            "value": 300,
+            "unit": "#"
+          },
+          {
+            "name": "tests (desugar-tree-sitter)",
+            "value": 290,
+            "unit": "#"
+          },
+          {
+            "name": "tests (controlflow)",
+            "value": 218,
+            "unit": "#"
+          },
+          {
+            "name": "tests (resolve)",
+            "value": 217,
+            "unit": "#"
+          },
+          {
+            "name": "tests (other)",
+            "value": 197,
+            "unit": "#"
+          },
+          {
+            "name": "tests (call-graph)",
+            "value": 33,
+            "unit": "#"
+          },
+          {
+            "name": "tests (output)",
+            "value": 11,
+            "unit": "#"
+          }
+        ]
+      }
+    ],
+    "\"real-world\" Benchmark Suite [info]": [
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "52ecd8ba907fecb358c79f2477a44cedfdc8eef6",
+          "message": "[release:patch] 2.13.15 Promise Improvements, Improved Value API",
+          "timestamp": "2026-08-14T08:40:30+02:00",
+          "tree_id": "6ed01fe7ab33bbc96bf884e40f6825d74470071e",
+          "url": "https://github.com/flowr-analysis/flowr/commit/52ecd8ba907fecb358c79f2477a44cedfdc8eef6"
+        },
+        "date": 1786691600462,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "linting rules",
+            "value": 18,
+            "unit": "#"
+          },
+          {
+            "name": "queries",
+            "value": 29,
+            "unit": "#"
+          },
+          {
+            "name": "built-in definitions",
+            "value": 257,
+            "unit": "#"
+          },
+          {
+            "name": "built-in definitions (default handler)",
+            "value": 137,
+            "unit": "#"
+          },
+          {
+            "name": "built-in definitions (own handler)",
+            "value": 105,
+            "unit": "#"
+          },
+          {
+            "name": "built-in definitions (with eval handler)",
+            "value": 24,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (deprecated)",
+            "value": 1,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (smell)",
+            "value": 10,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (usability)",
+            "value": 5,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (reproducibility)",
+            "value": 8,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (robustness)",
+            "value": 4,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (bug)",
+            "value": 4,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (quickfix)",
+            "value": 5,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (readability)",
+            "value": 3,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (style)",
+            "value": 2,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (security)",
+            "value": 3,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (performance)",
+            "value": 2,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (documentation)",
+            "value": 2,
+            "unit": "#"
+          },
+          {
+            "name": "linting rules (experimental)",
+            "value": 2,
+            "unit": "#"
+          },
+          {
+            "name": "number of files",
+            "value": 140,
+            "unit": "#"
+          },
+          {
+            "name": "number of slices",
+            "value": 29191,
+            "unit": "#"
+          },
+          {
+            "name": "input lines",
+            "value": 205.06428571428572,
+            "range": "197.76653662893548",
+            "unit": "#",
+            "extra": "median: 140.00, std: 197.77"
+          },
+          {
+            "name": "input tokens (normalized)",
+            "value": 1156.5285714285715,
+            "range": "1152.8662445206305",
+            "unit": "#",
+            "extra": "median: 789.00, std: 1152.87"
+          },
+          {
+            "name": "dataflow vertices",
+            "value": 724.3714285714286,
+            "range": "727.3836710416032",
+            "unit": "#",
+            "extra": "median: 490.00, std: 727.38"
+          },
+          {
+            "name": "dataflow edges",
+            "value": 1310.392857142857,
+            "range": "1393.577214511676",
+            "unit": "#",
+            "extra": "median: 823.00, std: 1393.58"
+          },
+          {
+            "name": "dataflow calls",
+            "value": 278.45,
+            "range": "275.29426658447824",
+            "unit": "#",
+            "extra": "median: 189.00, std: 275.29"
+          },
+          {
+            "name": "dataflow function definitions",
+            "value": 1.3571428571428572,
+            "range": "3.0497574343155986",
+            "unit": "#",
+            "extra": "median: 0.00, std: 3.05"
+          },
+          {
+            "name": "control flow vertices",
+            "value": 1594.557142857143,
+            "range": "1815.1184387622463",
+            "unit": "#",
+            "extra": "median: 1041.00, std: 1815.12"
+          },
+          {
+            "name": "control flow edges",
+            "value": 1595.4357142857143,
+            "range": "1816.099238992007",
+            "unit": "#",
+            "extra": "median: 1040.00, std: 1816.10"
+          },
+          {
+            "name": "files with data frames",
+            "value": 214,
+            "unit": "#",
+            "extra": "out of 280 files"
+          },
+          {
+            "name": "data frame operations",
+            "value": 9322,
+            "unit": "#",
+            "extra": "mean: 33.29 per file, median: 10.00"
+          },
+          {
+            "name": "data frame operation nodes",
+            "value": 7430,
+            "unit": "#",
+            "extra": "mean: 26.54 per file, median: 9.00"
+          },
+          {
+            "name": "data frame value nodes",
+            "value": 20046,
+            "unit": "#",
+            "extra": "mean: 71.59 per file, median: 22.00"
+          },
+          {
+            "name": "data frame constraints",
+            "value": 3796,
+            "unit": "#",
+            "extra": "mean: 13.56 per file, median: 4.00"
+          },
+          {
+            "name": "data frame shapes (exact)",
+            "value": 36,
+            "unit": "#",
+            "extra": "mean: 0.13 per file, median: 0.00"
+          },
+          {
+            "name": "data frame shapes (bottom)",
+            "value": 0,
+            "unit": "#",
+            "extra": "mean: 0.00 per file, median: 0.00"
+          },
+          {
+            "name": "data frame shapes (top)",
+            "value": 2446,
+            "unit": "#",
+            "extra": "mean: 8.74 per file, median: 3.00"
           },
           {
             "name": "tests overall",

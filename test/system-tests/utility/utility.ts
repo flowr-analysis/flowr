@@ -1,10 +1,10 @@
 import { exec } from 'child_process';
 
-/**
- * How long a command may take. `npm run flowr` builds and bundles first, which is slow on a cold `dist/`
- * and slower still when the other checkup jobs run alongside it.
- */
+/** How long a command may take, generous because the checkup jobs run alongside. */
 const DefaultTimeout = 5 * 60 * 1000;
+
+/** the cli the global setup bundled, run directly so no test rebuilds it while another one runs it */
+export const FlowrBin = 'node dist/src/cli/flowr.min.js';
 
 /**
  * Runs the flowr repl and feeds input to the repl
@@ -18,7 +18,7 @@ const DefaultTimeout = 5 * 60 * 1000;
  */
 export async function flowrRepl(input: string[]): Promise<string> {
 	const process = new Promise<string>((resolve, reject) => {
-		const child = exec('npm run flowr', { timeout: DefaultTimeout }, (error, stdout, _) => {
+		const child = exec(FlowrBin, { timeout: DefaultTimeout }, (error, stdout, _) => {
 			if(error) {
 				reject(new Error(`${error.name}: ${error.message}\n${stdout}`));
 			}

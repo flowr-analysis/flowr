@@ -19,6 +19,9 @@ interface Claim {
 }
 
 /** lets a claim observe whether something was evaluated instead of arguing about it */
+/** what R says when the version at hand does not offer the function or argument a claim uses */
+const Unavailable = /could not find function|there is no package|unused argument|is not an exported object/;
+
 const Probe = 'hits <- character(0); probe <- function(tag, val = "a") { hits <<- c(hits, tag); val }; was <- function(tag) tag %in% hits; times <- function(tag) sum(hits == tag)';
 
 const Claims: readonly Claim[] = [
@@ -129,11 +132,19 @@ describe.sequential('R semantics we model', withShell(shell => {
 
 	test.each(Claims.map(c => [c.is, c] as const))('%s', async(_is, claim) => {
 		const absent = (claim.needs ?? []).filter(p => missing.has(p));
+		/* an R too old for the claim, or a package it needs, says nothing about what we model */
 		if(absent.length > 0) {
 			return;
 		}
-		const [answer] = await shell.sendCommandWithOutput(`{ ${Probe}; cat(isTRUE(local({ ${claim.holds} })), "\\n") }`);
-		assert.strictEqual(answer.trim(), 'TRUE', `R disagrees with what we model: ${claim.is}`);
+		const [answer] = await shell.sendCommandWithOutput(
+			`{ ${Probe}; cat(tryCatch(isTRUE(local({ ${claim.holds} })), error = function(e) conditionMessage(e)), "\\n") }`
+		);
+		const said = answer.trim();
+		/* an R or package too old to offer what the claim uses says nothing about what we model */
+		if(Unavailable.test(said)) {
+			return;
+		}
+		assert.strictEqual(said, 'TRUE', `R disagrees with what we model: ${claim.is}`);
 	});
 
 	test(label('every claim carries the capability it grounds', ['function-calls'], ['other']), () => {

@@ -192,6 +192,7 @@ export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = Dataf
 
 /** Helpers for {@link DataflowGraphVertexValue} vertices. */
 export const ValueVertex = {
+	name: 'ValueVertex',
 	/** Whether the given vertex is a value vertex. */
 	is(this: void, vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexValue {
 		return vertex?.tag === VertexType.Value;
@@ -200,6 +201,7 @@ export const ValueVertex = {
 
 /** Helpers for {@link DataflowGraphVertexUse} vertices. */
 export const UseVertex = {
+	name: 'UseVertex',
 	/** Whether the given vertex is a use vertex. */
 	is(this: void, vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexUse {
 		return vertex?.tag === VertexType.Use;
@@ -208,6 +210,7 @@ export const UseVertex = {
 
 /** Helpers for {@link DataflowGraphVertexFunctionCall} vertices. */
 export const FunctionCallVertex = {
+	name: 'FunctionCallVertex',
 	/** Whether the given vertex is a function call vertex. */
 	is(this: void, vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexFunctionCall {
 		return vertex?.tag === VertexType.FunctionCall;
@@ -220,6 +223,7 @@ export const FunctionCallVertex = {
 
 /** Helpers for {@link DataflowGraphVertexVariableDefinition} vertices. */
 export const VariableDefinitionVertex = {
+	name: 'VariableDefinitionVertex',
 	/** Whether the given vertex is a variable definition vertex. */
 	is(this: void, vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexVariableDefinition {
 		return vertex?.tag === VertexType.VariableDefinition;
@@ -228,6 +232,7 @@ export const VariableDefinitionVertex = {
 
 /** Helpers for {@link DataflowGraphVertexFunctionDefinition} vertices. */
 export const FunctionDefinitionVertex = {
+	name: 'FunctionDefinitionVertex',
 	/** Whether the given vertex is a function definition vertex. */
 	is(this: void, vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexFunctionDefinition {
 		return vertex?.tag === VertexType.FunctionDefinition;

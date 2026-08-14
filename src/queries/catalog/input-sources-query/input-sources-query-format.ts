@@ -8,7 +8,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { InputTraceType, InputType, type InputClassifierConfig, type InputSources } from './simple-input-classifier';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import { criteriaQueryCompleter, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { executeInputSourcesQuery } from './input-sources-query-executor';
 import { SourceLocation } from '../../../util/range';
 import { Q } from '../../../search/flowr-search-builder';
@@ -86,7 +86,7 @@ function inputSourcesQueryLineParser(output: ReplOutput, line: readonly string[]
 	return { query: [{
 		type:      'input-sources',
 		criterion: criterion[0],
-	}], rCode: line[1] } ;
+	}], rCode: queryLineCode(line) } ;
 }
 
 export const InputSourcesDefinition = {

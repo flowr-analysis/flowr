@@ -76,6 +76,8 @@ export function valueFromRNodeConstant(a: RNodeWithParent): Value {
 		return intervalFrom(a.content.num, a.content.num);
 	} else if(a.type === RType.Logical) {
 		return a.content.valueOf() ? ValueLogicalTrue : ValueLogicalFalse;
+	} else if(a.type === RType.FunctionDefinition) {
+		return { type: 'function-definition' };
 	}
 
 	return Top;

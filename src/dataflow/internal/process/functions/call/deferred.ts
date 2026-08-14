@@ -75,6 +75,7 @@ function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<I
  * really depending on it, can be missed.
  */
 export const Deferred = {
+	name: 'Deferred',
 	/** Where each name is bound and read, built once and shared by every deferred expression in the graph. */
 	indexOf<Info>(this: void, graph: DataflowGraph, idMap: AstIdMap<Info & ParentInformation>): NameIndex {
 		const definitions = new Map<string, NodeId[]>();
@@ -102,6 +103,28 @@ export const Deferred = {
 			}
 		}
 		return reads.filter(r => !reads.some(other => other !== r && happensBefore(cfg, other, r) === Ternary.Always));
+	},
+
+	/**
+	 * Links the writes an expression performs to the uses that may observe them, for a call evaluating the
+	 * expression at a point control flow can pin down (`eval`). The reads are settled by the evaluating call
+	 * itself, against the environment in effect there, so only this direction is left open.
+	 */
+	publish<Info>(this: void, graph: DataflowGraph, expr: NodeId, index: NameIndex, idMap: AstIdMap<Info & ParentInformation>, at: NodeId, cfg?: ControlFlowGraph): void {
+		const within = namesWithin(expr, graph, idMap);
+		const own = new Set(within.map(([id]) => id));
+		for(const [node, name, writes] of within) {
+			if(!writes) {
+				continue;
+			}
+			for(const use of index.uses.get(name) ?? []) {
+				/* only a use the evaluation may reach can see what it wrote */
+				if(own.has(use) || (cfg !== undefined && happensBefore(cfg, at, use) === Ternary.Never)) {
+					continue;
+				}
+				graph.addEdge(use, node, EdgeType.Reads);
+			}
+		}
 	},
 
 	/**

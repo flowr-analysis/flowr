@@ -109,6 +109,7 @@ export type DecodedCriteria = ReadonlyArray<DecodedCriterion>;
  * The helper object associated with {@link SlicingCriteria} which makes it easy to parse, validate and resolve slicing criteria.
  */
 export const SlicingCriteria = {
+	name: 'SlicingCriteria',
 	/**
 	 * Decodes all slicing criteria to their corresponding node ids
 	 * @throws CriteriaParseError if any of the criteria can not be resolved

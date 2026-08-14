@@ -44,6 +44,7 @@ function isNegation<Info>(node: RNode<Info>): node is RUnaryOp<Info> {
 
 /** The parts of a call R does not evaluate the standard way. */
 export const Nse = {
+	name: 'Nse',
 	/** The ids an {@link Unquote} escape hands back to standard evaluation, the markers themselves excluded. */
 	unquoted<Info extends ParentInformation>(this: void, root: RNode<Info> | undefined, style: Unquote): ReadonlySet<NodeId> | undefined {
 		if(root === undefined || style === Unquote.None) {

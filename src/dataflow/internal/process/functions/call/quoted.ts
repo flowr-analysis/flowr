@@ -33,6 +33,7 @@ function hasOrigin(vertex: { readonly origin: readonly string[] | 'unnamed' }, o
  * in effect there. Working on the finished graph makes assignments, branches, loops, and calls one traversal.
  */
 export const Quoted = {
+	name: 'Quoted',
 	/** The expression a capturing call holds on to. */
 	capturedBy(this: void, graph: DataflowGraph, id: NodeId): NodeId | undefined {
 		const vertex = graph.getVertex(id);
@@ -85,7 +86,8 @@ export const Quoted = {
 					Deferred.link(graph, promise, names, idMap, flow !== undefined && sites?.length && binding !== undefined ? { cfg: flow, sites, binding } : undefined);
 				}
 			} else if(vertex.environment !== undefined && hasOrigin(vertex, EvaluatingProcessors) && !evaluatesElsewhere(idMap.get(id))) {
-				resolveEvaluation(graph, vertex, vertex.environment, idMap);
+				names ??= Deferred.indexOf(graph, idMap);
+				resolveEvaluation(graph, vertex, vertex.environment, idMap, names, cfgOnce());
 			} else {
 				for(const escaped of escapingArguments(graph, id)) {
 					names ??= Deferred.indexOf(graph, idMap);
@@ -125,7 +127,7 @@ function capturedArgumentOf(graph: DataflowGraph, id: NodeId): NodeId | undefine
 
 
 /** Links a capture handed to an evaluating call, in that call's scope. */
-function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, environment: REnvironmentInformation, idMap: AstIdMap<Info & ParentInformation>): void {
+function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, environment: REnvironmentInformation, idMap: AstIdMap<Info & ParentInformation>, names: ReturnType<typeof Deferred.indexOf>, cfg: ControlFlowGraph | undefined): void {
 	const id = call.id;
 	const argument = call.args.find(a => !FunctionArgument.isEmpty(a));
 	const reference = argument === undefined ? undefined : unwrapArgument(FunctionArgument.getReference(argument), idMap);
@@ -138,6 +140,7 @@ function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertex
 			linkInputs(open, enclosing, [], graph, false);
 		}
 		graph.addEdge(id, expr, EdgeType.Returns);
+		Deferred.publish(graph, expr, names, idMap, id, cfg);
 		/* the capture said "not evaluated here", and being handed to `eval` settles that it is */
 		Nse.unmark(graph, at);
 	}

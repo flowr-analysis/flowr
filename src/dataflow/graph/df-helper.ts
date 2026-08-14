@@ -26,13 +26,13 @@ import { isBaseRPackage } from '../../util/r-base-packages';
  * - {@link Dataflow.valueIsUsed}/{@link Dataflow.hasComputedArguments} - for what a call does with, and gets as, values,
  */
 export const Dataflow = {
-	name:  'Dataflow',
 	/**
 	 * Maps to flowR's main graph object to store and manipulate the dataflow graph
 	 * @see {@link DataflowGraph}
 	 */
 	graph: DataflowGraph,
 	...GraphHelper,
+	name:  'Dataflow',
 	/**
 	 * Maps to flowR's dataflow edge helper to work with the edges in the dataflow graph
 	 */

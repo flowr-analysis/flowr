@@ -1,4 +1,7 @@
 import { DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
+import { Quoted } from '../dataflow/internal/process/functions/call/quoted';
+import { Nse } from '../dataflow/internal/process/functions/call/nse';
+import { Deferred } from '../dataflow/internal/process/functions/call/deferred';
 import { linkToQueryOfName } from './doc-util/doc-query';
 import {
 	type DataflowGraphVertexFunctionCall,
@@ -847,6 +850,11 @@ some that may appear to be counter-intuitive. For example, a for-loop body, as i
 
 ${details('Example: For-Loop Body', await printDfGraphForCode(parser, 'for(i in v) b', { mark: new Set([2, '4->2']), ctx }))}
 ${details('Example: While-Loop Body', await printDfGraphForCode(parser, 'while(TRUE) b', { mark: new Set([1, '3->1']), ctx }))}
+
+Three helpers decide what such a mark means once the graph is complete:
+${ctx.link(Quoted.name, undefined, { type: 'variable' })} settles what a capture reaches when it is handed to \`eval\` (see ${ctx.linkO(Quoted, 'finalize')}),
+${ctx.link(Nse.name, undefined, { type: 'variable' })} models the escapes a quoting function offers (rlang's \`!!\` and \`bquote\`'s \`.(x)\`), and
+${ctx.link(Deferred.name, undefined, { type: 'variable' })} links an expression R evaluates at a moment we cannot pin down, as \`delayedAssign\` binds one.
 				`
 	})
 }

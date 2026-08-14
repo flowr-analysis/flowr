@@ -147,8 +147,11 @@ export function completionSuggestion(line: string, config: FlowrConfig): string 
 
 function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfig): CommandCompletions {
 	const nonEmpty = splitLine.slice(1).map(s => s.trim()).filter(s => s.length > 0);
-	const queryShorts = ['help'].concat(Object.keys(SupportedQueries).map(q => `@${q}`));
-	if(nonEmpty.length === 0 || (nonEmpty.length === 1 && queryShorts.some(q => q.startsWith(nonEmpty[0]) && nonEmpty[0] !== q && !startingNewArg))) {
+	/* `?<type>` documents a query instead of running it, and completes to the same names */
+	const asking = !startingNewArg && nonEmpty.length === 1 && nonEmpty[0].startsWith('?');
+	const queryShorts = asking ? Object.keys(SupportedQueries).map(q => `?${q}`)
+		: ['help'].concat(Object.keys(SupportedQueries).map(q => `@${q}`));
+	if(asking || nonEmpty.length === 0 || (nonEmpty.length === 1 && queryShorts.some(q => q.startsWith(nonEmpty[0]) && nonEmpty[0] !== q && !startingNewArg))) {
 		return { completions: queryShorts.map(q => `${q} `) };
 	} else {
 		const q = nonEmpty[0].slice(1);

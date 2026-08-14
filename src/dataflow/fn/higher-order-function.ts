@@ -1,4 +1,6 @@
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { resolveByName } from '../environments/resolve-by-name';
+import { isReferenceType, ReferenceType } from '../environments/identifier';
 import type { DataflowGraph } from '../graph/graph';
 import {
 	type DataflowGraphVertexArgument,
@@ -38,6 +40,23 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 	return false;
 }
 
+/**
+ * Whether the argument hands over a built-in function (`f(print)`), which has no definition in the graph and
+ * hence no `function-definition` value to resolve to.
+ */
+function readsBuiltInFunction(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
+	for(const [target, edge] of graph.outgoingEdges(id) ?? []) {
+		if(!DfEdge.includesType(edge, EdgeType.Reads) || !NodeId.isBuiltIn(target)) {
+			continue;
+		}
+		const defs = resolveByName(NodeId.fromBuiltIn(target), ctx.env.makeCleanEnv(), ReferenceType.Function);
+		if(defs?.some(d => isReferenceType(d.type, ReferenceType.BuiltInFunction))) {
+			return true;
+		}
+	}
+	return false;
+}
+
 function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph): boolean {
 	const callSites = invertedGraph?.outgoingEdges(def.id) ?? graph.ingoingEdges(def.id);
 
@@ -54,7 +73,7 @@ function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition
 				continue;
 			}
 			const value = NodeValue.inGraph.setOf(arg.nodeId, graph, ctx, { resolve: VariableResolve.Alias });
-			if(value?.elements.some(e => e.type === 'function-definition')) {
+			if(value?.elements.some(e => e.type === 'function-definition') || readsBuiltInFunction(arg.nodeId, graph, ctx)) {
 				return true;
 			}
 		}

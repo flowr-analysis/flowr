@@ -21,6 +21,7 @@ import { DefaultMap } from '../../util/collections/defaultmap';
  * - {@link CallGraph}
  */
 export const GraphHelper = {
+	name:      'GraphHelper',
 	/** Maps to the mermaid-centric visualization helper for dataflow graphs and their views */
 	visualize: {
 		/**

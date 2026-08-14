@@ -17,6 +17,7 @@ export interface RDelimiter extends MergeableRecord, Location {
  * Helper for working with {@link RDelimiter} AST nodes.
  */
 export const RDelimiter = {
+	name: 'RDelimiter',
 	/**
 	 * Type guard for {@link RDelimiter} nodes.
 	 */

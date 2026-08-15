@@ -1,5 +1,5 @@
 import type { Range } from 'semver';
-import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
+import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
@@ -132,7 +132,7 @@ interface Metadata extends MergeableRecord {
 const ConditionallyDeprecated = {
 	/* https://tidyverse.org/blog/2025/09/ggplot2-4-0-0/#violin--quantiles */
 	'geom_violin': { package: 'ggplot2', whenArgs: [{ argName: 'draw_quantiles', state: DeprecationState.Deprecated, replacedBy: 'quantile.linetype', sinceVersion: RRange.parse('>= 4.0.0') }] },
-} satisfies Record<BrandedIdentifier, DeprecatedFunctionInformation>;
+} as Record<BrandedIdentifier, DeprecatedFunctionInformation>;
 
 function functionListFromBuiltinConfig(): Identifier[] {
 	return DefaultBuiltinConfig.filter(def => def.type === 'function'
@@ -159,18 +159,19 @@ export const DEPRECATED_FUNCTIONS = {
 				const sourceLocation = SourceLocation.fromNode(e.node);
 				if(sourceLocation !== undefined) {
 					return {
-						node: e.node, target: target as string, sourceLocation
+						node: e.node, target: Identifier.parse(target as string), sourceLocation
 					};
 				}
 			});
 		}).filter(p => isNotUndefined(p));
 
 		// 2. Uses hardcoded information about deprecated arguments and deprecated functions
+		const packageVersions = await inferPackageVersions(data, detectedFunctions, config.conditionally);
 		const results: DeprecatedFunctionRuleResult[] = (await Promise.all(detectedFunctions.map(async candidate => {
-			const name = Identifier.getName(Identifier.parse(candidate.target));
+			const name = Identifier.getName(candidate.target);
 			const info = config.conditionally[name];
 			if(isNotUndefined(info)) {
-				return await deprecateFunctionConditionally(candidate, graph, idMap, data, info);
+				return await deprecateFunctionConditionally(candidate, graph, idMap, data, info, packageVersions);
 			} else {
 				return deprecateFunctionAlways(candidate, matchesConfiguredFns);
 			}
@@ -257,18 +258,36 @@ export const DEPRECATED_FUNCTIONS = {
 	}
 } as const satisfies LintingRule<DeprecatedFunctionRuleResult, Metadata, DeprecatedFunctionsConfig>;
 
+type PackageVersionMap = Map<BrandedNamespace, Range>;
+async function inferPackageVersions(analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>, candidates: PotentialFunction[], info: typeof ConditionallyDeprecated): Promise<PackageVersionMap> {
+	const infos = candidates.map(c => info[Identifier.getName(c.target)]).filter(inf => isNotUndefined(inf));
+	const arePackageVersionsNeeded = infos.some(
+		inf => inf.sinceVersion !== undefined ||
+			inf.whenArgs?.some(arg => arg.sinceVersion) === true);
+
+	if(!arePackageVersionsNeeded) {
+		return new Map<BrandedNamespace, Range>();
+	}
+
+	const packages = infos.map(inf => inf.package);
+	const queryResult = await analyzer.query([{
+		type:     'guess-dep-versions',
+		packages: packages
+	}]);
+  const versions = queryResult['guess-dep-versions'].dependencies
+        .map(d => [d.package, RRange.parse(d.range)])
+        .filter(([_, version]) => isNotUndefined(version)) as [BrandedNamespace, Range][];
+        
+  return new Map<BrandedNamespace, Range>(versions);
+}
+
 /**
  * This function is applied to function candidates that have an entry in the {@link DeprecatedFunctionsConfig.conditionally} map.
  */
-async function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: DataflowGraph, idMap: AstIdMap, analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>, info: DeprecatedFunctionInformation): Promise<DeprecatedFunctionRuleResult[]> {
+async function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: DataflowGraph, idMap: AstIdMap, analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>, info: DeprecatedFunctionInformation, packageVersions: PackageVersionMap): Promise<DeprecatedFunctionRuleResult[]> {
 	const results: DeprecatedFunctionRuleResult[] = [];
-	const result = await analyzer.query([{
-		type:     'guess-dep-versions',
-		packages: [info.package]
-	}]);
-	const derrivedRangeRaw = result['guess-dep-versions'].dependencies.find(d => d.package === info.package)?.range;
-	const derrivedRange = derrivedRangeRaw !== undefined ? RRange.parse(derrivedRangeRaw) : undefined;
-
+  const derrivedRange = packageVersions.get(info.package);
+  
 	// Deprecated Argument: If `whenArgs` is provided, only mark deprecated arguments
 	if(info.whenArgs) {
 		const vertex = dataflow.getVertex(candidate.node.info.id);

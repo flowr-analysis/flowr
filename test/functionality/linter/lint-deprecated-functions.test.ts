@@ -9,6 +9,7 @@ import { FnProp, type LibraryExports, type SigFunctionInfo } from '../../../src/
 import { RRange } from '../../../src/util/r-version';
 import { SigDbBuilder } from '../../../src/project/sigdb/build';
 import { sigTmpDir, writeAndOpen } from '../_helper/sigdb';
+import { Identifier, PkgName } from '../../../src/dataflow/environments/identifier';
 
 const fn = (name: string, opts: Partial<SigFunctionInfo> = {}): SigFunctionInfo => ({
 	name, props: FnProp.Exported, params: [], callees: [], line: 1, ...opts
@@ -51,8 +52,8 @@ describe('flowR linter', withTreeSitter(parser => {
 		/* Given that we declare `cat` as deprecated, we expect all uses to be marked! */
 		assertLinter('cat', parser, 'cat("hello")\nprint("hello")\nx <- 1\ncat(x)',
 			'deprecated-functions', [
-				{ certainty: LintingResultCertainty.Certain, function: 'base::cat', loc: [1, 1, 1, 12], type: 'deprecated-function' },
-				{ certainty: LintingResultCertainty.Certain, function: 'base::cat', loc: [4, 1, 4, 6], type: 'deprecated-function' },
+				{ certainty: LintingResultCertainty.Certain, function: Identifier.from(['cat', PkgName.Base, false]), loc: [1, 1, 1, 12], type: 'deprecated-function' },
+				{ certainty: LintingResultCertainty.Certain, function: Identifier.from(['cat', PkgName.Base, false]), loc: [4, 1, 4, 6], type: 'deprecated-function' },
 			],
 			{ builtin: 2, sigdb: 0 },
 			{ always: ['cat'] }
@@ -60,7 +61,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		/* Overwriting the `cat` function with a user defined implementation (even though it is useless), should cause the linter to not mark calls to the custom `cat` function as deprecated */
 		assertLinter('custom cat', parser, 'cat("hello")\nprint("hello")\ncat <- function(x) { }\nx <- 1\ncat(x)',
 			'deprecated-functions', [
-				{ certainty: LintingResultCertainty.Certain, function: 'base::cat', loc: [1, 1, 1, 12], type: 'deprecated-function' }
+				{ certainty: LintingResultCertainty.Certain, function: Identifier.from(['cat', PkgName.Base, false]), loc: [1, 1, 1, 12], type: 'deprecated-function' }
 			],
 			{ builtin: 1, sigdb: 0 },
 			{ always: ['cat'] }
@@ -84,14 +85,14 @@ describe('flowR linter', withTreeSitter(parser => {
 first <- data.frame(x = c(1, 2, 3), y = c(1, 2, 3))
 second <- data.frame(x = c(1, 3, 2), y = c(1, 3, 2))
 dplyr::all_equal(first, second)`, 'deprecated-functions',
-		[{ certainty: LintingResultCertainty.Certain, function: 'dplyr::all_equal', loc: [4, 1, 4, 31], type: 'deprecated-function' }],
+		[{ certainty: LintingResultCertainty.Certain, function: Identifier.from(['all_equal', PkgName.Dplyr, false]), loc: [4, 1, 4, 31], type: 'deprecated-function' }],
 		{ builtin: 1, sigdb: 0 });
 
 		describe('a deprecated function resolved via a loaded package is still flagged', () => {
 			// regression: the loaded-package export must still count as a built-in call target
 			assertLinter('with a (controlled) package database', parser, 'library(dplyr)\nrecode(x)',
 				'deprecated-functions',
-				[{ certainty: LintingResultCertainty.Certain, function: 'dplyr::recode', loc: [2, 1, 2, 9], type: 'deprecated-function' }],
+				[{ certainty: LintingResultCertainty.Certain, function: Identifier.make('recode', PkgName.Dplyr), loc: [2, 1, 2, 9], type: 'deprecated-function' }],
 				{ builtin: 1, sigdb: 0 },
 				{ always: ['recode'], sigDb: controlledSigDb('dplyr', ['recode', 'filter']) }
 			);
@@ -183,7 +184,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					certainty:    LintingResultCertainty.Certain,
 					arg:          'badArg',
 					replacedBy:   'foo',
-					function:     'testPkg::testFn',
+					function:     Identifier.make('testFn', 'testPkg'),
 					state:        DeprecationState.Deprecated,
 					sinceVersion: RRange.parse('>=1.0.0'),
 					loc:          [2, 8, 2, 13]
@@ -229,7 +230,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 				[{
 					type:         'deprecated-function',
 					certainty:    LintingResultCertainty.Certain,
-					function:     'testPkg::testFn',
+					function:     Identifier.make('testFn', 'testPkg'),
 					state:        DeprecationState.Defunct,
 					sinceVersion: RRange.parse('>=1.0.0'),
 					replacedBy:   undefined,

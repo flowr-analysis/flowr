@@ -147,6 +147,7 @@ export type LintingResults<Name extends LintingRuleNames> = LintingResultsSucces
  * Helper functions for working with {@link LintingResults}.
  */
 export const LintingResults = {
+	name: 'LintingResults',
 	/**
 	 * Checks whether the given linting results represent an error.
 	 * @see {@link LintingResultsError}

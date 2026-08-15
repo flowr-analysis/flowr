@@ -7,7 +7,7 @@ import Joi from 'joi';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import { criteriaQueryCompleter, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { executeProvenanceQuery } from './provenance-query-executor';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 
@@ -47,7 +47,7 @@ function provenanceQueryLineParser(output: ReplOutput, line: readonly string[], 
 		type:         'provenance',
 		criterion:    criterion[0],
 		restrictFdef: stopFdef
-	}], rCode: line[1] } ;
+	}], rCode: queryLineCode(line) } ;
 }
 
 export const ProvenanceQueryDefinition = {

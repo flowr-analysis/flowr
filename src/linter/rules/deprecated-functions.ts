@@ -186,6 +186,7 @@ export const DEPRECATED_FUNCTIONS = {
 		// sigdb-driven detection: flag any resolved call whose signature-database entry marks it deprecated,
 		// even when it is not part of the hardcoded `fns` list above
 		const alreadyFlagged = new Set(results.map(r => r.involvedId));
+		const deprecatedByName = new Map<string, boolean>();
 		const sigdbFlagged: DeprecatedFunctionResult[] = [];
 		for(const element of elements.getElements()) {
 			const id = element.node.info.id;
@@ -196,8 +197,13 @@ export const DEPRECATED_FUNCTIONS = {
 			if(qualified === undefined) {
 				continue;
 			}
-			const fn = deps.signatureOf(qualified);
-			if(fn === undefined || !fn.props.includes('deprecated')) {
+			const name = Identifier.toString(qualified);
+			let deprecated = deprecatedByName.get(name);
+			if(deprecated === undefined) {
+				deprecated = deps.signatureOf(qualified)?.props.includes('deprecated') === true;
+				deprecatedByName.set(name, deprecated);
+			}
+			if(!deprecated) {
 				continue;
 			}
 			const loc = SourceLocation.fromNode(element.node);
@@ -209,7 +215,7 @@ export const DEPRECATED_FUNCTIONS = {
 				type:       'deprecated-function',
 				certainty:  LintingResultCertainty.Certain,
 				involvedId: id,
-				function:   Identifier.toString(qualified),
+				function:   name,
 				loc
 			});
 		}

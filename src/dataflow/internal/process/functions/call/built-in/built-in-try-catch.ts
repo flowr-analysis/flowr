@@ -10,7 +10,7 @@ import {
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { pMatch } from '../../../../linker';
+import { ClosureRefs, pMatch } from '../../../../linker';
 import type { DataflowGraphVertexInfo } from '../../../../../graph/vertex';
 import { VertexType } from '../../../../../graph/vertex';
 import { tryUnpackNoNameArg, unpackArg } from '../argument/unpack-argument';
@@ -20,9 +20,6 @@ import { isUndefined } from '../../../../../../util/assert';
 import { EdgeType } from '../../../../../graph/edge';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import { Identifier, type IdentifierReference } from '../../../../../environments/identifier';
-import { isReferenceType, ReferenceType } from '../../../../../environments/identifier';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
-import { expensiveTrace } from '../../../../../../util/log';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 /**
@@ -146,30 +143,7 @@ function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: Dataf
 
 		const dfVert = info.graph.getVertex(call);
 		if(dfVert && dfVert.tag === VertexType.FunctionDefinition) {
-			// resolve all ingoings against the environment
-			const ingoingRefs = dfVert.subflow.in;
-			const remainingIn: IdentifierReference[] = [];
-			for(const ingoing of ingoingRefs) {
-				const resolved = ingoing.name ? resolveByName(ingoing.name, data.environment, ingoing.type) : undefined;
-				if(resolved === undefined) {
-					remainingIn.push(ingoing);
-					continue;
-				}
-				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${ingoing.nodeId} in closure of function definition ${call}`);
-				let allBuiltIn = true;
-				for(const ref of resolved) {
-					const rid = ref.nodeId;
-					info.graph.addEdge(ingoing.nodeId, rid, EdgeType.Reads);
-					info.graph.addEdge(call, rid, EdgeType.Reads); // because the def. is the anonymous call
-					if(!isReferenceType(ref.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
-						allBuiltIn = false;
-					}
-				}
-				if(allBuiltIn) {
-					remainingIn.push(ingoing);
-				}
-			}
-			dfVert.subflow.in = remainingIn;
+			ClosureRefs.resolveOpenIngoing(info.graph, call, dfVert, data.environment);
 		}
 		// we did the linking
 		return undefined;

@@ -3,6 +3,7 @@ import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../../util
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 import { handleString } from '../core';
+import { ReplClipboard } from './repl-clipboard';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import type { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
@@ -21,14 +22,7 @@ export const normalizeCommand: ReplCodeCommand = {
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.normalize();
 		const mermaid = normalizedAstToMermaid(result.ast);
-		output.stdout(mermaid);
-		if(output.allowClipboard !== false) {
-			try {
-				const clipboard = await import('clipboardy');
-				clipboard.default.writeSync(mermaid);
-				output.stdout(formatInfo(output, 'mermaid url', result));
-			} catch{ /* do nothing this is a service thing */ }
-		}
+		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid url', result));
 	}
 };
 
@@ -42,14 +36,7 @@ export const normalizeStarCommand: ReplCodeCommand = {
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.normalize();
 		const mermaid = normalizedAstToMermaidUrl(result.ast);
-		output.stdout(mermaid);
-		if(output.allowClipboard !== false) {
-			try {
-				const clipboard = await import('clipboardy');
-				clipboard.default.writeSync(mermaid);
-				output.stdout(formatInfo(output, 'mermaid url', result));
-			} catch{ /* do nothing this is a service thing */ }
-		}
+		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid url', result));
 	}
 };
 

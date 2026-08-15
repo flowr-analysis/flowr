@@ -341,13 +341,14 @@ export const enum PkgName {
 	Tcltk        = 'tcltk',
 	Testthat     = 'testthat',
 	TidyR        = 'tidyr',
+	Tibble       = 'tibble',
+	Glue         = 'glue',
+	Stringr      = 'stringr',
 	TinyPlot     = 'tinyplot',
 	TryCatchLog  = 'tryCatchLog',
 	Withr        = 'withr',
 	Forecats     = 'forcats',
-	Readr        = 'readr',
-	Stringr      = 'stringr',
-	Tibble       = 'tibble'
+	Readr        = 'readr'
 }
 
 /**

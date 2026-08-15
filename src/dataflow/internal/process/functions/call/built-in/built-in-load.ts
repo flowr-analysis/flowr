@@ -17,8 +17,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { EdgeType } from '../../../../../graph/edge';
 import { unpackArg } from '../argument/unpack-argument';
-import { valueSetGuard } from '../../../../../eval/values/general';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
 import { isNotUndefined } from '../../../../../../util/assert';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
@@ -71,7 +70,7 @@ export function processLoadCall<OtherInfo>(
 	if(fileArg.type === RType.String) {
 		sourceFile = [removeRQuotes(fileArg.lexeme)];
 	} else {
-		const resolved = valueSetGuard(resolveIdToValue(fileArg.info.id, { environment: envirResolution ? envirResolution.envirData.environment : data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx }));
+		const resolved = NodeValue.setOf(fileArg.info.id, data, { environment: envirResolution?.envirData.environment ?? data.environment });
 		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
 	}
 

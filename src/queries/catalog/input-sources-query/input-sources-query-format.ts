@@ -8,7 +8,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { InputTraceType, InputType, type InputClassifierConfig, type InputSources } from './simple-input-classifier';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import { criteriaQueryCompleter, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { executeInputSourcesQuery } from './input-sources-query-executor';
 import { SourceLocation } from '../../../util/range';
 import { Q } from '../../../search/flowr-search-builder';
@@ -78,7 +78,7 @@ export interface InputSourcesQueryResult extends BaseQueryResult {
 function inputSourcesQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'input-sources'> {
 	const criterion = sliceCriteriaParser(line[0]);
 	if(!criterion || criterion.length !== 1) {
-		output.stderr(output.formatter.format('Invalid provenance query format, a single slicing criterion must be given in the form "(criterion1)"',
+		output.stderr(output.formatter.format('Invalid input sources query format, a single slicing criterion must be given in the form "(criterion1)"',
 			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
 		return { query: [] };
 	}
@@ -86,7 +86,7 @@ function inputSourcesQueryLineParser(output: ReplOutput, line: readonly string[]
 	return { query: [{
 		type:      'input-sources',
 		criterion: criterion[0],
-	}], rCode: line[1] } ;
+	}], rCode: queryLineCode(line) } ;
 }
 
 export const InputSourcesDefinition = {

@@ -16,7 +16,7 @@ import type { DataflowGraph } from '../../graph/graph';
 import { onReplacementOperator, type ReplacementOperatorHandlerArgs } from '../../graph/unknown-replacement';
 import { onUnknownSideEffect } from '../../graph/unknown-side-effect';
 import { ValueVertex, VertexType } from '../../graph/vertex';
-import { valueFromRNodeConstant, valueFromTsValue, valueSetGuard } from '../values/general';
+import { soleValue, valueFromRNodeConstant, valueFromTsValue, valueSetGuard } from '../values/general';
 import { Bottom, isTop, isValue, type Lift, Top, type Value, type ValueSet } from '../values/r-value';
 import { setFrom } from '../values/sets/set-constants';
 import { resolveNode } from './resolve';
@@ -172,10 +172,8 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 
 	switch(node.type) {
 		case RType.Argument:
-			if(node.value) {
-				return resolveIdToValue(node.value.info.id, { environment, graph, idMap, full, resolve, ctx, blocked });
-			}
-		// eslint-disable-next-line no-fallthrough
+			/* a missing argument (`f(x=)`) carries no value, and it is no symbol to resolve either */
+			return node.value ? resolveIdToValue(node.value.info.id, { environment, graph, idMap, full, resolve, ctx, blocked }) : Top;
 		case RType.Symbol:
 			if(full) {
 				if(environment) {
@@ -205,9 +203,8 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 
 /** Resolves an id to a single constant string value, or `undefined` if it is not a unique string constant. */
 export function resolveIdToSingleString(id: NodeId | RNodeWithParent | undefined, info: ResolveInfo): string | undefined {
-	const resolved = valueSetGuard(resolveIdToValue(id, info));
-	const element = resolved?.elements.length === 1 ? resolved.elements[0] : undefined;
-	return element?.type === 'string' && isValue(element.value) ? element.value.str : undefined;
+	const element = soleValue(valueSetGuard(resolveIdToValue(id, info)), 'string');
+	return element !== undefined && isValue(element.value) ? element.value.str : undefined;
 }
 
 /** the values one element of a sequence may take: a vector contributes its elements, a set what its members do */

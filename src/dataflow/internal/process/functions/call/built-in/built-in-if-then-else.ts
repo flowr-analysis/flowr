@@ -12,8 +12,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import { appendEnvironment } from '../../../../../environments/append';
 import { Identifier, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
-import { valueSetGuard } from '../../../../../eval/values/general';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -94,9 +93,9 @@ export function processIfThenElse<OtherInfo>(
 	let makeThenMaybe = false;
 
 	// we should defer this to the abstract interpretation
-	const values = resolveIdToValue(condArg?.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx });
-	const conditionIsAlwaysFalse = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
-	const conditionIsAlwaysTrue = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
+	const values = NodeValue.setOf(condArg?.info.id, data);
+	const conditionIsAlwaysFalse = values?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
+	const conditionIsAlwaysTrue = values?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 
 	if(!conditionIsAlwaysFalse) {
 		then = processDataflowFor(thenArg, data);

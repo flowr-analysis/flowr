@@ -174,3 +174,28 @@ export function stringifyValue(value: Lift<Value>): string {
 		}
 	});
 }
+/**
+ * Reads the plain TS value a {@link Value} stands for, `undefined` whenever it stands for more than one, for
+ * none, or for another kind. Prefer these over reaching into a value's shape by hand.
+ *
+ * This is the constant-folding view: it answers "is this one known constant" and nothing else. It runs no
+ * fixpoint, knows no control flow, and widens nothing. For an abstract state that does, use the dedicated
+ * abstract interpretation in `src/abstract-interpretation/`.
+ */
+export const RValue = {
+	name: 'RValue',
+	/** The number the value stands for, collapsing an interval that admits a single one. */
+	numberOf(this: void, value: Value): number | undefined {
+		if(value.type === 'number') {
+			return isValue(value.value) && !value.value.complexNumber ? value.value.num : undefined;
+		} else if(value.type === 'interval' && value.startInclusive && value.endInclusive) {
+			const start = RValue.numberOf(value.start);
+			return start !== undefined && start === RValue.numberOf(value.end) ? start : undefined;
+		}
+		return undefined;
+	},
+	/** The string the value stands for. */
+	stringOf(this: void, value: Value): string | undefined {
+		return value.type === 'string' && isValue(value.value) ? value.value.str : undefined;
+	}
+} as const;

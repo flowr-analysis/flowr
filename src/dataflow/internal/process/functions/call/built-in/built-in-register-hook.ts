@@ -14,8 +14,8 @@ import type { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/as
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { HookInformation, KnownHooks } from '../../../../../hooks';
-import type { ResolveInfo } from '../../../../../eval/resolve/alias-tracking';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { SourceRange } from '../../../../../../util/range';
@@ -91,14 +91,7 @@ export function processRegisterHook<OtherInfo>(
 	});
 
 	const res = processKnownFunctionCall({ name, args: transformed, rootId, data, origin: BuiltInProcName.RegisterHook });
-	const resolveArgs: ResolveInfo = {
-		graph:       res.information.graph,
-		environment: res.information.environment,
-		resolve:     data.ctx.config.solver.variables,
-		ctx:         data.ctx,
-		idMap:       data.completeAst.idMap,
-		full:        true
-	};
+	const resolveArgs = NodeValue.infoOf(data, { graph: res.information.graph, environment: res.information.environment });
 	const shouldAdd = addIds.size === 0 ? config.args.add?.default :
 		Array.from(addIds).flatMap(id => valueSetGuard(resolveIdToValue(id, resolveArgs))?.elements ?? [])
 			.some(v => v.type === 'logical' && v.value !== false);

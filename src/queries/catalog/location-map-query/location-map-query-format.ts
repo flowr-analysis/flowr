@@ -10,7 +10,7 @@ import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import type { ParsedQueryLine, SupportedQuery } from '../../query';
-import { criteriaQueryCompleter, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 
 /**
  * How much of the source an entry of the {@link LocationMapQueryResult} covers: the `<-` of a multi-line
@@ -53,7 +53,7 @@ function locationMapLineParser(_output: ReplOutput, line: readonly string[], _co
 			ids:  criteria,
 			...(span ? { span } : {})
 		},
-		rCode: span ? rest[1] : rest[0]
+		rCode: queryLineCode(rest, span ? 1 : 0)
 	};
 }
 

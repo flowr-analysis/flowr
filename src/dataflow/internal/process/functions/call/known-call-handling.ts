@@ -10,11 +10,12 @@ import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { type IdentifierReference, ReferenceType } from '../../../../environments/identifier';
 import type { FunctionArgument } from '../../../../graph/graph';
 import { DataflowGraph } from '../../../../graph/graph';
-import { DfEdge, EdgeType } from '../../../../graph/edge';
+import { EdgeType } from '../../../../graph/edge';
 import { dataflowLogger } from '../../../../logger';
-import { type FunctionOriginInformation, UseVertex, VertexType } from '../../../../graph/vertex';
+import { type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
+import { Nse } from './nse';
 
 export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments {
 	/** The name of the function being called. */
@@ -27,7 +28,7 @@ export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments
 	readonly data:                  DataflowProcessorInformation<OtherInfo & ParentInformation>
 	/** should arguments be processed from right to left? This does not affect the order recorded in the call but of the environments */
 	readonly reverseOrder?:         boolean
-	/** which arguments are to be marked as {@link EdgeType#NonStandardEvaluation|non-standard-evaluation}? */
+	/** which arguments are {@link NseKind.Reevaluated|reevaluated}, like a loop body */
 	readonly markAsNSE?:            readonly number[]
 	/** allows passing a data processor in-between each argument */
 	readonly patchData?:            (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, arg: number) => DataflowProcessorInformation<OtherInfo & ParentInformation>
@@ -72,63 +73,67 @@ export enum NseArguments {
  */
 export enum NseKind {
 	/** the argument is not evaluated at all (`quote(x + y)`), so nothing within it is */
-	Quoted     = 'quoted',
+	Quoted      = 'quoted',
 	/** the argument is evaluated in a data mask (`subset(d, a > k)`), where only its symbols may name columns */
-	DataMasked = 'data-masked'
+	DataMasked  = 'data-masked',
+	/** evaluated, just not exactly once (a loop body), so only the argument itself is marked */
+	Reevaluated = 'reevaluated'
+}
+
+export interface NseMarkOptions {
+	readonly kind?:      NseKind
+	/** ids an unquote escape splices back in, see {@link Nse.unquoted} */
+	readonly evaluated?: ReadonlySet<NodeId>
 }
 
 /**
- * Marks the selected arguments as {@link EdgeType.NonStandardEvaluation}, so they are recognised as not being
- * evaluated the standard way. A {@link NseKind.Quoted|quoted} argument is marked entirely, as none of it is
- * evaluated. A {@link NseKind.DataMasked|data-masked} one is evaluated in the caller's frame, with only the
- * names the mask supplies (those that resolve to nothing else) taken from the data, so only those are marked.
- * Besides the {@link NseArguments} shorthands, the positions may be listed explicitly, `undefined` marks nothing.
+ * Marks the selected arguments as {@link EdgeType.NonStandardEvaluation}: a {@link NseKind.Quoted|quoted} one
+ * entirely, a {@link NseKind.DataMasked|data-masked} one only where {@link Nse.suppliedByMask} holds, and a
+ * {@link NseKind.Reevaluated|reevaluated} one as a whole but not within.
  */
 export function markArgumentsAsNonStandardEvaluation(
 	graph:              DataflowGraph,
 	rootId:             NodeId,
 	processedArguments: readonly (DataflowInformation | undefined)[],
 	which:              NseArguments | readonly number[] | undefined,
-	kind:               NseKind = NseKind.Quoted
+	{ kind = NseKind.Quoted, evaluated }: NseMarkOptions = {}
 ): void {
 	if(which === undefined) {
 		return;
 	}
-	const end = which === NseArguments.First ? 1 : processedArguments.length;
-	for(let i = which === NseArguments.AllButFirst ? 1 : 0; i < end; i++) {
-		const arg = processedArguments[i];
-		if(arg === undefined || (typeof which !== 'string' && !which.includes(i))) {
-			continue;
-		}
-		if(kind === NseKind.Quoted) {
-			graph.addEdge(rootId, arg.entryPoint, EdgeType.NonStandardEvaluation);
-		}
-		for(const [vtx, info] of arg.graph.vertices(true)) {
-			/* a masked name the caller does not bind is the one the data supplies */
-			if(kind === NseKind.Quoted || (UseVertex.is(info) && !arg.graph.outgoingEdges(vtx)?.values().some(e => DfEdge.includesType(e, EdgeType.Reads)))) {
-				graph.addEdge(rootId, vtx, EdgeType.NonStandardEvaluation);
+
+	if(typeof which !== 'string') {
+		for(const i of which) {
+			if(i < processedArguments.length) {
+				markArgument(graph, rootId, processedArguments[i], kind, evaluated);
+			} else {
+				dataflowLogger.warn(`Trying to mark argument ${i} as non-standard-evaluation, but only ${processedArguments.length} arguments are available`);
 			}
 		}
+		return;
+	}
+	const end = which === NseArguments.First ? 1 : processedArguments.length;
+	for(let i = which === NseArguments.AllButFirst ? 1 : 0; i < end; i++) {
+		markArgument(graph, rootId, processedArguments[i], kind, evaluated);
 	}
 }
 
-/**
- * Marks the given arguments as being involved in R's non-standard evaluation.
- */
-export function markNonStandardEvaluationEdges(
-	markAsNSE:  readonly number[],
-	callArgs:   readonly (DataflowInformation | undefined)[],
-	finalGraph: DataflowGraph,
-	rootId:     NodeId
-) {
-	for(const nse of markAsNSE) {
-		if(nse < callArgs.length) {
-			const arg = callArgs[nse];
-			if(arg !== undefined) {
-				finalGraph.addEdge(rootId, arg.entryPoint, EdgeType.NonStandardEvaluation);
-			}
-		} else {
-			dataflowLogger.warn(`Trying to mark argument ${nse} as non-standard-evaluation, but only ${callArgs.length} arguments are available`);
+function markArgument(graph: DataflowGraph, rootId: NodeId, arg: DataflowInformation | undefined, kind: NseKind, evaluated: ReadonlySet<NodeId> | undefined): void {
+	if(arg === undefined) {
+		return;
+	}
+	if(kind !== NseKind.DataMasked) {
+		graph.addEdge(rootId, arg.entryPoint, EdgeType.NonStandardEvaluation);
+	}
+	if(kind === NseKind.Reevaluated) {
+		return;
+	}
+	for(const [vtx, info] of arg.graph.vertices(true)) {
+		if(evaluated?.has(vtx)) {
+			continue;
+		}
+		if(kind === NseKind.Quoted || Nse.suppliedByMask(arg.graph, vtx, info)) {
+			graph.addEdge(rootId, vtx, EdgeType.NonStandardEvaluation);
 		}
 	}
 }
@@ -151,9 +156,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		remainingReadInArgs,
 		processedArguments
 	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forceArgs });
-	if(markAsNSE) {
-		markNonStandardEvaluationEdges(markAsNSE, processedArguments, finalGraph, rootId);
-	}
+	markArgumentsAsNonStandardEvaluation(finalGraph, rootId, processedArguments, markAsNSE, { kind: NseKind.Reevaluated });
 
 	const onlyBuiltin = data.builtInNoEnv === rootId;
 	finalGraph.addVertex({

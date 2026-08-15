@@ -13,7 +13,7 @@ describe('Location Map Query REPL Parser', () => {
 				type: 'location-map',
 				ids:  undefined
 			},
-			rCode: ''
+			rCode: undefined
 		},
 	});
 	assertReplParser({ parser,

@@ -272,8 +272,8 @@ function mayRunAnyway(graph: CallGraph, reached: ReadonlySet<NodeId>): NodeId[] 
  * @see {@link CallGraph}
  */
 export const CallGraph = {
-	name: 'CallGraph',
 	...GraphHelper,
+	name: 'CallGraph',
 	/**
 	 * Extracts the sub call graph from the given call graph, starting from the given entry points.
 	 */

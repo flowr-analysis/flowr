@@ -1,4 +1,6 @@
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { resolveByName } from '../environments/resolve-by-name';
+import { isReferenceType, ReferenceType } from '../environments/identifier';
 import type { DataflowGraph } from '../graph/graph';
 import {
 	type DataflowGraphVertexArgument,
@@ -8,10 +10,9 @@ import {
 } from '../graph/vertex';
 import { isNotUndefined } from '../../util/assert';
 import { DfEdge, EdgeType } from '../graph/edge';
-import { resolveIdToValue } from '../eval/resolve/alias-tracking';
+import { NodeValue } from '../eval/resolve/node-value';
 import { VariableResolve } from '../../config';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { valueSetGuard } from '../eval/values/general';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): boolean {
@@ -39,6 +40,23 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 	return false;
 }
 
+/**
+ * Whether the argument hands over a built-in function (`f(print)`), which has no definition in the graph and
+ * hence no `function-definition` value to resolve to.
+ */
+function readsBuiltInFunction(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
+	for(const [target, edge] of graph.outgoingEdges(id) ?? []) {
+		if(!DfEdge.includesType(edge, EdgeType.Reads) || !NodeId.isBuiltIn(target)) {
+			continue;
+		}
+		const defs = resolveByName(NodeId.fromBuiltIn(target), ctx.env.makeCleanEnv(), ReferenceType.Function);
+		if(defs?.some(d => isReferenceType(d.type, ReferenceType.BuiltInFunction))) {
+			return true;
+		}
+	}
+	return false;
+}
+
 function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph): boolean {
 	const callSites = invertedGraph?.outgoingEdges(def.id) ?? graph.ingoingEdges(def.id);
 
@@ -54,8 +72,8 @@ function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition
 			if(arg === EmptyArgument) {
 				continue;
 			}
-			const value = valueSetGuard(resolveIdToValue(arg.nodeId, { graph, idMap: graph.idMap, resolve: VariableResolve.Alias, full: true, ctx }));
-			if(value?.elements.some(e => e.type === 'function-definition')) {
+			const value = NodeValue.inGraph.setOf(arg.nodeId, graph, ctx, { resolve: VariableResolve.Alias });
+			if(value?.elements.some(e => e.type === 'function-definition') || readsBuiltInFunction(arg.nodeId, graph, ctx)) {
 				return true;
 			}
 		}

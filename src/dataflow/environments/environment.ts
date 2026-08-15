@@ -276,12 +276,9 @@ export class Environment implements IEnvironment {
 		if(!other || this === other) {
 			return this;
 		}
-		// package blocks are unioned, never overwritten (see mergePackageBlocks)
-		if(this.t !== undefined || other.t !== undefined) {
-			return this.mergePackageBlocks(other);
-		}
-		if(this.builtInEnv || this.n !== other.n) {
-			return this;
+		const shortcut = this.mergeShortcut(other);
+		if(shortcut !== undefined) {
+			return shortcut;
 		}
 		const map = new Map(this.memory);
 		for(const [key, values] of other.memory) {
@@ -330,12 +327,9 @@ export class Environment implements IEnvironment {
 		if(!other || this === other) {
 			return this;
 		}
-		// package blocks may diverge between branches; union them before the built-in guard
-		if(this.t !== undefined || other.t !== undefined) {
-			return this.mergePackageBlocks(other);
-		}
-		if(this.builtInEnv || this.n !== other.n) {
-			return this;
+		const shortcut = this.mergeShortcut(other);
+		if(shortcut !== undefined) {
+			return shortcut;
 		}
 		const map = new Map(this.memory);
 		for(const [key, value] of other.memory) {
@@ -348,11 +342,23 @@ export class Environment implements IEnvironment {
 		}
 
 		const out = new Environment(this.parent.append(other.parent));
+		out.c = this.c;
 		out.n = this.n;
 		out.t = this.t;
 		out.globalEnv = this.globalEnv;
 		out.memory = map;
 		return out;
+	}
+
+	/**
+	 * The environment a merge with `other` settles on without touching either memory, `undefined` if the
+	 * memories have to be merged. Package blocks are always unioned, never overwritten or appended to.
+	 */
+	private mergeShortcut(other: Environment): Environment | undefined {
+		if(this.t !== undefined || other.t !== undefined) {
+			return this.mergePackageBlocks(other);
+		}
+		return this.builtInEnv || this.n !== other.n ? this : undefined;
 	}
 
 	/**

@@ -1,4 +1,5 @@
 import { type DataflowGraph, FunctionArgument } from '../../graph/graph';
+import { RValue } from '../values/r-value';
 import type { DataflowGraphVertexFunctionCall } from '../../graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -128,8 +129,10 @@ function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowG
  */
 function stringsOfValue(value: Value, full: boolean): string[] | undefined {
 	switch(value.type) {
-		case 'string':
-			return isValue(value.value) ? [value.value.str] : undefined;
+		case 'string': {
+			const str = RValue.stringOf(value);
+			return str !== undefined ? [str] : undefined;
+		}
 		case 'logical':
 			return isValue(value.value) ? [value.value.valueOf() ? RTrue : RFalse] : undefined;
 		case 'vector':

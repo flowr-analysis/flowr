@@ -318,7 +318,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		const seen = new Set<string>();
 		const owners: string[] = [];
 		for(const src of sources) {
-			for(const pkg of ExportIndex.owners(ExportIndex.of(src).get(name))) {
+			for(const pkg of src.packagesExporting(name)) {
 				if(!seen.has(pkg) && !this.isSelfPackage(pkg)) {
 					seen.add(pkg);
 					owners.push(pkg);

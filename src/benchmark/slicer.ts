@@ -461,7 +461,7 @@ export class BenchmarkSlicer {
 
 	/**
 	 * Measure the phases that are not part of the slicing itself: the dependencies query, the linter,
-	 * and the synthetic {@link runCalibration | calibration} workload.
+	 * and the synthetic {@link runCalibration | calibration} workload, the only one that reports its own time.
 	 *
 	 * These run *after* all other steps and are excluded from the {@link CommonSlicerMeasurements} (and hence from
 	 * the `total`), so that they cannot distort any of the existing measurements.
@@ -476,7 +476,8 @@ export class BenchmarkSlicer {
 				await this.measureAdditional('dependencies query', () => analyzer.query([{ type: 'dependencies' }]));
 				await this.measureAdditional('linter run', () => analyzer.query([{ type: 'linter' }]));
 			}
-			await this.measureAdditional('calibration', () => runCalibration());
+			/* the calibration times itself, so that neither the warmup nor the rounds it discards count */
+			this.additionalMeasurements.set('calibration', runCalibration());
 		} catch(e: unknown) {
 			benchmarkLogger.error(`failed to measure the additional phases: ${e instanceof Error ? e.message : String(e)}`);
 		} finally {

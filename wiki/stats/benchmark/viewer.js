@@ -679,7 +679,7 @@
 					!ui.calibrateField.hidden && ui.calibrate.checked ? 'calibrated' : ''
 				];
 			case 'layout':
-				return [locked ? 'locked' : 'draggable', collapsed.size ? collapsed.size + ' folded' : ''];
+				return [locked ? 'locked' : 'draggable'];
 			default:
 				return ['JSON', 'CSV', 'data.js'];
 		}
@@ -984,12 +984,20 @@
 		return null;
 	}
 
-	/** a calibration this flat, or measured this rarely, would divide every run by the same number */
-	const CALIBRATION_MIN_RUNS = 5, CALIBRATION_MIN_SPREAD = 1.05;
+	/** a calibration measured this rarely, or one that never moved at all, would divide every run by the same number */
+	const CALIBRATION_MIN_RUNS = 2, CALIBRATION_MIN_SPREAD = 1.001;
+
+	/**
+	 * Only a duration scales with the machine, so counts, sizes, and ratios keep their raw value
+	 * and the calibration series itself stays the yardstick it is.
+	 */
+	function calibrates(name, unit, calib) {
+		return unit === 'ms' && name !== calib;
+	}
 
 	/**
 	 * The name of the calibration if dividing by it would change the picture, null otherwise: it needs
-	 * several runs to compare and a machine that actually differed between them.
+	 * at least two runs to compare and a machine that actually differed between them.
 	 */
 	function usableCalibration(runs, name) {
 		if(!name) {
@@ -1107,8 +1115,7 @@
 
 	/** only the phases add up to something meaningful, a sum of ratios or counters would not */
 	/** the phases every analysis walks through, the ones the sum of the per-file chart adds up */
-	const CORE_PHASES = ['Retrieve AST from R code', 'Normalize R AST', 'Produce dataflow information',
-		'Extract control flow graph'];
+	const CORE_PHASES = ['Retrieve AST from R code', 'Normalize R AST', 'Produce dataflow information'];
 
 	function sumSeries(group, series, n) {
 		if(!['per-file', 'per-slice'].includes(group.id) || ui.mode.value === 'delta') {
@@ -1132,6 +1139,8 @@
 		return {
 			name:  SUM_NAME,
 			label: SUM_NAME + ' (' + parts.map(s => s.label).join(' + ') + ')',
+			/* who is in it, so a tooltip can tell a part of the sum from a series that only shares the chart */
+			parts: parts.map(s => s.name),
 			unit:  parts[0].unit, better: 'down', color: 'sum',
 			raw:   values, values, err: values.map(() => null), baseline: null
 		};
@@ -1382,6 +1391,11 @@
 		// the phases add up to the analysis, so their sum is worth a line of its own
 		const sum = sumSeries(group, shown, runs.length);
 		if(sum) {
+			/* what the sum leaves out is still worth a line, only a quieter one than the parts that add up */
+			const inSum = new Set(sum.parts);
+			for(const s of shown) {
+				s.outsideSum = !inSum.has(s.name);
+			}
 			shown = shown.concat(sum);
 			series = series.concat(sum);
 		}
@@ -1943,10 +1957,10 @@
 	}
 
 	/** one row: the colour of the series, what it is called, and what it says */
-	function tipRow(color, label, value, title) {
+	function tipRow(color, label, value, title, faint) {
 		const cell = typeof value === 'string' ? { textContent: value } : { textContent: value.text, className: value.cls || '' };
 		return dom('tr',
-			{}, dom('td', {}, dom('span', { className: swatchClass(color) })),
+			{ className: faint ? 'faint' : '' }, dom('td', {}, dom('span', { className: swatchClass(color) })),
 			dom('td', { className: 'name', textContent: label, title: title || '' }),
 			dom('td', cell));
 	}
@@ -1982,6 +1996,8 @@
 
 		// what a phase takes of its chart, the sum row being the whole rather than a part of it
 		const parts = series.filter(s => s.name !== SUM_NAME);
+		/* a chart may carry series the sum leaves out, and a reader adding the rows up should see which */
+		const outside = s => Boolean(s.outsideSum);
 		const chartSum = parts.reduce((a, s) => a + (typeof s.values[i] === 'number' ? Math.abs(s.values[i]) : 0), 0);
 
 		// one precision for the whole tooltip, so the values can be compared at a glance
@@ -2012,8 +2028,8 @@
 				val = { text: fmt(v, s.unit, decimals) };
 			}
 			/* the labels are short forms, the measurement they stand for is one hover away */
-			table.appendChild(tipRow(s.color, s.label || s.name, val, s.name));
-			const extra = s.name === SUM_NAME ? extraSum(run, series.filter(o => o.name !== SUM_NAME), s.unit, i) : extraOf(run, s.name);
+			table.appendChild(tipRow(s.color, s.label || s.name, val, s.name, outside(s)));
+			const extra = s.name === SUM_NAME ? extraSum(run, parts.filter(o => !outside(o)), s.unit, i) : extraOf(run, s.name);
 			const raw = s.raw[i];
 			const share = !isDelta && v !== null && chartSum > 0 && parts.length > 1 && s.name !== SUM_NAME
 				? (Math.abs(v) / chartSum * 100).toFixed(1) + '% of this chart' : '';
@@ -2026,16 +2042,12 @@
 			if(note) {
 				const td = dom('td', { className: 'msg', textContent: note });
 				td.colSpan = 2;
-				table.appendChild(dom('tr', {}, dom('td'), td));
+				table.appendChild(dom('tr', { className: outside(s) ? 'faint' : '' }, dom('td'), td));
 			}
 		}
 		t.appendChild(table);
 		if(sorted.length > rows.length) {
 			t.append(dom('div', { className: 'msg', textContent: (sorted.length - rows.length) + ' smaller series not shown' }));
-		}
-		/* the plotted number is the mean of the run, which only the note beside it would otherwise say */
-		if(!brief && rows.some(s => /^(mean|median):/.test(extraOf(run, s.name)))) {
-			t.append(dom('div', { className: 'msg', textContent: 'values are means, their medians are in the notes' }));
 		}
 
 		/* one line, whatever its length: a title that wraps pushes the numbers around as the pointer moves */
@@ -2147,11 +2159,11 @@
 		const calib = usableCalibration(runs, calibrationMetric(runs));
 		ui.calibrateField.hidden = !calib;
 		ui.calibrationNote.hidden = !calib;
-		if(!calib) {
-			ui.calibrate.checked = false;
-		} else {
+		/* the box keeps its state while it is away, so a suite that carries a calibration again is normalised again */
+		if(calib) {
 			ui.calibrationNote.textContent = 'A fixed synthetic workload runs in the same CI job, so "' + calib
-				+ '" measures how fast or loaded that machine was. Dividing the other series by it cancels the machine out.';
+				+ '" measures how fast or loaded that machine was. Dividing the timings by it cancels the machine out, '
+				+ 'while counts, sizes, and ratios stay as measured.';
 		}
 
 		const factors = calib && ui.calibrate.checked ? S.calibrationFactors(runs.map(r => valueOf(r, calib))) : null;
@@ -2169,7 +2181,7 @@
 			const series = [];
 			for(const [name, unit] of metrics) {
 				if(S.groupOf(name, unit) === group.id) {
-					series.push(build(runs, name, unit, name === calib ? null : factors));
+					series.push(build(runs, name, unit, calibrates(name, unit, calib) ? factors : null));
 				}
 			}
 			const lines = series.filter(s => !isBar(s.name));

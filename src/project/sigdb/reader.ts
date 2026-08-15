@@ -98,6 +98,12 @@ export interface PackageSignatureSource {
 	 * {@link LibraryExports.s4Classes}); S3 ownership wins a tie. `undefined` if none does. Without `version`, backed
 	 * by a reverse index over every package's latest version, built once and cached.
 	 */
+	/**
+	 * The packages exporting `name`, ordered by downloads (descending, ties by name). Answered without building
+	 * a reverse index: a name the database never stores is rejected outright, and only the blobs that may hold
+	 * it are decoded.
+	 */
+	packagesExporting(name: string): readonly string[];
 	classOwner(className: string, version?: string): string | undefined;
 	/** rich per-function view (signatures + call graphs) of a package version */
 	functions(pkg: string, version?: string): DecodedFunction[] | undefined;
@@ -238,6 +244,15 @@ export class MergedSignatureSource implements PackageSignatureSource {
 	}
 	public lookup(pkg: string, version?: string): LibraryExports | undefined {
 		return this.pick(pkg, version)?.lookup(pkg, version);
+	}
+	public packagesExporting(name: string): readonly string[] {
+		const found = new Set<string>();
+		for(const s of this.sources) {
+			for(const pkg of s.packagesExporting(name)) {
+				found.add(pkg);
+			}
+		}
+		return [...found].sort((a, b) => this.downloads(b) - this.downloads(a) || a.localeCompare(b));
 	}
 	public classOwner(className: string, version?: string): string | undefined {
 		for(const s of this.sources) {
@@ -546,6 +561,19 @@ export class SigDatabase implements PackageSignatureSource {
 			return undefined;
 		}
 		return deriveLibraryExports(this.strings, blob, meta, pkg, version, this.cranBase);
+	}
+
+	public packagesExporting(name: string): readonly string[] {
+		if(this.nameId(name) < 0) {
+			return [];
+		}
+		const found: string[] = [];
+		for(const pkg of this.packageNames()) {
+			if(this.mayOffer(pkg, name) && this.lookup(pkg)?.exported.includes(name)) {
+				found.push(pkg);
+			}
+		}
+		return found.sort((a, b) => this.downloads(b) - this.downloads(a) || a.localeCompare(b));
 	}
 
 	public classOwner(className: string, version?: string): string | undefined {
@@ -966,6 +994,16 @@ export class SigDatabaseSet implements PackageSignatureSource {
 
 	public lookup(pkg: string, version?: string): LibraryExports | undefined {
 		return this.firstOf(pkg, version, db => db.lookup(pkg, version));
+	}
+
+	public packagesExporting(name: string): readonly string[] {
+		const found = new Set<string>();
+		for(const idx of this.indices.keys()) {
+			for(const pkg of this.shard(idx)?.packagesExporting(name) ?? []) {
+				found.add(pkg);
+			}
+		}
+		return [...found].sort((a, b) => this.downloads(b) - this.downloads(a) || a.localeCompare(b));
 	}
 
 	public classOwner(className: string, version?: string): string | undefined {

@@ -1,7 +1,6 @@
 import type { DataflowProcessorInformation } from '../processor';
 import type { DataflowInformation, ExitPoint, ExitPointType } from '../info';
-import type { NseArguments } from '../internal/process/functions/call/known-call-handling';
-import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, NseKind } from '../internal/process/functions/call/known-call-handling';
+import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, NseArguments, NseKind } from '../internal/process/functions/call/known-call-handling';
 import { processAccess } from '../internal/process/functions/call/built-in/built-in-access';
 import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else';
 import {
@@ -76,6 +75,7 @@ import { processAttach } from '../internal/process/functions/call/built-in/built
 import { processWithEnv } from '../internal/process/functions/call/built-in/built-in-with';
 import { processNamespaceAccess } from '../internal/process/functions/call/built-in/built-in-namespace-access';
 import { processLoadCall } from '../internal/process/functions/call/built-in/built-in-load';
+import { processStringTemplate } from '../internal/process/functions/call/built-in/built-in-string-template';
 import { ArgProp, FnSig, type BuiltInFnInfo } from './built-in-props';
 
 export type BuiltInIdentifierProcessor = <OtherInfo>(
@@ -97,7 +97,7 @@ export interface BuiltInIdentifierDefinition extends IdentifierReference {
 	type:         ReferenceType.BuiltInFunction
 	definedAt:    BuiltIn
 	processor:    BuiltInIdentifierProcessor
-	config?:      ConfigOfBuiltInMappingName<keyof typeof BuiltInProcessorMapper> & { libFn?: boolean }
+	config?:      ConfigOfBuiltInMappingName<keyof typeof BuiltInProcessorMapper> & BuiltInFnInfo & { libFn?: boolean }
 	/** folds a call to this function to a constant, see {@link BuiltInEvalHandlerMapper} */
 	evalHandler?: BuiltInEvalHandler
 }
@@ -152,9 +152,24 @@ function defaultBuiltInProcessor<OtherInfo>(
 		forceArgs ??= (layout.any & ArgProp.Forced) !== 0 ? args.map((_, i) => (FnSig.propAt(layout, i) & ArgProp.Forced) !== 0) : undefined;
 		nse ??= (layout.any & ArgProp.Nse) !== 0 ? FnSig.posWith(layout, args.length, ArgProp.Nse) : undefined;
 	}
-	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: useAsProcessor });
+	const nsePositions = nsePositionsOf(nse, args.length);
+	let lastEnv = data.environment;
+	const { information: res, processedArguments } = processKnownFunctionCall({
+		name, args, rootId, data, forceArgs, origin:    useAsProcessor,
+		/* an unevaluated argument must not read the current frame, so it is analyzed in a clean env like `quote` */
+		patchData: nsePositions === undefined ? undefined : (d, index) => {
+			if(nsePositions.has(index)) {
+				lastEnv = d.environment;
+				return { ...d, environment: d.ctx.env.makeCleanEnv() };
+			}
+			return { ...d, environment: lastEnv };
+		}
+	});
+	if(nsePositions !== undefined) {
+		dropQuotedReferences(res, processedArguments, nsePositions, lastEnv);
+	}
 	markArgumentsAsNonStandardEvaluation(res.graph, rootId, processedArguments, nse);
-	markArgumentsAsNonStandardEvaluation(res.graph, rootId, processedArguments, masked, NseKind.DataMasked);
+	markArgumentsAsNonStandardEvaluation(res.graph, rootId, processedArguments, masked, { kind: NseKind.DataMasked });
 	if(keepArgumentOut) {
 		res.out = [...res.out, ...processedArguments.flatMap(arg => arg?.out ?? [])];
 	}
@@ -223,6 +238,45 @@ function defaultBuiltInProcessor<OtherInfo>(
 	return res;
 }
 
+/** The argument positions {@link markArgumentsAsNonStandardEvaluation} would mark as quoted. */
+function nsePositionsOf(which: NseArguments | readonly number[] | undefined, count: number): ReadonlySet<number> | undefined {
+	if(which === undefined) {
+		return undefined;
+	} else if(typeof which !== 'string') {
+		return new Set(which);
+	}
+	const positions = new Set<number>();
+	const end = which === NseArguments.First ? Math.min(1, count) : count;
+	for(let i = which === NseArguments.AllButFirst ? 1 : 0; i < end; i++) {
+		positions.add(i);
+	}
+	return positions;
+}
+
+/** Whatever a quoted argument saw in its clean env must not be resolved in the caller's frame afterwards. */
+function dropQuotedReferences(
+	res: DataflowInformation,
+	processedArguments: readonly (DataflowInformation | undefined)[],
+	nsePositions: ReadonlySet<number>,
+	lastEnv: REnvironmentInformation
+): void {
+	const quoted = new Set<NodeId>();
+	for(const i of nsePositions) {
+		const arg = processedArguments[i];
+		for(const ref of [...arg?.in ?? [], ...arg?.unknownReferences ?? []]) {
+			quoted.add(ref.nodeId);
+		}
+	}
+	if(quoted.size > 0) {
+		res.in = res.in.filter(ref => !quoted.has(ref.nodeId));
+		res.unknownReferences = res.unknownReferences.filter(ref => !quoted.has(ref.nodeId));
+	}
+	if(nsePositions.has(processedArguments.length - 1)) {
+		/* the clean env of the last argument must not become the env the call leaves behind */
+		res.environment = lastEnv;
+	}
+}
+
 function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -238,7 +292,7 @@ function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 		}
 	}
 	markArgumentsAsNonStandardEvaluation(g, rootId, processedArguments, nse);
-	markArgumentsAsNonStandardEvaluation(g, rootId, processedArguments, masked, NseKind.DataMasked);
+	markArgumentsAsNonStandardEvaluation(g, rootId, processedArguments, masked, { kind: NseKind.DataMasked });
 	return information;
 }
 
@@ -250,6 +304,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.DefineArgument]:     processDefineArgument,
 	[BuiltInProcName.Default]:            defaultBuiltInProcessor,
 	[BuiltInProcName.DefaultReadAllArgs]: defaultBuiltInProcessorReadallArgs,
+	[BuiltInProcName.StringTemplate]:     processStringTemplate,
 	[BuiltInProcName.Eval]:               processEvalCall,
 	[BuiltInProcName.ExpressionList]:     processExpressionList,
 	[BuiltInProcName.ForLoop]:            processForLoop,

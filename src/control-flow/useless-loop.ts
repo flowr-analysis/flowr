@@ -1,5 +1,4 @@
-import { resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
-import { valueSetGuard } from '../dataflow/eval/values/general';
+import { NodeValue } from '../dataflow/eval/resolve/node-value';
 import { isValue } from '../dataflow/eval/values/r-value';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { type DataflowGraphVertexFunctionCall, VertexType } from '../dataflow/graph/vertex';
@@ -46,17 +45,12 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 			return undefined;
 		}
 
-		const values = valueSetGuard(resolveIdToValue(vectorOfLoop.nodeId, {
-			graph:   dataflow,
-			idMap:   dataflow.idMap,
-			resolve: ctx.config.solver.variables,
-			ctx:     ctx
-		}));
-		if(values?.elements.length !== 1 || values.elements[0].type !== 'vector' || !isValue(values.elements[0].elements)) {
+		const vector = NodeValue.inGraph.soleOf(vectorOfLoop.nodeId, dataflow, ctx, 'vector');
+		if(vector === undefined || !isValue(vector.elements)) {
 			return undefined;
 		}
 
-		if(values.elements[0].elements.length === 1) {
+		if(vector.elements.length === 1) {
 			return true;
 		}
 	}
@@ -84,25 +78,6 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 	constructor(loop: NodeId, config: SemanticCfgGuidedVisitorConfiguration) {
 		super(config);
 		this.loopToCheck = loop;
-	}
-
-	private getBoolArgValue(data: { call: DataflowGraphVertexFunctionCall }): boolean | undefined {
-		if(data.call.args.length !== 1 || data.call.args[0] === EmptyArgument) {
-			return undefined;
-		}
-
-		const values = valueSetGuard(resolveIdToValue(data.call.args[0].nodeId, {
-			graph:   this.config.dfg,
-			full:    true,
-			idMap:   this.config.normalizedAst.idMap,
-			resolve: this.config.ctx.config.solver.variables,
-			ctx:     this.config.ctx
-		}));
-		if(values?.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
-			return undefined;
-		}
-
-		return Boolean(values.elements[0].value);
 	}
 
 	protected startVisitor(_: readonly NodeId[]): void {

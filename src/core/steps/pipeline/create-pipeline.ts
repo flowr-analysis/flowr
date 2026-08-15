@@ -100,7 +100,7 @@ function topologicallyInsertDecoratorElements(decoratorsOfLastOthers: Set<Pipeli
 	let changed = true;
 	while(changed) {
 		changed = false;
-		for(const elem of [...decoratorsOfLastOthers]) {
+		for(const elem of decoratorsOfLastOthers) {
 			const step = stepMap.get(elem) as IPipelineStep;
 			if(allDependenciesAreVisited(step, visited)) {
 				decoratorsOfLastOthers.delete(elem);

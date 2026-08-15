@@ -9,8 +9,10 @@ import { label } from '../_helper/label';
  * which is invalid JSON and used to crash parsing of real-world (accented, smart-quoted) R sources - the
  * benchmark's `failed to reconstruct/re-parse` spike. flowR now forces a UTF-8 `LC_CTYPE` in its R session,
  * so this must keep working even when the surrounding process runs in `C`.
+ * The test targets the R shell itself, so it stays on the R bridge.
+ * @lintIgnore use-instead
  */
-describe.sequential('Parsing is robust to a non-UTF-8 host locale', () => {
+describe('Parsing is robust to a non-UTF-8 host locale', { concurrent: false }, () => {
 	// force the R child process into a POSIX/C locale, independent of the host running the tests
 	const shell = new RShell(undefined, { env: { ...process.env, LC_ALL: 'C', LC_CTYPE: 'C', LANG: 'C' } });
 	afterAll(() => shell.close());

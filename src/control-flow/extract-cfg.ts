@@ -17,7 +17,7 @@ import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
 import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
-import { FunctionCallVertex, FunctionDefinitionVertex, VertexType } from '../dataflow/graph/vertex';
+import { FunctionCallVertex, FunctionDefinitionVertex } from '../dataflow/graph/vertex';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { type CfgExpressionVertex,
 	CfgEdge, CfgVertex,
@@ -580,7 +580,7 @@ const OriginToFoldTypeMap: Partial<Record<BuiltInProcName, (folds: StatefulFoldF
 function cfgFunctionCallWithDataflow(graph: DataflowGraph, folds: StatefulFoldFunctions<ParentInformation, CfgDownState, CfgFoldInformation>): typeof cfgFunctionCall {
 	return (call: RFunctionCall<ParentInformation>, name: CfgFoldInformation, args: (CfgFoldInformation | typeof EmptyArgument)[], down: CfgDownState): CfgFoldInformation => {
 		const vtx = graph.getVertex(call.info.id);
-		if(vtx?.tag === VertexType.FunctionCall && vtx.onlyBuiltin && vtx.origin.length === 1) {
+		if(FunctionCallVertex.is(vtx) && vtx.onlyBuiltin && vtx.origin.length === 1) {
 			const origin = vtx.origin[0];
 			const mayMap = OriginToFoldTypeMap[origin as BuiltInProcName];
 			// ifelse/fifelse/if_else share the IfThenElse origin but are eager calls, so only fold a real `if` node

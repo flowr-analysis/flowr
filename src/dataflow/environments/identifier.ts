@@ -47,7 +47,7 @@ export const Identifier = {
 	 */
 	make(this: void, name: BrandedIdentifier, namespace?: BrandedNamespace, internal: boolean = false): Identifier {
 		if(startAndEndsWith(name, '`')) {
-			name = name.substring(1, name.length - 1);
+			name = name.slice(1, -1);
 		}
 		if(namespace) {
 			return [name, namespace, internal];

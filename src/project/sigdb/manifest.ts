@@ -3,8 +3,8 @@
  * database), reading/writing it, and discovering the bundled manifests/bundles on flowR's search path. Split
  * out of `../sigdb` as pure format + filesystem discovery, with no dependency on the reader/writer classes.
  */
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from 'fs';
+import path from 'path';
 import { SigDbExt, type SigDbPkgMeta, type SigDbShard, type SigDbTier } from './schema';
 import type { ByteRange, SigDbIndexWire, SigShardIndexWire } from './index-format';
 import { CompressedExtPattern, compressedExtOf, decompressSyncFor, readableExtsPreferred, stripCompressedExt, writeCodecs } from './codec';

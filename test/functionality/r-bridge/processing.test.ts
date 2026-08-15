@@ -8,7 +8,7 @@ import { describe, assert, test } from 'vitest';
 import { SourceRange } from '../../../src/util/range';
 import { RProject } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
 
-describe.sequential('Assign unique Ids and Parents', withShell(shell => {
+describe('Assign unique Ids and Parents', { concurrent: false }, withShell(shell => {
 	describe('Testing Deterministic Counting of Id Assignment', () => {
 		const assertDecorated = (name: string, input: string, expected: RNodeWithParent): void => {
 			assertDecoratedAst(name, shell, input, expected);

@@ -7,7 +7,7 @@ import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nod
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { recoverName } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { VertexType } from '../../../../../graph/vertex';
+import { VertexType, FunctionCallVertex } from '../../../../../graph/vertex';
 import { dataflowLogger } from '../../../../../logger';
 import { Dataflow } from '../../../../../graph/df-helper';
 import type { IdentifierReference } from '../../../../../environments/identifier';
@@ -118,7 +118,7 @@ function applyEnvListReplacement(information: DataflowInformation, env: Dataflow
 	try {
 		/* traverse the env processed DFG to find list calls (prefix-aware handling) */
 		Dataflow.visitDfg(env.graph, env.entryPoint, (vtx) => {
-			if(vtx.tag !== VertexType.FunctionCall) {
+			if(!FunctionCallVertex.is(vtx)) {
 				return;
 			}
 			if(!vtx.origin.includes(BuiltInProcName.List)) {

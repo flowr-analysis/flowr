@@ -8,8 +8,8 @@ import { REnvironment } from './environment';
 import type { IdentifierDefinition } from './identifier';
 import { Identifier, ReferenceType } from './identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { resolveByName } from './resolve-by-name';
 import type { PackageSignatureSource } from '../../project/sigdb/reader';
+import { Resolve } from './resolve-helper';
 
 /**
  * Where to look up what flowR knows about a function, in that order:
@@ -78,7 +78,7 @@ function ofDefinitions(definitions: readonly IdentifierDefinition[] | undefined)
 export function queryFnProps(name: Identifier, { environment, builtIns, signatures, version }: FnPropsSource): BuiltInFnInfo | undefined {
 	let info: BuiltInFnInfo | undefined;
 	if(environment !== undefined) {
-		const resolved = resolveByName(name, environment, ReferenceType.Function);
+		const resolved = Resolve.byNameAndType(name, environment, ReferenceType.Function);
 		const stated = resolved === undefined ? undefined : withStatedBuiltIns(resolved, environment);
 		if(stated?.some(d => d.type !== ReferenceType.BuiltInFunction)) {
 			return undefined;

@@ -2,7 +2,6 @@ import { FunctionArgument, type OutgoingEdges, UnknownSideEffect } from './graph
 import { type GenericDifferenceInformation, setDifference } from '../../util/diff';
 import { jsonReplacer } from '../../util/json';
 import { arrayEqual } from '../../util/collections/arrays';
-import { VertexType } from './vertex';
 import { DfEdge } from './edge';
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier';
@@ -13,6 +12,7 @@ import { diffControlDependencies } from '../info';
 import type { GraphDifferenceReport, GraphDiffContext } from '../../util/diff-graph';
 import { GraphDiff } from '../../util/diff-graph';
 import type { HookInformation } from '../hooks';
+import { FunctionDefinitionVertex, FunctionCallVertex } from './vertex';
 
 
 /**
@@ -147,8 +147,8 @@ export function diffVertices(ctx: GraphDiffContext): void {
 				position: `${ctx.position}Vertex ${id} differs in environment. `
 			});
 		}
-		if(lInfo.tag === VertexType.FunctionCall) {
-			if(rInfo.tag !== VertexType.FunctionCall) {
+		if(FunctionCallVertex.is(lInfo)) {
+			if(!FunctionCallVertex.is(rInfo)) {
 				ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`);
 			} else {
 				if(lInfo.onlyBuiltin !== rInfo.onlyBuiltin) {
@@ -166,8 +166,8 @@ export function diffVertices(ctx: GraphDiffContext): void {
 			}
 		}
 
-		if(lInfo.tag === VertexType.FunctionDefinition) {
-			if(rInfo.tag !== VertexType.FunctionDefinition) {
+		if(FunctionDefinitionVertex.is(lInfo)) {
+			if(!FunctionDefinitionVertex.is(rInfo)) {
 				ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`, { tag: 'vertex', id });
 			} else {
 				if(!arrayEqual(lInfo.exitPoints, rInfo.exitPoints, (a, b) => {
@@ -311,7 +311,7 @@ function diffEdge(edge: DfEdge, otherEdge: DfEdge, ctx: GraphDiffContext, id: No
 			{ tag: 'edge', from: id, to: target }
 		);
 	}
-	if(edge.types !== otherEdge.types) {
+	if(!DfEdge.isOnlyType(edge, otherEdge.types)) {
 		ctx.report.addComment(
 			`Target of ${id}->${target} in ${ctx.leftname} differs in edge types: ${JSON.stringify([...DfEdge.typesToNames(edge)])} vs ${JSON.stringify([...DfEdge.typesToNames(otherEdge)])}`,
 			{ tag: 'edge', from: id, to: target }

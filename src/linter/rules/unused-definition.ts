@@ -23,6 +23,7 @@ import { CallProp } from '../../dataflow/environments/built-in-props';
 import { RGroupGenerics } from '../../dataflow/environments/default-builtin-config';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { NoEdges } from '../../dataflow/graph/graph';
 
 export interface UnusedDefinitionResult extends LintingResult {
 	variableName?: string
@@ -204,7 +205,7 @@ function buildQuickFix(variable: RNode<ParentInformation>, dfg: DataflowGraph, a
 	const definedBys = getDefinitionArguments(variable.info.id, dfg);
 
 	const hasImportantArgs = definedBys.some(d => dfg.unknownSideEffects.has(d))
-		|| definedBys.flatMap(e => Array.from(dfg.outgoingEdges(e) ?? []))
+		|| definedBys.flatMap(e => Array.from(dfg.outgoingEdges(e) ?? NoEdges))
 			.some(([target, e]) => {
 				return DfEdge.includesType(e, InterestingEdgesTargets) || dfg.unknownSideEffects.has(target);
 			});

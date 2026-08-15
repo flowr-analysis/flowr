@@ -18,7 +18,7 @@ import { Identifier } from '../dataflow/environments/identifier';
 import { VertexType } from '../dataflow/graph/vertex';
 import { FunctionArgument, type DataflowGraph } from '../dataflow/graph/graph';
 import { Dataflow } from '../dataflow/graph/df-helper';
-import { getOriginInDfg, OriginType } from '../dataflow/origin/dfg-get-origin';
+import { OriginType } from '../dataflow/origin/dfg-get-origin';
 import { AttachedBasePackages, baseRExportOwner } from '../util/r-base-packages';
 import { collectScopeDefinedNames, isDefinedInEnclosingScope, isNonStandardEvaluated } from '../linter/rules/undefined-symbol-util';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
@@ -428,7 +428,7 @@ export function collectOrphanUsage(graph: DataflowGraph, deps: ReadOnlyFlowrAnal
 		const name = Identifier.getName(vertex.name);
 		// a call bound to a real definition (local, parameter, closure, or import) *is* that definition, not a package
 		// export; only an unresolved or builtin-modeled call can be an orphan (flowR models e.g. `ggplot` as a builtin)
-		if(getOriginInDfg(graph, id)?.some(o => o.type === OriginType.FunctionCallOrigin) === true) {
+		if(Dataflow.origin(graph, id)?.some(o => o.type === OriginType.FunctionCallOrigin) === true) {
 			continue;
 		}
 		// a bare name from a default-attached base package (or a base primitive) is defined without a library() call

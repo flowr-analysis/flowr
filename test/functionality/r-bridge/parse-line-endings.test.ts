@@ -10,7 +10,7 @@ import type { NormalizedAst } from '../../../src/r-bridge/lang-4.x/ast/model/pro
  * CRLF/CR to LF at the r-bridge boundary; these tests make sure Windows/old-Mac line endings keep parsing
  * exactly like their LF equivalent.
  */
-describe.sequential('Parsing is robust to line endings', withShell(shell => {
+describe('Parsing is robust to line endings', { concurrent: false }, withShell(shell => {
 	const lexemes = (ast: NormalizedAst): string[] => {
 		const out: string[] = [];
 		RProject.visitAst(ast.ast, t => {

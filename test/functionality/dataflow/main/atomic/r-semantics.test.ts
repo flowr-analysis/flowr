@@ -120,7 +120,7 @@ const Claims: readonly Claim[] = [
 		capabilities: ['built-in-quoting'] }
 ];
 
-describe.sequential('R semantics we model', withShell(shell => {
+describe('R semantics we model', { concurrent: false }, withShell(shell => {
 	let missing: ReadonlySet<string> = new Set();
 	beforeAll(async() => {
 		const needed = [...new Set(Claims.flatMap(c => c.needs ?? []))];

@@ -338,7 +338,7 @@ export class SemanticCfgGuidedVisitor<
 
 
 	/**
-	 * A helper function to request the {@link getOriginInDfg|origins} of the given node.
+	 * A helper function to request the {@link Dataflow.origin|origins} of the given node.
 	 */
 	protected getOrigins(id: NodeId): Origin[] | undefined {
 		return Dataflow.origin(this.config.dfg, id);

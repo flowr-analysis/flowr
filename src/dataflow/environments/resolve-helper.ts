@@ -19,6 +19,12 @@ import {
  * - {@link Resolve.byNameAndType} additionally filters and merges the definitions of every layer it passes.
  *   Given the unknown reference type it only forwards to {@link Resolve.byName}, so ask that one directly instead.
  * - {@link Resolve.toValue} and the {@link Resolve.argument} family run the evaluator on top of a resolution.
+ * @example
+ * ```ts
+ * Resolve.byName('x', environment);          // every definition `x` may refer to
+ * Resolve.toValue(id, { graph, ctx });       // the value(s) the node may hold
+ * Resolve.argument.value(call, 'file', ...); // the value of a named argument
+ * ```
  */
 export const Resolve = {
 	name:           'Resolve',

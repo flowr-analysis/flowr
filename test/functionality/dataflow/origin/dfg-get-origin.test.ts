@@ -12,7 +12,7 @@ import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-
 import { label } from '../../_helper/label';
 
 describe('Dataflow', withTreeSitter(ts => {
-	describe('getOriginInDfg', () => {
+	describe('Dataflow.origin', () => {
 		function chk(code: string, expected: Record<SlicingCriterion, readonly Origin[] | undefined>, name = code): void  {
 			describe(name, () => {
 				let analysis: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;

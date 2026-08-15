@@ -28,7 +28,7 @@ export class FaqStore {
 		guard(this.currTopic !== undefined, 'Current topic is not set use withTopic first');
 		question = question.replace(/\*([^*]+)\*/g, '<b>$1</b>');
 		const store = this.faqs.get(this.currTopic);
-		if(store.find(([q]) => q === question)) {
+		if(store.some(([q]) => q === question)) {
 			throw new Error(`FAQ for question "${question}" in topic "${this.currTopic}" already exists`);
 		}
 		store.push([question, answer]);

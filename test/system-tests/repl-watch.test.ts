@@ -141,7 +141,7 @@ function flowrReplDoubleCtrlC(timeout = 90_000): Promise<string> {
 	});
 }
 
-describe.sequential('repl watch mode', () => {
+describe('repl watch mode', { concurrent: false }, () => {
 	// these spawn a real process and depend on OS process scheduling / fs.watch timing, so an occasional CI-load
 	// hiccup (e.g. the bundled process getting starved long enough to miss its startup window) gets a retry
 	// before failing the build; a genuine regression still fails consistently across retries

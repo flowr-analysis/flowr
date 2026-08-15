@@ -11,7 +11,7 @@ import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { OriginType } from '../../../../src/dataflow/origin/dfg-get-origin';
 import type { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
-describe.sequential('eval', withTreeSitter(tr => {
+describe('eval', { concurrent: false }, withTreeSitter(tr => {
 	assertDataflow(label('simple eval use', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
 		tr, 'a <- "1+1"\nx <- "1"\nb <- "3"\nz <- eval(parse(text=x))', emptyGraph()
 			.defineVariable('2@x')
@@ -40,7 +40,7 @@ describe.sequential('eval', withTreeSitter(tr => {
 		});
 }));
 
-describe.sequential('eval argument matching', withTreeSitter((tr: TreeSitterExecutor) => {
+describe('eval argument matching', { concurrent: false }, withTreeSitter((tr: TreeSitterExecutor) => {
 	async function analyze(code: string) {
 		const res = await createDataflowPipeline(tr, { context: contextFromInput(code) }).allRemainingSteps();
 		const graph = res.dataflow.graph;
@@ -75,7 +75,7 @@ describe.sequential('eval argument matching', withTreeSitter((tr: TreeSitterExec
 	});
 }));
 
-describe.sequential('evalText', withTreeSitter(tr => {
+describe('evalText', { concurrent: false }, withTreeSitter(tr => {
 	assertDataflow(label('simple evalText use', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
 		tr, 'a <- "1+1"\nx <- "1"\nb <- "3"\nz <- evalText(x)', emptyGraph()
 			.defineVariable('2@x')

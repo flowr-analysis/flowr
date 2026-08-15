@@ -7,6 +7,7 @@ import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { CallGraph } from '../../../dataflow/graph/call-graph';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
 import { transitiveLibraryCallees } from '../call-graph-query/expand-library-internals';
+import { NoEdges } from '../../../dataflow/graph/graph';
 
 /**
  * Execute does call queries on the given analyzer.
@@ -103,7 +104,7 @@ function findCallersMatchingConstraints(cg: CallGraph, start: NodeId, constraint
 		if(constraints(vtx, cg)) {
 			return { call: start };
 		}
-		for(const out of cg.outgoingEdges(cur) ?? []) {
+		for(const out of cg.outgoingEdges(cur) ?? NoEdges) {
 			toVisit.push(out[0]);
 		}
 	}

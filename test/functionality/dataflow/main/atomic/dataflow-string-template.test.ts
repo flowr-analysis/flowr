@@ -11,6 +11,7 @@ import { interpolationsOf } from '../../../../../src/dataflow/internal/process/f
 import { VertexType } from '../../../../../src/dataflow/graph/vertex';
 import { recoverName } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
+import { NoEdges } from '../../../../../src/dataflow/graph/graph';
 
 /** Whether the definition at the criterion is linked to anything, which a template only does for real code. */
 describe('Dataflow', withTreeSitter(ts => {
@@ -22,7 +23,7 @@ describe('Dataflow', withTreeSitter(ts => {
 				const graph = analysis.dataflow.graph;
 				const id = SlicingCriterion.parse(criterion, analysis.normalize.idMap);
 				guard(id !== undefined);
-				const edges = [...graph.ingoingEdges(id) ?? [], ...graph.outgoingEdges(id) ?? []];
+				const edges = [...graph.ingoingEdges(id) ?? NoEdges, ...graph.outgoingEdges(id) ?? NoEdges];
 				assert.strictEqual(edges.some(([, e]) => DfEdge.includesType(e, EdgeType.Reads)), linked);
 			});
 		}

@@ -14,7 +14,7 @@ import { ExitPointType } from '../../../../../src/dataflow/info';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 
-describe.sequential('Function Definition', withShell(shell => {
+describe('Function Definition', { concurrent: false }, withShell(shell => {
 	describe('Only functions', () => {
 		assertDataflow(label('unknown read in function', ['normal-definition', 'implicit-return', 'name-normal']),
 			shell, 'function() { x }', emptyGraph()

@@ -45,7 +45,7 @@ import type { SyntaxNode, Tree } from 'web-tree-sitter';
 import { RShell } from '../r-bridge/shell';
 import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import { VertexType } from '../dataflow/graph/vertex';
+import { FunctionCallVertex, FunctionDefinitionVertex } from '../dataflow/graph/vertex';
 import { equidistantSampling } from '../util/collections/arrays';
 import { FlowrConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
@@ -215,9 +215,9 @@ export class BenchmarkSlicer {
 		for(const [n, info] of vertices) {
 			const outgoingEdges = this.dataflow.graph.outgoingEdges(n);
 			numberOfEdges += outgoingEdges?.size ?? 0;
-			if(info.tag === VertexType.FunctionCall) {
+			if(FunctionCallVertex.is(info)) {
 				numberOfCalls++;
-			} else if(info.tag === VertexType.FunctionDefinition) {
+			} else if(FunctionDefinitionVertex.is(info)) {
 				numberOfDefinitions++;
 			}
 		}

@@ -3,17 +3,18 @@ import type { ControlFlowGraph } from '../../../../../control-flow/control-flow-
 import { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { NodeId  } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier } from '../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 import { DfEdge, EdgeType } from '../../../../graph/edge';
 import type { REnvironmentInformation } from '../../../../environments/environment';
 import type { DataflowGraph } from '../../../../graph/graph';
-import { FunctionArgument, UnknownSideEffect } from '../../../../graph/graph';
+import { NoEdges, FunctionArgument, UnknownSideEffect } from '../../../../graph/graph';
 import { type DataflowGraphVertexFunctionCall, FunctionCallVertex, VariableDefinitionVertex, VertexType } from '../../../../graph/vertex';
 import { linkExpressionIn, linkInputs } from '../../../linker';
 import { Nse } from './nse';
 import { Deferred } from './deferred';
+import { FunctionDefinitionVertex } from '../../../../graph/vertex';
 
 /** Calls capturing a language object. */
 const CapturingProcessors: readonly BuiltInProcName[] = [BuiltInProcName.Quote];
@@ -31,6 +32,11 @@ function hasOrigin(vertex: { readonly origin: readonly string[] | 'unnamed' }, o
 /**
  * A language object reads nothing where it is written and everything where it reaches `eval`, with the bindings
  * in effect there. Working on the finished graph makes assignments, branches, loops, and calls one traversal.
+ * @example
+ * ```ts
+ * Quoted.capturedBy(graph, id); // the expression a `quote(...)` holds on to
+ * Quoted.sourcesOf(graph, id);  // every expression the value at `id` may hold
+ * ```
  */
 export const Quoted = {
 	name: 'Quoted',
@@ -52,7 +58,7 @@ export const Quoted = {
 				found.push({ expr: captured, at: current });
 				continue;
 			}
-			for(const [target, edge] of graph.outgoingEdges(current) ?? []) {
+			for(const [target, edge] of graph.outgoingEdges(current) ?? NoEdges) {
 				if(DfEdge.includesType(edge, ValueFlow) && !seen.has(target)) {
 					seen.add(target);
 					pending.push(target);
@@ -106,7 +112,7 @@ interface CapturedExpression {
 
 /** The name a delaying call binds, which is the definition its reads have to go through. */
 function boundBy(graph: DataflowGraph, id: NodeId): NodeId | undefined {
-	for(const [target, edge] of graph.ingoingEdges(id) ?? []) {
+	for(const [target, edge] of graph.ingoingEdges(id) ?? NoEdges) {
 		if(DfEdge.includesType(edge, EdgeType.DefinedBy) && VariableDefinitionVertex.is(graph.getVertex(target))) {
 			return target;
 		}
@@ -116,7 +122,7 @@ function boundBy(graph: DataflowGraph, id: NodeId): NodeId | undefined {
 
 /** The argument a call takes but does not evaluate, which is the one it captured. */
 function capturedArgumentOf(graph: DataflowGraph, id: NodeId): NodeId | undefined {
-	for(const [target, edge] of graph.outgoingEdges(id) ?? []) {
+	for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
 		if(DfEdge.includesType(edge, EdgeType.Argument) && DfEdge.includesType(edge, EdgeType.NonStandardEvaluation)) {
 			return target;
 		}
@@ -156,23 +162,23 @@ function resolveEvaluation<Info>(graph: DataflowGraph, call: DataflowGraphVertex
  * body itself (what `force` is for) is settled during the call and stays where it is.
  */
 function* escapingArguments(graph: DataflowGraph, id: NodeId): Generator<NodeId> {
-	for(const [target, edge] of graph.outgoingEdges(id) ?? []) {
+	for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
 		if(!DfEdge.includesType(edge, EdgeType.Calls)) {
 			continue;
 		}
 		const callee = graph.getVertex(target);
-		if(callee?.tag !== VertexType.FunctionDefinition) {
+		if(!FunctionDefinitionVertex.is(callee)) {
 			continue;
 		}
 		for(const exit of callee.exitPoints) {
 			const closure = graph.getVertex(exit.nodeId);
-			if(closure?.tag !== VertexType.FunctionDefinition) {
+			if(!FunctionDefinitionVertex.is(closure)) {
 				continue;
 			}
 			for(const key of Object.keys(callee.params)) {
 				const parameter = NodeId.normalize(key);
 				let escapes = true;
-				for(const [reader, edge] of graph.ingoingEdges(parameter) ?? []) {
+				for(const [reader, edge] of graph.ingoingEdges(parameter) ?? NoEdges) {
 					if(DfEdge.includesType(edge, EdgeType.Reads) && !closure.subflow.graph.has(reader)) {
 						escapes = false;
 						break;
@@ -181,7 +187,7 @@ function* escapingArguments(graph: DataflowGraph, id: NodeId): Generator<NodeId>
 				if(!escapes) {
 					continue;
 				}
-				for(const [argument, edge] of graph.outgoingEdges(parameter) ?? []) {
+				for(const [argument, edge] of graph.outgoingEdges(parameter) ?? NoEdges) {
 					if(DfEdge.includesType(edge, EdgeType.DefinedByOnCall)) {
 						yield argument;
 					}

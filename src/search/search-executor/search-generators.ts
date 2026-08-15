@@ -155,7 +155,7 @@ async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { sour
 		args.captures = [defaultCaptureName];
 	}
 	// allow specifying capture names with or without the @ in front :)
-	const captures = new Set<string>(args.captures.map(c => c.startsWith('@') ? c.substring(1) : c));
+	const captures = new Set<string>(args.captures.map(c => c.startsWith('@') ? c.slice(1) : c));
 
 	const info = input.parserInformation();
 	guard(info.name === 'tree-sitter', 'treeSitterQuery can only be used with TreeSitterExecutor parsers!');

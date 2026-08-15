@@ -14,11 +14,11 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { applyKills } from '../../../../../environments/apply-kill';
 import { define } from '../../../../../environments/define';
 import type { EnvirResolution } from './built-in-envir-utils';
 import { resolveEnvirArg } from './built-in-envir-utils';
+import { Resolve } from '../../../../../environments/resolve-helper';
 
 /** The variables an `rm` call targets for removal. */
 interface RmTargets {
@@ -48,7 +48,7 @@ function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>,
 	if(ns === 'base') {
 		return true;
 	}
-	const resolved = resolveByName(fn, data.environment, ReferenceType.Function);
+	const resolved = Resolve.byNameAndType(fn, data.environment, ReferenceType.Function);
 	return resolved === undefined || resolved.every(d => isReferenceType(d.type, ReferenceType.BuiltInFunction));
 }
 

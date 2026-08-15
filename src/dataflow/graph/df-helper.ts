@@ -1,4 +1,4 @@
-import { DataflowGraph, UnknownSideEffect } from './graph';
+import { NoEdges, DataflowGraph, UnknownSideEffect } from './graph';
 import { DfEdge, EdgeType } from './edge';
 import { emptyGraph } from './dataflowgraph-builder';
 import { getOriginInDfg } from '../origin/dfg-get-origin';
@@ -8,7 +8,7 @@ import { computeCallGraphSummaries, propagateTransitiveSideEffects } from '../in
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { DataflowGraphVertexInfo } from './vertex';
-import { FunctionCallVertex, VertexType } from './vertex';
+import { FunctionCallVertex, ValueVertex } from './vertex';
 import { Identifier } from '../environments/identifier';
 import { Resolve } from '../environments/resolve-helper';
 import { RLoopConstructs } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -24,6 +24,12 @@ import { isBaseRPackage } from '../../util/r-base-packages';
  * - {@link Dataflow.resolve} - for resolving a name against an environment,
  * - {@link Dataflow.packagesOf} - for the packages a set of nodes (e.g. a slice) calls into,
  * - {@link Dataflow.valueIsUsed}/{@link Dataflow.hasComputedArguments} - for what a call does with, and gets as, values,
+ * @example
+ * ```ts
+ * Dataflow.origin(graph, id);                       // where the use at `id` comes from
+ * Dataflow.edge.includesType(edge, EdgeType.Reads); // the edge helpers
+ * Dataflow.visualize.mermaid.url(graph);            // a link to the rendered graph
+ * ```
  */
 export const Dataflow = {
 	/**
@@ -119,8 +125,8 @@ export const Dataflow = {
 	 */
 	valueIsUsed(this: void, id: NodeId, graph: DataflowGraph): boolean {
 		const consuming = EdgeType.Argument | EdgeType.Returns | EdgeType.DefinedBy;
-		for(const [, edge] of graph.ingoingEdges(id) ?? []) {
-			if((edge.types & consuming) !== 0) {
+		for(const [, edge] of graph.ingoingEdges(id) ?? NoEdges) {
+			if(DfEdge.includesType(edge, consuming)) {
 				return true;
 			}
 		}
@@ -132,8 +138,8 @@ export const Dataflow = {
 	 * A call among the arguments counts as computed, even one over literals such as `paste("a", "b")`.
 	 */
 	hasComputedArguments(this: void, id: NodeId, graph: DataflowGraph): boolean {
-		for(const [target] of graph.outgoingEdges(id) ?? []) {
-			if(!NodeId.isBuiltIn(target) && graph.getVertex(target)?.tag !== VertexType.Value) {
+		for(const [target] of graph.outgoingEdges(id) ?? NoEdges) {
+			if(!NodeId.isBuiltIn(target) && !ValueVertex.is(graph.getVertex(target))) {
 				return true;
 			}
 		}

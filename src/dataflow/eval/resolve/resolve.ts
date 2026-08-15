@@ -9,14 +9,13 @@ import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-c
 import { type Lift, Top, type Value, type ValueNumber, type ValueVector } from '../values/r-value';
 import { stringFrom } from '../values/string/string-constants';
 import { flattenVectorElements, vectorFrom } from '../values/vectors/vector-constants';
-import { resolveIdToValue } from './alias-tracking';
 import { liftScalar } from '../values/scalar/scalar-constants';
 import { Identifier, type IdentifierDefinition, ReferenceType } from '../../environments/identifier';
-import { resolveByName } from '../../environments/resolve-by-name';
 import type { REnvironmentInformation } from '../../environments/environment';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { Dataflow } from '../../graph/df-helper';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Resolve } from '../../environments/resolve-helper';
 
 /**
  * The {@link BuiltInEvalHandler} the given name resolves to in the current environment, just like the
@@ -25,7 +24,7 @@ import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id'
  */
 function evalHandlerOf(name: Identifier, environment: REnvironmentInformation | undefined, ctx: ReadOnlyFlowrAnalyzerContext): BuiltInEvalHandler | undefined {
 	const defs = environment ?
-		resolveByName(name, environment, ReferenceType.BuiltInFunction)
+		Resolve.byNameAndType(name, environment, ReferenceType.BuiltInFunction)
 		: ctx.env.builtInEnvironment.memory.get(Identifier.getName(name)) as IdentifierDefinition[] | undefined;
 	const def = defs?.length === 1 ? defs[0] : undefined;
 	return def?.type === ReferenceType.BuiltInFunction ? def.evalHandler : undefined;
@@ -63,7 +62,7 @@ function evalNameOf({ node, graph }: BuiltInEvalHandlerArgs): Identifier | undef
 }
 
 /**
- * Helper function used by {@link resolveIdToValue}, please use that instead, if
+ * Helper function used by {@link Resolve.toValue}, please use that instead, if
  * you want to resolve the value of an identifier / node
  *
  * This function converts an RNode to its Value, either directly for a constant or by handing the node
@@ -88,11 +87,11 @@ export function resolveNode(args: BuiltInEvalHandlerArgs): Value {
 }
 
 /**
- * Helper function used by {@link resolveIdToValue}, please use that instead, if
+ * Helper function used by {@link Resolve.toValue}, please use that instead, if
  * you want to resolve the value of an identifier / node
  *
  * This function resolves a vector function call `c` to a {@link ValueVector}
- * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
+ * by recursively resolving the values of the arguments by calling {@link Resolve.toValue}
  * @returns ValueVector or Top
  */
 export function resolveAsVector(args: BuiltInEvalHandlerArgs): ValueVector | typeof Top {
@@ -100,15 +99,15 @@ export function resolveAsVector(args: BuiltInEvalHandlerArgs): ValueVector | typ
 	if(node.type !== RType.FunctionCall) {
 		return Top;
 	}
-	return vectorFrom(flattenVectorElements(node.arguments.map(arg => arg !== EmptyArgument ? resolveIdToValue(arg.value, args) : Top)));
+	return vectorFrom(flattenVectorElements(node.arguments.map(arg => arg !== EmptyArgument ? Resolve.toValue(arg.value, args) : Top)));
 }
 
 /**
- * Helper function used by {@link resolveIdToValue}, please use that instead, if
+ * Helper function used by {@link Resolve.toValue}, please use that instead, if
  * you want to resolve the value of an identifier / node
  *
  * This function resolves a binary sequence operator `:` to a {@link ValueVector} of {@link ValueNumber}s
- * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
+ * by recursively resolving the values of the arguments by calling {@link Resolve.toValue}
  * @returns ValueVector of ValueNumbers or Top
  */
 export function resolveAsSeq(args: BuiltInEvalHandlerArgs): ValueVector<Lift<ValueNumber[]>> | typeof Top {
@@ -116,8 +115,8 @@ export function resolveAsSeq(args: BuiltInEvalHandlerArgs): ValueVector<Lift<Val
 	if(operator.type !== RType.BinaryOp) {
 		return Top;
 	}
-	const leftValue = unliftRValue(resolveIdToValue(operator.lhs, args));
-	const rightValue = unliftRValue(resolveIdToValue(operator.rhs, args));
+	const leftValue = unliftRValue(Resolve.toValue(operator.lhs, args));
+	const rightValue = unliftRValue(Resolve.toValue(operator.rhs, args));
 
 	if(isRNumberValue(leftValue) && isRNumberValue(rightValue)) {
 		return vectorFrom(createNumberSequence(leftValue, rightValue).map(liftScalar));

@@ -4,7 +4,7 @@ import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model
 import { describe } from 'vitest';
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 
-describe.sequential('dollar access', withShell(shell => {
+describe('dollar access', { concurrent: false }, withShell(shell => {
 	describe('problems in practice', () => {
 		/* in this case, we assume that it may have an impact! */
 		assertSliced(label('access addition', ['name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'dollar-access', 'newlines']),

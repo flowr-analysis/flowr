@@ -12,6 +12,7 @@ import { UseVertex, VariableDefinitionVertex, VertexType } from '../../../../gra
 import type { ControlFlowGraph } from '../../../../../control-flow/control-flow-graph';
 import { happensBefore } from '../../../../../control-flow/happens-before';
 import { Ternary } from '../../../../../util/logic';
+import { NoEdges } from '../../../../graph/graph';
 
 /** The reads that may force the expression, and the control flow deciding what they can see. */
 export interface ForceSites {
@@ -97,7 +98,7 @@ export const Deferred = {
 	 */
 	forcedAt(this: void, graph: DataflowGraph, binding: NodeId, cfg: ControlFlowGraph): readonly NodeId[] {
 		const reads: NodeId[] = [];
-		for(const [reader, edge] of graph.ingoingEdges(binding) ?? []) {
+		for(const [reader, edge] of graph.ingoingEdges(binding) ?? NoEdges) {
 			if(DfEdge.includesType(edge, EdgeType.Reads)) {
 				reads.push(reader);
 			}

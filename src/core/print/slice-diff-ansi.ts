@@ -51,7 +51,7 @@ export function sliceDiffAnsi(slice: ReadonlySet<NodeId>, normalized: Normalized
 	for(const { selected, location } of importantLocations) {
 		const [sl, sc, , ec] = location;
 		const line = lines[sl - 1];
-		lines[sl - 1] = `${line.substring(0, sc - 1)}${ansiFormatter.reset()}${highlight(line.substring(sc - 1, ec), selected)}${grayOut()}${line.substring(ec)}`;
+		lines[sl - 1] = `${line.slice(0, Math.max(0, sc - 1))}${ansiFormatter.reset()}${highlight(line.slice(Math.max(0, sc - 1), ec), selected)}${grayOut()}${line.slice(Math.max(0, ec))}`;
 	}
 
 	return `${grayOut()}${lines.join('\n')}${ansiFormatter.reset()}`;

@@ -3,7 +3,7 @@ import { describe } from 'vitest';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 
-describe.sequential('Simple Forward', withShell(shell => {
+describe('Simple Forward', { concurrent: false }, withShell(shell => {
 	describe('Constant assignments', () => {
 		for(const i of [1, 2, 3]) {
 			assertSlicedF(label(`slice constant assignment ${i}`, ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines']),

@@ -5,6 +5,7 @@ import { ValueLogicalFalse, ValueLogicalTrue } from './logical/logical-constants
 import { type Lift, type Value, type ValueSet, Bottom, isBottom, isTop, Top } from './r-value';
 import { stringFrom } from './string/string-constants';
 import { vectorFrom } from './vectors/vector-constants';
+import { Resolve } from '../../environments/resolve-helper';
 
 /**
  * Takes n potentially lifted ops and returns `Top` or `Bottom` if any is `Top` or `Bottom`.
@@ -19,7 +20,7 @@ export function bottomTopGuard(...a: Lift<unknown>[]): typeof Top | typeof Botto
 
 /**
  * Returns a value set, if a is not bottom or top, otherwise undefined.
- * Useful when working with values returned by {@link resolveIdToValue}
+ * Useful when working with values returned by {@link Resolve.toValue}
  * @param a - value set to check
  * @returns value set if a is not top or bottom
  */
@@ -27,6 +28,9 @@ export function valueSetGuard(a: Lift<ValueSet<Value[]>>): ValueSet<Value[]> | u
 	return (isBottom(a) || isTop(a)) ? undefined : a;
 }
 
+/**
+ * @useInstead {@link NodeValue.sole}
+ */
 export function soleValue(this: void, set: ValueSet<Value[]> | undefined): Value | undefined;
 export function soleValue<T extends Value['type']>(this: void, set: ValueSet<Value[]> | undefined, type: T): Extract<Value, { type: T }> | undefined;
 /**

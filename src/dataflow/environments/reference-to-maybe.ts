@@ -5,9 +5,9 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { ControlDependency } from '../info';
 import { appendCds, withCds } from '../info';
 import type { Environment, REnvironmentInformation } from './environment';
-import { resolveByName } from './resolve-by-name';
-import { VertexType } from '../graph/vertex';
 import { S7DispatchSeparator } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
+import { ValueVertex } from '../graph/vertex';
+import { Resolve } from './resolve-helper';
 
 /** copy of the definition with the given cds attached, marking it as maybe */
 export function withAppliedCds(definition: IdentifierDefinition, defaultCd: readonly ControlDependency[] | undefined): IdentifierDefinition {
@@ -49,7 +49,7 @@ function applyCdsToDefinitions(environments: REnvironmentInformation, name: Iden
 		if(prefix === undefined) {
 			replaceDefinitions(current, plainName, toUpdate, defaultCd);
 		} else {
-			for(const key of [...current.memory.keys()]) {
+			for(const key of current.memory.keys()) {
 				if(key.startsWith(prefix)) {
 					replaceDefinitions(current, key, toUpdate, defaultCd);
 				}
@@ -66,7 +66,7 @@ function applyCdsToDefinitions(environments: REnvironmentInformation, name: Iden
  */
 export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, defaultCd: ControlDependency[] | undefined = undefined): IdentifierReference {
 	if(includeDefs && ref.name) {
-		const definitions = resolveByName(ref.name, environments, ref.type);
+		const definitions = Resolve.byNameAndType(ref.name, environments, ref.type);
 		if(definitions && definitions.length > 0) {
 			applyCdsToDefinitions(environments, ref.name, ref.type, definitions, ref.nodeId, defaultCd);
 		}
@@ -105,7 +105,7 @@ export function makeAllMaybe(references: readonly IdentifierReference[] | undefi
  */
 export function applyCdsToAllInGraphButConstants(graph: DataflowGraph, references: readonly IdentifierReference[], cds: readonly ControlDependency[]): void {
 	for(const [,v] of graph.vertices(true)) {
-		if(v.tag === VertexType.Value) {
+		if(ValueVertex.is(v)) {
 			continue;
 		}
 		if(v.cds) {

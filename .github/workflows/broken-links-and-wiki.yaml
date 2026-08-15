@@ -75,7 +75,7 @@ jobs:
         run: |
           rm -rf "coverage/"
           rm -f "/tmp/flowr-label-summary.json"
-          bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
+          bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"
 
       - name: "💾 Cache the Signature Database Bundles"
         uses: actions/cache@v4

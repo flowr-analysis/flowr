@@ -48,7 +48,7 @@ async function analyzeProject(parser: TreeSitterExecutor, db: SigDatabase, dir: 
 	return analyzer;
 }
 
-describe.sequential('Project Query', withTreeSitter(parser => {
+describe('Project Query', { concurrent: false }, withTreeSitter(parser => {
 	let tmp: string;
 	let db: SigDatabase;
 	beforeAll(() => {

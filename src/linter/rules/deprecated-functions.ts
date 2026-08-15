@@ -94,7 +94,7 @@ export interface DeprecatedFunctionResult extends DeprecatedFunctionResultBase {
  */
 export interface DeprecatedArgumentResult extends DeprecatedFunctionResultBase {
 	readonly type: 'deprecated-argument'
-	/** The name or index of the deprecated argument */
+	/** The name of the deprecated argument. Index in case of unnamed argument */
 	readonly arg:  string | number
 }
 
@@ -123,11 +123,14 @@ interface PotentialFunction {
 }
 
 interface Metadata extends MergeableRecord {
+	/** Number of deprecated functions flagged by the sigdb */
 	sigdb:     number,
-	hardcoded: number
+  /** Number of deprecated functions flagged by the builtin config */
+	builtin: number
 }
 
 const ConditionallyDeprecated = {
+	/* https://tidyverse.org/blog/2025/09/ggplot2-4-0-0/#violin--quantiles */
 	'geom_violin': { package: 'ggplot2', whenArgs: [{ argName: 'draw_quantiles', state: DeprecationState.Deprecated, replacedBy: 'quantile.linetype', sinceVersion: RRange.parse('>= 4.0.0') }] },
 } satisfies Record<BrandedIdentifier, DeprecatedFunctionInformation>;
 
@@ -167,10 +170,8 @@ export const DEPRECATED_FUNCTIONS = {
 			const name = Identifier.getName(Identifier.parse(candidate.target));
 			const info = config.conditionally[name];
 			if(isNotUndefined(info)) {
-				// Check functions from DeprecatedFunctionsConfig.conditionally
 				return await deprecateFunctionConditionally(candidate, graph, idMap, data, info);
 			} else {
-				// Check functions from DeprecatedFunctionsConfig.always
 				return deprecateFunctionAlways(candidate, matchesConfiguredFns);
 			}
 		}))).filter(p => isNotUndefined(p)).flat();
@@ -179,7 +180,7 @@ export const DEPRECATED_FUNCTIONS = {
 		// 3. If available, use sigdb to flag deprecated functions
 		const deps = data.inspectContext().deps;
 		if(deps.signatureSources().length === 0) {
-			return { results, '.meta': { hardcoded: results.length, sigdb: 0 } };
+			return { results, '.meta': { builtin: results.length, sigdb: 0 } };
 		}
 
 		// sigdb-driven detection: flag any resolved call whose signature-database entry marks it deprecated,
@@ -215,7 +216,7 @@ export const DEPRECATED_FUNCTIONS = {
 
 		return {
 			results: results.concat(sigdbFlagged),
-			'.meta': { hardcoded: results.length, sigdb: sigdbFlagged.length }
+			'.meta': { builtin: results.length, sigdb: sigdbFlagged.length }
 		};
 	},
 	prettyPrint: {

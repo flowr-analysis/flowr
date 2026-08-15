@@ -44,7 +44,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		/* Here, we expect no deprecated functions to be found, as neither `cat` nor `print` nor `<-` are listed as deprecated, we specifically clean the list of deprecated functions */
 		assertLinter('no function listed', parser, 'cat("hello")\nprint("hello")\nx <- 1\ncat(x)',
 			'deprecated-functions', [],
-			{ hardcoded: 0, sigdb: 0 },
+			{ builtin: 0, sigdb: 0 },
 			{ always: [] }
 		);
 		/* Given that we declare `cat` as deprecated, we expect all uses to be marked! */
@@ -53,7 +53,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				{ certainty: LintingResultCertainty.Certain, function: 'base::cat', loc: [1, 1, 1, 12], type: 'deprecated-function' },
 				{ certainty: LintingResultCertainty.Certain, function: 'base::cat', loc: [4, 1, 4, 6], type: 'deprecated-function' },
 			],
-			{ hardcoded: 2, sigdb: 0 },
+			{ builtin: 2, sigdb: 0 },
 			{ always: ['cat'] }
 		);
 		/* Overwriting the `cat` function with a user defined implementation (even though it is useless), should cause the linter to not mark calls to the custom `cat` function as deprecated */
@@ -61,7 +61,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			'deprecated-functions', [
 				{ certainty: LintingResultCertainty.Certain, function: 'base::cat', loc: [1, 1, 1, 12], type: 'deprecated-function' }
 			],
-			{ hardcoded: 1, sigdb: 0 },
+			{ builtin: 1, sigdb: 0 },
 			{ always: ['cat'] }
 		);
 		/* Using the default linter configuration, a function such as `all_equal` should be marked as deprecated */
@@ -69,14 +69,14 @@ describe('flowR linter', withTreeSitter(parser => {
 			'deprecated-functions', [
 				{ certainty: LintingResultCertainty.Certain, function: 'all_equal', loc: [1, 1, 1, 14], type: 'deprecated-function' }
 			],
-			{ hardcoded: 1, sigdb: 0 }
+			{ builtin: 1, sigdb: 0 }
 		);
 		/* We should find deprecated functions even if they are nested in other function calls */
 		assertLinter('with defaults nested', parser, 'foo(all_equal(foo))',
 			'deprecated-functions', [
 				{ certainty: LintingResultCertainty.Certain, function: 'all_equal', loc: [1, 5, 1, 18], type: 'deprecated-function' }
 			],
-			{ hardcoded: 1, sigdb: 0 }
+			{ builtin: 1, sigdb: 0 }
 		);
 		/* @ignore-in-wiki */
 		assertLinter('wiki example', parser, `
@@ -84,20 +84,20 @@ first <- data.frame(x = c(1, 2, 3), y = c(1, 2, 3))
 second <- data.frame(x = c(1, 3, 2), y = c(1, 3, 2))
 dplyr::all_equal(first, second)`, 'deprecated-functions',
 		[{ certainty: LintingResultCertainty.Certain, function: 'dplyr::all_equal', loc: [4, 1, 4, 31], type: 'deprecated-function' }],
-		{ hardcoded: 1, sigdb: 0 });
+		{ builtin: 1, sigdb: 0 });
 
 		describe('a deprecated function resolved via a loaded package is still flagged', () => {
 			// regression: the loaded-package export must still count as a built-in call target
 			assertLinter('with a (controlled) package database', parser, 'library(dplyr)\nrecode(x)',
 				'deprecated-functions',
 				[{ certainty: LintingResultCertainty.Certain, function: 'dplyr::recode', loc: [2, 1, 2, 9], type: 'deprecated-function' }],
-				{ hardcoded: 1, sigdb: 0 },
+				{ builtin: 1, sigdb: 0 },
 				{ always: ['recode'], sigDb: controlledSigDb('dplyr', ['recode', 'filter']) }
 			);
 			assertLinter('without any package database', parser, 'library(dplyr)\nrecode(x)',
 				'deprecated-functions',
 				[{ certainty: LintingResultCertainty.Certain, function: 'recode', loc: [2, 1, 2, 9], type: 'deprecated-function' }],
-				{ hardcoded: 1, sigdb: 0 },
+				{ builtin: 1, sigdb: 0 },
 				{ always: ['recode'], noSigDb: true }
 			);
 		});
@@ -106,7 +106,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 			assertLinter('deprecated arg but value not set', parser, 'testFn(badArg="hehe")',
 				'deprecated-functions',
 				[],
-				{ hardcoded: 0, sigdb: 0 },
+				{ builtin: 0, sigdb: 0 },
 				{ always: [], conditionally: { 'testFn': { whenArgs: [{ argName: 'badArg', ifValue: 'not hehe', state: DeprecationState.Deprecated }] } } }
 			);
 
@@ -122,7 +122,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					sinceVersion: undefined,
 					loc:          [1, 8, 1, 13]
 				}],
-				{ hardcoded: 1, sigdb: 0 },
+				{ builtin: 1, sigdb: 0 },
 				{ always: [], conditionally: { 'testFn': { whenArgs: [{ argName: 'badArg', ifValue: 'not hehe', state: DeprecationState.Deprecated }] } } }
 			);
 		});
@@ -131,7 +131,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 			assertLinter('deprecated arg but not present', parser, 'testFn()',
 				'deprecated-functions',
 				[],
-				{ hardcoded: 0, sigdb: 0 },
+				{ builtin: 0, sigdb: 0 },
 				{ always: [], conditionally: { 'testFn': { whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated }] } } }
 			);
 
@@ -147,7 +147,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					sinceVersion: undefined,
 					loc:          [1, 8, 1, 13]
 				}],
-				{ hardcoded: 1, sigdb: 0 },
+				{ builtin: 1, sigdb: 0 },
 				{ always: [], conditionally: {  'testFn': { whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo' }] } } }
 			);
 		});
@@ -171,7 +171,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					sinceVersion: RRange.parse('>=1.0.0'),
 					loc:          [2, 8, 2, 13]
 				}],
-				{ hardcoded: 1, sigdb: 0 },
+				{ builtin: 1, sigdb: 0 },
 				{ always: [], conditionally: { 'testFn': { package: 'testPkg', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>=1.0.0') }] } } }
 			);
 
@@ -187,7 +187,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					sinceVersion: RRange.parse('>=1.0.0'),
 					loc:          [2, 8, 2, 13]
 				}],
-				{ hardcoded: 1, sigdb: 0 },
+				{ builtin: 1, sigdb: 0 },
 				{
 					always:        [],
 					conditionally: { 'testFn': { package: 'testPkg', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>=1.0.0') }] } },
@@ -198,7 +198,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 			assertLinter('(arg) version resolved and constraint not satisfied', parser, 'library(testPkg)\ntestFn(badArg=5)',
 				'deprecated-functions',
 				[],
-				{ hardcoded: 0, sigdb: 0 },
+				{ builtin: 0, sigdb: 0 },
 				{
 					always:        [],
 					conditionally: { 'testFn': { package: 'testPkg', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>=3.0.0') }] } },
@@ -219,7 +219,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					replacedBy:   undefined,
 					loc:          [2, 1, 2, 8]
 				}],
-				{ hardcoded: 1, sigdb: 0 },
+				{ builtin: 1, sigdb: 0 },
 				{ always: [], conditionally: { 'testFn': { package: 'testPkg', sinceVersion: RRange.parse('>=1.0.0'), state: DeprecationState.Defunct } } }
 			);
 
@@ -234,7 +234,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					replacedBy:   undefined,
 					loc:          [2, 1, 2, 8]
 				}],
-				{ hardcoded: 1, sigdb: 0 },
+				{ builtin: 1, sigdb: 0 },
 				{
 					always:        [],
 					conditionally: { 'testFn': { package: 'testPkg', sinceVersion: RRange.parse('>=1.0.0'), state: DeprecationState.Defunct } },
@@ -246,7 +246,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 			assertLinter('(fn) version resolved and constraint not satisfied', parser, 'library(testPkg)\ntestFn()',
 				'deprecated-functions',
 				[],
-				{ hardcoded: 0, sigdb: 0 },
+				{ builtin: 0, sigdb: 0 },
 				{
 					always:        [],
 					conditionally: { 'testFn': { package: 'testPkg', sinceVersion: RRange.parse('>= 3.0.0'), state: DeprecationState.Defunct } },
@@ -255,16 +255,16 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 			);
 		});
 
-		describe('a call the signature database marks deprecated is flagged even outside the hardcoded list', () => {
+		describe('a call the signature database marks deprecated is flagged even outside the builtin list', () => {
 			assertLinter('sigdb-deprecated function not in fns', parser, 'library(dplyr)\nold_verb(x)',
 				'deprecated-functions',
 				[{ type: 'deprecated-function', certainty: LintingResultCertainty.Certain, function: 'dplyr::old_verb', loc: [2, 1, 2, 11] }],
-				{ hardcoded: 0, sigdb: 1 },
+				{ builtin: 0, sigdb: 1 },
 				{ fns: [], sigDb: sigDbWithDeprecatedFn('dplyr', 'old_verb') }
 			);
 			assertLinter('not flagged without a package database', parser, 'library(dplyr)\nold_verb(x)',
 				'deprecated-functions', [],
-				{ hardcoded: 0, sigdb: 0 },
+				{ builtin: 0, sigdb: 0 },
 				{ fns: [], noSigDb: true }
 			);
 		});

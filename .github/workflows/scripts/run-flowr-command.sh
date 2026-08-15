@@ -144,12 +144,19 @@ if [ "$ACTION" == "doc" ]; then
    verify_doc_output
    end_group
 
+   group "Generate the landing page and the signature browser"
+   # the browser is a few MB and deliberately uncommitted, so gh-pages is where it gets published
+   $NPM_CMD run gen:landing
+   end_group
+
    group "Create documentation commit"
    git config --local user.email "action@github.com"
    git config --local user.name "GitHub Action"
    touch .nojekyll
    git add -f ".nojekyll" "$DOC_OUT/"
    if [ -d "wiki/stats/" ]; then git add -f "wiki/stats/"; fi
+   git add -f "index.html"
+   if [ -d "wiki/sigdb/" ]; then git add -f "wiki/sigdb/"; fi
    git commit -m "Update documentation"
    # make the branch an orphan
    git checkout --orphan gh-pages-orphan-tmp

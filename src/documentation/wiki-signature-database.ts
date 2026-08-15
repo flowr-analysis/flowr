@@ -225,6 +225,9 @@ After \`library(ggplot2)\`, a call to \`ggplot()\` resolves to \`ggplot2::ggplot
 qualifies bare names and backs various components like the ${ctx.linkPage('wiki/Query API', 'dependencies and call-context queries')} 
 as well as the ${ctx.linkPage('wiki/Linter', 'undefined symbol')} rule.
 
+You can search what it knows at [flowr-analysis.github.io/flowr/wiki/landing/sigdb](https://flowr-analysis.github.io/flowr/wiki/landing/sigdb/),
+a static index of every exported name that \`npm run gen:landing\` writes from the bundled database.
+
 ## What is stored
 
 Every function is a ${ctx.link('DecodedFunction')}:

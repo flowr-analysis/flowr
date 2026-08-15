@@ -713,3 +713,6 @@ dist/src/data/sigdb/
 # decompressed sigdb archives (the reader materializes these into a hash-keyed cache); never commit them anywhere
 *.sigs.ndjson
 *.sigs.ndjson.idx
+
+# the generated signature browser (a few MB); the doc job publishes it to the orphan gh-pages branch
+wiki/sigdb/

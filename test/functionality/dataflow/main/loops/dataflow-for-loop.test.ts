@@ -8,7 +8,7 @@ import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 
-describe.sequential('for', withShell(shell => {
+describe('for', { concurrent: false }, withShell(shell => {
 	assertDataflow(label('Single-vector for Loop', ['for-loop', 'name-normal', 'numbers']),
 		shell, 'for(i in 0) i',  emptyGraph()
 			.use('2', 'i', { cds: [{ id: '4', when: true }] })

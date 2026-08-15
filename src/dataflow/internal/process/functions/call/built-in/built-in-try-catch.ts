@@ -12,7 +12,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { dataflowLogger } from '../../../../../logger';
 import { ClosureRefs, pMatch } from '../../../../linker';
 import type { DataflowGraphVertexInfo } from '../../../../../graph/vertex';
-import { VertexType } from '../../../../../graph/vertex';
+import { VertexType, FunctionDefinitionVertex } from '../../../../../graph/vertex';
 import { tryUnpackNoNameArg, unpackArg } from '../argument/unpack-argument';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -142,7 +142,7 @@ function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: Dataf
 		info.graph.addEdge(arg, functionId, EdgeType.Calls | EdgeType.Reads);
 
 		const dfVert = info.graph.getVertex(call);
-		if(dfVert && dfVert.tag === VertexType.FunctionDefinition) {
+		if(dfVert && FunctionDefinitionVertex.is(dfVert)) {
 			ClosureRefs.resolveOpenIngoing(info.graph, call, dfVert, data.environment);
 		}
 		// we did the linking
@@ -166,7 +166,7 @@ function getExitPoints(vertex: DataflowGraphVertexInfo | undefined, graph: Dataf
 	if(!vertex) {
 		return undefined;
 	}
-	if(vertex.tag === VertexType.FunctionDefinition) {
+	if(FunctionDefinitionVertex.is(vertex)) {
 		return vertex.exitPoints;
 	}
 	// we assumed named argument
@@ -176,7 +176,7 @@ function getExitPoints(vertex: DataflowGraphVertexInfo | undefined, graph: Dataf
 	}
 	if(n.type === RType.Argument && n.value?.type === RType.FunctionDefinition) {
 		const fdefV = graph.getVertex(n.value.info.id);
-		if(fdefV?.tag === VertexType.FunctionDefinition) {
+		if(FunctionDefinitionVertex.is(fdefV)) {
 			return fdefV.exitPoints;
 		}
 	}

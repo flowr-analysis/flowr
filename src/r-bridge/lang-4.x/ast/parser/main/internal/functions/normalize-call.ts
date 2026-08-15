@@ -43,7 +43,7 @@ export function tryNormalizeFunctionCall(data: NormalizerData, mappedWithName: r
 	if(namedSymbolContent.length === 1 && namedSymbolContent[0].name === RawRType.StringConst) {
 		// special handling when someone calls a function by string
 		return parseNamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content);
-	} else if(namedSymbolContent.findIndex(x => x.name === RawRType.SymbolFunctionCall) < 0) {
+	} else if(!namedSymbolContent.some(x => x.name === RawRType.SymbolFunctionCall) ) {
 		parseLog.trace(`is not named function call, as the name is not of type ${RType.FunctionCall}, but: ${namedSymbolContent.map(n => n.name).join(',')}`);
 		return tryParseUnnamedFunctionCall(data, mappedWithName, location, content);
 	} else {

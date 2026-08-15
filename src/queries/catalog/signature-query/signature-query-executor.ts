@@ -12,7 +12,6 @@ import { defaultSigDbPaths } from '../../../project/sigdb/manifest';
 import type { DecodedFunction } from '../../../project/sigdb/decode';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
 import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
-import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
 import type { BuiltInFnInfo } from '../../../dataflow/environments/built-in-props';
 import { ArgProp, CallProp } from '../../../dataflow/environments/built-in-props';
 import { Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
@@ -20,6 +19,7 @@ import { RVersion } from '../../../util/r-version';
 import { baseRPackages, baseRExportOwner } from '../../../util/r-base-packages';
 import { Mermaid } from '../../../util/mermaid/mermaid';
 import type { CommandCompletions } from '../../../cli/repl/core';
+import { Resolve } from '../../../dataflow/environments/resolve-helper';
 
 /** the CRAN package landing page (only meaningful for CRAN packages, not base R) */
 export function cranPageUrl(pkg: string): string {
@@ -243,7 +243,7 @@ function flowrOnlyFunctionInfo(env: REnvironmentInformation | undefined, pkg: st
 	if(env === undefined) {
 		return undefined;
 	}
-	const resolved = resolveByName(pkg === undefined ? name : Identifier.make(name, pkg), env, ReferenceType.Function);
+	const resolved = Resolve.byNameAndType(pkg === undefined ? name : Identifier.make(name, pkg), env, ReferenceType.Function);
 	const definition = resolved?.find(d => d.type === ReferenceType.BuiltInFunction);
 	if(definition === undefined) {
 		return undefined;

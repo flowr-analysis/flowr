@@ -60,14 +60,6 @@ export const benchmarkHelperOptions = [
 	{ name: 'seed',                      type: String,  description: 'The random seed for sampling the slicing criteria if a maximum is set' },
 ] as const satisfies OptionDefinition[];
 
-export const exportQuadsOptions = [
-	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
-	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
-	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
-	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process' },
-	{ name: 'output',       alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to {italic out.quads})', typeLabel: '{underline file}' },
-] as const satisfies OptionDefinition[];
-
 export const slicerOptions = [
 	{ name: 'verbose',           alias: 'v', type: Boolean, description: 'Run with verbose logging' },
 	{ name: 'help',              alias: 'h', type: Boolean, description: 'Print this usage guide' },

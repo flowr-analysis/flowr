@@ -1,6 +1,5 @@
-import { VertexType, FunctionCallVertex } from '../../dataflow/graph/vertex';
+import { UseVertex, VertexType, FunctionCallVertex } from '../../dataflow/graph/vertex';
 import { UnknownSideEffect } from '../../dataflow/graph/graph';
-import { getOriginInDfg } from '../../dataflow/origin/dfg-get-origin';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Q } from '../../search/flowr-search-builder';
 import { F } from '../../search/flowr-search-filters';
@@ -23,6 +22,7 @@ import {
 	isNonStandardEvaluated,
 	useResolvesToDefinitionOrBuiltin
 } from './undefined-symbol-util';
+import { Dataflow } from '../../dataflow/graph/df-helper';
 
 /** whether the flagged symbol is used in a function-call position or as a plain variable */
 export type UndefinedSymbolKind = 'function' | 'variable';
@@ -184,7 +184,7 @@ export const UNDEFINED_SYMBOL = {
 			}
 
 			// variable use: only plain symbols (not argument names, `...`, or empty)
-			if(vtx.tag === VertexType.Use && config.checkVariables) {
+			if(UseVertex.is(vtx) && config.checkVariables) {
 				const node = element.node;
 				if(node.type !== RType.Symbol || node.lexeme === '...' || node.lexeme === undefined) {
 					return undefined;
@@ -202,7 +202,7 @@ export const UNDEFINED_SYMBOL = {
 		/** shared resolution logic for a name used either as a function call or a variable */
 		function check(element: FlowrSearchElement<ParentInformation>, id: NodeId, name: string, namespace: string | undefined, kind: UndefinedSymbolKind): UndefinedSymbolResult | undefined {
 			// resolved by flowR itself (local/param/builtin) - never a candidate, so not counted as suppressed
-			if(kind === 'variable' ? useResolvesToDefinitionOrBuiltin(graph, id) : (getOriginInDfg(graph, id)?.length ?? 0) > 0) {
+			if(kind === 'variable' ? useResolvesToDefinitionOrBuiltin(graph, id) : (Dataflow.origin(graph, id)?.length ?? 0) > 0) {
 				return undefined;
 			}
 			// a bare call to a registered flowR builtin whose dataflow origin was rewritten away from its

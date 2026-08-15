@@ -20,7 +20,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { unpackArg } from '../argument/unpack-argument';
 import { resolveSymbolToEnvir } from './built-in-envir-utils';
 import { resolveNodeToStackEnv, stackEnvInheritsFields } from './built-in-stack-env';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
+import { Resolve } from '../../../../../environments/resolve-helper';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -97,7 +97,7 @@ export function processAccess<OtherInfo>(
 			const fieldNode = unpackArg(args[1]);
 			const fieldName = fieldNode?.type === RType.String ? fieldNode.content.str : (config.treatIndicesAsString ? fieldNode?.lexeme : undefined);
 			const fieldDefs = fieldName
-				? (stackEnvInheritsFields(head.value) ? resolveByName(fieldName, envState, ReferenceType.Unknown) : envState.current.memory.get(fieldName))
+				? (stackEnvInheritsFields(head.value) ? Resolve.byNameAndType(fieldName, envState, ReferenceType.Unknown) : envState.current.memory.get(fieldName))
 				: undefined;
 			for(const fd of fieldDefs ?? []) {
 				info.graph.addEdge(name.info.id, fd.nodeId, EdgeType.Reads);

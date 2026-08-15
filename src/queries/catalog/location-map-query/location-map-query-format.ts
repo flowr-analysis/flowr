@@ -67,7 +67,7 @@ export const LocationMapQueryDefinition = {
 		for(const [id, file] of Object.entries(out.map.files)) {
 			result.push(`      ╰ ${id}: \`${file}\``);
 		}
-		result.push(`   ╰ Id List: {${summarizeIdsIfTooLong(formatter, [...Object.keys(out.map.ids)])}}`);
+		result.push(`   ╰ Id List: {${summarizeIdsIfTooLong(formatter, Object.keys(out.map.ids))}}`);
 		return true;
 	},
 	fromLine:  locationMapLineParser,

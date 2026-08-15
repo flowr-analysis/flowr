@@ -25,7 +25,7 @@ import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { compactRecord } from '../../../util/objects';
 import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
 import { CallProp } from '../../../dataflow/environments/built-in-props';
-import { VertexType } from '../../../dataflow/graph/vertex';
+import { FunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 
 /** The value could not be resolved, e.g. a path assembled at runtime. Such a dependency may be missing or fetchable. */
@@ -122,7 +122,7 @@ export const DefaultDependencyCategories = {
 						continue;
 					}
 					const vertex = dataflow.graph.getVertex(statement.info.id);
-					const functionName = vertex?.tag === VertexType.FunctionCall
+					const functionName = FunctionCallVertex.is(vertex)
 						? Dataflow.qualify(statement.info.id, dataflow.graph, false) ?? vertex.name : undefined;
 					if(functionName === undefined) {
 						continue;

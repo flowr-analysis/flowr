@@ -8,9 +8,9 @@ import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import { resolveIdToArgValue, resolveIdToArgValueSymbolName } from '../resolve-args';
 import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../shape-inference';
 import { getArgumentValue, isDataFrameArgument } from './arguments';
+import { Resolve } from '../../../dataflow/environments/resolve-helper';
 
 /**
  * Maps a concrete data frame access operation to abstract data frame operations.
@@ -48,7 +48,7 @@ function mapDataFrameNamedColumnAccess(
 	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	}
-	const colname = resolveIdToArgValueSymbolName(access.access[0], info);
+	const colname = Resolve.argument.symbolName(access.access[0], info);
 
 	return [{
 		operation: 'accessCols',
@@ -80,7 +80,7 @@ function mapDataFrameIndexColRowAccess(
 	let columns: string[] | number[] | undefined = undefined;
 
 	if(rowArg !== undefined && rowArg !== EmptyArgument) {
-		const rowValue = resolveIdToArgValue(rowArg, info);
+		const rowValue = Resolve.argument.value(rowArg, info);
 
 		if(typeof rowValue === 'number') {
 			rows = [rowValue];
@@ -94,7 +94,7 @@ function mapDataFrameIndexColRowAccess(
 		});
 	}
 	if(colArg !== undefined && colArg !== EmptyArgument) {
-		const colValue = resolveIdToArgValue(colArg, info);
+		const colValue = Resolve.argument.value(colArg, info);
 
 		if(typeof colValue === 'number') {
 			columns = [colValue];

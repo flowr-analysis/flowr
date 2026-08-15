@@ -38,7 +38,6 @@ import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { findReturnsEnvState, resolveConstantString, resolveEnvirArg, resolveSymbolToEnvir, routeWrittenToCustomEnv } from './built-in-envir-utils';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
@@ -49,6 +48,8 @@ import { createFreshEnvState } from './built-in-new-env';
 import { resolveListToEnvState } from './built-in-list';
 import { resolveClassMethodsToEnvState, resolveConstructorInstanceEnvState } from './built-in-class-generator';
 import { stackEnvStateFromSource } from './built-in-stack-env';
+import { Resolve } from '../../../../../environments/resolve-helper';
+import { NoEdges } from '../../../../../graph/graph';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & RAstNodeBase<OtherInfo> & Location, prefix: Identifier, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -109,7 +110,7 @@ function tryReplacement<OtherInfo>(
 	name: Identifier,
 	args: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[]
 ): DataflowInformation {
-	const resolved = resolveByName(functionName.content, data.environment, ReferenceType.Function) ?? [];
+	const resolved = Resolve.byNameAndType(functionName.content, data.environment, ReferenceType.Function) ?? [];
 
 	// yield for unsupported pass along!
 	if(resolved.length !== 1 || resolved[0].type !== ReferenceType.BuiltInFunction) {
@@ -612,7 +613,7 @@ export function markAsAssignment<OtherInfo>(
 	}
 	information.graph.addEdge(nid, rootIdOfAssignment, EdgeType.DefinedBy);
 	// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
-	for(const [id] of [...information.graph.outgoingEdges(nodeToDefine.nodeId) ?? []]) {
+	for(const [id] of information.graph.outgoingEdges(nodeToDefine.nodeId) ?? NoEdges) {
 		information.graph.removeEdgeType(nodeToDefine.nodeId, id, EdgeType.Reads);
 	}
 }
@@ -646,7 +647,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 			// globalenv()/baseenv()/emptyenv(): assigned variable points into that search-path stack env
 			envState = stackEnv;
 		} else if(source.type === RType.Symbol) {
-			const defs = resolveByName(source.content, data.environment, ReferenceType.Variable);
+			const defs = Resolve.byNameAndType(source.content, data.environment, ReferenceType.Variable);
 			envState = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined)?.envState
 				?? findReturnsEnvState(defs);
 		} else {
@@ -658,7 +659,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 			} else if(FunctionDefinitionVertex.is(entryVertex) && entryVertex.returnEnvState !== undefined) {
 				returnsEnvState = entryVertex.returnEnvState;
 			} else if(FunctionCallVertex.is(entryVertex) && entryVertex.name) {
-				envState = findReturnsEnvState(resolveByName(entryVertex.name, data.environment, ReferenceType.Function));
+				envState = findReturnsEnvState(Resolve.byNameAndType(entryVertex.name, data.environment, ReferenceType.Function));
 			}
 			envState ??= resolveConstructorInstanceEnvState(source, data);
 		}

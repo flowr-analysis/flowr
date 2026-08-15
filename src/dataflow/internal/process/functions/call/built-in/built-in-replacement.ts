@@ -11,7 +11,6 @@ import {
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { VertexType } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
 import { unpackArg, unpackNonameArg } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
@@ -25,6 +24,7 @@ import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-a
 import { FunctionArgument } from '../../../../../graph/graph';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { VariableDefinitionVertex, FunctionCallVertex } from '../../../../../graph/vertex';
 
 
 /**
@@ -77,11 +77,11 @@ export function processReplacementFunction<OtherInfo>(
 	);
 
 	const createdVert = res.graph.getVertex(rootId);
-	if(createdVert?.tag === VertexType.FunctionCall) {
+	if(FunctionCallVertex.is(createdVert)) {
 		createdVert.origin = [BuiltInProcName.Replacement];
 	}
 	const targetVert = res.graph.getVertex(unpackArg(args[0])?.info.id as NodeId);
-	if(targetVert?.tag === VertexType.VariableDefinition) {
+	if(VariableDefinitionVertex.is(targetVert)) {
 		(targetVert as { par: boolean }).par = true;
 	}
 

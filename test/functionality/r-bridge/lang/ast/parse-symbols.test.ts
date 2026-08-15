@@ -6,7 +6,7 @@ import { describe } from 'vitest';
 import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 import { SourceRange } from '../../../../../src/util/range';
 
-describe.sequential('Parse symbols', withShell(shell => {
+describe('Parse symbols', { concurrent: false }, withShell(shell => {
 	assertAst(label('Simple Symbol', ['name-normal']),
 		shell, 'a', exprList({
 			type:     RType.Symbol,

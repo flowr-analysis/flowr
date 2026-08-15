@@ -80,7 +80,7 @@ export const Nse = {
 	/** Drops the non-standard-evaluation mark from the outgoing edges of `id` that `which` accepts. */
 	unmark(this: void, graph: DataflowGraph, id: NodeId, which: (target: NodeId) => boolean = () => true): void {
 		const edges = graph.outgoingEdges(id);
-		for(const [target, edge] of [...edges ?? []]) {
+		for(const [target, edge] of edges ?? []) {
 			if(DfEdge.includesType(edge, EdgeType.NonStandardEvaluation) && which(target)) {
 				graph.removeEdgeType(id, target, EdgeType.NonStandardEvaluation);
 			}

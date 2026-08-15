@@ -1,5 +1,6 @@
 import { RType, ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
-import { ValidVertexTypes, VertexType } from '../dataflow/graph/vertex';
+import type { VertexType } from '../dataflow/graph/vertex';
+import { FunctionCallVertex, ValidVertexTypes } from '../dataflow/graph/vertex';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrSearchElement } from './flowr-search';
 import type { Enrichment } from './search-executor/search-enrichers';
@@ -69,7 +70,7 @@ export const FlowrFilters = {
 	}) satisfies FlowrFilterFunction<MatchesEnrichmentArgs<Enrichment>>,
 	[FlowrFilter.OriginKind]: ((e: FlowrSearchElement<ParentInformation>, args: OriginKindArgs, data: { dataflow: DataflowInformation }) => {
 		const dfgNode = data.dataflow.graph.getVertex(e.node.info.id);
-		if(!dfgNode || dfgNode.tag !== VertexType.FunctionCall) {
+		if(!dfgNode || !FunctionCallVertex.is(dfgNode)) {
 			return args.keepNonFunctionCalls ?? false;
 		}
 		const match = typeof args.origin === 'string' ?
@@ -89,7 +90,7 @@ export const FlowrFilters = {
 	[FlowrFilter.CallProps]: ((e: FlowrSearchElement<ParentInformation>, args: CallPropsArgs, data: { dataflow: DataflowInformation }) => {
 		const graph = data.dataflow.graph;
 		const vertex = graph.getVertex(e.node.info.id);
-		if(vertex?.tag !== VertexType.FunctionCall) {
+		if(!FunctionCallVertex.is(vertex)) {
 			return false;
 		}
 		/* what the call resolved to decides, as a definition in the analyzed code shadows the built-in; a call

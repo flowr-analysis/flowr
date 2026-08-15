@@ -4,9 +4,9 @@
  * whole-bundle reading, and the post-write verification gate. This is the surface the package-version plugin
  * uses; the format/codec/writer building blocks live in the sibling `sigdb/*` modules (imported directly).
  */
-import fs from 'node:fs';
-import path from 'node:path';
-import readline from 'node:readline';
+import fs from 'fs';
+import path from 'path';
+import readline from 'readline';
 import { RVersion, type VersionString } from '../../util/r-version';
 import { DefaultCranBase, SigDbExt, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigDb, type SigDbContent, type SigDbPkgMeta } from './schema';
 import { dayToMillis, releasesOf, newestVersion, resolveVersion, type VersionRelease } from './sigdb-version';

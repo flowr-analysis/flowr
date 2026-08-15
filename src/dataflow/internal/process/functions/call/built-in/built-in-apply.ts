@@ -11,7 +11,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import type { MergeableRecord } from '../../../../../../util/objects';
 import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { VertexType } from '../../../../../graph/vertex';
+import { VertexType, FunctionDefinitionVertex } from '../../../../../graph/vertex';
 import type { FunctionArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -183,7 +183,7 @@ export function processApply<OtherInfo>(
 			]
 		};
 		const dfVert = information.graph.getVertex(rootId);
-		if(dfVert && dfVert.tag === VertexType.FunctionDefinition) {
+		if(dfVert && FunctionDefinitionVertex.is(dfVert)) {
 			ClosureRefs.resolveOpenIngoing(information.graph, rootId, dfVert, data.environment);
 		}
 	} else {

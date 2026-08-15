@@ -4,9 +4,9 @@
  * dictionary, blob-only shards, and the sharded {@link SigDbManifest}). Split out of `../sigdb` so the reader
  * there is not weighed down by the (build-time only) encoder; imports only sibling format/codec modules.
  */
-import fs from 'node:fs';
-import path from 'node:path';
-import { once } from 'node:events';
+import fs from 'fs';
+import path from 'path';
+import { once } from 'events';
 import {
 	DefaultCranBase, MaxDefaultLength, ParamFlag, SigDbExt, SigDbMagic, SigDbSchema,
 	type PkgBlob, type Sig, type SigDb, type SigDbFeatures, type SigDbPkgMeta, type SigDbShard, type SigDbTier,

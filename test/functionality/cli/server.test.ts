@@ -27,7 +27,7 @@ import { contextFromInput } from '../../../src/project/context/flowr-analyzer-co
 
 describe('flowr', () => {
 	const skip = getPlatform() !== 'linux';
-	describe.sequential('Server', withShell(shell => {
+	describe('Server', { concurrent: false }, withShell(shell => {
 		test.skipIf(skip)('Correct Hello Message', withSocket(shell, async socket => {
 			const messages = socket.getMessages();
 			assert.strictEqual(messages.length, 1, 'Expected exactly one message to hello the client');

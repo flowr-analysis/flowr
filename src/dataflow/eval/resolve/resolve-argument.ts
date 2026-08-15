@@ -10,12 +10,12 @@ import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from '../../environments/environment';
 import { valueSetGuard } from '../values/general';
-import { resolveIdToValue } from './alias-tracking';
 import { isValue, type Value } from '../values/r-value';
 import { RFalse, RTrue } from '../../../r-bridge/lang-4.x/convert-values';
 import { collectStrings } from '../values/string/string-constants';
 import type { VariableResolve } from '../../../config';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
+import { Resolve } from '../../environments/resolve-helper';
 
 /**
  * Get the values of all arguments matching the criteria.
@@ -109,7 +109,7 @@ function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowG
 		}
 	}
 
-	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph, full, resolve: variableResolve, ctx }));
+	const resolved = valueSetGuard(Resolve.toValue(argument, { environment, graph, full, resolve: variableResolve, ctx }));
 	if(resolved) {
 		const values: string[] = [];
 		for(const value of resolved.elements) {

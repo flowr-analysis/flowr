@@ -267,7 +267,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	public addRequest(...request: (RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string)[]): this {
 		for(const r of request) {
 			if(typeof r === 'string') {
-				const trimmed = r.substring(fileProtocol.length);
+				const trimmed = r.slice(fileProtocol.length);
 				if(r.startsWith(fileProtocol) && !isFilePath(trimmed)) {
 					this.addAnalysisRequest({ request: 'project', content: trimmed });
 				} else {

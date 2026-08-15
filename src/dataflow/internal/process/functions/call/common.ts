@@ -1,3 +1,9 @@
+/**
+ * Argument processing shared by the call processors.
+ * Importing the `Resolve` helper here pulls the evaluator in before the built-in configuration is
+ * initialized, so this file keeps the direct import.
+ * @lintIgnore use-instead
+ */
 import { type DataflowInformation, happensInEveryBranch } from '../../../../info';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -25,6 +31,7 @@ import {
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EdgeType } from '../../../../graph/edge';
 import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { FunctionCallVertex, ValueVertex, FunctionDefinitionVertex } from '../../../../graph/vertex';
 
 export interface ForceArguments {
 	/** which of the arguments should be forced? this may be all, e.g., if the function itself is unknown on encounter */
@@ -56,11 +63,11 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 		return;
 	}
 	// link read if it is function definition directly and reference the exit point
-	if(valueVertex.tag === VertexType.FunctionDefinition) {
+	if(FunctionDefinitionVertex.is(valueVertex)) {
 		for(const exit of valueVertex.exitPoints) {
 			graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
 		}
-	} else if(valueVertex.tag !== VertexType.Value) {
+	} else if(!ValueVertex.is(valueVertex)) {
 		for(const exit of value.exitPoints) {
 			graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
 		}
@@ -154,7 +161,7 @@ export function processAllArguments<OtherInfo>(
 			for(const ingoing of l) {
 				// check if it is called directly
 				const inId = ingoing.nodeId;
-				const refType = finalGraph.getVertex(inId)?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Unknown;
+				const refType = FunctionCallVertex.is(finalGraph.getVertex(inId)) ? ReferenceType.Function : ReferenceType.Unknown;
 
 				const tryToResolve = ingoing.name ? resolveByName(ingoing.name, data.environment, refType) : undefined;
 				if(tryToResolve === undefined) {

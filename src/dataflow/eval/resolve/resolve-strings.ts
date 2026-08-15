@@ -7,8 +7,8 @@ import { Identifier, PkgName } from '../../environments/identifier';
 import { Top, type Value } from '../values/r-value';
 import { stringFrom } from '../values/string/string-constants';
 import { intervalFrom } from '../values/intervals/interval-constants';
-import { resolveIdToSingleString } from './alias-tracking';
 import { matchCallArguments } from './match-arguments';
+import { Resolve } from '../../environments/resolve-helper';
 
 /** everything after the last separator, with trailing separators dropped first (`a/b/` is `b`, `/` is the empty string) */
 function basename(path: string): string {
@@ -107,7 +107,7 @@ export function foldStringCall<Info>(node: RNamedFunctionCall<Info>, resolveArg:
 	for(const [at, slot] of matched.entries()) {
 		if(Array.isArray(slot)) {
 			const parts = (slot as readonly RNode<Info>[]).map(resolveArg);
-			if(parts.some(p => p === undefined)) {
+			if(parts.includes(undefined)) {
 				return undefined;
 			}
 			args.push(parts as string[]);
@@ -141,7 +141,7 @@ export function resolveAsStringFn(args: BuiltInEvalHandlerArgs): Value {
 	if(node.type !== RType.FunctionCall || !node.named) {
 		return Top;
 	}
-	const folded = foldStringCall(node, arg => resolveIdToSingleString(arg.info.id, args));
+	const folded = foldStringCall(node, arg => Resolve.toSingleString(arg.info.id, args));
 	if(folded === undefined) {
 		return Top;
 	}

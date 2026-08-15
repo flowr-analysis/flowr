@@ -9,7 +9,7 @@ import type { RNumber } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/
 import type { RLogical } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
-describe.sequential('Retrieve fitting Argument', withShell(shell => {
+describe('Retrieve fitting Argument', { concurrent: false }, withShell(shell => {
 	async function retrieveArgOfCode(code: string, index: number, name?: string) {
 		const dfg = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 			parser:  shell,

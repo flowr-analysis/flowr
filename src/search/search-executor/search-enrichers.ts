@@ -6,7 +6,7 @@ import type {
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../dataflow/info';
 import { type MergeableRecord, deepMergeObject } from '../../util/objects';
-import { VertexType } from '../../dataflow/graph/vertex';
+import { FunctionCallVertex } from '../../dataflow/graph/vertex';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { guard, isNotUndefined } from '../../util/assert';
 import { type Origin, OriginType } from '../../dataflow/origin/dfg-get-origin';
@@ -24,8 +24,8 @@ import {
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import type { KnownRoxygenTags, RoxygenTag } from '../../r-bridge/roxygen2/roxygen-ast';
-import { getDocumentationOf } from '../../r-bridge/roxygen2/documentation-provider';
 import { FlowrSearchBuilder } from '../flowr-search-builder';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
@@ -146,7 +146,7 @@ export const Enrichments = {
 			const df = shared?.dfg ?? await analyzer.dataflow();
 			const n = shared?.ast ?? await analyzer.normalize();
 			const callVertex = df.graph.getVertex(e.node.info.id);
-			if(callVertex?.tag === VertexType.FunctionCall) {
+			if(FunctionCallVertex.is(callVertex)) {
 				const origins = Dataflow.origin(df.graph, callVertex.id);
 				if(!origins || origins.length === 0) {
 					const name = recoverName(callVertex.id, n.idMap);
@@ -215,7 +215,7 @@ export const Enrichments = {
 			const shared = s.enrichmentContent(Enrichment.LastCall) as LastCallSearchContent | undefined;
 			const df = (shared?.dfg ?? await analyzer.dataflow()).graph;
 			const vertex = df.getVertex(e.node.info.id);
-			if(vertex?.tag === VertexType.FunctionCall) {
+			if(FunctionCallVertex.is(vertex)) {
 				const n = shared?.ast ?? await analyzer.normalize();
 				const cfg = (shared?.cfg ?? await analyzer.controlflow(undefined, CfgKind.Quick)).graph;
 				for(const arg of args) {
@@ -275,7 +275,7 @@ export const Enrichments = {
 
 			const shared = search.enrichmentContent(Enrichment.Roxygen) as RoxygenSearchContent | undefined;
 			const normalize = shared?.ast ?? await analyzer.normalize();
-			const roxygen = getDocumentationOf(e.node.info.id, normalize.idMap);
+			const roxygen = RNode.documentation(e.node.info.id, normalize.idMap);
 			if(roxygen !== undefined) {
 				const comments = (Array.isArray(roxygen) ? roxygen : [roxygen]) as RoxygenTag[];
 				content.documentation.push(...comments);

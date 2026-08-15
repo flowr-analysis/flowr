@@ -146,7 +146,7 @@ export const FILE_PATH_VALIDITY = {
 			// check if any write to the same file happens before the read, and exclude this case if so
 			const writesToFile = results.write.filter(r => samePath(r.value as string, matchingRead.value as string, data.flowrConfig.solver.resolveSource?.ignoreCapitalization));
 			const writesBefore = writesToFile.map(w => happensBefore(cfg, w.nodeId, element.node.info.id));
-			if(writesBefore.some(w => w === Ternary.Always)) {
+			if(writesBefore.includes(Ternary.Always)) {
 				metadata.totalWritesBeforeAlways++;
 				return [];
 			}

@@ -1,6 +1,6 @@
 import { DefaultMap } from '../../util/collections/defaultmap';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import { RFunctionCall, EmptyArgument  } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isNotUndefined } from '../../util/assert';
 import { expensiveTrace } from '../../util/log';
 import type { BuiltIn } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -24,13 +24,14 @@ import {
 	type DataflowGraphVertexInfo,
 	VertexType
 } from '../graph/vertex';
-import { resolveByName } from '../environments/resolve-by-name';
 import type { REnvironmentInformation } from '../environments/environment';
 import { DotsParameterName, matchArgumentsToParameters } from '../../util/arg-matching';
 import type { ExitPoint } from '../info';
 import { negateControlDependency, doesExitPointPropagateCalls } from '../info';
 import { UnnamedFunctionCallPrefix } from './process/functions/call/unnamed-call-handling';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
+import { VariableDefinitionVertex, FunctionCallVertex, FunctionDefinitionVertex } from '../graph/vertex';
+import { Resolve } from '../environments/resolve-helper';
 
 export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
 
@@ -52,7 +53,7 @@ export function findNonLocalReads(graph: DataflowGraph, ignores: ReadonlySet<Nod
 			const origin = graph.getVertex(nodeId);
 			const name = recoverName(nodeId, graph.idMap);
 
-			const type = origin?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Variable;
+			const type = FunctionCallVertex.is(origin) ? ReferenceType.Function : ReferenceType.Variable;
 
 			const identifierRef = { nodeId, name, type };
 
@@ -190,7 +191,7 @@ export function linkFunctionCallWithSingleTarget(
 	if(info.environment !== undefined) {
 		// for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it
 		for(const ingoing of fnSubflow.in) {
-			const defs = ingoing.name ? resolveByName(ingoing.name, info.environment, ingoing.type) : undefined;
+			const defs = ingoing.name ? Resolve.byNameAndType(ingoing.name, info.environment, ingoing.type) : undefined;
 			if(defs === undefined) {
 				continue;
 			}
@@ -204,7 +205,7 @@ export function linkFunctionCallWithSingleTarget(
 							graph.addEdge(ingoing.nodeId, v, EdgeType.Calls);
 							// add s7 to vertex
 							const vInfo = graph.getVertex(v);
-							if(vInfo && vInfo.tag === VertexType.FunctionDefinition) {
+							if(vInfo && FunctionDefinitionVertex.is(vInfo)) {
 								vInfo.mode ??= [];
 								if(!vInfo.mode.includes('s7')) {
 									vInfo.mode.push('s7');
@@ -323,7 +324,7 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 
 	const [info, outgoingEdges] = callVertex;
 
-	if(info.tag !== VertexType.FunctionCall) {
+	if(!FunctionCallVertex.is(info)) {
 		return [];
 	}
 
@@ -332,7 +333,7 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 		const refType = info.origin.includes(BuiltInProcName.S3Dispatch) ? ReferenceType.S3MethodPrefix :
 			info.origin.includes(BuiltInProcName.S7Dispatch) ? ReferenceType.S7MethodPrefix : ReferenceType.Function;
 		if(info.name !== undefined && !Identifier.getName(info.name).startsWith(UnnamedFunctionCallPrefix)) {
-			functionCallDefs = resolveByName(
+			functionCallDefs = Resolve.byNameAndType(
 				info.name, environment ?? info.environment as REnvironmentInformation, refType
 			)?.map(d => d.nodeId) ?? [];
 		}
@@ -412,7 +413,7 @@ export function getAllLinkedFunctionDefinitions(
 			continue;
 		}
 
-		const isSkipType = vertex.tag === VertexType.FunctionCall || (vertex.tag === VertexType.VariableDefinition && vertex.par);
+		const isSkipType = FunctionCallVertex.is(vertex) || (VariableDefinitionVertex.is(vertex) && vertex.par);
 		let hasReturnEdge = false;
 		let followTargets: NodeId[] | undefined;
 
@@ -449,6 +450,7 @@ export function getAllLinkedFunctionDefinitions(
 /**
  * Links every name in the expression rooted at `expr` against `environment`, as if it were written there, and
  * hands back what stays unresolved. This is how an expression that was captured elsewhere is read here.
+ * @useInstead {@link Quoted.evaluateIn}
  */
 export function linkExpressionIn<Info>(this: void, graph: DataflowGraph, expr: NodeId, environment: REnvironmentInformation, idMap: AstIdMap<Info & ParentInformation>): readonly IdentifierReference[] {
 	const node = idMap.get(expr);
@@ -482,7 +484,7 @@ export function linkExpressionIn<Info>(this: void, graph: DataflowGraph, expr: N
  */
 export function linkInputs(referencesToLinkAgainstEnvironment: readonly IdentifierReference[], environmentInformation: REnvironmentInformation, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean): IdentifierReference[] {
 	for(const bodyInput of referencesToLinkAgainstEnvironment) {
-		const probableTarget = bodyInput.name ? resolveByName(bodyInput.name, environmentInformation, bodyInput.type) : undefined;
+		const probableTarget = bodyInput.name ? Resolve.byNameAndType(bodyInput.name, environmentInformation, bodyInput.type) : undefined;
 		if(probableTarget === undefined) {
 			if(maybeForRemaining) {
 				bodyInput.cds ??= [];
@@ -612,7 +614,7 @@ export const ClosureRefs = {
 	resolveOpenIngoing(this: void, graph: DataflowGraph, callId: NodeId, definition: DataflowGraphVertexFunctionDefinition, environment: REnvironmentInformation): void {
 		const remainingIn: IdentifierReference[] = [];
 		for(const ingoing of definition.subflow.in) {
-			const resolved = ingoing.name ? resolveByName(ingoing.name, environment, ingoing.type) : undefined;
+			const resolved = ingoing.name ? Resolve.byNameAndType(ingoing.name, environment, ingoing.type) : undefined;
 			if(resolved === undefined) {
 				remainingIn.push(ingoing);
 				continue;

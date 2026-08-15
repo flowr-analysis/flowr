@@ -1,5 +1,6 @@
 import { guard } from '../../util/assert';
-import type { DfEdge, EdgeType } from './edge';
+import type { EdgeType } from './edge';
+import { DfEdge } from './edge';
 import type { DataflowInformation } from '../info';
 import {
 	type DataflowGraphVertexArgument,
@@ -19,6 +20,7 @@ import { cloneEnvironmentInformation } from '../environments/clone';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { Writable } from 'ts-essentials';
 import type { BuiltInMemory } from '../environments/built-in';
+import { FunctionDefinitionVertex, ValueVertex, UseVertex, VariableDefinitionVertex } from './vertex';
 
 /**
  * Describes the information we store per function body.
@@ -183,6 +185,16 @@ export type OutgoingEdges<Edge extends DfEdge = DfEdge> = Map<NodeId, Edge>;
  * In other words, it maps the source to the edge information.
  */
 export type IngoingEdges<Edge extends DfEdge = DfEdge> = Map<NodeId, Edge>;
+
+/**
+ * The shared answer for a vertex without edges. Use it instead of a fresh `[]` fallback, the lookups sit in
+ * traversal loops where a miss is the common case.
+ * @example
+ * ```ts
+ * for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) { /* ... *\/ }
+ * ```
+ */
+export const NoEdges: ReadonlyMap<NodeId, never> = new Map<NodeId, never>();
 
 /**
  * The structure of the serialized {@link DataflowGraph}.
@@ -454,7 +466,7 @@ export class DataflowGraph<
 			return this;
 		}
 		edge.types &= ~type;
-		if(edge.types !== 0) {
+		if(DfEdge.hasAnyType(edge)) {
 			/* the reverse index holds this very object, so a narrowed type is already visible through it */
 			return this;
 		}
@@ -608,7 +620,7 @@ export class DataflowGraph<
 	public setDefinitionOfVertex(reference: IdentifierReference, sourceIds: readonly NodeId[] | undefined): void {
 		const vertex = this.getVertex(reference.nodeId);
 		guard(vertex !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set reference`);
-		if(vertex.tag === VertexType.FunctionDefinition || vertex.tag === VertexType.VariableDefinition) {
+		if(FunctionDefinitionVertex.is(vertex) || VariableDefinitionVertex.is(vertex)) {
 			vertex.cds = reference.cds;
 		} else {
 			const oldTag = vertex.tag;
@@ -639,7 +651,7 @@ export class DataflowGraph<
 	public updateToFunctionCall(info: DataflowGraphVertexFunctionCall): void {
 		const infoId = info.id;
 		const vertex = this.getVertex(infoId);
-		guard(vertex !== undefined && (vertex.tag === VertexType.Use || vertex.tag === VertexType.Value), () => `node must be a use or value node for ${JSON.stringify(info.id)} to update it to a function call but is ${vertex?.tag}`);
+		guard(vertex !== undefined && (UseVertex.is(vertex) || ValueVertex.is(vertex)), () => `node must be a use or value node for ${JSON.stringify(info.id)} to update it to a function call but is ${vertex?.tag}`);
 		const previousTag = vertex.tag;
 		this.vertexInformation.set(infoId, { ...vertex, ...info, tag: VertexType.FunctionCall });
 		const prevIds = this.types.get(previousTag);
@@ -713,7 +725,7 @@ export class DataflowGraph<
 function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex, next: Vertex): Vertex {
 	if(current.tag !== next.tag) {
 		return current;
-	} else if(current.tag === VertexType.FunctionDefinition) {
+	} else if(FunctionDefinitionVertex.is(current)) {
 		const n = next as DataflowGraphVertexFunctionDefinition;
 		current.exitPoints = uniqueArrayMerge(current.exitPoints, n.exitPoints);
 		if(n.mode && n.mode.length > 0) {

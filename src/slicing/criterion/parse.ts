@@ -56,7 +56,7 @@ export const SlicingCriterion = {
 	tryParse(this: void, criterion: SlicingCriterion | NodeId, idMap: AstIdMap): NodeId | undefined {
 		criterion = criterion.toString(); // in case it's a number
 		if(criterion.startsWith('$')) {
-			return NodeId.normalize(criterion.substring(1));
+			return NodeId.normalize(criterion.slice(1));
 		}
 		const split = splitFileFilter(criterion);
 		if(split === undefined) {
@@ -65,8 +65,8 @@ export const SlicingCriterion = {
 		const { rest: base, file } = split;
 		if(base.includes('@')) {
 			const at = base.indexOf('@');
-			const line = parseLineNumber(base.substring(0, at), idMap, file);
-			const name = base.substring(at + 1);
+			const line = parseLineNumber(base.slice(0, Math.max(0, at)), idMap, file);
+			const name = base.slice(Math.max(0, at + 1));
 			if(line === undefined || name.length === 0) {
 				return undefined;
 			}

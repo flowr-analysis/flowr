@@ -5,7 +5,7 @@ import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/dat
 import { describe } from 'vitest';
 import { FlowrConfig } from '../../../../../src/config';
 
-describe.sequential('Simple', withShell(shell => {
+describe('Simple', { concurrent: false }, withShell(shell => {
 	describe('Constant assignments', () => {
 		const config = FlowrConfig.default();
 

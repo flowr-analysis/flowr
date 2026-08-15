@@ -1,4 +1,4 @@
-import { type ResolveInfo, resolveIdToValue } from '../../dataflow/eval/resolve/alias-tracking';
+import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
 import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -7,9 +7,11 @@ import { isNotUndefined } from '../../util/assert';
 import { unliftRValue, unwrapRValue, unwrapRValueToString, unwrapRVector } from '../../util/r-value';
 import { startAndEndsWith } from '../../util/text/strings';
 import { Identifier } from '../../dataflow/environments/identifier';
+import { Resolve } from '../../dataflow/environments/resolve-helper';
 
 /**
  * Returns the argument name of a function argument
+ * @useInstead {@link Resolve.argument.toName}
  */
 export function resolveIdToArgName(id: NodeId | RArgument<ParentInformation> | undefined, info: ResolveInfo): string | undefined {
 	const node = resolveIdToArgument(id, info);
@@ -18,7 +20,8 @@ export function resolveIdToArgName(id: NodeId | RArgument<ParentInformation> | u
 }
 
 /**
- * Resolves the value of a function argument as string, number, boolean, or vector using {@link resolveIdToValue}
+ * Resolves the value of a function argument as string, number, boolean, or vector using {@link Resolve.toValue}
+ * @useInstead {@link Resolve.argument.value}
  */
 export function resolveIdToArgValue(id: NodeId | RArgument<ParentInformation> | undefined, info: ResolveInfo): string | number | boolean | (string | number | boolean)[] | undefined {
 	const unliftedValue = resolveArgToUnlifted(id, info);
@@ -34,7 +37,8 @@ export function resolveIdToArgValue(id: NodeId | RArgument<ParentInformation> | 
 }
 
 /**
- * Resolves the value of a function argument to a string vector using {@link resolveIdToValue} and {@link unwrapRValueToString}
+ * Resolves the value of a function argument to a string vector using {@link Resolve.toValue} and {@link unwrapRValueToString}
+ * @useInstead {@link Resolve.argument.stringVector}
  */
 export function resolveIdToArgStringVector(id: NodeId | RArgument<ParentInformation> | undefined, info: ResolveInfo): string[] | undefined {
 	const unliftedValue = resolveArgToUnlifted(id, info);
@@ -53,6 +57,7 @@ export function resolveIdToArgStringVector(id: NodeId | RArgument<ParentInformat
 
 /**
  * Returns the symbol name or string value of the value of a function argument
+ * @useInstead {@link Resolve.argument.symbolName}
  */
 export function resolveIdToArgValueSymbolName(id: NodeId | RArgument<ParentInformation> | undefined, info: ResolveInfo): string | undefined {
 	const node = resolveIdToArgument(id, info);
@@ -66,7 +71,8 @@ export function resolveIdToArgValueSymbolName(id: NodeId | RArgument<ParentInfor
 }
 
 /**
- * Resolves the vector length of the value of a function argument using {@link resolveIdToValue}
+ * Resolves the vector length of the value of a function argument using {@link Resolve.toValue}
+ * @useInstead {@link Resolve.argument.vectorLength}
  */
 export function resolveIdToArgVectorLength(id: NodeId | RArgument<ParentInformation> | undefined, info: ResolveInfo): number | undefined {
 	const unliftedValue = resolveArgToUnlifted(id, info);
@@ -84,7 +90,7 @@ export function resolveIdToArgVectorLength(id: NodeId | RArgument<ParentInformat
 /** The unlifted value of a function argument, `undefined` if the argument carries no value. */
 function resolveArgToUnlifted(id: NodeId | RArgument<ParentInformation> | undefined, info: ResolveInfo) {
 	const node = resolveIdToArgument(id, info);
-	return node?.value !== undefined ? unliftRValue(resolveIdToValue(node.value, info)) : undefined;
+	return node?.value !== undefined ? unliftRValue(Resolve.toValue(node.value, info)) : undefined;
 }
 
 function resolveIdToArgument(id: NodeId | RArgument<ParentInformation> | undefined, { graph, idMap }: ResolveInfo): RArgument<ParentInformation> | undefined {

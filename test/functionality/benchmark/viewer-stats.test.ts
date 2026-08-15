@@ -1,6 +1,6 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { createRequire } from 'node:module';
+import fs from 'fs';
+import path from 'path';
+import { createRequire } from 'module';
 import { assert, describe, test } from 'vitest';
 import { infoGraphPath, isInfoEntry } from '../../../src/benchmark/summarizer/second-phase/graph';
 

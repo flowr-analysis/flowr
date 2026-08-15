@@ -261,7 +261,7 @@ async function executeStatement(output: ReplOutput, statement: string, analyzer:
 						const args = processor.argsParser(remainingLine);
 						if(args.rCode) {
 							const rawPath = args.rCode.startsWith(fileProtocol)
-								? args.rCode.substring(fileProtocol.length)
+								? args.rCode.slice(fileProtocol.length)
 								: undefined;
 							const alreadyKnown = rawPath !== undefined
 								&& analyzer.context().files.getFileByPath(rawPath) !== undefined;

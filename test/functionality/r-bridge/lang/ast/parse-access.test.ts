@@ -7,7 +7,7 @@ import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/no
 import { describe } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
 
-describe.sequential('Parse value access', withShell(shell => {
+describe('Parse value access', { concurrent: false }, withShell(shell => {
 	describe('Single bracket', () => {
 		assertAst(label('Empty Access', ['name-normal', 'single-bracket-access', 'access-with-empty']),
 			shell, 'a[]', exprList({

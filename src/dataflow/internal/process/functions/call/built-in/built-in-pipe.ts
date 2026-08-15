@@ -13,7 +13,7 @@ import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { VertexType } from '../../../../../graph/vertex';
+import { VertexType, FunctionCallVertex, UseVertex } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { toUnnamedArgument } from '../argument/make-argument';
@@ -106,7 +106,7 @@ export function processPipe<OtherInfo>(
 	if(rhs.type === RType.Symbol && rhsMightBeSymbol) {
 		// convert a plain symbol on the RHS into a function-call vertex so we can treat it like `df %>% head`
 		const maybeVertex = information.graph.getVertex(rhs.info.id);
-		if(maybeVertex && maybeVertex.tag === VertexType.Use) {
+		if(maybeVertex && UseVertex.is(maybeVertex)) {
 			information.graph.updateToFunctionCall({
 				tag:         VertexType.FunctionCall,
 				id:          rhs.info.id,
@@ -123,7 +123,7 @@ export function processPipe<OtherInfo>(
 
 	if(treatedAsFunctionCall || rhs.type === RType.FunctionCall) {
 		const functionCallNode = information.graph.getVertex(rhs.info.id);
-		guard(functionCallNode?.tag === VertexType.FunctionCall, () => `Expected function call node with id ${rhs.info.id} to be a function call node, but got ${functionCallNode?.tag} instead.`);
+		guard(FunctionCallVertex.is(functionCallNode), () => `Expected function call node with id ${rhs.info.id} to be a function call node, but got ${functionCallNode?.tag} instead.`);
 
 		// make the lhs an argument node (or link it to placeholders within the rhs call):
 		const argId = lhs.info.id;

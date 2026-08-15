@@ -85,7 +85,7 @@ export function requestFromInput(input: `${typeof fileProtocol}${string}` | stri
 	if(file) {
 		return {
 			request: 'file',
-			content: content.substring(fileProtocol.length),
+			content: content.slice(fileProtocol.length),
 		};
 	} else {
 		return {
@@ -195,7 +195,8 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
 /**
  * Uses {@link retrieveParseDataFromRCode} and returns the nicely formatted object-AST.
  * If successful, allows further querying the last result with {@link retrieveNumberOfRTokensOfLastParse}.
- * This function is outdated and should only be used for legacy reasons. Please use the {@link FlowrAnalyzer} instead.
+ * This function is outdated and should only be used for legacy reasons.
+ * @useInstead {@link FlowrAnalyzer}
  */
 export async function retrieveNormalizedAstFromRCode(request: RParseRequest, shell: RShell): Promise<NormalizedAst> {
 	const data = await retrieveParseDataFromRCode(request, shell);

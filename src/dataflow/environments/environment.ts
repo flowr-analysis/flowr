@@ -17,6 +17,7 @@ import { happensInEveryBranch } from '../info';
 import { uniqueMergeValuesInDefinitions } from './append';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { log } from '../../util/log';
+import { Resolve } from './resolve-helper';
 
 /** A single entry/scope within an {@link REnvironmentInformation} */
 export interface IEnvironment {
@@ -627,7 +628,7 @@ function splitLibraryLayers(this: void, env: Environment): [Environment[], Envir
  *
  * The {@link BuiltIns|BuiltInEnvironment} holds R's built-in functions and constants; during serialization use {@link builtInEnvJsonReplacer} to avoid inlining it.
  * @see {@link define} - to define a new {@link IdentifierDefinition|identifier definition} within an environment
- * @see {@link resolveByName} - to resolve an {@link Identifier|identifier/name} to its {@link IdentifierDefinition|definitions} within an environment
+ * @see {@link Resolve.byNameAndType} - to resolve an {@link Identifier|identifier/name} to its {@link IdentifierDefinition|definitions} within an environment
  * @see {@link makeReferenceMaybe} - to attach control dependencies to a reference
  * @see {@link pushLocalEnvironment} - to create a new local scope
  * @see {@link popLocalEnvironment} - to remove the current local scope

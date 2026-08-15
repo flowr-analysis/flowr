@@ -24,7 +24,7 @@ import type { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/n
 import { Identifier } from '../../../../../environments/identifier';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
-import { VertexType } from '../../../../../graph/vertex';
+import { VertexType, UseVertex, FunctionDefinitionVertex } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
@@ -93,7 +93,7 @@ export function processS7NewGeneric<OtherInfo>(
 	info.graph.addEdge(rootId, funArg, EdgeType.Returns);
 	info.entryPoint = funArg;
 	const fArg = info.graph.getVertex(funArg);
-	if(fArg?.tag === VertexType.FunctionDefinition) {
+	if(FunctionDefinitionVertex.is(fArg)) {
 		fArg.mode ??= ['s4', 's7'];
 	}
 	return info;
@@ -118,7 +118,7 @@ export function processMakeConstructor<OtherInfo>(
 	info.graph.addEdge(rootId, funId, EdgeType.Returns);
 	info.entryPoint = funId;
 	const fArg = info.graph.getVertex(funId);
-	if(fArg?.tag === VertexType.FunctionDefinition && config?.mode) {
+	if(FunctionDefinitionVertex.is(fArg) && config?.mode) {
 		fArg.mode ??= config.mode.slice();   // copy: mode is mutated in place later, config.mode is shared
 	}
 	if(config?.wrapIndex !== undefined) {
@@ -160,7 +160,7 @@ function linkWrappedFunction<OtherInfo>(
 		return;
 	}
 	const vertex = info.graph.getVertex(resolved.functionId);
-	if(vertex?.tag !== VertexType.Use) {
+	if(!UseVertex.is(vertex)) {
 		return;
 	}
 	info.graph.updateToFunctionCall({

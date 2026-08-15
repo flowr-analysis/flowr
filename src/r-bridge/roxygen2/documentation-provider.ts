@@ -46,6 +46,7 @@ const defaultRetriever = (c: RNode<ParentInformation>, a: AstIdMap) => parseRoxy
  * Additionally, this function instruments the normalized AST to cache the parsed documentation for future queries.
  * @param idMap   - The AST ID map to use for looking up nodes and traversing the AST.
  * @param nodeId  - The ID of the node to get documentation for.
+ * @useInstead {@link RNode.documentation}
  */
 export function getDocumentationOf(nodeId: NodeId, idMap: AstIdMap<ParentInformation & DocumentationInfo>): Documentation | undefined {
 	const node = idMap.get(nodeId);

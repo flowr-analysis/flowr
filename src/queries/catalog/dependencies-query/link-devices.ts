@@ -3,7 +3,7 @@ import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/process
 import type { DataflowInformation } from '../../../dataflow/info';
 import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
 import { CallProp } from '../../../dataflow/environments/built-in-props';
-import { VertexType } from '../../../dataflow/graph/vertex';
+import { FunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { SourceRange } from '../../../util/range';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -11,7 +11,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 /** the {@link CallProp} bits of the call `id` makes */
 function propsOf(id: NodeId, { graph, environment }: DataflowInformation): number {
 	const vertex = graph.getVertex(id);
-	if(vertex?.tag !== VertexType.FunctionCall) {
+	if(!FunctionCallVertex.is(vertex)) {
 		return 0;
 	}
 	const name = Dataflow.qualify(id, graph, false) ?? vertex.name;
@@ -35,7 +35,7 @@ export function linkPlotsToDevices(written: readonly DependencyInfo[], plots: De
 		.filter(w => w.value !== undefined && (propsOf(w.nodeId, dataflow) & CallProp.Graphics) !== 0)
 		.map(w => [w.nodeId, w.value as string]));
 	const closed = new Set(dataflow.graph.vertices(true)
-		.filter(([id, v]) => v.tag === VertexType.FunctionCall && (propsOf(id, dataflow) & CallProp.Closes) !== 0)
+		.filter(([id, v]) => FunctionCallVertex.is(v) && (propsOf(id, dataflow) & CallProp.Closes) !== 0)
 		.map(([id]) => id));
 	const plotAt = new Map(plots.map((p, index) => [p.nodeId, index]));
 	const located = [...opened.keys(), ...closed, ...plotAt.keys()]

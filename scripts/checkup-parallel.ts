@@ -2,10 +2,10 @@
 // with live progress and a structured summary. Exits non-zero if any fails.
 //   npm run checkup [-- --no-docker | lint tests ...]
 
-import { spawn } from 'node:child_process';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
+import { spawn } from 'child_process';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
 interface Job {
 	id:    string

@@ -98,6 +98,13 @@ jobs:
           
           # Generate all wiki pages
           npm run wiki
+          # the landing page is generated too, from real flowR output; the signature browser is megabytes,
+          # so the documentation job builds that one straight onto gh-pages instead
+          FLOWR_LANDING_ONLY=1 npm run gen:landing
+          # the signature browser is gitignored on purpose (megabytes); only the page and its samples are committed
+          for LANDING in index.html wiki/landing/index.html; do
+              if [ -n "$(git status --porcelain -- "$LANDING")" ]; then CHANGED_FILES+=("$LANDING"); fi
+          done
           # read in everything from /tmp/flowr-wiki-changed-files.txt and add to CHANGED_FILES
           if [ -f /tmp/flowr-wiki-changed-files.txt ]; then
                 while IFS= read -r line; do

@@ -142,7 +142,8 @@ header {
 	line-height: 1.2;
 }
 
-.titles h1 a {
+.titles h1 a { display: inline-flex; align-items: center; gap: .45rem; }
+.titles h1 a.unused {
 	text-decoration: none;
 }
 
@@ -1383,3 +1384,5 @@ footer {
 .unfold.open .chevron {
 	transform: rotate(180deg);
 }
+
+.mark { flex: none; vertical-align: -.15em; }

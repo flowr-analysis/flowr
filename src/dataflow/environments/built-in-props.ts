@@ -104,7 +104,9 @@ export enum CallProp {
 	/** yields the paths it matches at run time rather than one it was handed (`list.files`, `Sys.glob`); empty is an answer */
 	Glob       = 1 << 25,
 	/** hands back what the program was invoked with, as `commandArgs` and the option parsers built on it do */
-	CommandLine = 1 << 26
+	CommandLine = 1 << 26,
+	/** function is makred for removal, and a better alternative is available. */
+	Deprecated = 1 << 27
 }
 
 /**

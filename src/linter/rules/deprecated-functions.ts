@@ -21,6 +21,8 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer
 import { hasArgumentValue } from './function-finder-util';
 import { Ternary } from '../../util/logic';
 import type  { KnownParser } from '../../r-bridge/parser';
+import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
+import { CallProp } from '../../dataflow/environments/built-in-props';
 
 /**
  * Information about an argument of a function that should be flagged as deprecated if it is called with this argument
@@ -125,20 +127,23 @@ interface Metadata extends MergeableRecord {
 	hardcoded: number
 }
 
-const AlwaysDeprecated = [
-	'all_equal', 'arrange_all', 'distinct_all', 'filter_all', 'group_by_all', 'summarise_all', 'mutate_all', 'select_all', 'vars', 'all_vars', 'id', 'failwith', 'select_vars', 'rename_vars', 'select_var', 'current_vars', 'bench_tbls', 'compare_tbls', 'compare_tbls2', 'eval_tbls', 'eval_tbls2', 'location', 'changes', 'combine', 'do', 'funs', 'add_count_', 'add_tally_', 'arrange1_', 'count_', 'distinct_', 'do_', 'filter_', 'funs_', 'group_by_', 'group_indices_', 'mutate_', 'tally_', 'transmute_', 'rename_', 'rename_vars_', 'select_', 'select_vars_', 'slice_', 'summarise_', 'summarize_', 'summarise_each', 'src_local', 'tbl_df', 'add_rownames', 'group_nest', 'group_split', 'with_groups', 'nest_by', 'progress_estimated', 'recode', 'sample_n', 'top_n', 'transmute', 'fct_explicit_na', 'aes_', 'aes_auto', 'annotation_logticks', 'is.Coord', 'coord_flip', 'coord_map', 'is.facet', 'fortify', 'is.ggproto', 'guide_train', 'is.ggplot', 'qplot', 'is.theme', 'gg_dep', 'liply', 'isplit2', 'list_along', 'cross', 'invoke', 'at_depth', 'prepend', 'rerun', 'splice', '`%@%`', 'rbernoulli', 'rdunif', 'when', 'update_list', 'map_raw', 'accumulate', 'reduce_right', 'flatten', 'map_dfr', 'as_vector', 'transpose', 'melt_delim', 'melt_fwf', 'melt_table', 'read_table2', 'str_interp', 'as_tibble', 'data_frame', 'tibble_', 'data_frame_', 'lst_', 'as_data_frame', 'as.tibble', 'frame_data', 'trunc_mat', 'is.tibble', 'tidy_names', 'set_tidy_names', 'repair_names', 'extract_numeric', 'complete_', 'drop_na_', 'expand_', 'crossing_', 'nesting_', 'extract_', 'fill_', 'gather_', 'nest_', 'separate_rows_', 'separate_', 'spread_', 'unite_', 'unnest_', 'extract', 'gather', 'nest_legacy', 'separate_rows', 'separate', 'spread'
-];
-
 const ConditionallyDeprecated = {
 	'geom_violin': { package: 'ggplot2', whenArgs: [{ argName: 'draw_quantiles', state: DeprecationState.Deprecated, replacedBy: 'quantile.linetype', sinceVersion: RRange.parse('>= 4.0.0') }] },
 } satisfies Record<BrandedIdentifier, DeprecatedFunctionInformation>;
+
+function functionListFromBuiltinConfig(): Identifier[] {
+	return DefaultBuiltinConfig.filter(def => def.type === 'function'
+			&& def.config?.props !== undefined
+			&& (def.config.props & CallProp.Deprecated) !== 0)
+		.flatMap(def => def.names);
+}
 
 export const DEPRECATED_FUNCTIONS = {
 	// unlike functionFinderUtil.createSearch(config.fns), this does not pre-filter to the hardcoded list: the
 	// sigdb-driven pass below needs every resolved call, so the `fns` filtering happens in processSearchResult instead
 	createSearch: (_config) => Q.all().filter(VertexType.FunctionCall).with(Enrichment.CallTargets, {
 		onlyBuiltin:  true,
-		qualifyNames: true // we don't use qualified names for this rule yet
+		qualifyNames: true
 	}),
 	processSearchResult: async(elements, config, data) => {
 		const matchesConfiguredFns = Identifier.regex(...config.always);
@@ -159,7 +164,7 @@ export const DEPRECATED_FUNCTIONS = {
 
 		// 2. Uses hardcoded information about deprecated arguments and deprecated functions
 		const results: DeprecatedFunctionRuleResult[] = (await Promise.all(detectedFunctions.map(async candidate => {
-			const name = candidate.target.includes('::') ? Identifier.getName(Identifier.parse(candidate.target)) : candidate.target;
+			const name = Identifier.getName(Identifier.parse(candidate.target));
 			const info = config.conditionally[name];
 			if(isNotUndefined(info)) {
 				// Check functions from DeprecatedFunctionsConfig.conditionally
@@ -239,7 +244,7 @@ export const DEPRECATED_FUNCTIONS = {
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Marks deprecated functions that should not be used anymore.',
 		defaultConfig: {
-			always:        AlwaysDeprecated,
+			always:        functionListFromBuiltinConfig(),
 			conditionally: ConditionallyDeprecated
 		}
 	}

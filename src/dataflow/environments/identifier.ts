@@ -344,6 +344,10 @@ export const enum PkgName {
 	TinyPlot     = 'tinyplot',
 	TryCatchLog  = 'tryCatchLog',
 	Withr        = 'withr',
+	Forecats     = 'forcats',
+	Readr        = 'readr',
+	Stringr      = 'stringr',
+	Tibble       = 'tibble'
 }
 
 /**

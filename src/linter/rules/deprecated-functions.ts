@@ -3,6 +3,7 @@ import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environ
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
+import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { FunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
@@ -281,6 +282,45 @@ async function inferPackageVersions(analyzer: ReadonlyFlowrAnalysisProvider<Know
 	return new Map<BrandedNamespace, Range>(versions);
 }
 
+function isDeprecatedArgumentPresent(vertex: DataflowGraphVertexFunctionCall, info: DeprecatedArgumentInformation, idMap: AstIdMap): RNode<ParentInformation> | undefined {
+	// Check if function call has deprecated argument
+	const arg = vertex.args.find((arg, idx) =>
+		FunctionArgument.isNamed(arg) && arg.name === info.argName ||
+				FunctionArgument.isPositional(arg) && idx === info.argIdx
+	);
+	const argNode = arg === undefined || arg === EmptyArgument ? undefined : idMap.get(arg.nodeId);
+	return argNode;
+}
+
+type SetUncertainFn = () => void;
+function doesPackageVersionMatch(derrivedVersion: Range | undefined, info: DeprecatedArgumentInformation, setUncertain: SetUncertainFn): boolean  {
+	if(info.sinceVersion === undefined) {
+		return true;
+	}
+
+	if(derrivedVersion == undefined) {
+		setUncertain();
+		return true;
+	} else {
+		return info.sinceVersion.intersects(derrivedVersion);
+	}
+}
+
+function doesArgumentValueMatch(info: DeprecatedArgumentInformation, vertex: DataflowGraphVertexFunctionCall, analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>, dataflow: DataflowGraph, setUncertain: SetUncertainFn): boolean {
+	if(info.ifValue === undefined) {
+		return true;
+	}
+
+	const hasArg = hasArgumentValue(info.ifValue, vertex, analyzer, dataflow, true, info.argName, info.argIdx);
+	if(hasArg === Ternary.Never) {
+		return false;
+	} else if(hasArg === Ternary.Maybe) {
+		setUncertain();
+	}
+
+	return true;
+}
+
 /**
  * This function is applied to function candidates that have an entry in the {@link DeprecatedFunctionsConfig.conditionally} map.
  */
@@ -296,41 +336,32 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
 		}
 
 		for(const deprecatedArgInfo of info.whenArgs) {
-			// Check if function call has deprecated argument
-			const arg = vertex.args.find((arg, idx) =>
-				FunctionArgument.isNamed(arg) && arg.name === deprecatedArgInfo.argName ||
-				FunctionArgument.isPositional(arg) && idx === deprecatedArgInfo.argIdx
-			);
-			const argNode = arg === undefined || arg === EmptyArgument ? undefined : idMap.get(arg.nodeId);
+			const argNode = isDeprecatedArgumentPresent(vertex, deprecatedArgInfo, idMap);
 			if(argNode === undefined) {
 				continue;
 			}
 
-			// If `sinceVersion` is set, check package version before marking argument as deprecated
 			let certainty = LintingResultCertainty.Certain;
-			if(deprecatedArgInfo.sinceVersion) {
-				if(derrivedRange == undefined) {
-					certainty = LintingResultCertainty.Uncertain;
-				} else if(!deprecatedArgInfo.sinceVersion.intersects(derrivedRange)) {
-					continue;
-				}
+			const setCertainty = () => {
+				certainty = LintingResultCertainty.Uncertain;
+			};
+
+			// If `sinceVersion` is set, check package version before marking argument as deprecated
+			if(!doesPackageVersionMatch(derrivedRange, deprecatedArgInfo, setCertainty)) {
+				continue;
 			}
 
+
 			// If `ifValue` is set, check argument value before marking argument as deprecate
-			if(deprecatedArgInfo.ifValue) {
-				const hasArg = hasArgumentValue(deprecatedArgInfo.ifValue, vertex, analyzer, dataflow, true, deprecatedArgInfo.argName, deprecatedArgInfo.argIdx);
-				if(hasArg === Ternary.Never) {
-					continue;
-				} else if(hasArg === Ternary.Maybe) {
-					certainty = LintingResultCertainty.Uncertain;
-				}
+			if(!doesArgumentValueMatch(deprecatedArgInfo, vertex, analyzer, dataflow, setCertainty)) {
+				continue;
 			}
 
 			// If all checks passed, mark as deprecated
 			results.push({
 				type:         'deprecated-argument',
 				certainty:    certainty,
-				involvedId:   argNode.info.id,
+				involvedId:   vertex.id,
 				function:     candidate.target,
 				arg:          (deprecatedArgInfo.argName ?? deprecatedArgInfo.argIdx) as string | number,
 				state:        deprecatedArgInfo.state,

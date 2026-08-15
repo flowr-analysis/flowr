@@ -124,8 +124,8 @@ interface PotentialFunction {
 
 interface Metadata extends MergeableRecord {
 	/** Number of deprecated functions flagged by the sigdb */
-	sigdb:     number,
-  /** Number of deprecated functions flagged by the builtin config */
+	sigdb:   number,
+	/** Number of deprecated functions flagged by the builtin config */
 	builtin: number
 }
 

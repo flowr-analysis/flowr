@@ -29,7 +29,7 @@ import { CallProp } from '../../dataflow/environments/built-in-props';
  *
  * Used in {@link DeprecatedFunctionInformation} to mark a function argument as deprecate under certain conditions
  */
-interface DeprecatedArgumentInformation {
+export interface DeprecatedArgumentInformation {
 	/** Index of the argument */
 	readonly argIdx?:       number,
 	/** Name of the argument */
@@ -49,7 +49,7 @@ interface DeprecatedArgumentInformation {
  *
  * Used in {@link DeprecatedFunctionsConfig.conditionally} to mark a function as deprecate under certain conditions
  */
-interface DeprecatedFunctionInformation {
+export interface DeprecatedFunctionInformation {
 	/**
 	 * Mark specific arguments as deprecated
 	 * If only whenArgs is provided, and not sinceVersion, the function is only marked as deprecated, if the argument is provided.
@@ -167,15 +167,15 @@ export const DEPRECATED_FUNCTIONS = {
 
 		// 2. Uses hardcoded information about deprecated arguments and deprecated functions
 		const packageVersions = await inferPackageVersions(data, detectedFunctions, config.conditionally);
-		const results: DeprecatedFunctionRuleResult[] = (await Promise.all(detectedFunctions.map(async candidate => {
+		const results: DeprecatedFunctionRuleResult[] = detectedFunctions.map(candidate => {
 			const name = Identifier.getName(candidate.target);
 			const info = config.conditionally[name];
 			if(isNotUndefined(info)) {
-				return await deprecateFunctionConditionally(candidate, graph, idMap, data, info, packageVersions);
+				return deprecateFunctionConditionally(candidate, graph, idMap, data, info, packageVersions);
 			} else {
 				return deprecateFunctionAlways(candidate, matchesConfiguredFns);
 			}
-		}))).filter(p => isNotUndefined(p)).flat();
+		}).filter(p => isNotUndefined(p)).flat();
 
 
 		// 3. If available, use sigdb to flag deprecated functions
@@ -188,7 +188,7 @@ export const DEPRECATED_FUNCTIONS = {
 		// even when it is not part of the hardcoded `fns` list above
 		const alreadyFlagged = new Set(results.map(r => r.involvedId));
 		const deprecatedByName = new Map<string, boolean>();
-		const sigdbFlagged: DeprecatedFunctionResult[] = [];
+		const sigdbFlagged: DeprecatedFunctionRuleResult[] = [];
 		for(const element of elements.getElements()) {
 			const id = element.node.info.id;
 			if(alreadyFlagged.has(id)) {
@@ -274,20 +274,20 @@ async function inferPackageVersions(analyzer: ReadonlyFlowrAnalysisProvider<Know
 		type:     'guess-dep-versions',
 		packages: packages
 	}]);
-  const versions = queryResult['guess-dep-versions'].dependencies
-        .map(d => [d.package, RRange.parse(d.range)])
-        .filter(([_, version]) => isNotUndefined(version)) as [BrandedNamespace, Range][];
-        
-  return new Map<BrandedNamespace, Range>(versions);
+	const versions = queryResult['guess-dep-versions'].dependencies
+		.map(d => [d.package, RRange.parse(d.range)])
+		.filter(([_, version]) => isNotUndefined(version)) as [BrandedNamespace, Range][];
+
+	return new Map<BrandedNamespace, Range>(versions);
 }
 
 /**
  * This function is applied to function candidates that have an entry in the {@link DeprecatedFunctionsConfig.conditionally} map.
  */
-async function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: DataflowGraph, idMap: AstIdMap, analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>, info: DeprecatedFunctionInformation, packageVersions: PackageVersionMap): Promise<DeprecatedFunctionRuleResult[]> {
+function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: DataflowGraph, idMap: AstIdMap, analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>, info: DeprecatedFunctionInformation, packageVersions: PackageVersionMap): DeprecatedFunctionRuleResult[] {
 	const results: DeprecatedFunctionRuleResult[] = [];
-  const derrivedRange = packageVersions.get(info.package);
-  
+	const derrivedRange = packageVersions.get(info.package);
+
 	// Deprecated Argument: If `whenArgs` is provided, only mark deprecated arguments
 	if(info.whenArgs) {
 		const vertex = dataflow.getVertex(candidate.node.info.id);

@@ -716,3 +716,5 @@ dist/src/data/sigdb/
 
 # the generated signature browser (a few MB); the doc job publishes it to the orphan gh-pages branch
 wiki/sigdb/
+# the playground bundle, built by the doc job onto gh-pages
+wiki/playground/

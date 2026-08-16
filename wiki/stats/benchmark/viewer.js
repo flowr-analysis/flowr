@@ -31,13 +31,14 @@
 		}
 		try {
 			localStorage.setItem('flowr-bench-theme', mode);
+			localStorage.setItem('flowr-theme', mode === 'system' ? '' : mode);
 		} catch{ /* private mode, keep going */ }
 	}
 
 	function initTheme() {
 		let stored = 'system';
 		try {
-			stored = localStorage.getItem('flowr-bench-theme') || 'system';
+			stored = localStorage.getItem('flowr-bench-theme') || localStorage.getItem('flowr-theme') || 'system';
 		} catch{ /* ignore */ }
 		ui.theme.value = ['light', 'dark', 'system'].includes(stored) ? stored : 'system';
 		setTheme(ui.theme.value);

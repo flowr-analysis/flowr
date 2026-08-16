@@ -4,19 +4,30 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>flowR &middot; signature database</title>
-<meta name="description" content="Search the R functions flowR knows: <!--FUNCTIONS--> exported names from base R and the <!--PACKAGES--> most-used CRAN packages.">
-<link rel="icon" href="../img/flowR.png">
+<meta name="description" content="Search the R functions flowR knows: <!--FUNCTIONS--> exported names from <!--PACKAGES--> base-R and CRAN packages, the database behind its sophisticated call resolution.">
+<link rel="icon" href="../img/flowR-mark-red.svg" type="image/svg+xml">
+<link rel="icon" href="../img/flowR-mark.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
 <script>
 	/* the stored theme has to sit on the element before the first paint, or the page flashes the other one */
 	try {
 		const theme = localStorage.getItem('flowr-theme');
 		if(theme) { document.documentElement.dataset.theme = theme; }
 	} catch(e) { /* private mode keeps the system theme */ }
+	/* every flowR page reads the same key, so a change on one of them follows you to the others */
+	addEventListener('storage', e => {
+		if(e.key === 'flowr-theme') {
+			if(e.newValue) {
+				document.documentElement.dataset.theme = e.newValue;
+			} else {
+				delete document.documentElement.dataset.theme;
+			}
+		}
+	});
 </script>
 <style>
 :root {
 	--bg: #fbfbfc; --panel: #fff; --sunk: #f1f3f6; --fg: #1b1d21; --muted: #5c6270;
-	--border: #d6dae1; --accent: #0072b2; --accent-fg: #fff;
+	--border: #d6dae1; --accent: #a63446; --accent-fg: #fff;
 	--shadow: 0 1px 2px rgba(16,20,30,.06), 0 6px 18px rgba(16,20,30,.06);
 	color-scheme: light;
 }
@@ -41,7 +52,7 @@ body {
 main { max-width: 62rem; margin: 0 auto; }
 a { color: var(--accent); }
 h1 { font-size: clamp(1.5rem, 5vw, 2.1rem); line-height: 1.2; letter-spacing: -.02em; margin: 1.4rem 0 .4rem; }
-code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
 .bar {
 	display: flex; gap: .5rem 1rem; align-items: center; justify-content: space-between;
@@ -50,10 +61,31 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monosp
 .bar h2 { margin: 0; flex: none; font-size: 1.15rem; line-height: 1.2; }
 .bar h2 a { display: inline-flex; align-items: center; gap: .45rem; text-decoration: none; }
 .mark { flex: none; }
+:root[data-theme="dark"] .mark { content: url("../img/flowR-mark.svg"); }
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) .mark { content: url("../img/flowR-mark.svg"); }
+}
 .bar nav { display: flex; flex-wrap: nowrap; gap: .1rem .2rem; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
 .bar nav::-webkit-scrollbar { display: none; }
 .bar nav a { white-space: nowrap; padding: .3rem .5rem; border-radius: .4rem; color: var(--muted); text-decoration: none; font-size: .82rem; }
 .bar nav a:hover { background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg); }
+.bar .controls { display: inline-flex; align-items: center; gap: .35rem; flex: none; }
+/* a phone has no room for one row: the links wrap under the name instead of scrolling out of sight */
+@media (max-width: 46rem) {
+	.bar { flex-wrap: wrap; }
+	.bar nav { flex-wrap: wrap; margin-left: 0; order: 3; flex-basis: 100%; overflow-x: visible; }
+	.bar .controls { margin-left: auto; }
+}
+/* GitHub asks that its mark stay solid black or white and unmodified, so it does not take the
+   page colours; only the backdrop reacts to the pointer */
+.bar .controls .gh, .bar .controls .gh:hover { color: #181717; }
+.bar .controls .gh { display: inline-flex; padding: .3rem .35rem; border-radius: .4rem; }
+.bar .controls .gh:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
+:root[data-theme="dark"] .bar .controls .gh, :root[data-theme="dark"] .bar .controls .gh:hover { color: #fff; }
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) .bar .controls .gh, :root:not([data-theme="light"]) .bar .controls .gh:hover { color: #fff; }
+}
+.bar .controls .gh svg { display: block; }
 #theme {
 	display: grid; place-items: center; width: 2rem; height: 2rem; padding: 0; flex: none;
 	font: inherit; font-size: 1rem; line-height: 1; cursor: pointer;
@@ -70,6 +102,7 @@ code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monosp
 }
 
 p.lead { color: var(--muted); margin: 0 0 1.2rem; }
+.when { font-size: .9em; }
 .search { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
 .search input {
 	flex: 1 1 18rem; font: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -121,7 +154,7 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 	padding: .3rem .5rem; border-radius: .4rem; text-decoration: none; color: var(--fg); font-size: .85rem;
 }
 #hits .own:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
-#hits .own.undocumented { color: var(--muted); cursor: default; }
+#hits .own.undocumented { color: var(--muted); opacity: .55; }
 #hits .own.undocumented .go { opacity: .5; }
 #hits .pkg { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; }
 #hits .ver, #hits .go { color: var(--muted); font-size: .78rem; }
@@ -157,6 +190,7 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 #hits .name { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; }
 #hits .name.value { font-weight: 500; font-style: italic; }
 #hits .kindtag.value { color: var(--muted); background: var(--sunk); border-color: var(--border); }
+#hits .kindtag.flowr { color: var(--muted); background: var(--panel); border-color: var(--border); font-weight: 500; }
 #hits .kindtag.gone { color: #d55e00; background: color-mix(in srgb, #d55e00 10%, transparent); border-color: color-mix(in srgb, #d55e00 35%, transparent); }
 #hits .owners { margin-left: auto; display: flex; flex-wrap: wrap; gap: .3rem; }
 #hits .owners a {
@@ -180,21 +214,29 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 <main>
 
 <div class="bar">
-	<h2><a href="../../"><img class="mark" src="../img/flowR-mark.svg" alt="" width="26" height="26">flowR</a></h2>
+	<h2><a href="../../"><img class="mark" src="../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a></h2>
 	<nav>
-		<a href="../../">Landing page</a>
-		<a href="https://github.com/flowr-analysis/flowr/wiki/Signature-Database" target="_blank" rel="noopener">How it works</a>
+		<a href="../../" target="_blank" rel="noopener">Landing Page</a>
+		<a href="../playground/" target="_blank" rel="noopener">Playground</a>
+		<a href="../stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
+		<a href="https://github.com/flowr-analysis/flowr/wiki/Signature-Database" target="_blank" rel="noopener">How It Works</a>
 		<a href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
-		<a href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener">flowR on GitHub</a>
 	</nav>
-	<button id="theme" type="button" aria-label="Switch between the light and the dark theme" title="Light or dark">
+	<span class="controls">
+		<a class="gh" href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener" title="flowR on GitHub" aria-label="flowR on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg></a>
+		<button id="theme" type="button" aria-label="Switch between the light and the dark theme" title="Light or dark">
 		<svg class="moon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>
 		<svg class="sun" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="4.6" fill="currentColor"/><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></g></svg>
 	</button>
+	</span>
 </div>
 
-<h1>Signature database</h1>
-<p class="lead">Search what flowR knows about any R function. The database it ships covers CRAN up to <!--UPDATED-->.</p>
+<h1>Signature Database</h1>
+<p class="lead">
+	Search through all R functions flowR knows, using its
+	<a href="https://github.com/flowr-analysis/flowr/wiki/Signature-Database" target="_blank" rel="noopener">signature database</a>
+	<span class="when">(last updated <!--UPDATED-->, only most recent package versions)</span>.
+</p>
 
 <div class="search">
 	<input id="q" type="search" spellcheck="false" autocomplete="off" autofocus placeholder="dplyr::filter" aria-label="Function name">
@@ -236,17 +278,17 @@ theme.addEventListener('click', () => {
 });
 
 /* The table is unpacked once, on the first search, so opening the page stays cheap. */
-let packages = null, names = null, known = null, byName = null;
+let packages = null, names = null, known, byName = null;
 async function unpack() {
-	const raw = Uint8Array.from(atob(document.getElementById('data').textContent.trim()), c => c.charCodeAt(0));
-	const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'));
+	const encoded = document.getElementById('data').textContent.trim();
+	/* the decode is the slow part, so it happens in a worker built from a blob: no extra file to ship */
+	const text = await inWorker(encoded).catch(() => decode(encoded));
 	/* split at the first blank line only: a stray one further in must not cut the package table short */
-	const text = await new Response(stream).text();
 	const between = text.indexOf('\n\n');
 	const nameBlob = text.slice(0, between), packageBlob = text.slice(between + 2);
-	names = nameBlob.split('\n');
+	/* the name table stays one string: splitting it into 577k entries is what used to freeze the page */
+	names = nameBlob;
 	packages = packageBlob.split('\n').map(line => line.split('\t'));
-	known = new Set(names.map(line => line.slice(0, line.indexOf('\t'))));
 	/* a package name back to its row, so `dplyr::` can be answered without scanning the table */
 	byName = new Map(packages.map(([name], index) => [name, index]));
 }
@@ -254,9 +296,9 @@ async function unpack() {
 const q = document.getElementById('q'), mode = document.getElementById('mode');
 const sort = document.getElementById('sort');
 const Filters = [
-	['only', 'package', 'package'],
+	['only', 'package', 'package'], ['pkg', 'archived', 'archived'],
 	['flag', 't', 'throws'], ['flag', 'n', 'non-deterministic'], ['flag', '3', 'S3 method'],
-	['flag', 'x', 'deprecated'], ['flag', 'v', 'value'],
+	['flag', 'x', 'deprecated'], ['flag', 'd', 'calls deprecated'], ['flag', 'v', 'value'],
 	['kind', 'read', 'reads'], ['kind', 'write', 'writes'],
 	['kind', 'visualize', 'plots'], ['kind', 'library', 'loads']
 ];
@@ -306,6 +348,10 @@ function holds(id, name, owners) {
 	if(what === 'only') {
 		return false;   // it selects what is listed, not which names qualify
 	}
+	if(what === 'pkg') {
+		/* a property of the package rather than of the name: archived means CRAN dropped it */
+		return owners.some(entry => packages[owner(entry).index]?.[7] === '1');
+	}
 	return what === 'kind'
 		? (kinds.get(name) ?? []).includes(key)
 		: owners.some(entry => owner(entry).flags.includes(key));
@@ -329,8 +375,52 @@ function offerFilters(matches) {
 	}
 }
 const status = document.getElementById('status'), hits = document.getElementById('hits');
-const Step = 200;
+const Step = 100;
 let limit = Step;
+
+/** base64 to gzip to text, the plain way */
+async function decode(encoded) {
+	const raw = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
+	return new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+}
+
+/** the same, on a worker thread, so the page stays usable while several megabytes are unpacked */
+function inWorker(encoded) {
+	const source = `self.onmessage = async ({ data }) => {
+		const raw = Uint8Array.from(atob(data), c => c.charCodeAt(0));
+		const text = await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+		self.postMessage(text);
+	};`;
+	return new Promise((resolve, reject) => {
+		const url = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
+		const worker = new Worker(url);
+		worker.onmessage = event => {
+			resolve(event.data);
+			worker.terminate();
+			URL.revokeObjectURL(url);
+		};
+		worker.onerror = error => {
+			reject(error);
+			worker.terminate();
+			URL.revokeObjectURL(url);
+		};
+		worker.postMessage(encoded);
+	});
+}
+
+/** the bare names, so an S3 method can tell whether its generic is a name flowR knows */
+function knownNames() {
+	if(known === undefined) {
+		known = new Set();
+		for(let at = 0; at < names.length;) {
+			const tab = names.indexOf('\t', at);
+			known.add(names.slice(at, tab));
+			const end = names.indexOf('\n', tab);
+			at = end < 0 ? names.length : end + 1;
+		}
+	}
+	return known;
+}
 
 /** a name with the matched part marked, built as nodes so a function name can never inject markup */
 /** `%o%` and friends have no `man/<name>.html`, so nothing is linked for them */
@@ -468,7 +558,7 @@ function fuzzy(name, needle) {
 const FlagNames = {
 	t: 'can throw', 3: 'S3 method', n: 'non-deterministic', d: 'calls something deprecated',
 	r: 'recursive', i: 'calls internals', o: 'owns an S3 class', 4: 'owns an S4 class',
-	h: 'higher order', x: 'deprecated', v: 'value', u: 'no manual page'
+	h: 'higher order', x: 'deprecated', v: 'value', u: 'no docs'
 };
 
 /** an owner reads `12`, or `12:tn:4:topic`: package, flags, parameter count, and the help topic */
@@ -582,7 +672,7 @@ function genericOf(name, owners) {
 		return undefined;
 	}
 	for(let at = name.indexOf('.'); at > 0; at = name.indexOf('.', at + 1)) {
-		if(known.has(name.slice(0, at))) {
+		if(knownNames().has(name.slice(0, at))) {
 			return name.slice(0, at);
 		}
 	}
@@ -694,9 +784,11 @@ function show(name, needle, at, owners) {
 		badge.textContent = 'value';
 		head.append(badge);
 	}
-	for(const kind of kinds.get(name) ?? []) {
+	/* what the name does comes first, that flowR knows it at all comes after */
+	const known = kinds.get(name) ?? [];
+	for(const kind of [...known.filter(k => k !== 'builtin'), ...known.filter(k => k === 'builtin')]) {
 		const badge = document.createElement('span');
-		badge.className = 'kindtag';
+		badge.className = kind === 'builtin' ? 'kindtag flowr' : 'kindtag';
 		badge.textContent = KindNames[kind] ?? kind;
 		head.append(badge);
 	}
@@ -737,6 +829,11 @@ function show(name, needle, at, owners) {
 	hits.append(row);
 }
 
+/* how many names the scan walks before it lets the page breathe again, and how many hits are still
+   worth counting the packages of */
+const Chunk = 40000;
+const Countable = 50000;
+
 let pending = 0;
 async function search() {
 	/* `dplyr::filter` asks about that package, not about every `filter` there is */
@@ -755,12 +852,28 @@ async function search() {
 	}
 	const lower = needle.toLowerCase();
 	const matches = [];
-	for(const line of names) {
-		const tab = line.indexOf('\t');
-		const name = line.slice(0, tab);
+	/* 577k names are more than one frame can hold, so the scan hands the thread back every so often
+	   and gives up as soon as a newer keystroke has started its own */
+	let breathe = Chunk;
+	for(let start = 0; start < names.length;) {
+		if(--breathe === 0) {
+			breathe = Chunk;
+			await new Promise(resume => setTimeout(resume, 0));
+			if(run !== pending) {
+				return;
+			}
+		}
+		const tab = names.indexOf('\t', start);
+		const stop = names.indexOf('\n', tab);
+		const end = stop < 0 ? names.length : stop;
+		const name = names.slice(start, tab);
+		start = end + 1;
 		const at = needle.length === 0 ? 0 : name.toLowerCase().indexOf(lower);
 		const hit = needle.length === 0 || (mode.value === 'prefix' ? at === 0 : at >= 0);
-		const owners = line.slice(tab + 1);
+		if(!hit && mode.value !== 'fuzzy') {
+			continue;   // the owners are only sliced out for a name that survives
+		}
+		const owners = names.slice(tab + 1, end);
 		if(hit) {
 			/* `print` should beat `PRINT`: a match that also matches in case ranks ahead of one that does not */
 			const cased = name.slice(at, at + needle.length) === needle ? 0 : 1;
@@ -776,8 +889,26 @@ async function search() {
 		/* the cut has to know about the badge too, or `ggplot` never survives long enough to be scored:
 		   `kinds` is a Map lookup, so this stays cheap */
 		const key = (name, rank) => (kinds.has(name) ? 0 : 1000) + rank;
-		matches.sort(([a, , , ra], [b, , , rb]) => key(a, ra) - key(b, rb) || a.length - b.length);
+		/* comparison-sorting six figures of matches costs a visible pause, and the key only takes a
+		   handful of values: counting them out keeps the good ones in front for a fraction of that */
+		const buckets = new Map();
+		for(const match of matches) {
+			const at = key(match[0], match[3]);
+			const bucket = buckets.get(at);
+			if(bucket === undefined) {
+				buckets.set(at, [match]);
+			} else {
+				bucket.push(match);
+			}
+		}
+		let into = 0;
+		for(const at of [...buckets.keys()].sort((a, b) => a - b)) {
+			for(const match of buckets.get(at)) {
+				matches[into++] = match;
+			}
+		}
 		const scored = matches.slice(0, 2000);
+		scored.sort(([a], [b]) => a.length - b.length);
 		for(const match of scored) {
 			match[4] = score(match[0], match[2], match[3], needle);
 		}
@@ -788,10 +919,7 @@ async function search() {
 			|| (a.toLowerCase() < b.toLowerCase() ? -1 : a.toLowerCase() > b.toLowerCase() ? 1 : a < b ? -1 : 1));
 	}
 	/* a package was named, so only the names it exports count */
-	/* the package reads as a filter of its own, and can be taken off again */
-	scope.hidden = inPackage === undefined;
-	scope.textContent = inPackage === undefined ? '' : inPackage + ' ×';
-	scope.title = 'only names exported by ' + inPackage;
+	scope.hidden = true;
 	const wanted = inPackage === undefined ? undefined : byName.get(inPackage);
 	const inScope = wanted === undefined ? matches
 		: matches.filter(([, , owners]) => owners.split(',').some(entry => owner(entry).index === wanted));
@@ -812,22 +940,39 @@ async function search() {
 	offerFilters(inScope);
 	const kept = onlyPackages ? [] : inScope.filter(([name, , owners]) => passes(name, owners.split(',')));
 	const found = kept.length;
+	/* how many packages those names come from; a query that matches half the database is not worth
+	   counting, and its answer would be `all of them` anyway */
+	let inPackages;
+	if(found > 0 && found <= Countable) {
+		const seen = new Set();
+		for(const [, , owners] of kept) {
+			for(const entry of owners.split(',')) {
+				const colon = entry.indexOf(':');
+				seen.add(colon < 0 ? entry : entry.slice(0, colon));
+			}
+		}
+		inPackages = seen.size;
+	}
 	for(const [name, at, owners] of kept.slice(0, limit)) {
 		show(name, needle, at, owners.split(','));
 	}
 	const where = inPackage === undefined ? ''
 		: wanted === undefined ? ` (flowR knows no package called ${inPackage})` : ` in ${inPackage}`;
-	report(onlyPackages ? allPackages.length : found, onlyPackages ? 'package' : 'name', where);
+	report(onlyPackages ? allPackages.length : found, onlyPackages ? 'package' : 'name', where, inPackages);
 }
 
-/** how many there are, how many are on screen, and a way to see more of them */
-function report(total, what, where) {
+/** how many there are, where they live, how many are on screen, and a way to see more of them */
+function report(total, what, where, inPackages) {
 	const shown = hits.children.length;
 	if(total === 0) {
-		status.textContent = `No ${what} matches that${where}.`;
+		status.textContent = `Nothing here goes by that name${where}.`;
 		return;
 	}
-	status.textContent = `${total.toLocaleString('en-US')} ${what}${total === 1 ? '' : 's'}${where}`
+	/* `11 names in dplyr in 23 packages` reads as a mistake, so a scoped answer says `also in` */
+	const count = inPackages === undefined ? undefined
+		: `${inPackages.toLocaleString('en-US')} package${inPackages === 1 ? '' : 's'}`;
+	const from = count === undefined ? '' : where.length > 0 ? ` (also in ${count})` : ` in ${count}`;
+	status.textContent = `${total.toLocaleString('en-US')} ${what}${total === 1 ? '' : 's'}${where}${from}`
 		+ (shown < total ? ` · showing ${shown.toLocaleString('en-US')}` : '');
 	if(shown < total) {
 		const more = document.createElement('button');
@@ -853,9 +998,9 @@ sort.addEventListener('change', search);
 
 q.value = new URLSearchParams(location.search).get('q') ?? '';
 /* the table is read once, in the background, and the first listing follows on its own */
-status.textContent = 'Reading the index…';
-const ready = unpack().then(() => search(), () => {
-	status.textContent = 'The index could not be read in this browser.';
+status.textContent = 'Unpacking the database…';
+const ready = unpack().then(() => search(), error => {
+	status.textContent = `This browser could not unpack the database, sorry (${error}).`;
 });
 q.addEventListener('change', () => history.replaceState(null, '', q.value ? '?q=' + encodeURIComponent(q.value) : location.pathname));
 </script>

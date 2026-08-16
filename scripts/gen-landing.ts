@@ -135,7 +135,7 @@ async function valueLines(code: string): Promise<string[][]> {
 		{ absint?: { result?: Map<string, { toString(): string } | undefined> } };
 	const domains = result.absint?.result;
 	const shapes = domains instanceof Map
-		? [...domains.entries()].map(([criterion, domain]) => [criterion, domain?.toString() ?? 'top', readable(domain?.toString() ?? 'top')])
+		? [...domains.entries()].map(([criterion, domain]) => [criterion, readable(domain?.toString() ?? 'top'), domain?.toString() ?? 'top'])
 		: [];
 	/* the value resolver runs for every name; it answers where the shape inference has nothing to say
 	   (a plain number) and adds nothing where it does. Its results are keyed by the request rather than
@@ -146,8 +146,8 @@ async function valueLines(code: string): Promise<string[][]> {
 		const values = [...new Set(Object.values(answer['resolve-value'].results)
 			.flatMap(found => found.values.map(v => stringifyValue(v))))].filter(v => v.length > 0 && !/^(top|⊤|⊥|bottom)$/.test(v));
 		if(values.length > 0) {
-			/* the comment keeps flowR's own form (`[6L, 6L]`); the tooltip says what it means */
-			resolved.push([criterion, values.join(', '), values.map(plain).join(', ')]);
+			/* the comment says what it means, the tooltip keeps flowR's own form (`[6L, 6L]`) */
+			resolved.push([criterion, values.map(plain).join(', '), values.join(', ')]);
 		}
 	}
 	const criteriaSeen = new Set(shapes.map(([criterion]) => criterion));
@@ -196,26 +196,32 @@ async function originLines(code: string): Promise<string[][]> {
 		}
 	}
 	/* pointing at a name should light one thing: the definition it reaches, which for a call is the
-	   function, not the variable that happens to hold it */
-	const preferred = new Set<string>();
-	return lines.map(([criterion, text, line]) => {
-		const first = lines.find(([c, , , k]) => c === criterion && k === 'call') ?? lines.find(([c]) => c === criterion);
-		const keep = first === undefined || (first[1] === text && !preferred.has(criterion));
-		if(keep) {
-			preferred.add(criterion);
+	   function, not the variable that happens to hold it. Everything a name answers goes on one row,
+	   so the tab stays as tall as the others. */
+	const merged: string[][] = [];
+	for(const [criterion, text, line, kind] of lines) {
+		const already = merged.find(([c]) => c === criterion);
+		if(already === undefined) {
+			merged.push([criterion, text, line, kind]);
+		} else {
+			already[1] += ` and ${text}`;
+			if(already[3] !== 'call' && kind === 'call') {
+				already[2] = line;   // a call points at the function it reaches
+				already[3] = kind;
+			}
 		}
-		return [criterion, text, keep ? line : '0'];
-	});
+	}
+	return merged.map(([criterion, text, line]) => [criterion, text, line]);
 }
 
 /** How one origin reads in a sentence: what it is, and where the reader can look for it. */
 function phrase(type: OriginType, what: string, line: number | undefined, builtIn: string): string {
 	const where = line !== undefined ? ` on line ${line}` : '';
 	switch(type) {
-		case OriginType.ReadVariableOrigin:    return `reads ${what}, defined${where}`;
+		case OriginType.ReadVariableOrigin:    return `reads ${what}${line !== undefined ? ` from line ${line}` : ''}`;
 		case OriginType.WriteVariableOrigin:   return `writes ${what}${where}`;
 		case OriginType.ConstantOrigin:        return `is the constant ${what}`;
-		case OriginType.FunctionCallOrigin:    return `calls the function defined${where}`;
+		case OriginType.FunctionCallOrigin:    return `calls the function${where}`;
 		case OriginType.BuiltInFunctionOrigin: return `calls the built-in ${builtIn}`;
 	}
 }
@@ -245,6 +251,73 @@ const Silent: Readonly<Record<string, string>> = {
 	library:   'loads a package', source:    'sources a file', read:      'reads a file',
 	write:     'writes a file', visualize: 'draws a plot'
 };
+
+/**
+ * What each answer costs, read from the file the benchmark page plots so the two can never disagree.
+ * `analysis` is parse plus normalize plus dataflow, the same sum the README quotes.
+ */
+function timings(): { rows: string[][], files: string, lines: string, when: string, release: string, calibration: string } | undefined {
+	const file = path.join('wiki', 'stats', 'benchmark', 'data.js');
+	if(!fs.existsSync(file)) {
+		return undefined;
+	}
+	const source = fs.readFileSync(file, 'utf8');
+	const entries = (JSON.parse(source.slice(source.indexOf('{'), source.lastIndexOf('}') + 1)) as BenchmarkData).entries;
+	const runs = entries['"real-world" Benchmark Suite (tree-sitter)'];
+	const info = entries['"real-world" Benchmark Suite (tree-sitter) [info]'];
+	if(runs === undefined || runs.length === 0) {
+		return undefined;
+	}
+	const of = (benches: Benchmark[], name: string): number | undefined => benches.find(b => b.name === name)?.value;
+	const sum = (benches: Benchmark[], names: string[]): number | undefined => {
+		const parts = names.map(n => of(benches, n));
+		return parts.every(v => v !== undefined) ? parts.reduce((a, b) => (a) + (b), 0) : undefined;
+	};
+	const Analysis = ['Retrieve AST from R code', 'Normalize R AST', 'Produce dataflow information'];
+	const wanted: [string, (b: Benchmark[]) => number | undefined][] = [
+		['analyzing a script', b => sum(b, Analysis)],
+		['linting it', b => of(b, 'Linter run')],
+		['slicing for one name', b => of(b, 'Static slicing')]
+	];
+	/* the trend covers the last two months of releases, which is recent enough to mean something */
+	const since = Date.parse(runs[runs.length - 1].commit.timestamp) - 60 * 24 * 60 * 60 * 1000;
+	const recent = runs.filter(r => Date.parse(r.commit.timestamp) >= since);
+	const rows = wanted.map(([label, pick]) => {
+		const series = recent.map(r => pick(r.benches)).filter((v): v is number => v !== undefined);
+		const now = pick(runs[runs.length - 1].benches);
+		return now === undefined ? undefined : [label, now < 10 ? now.toFixed(1) : String(Math.round(now)), spark(series)];
+	}).filter((row): row is string[] => row !== undefined);
+
+	const facts = info?.[info.length - 1]?.benches ?? [];
+	const last = runs[runs.length - 1];
+	/* the calibration is the same fixed workload on every run, so it says how quick that runner was */
+	const calibration = of(last.benches, 'Calibration');
+	const release = /\b(\d+\.\d+\.\d+)\b/.exec(last.commit.message)?.[1];
+	return {
+		rows,
+		files:       String(Math.round(of(facts, 'number of files') ?? 0)),
+		lines:       String(Math.round(of(facts, 'input lines') ?? 0)),
+		when:        last.commit.timestamp.slice(0, 10),
+		release:     release ? `v${release}` : '',
+		calibration: calibration === undefined ? '' : calibration.toFixed(1)
+	};
+}
+
+/** a measurement over the last releases, small enough to sit inside a sentence */
+function spark(series: readonly number[]): string {
+	if(series.length < 2) {
+		return '';
+	}
+	const low = Math.min(...series), high = Math.max(...series), span = high - low || 1;
+	const points = series.map((v, i) =>
+		`${(i / (series.length - 1) * 46).toFixed(1)},${(11 - (v - low) / span * 9).toFixed(1)}`).join(' ');
+	return '<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true">'
+		+ `<polyline points="${points}" fill="none" stroke="currentColor" stroke-width="1.1"`
+		+ ' stroke-linejoin="round" stroke-linecap="round"/></svg>';
+}
+
+interface Benchmark { name: string, value: number, unit: string }
+interface BenchmarkData { entries: Record<string, { commit: { timestamp: string, message: string }, benches: Benchmark[] }[]> }
 
 const escape = (text: string): string => text.replace(/[&<>"]/g, c =>
 	({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
@@ -406,9 +479,21 @@ function render(data: PageData): string {
 		return `\t\t\t<span class="line${kinds.length > 0 ? ' dep ' + kinds[0] + edge : ''}" data-line="${number}"${run}${tag}${tip}>${highlight(line)}</span>`;
 	}).join('\n');
 
+	/* one bar per answer, scaled against the slowest of them */
+	const measured = timings();
+	const bars = (measured?.rows ?? [])
+		.map(([label, ms, trend]) => `\t\t<span class="timing">${escape(label)}${trend}<b>${escape(ms)} ms</b></span>`)
+		.join('\n');
+
 	const version = (JSON.parse(fs.readFileSync('package.json', 'utf8')) as { version: string }).version;
 	return Template
 		.replace('<!--VERSION-->', `v${version}`)
+		.replace('<!--TIMES-->', bars)
+		.replace('<!--BENCHFILES-->', measured?.files ?? '')
+		.replace('<!--BENCHLINES-->', measured?.lines ?? '')
+		.replace('<!--BENCHWHEN-->', measured?.when ?? '')
+		.replace('<!--BENCHRELEASE-->', measured?.release ?? '')
+		.replace('<!--BENCHCALIBRATION-->', measured?.calibration ?? '')
 		.replace('<!--SLICE-->', sliceCode)
 		.replace('<!--DEPSOURCE-->', depSource(DependencySample, data.dependencies))
 		.replace('<!--LINTSOURCE-->', flagged(LintSample, data.lint))

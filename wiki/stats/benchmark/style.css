@@ -6,7 +6,7 @@
 	--muted: #5c6270;
 	--border: #d6dae1;
 	--grid: #e6e9ee;
-	--accent: #0072b2;
+	--accent: #a63446;
 	--shadow: 0 1px 2px rgba(16, 20, 30, .06), 0 6px 18px rgba(16, 20, 30, .06);
 	--c1: #0072b2;
 	--c2: #d55e00;
@@ -142,10 +142,7 @@ header {
 	line-height: 1.2;
 }
 
-.titles h1 a { display: inline-flex; align-items: center; gap: .45rem; }
-.titles h1 a.unused {
-	text-decoration: none;
-}
+.titles h1 a { display: inline; text-decoration: none; }
 
 /* a grid is only as wide as its widest row, which puts the release above the end of the intro */
 .titles {
@@ -166,6 +163,17 @@ header {
 	font-size: .82rem;
 	color: var(--muted);
 }
+
+/* the other flowR pages, listed after the sentence rather than crowding the heading */
+.intro a { margin-left: .5rem; }
+/* GitHub asks that its mark stay solid black or white and unmodified, so it does not take the
+   page colours; only the backdrop reacts to the pointer */
+.intro a.gh { display: inline-flex; vertical-align: -.25em; color: #181717; }
+:root[data-theme="dark"] .intro a.gh { color: #fff; }
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) .intro a.gh { color: #fff; }
+}
+.intro a.gh svg { display: block; }
 
 /* the release this page is about, which is what a reader looks for first */
 /* the size of the title it shares its line with, so the two read as one heading */
@@ -1385,4 +1393,9 @@ footer {
 	transform: rotate(180deg);
 }
 
-.mark { flex: none; vertical-align: -.15em; }
+.mark { flex: none; vertical-align: -.2em; margin-right: .3rem; }
+/* the light look wears the red flower, the dark one the blue */
+:root[data-theme="dark"] .mark { content: url("../../img/flowR-mark.svg"); }
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) .mark { content: url("../../img/flowR-mark.svg"); }
+}

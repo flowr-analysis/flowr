@@ -132,7 +132,7 @@ export function rSourceRef(version: string | undefined): string {
 }
 
 /** deep-link a base-R definition into the R sources mirror at the release series of `version` */
-function rSourceUrl(pkg: string, version: string | undefined, file: string, line?: number): string {
+export function rSourceUrl(pkg: string, version: string | undefined, file: string, line?: number): string {
 	const anchor = line !== undefined && line >= 0 ? `#L${line}` : '';
 	return `${RSourceMirror}/blob/${rSourceRef(version)}/src/library/${encodeURIComponent(pkg)}/${file}${anchor}`;
 }

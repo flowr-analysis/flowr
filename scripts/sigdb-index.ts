@@ -27,12 +27,14 @@ export interface PackageEntry {
 	readonly since:     number;
 	/** CRAN no longer ships it: its newest source tarball only exists under `src/contrib/Archive` */
 	readonly archived:  boolean;
+	/** when its newest known release came out, as a timestamp */
+	readonly latest:    number;
 	/** every exported name, with what the database records about it */
 	readonly exports:   ReadonlyMap<string, ExportEntry>;
 }
 
 export interface SigIndex {
-	/** the newest release date the database knows, which is how current it is */
+	/** the newest release the database knows (`Aug 2026`), which is how current it is */
 	readonly updated:  string;
 	/** base R first, then by downloads, so `read.csv` answers `utils` before anything else exporting it */
 	readonly packages: readonly PackageEntry[];
@@ -54,7 +56,7 @@ export interface ExportEntry {
  * Every bundled database at once: the `current` shards answer what a package exports today, and the
  * `history` shards are what knows how many releases there have been.
  */
-async function openDatabase(): Promise<PackageSignatureSource | undefined> {
+export async function openDatabase(): Promise<PackageSignatureSource | undefined> {
 	const sources: PackageSignatureSource[] = [];
 	for(const source of defaultSigDbPaths()) {
 		sources.push(source.includes('.manifest.json')
@@ -135,17 +137,18 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 			base,
 			downloads: db.downloads(name),
 			releases:  releases.length,
-			since:     releases.length > 0 ? releases[0].date.getFullYear() : 0
+			since:     releases.length > 0 ? releases[0].date.getFullYear() : 0,
+			latest:    releases.length > 0 ? releases[releases.length - 1].date.getTime() : 0
 		});
 	}
 	db.close();
 	all.sort((a, b) => Number(b.base) - Number(a.base) || b.downloads - a.downloads);
-	const newest = all.reduce((latest, p) => p.since > latest ? p.since : latest, 0);
+	const newest = all.reduce((latest, p) => p.latest > latest ? p.latest : latest, 0);
 	return {
 		packages: all,
 		names:    new Set(all.flatMap(p => [...p.exports.keys()])).size,
 		kinds:    builtInKinds(),
-		updated:  String(newest)
+		updated:  newest > 0 ? new Date(newest).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'an unknown date'
 	};
 }
 
@@ -167,13 +170,15 @@ function builtInKinds(): Map<string, string[]> {
 	   any package, which the export lists of the database do not cover */
 	for(const definition of DefaultBuiltinConfig) {
 		for(const id of definition.names) {
-			const name = String(Identifier.getName(id));
-			kinds.set(name, [...(kinds.get(name) ?? []), 'builtin']);
+			/* a name may carry several definitions, and one badge per name is enough */
+			kinds.set(String(Identifier.getName(id)), ['builtin']);
 		}
 	}
 	for(const [kind, functions] of Object.entries(categories)) {
 		for(const fn of functions) {
-			const known = kinds.get(fn.name) ?? [];
+			/* a name the dependency query knows is one flowR knows, whether or not it also has a
+			   built-in definition: `read_csv` is readr's, and flowR still recognizes the call */
+			const known = kinds.get(fn.name) ?? ['builtin'];
 			kinds.set(fn.name, known);
 			if(!known.includes(kind)) {
 				known.push(kind);

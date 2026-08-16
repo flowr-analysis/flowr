@@ -25,3 +25,17 @@ test/**
 # pkgdb: npm ships the `tiny` and `latest` tiers; the large `all` tier is left out and downloadable
 # (see the Package Database wiki). The plain JSON tiers live under src/** (excluded above).
 pkgdb-all.json.br
+
+# the published pages and their generators: site material, not part of the package
+/index.html
+/scripts/landing-*
+/scripts/playground
+/scripts/gen-landing.ts
+/scripts/gen-sigdb-index.ts
+/scripts/gen-playground.ts
+/scripts/sigdb-index.ts
+/dist/scripts/gen-landing*
+/dist/scripts/gen-sigdb-index*
+/dist/scripts/gen-playground*
+/dist/scripts/sigdb-index*
+/dist/scripts/playground

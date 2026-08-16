@@ -4,8 +4,7 @@ import {
 	FlowrPositron,
 	FlowrVsCode,
 	getFileContentFromRoot,
-	linkFlowRSourceFile
-} from './doc-util/doc-files';
+	linkFlowRSourceFile, FlowrSiteBaseRef } from './doc-util/doc-files';
 import { codeBlock } from './doc-util/doc-code';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { getLastBenchmarkUpdate, getLatestDfAnalysisTime } from './doc-util/doc-benchmarks';
@@ -144,7 +143,7 @@ export class DocReadme extends DocMaker<'README.md'> {
 		const dateOptions: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
 
 		return `
-[![flowR logo](https://raw.githubusercontent.com/wiki/flowr-analysis/flowr/img/flowR.png)](${FlowrGithubBaseRef}/flowr/wiki)\\
+[![flowR logo](https://raw.githubusercontent.com/wiki/flowr-analysis/flowr/img/flowR.png)](${FlowrSiteBaseRef}/)\\
 [![QA (and potentially deploy)](${FlowrGithubBaseRef}/flowr/actions/workflows/qa.yaml/badge.svg)](${FlowrGithubBaseRef}/flowr/actions/workflows/qa.yaml)
 [![codecov](https://codecov.io/gh/flowr-analysis/flowr/graph/badge.svg)](https://codecov.io/gh/flowr-analysis/flowr)
 [![Docker Image Version (latest semver)](https://img.shields.io/docker/v/eagleoutice/flowr?logo=docker&logoColor=white&label=dockerhub)](${FlowrDockerRef})

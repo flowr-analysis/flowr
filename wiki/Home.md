@@ -1,4 +1,4 @@
-[![flowR Logo](img/flowR.png)](https://github.com/flowr-analysis/flowr)
+[![flowR Logo](img/flowR.png)](https://flowr-analysis.github.io/flowr/)
 
 _flowR_ is a static [dataflow analyzer](https://en.wikipedia.org/wiki/Data-flow_analysis) and [program slicer](https://github.com/flowr-analysis/flowr/wiki/Terminology#program-slice) for the [_R_](https://www.r-project.org/) programming language (currently tested for versions `4.x` and `3.6.x`), and you have stumbled upon its wiki pages!
 

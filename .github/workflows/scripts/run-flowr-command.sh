@@ -147,6 +147,9 @@ if [ "$ACTION" == "doc" ]; then
    group "Generate the landing page and the signature browser"
    # the browser is a few MB and deliberately uncommitted, so gh-pages is where it gets published
    $NPM_CMD run gen:landing
+   if [ ! -s "wiki/sigdb/index.html" ]; then
+     echo "::warning::the signature browser was not generated (no signature database?), so it will 404 on the site"
+   fi
    end_group
 
    group "Create documentation commit"

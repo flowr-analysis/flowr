@@ -164,16 +164,8 @@ header {
 	color: var(--muted);
 }
 
-/* the other flowR pages, listed after the sentence rather than crowding the heading */
+/* the way back to the landing page, after the sentence rather than crowding the heading */
 .intro a { margin-left: .5rem; }
-/* GitHub asks that its mark stay solid black or white and unmodified, so it does not take the
-   page colours; only the backdrop reacts to the pointer */
-.intro a.gh { display: inline-flex; vertical-align: -.25em; color: #181717; }
-:root[data-theme="dark"] .intro a.gh { color: #fff; }
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme="light"]) .intro a.gh { color: #fff; }
-}
-.intro a.gh svg { display: block; }
 
 /* the release this page is about, which is what a reader looks for first */
 /* the size of the title it shares its line with, so the two read as one heading */

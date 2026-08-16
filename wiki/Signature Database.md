@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-08-16, 12:36:44 UTC (v2.13.16, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-08-16, 12:45:33 UTC (v2.13.16, R v4.5.0), please do not edit directly._
 
 # Signature Database
 
@@ -113,11 +113,11 @@ build; the load column is the decompression time measured at generation time.
 
 | Shard | Contents | Versions kept | Packages | Versions | Size (`.br`) | Load (first touch) |
 |-------|----------|---------------|---------:|---------:|-------------:|-------------------:|
-| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | ≈ 1 ms |
-| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | ≈ 14 ms |
-| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | ≈ 32 ms |
-| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | ≈ 370 ms |
-| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | ≈ 570 ms |
+| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | ≈ 570 µs |
+| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | ≈ 3.5 ms |
+| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | ≈ 18 ms |
+| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | ≈ 330 ms |
+| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | ≈ 600 ms |
 
 Which shard answers a lookup follows from the package and the version asked for. A base-R package comes from
 `base-current`, one of the 1,000 most-downloaded CRAN packages from `current-top`, and anything else from

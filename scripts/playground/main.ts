@@ -11,7 +11,6 @@ import { highlightCode, tags } from '@lezer/highlight';
 import { r } from '@codemirror/legacy-modes/mode/r';
 import { json } from '@codemirror/legacy-modes/mode/javascript';
 import { FlowrConfig } from '../../src/config';
-import { schemaPathInfo } from '../../src/util/schema';
 import { TreeSitterExecutor } from '../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { FlowrAnalyzerBuilder } from '../../src/project/flowr-analyzer-builder';
 import { stringifyValue } from '../../src/dataflow/eval/values/r-value';
@@ -21,6 +20,9 @@ import { DefaultBuiltinConfig } from '../../src/dataflow/environments/default-bu
 import { Identifier } from '../../src/dataflow/environments/identifier';
 import { CallProp } from '../../src/dataflow/environments/built-in-props';
 import { SliceDirection } from '../../src/util/slice-direction';
+import { DataflowMermaid } from '../../src/util/mermaid/dfg';
+import { cfgToMermaid } from '../../src/util/mermaid/cfg';
+import { normalizedAstToMermaid } from '../../src/util/mermaid/ast';
 import treeSitterWasm from '../../node_modules/web-tree-sitter/tree-sitter.wasm';
 import rWasm from '../../node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.wasm';
 
@@ -515,6 +517,13 @@ function keyPaths(text: string): { from: number, to: number, path: string[] }[] 
 	return found.map(entry => ({ ...entry, path: entry.path.filter(part => part.length > 0) }));
 }
 
+/** what the schema says about every configuration key, written into the page by the build */
+let cfgDocs: Record<string, { t?: string, d?: string, v?: string[] }> | undefined;
+function configDocs(): Record<string, { t?: string, d?: string, v?: string[] }> {
+	cfgDocs ??= JSON.parse(document.getElementById('cfgdocs')?.textContent || '{}') as Record<string, { t?: string, d?: string, v?: string[] }>;
+	return cfgDocs;
+}
+
 /** what the schema says about the configuration key under the pointer */
 const configTips = hoverTooltip((view, pos) => {
 	const text = view.state.doc.toString();
@@ -522,15 +531,14 @@ const configTips = hoverTooltip((view, pos) => {
 	if(key === undefined) {
 		return null;
 	}
-	let info;
-	try {
-		info = schemaPathInfo(FlowrConfig.Schema, key.path);
-	} catch{
+	/* Joi's browser build refuses `describe()`, so the build wrote the schema's answers into the page */
+	const info = configDocs()[key.path.join('.')];
+	if(info === undefined) {
 		return null;
 	}
-	const said = [info.description, info.valids && info.valids.length > 0
-		? `one of ${info.valids.map(v => JSON.stringify(v)).join(', ')}` : undefined].filter(Boolean).join(' · ');
-	if(said.length === 0 && info.type === undefined) {
+	const said = [info.d, info.v && info.v.length > 0 ? `one of ${info.v.map(v => JSON.stringify(v)).join(', ')}` : undefined]
+		.filter(Boolean).join(' · ');
+	if(said.length === 0 && info.t === undefined) {
 		return null;
 	}
 	return {
@@ -542,7 +550,7 @@ const configTips = hoverTooltip((view, pos) => {
 			dom.className = 'cm-valuetip';
 			const head = document.createElement('div');
 			head.className = 'tcall';
-			head.textContent = `${key.path.join('.')}${info.type === undefined ? '' : `: ${info.type}`}`;
+			head.textContent = `${key.path.join('.')}${info.t === undefined ? '' : `: ${info.t}`}`;
 			dom.append(head);
 			if(said.length > 0) {
 				const rest = document.createElement('div');
@@ -830,6 +838,56 @@ async function jumpToDefinition(): Promise<void> {
 	const line = editor.state.doc.line(target);
 	editor.dispatch({ selection: { anchor: line.from }, scrollIntoView: true });
 	editor.focus();
+}
+
+/**
+ * The graphs flowR builds on the way to its answers, handed to mermaid.live rather than drawn here:
+ * the playground stays small, and the live editor can do more with them than a canvas ever would.
+ */
+const Views: Record<string, () => Promise<string>> = {
+	dataflow: async() => DataflowMermaid.raw((await (await analyzer()).dataflow()).graph, false, undefined, true),
+	cfg:      async() => {
+		const built = await analyzer();
+		return cfgToMermaid(await built.controlflow(), await built.normalize(), { simplify: true });
+	},
+	call: async() => {
+		const built = await analyzer();
+		const answer = await built.query([{ type: 'call-graph' }] as never) as unknown as { 'call-graph'?: { graph?: unknown } };
+		return DataflowMermaid.raw(answer['call-graph']?.graph as never, false, undefined, true);
+	},
+	ast: async() => normalizedAstToMermaid((await (await analyzer()).normalize()).ast)
+};
+
+/** mermaid.live reads its state from the fragment, and `btoa` wants bytes rather than characters */
+function liveUrl(code: string): string {
+	const state = JSON.stringify({ code, mermaid: { autoSync: true } });
+	const bytes = new TextEncoder().encode(state);
+	let binary = '';
+	for(const byte of bytes) {
+		binary += String.fromCharCode(byte);
+	}
+	return `https://mermaid.live/edit#base64:${btoa(binary)}`;
+}
+
+for(const button of document.querySelectorAll('[data-view]')) {
+	button.addEventListener('click', () => {
+		const which = button.getAttribute('data-view') ?? '';
+		/* the tab has to open on the click itself, or the browser takes it for a popup */
+		const tab = window.open('', '_blank');
+		showTook(`building the ${button.textContent ?? which}…`);
+		void Views[which]?.().then(code => {
+			const url = liveUrl(code);
+			if(tab === null) {
+				location.href = url;
+			} else {
+				tab.location.href = url;
+			}
+			showTook(`opened the ${button.textContent ?? which} in mermaid.live`);
+		}, error => {
+			tab?.close();
+			showTook(`that did not work: ${String(error)}`);
+		});
+	});
 }
 
 /** everything the panel shows, from one analysis of the current text */

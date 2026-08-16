@@ -10,6 +10,7 @@ import { builtinModules } from 'module';
 import { openDatabase } from './sigdb-index';
 import { rSourceUrl, rdrrDocUrl } from '../src/queries/catalog/signature-query/signature-query-executor';
 import { flowrVersion } from '../src/util/version';
+import { FlowrConfig } from '../src/config';
 
 /* flowR's CLI modules read `process` while they are being imported, so one has to exist */
 const ProcessShim = 'globalThis.process ??= { argv: [], argv0: "browser", env: {}, platform: "browser",'
@@ -66,6 +67,30 @@ async function baseSignatures(): Promise<string> {
 	return rows.join('\n');
 }
 
+/**
+ * What the configuration schema says about each of its keys, as `path -> {type, description, values}`.
+ * Joi's browser build refuses `describe()`, so the answers are written out here instead.
+ */
+function configDocs(): string {
+	const out: Record<string, { t?: string, d?: string, v?: string[] }> = {};
+	const walk = (node: { type?: string, flags?: { description?: string }, keys?: Record<string, unknown>, allow?: unknown[] }, path: string[]): void => {
+		if(path.length > 0) {
+			const valids = (node.allow ?? []).filter(v => typeof v === 'string' || typeof v === 'number').map(String);
+			out[path.join('.')] = {
+				...(node.type ? { t: node.type } : {}),
+				/* the descriptions come from TSDoc, where a reference reads `{@link name}` */
+				...(node.flags?.description ? { d: node.flags.description.replace(/\{@link\s+([^}]+)\}/g, '$1') } : {}),
+				...(valids.length > 0 ? { v: valids } : {})
+			};
+		}
+		for(const [key, child] of Object.entries(node.keys ?? {})) {
+			walk(child as never, [...path, key]);
+		}
+	};
+	walk(FlowrConfig.Schema.describe() as never, []);
+	return JSON.stringify(out);
+}
+
 async function main(): Promise<void> {
 	if(process.env.FLOWR_LANDING_ONLY) {
 		console.log('  FLOWR_LANDING_ONLY is set, skipping the playground');
@@ -97,6 +122,7 @@ async function main(): Promise<void> {
 	const signatures = await baseSignatures();
 	fs.writeFileSync(path.join(Target, 'index.html'), page
 		.replace('<!--SIGS-->', signatures)
+		.replace('<!--CFGDOCS-->', configDocs())
 		.replace('<!--VERSION-->', `v${flowrVersion().format()}`));
 	const size = Object.values(result.metafile.outputs).reduce((sum, o) => sum + o.bytes, 0);
 	console.log(`  wrote ${Target} (${(size / 1024 / 1024).toFixed(1)} MB bundle, `

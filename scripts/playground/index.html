@@ -95,6 +95,17 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 }
 .tools button:hover { border-color: var(--accent); color: var(--accent); }
 .tools .hint { margin-left: auto; color: var(--muted); font-size: .8rem; }
+/* the graphs flowR builds are handed to mermaid.live rather than drawn in here */
+#views {
+	flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .4rem;
+	padding: .6rem 1rem; border-top: 1px solid var(--border); background: var(--panel);
+}
+#views .label { color: var(--muted); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; width: 100%; }
+#views button {
+	font: inherit; font-size: .76rem; padding: .15rem .6rem; cursor: pointer; color: var(--muted);
+	border-radius: 1rem; border: 1px solid var(--border); background: var(--sunk);
+}
+#views button:hover { color: var(--accent); border-color: var(--accent); }
 .tools .preview { font-size: .8rem; font-weight: 700; color: var(--fg); }
 .top .version { color: var(--muted); font-size: .78rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
@@ -192,9 +203,9 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 }
 #panel .copy:hover { color: var(--accent); border-color: var(--accent); }
 #panel pre { margin: 0; overflow-x: auto; font-size: .82rem; }
-#panel .row { display: grid; grid-template-columns: 4.5rem 1fr 2.4rem; gap: .6rem; align-items: baseline; padding: .2rem 0; font-size: .86rem; }
+#panel .row { display: grid; grid-template-columns: minmax(4.5rem, auto) 1fr 2.4rem; gap: .6rem; align-items: baseline; padding: .2rem 0; font-size: .86rem; }
 #panel .kind {
-	justify-self: start; padding: 0 .45rem; border-radius: 1rem; font-size: .68rem; font-weight: 600;
+	justify-self: start; white-space: nowrap; padding: 0 .45rem; border-radius: 1rem; font-size: .68rem; font-weight: 600;
 	color: var(--muted); border: 1px solid var(--border); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 #panel .at { color: var(--muted); font-size: .78rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-align: left; }
@@ -282,10 +293,18 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 		<div id="panel"></div>
 		<div id="pointed"><span id="pinfo"><span class="pvalue">hover a name for what flowR knows about it, ctrl-click it to jump to its definition</span></span><span id="took"></span></div>
 		<div id="signature" hidden></div>
+		<div id="views">
+			<span class="label">Open in mermaid.live</span>
+			<button type="button" data-view="dataflow">dataflow graph</button>
+			<button type="button" data-view="cfg">control flow</button>
+			<button type="button" data-view="call">call graph</button>
+			<button type="button" data-view="ast">normalized AST</button>
+		</div>
 	</div>
 </div>
 
 <script type="text/plain" id="sigs"><!--SIGS--></script>
+<script type="application/json" id="cfgdocs"><!--CFGDOCS--></script>
 <script src="bundle.js"></script>
 </body>
 </html>

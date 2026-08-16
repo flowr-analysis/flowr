@@ -1,6 +1,8 @@
 Originally, Florian Sihler created _flowR_ as a part of his master's thesis, to be found at: <http://dx.doi.org/10.18725/OPARU-50107>.
+
 This page explains how to reproduce (and replicate) the results from the thesis.
-The submission state is still available with [v1.0.0](https://github.com/flowr-analysis/flowr/releases/tag/v1.0.0).
+Follow it with [v1.0.0](https://github.com/flowr-analysis/flowr/releases/tag/v1.0.0), the submission state, which is
+the release the `stats` command below belongs to.
 
 - [How to Reproduce the Statistics From the Master’s Thesis](#how-to-reproduce-the-statistics-from-the-masters-thesis)
 
@@ -61,7 +63,6 @@ The (sorted) results should be versioned and can be found in [scripts/top-r-down
 
    - **On a folder subset**\
      You may very well have downloaded all or more package sources than you want to analyze.
-     The [scripts/extract-top-stats.sh](../scripts/extract-top-stats.sh) shell script may help selecting a subset of packages.
 
    Theoretically, you should be able to stop the extraction at any time and still get usable information with the next step,
    of course limited to only those files that have been processed so far.

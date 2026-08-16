@@ -130,7 +130,7 @@ export const functionFinderUtil = {
 				return Ternary.Maybe;
 			} else if(argValues.some(v => requireValue instanceof RegExp ? requireValue.test(v) : v === requireValue)){
 				return Ternary.Always;
-			} else if(argValues.some(v => v === Unknown)) {
+			} else if(argValues.includes(Unknown)) {
 				return Ternary.Maybe;
 			}
 		}

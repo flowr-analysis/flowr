@@ -7,10 +7,11 @@ import {
 	type DependencyCategoryName,
 	type DependencyInfo,
 	getAllCategories,
+	Constant,
 	Unknown
 } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
-import { type DataflowGraphVertexFunctionCall, VertexType } from '../../../dataflow/graph/vertex';
+import { FunctionCallVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
@@ -32,6 +33,7 @@ import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/process
 import { log } from '../../../util/log';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionArgument } from '../../../dataflow/graph/graph';
+import { linkPlotsToDevices } from './link-devices';
 
 
 /**
@@ -72,7 +74,8 @@ export async function executeDependenciesQuery({
 	if(query.additionalCategories !== undefined){
 		for(const [category, value] of Object.entries(query.additionalCategories)) {
 			// custom categories only use the "functions" collection and do not allow specifying additional functions in the object itself, so we "undefined" a lot here
-			functions.set(category, getFunctionsToCheck(undefined, category, undefined, false, value.functions));
+			const custom = getFunctionsToCheck(undefined, category, undefined, false, value.functions);
+			functions.set(category, [...(functions.get(category) ?? []), ...custom]);
 		}
 	}
 
@@ -89,6 +92,11 @@ export async function executeDependenciesQuery({
 		}
 		return [c, results];
 	}))) as { [C in DependencyCategoryName]?: DependencyInfo[] };
+
+	/* also without a device: a plot on screen has no file, but still has the addons drawn onto it */
+	if(results.visualize?.length) {
+		linkPlotsToDevices(results.write ?? [], results.visualize, dataflow, normalize);
+	}
 
 	return {
 		'.meta': {
@@ -228,14 +236,17 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 						resolvedValue = info.stringReplacements[resolvedValue];
 					}
 					const dep = resolvedValue ? d.getDependency(resolvedValue) ?? undefined : undefined;
+					const lexeme = getLexeme(value, arg);
 					finalResults.push(compactRecord({
 						nodeId:             id,
 						functionName,
-						lexemeOfArgument:   getLexeme(value, arg),
+						/* only a value we could not make sense of is worth asking about further */
+						argumentId:         lexeme === undefined ? undefined : arg,
+						lexemeOfArgument:   lexeme,
 						linkedIds:          linked?.length ? linked : undefined,
 						value:              resolvedValue ?? info.defaultValue ?? defaultValue,
 						versionConstraints: dep?.versionConstraints,
-						derivedRange:       dep?.derivedRange,
+						derivedRange:       dep?.effectiveRange,
 						namespaceInfo:      dep?.namespaceInfo
 					} as DependencyInfo));
 				}
@@ -245,8 +256,8 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 
 	return finalResults;
 
-	function getLexeme(argument: string | undefined | typeof Unknown, id: NodeId | undefined) {
-		if((argument && argument !== Unknown) || !id) {
+	function getLexeme(argument: string | undefined, id: NodeId | undefined) {
+		if((argument && argument !== Unknown && argument !== Constant) || !id) {
 			return undefined;
 		}
 		let get = normalize.idMap.get(id);
@@ -261,7 +272,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | und
 	if(!linkedIds || linkedIds.length === 0) {
 		return undefined;
 	}
-	const hasAtLeastAValue = args !== undefined && args.values().flatMap(x => Array.from(x)).toArray().some(v => v !== Unknown && v !== undefined);
+	const hasAtLeastAValue = args !== undefined && args.values().flatMap(x => Array.from(x)).toArray().some(v => v !== Unknown && v !== Constant && v !== undefined);
 	const map = new Map<NodeId, Set<string | undefined>>();
 	for(const linkedId of linkedIds) {
 		if(typeof linkedId !== 'object' || !linkedId.info) {
@@ -274,7 +285,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | und
 		}
 		// collect this one!
 		const vertex = data.dataflow.graph.getVertex(linkedId.id);
-		if(vertex?.tag !== VertexType.FunctionCall) {
+		if(!FunctionCallVertex.is(vertex)) {
 			continue;
 		}
 		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue, data.ctx);
@@ -294,7 +305,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | und
 
 function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, functionFlag: DependencyCategoryName, enabled: DependencyCategoryName[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
 	// "If unset or empty, all function types are searched for."
-	if(enabled !== undefined && (enabled?.length === 0 || enabled.indexOf(functionFlag) < 0)) {
+	if(enabled !== undefined && (enabled?.length === 0 || !enabled.includes(functionFlag))) {
 		return [];
 	}
 	let functions: FunctionInfo[] = ignoreDefaultFunctions ? [] : defaultFunctions.slice();

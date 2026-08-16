@@ -8,7 +8,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { InputTraceType, InputType, type InputClassifierConfig, type InputSources } from './simple-input-classifier';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import { criteriaQueryCompleter, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { executeInputSourcesQuery } from './input-sources-query-executor';
 import { SourceLocation } from '../../../util/range';
 import { Q } from '../../../search/flowr-search-builder';
@@ -53,19 +53,21 @@ export const DefaultInputClassifierConfig: InputClassifierConfig = {
 	 * neither is `Pure` (they rebind a name, they write to the console). So the set is every built-in that
 	 * states its props and claims none of the {@link InputProps}.
 	 */
-	[InputTraceType.Pure]: builtIns.without(InputProps),
-	[InputType.File]:      [...ReadFunctions.map(readFunction => readFunction.name), ...builtIns.withAll(FileInputProps)],
-	[InputType.TempFile]:  builtIns.with(CallProp.TempFile),
-	[InputType.Network]:   Q.fromQuery({ type: 'linter', rules: ['network-functions'] }, LintingResultCertainty.Certain),
-	[InputType.Random]:    Q.fromQuery({ type: 'linter', rules: ['seeded-randomness'] }),
-	[InputType.System]:    builtIns.with(CallProp.Process),
-	[InputType.Ffi]:       builtIns.with(CallProp.Ffi),
-	[InputType.Lang]:      builtIns.with(CallProp.Lang),
-	[InputType.Options]:   builtIns.with(CallProp.Ambient),
-	[InputType.User]:      builtIns.with(CallProp.User),
-	linkedObjects:         LinkedInputObjects,
-	linkedEntryPoints:     LinkedInputEntryPoints,
-	narrowing:             narrowingFunctions(builtIns)
+	[InputTraceType.Pure]:   builtIns.without(InputProps),
+	[InputType.File]:        [...ReadFunctions.map(readFunction => readFunction.name), ...builtIns.withAll(FileInputProps)],
+	[InputType.TempFile]:    builtIns.with(CallProp.TempFile),
+	[InputType.Glob]:        builtIns.with(CallProp.Glob),
+	[InputType.Network]:     Q.fromQuery({ type: 'linter', rules: ['network-functions'] }, LintingResultCertainty.Certain),
+	[InputType.Random]:      Q.fromQuery({ type: 'linter', rules: ['seeded-randomness'] }),
+	[InputType.System]:      builtIns.with(CallProp.Process),
+	[InputType.Ffi]:         builtIns.with(CallProp.Ffi),
+	[InputType.Lang]:        builtIns.with(CallProp.Lang),
+	[InputType.Options]:     builtIns.with(CallProp.Ambient),
+	[InputType.CommandLine]: builtIns.with(CallProp.CommandLine),
+	[InputType.User]:        builtIns.with(CallProp.User),
+	linkedObjects:           LinkedInputObjects,
+	linkedEntryPoints:       LinkedInputEntryPoints,
+	narrowing:               narrowingFunctions(builtIns)
 };
 
 export interface InputSourcesQueryResult extends BaseQueryResult {
@@ -76,7 +78,7 @@ export interface InputSourcesQueryResult extends BaseQueryResult {
 function inputSourcesQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'input-sources'> {
 	const criterion = sliceCriteriaParser(line[0]);
 	if(!criterion || criterion.length !== 1) {
-		output.stderr(output.formatter.format('Invalid provenance query format, a single slicing criterion must be given in the form "(criterion1)"',
+		output.stderr(output.formatter.format('Invalid input sources query format, a single slicing criterion must be given in the form "(criterion1)"',
 			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
 		return { query: [] };
 	}
@@ -84,7 +86,7 @@ function inputSourcesQueryLineParser(output: ReplOutput, line: readonly string[]
 	return { query: [{
 		type:      'input-sources',
 		criterion: criterion[0],
-	}], rCode: line[1] } ;
+	}], rCode: queryLineCode(line) } ;
 }
 
 export const InputSourcesDefinition = {
@@ -119,17 +121,19 @@ export const InputSourcesDefinition = {
 		type:      Joi.string().valid('input-sources').required().description('The type of the query.'),
 		criterion: Joi.alternatives(Joi.string(), Joi.array().items(Joi.string())).required().description('The slicing criterion or array of criteria to use.'),
 		config:    Joi.object({
-			[InputTraceType.Pure]: Joi.array().items(Joi.string()).optional().description('Deterministic/pure functions: functions that preserve constantness of their inputs (e.g., arithmetic, parse).'),
-			[InputType.File]:      Joi.array().items(Joi.string()).optional().description('Functions that read from the filesystem and produce data (e.g., read.csv, readRDS).'),
-			[InputType.TempFile]:  Joi.array().items(Joi.string()).optional().description('Functions that produce a temporary file path, which on its own touches no file system (e.g., tempfile, tempdir).'),
-			[InputType.Network]:   Joi.array().items(Joi.string()).optional().description('Functions that fetch data from the network (e.g., download.file, url connections).'),
-			[InputType.Random]:    Joi.array().items(Joi.string()).optional().description('Functions that produce randomness (e.g., runif, rnorm).'),
-			[InputType.System]:    Joi.array().items(Joi.string()).optional().description('Functions that execute system commands (e.g., system, system2, shell, pipe).'),
-			[InputType.Ffi]:       Joi.array().items(Joi.string()).optional().description('Functions that call native code via the R FFI (.C, .Call, .Fortran, .External, dyn.load).'),
-			[InputType.Lang]:      Joi.array().items(Joi.string()).optional().description('Functions that produce language objects (e.g., substitute, quote, bquote, expression).'),
-			[InputType.Options]:   Joi.array().items(Joi.string()).optional().description('Functions that access or set global options (e.g., options, getOption).'),
-			[InputType.User]:      Joi.array().items(Joi.string()).optional().description('Functions that read interactive user input (e.g., file.choose, readline, menu, askYesNo).'),
-			linkedObjects:         Joi.array().items(Joi.object({
+			[InputTraceType.Pure]:   Joi.array().items(Joi.string()).optional().description('Deterministic/pure functions: functions that preserve constantness of their inputs (e.g., arithmetic, parse).'),
+			[InputType.File]:        Joi.array().items(Joi.string()).optional().description('Functions that read from the filesystem and produce data (e.g., read.csv, readRDS).'),
+			[InputType.TempFile]:    Joi.array().items(Joi.string()).optional().description('Functions that produce a temporary file path, which on its own touches no file system (e.g., tempfile, tempdir).'),
+			[InputType.Glob]:        Joi.array().items(Joi.string()).optional().description('Functions that answer with the paths they match at run time (e.g., list.files, Sys.glob).'),
+			[InputType.Network]:     Joi.array().items(Joi.string()).optional().description('Functions that fetch data from the network (e.g., download.file, url connections).'),
+			[InputType.Random]:      Joi.array().items(Joi.string()).optional().description('Functions that produce randomness (e.g., runif, rnorm).'),
+			[InputType.System]:      Joi.array().items(Joi.string()).optional().description('Functions that execute system commands (e.g., system, system2, shell, pipe).'),
+			[InputType.Ffi]:         Joi.array().items(Joi.string()).optional().description('Functions that call native code via the R FFI (.C, .Call, .Fortran, .External, dyn.load).'),
+			[InputType.Lang]:        Joi.array().items(Joi.string()).optional().description('Functions that produce language objects (e.g., substitute, quote, bquote, expression).'),
+			[InputType.Options]:     Joi.array().items(Joi.string()).optional().description('Functions that access or set global options (e.g., options, getOption).'),
+			[InputType.CommandLine]: Joi.array().items(Joi.string()).optional().description('Functions that hand back what the program was invoked with (e.g., commandArgs).'),
+			[InputType.User]:        Joi.array().items(Joi.string()).optional().description('Functions that read interactive user input (e.g., file.choose, readline, menu, askYesNo).'),
+			linkedObjects:           Joi.array().items(Joi.object({
 				name:       Joi.string().required().description('Name of the object, e.g. input.'),
 				type:       Joi.string().valid(...Record.values<string>(InputType)).required().description('How reads of the object (or of its fields) are classified.'),
 				withParams: Joi.array().items(Joi.string()).optional().description('Only link the object if the function binding it declares all of these parameters as well.')

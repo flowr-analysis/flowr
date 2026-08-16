@@ -62,7 +62,6 @@ jobs:
           cache: 'true'
           cache-version: '1'
           extra-packages: |
-            any::xmlparsedata
             any::dplyr
             any::readr
 
@@ -76,7 +75,7 @@ jobs:
         run: |
           rm -rf "coverage/"
           rm -f "/tmp/flowr-label-summary.json"
-          bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
+          bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"
 
       - name: "💾 Cache the Signature Database Bundles"
         uses: actions/cache@v4
@@ -99,6 +98,13 @@ jobs:
           
           # Generate all wiki pages
           npm run wiki
+          # the landing page is generated too, from real flowR output; the signature browser is megabytes,
+          # so the documentation job builds that one straight onto gh-pages instead
+          FLOWR_LANDING_ONLY=1 npm run gen:landing
+          # the signature browser is gitignored on purpose (megabytes); only the page and its samples are committed
+          for LANDING in index.html wiki/landing/index.html; do
+              if [ -n "$(git status --porcelain -- "$LANDING")" ]; then CHANGED_FILES+=("$LANDING"); fi
+          done
           # read in everything from /tmp/flowr-wiki-changed-files.txt and add to CHANGED_FILES
           if [ -f /tmp/flowr-wiki-changed-files.txt ]; then
                 while IFS= read -r line; do
@@ -170,9 +176,27 @@ jobs:
             **/*.md.tmp
             **/*-Old.*
 
-      - name: "🔎 Check the Wiki pages and README for broken links"
-        uses: becheran/mlc@v1
+      - name: "🔎 Check the Wiki pages for broken external links"
+        uses: becheran/mlc@v1.2.0
+        # thousands of links against a rate-limiting host can stall for hours; the step is allowed to
+        # fail, so hitting the limit only ends the check, it never ends the run
+        timeout-minutes: 20
         continue-on-error: true
         if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
         with:
-          args: --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*" --ignore-links "http*://hub.docker.com/r/*" wiki/ README.md
+          args: >-
+            --throttle 25 --ignore-path "wiki/stats"
+            --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*"
+            --ignore-links "http*://hub.docker.com/r/*,http*://*npmjs.com/*,http*://doi.org/*,http*://*linkedin.com/*,http*://*r-bloggers.com/*,http*://*gnu.org/*,http*://linux.die.net/*,http*://mermaid.js.org/*"
+            wiki/
+
+      - name: "🔎 Check the README for broken external links"
+        uses: becheran/mlc@v1.2.0
+        timeout-minutes: 5
+        continue-on-error: true
+        if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
+        with:
+          args: >-
+            --throttle 25 --files "./README.md"
+            --do-not-warn-for-redirect-to "http*://github.com/flowr-analysis/*,http*://flowr-analysis.github.io/*"
+            --ignore-links "http*://hub.docker.com/r/*,http*://*npmjs.com/*,http*://doi.org/*,http*://*linkedin.com/*,http*://*r-bloggers.com/*,http*://*gnu.org/*,http*://linux.die.net/*,http*://mermaid.js.org/*"

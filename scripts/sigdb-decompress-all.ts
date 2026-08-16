@@ -1,6 +1,6 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import zlib from 'node:zlib';
+import fs from 'fs';
+import path from 'path';
+import zlib from 'zlib';
 
 const dir = process.argv[2] ?? 'dist/src/data/sigdb';
 if(!fs.existsSync(dir)) {

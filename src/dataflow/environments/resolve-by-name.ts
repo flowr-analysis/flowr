@@ -18,6 +18,9 @@ const ConstantTargetTypes = ReferenceType.Constant | ReferenceType.BuiltInConsta
 const BuiltInConstantTargetTypes = ReferenceType.BuiltInConstant | ReferenceType.Unknown;
 const BuiltInFunctionTargetTypes = ReferenceType.BuiltInFunction | ReferenceType.Unknown;
 
+const inEveryBranch = (d: IdentifierDefinition) => happensInEveryBranch(d.cds);
+const notAParameter = (d: IdentifierDefinition) => d.type !== ReferenceType.Parameter;
+
 const TargetTypePredicate = {
 	[ReferenceType.Unknown]:         () => true,
 	[ReferenceType.Function]:        ({ type }: IdentifierDefinition) => isReferenceType(type, FunctionTargetTypes),
@@ -39,12 +42,16 @@ const TargetTypePredicate = {
  * @param target             - The target (meta) type of the identifier to resolve
  * @returns A list of possible identifier definitions (one if the definition location is exactly and always known), or `undefined`
  *          if the identifier is undefined in the current scope/with the current environment information.
+ * @useInstead {@link Resolve.byNameAndType}
  */
 export function resolveByName(id: Identifier, environment: REnvironmentInformation, target: ReferenceType): readonly IdentifierDefinition[] | undefined {
 	if(target === ReferenceType.Unknown) {
 		return resolveByNameAnyType(id, environment);
 	}
-	const [name, ns, internal] = Identifier.toArray(id);
+	/* read piecewise, `Identifier.toArray` would allocate a tuple per resolution */
+	const name = Identifier.getName(id);
+	const ns = Identifier.getNamespace(id);
+	const internal = Identifier.accessesInternal(id);
 	let current: Environment = environment.current;
 	/* `current` can already be the built-in environment itself (e.g. `get(x, envir=baseenv())`);
 	 * it has no parent to walk to, so resolve directly instead of entering the loop below. */
@@ -73,10 +80,14 @@ export function resolveByName(id: Identifier, environment: REnvironmentInformati
 			}
 		}
 		if(definition !== undefined && definition.length > 0) {
-			const filtered = definition.filter(wantedType);
-			if(filtered.length === definition.length && (target !== ReferenceType.Function || definition.every(d => d.type !== ReferenceType.Parameter)) && definition.every(d => happensInEveryBranch(d.cds))) {
+			/* ask before filtering: the common case wants all of them and needs no copy */
+			const allWanted = definition.every(wantedType);
+			if(allWanted && (target !== ReferenceType.Function || definition.every(notAParameter)) && definition.every(inEveryBranch)) {
 				return definition;
-			} else if(filtered.length > 0) {
+			}
+			/* never alias the environment's own array, it is appended to below */
+			const filtered = allWanted ? definition.slice() : definition.filter(wantedType);
+			if(filtered.length > 0) {
 				if(definitions) {
 					definitions.push(...filtered);
 				} else {
@@ -97,6 +108,7 @@ export function resolveByName(id: Identifier, environment: REnvironmentInformati
 
 /**
  * The more performant version of {@link resolveByName} when the target type is unknown.
+ * @useInstead {@link Resolve.byName}
  */
 export function resolveByNameAnyType(id: Identifier, environment: REnvironmentInformation): IdentifierDefinition[] | undefined {
 	let current: Environment = environment.current;
@@ -108,7 +120,9 @@ export function resolveByNameAnyType(id: Identifier, environment: REnvironmentIn
 			return g;
 		}
 	}
-	const [name, ns, internal] = Identifier.toArray(id);
+	const name = Identifier.getName(id);
+	const ns = Identifier.getNamespace(id);
+	const internal = Identifier.accessesInternal(id);
 
 	/* `current` can already be the built-in environment itself */
 	if(current.builtInEnv) {
@@ -131,7 +145,7 @@ export function resolveByNameAnyType(id: Identifier, environment: REnvironmentIn
 			if(internal === false) {
 				definition = definition.filter(({ name }) => name === undefined || !Identifier.accessesInternal(name));
 			}
-			if(definition.every(d => happensInEveryBranch(d.cds))) {
+			if(definition.every(inEveryBranch)) {
 				if(cacheable) {
 					environment.current.cache ??= new Map();
 					environment.current.cache.set(id, definition);
@@ -168,6 +182,7 @@ export function resolveByNameAnyType(id: Identifier, environment: REnvironmentIn
  * @param environment        - The current environment used for name resolution
  * @param wantedValue        - The built-in constant value to check for
  * @returns Whether the identifier always, never, or maybe resolves to the given built-in constant value
+ * @useInstead {@link Resolve.toBuiltIn}
  */
 export function resolvesToBuiltInConstant(name: Identifier | undefined, environment: REnvironmentInformation, wantedValue: unknown): Ternary {
 	if(name === undefined) {

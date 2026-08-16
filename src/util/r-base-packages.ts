@@ -4,6 +4,8 @@ import { RVersion } from './r-version';
 
 /** the base packages R attaches to the search path on startup, so their exports are usable without a `library` call */
 export const AttachedBasePackages: readonly string[] = ['base', 'stats', 'graphics', 'grDevices', 'utils', 'datasets', 'methods'];
+/** {@link AttachedBasePackages} for membership tests, which happen far more often than iteration. */
+export const AttachedBasePackageSet: ReadonlySet<string> = new Set(AttachedBasePackages);
 
 /** clamp `rVersion` to the newest R release the store knows about (so a future R version stays answerable) */
 function effective(rVersion: string): string {

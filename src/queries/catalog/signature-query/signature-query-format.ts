@@ -126,6 +126,11 @@ export interface SignaturePackageView {
 	/** for a base package: the R releases it was part of core, ascending */
 	readonly coreVersions?: readonly string[];
 	readonly dependencies:  readonly SignatureDependencyView[];
+	/**
+	 * The packages that end up on the search path together with this one, so that {@link exportsTotal} is not
+	 * mistaken for everything `library(<name>)` brings into scope (see `attachedAlongside`).
+	 */
+	readonly attaches?:     readonly string[];
 	readonly functions:     readonly SignatureFunctionView[];
 }
 

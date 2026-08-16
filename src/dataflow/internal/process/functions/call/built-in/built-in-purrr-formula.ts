@@ -7,8 +7,6 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { getAllFunctionCallTargets, linkArgumentsOnCall, pMatch } from '../../../../linker';
 import { Dataflow } from '../../../../../graph/df-helper';
-import { VertexType } from '../../../../../graph/vertex';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
 import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { convertFnArguments } from '../common';
@@ -22,6 +20,8 @@ import { unpackNonameArg } from '../argument/unpack-argument';
 import { dataflowLogger } from '../../../../../logger';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { FunctionArgument } from '../../../../../graph/graph';
+import { UseVertex, FunctionCallVertex } from '../../../../../graph/vertex';
+import { Resolve } from '../../../../../environments/resolve-helper';
 
 interface BuiltInPurrrFormulaConfiguration {
 	/**
@@ -51,7 +51,7 @@ interface BuiltInPurrrFormulaConfiguration {
 function linkOnSymbol<OtherInfo>(rootId: NodeId, filteredArgs: readonly FunctionArgument[], node: RSymbol<OtherInfo & ParentInformation>, graph: DataflowGraph, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	// If the formula is a symbol naming a function, try to resolve it in the call environment.
 	try {
-		const defs = resolveByName(node.content, data.environment, ReferenceType.Function) ?? [];
+		const defs = Resolve.byNameAndType(node.content, data.environment, ReferenceType.Function) ?? [];
 		graph.addEdge(rootId, node.info.id, EdgeType.Calls);
 		for(const def of defs) {
 			// Mark the call as calling this target
@@ -60,7 +60,8 @@ function linkOnSymbol<OtherInfo>(rootId: NodeId, filteredArgs: readonly Function
 			// If the target directly maps to a function definition AST, try to link arguments to parameters
 			let linked = data.completeAst.idMap.get(def.nodeId) as RFunctionDefinition<ParentInformation> | undefined;
 			if(linked?.type !== RType.FunctionDefinition) {
-				for(const vid of (def as InGraphIdentifierDefinition).value as NodeId[]) {
+				const values = (def as InGraphIdentifierDefinition).value;
+				for(const vid of Array.isArray(values) ? values : []) {
 					const candidate = data.completeAst.idMap.get(vid) as RFunctionDefinition<ParentInformation> | undefined;
 					if(candidate && candidate.type === RType.FunctionDefinition) {
 						linked = candidate;
@@ -141,7 +142,7 @@ export function processPurrrFormula<OtherInfo>(
 	} else {
 		try {
 			Dataflow.visitDfg(information.graph, formulaNode.info.id, (vtx) => {
-				if(vtx.tag === VertexType.FunctionCall) {
+				if(FunctionCallVertex.is(vtx)) {
 					information.graph.addEdge(rootId, vtx.id, EdgeType.Calls);
 
 					const targets = getAllFunctionCallTargets(vtx.id, information.graph, vtx.environment);
@@ -162,7 +163,7 @@ export function processPurrrFormula<OtherInfo>(
 						}
 					}
 					return !vtx.origin.includes(BuiltInProcName.List);
-				} else if(vtx.tag === VertexType.Use) {
+				} else if(UseVertex.is(vtx)) {
 					const node = data.completeAst.idMap.get(vtx.id);
 					if(node?.type === RType.Symbol) {
 						linkOnSymbol(rootId, filteredCallArgs, node, information.graph, data);

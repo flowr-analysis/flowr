@@ -1,4 +1,4 @@
-import { SourceRange } from '../../../src/util/range';
+import { SourceLocation, SourceRange } from '../../../src/util/range';
 import { allPermutations } from '../../../src/util/collections/arrays';
 import { describe, assert, test } from 'vitest';
 import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
@@ -76,6 +76,20 @@ describe('Range', () => {
 		assertOverlap('overlapping end character', SourceRange.from(1, 2, 1, 2), SourceRange.from(1, 1, 1, 2), true);
 		assertOverlap('overlapping end line', SourceRange.from(1, 1, 2, 1), SourceRange.from(2, 1, 2, 2), true);
 		assertOverlap('not overlapping', SourceRange.from(1, 1, 2, 1), SourceRange.from(2, 2, 3, 1), false);
+		assertOverlap('a range within another one', SourceRange.from(1, 1, 5, 1), SourceRange.from(3, 5, 3, 9), true);
+		assertOverlap('within, starting at a smaller column', SourceRange.from(1, 10, 3, 5), SourceRange.from(2, 1, 2, 3), true);
+		assertOverlap('touching at one position', SourceRange.from(1, 1, 2, 4), SourceRange.from(2, 4, 3, 1), true);
+		assertOverlap('lines apart', SourceRange.from(1, 5, 1, 9), SourceRange.from(3, 1, 3, 2), false);
+	});
+	describe('SourceLocation', () => {
+		const located = SourceLocation.from(SourceRange.from(1, 1, 2, 4), 'a.R');
+		test('the range of a location carries no file', () => {
+			assert.deepStrictEqual(SourceLocation.getRange(located), SourceRange.from(1, 1, 2, 4));
+		});
+		test('mapping the file replaces it', () => {
+			assert.deepStrictEqual(SourceLocation.mapFile(located, f => `${f}.orig`), SourceLocation.from(SourceRange.from(1, 1, 2, 4), 'a.R.orig'));
+			assert.strictEqual(SourceLocation.getFile(SourceLocation.mapFile(located, () => 'b.R')), 'b.R');
+		});
 	});
 	describe('rangeIsSubsetOf', () => {
 		function assertSubset(name: string, left: SourceRange, right: SourceRange, expected: boolean, expectedSwapped = !expected) {

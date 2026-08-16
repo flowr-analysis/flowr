@@ -32,11 +32,10 @@ import {
 	ReferenceType
 } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
-import { FunctionCallVertex, VertexType } from '../../../../../graph/vertex';
+import { FunctionCallVertex, VertexType, FunctionDefinitionVertex, UseVertex, VariableDefinitionVertex } from '../../../../../graph/vertex';
 import { createFreshEnvState } from './built-in-new-env';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
 import type { ReadOnlyFlowrAnalyzerContext, FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
@@ -44,6 +43,7 @@ import { attachExportVertex } from './built-in-library';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { compactHookStates, getHookInformation, KnownHooks } from '../../../../../hooks';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { Resolve } from '../../../../../environments/resolve-helper';
 
 /**
  * Process a function definition, i.e., `function(a, b) { ... }`
@@ -181,7 +181,7 @@ export function processFunctionDefinition<OtherInfo>(
 	// an on.exit hook's `<<-` escapes like a body `<<-`; fold its escaping writes into this function's subflow
 	for(const hook of exitHooks) {
 		const vert = subgraph.getVertex(hook.id);
-		if(vert?.tag !== VertexType.FunctionDefinition) {
+		if(!FunctionDefinitionVertex.is(vert)) {
 			continue;
 		}
 		let hookEnvironment = vert.subflow.environment;
@@ -223,7 +223,7 @@ export function processFunctionDefinition<OtherInfo>(
 	let afterHookExitPoints = exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default || e.type === ExitPointType.Error) ?? [];
 	for(const hook of exitHooks) {
 		const vert = subgraph.getVertex(hook.id);
-		if(vert?.tag !== VertexType.FunctionDefinition) {
+		if(!FunctionDefinitionVertex.is(vert)) {
 			continue;
 		}
 		// call all hooks
@@ -238,13 +238,13 @@ export function processFunctionDefinition<OtherInfo>(
 	if(data.ctx.config.solver.trackEnvironments) {
 		for(const ep of afterHookExitPoints) {
 			const epVertex = subgraph.getVertex(ep.nodeId);
-			if(FunctionCallVertex.is(epVertex) && epVertex.origin.includes(BuiltInProcName.NewEnv)) {
+			if(FunctionCallVertex.hasOrigin(epVertex, BuiltInProcName.NewEnv)) {
 				returnEnvState = createFreshEnvState(data, { graph: subgraph, entryPoint: ep.nodeId });
 				break;
 			}
 			const epNode = subgraph.idMap?.get(ep.nodeId);
 			if(epNode?.type === RType.Symbol) {
-				const defs = resolveByName(epNode.content, outEnvironment, ReferenceType.Variable);
+				const defs = Resolve.byNameAndType(epNode.content, outEnvironment, ReferenceType.Variable);
 				const def = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined);
 				if(def?.envState) {
 					returnEnvState = def.envState;
@@ -305,7 +305,7 @@ export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInforma
 
 function updateDispatches(graph: DataflowGraph, myArgs: FunctionArgument[]): void {
 	for(const [, info] of graph.vertices(false)) {
-		if(info.tag !== VertexType.FunctionCall || (!info.origin.includes(BuiltInProcName.S3Dispatch) && !info.origin.includes(BuiltInProcName.S7Dispatch))) {
+		if(!FunctionCallVertex.is(info) || (!info.origin.includes(BuiltInProcName.S3Dispatch) && !info.origin.includes(BuiltInProcName.S7Dispatch))) {
 			continue;
 		}
 		if(info.args.length === 0) {
@@ -337,7 +337,7 @@ function updateNestedFunctionClosures(
 		const ingoingRefs = subflow.in;
 		const remainingIn: IdentifierReference[] = [];
 		for(const ingoing of ingoingRefs) {
-			const resolved = ingoing.name ? resolveByName(ingoing.name, outEnvironment, ingoing.type) : undefined;
+			const resolved = ingoing.name ? Resolve.byNameAndType(ingoing.name, outEnvironment, ingoing.type) : undefined;
 			if(resolved === undefined) {
 				remainingIn.push(ingoing);
 				continue;
@@ -369,7 +369,7 @@ function linkSuperAssignmentsToOuterDefinitions(
 ): void {
 	for(const nodeId of nestedGraphNodeIds) {
 		const vertex = parentGraph.getVertex(nodeId);
-		if(vertex?.tag !== VertexType.FunctionCall || !vertex.origin.includes(BuiltInProcName.SuperAssignment)) {
+		if(!FunctionCallVertex.hasOrigin(vertex, BuiltInProcName.SuperAssignment)) {
 			continue;
 		}
 
@@ -384,7 +384,7 @@ function linkSuperAssignmentsToOuterDefinitions(
 			}
 
 			const targetVertex = parentGraph.getVertex(targetId);
-			if(targetVertex?.tag !== VertexType.VariableDefinition) {
+			if(!VariableDefinitionVertex.is(targetVertex)) {
 				continue;
 			}
 
@@ -394,7 +394,7 @@ function linkSuperAssignmentsToOuterDefinitions(
 			}
 
 			const varName = targetNode.content;
-			const resolved = resolveByName(varName, parentEnvironment, ReferenceType.Variable);
+			const resolved = Resolve.byNameAndType(varName, parentEnvironment, ReferenceType.Variable);
 			if(resolved) {
 				for(const ref of resolved) {
 					if(ref.nodeId !== targetId && !NodeId.isBuiltIn(ref.nodeId)) {
@@ -411,6 +411,7 @@ function linkSuperAssignmentsToOuterDefinitions(
  * Update the closure links of all nested function calls, this is probably to be done once at the end of the script
  * @param graph          - dataflow graph to collect the function calls from and to update the closure links for
  * @param outEnvironment - active environment on resolving closures (i.e., exit of the function definition)
+ * @lintIgnore vertex-has-origin
  */
 export function updateNestedFunctionCalls(
 	graph: DataflowGraph,
@@ -432,7 +433,7 @@ export function updateNestedFunctionCalls(
 		for(const target of targets) {
 			if(NodeId.isBuiltIn(target)) {
 				// a package export resolved lazily here (nested), so materialize it and link to its loader
-				const loader = (resolveByName(name, effectiveEnvironment, ReferenceType.Function)?.find(r => r.nodeId === target) as InGraphIdentifierDefinition | undefined)?.definedAt;
+				const loader = (Resolve.byNameAndType(name, effectiveEnvironment, ReferenceType.Function)?.find(r => r.nodeId === target) as InGraphIdentifierDefinition | undefined)?.definedAt;
 				if(loader !== undefined && !NodeId.isBuiltIn(loader)) {
 					attachExportVertex(graph, target, effectiveEnvironment, ctx);
 					graph.addEdge(target, loader, EdgeType.Reads | EdgeType.Calls);
@@ -442,8 +443,8 @@ export function updateNestedFunctionCalls(
 			}
 			const targetVertex = graph.getVertex(target);
 			// support reads on symbols
-			if(targetVertex?.tag !== VertexType.FunctionDefinition) {
-				if(targetVertex?.tag === VertexType.Use) {
+			if(!FunctionDefinitionVertex.is(targetVertex)) {
+				if(UseVertex.is(targetVertex)) {
 					graph.addEdge(id, target, EdgeType.Reads);
 				}
 				continue;
@@ -460,7 +461,7 @@ export function updateNestedFunctionCalls(
 				// collect all next method calls to link them to the same targets!
 				for(const s of targetVertex.subflow.graph) {
 					const v = graph.getVertex(s);
-					if(v?.tag === VertexType.FunctionCall && v.origin.includes(BuiltInProcName.S3DispatchNext)) {
+					if(FunctionCallVertex.is(v) && v.origin.includes(BuiltInProcName.S3DispatchNext)) {
 						collectedNextMethods.add(v.id);
 					}
 				}
@@ -468,7 +469,7 @@ export function updateNestedFunctionCalls(
 			const ingoingRefs = targetVertex.subflow.in;
 			const remainingIn: IdentifierReference[] = [];
 			for(const ingoing of ingoingRefs) {
-				const resolved = ingoing.name ? resolveByName(ingoing.name, effectiveEnvironment, ingoing.type) : undefined;
+				const resolved = ingoing.name ? Resolve.byNameAndType(ingoing.name, effectiveEnvironment, ingoing.type) : undefined;
 				if(resolved === undefined) {
 					remainingIn.push(ingoing);
 					continue;
@@ -492,9 +493,9 @@ export function updateNestedFunctionCalls(
 		for(const nextMethodId of collectedNextMethods) {
 			for(const target of targets) {
 				const targetVertex = graph.getVertex(target);
-				if(targetVertex?.tag === VertexType.Use) {
+				if(UseVertex.is(targetVertex)) {
 					graph.addEdge(nextMethodId, target, EdgeType.Reads);
-				} else if(targetVertex?.tag === VertexType.FunctionDefinition) {
+				} else if(FunctionDefinitionVertex.is(targetVertex)) {
 					graph.addEdge(nextMethodId, target, EdgeType.Calls);
 				}
 			}
@@ -556,7 +557,7 @@ function groupBodyWrites(out: readonly IdentifierReference[]): Map<Identifier, I
 		}
 	}
 	for(const writes of byName.values()) {
-		writes.sort((a, b) => String(a.nodeId) < String(b.nodeId) ? 1 : -1);
+		writes.sort((a, b) => String(b.nodeId).localeCompare(String(a.nodeId)));
 	}
 	return byName;
 }
@@ -580,7 +581,7 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 	// first, we try to bind again within parameters - if we have it, fine
 	const remainingRead: IdentifierReference[] = [];
 	for(const read of readInParameters) {
-		const resolved = read.name ? resolveByName(read.name, parameterEnvs, read.type) : undefined;
+		const resolved = read.name ? Resolve.byNameAndType(read.name, parameterEnvs, read.type) : undefined;
 		const rid = read.nodeId;
 		if(resolved !== undefined) {
 			for(const { nodeId } of resolved) {

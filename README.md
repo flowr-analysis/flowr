@@ -1,4 +1,4 @@
-[![flowR logo](https://raw.githubusercontent.com/wiki/flowr-analysis/flowr/img/flowR.png)](https://github.com/flowr-analysis/flowr/wiki)\
+[![flowR logo](https://raw.githubusercontent.com/wiki/flowr-analysis/flowr/img/flowR.png)](https://flowr-analysis.github.io/flowr/)\
 [![QA (and potentially deploy)](https://github.com/flowr-analysis/flowr/actions/workflows/qa.yaml/badge.svg)](https://github.com/flowr-analysis/flowr/actions/workflows/qa.yaml)
 [![codecov](https://codecov.io/gh/flowr-analysis/flowr/graph/badge.svg)](https://codecov.io/gh/flowr-analysis/flowr)
 [![Docker Image Version (latest semver)](https://img.shields.io/docker/v/eagleoutice/flowr?logo=docker&logoColor=white&label=dockerhub)](https://hub.docker.com/r/eagleoutice/flowr)
@@ -13,7 +13,7 @@ and [Docker](https://hub.docker.com/r/eagleoutice/flowr).
 It offers a wide variety of features, for example:
 
 * 📚 **dependency analysis**\
-  Given your analysis project, flowR offers a plethora of so-called [queries](https://github.com/flowr-analysis/flowr/wiki/query-api) to get more information about your code.
+  Given your analysis project, flowR offers a plethora of so-called [queries](https://github.com/flowr-analysis/flowr/wiki/Query-API) to get more information about your code.
   An important query is the [dependencies query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dependencies), which shows you the library your project needs,
   the data files it reads, the scripts it sources, and the data it outputs.
   Building on it, the [guess dependency versions query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Guess-Dependency-Versions) narrows down the version range each
@@ -32,18 +32,18 @@ It offers a wide variety of features, for example:
     </details> 
 
 * 🐞 **code linting**\
-   Analyze your R scripts for common issues and potential bugs (see the [wiki page](https://github.com/flowr-analysis/flowr/wiki/linter) for more information on the currently supported linters).
+   Analyze your R scripts for common issues and potential bugs (see the [wiki page](https://github.com/flowr-analysis/flowr/wiki/Linter) for more information on the currently supported linters).
 
 	    
     <details><summary>Example: Linting code with flowR</summary>
     
-    To lint your code, you can use the [REPL](https://github.com/flowr-analysis/flowr/wiki/interface#using-the-repl) or the [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr) (see [vscode-flowr#283](https://github.com/flowr-analysis/vscode-flowr/pull/283)).
+    To lint your code, you can use the [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl) or the [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr) (see [vscode-flowr#283](https://github.com/flowr-analysis/vscode-flowr/pull/283)).
     	
     
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl v2.13.7, R grammar v14 (tree-sitter engine)
+    flowR repl v2.13.16, R grammar v14 (tree-sitter engine)
     R> :query @linter "read.csv(\"/root/x.txt\")"
     ```
     
@@ -52,17 +52,11 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    Query: linter (6 ms)
+    Query: linter (66 ms)
        ╰ Deprecated Functions (deprecated-functions): no findings
-       ╰ File Path Validity (file-path-validity):
-           ╰ certain:
-               ╰ Path `/root/x.txt` at 1.1-23
-           ╰ Metadata: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 0, processTimeMs: 1
+       ╰ File Path Validity (file-path-validity): no findings
        ╰ Seeded Randomness (seeded-randomness): no findings
-       ╰ Absolute Paths (absolute-file-paths):
-           ╰ certain:
-               ╰ Path `/root/x.txt` at 1.1-23
-           ╰ Metadata: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 1, processTimeMs: 0
+       ╰ Absolute Paths (absolute-file-paths): no findings
        ╰ Unused Definitions (unused-definitions): no findings
        ╰ Network Functions (network-functions): no findings
        ╰ Dataframe Access Validation (dataframe-access-validation): no findings
@@ -73,7 +67,7 @@ It offers a wide variety of features, for example:
        ╰ Roxygen Arguments (roxygen-arguments): no findings
        ╰ No Leaked Credentials (no-leaked-credentials): no findings
        ╰ Undefined Symbol (undefined-symbol): no findings
-    All queries together required ≈6 ms (1ms accuracy, total 6 ms)
+    All queries together required ≈66 ms (1ms accuracy, total 67 ms)
     ```
     
     
@@ -95,17 +89,17 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (8 ms)\
+    Query: **linter** (473 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 1, processTimeMs: 1\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 5, processTimeMs: 2\
     &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 0, processTimeMs: 1\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 2, processTimeMs: 0\
     &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation): _no findings_\
@@ -116,11 +110,11 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Roxygen Arguments** (roxygen-arguments): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **No Leaked Credentials** (no-leaked-credentials): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol): _no findings_\
-    _All queries together required ≈8 ms (1ms accuracy, total 8 ms)_
+    _All queries together required ≈473 ms (1ms accuracy, total 479 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _8.4 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis required _479.0 ms_ (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -137,8 +131,8 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalCalls": 0,
               "totalFunctionDefinitions": 0,
-              "searchTimeMs": 2,
-              "processTimeMs": 0
+              "searchTimeMs": 112,
+              "processTimeMs": 293
             }
           },
           "file-path-validity": {
@@ -160,8 +154,8 @@ It offers a wide variety of features, for example:
               "totalUnknown": 0,
               "totalWritesBeforeAlways": 0,
               "totalValid": 0,
-              "searchTimeMs": 1,
-              "processTimeMs": 1
+              "searchTimeMs": 5,
+              "processTimeMs": 2
             }
           },
           "seeded-randomness": {
@@ -172,7 +166,7 @@ It offers a wide variety of features, for example:
               "callsWithAssignmentProducers": 0,
               "callsWithNonConstantProducers": 0,
               "callsWithOtherBranchProducers": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -192,8 +186,8 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalConsidered": 1,
               "totalUnknown": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 1
+              "searchTimeMs": 2,
+              "processTimeMs": 0
             }
           },
           "unused-definitions": {
@@ -201,7 +195,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalConsidered": 0,
               "searchTimeMs": 0,
-              "processTimeMs": 0
+              "processTimeMs": 1
             }
           },
           "network-functions": {
@@ -209,8 +203,8 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalCalls": 0,
               "totalFunctionDefinitions": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
+              "searchTimeMs": 1,
+              "processTimeMs": 2
             }
           },
           "dataframe-access-validation": {
@@ -220,13 +214,13 @@ It offers a wide variety of features, for example:
               "numAccesses": 0,
               "totalAccessed": 0,
               "searchTimeMs": 0,
-              "processTimeMs": 0
+              "processTimeMs": 7
             }
           },
           "dead-code": {
             "results": [],
             ".meta": {
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -234,7 +228,7 @@ It offers a wide variety of features, for example:
             "results": [],
             ".meta": {
               "numOfUselessLoops": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -242,7 +236,7 @@ It offers a wide variety of features, for example:
             "results": [],
             ".meta": {
               "searchTimeMs": 0,
-              "processTimeMs": 0
+              "processTimeMs": 1
             }
           },
           "stop-call": {
@@ -281,16 +275,16 @@ It offers a wide variety of features, for example:
                 "subscript": 0
               },
               "searchTimeMs": 0,
-              "processTimeMs": 2
+              "processTimeMs": 40
             }
           }
         },
         ".meta": {
-          "timing": 8
+          "timing": 473
         }
       },
       ".meta": {
-        "timing": 8
+        "timing": 473
       }
     }
     ```
@@ -324,11 +318,11 @@ It offers a wide variety of features, for example:
     
     
     The simplest way to retrieve slices is with flowR's [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr).
-    However, you can slice using the [REPL](https://github.com/flowr-analysis/flowr/wiki/interface#using-the-repl) as well.
+    However, you can slice using the [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl) as well.
     This can help you if you want to reuse specific parts of an existing analysis within another context or if you want to understand
     what is happening in the code.
     
-    For this, let's have a look at the example file, located at [test/testfiles/example.R](https://github.com/flowr-analysis/flowr/tree/main//test/testfiles/example.R):
+    For this, let's have a look at the example file, located at [test/testfiles/example.R](https://github.com/flowr-analysis/flowr/tree/main/test/testfiles/example.R):
     
     
     ```r
@@ -354,7 +348,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl v2.13.7, R grammar v14 (tree-sitter engine)
+    flowR repl v2.13.16, R grammar v14 (tree-sitter engine)
     R> :query @static-slice (11@sum) file://test/testfiles/example.R
     ```
     
@@ -368,7 +362,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈4 ms (1ms accuracy, total 4 ms)
+    All queries together required ≈30 ms (1ms accuracy, total 31 ms)
     ```
     
     
@@ -383,16 +377,16 @@ It offers a wide variety of features, for example:
     </details>
 
 * 🚀 **fast call-graph, data-, and control-flow graphs**\
-  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">105.1 ms</span></i> (as of Aug 1, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark), 
+  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">105.6 ms</span></i> (as of Aug 14, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark),
   _flowR_ can analyze the data- and control-flow of the average real-world R&nbsp;script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
-  and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) for more details on the [dataflow graphs](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) as well as [call graphs](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph#perspectives-cg).
+  and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) for more details on the [dataflow graphs](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) as well as [call graphs](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg).
 
     
     <details><summary>Example: Generating a dataflow graph with flowR</summary>
     
     
-    You can investigate flowR's analyses using the [REPL](https://github.com/flowr-analysis/flowr/wiki/interface#using-the-repl).
-    Commands like <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the dataflow graph (aliases: :d*, :df*)">`:dataflow*`</span> allow you to view a [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) for a given R script.
+    You can investigate flowR's analyses using the [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl).
+    Commands like <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the dataflow graph (aliases: :d*, :df*)">`:dataflow*`</span> allow you to view a [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) for a given R script.
     
     Let's have a look at the following example:
     
@@ -413,13 +407,13 @@ It offers a wide variety of features, for example:
     ```
     
     
-    To get the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) for this script, you can use the following command:
+    To get the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) for this script, you can use the following command:
     
     
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl v2.13.7, R grammar v14 (tree-sitter engine)
+    flowR repl v2.13.16, R grammar v14 (tree-sitter engine)
     R> :dataflow* test/testfiles/example.R
     ```
     
@@ -692,7 +686,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _2.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+    (The analysis required _4.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
     
     
     
@@ -709,7 +703,7 @@ If you want to use flowR and the features it provides, feel free to check out th
 - [Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr)/[Positron](https://open-vsx.org/extension/code-inspect/vscode-flowr): provides access to flowR directly in VS Code and Positron (or [vscode.dev](https://vscode.dev/))
 - [RStudio Addin](https://github.com/flowr-analysis/rstudio-addin-flowr): integrates flowR into [RStudio](https://posit.co/downloads/)
 - [R package](https://github.com/flowr-analysis/flowr-r-adapter): use flowR in your R scripts
-- [Docker image](https://hub.docker.com/r/eagleoutice/flowr): run flowR in a container, this also includes [flowR's server](https://github.com/flowr-analysis/flowr/wiki/interface#communicating-with-the-server)
+- [Docker image](https://hub.docker.com/r/eagleoutice/flowr): run flowR in a container, this also includes [flowR's server](https://github.com/flowr-analysis/flowr/wiki/Interface#communicating-with-the-server)
 - [NPM package](https://www.npmjs.com/package/@eagleoutice/flowr): include flowR in your TypeScript and JavaScript projects
  
 
@@ -718,8 +712,8 @@ If you are already using flowR and want to give feedback, please consider fillin
  
 ## ⭐ Getting Started
 
-To get started with _flowR_ and its features, please check out the [Overview](https://github.com/flowr-analysis/flowr/wiki/overview) wiki page. 
-The [Setup](https://github.com/flowr-analysis/flowr/wiki/setup) wiki page explains how you can download and setup _flowR_ on your system. 
+To get started with _flowR_ and its features, please check out the [Overview](https://github.com/flowr-analysis/flowr/wiki/Overview) wiki page. 
+The [Setup](https://github.com/flowr-analysis/flowr/wiki/Setup) wiki page explains how you can download and setup _flowR_ on your system. 
 With docker&nbsp;🐳️, the following line should be enough (and drop you directly into the read-eval-print loop):
 
 
@@ -747,7 +741,7 @@ If you want to use the same commands:
 ## 📜 More Information
 
 For more details on how to use _flowR_ please refer to the [wiki pages](https://github.com/flowr-analysis/flowr/wiki),
-as well as the deployed [code documentation](https://flowr-analysis.github.io/flowr/docs).
+as well as the deployed [code documentation](https://flowr-analysis.github.io/flowr/doc/).
 To cite flowR, please check out the publications below. To specifically refer to the source code, 
 please check out flowR's [Zenodo archive](https://zenodo.org/doi/10.5281/zenodo.13319290).
 
@@ -873,7 +867,10 @@ please check out the following publications (if you find that a paper is missing
 
 ## 🚀 Contributing
 
-We welcome every contribution! Please check out the [developer onboarding](https://github.com/flowr-analysis/flowr/wiki/onboarding) section in the wiki for all the information you will need.
+We welcome every contribution! The [developer onboarding](https://github.com/flowr-analysis/flowr/wiki/Onboarding) page has everything you need to get started.
+With **R** and **Node.js** installed, `npm run setup:dev` checks your prerequisites, installs the dependencies, and configures the git hooks.
+The [contributing guidelines](https://github.com/flowr-analysis/flowr/tree/main/.github/CONTRIBUTING.md) explain our commit conventions,
+and [Linting and Testing](https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing) shows how to run the tests.
 
 ### Contributors
 
@@ -892,6 +889,6 @@ and received an unrestricted gift from [Posit](https://posit.co/), the open-sour
 
 ### Generation Notice
 
-Please notice that this file was generated automatically using the file [src/documentation/doc-readme.ts](https://github.com/flowr-analysis/flowr/tree/main//src/documentation/doc-readme.ts) as a source.\
+Please notice that this file was generated automatically using the file [doc-readme.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/doc-readme.ts "src/documentation/doc-readme.ts") as a source.\
 If you want to make changes please edit the source file (the CI will take care of the rest).
 In fact, many files in the [wiki](https://github.com/flowr-analysis/flowr/wiki) are generated, so make sure to check for the source file if you want to make changes.

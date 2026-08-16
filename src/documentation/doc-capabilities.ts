@@ -187,7 +187,7 @@ export class DocCapabilities extends DocMaker<'wiki/Capabilities.md'> {
 	protected async text({ treeSitter }: DocMakerArgs): Promise<string> {
 		/* check if the detailed test data is available */
 		if(!fs.existsSync(detailedInfoFile)) {
-			console.warn('\x1b[31mNo detailed test data available. Run the full tests (npm run test-full) to generate it.\x1b[m');
+			console.warn('\x1b[31mNo detailed test data available. Run the full tests (npm run test:full) to generate it.\x1b[m');
 		}
 		return getPreamble() + await printAsMarkdown({ parser: treeSitter, info: obtainDetailedInfos() }, flowrCapabilities.capabilities);
 	}

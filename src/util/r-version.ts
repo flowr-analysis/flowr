@@ -92,6 +92,7 @@ export type RVersion = SemVer & { str: string };
 
 /** Helpers for R package versions (`1.2-3` style), which are freer than SemVer. */
 export const RVersion = {
+	name: 'RVersion',
 	/**
 	 * Parse an R version string into a {@link SemVer}, normalizing R's freer scheme (e.g. `0.4-9`). Unlike
 	 * `new SemVer(version)` this coerces where needed; the original string is available via `.str`. Returns
@@ -175,6 +176,7 @@ export function rReleaseDate(version: string): Date | undefined {
 
 /** Helpers for R package version ranges (DESCRIPTION constraints like `>= 0.4-9`). */
 export const RRange = {
+	name: 'RRange',
 	/**
 	 * Parse an R version range string into a {@link Range}, normalizing R's freer scheme. The original range
 	 * string is available via `.str`.

@@ -1,4 +1,5 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
+import { appendEnvironment } from '../../../../../environments/append';
 import { DataflowInformation } from '../../../../../info';
 import { DropPathsOption, type FlowrLaxSourcingOptions, InferWorkingDirectory } from '../../../../../../config';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -25,10 +26,9 @@ import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import path from 'path';
 import { GasFeatureKey, GasLevel, GasWikiRef } from '../../../../../../gas';
-import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import type { RProjectFile } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { EdgeType } from '../../../../../graph/edge';
@@ -184,7 +184,7 @@ export function processSourceCall<OtherInfo>(
 	if(sourceFileArgument !== EmptyArgument && sourceFileArgument?.value?.type === RType.String) {
 		sourceFile = [removeRQuotes(sourceFileArgument.lexeme)];
 	} else if(sourceFileArgument !== EmptyArgument) {
-		const resolved = valueSetGuard(resolveIdToValue(sourceFileArgument.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx }));
+		const resolved = NodeValue.setOf(sourceFileArgument.info.id, data);
 		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
 	}
 
@@ -228,7 +228,7 @@ export function processSourceCall<OtherInfo>(
  * Processes a source request with the given dataflow processor information and existing dataflow information
  * Otherwise, this can be an {@link RProjectFile} representing a standalone source file
  */
-export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest | RProjectFile<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, makeMaybe: boolean, getId?: IdGenerator<NoInfo>): DataflowInformation {
+export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest | RProjectFile<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, makeMaybe: boolean, getId?: IdGenerator<NoInfo>, evaluatedByRoot = false): DataflowInformation {
 	// parse, normalize and dataflow the sourced file
 	let dataflow: DataflowInformation;
 	let fst: RProjectFile<OtherInfo & ParentInformation>;
@@ -296,7 +296,12 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 
 	// take the entry point as well as all the written references, and give them a control dependency to the source call to show that they are conditional
 	if(!String(rootId).startsWith('file-')) {
-		if(makeMaybe) {
+		if(evaluatedByRoot) {
+			/* the call evaluates the code and builds its result from it, so the value flows into the call */
+			for(const exit of dataflow.exitPoints) {
+				dataflow.graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
+			}
+		} else if(makeMaybe) {
 			if(dataflow.graph.hasVertex(dataflow.entryPoint)) {
 				dataflow.graph.addControlDependency(dataflow.entryPoint, rootId, true);
 			}
@@ -349,4 +354,24 @@ export function standaloneSourceFile<OtherInfo>(
 		environment:    information.environment,
 		referenceChain: [...data.referenceChain, file.filePath]
 	}, information, false);
+}
+
+/**
+ * Folds the results of analyzing sourced code back into the information of the call that asked for it, which
+ * `eval` and the string templates both need: the code contributes everything it reads, writes, and leaves open.
+ */
+export function mergeSourced(information: DataflowInformation, sourced: readonly DataflowInformation[]): DataflowInformation {
+	if(sourced.length === 0) {
+		return information;
+	}
+	return {
+		...information,
+		graph:             sourced.reduce((acc, r) => acc.mergeWith(r.graph), information.graph),
+		environment:       sourced.reduce((acc, r) => appendEnvironment(acc, r.environment), information.environment),
+		in:                information.in.concat(sourced.flatMap(r => r.in)),
+		out:               information.out.concat(sourced.flatMap(r => r.out)),
+		unknownReferences: information.unknownReferences.concat(sourced.flatMap(r => r.unknownReferences)),
+		exitPoints:        information.exitPoints.concat(sourced.flatMap(r => r.exitPoints)),
+		hooks:             information.hooks.concat(sourced.flatMap(r => r.hooks))
+	};
 }

@@ -117,7 +117,7 @@ The following segments intend to give you an overview of how to work with the no
 
 ## How to Get a Normalized AST
 
-As explained alongside the ${ctx.linkPage('wiki/Interface', 'Interface', 'creating-flowr-analyses')} wiki page, you can use an instance of
+As explained alongside the ${ctx.linkPage('wiki/Interface', 'Interface', 'creating-analyses-with-flowr')} wiki page, you can use an instance of
 ${ctx.link(FlowrAnalyzer)} to get the ${ctx.link('NormalizedAst')}:
 
 ${ctx.code(simpleNormalizedAst, { dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true })}

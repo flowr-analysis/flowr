@@ -7,7 +7,7 @@ import { DEFAULT_DATAFLOW_PIPELINE } from '../../../src/core/steps/pipeline/defa
 import { assert, describe, test } from 'vitest';
 import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 
-describe.sequential('Quads', withShell(shell => {
+describe('Quads', { concurrent: false }, withShell(shell => {
 	const context = 'test';
 	const domain = 'https://uni-ulm.de/r-ast/';
 

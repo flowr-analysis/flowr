@@ -11,20 +11,17 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import type { MergeableRecord } from '../../../../../../util/objects';
 import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { VertexType } from '../../../../../graph/vertex';
+import { VertexType, FunctionDefinitionVertex } from '../../../../../graph/vertex';
 import type { FunctionArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import {
 	type Identifier,
-	type IdentifierReference,
-	isReferenceType,
 	ReferenceType
 } from '../../../../../environments/identifier';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
-import { expensiveTrace } from '../../../../../../util/log';
-import { resolveIdToSingleString } from '../../../../../eval/resolve/alias-tracking';
+import { ClosureRefs } from '../../../../linker';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -53,7 +50,7 @@ export function resolveFunctionArgument<OtherInfo>(
 		return undefined;
 	}
 	const functionName = opts.resolveValue
-		? resolveIdToSingleString(val.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx })
+		? NodeValue.singleStringOf(val.info.id, data)
 		: val.content;
 	return functionName === undefined ? undefined : { functionId: val.info.id, functionName, anonymous: false, asString: false };
 }
@@ -69,6 +66,8 @@ export interface BuiltInApplyConfiguration extends MergeableRecord {
 	readonly resolveInEnvironment?:   'global' | 'local'
 	/** Should the value of the function be resolved? */
 	readonly resolveValue?:           boolean
+	/** the call reaches beyond what we can see even when the callee resolves, like `rlang::exec` */
+	readonly hasUnknownSideEffects?:  boolean
 }
 
 
@@ -82,7 +81,7 @@ export function processApply<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: BuiltInApplyConfiguration
 ): DataflowInformation {
-	const { indexOfFunction = 1, nameOfFunctionArgument, unquoteFunction, resolveInEnvironment, resolveValue } = config;
+	const { indexOfFunction = 1, nameOfFunctionArgument, unquoteFunction, resolveInEnvironment, resolveValue, hasUnknownSideEffects } = config;
 	/* as the length is one-based and the argument filter mapping is zero-based, we do not have to subtract 1 */
 	const forceArgsMask = new Array(indexOfFunction).fill(false);
 	forceArgsMask.push(true);
@@ -90,6 +89,9 @@ export function processApply<OtherInfo>(
 		name, args, rootId, data, forceArgs: forceArgsMask, origin: BuiltInProcName.Apply
 	});
 	let information = resFn.information;
+	if(hasUnknownSideEffects) {
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
+	}
 	const processedArguments = resFn.processedArguments;
 
 	let index = indexOfFunction;
@@ -181,31 +183,8 @@ export function processApply<OtherInfo>(
 			]
 		};
 		const dfVert = information.graph.getVertex(rootId);
-		if(dfVert && dfVert.tag === VertexType.FunctionDefinition) {
-			// resolve all ingoings against the environment
-			const ingoingRefs = dfVert.subflow.in;
-			const remainingIn: IdentifierReference[] = [];
-			for(const ingoing of ingoingRefs) {
-				const resolved = ingoing.name ? resolveByName(ingoing.name, data.environment, ingoing.type) : undefined;
-				if(resolved === undefined) {
-					remainingIn.push(ingoing);
-					continue;
-				}
-				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${ingoing.nodeId} in closure of function definition ${rootId}`);
-				let allBuiltIn = true;
-				const inId = ingoing.nodeId;
-				for(const { nodeId, type } of resolved) {
-					information.graph.addEdge(inId, nodeId, EdgeType.Reads);
-					information.graph.addEdge(rootId, nodeId, EdgeType.Reads); // because the def. is the anonymous call
-					if(!isReferenceType(type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
-						allBuiltIn = false;
-					}
-				}
-				if(allBuiltIn) {
-					remainingIn.push(ingoing);
-				}
-			}
-			dfVert.subflow.in = remainingIn;
+		if(dfVert && FunctionDefinitionVertex.is(dfVert)) {
+			ClosureRefs.resolveOpenIngoing(information.graph, rootId, dfVert, data.environment);
 		}
 	} else {
 		/* identify it as a full-blown function call :) */

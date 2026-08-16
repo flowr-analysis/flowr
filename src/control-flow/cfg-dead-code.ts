@@ -7,11 +7,10 @@ import type { CfgPassInfo } from './cfg-simplification';
 import { SemanticCfgGuidedVisitor } from './semantic-cfg-guided-visitor';
 import { FunctionCallVertex, type DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import { FunctionArgument } from '../dataflow/graph/graph';
-import { resolveIdToSingleString, resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
+import { NodeValue } from '../dataflow/eval/resolve/node-value';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { log } from '../util/log';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { valueSetGuard } from '../dataflow/eval/values/general';
 import { isValue } from '../dataflow/eval/values/r-value';
 import { visitCfgInOrder } from './simple-visitor';
 import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
@@ -104,19 +103,13 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		if(this.cachedConditions.has(id)) {
 			return;
 		}
-		const values = valueSetGuard(resolveIdToValue(valueId, {
-			graph:   this.config.dfg,
-			full:    true,
-			idMap:   this.config.normalizedAst.idMap,
-			resolve: this.config.ctx.config.solver.variables,
-			ctx:     this.config.ctx,
-		}));
-		if(values === undefined || values.elements.length !== 1 || values.elements[0].type !== 'logical'  || !isValue(values.elements[0].value)) {
+		const value = NodeValue.inGraph.soleOf(valueId, this.config.dfg, this.config.ctx, 'logical', { idMap: this.config.normalizedAst.idMap });
+		if(value === undefined || !isValue(value.value)) {
 			this.unableToCalculateValue(id);
 			return;
 		}
 		/* we should translate this to truthy later */
-		this.storeDefiniteValue(id, Boolean(values.elements[0].value));
+		this.storeDefiniteValue(id, Boolean(value.value));
 	}
 
 	private handleWithCondition(data: { call: DataflowGraphVertexFunctionCall, condition?: FunctionArgument | NodeId }) {
@@ -126,24 +119,6 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 			return;
 		}
 		this.handleValuesFor(id, typeof data.condition === 'object' ? data.condition.nodeId : data.condition);
-	}
-
-	private getBoolArgValue(data: { call: DataflowGraphVertexFunctionCall }): boolean | undefined {
-		if(data.call.args.length !== 1 || data.call.args[0] === EmptyArgument) {
-			return undefined;
-		}
-
-		const values = valueSetGuard(resolveIdToValue(data.call.args[0].nodeId, {
-			graph: this.config.dfg,
-			full:  true,
-			idMap: this.config.normalizedAst.idMap,
-			ctx:   this.config.ctx,
-		}));
-		if(values === undefined || values.elements.length !== 1 || values.elements[0].type !== 'logical'  || !isValue(values.elements[0].value)) {
-			return undefined;
-		}
-
-		return Boolean(values.elements[0].value);
 	}
 
 	protected onIfThenElseCall(data: { call: DataflowGraphVertexFunctionCall, condition?: NodeId }) {
@@ -213,9 +188,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	private computeSelectedSwitchArm(v: DataflowGraphVertexFunctionCall): { id: NodeId | undefined } | 'unknown' {
-		const target = resolveIdToSingleString(FunctionArgument.getReference(v.args[0]), {
-			graph: this.config.dfg, full: true, idMap: this.config.normalizedAst.idMap, resolve: this.config.ctx.config.solver.variables, ctx: this.config.ctx
-		});
+		const target = NodeValue.inGraph.singleStringOf(FunctionArgument.getReference(v.args[0]), this.config.dfg, this.config.ctx, { idMap: this.config.normalizedAst.idMap });
 		if(target === undefined) {
 			return 'unknown';
 		}

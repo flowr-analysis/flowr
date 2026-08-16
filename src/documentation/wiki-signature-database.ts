@@ -14,10 +14,7 @@ import { FlowrAnalyzerPackageVersionsSigDbPlugin } from '../project/plugins/pack
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { FlowrAnalyzerDependenciesContext } from '../project/context/flowr-analyzer-dependencies-context';
 import type { KnownParser } from '../r-bridge/parser';
-
-function cranDatabaseAvailable(): boolean {
-	return defaultSigDbPath('current') !== undefined || defaultSigDbPath('full') !== undefined;
-}
+import { warnMissingSigDb } from './doc-util/doc-sigdb';
 
 /** point the resolver at your own database (a file path or manifest) */
 function usePackageDatabase(parser: KnownParser) {
@@ -210,8 +207,7 @@ export class WikiSignatureDatabase extends DocMaker<'wiki/Signature Database.md'
 	 * leaves the committed page untouched, so the workflow reports no change and publishes nothing.
 	 */
 	public override async make(args: Parameters<DocMaker<'wiki/Signature Database.md'>['make']>[0]): Promise<boolean> {
-		if(!cranDatabaseAvailable()) {
-			console.log(`  [${this.getTarget()}] skipped: no CRAN sigdb present (not downloaded); keeping the committed page`);
+		if(warnMissingSigDb(this.getTarget())) {
 			return false;
 		}
 		return super.make(args);
@@ -228,6 +224,9 @@ flowR ships a database of the complete history of all exports in every version o
 After \`library(ggplot2)\`, a call to \`ggplot()\` resolves to \`ggplot2::ggplot\`. The same database
 qualifies bare names and backs various components like the ${ctx.linkPage('wiki/Query API', 'dependencies and call-context queries')} 
 as well as the ${ctx.linkPage('wiki/Linter', 'undefined symbol')} rule.
+
+You can search what it knows at [flowr-analysis.github.io/flowr/wiki/sigdb](https://flowr-analysis.github.io/flowr/wiki/sigdb/),
+a static page listing every exported name, generated from this database by \`npm run gen:landing\`.
 
 ## What is stored
 

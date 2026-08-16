@@ -12,6 +12,7 @@ import { LintingRuleTag } from '../linter-tags';
 import { VariableDefinitionVertex, VertexType } from '../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { NoEdges } from '../../dataflow/graph/graph';
 
 const defaultCredentialNamePattern =
 	'(?:password|passwd|pwd|secret|api[_.]?key|api[_.]?token|access[_.]?token|auth[_.]?token|bearer[_.]?token|private[_.]?key|credential)';
@@ -63,7 +64,7 @@ export const NO_LEAKED_CREDENTIALS = {
 				return [];
 			}
 			const nameMatches = namePattern.test(name);
-			for(const [targetId, edge] of dfg.outgoingEdges(element.node.info.id) ?? []) {
+			for(const [targetId, edge] of dfg.outgoingEdges(element.node.info.id) ?? NoEdges) {
 				if(!DfEdge.includesType(edge, EdgeType.DefinedBy)) {
 					continue;
 				}

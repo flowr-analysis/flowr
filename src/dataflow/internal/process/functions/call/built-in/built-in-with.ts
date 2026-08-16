@@ -1,14 +1,14 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
-import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, NseArguments } from '../known-call-handling';
+import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, NseArguments, NseKind } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../../../../../environments/identifier';
 import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
-import { bindArgs, resolveArgToEnvir, routeWrittenToCustomEnv, signatureParamNames } from './built-in-envir-utils';
+import { resolveArgToEnvir, routeWrittenToCustomEnv, signatureParamNames } from './built-in-envir-utils';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { patchFunctionCall } from '../common';
 import { EdgeType } from '../../../../../graph/edge';
@@ -25,7 +25,7 @@ function markAsMaskedFallback<OtherInfo>(
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
 	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With });
-	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, NseArguments.AllButFirst);
+	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, NseArguments.AllButFirst, { kind: NseKind.DataMasked });
 	return information;
 }
 
@@ -39,8 +39,8 @@ function markAsMaskedFallback<OtherInfo>(
  * - `with`: writes in `expr` are ephemeral (R's `with` uses a temporary scope and discards them).
  * - `within`: writes in `expr` are persisted back into the tracked envState of `data`.
  *
- * Arguments are resolved using R's standard matching rules ({@link bindArgs}: pmatch for named
- * args, positional fallback), so `with(expr=x, data=e)` and `with(dat=e, x)` are handled correctly.
+ * Arguments are resolved with {@link RFunctionCall.matchArgsToParams}, so `with(expr=x, data=e)` and
+ * `with(dat=e, x)` are handled correctly.
  *
  * Falls back to a normal function-call analysis when the data argument cannot be resolved
  * to a tracked environment.
@@ -57,14 +57,13 @@ export function processWithEnv<OtherInfo>(
 
 	// prefer R's real `base::with` signature from the database, falling back to the known formals when it is absent
 	// use the call's own name (`with` or `within`) qualified to base, so each gets its real signature
-	const bound = bindArgs(args, signatureParamNames(data, Identifier.make(Identifier.getName(name.content), PkgName.Base), withParamsFallback));
+	const bound = RFunctionCall.matchArgsToParams(args, signatureParamNames(data, Identifier.make(Identifier.getName(name.content), PkgName.Base), withParamsFallback));
 	const dataArg = bound.get('data');
 	const exprArg = bound.get('expr');
 
 	// when we cannot resolve the data to a tracked environment, `expr` is still data-masked: its symbols name
 	// columns of `data`, not variables in scope, so mark the non-data arguments as non-standard-evaluated
-	if(dataArg === EmptyArgument || dataArg?.value === undefined ||
-	   exprArg === EmptyArgument || exprArg?.value === undefined) {
+	if(dataArg?.value === undefined || exprArg?.value === undefined) {
 		return markAsMaskedFallback(name, args, rootId, data);
 	}
 

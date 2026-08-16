@@ -133,6 +133,39 @@ export const DfEdge = {
 	doesNotIncludeType(this: void, { types }: DfEdgeLike, any: EdgeType): boolean {
 		return (any & types) === 0;
 	},
+	/**
+	 * Whether the edge carries any type at all.
+	 * Counterpart of {@link DfEdge#hasNoType}.
+	 * @example
+	 *
+	 * ```ts
+	 * DfEdge.hasAnyType({ types: EdgeType.Reads }) // true
+	 * DfEdge.hasAnyType({ types: 0 })              // false
+	 * ```
+	 */
+	hasAnyType(this: void, { types }: DfEdgeLike): boolean {
+		return types !== 0;
+	},
+	/**
+	 * Whether the edge carries no type at all. Such an edge states nothing and has to be removed, not kept.
+	 * Counterpart of {@link DfEdge#hasAnyType}.
+	 */
+	hasNoType(this: void, { types }: DfEdgeLike): boolean {
+		return types === 0;
+	},
+	/**
+	 * Check whether the edge carries the given types and nothing else.
+	 * Strict counterpart of {@link DfEdge#includesType}, which already holds if one of the bits is set.
+	 * @example
+	 *
+	 * ```ts
+	 * DfEdge.isOnlyType({ types: EdgeType.Reads | EdgeType.Calls }, EdgeType.Reads)                  // false
+	 * DfEdge.isOnlyType({ types: EdgeType.Reads | EdgeType.Calls }, EdgeType.Reads | EdgeType.Calls) // true
+	 * ```
+	 */
+	isOnlyType(this: void, { types }: DfEdgeLike, only: EdgeType): boolean {
+		return types === only;
+	},
 } as const;
 
 

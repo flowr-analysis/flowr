@@ -12,14 +12,13 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { Identifier, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
-import { valueSetGuard } from '../../../../../eval/values/general';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { applyKills } from '../../../../../environments/apply-kill';
 import { define } from '../../../../../environments/define';
 import type { EnvirResolution } from './built-in-envir-utils';
 import { resolveEnvirArg } from './built-in-envir-utils';
+import { Resolve } from '../../../../../environments/resolve-helper';
 
 /** The variables an `rm` call targets for removal. */
 interface RmTargets {
@@ -49,7 +48,7 @@ function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>,
 	if(ns === 'base') {
 		return true;
 	}
-	const resolved = resolveByName(fn, data.environment, ReferenceType.Function);
+	const resolved = Resolve.byNameAndType(fn, data.environment, ReferenceType.Function);
 	return resolved === undefined || resolved.every(d => isReferenceType(d.type, ReferenceType.BuiltInFunction));
 }
 
@@ -78,12 +77,7 @@ function collectListArg<OtherInfo>(targets: RmTargets, value: RNode<OtherInfo & 
 	} else if(isBuiltInLsCall(value, data)) {
 		targets.all = true;
 	} else {
-		const elements = valueSetGuard(resolveIdToValue(value.info.id, {
-			environment: data.environment,
-			idMap:       data.completeAst.idMap,
-			resolve:     data.ctx.config.solver.variables,
-			ctx:         data.ctx
-		}))?.elements;
+		const elements = NodeValue.setOf(value.info.id, data)?.elements;
 		if(!elements || elements.length === 0) {
 			targets.unknown = true;
 		} else {

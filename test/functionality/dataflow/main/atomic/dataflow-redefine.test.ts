@@ -9,7 +9,7 @@ import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 
-describe.sequential('Redefining builtins', withShell(shell => {
+describe('Redefining builtins', { concurrent: false }, withShell(shell => {
 	assertDataflow(label('if (print)', ['name-escaped', 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, 'newlines']),
 		shell, `\`if\` <- function(...) 2
 if(1) 

@@ -4,12 +4,12 @@
  * the cache directory. Split out of `../sigdb` so the reader there only consumes plain, seekable files. The codec
  * is detected by extension (see `./codec`), so existing `.br` and new `.zst` bundles read transparently.
  */
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import readline from 'node:readline';
-import { pipeline } from 'node:stream/promises';
-import type { Readable } from 'node:stream';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import readline from 'readline';
+import { pipeline } from 'stream/promises';
+import type { Readable } from 'stream';
 import { SigDbExt, type SigDbContent } from './schema';
 import { encodeIndex, type SigDbIndex } from './index-format';
 import { Hash53 } from '../../util/hash';

@@ -21,8 +21,7 @@ import { dataflowLogger } from '../../../../../logger';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { EdgeType } from '../../../../../graph/edge';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
-import { valueSetGuard } from '../../../../../eval/values/general';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import {
 	applyCdsToAllInGraphButConstants,
 	applyCdToReferences
@@ -57,8 +56,8 @@ export function processWhileLoop<OtherInfo>(
 	const origEnv = data.environment;
 
 	// we should defer this to the abstract interpretation
-	const values = resolveIdToValue(unpackedArgs[0]?.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx });
-	const conditionIsAlwaysFalse = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
+	const values = NodeValue.setOf(unpackedArgs[0]?.info.id, data);
+	const conditionIsAlwaysFalse = values?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
 
 	//We don't care about the body if it never executes
 	if(conditionIsAlwaysFalse) {
@@ -90,7 +89,7 @@ export function processWhileLoop<OtherInfo>(
 			hooks:             condition.hooks
 		};
 	}
-	const conditionIsAlwaysTrue = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
+	const conditionIsAlwaysTrue = values?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 
 	guard(condition !== undefined && body !== undefined, () => `While-Loop ${Identifier.toString(name.content)} has no condition or body, impossible!`);
 	const originalDependency = data.cds;

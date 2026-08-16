@@ -6,14 +6,14 @@ import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/mod
 import type { PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { resolveByName } from '../../../../environments/resolve-by-name';
-import { VertexType } from '../../../../graph/vertex';
 import { Identifier, ReferenceType } from '../../../../environments/identifier';
 import { baseRExportOwner } from '../../../../../util/r-base-packages';
 import type { InGraphIdentifierDefinition } from '../../../../environments/identifier';
 import { EdgeType } from '../../../../graph/edge';
 import { attachExportVertex, loadNodesForNamespace } from './built-in/built-in-library';
 import type { DataflowGraph } from '../../../../graph/graph';
+import { FunctionCallVertex } from '../../../../graph/vertex';
+import { Resolve } from '../../../../environments/resolve-helper';
 
 
 function mergeInformation(info: DataflowInformation | undefined, newInfo: DataflowInformation): DataflowInformation {
@@ -36,11 +36,13 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 /**
  * Marks the given function call node as only calling built-in functions.
  */
-export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId): void {
+export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId, keepEnvironment = false): void {
 	const v = graph.getVertex(rootId);
-	if(v?.tag === VertexType.FunctionCall) {
+	if(FunctionCallVertex.is(v)) {
 		v.onlyBuiltin = true;
-		v.environment = undefined;
+		if(!keepEnvironment) {
+			v.environment = undefined;
+		}
 	}
 }
 
@@ -54,11 +56,14 @@ export function processNamedCall<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const resolved = resolveByName(name.content, data.environment, ReferenceType.Function) ?? [];
+	const resolved = Resolve.byNameAndType(name.content, data.environment, ReferenceType.Function) ?? [];
 	let defaultProcessor = resolved.length === 0;
 
+	/* a call whose meaning a later pass looks up in its environment has to keep it */
+	const keepEnvironment = resolved.some(r => r.type === ReferenceType.BuiltInFunction && r.config?.keepEnvironment === true);
+
 	/* if this call will be marked as built-in only (see below), its vertex needs no environment snapshot */
-	if(resolved.length > 0
+	if(resolved.length > 0 && !keepEnvironment
 		&& resolved.every(r => r.type === ReferenceType.BuiltInFunction && typeof r.processor === 'function')
 		&& resolved.some(r => r.type === ReferenceType.BuiltInFunction && r.config?.libFn !== true)) {
 		data = { ...data, builtInNoEnv: rootId };
@@ -81,7 +86,7 @@ export function processNamedCall<OtherInfo>(
 		information = mergeInformation(information, call.information);
 	} else if(information && builtIn) {
 		// mark the function call as built in only
-		markAsOnlyBuiltIn(information.graph, rootId);
+		markAsOnlyBuiltIn(information.graph, rootId, keepEnvironment);
 	}
 
 	// on demand: materialize the built-in vertex for any package export this call resolves to and, when we

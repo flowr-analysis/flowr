@@ -3,7 +3,7 @@ import { label } from '../../../_helper/label';
 import { describe } from 'vitest';
 import { FlowrConfig } from '../../../../../src/config';
 
-describe.sequential('Custom Environment Slicing', withShell(shell => {
+describe('Custom Environment Slicing', { concurrent: false }, withShell(shell => {
 	describe('assign and get', () => {
 		assertSliced(label('slice for get includes assign that provided value, not unrelated assign', ['dynamic-environment-resolution', 'environment-sharing', 'name-created']),
 			shell,

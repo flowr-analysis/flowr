@@ -1,11 +1,10 @@
-import { beforeAll, assert, describe, test } from 'vitest';
+import { assert, describe, test } from 'vitest';
 import type { ChildProcess } from 'child_process';
 import { exec } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-
-const flowrBin = 'node dist/src/cli/flowr.min.js';
+import { FlowrBin as flowrBin } from './utility/utility';
 
 const enum WatchState  { AwaitPrompt, AwaitWatch, AwaitRerun }
 const enum CtrlCState  { AwaitPrompt, AwaitHint,  AwaitExit  }
@@ -142,11 +141,7 @@ function flowrReplDoubleCtrlC(timeout = 90_000): Promise<string> {
 	});
 }
 
-describe.sequential('repl watch mode', () => {
-	beforeAll(() => new Promise<void>((resolve, reject) => {
-		exec('npm run build:bundle-flowr', { timeout: 120_000 }, err => err ? reject(err) : resolve());
-	}), 120_000);
-
+describe('repl watch mode', { concurrent: false }, () => {
 	// these spawn a real process and depend on OS process scheduling / fs.watch timing, so an occasional CI-load
 	// hiccup (e.g. the bundled process getting starved long enough to miss its startup window) gets a retry
 	// before failing the build; a genuine regression still fails consistently across retries

@@ -4,10 +4,12 @@ import type { BuiltIns } from './built-in';
 import type { BuiltInDefinition, BuiltInDefinitions } from './built-in-config';
 import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { REnvironmentInformation } from './environment';
+import { REnvironment } from './environment';
 import type { IdentifierDefinition } from './identifier';
 import { Identifier, ReferenceType } from './identifier';
-import { resolveByName } from './resolve-by-name';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PackageSignatureSource } from '../../project/sigdb/reader';
+import { Resolve } from './resolve-helper';
 
 /**
  * Where to look up what flowR knows about a function, in that order:
@@ -22,6 +24,36 @@ export interface FnPropsSource {
 	readonly signatures?:  PackageSignatureSource
 	/** the package version to ask the signature database for (its latest by default) */
 	readonly version?:     string
+}
+
+/**
+ * What flowR states about the package export `definition` binds, `undefined` if it binds none or if flowR
+ * states nothing about it. `library(pkg)` binds every export itself, and that binding hides the built-in layer.
+ */
+function statedBuiltIn(definition: IdentifierDefinition, environment: REnvironmentInformation): readonly IdentifierDefinition[] | undefined {
+	const pkgFn = definition.type === ReferenceType.Function ? NodeId.toPkgFn(definition.nodeId) : undefined;
+	if(pkgFn === undefined) {
+		return undefined;
+	}
+	const [pkg, fn] = pkgFn;
+	const known = REnvironment.findBuiltIn(environment.current).memory.get(fn)
+		?.filter(d => d.type === ReferenceType.BuiltInFunction && Identifier.getNamespace(d.name ?? '') === pkg);
+	return known?.length ? known : undefined;
+}
+
+/** `definitions` with every package export replaced by what flowR states about it, the array itself if none is one. */
+function withStatedBuiltIns(definitions: readonly IdentifierDefinition[], environment: REnvironmentInformation): readonly IdentifierDefinition[] {
+	let replaced: IdentifierDefinition[] | undefined;
+	for(const [at, definition] of definitions.entries()) {
+		const stated = statedBuiltIn(definition, environment);
+		if(stated === undefined) {
+			replaced?.push(definition);
+		} else {
+			replaced ??= definitions.slice(0, at);
+			replaced.push(...stated);
+		}
+	}
+	return replaced ?? definitions;
 }
 
 function ofDefinitions(definitions: readonly IdentifierDefinition[] | undefined): BuiltInFnInfo | undefined {
@@ -46,11 +78,12 @@ function ofDefinitions(definitions: readonly IdentifierDefinition[] | undefined)
 export function queryFnProps(name: Identifier, { environment, builtIns, signatures, version }: FnPropsSource): BuiltInFnInfo | undefined {
 	let info: BuiltInFnInfo | undefined;
 	if(environment !== undefined) {
-		const resolved = resolveByName(name, environment, ReferenceType.Function);
-		if(resolved?.some(d => d.type !== ReferenceType.BuiltInFunction)) {
+		const resolved = Resolve.byNameAndType(name, environment, ReferenceType.Function);
+		const stated = resolved === undefined ? undefined : withStatedBuiltIns(resolved, environment);
+		if(stated?.some(d => d.type !== ReferenceType.BuiltInFunction)) {
 			return undefined;
 		}
-		info = ofDefinitions(resolved);
+		info = ofDefinitions(stated);
 	} else if(builtIns !== undefined) {
 		info = ofDefinitions(builtIns.builtInMemory.get(Identifier.getName(name)));
 	}

@@ -7,6 +7,7 @@ import type { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sit
 import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
 import type { Tree } from 'web-tree-sitter';
 import type { ParseStepOutput, ParseStepOutputSingleFile } from '../../../src/r-bridge/parser';
+import type { ValidFlowrConfigPaths } from '../../../src/config';
 
 
 interface FileState {
@@ -49,23 +50,31 @@ function unchangedPathsBetween(
 	return Array.from(beforeStep.keys()).filter(path => beforeStep.get(path) === afterStep.get(path));
 }
 
-async function createAnalyzerForFiles(
-	initialFiles: readonly FileState[]
-): Promise<{ analyzer: FlowrAnalyzer; files: Map<string, FlowrInlineTextFile> }> {
-	const analyzer = await new FlowrAnalyzerBuilder()
-		.setEngine('tree-sitter')
-		.configure('incrementalParsing.activated', true)
-		.build();
+function addInlineFiles(analyzer: FlowrAnalyzer, fileStates: readonly FileState[]): Map<string, FlowrInlineTextFile> {
 	const files = new Map<string, FlowrInlineTextFile>();
-
-	for(const initialFile of initialFiles) {
-		const file = new FlowrInlineTextFile(initialFile.path, initialFile.content);
-		analyzer.addFile(file);
-		analyzer.addRequest({ request: 'file', content: initialFile.path });
-		files.set(initialFile.path, file);
+	for(const fileState of fileStates) {
+		const inlineFile = new FlowrInlineTextFile(fileState.path, fileState.content);
+		analyzer.addFile(inlineFile);
+		analyzer.addRequest({ request: 'file', content: fileState.path });
+		files.set(fileState.path, inlineFile);
 	}
+	return files;
+}
 
-	return { analyzer, files };
+async function createAnalyzerForFiles(
+	initialFiles: readonly FileState[],
+	configOverrides: readonly (readonly [ValidFlowrConfigPaths, unknown])[] = []
+): Promise<{ analyzer: FlowrAnalyzer; files: Map<string, FlowrInlineTextFile> }> {
+	let builder = new FlowrAnalyzerBuilder()
+		.setEngine('tree-sitter')
+		.configure('incremental.parsing.activated', true)
+		.configure('incremental.parsing.heuristics.activated', false);
+	for(const [key, value] of configOverrides) {
+		builder = builder.configure(key, value as never);
+	}
+	const analyzer = await builder.build();
+
+	return { analyzer, files: addInlineFiles(analyzer, initialFiles) };
 }
 
 function applyUpdateStepToAnalyzer(
@@ -248,6 +257,82 @@ const scenario = (
 	fileUpdates
 });
 
+
+interface HeuristicStep {
+	content:           string;
+	expectIncremental: boolean;
+}
+
+/**
+ * Applies `steps` one after another to a single file and, after each step, checks whether the resulting
+ * parse call reused the previous tree (incremental) or not (full reparse).
+ */
+function executeHeuristicScenario(
+	testLabel: string,
+	initialContent: string,
+	configOverrides: readonly (readonly [ValidFlowrConfigPaths, unknown])[],
+	steps: readonly HeuristicStep[]
+): void {
+	it(testLabel, async() => {
+		const targetFile = file('test.R', initialContent);
+		const { analyzer, files } = await createAnalyzerForFiles([targetFile], configOverrides);
+		await analyzer.normalize();
+
+		const tracer = createIncrementalParseTracer(analyzer);
+		try {
+			for(const step of steps) {
+				const previousTree = capturePreviousTrees(analyzer).get(targetFile.path);
+				assert(previousTree !== undefined, `missing previous tree before updating to: ${step.content}`);
+
+				files.get(targetFile.path)?.updateInlineContent(step.content);
+				const { incrementalParseCalls } = await tracer.trace(async() => await analyzer.normalize());
+
+				const call = incrementalParseCalls.find(c => c.filePath === targetFile.path);
+				assert(call !== undefined, `expected a parse call for ${targetFile.path}`);
+
+				if(step.expectIncremental) {
+					expect(call.previousTree, 'expected the previous tree to be reused (incremental parse)').toBe(previousTree);
+				} else {
+					expect(call.previousTree, 'expected a full reparse (no previous tree reused)').toBeUndefined();
+				}
+			}
+		} finally {
+			tracer.restore();
+		}
+	});
+}
+
+describe('Incremental Parsing heuristics', () => {
+	describe('linesFrom', () => {
+		const linesFrom = 3;
+		const heuristicOverrides: readonly (readonly [ValidFlowrConfigPaths, unknown])[] = [
+			['incremental.parsing.heuristics.activated', true],
+			['incremental.parsing.heuristics.linesFrom', linesFrom],
+			['incremental.parsing.heuristics.bytesFrom', 0],
+			['incremental.parsing.heuristics.mtime', false]
+		];
+
+		executeHeuristicScenario(
+			'2-line file stays a full reparse until it grows to reach linesFrom (=3)',
+			lines('x <- 1', 'x <- 2'),
+			heuristicOverrides,
+			[
+				{ content: lines('x <- 1', 'x <- 20'),          expectIncremental: false },
+				{ content: lines('x <- 1', 'x <- 20', 'x <- 3'), expectIncremental: true }
+			]
+		);
+
+		executeHeuristicScenario(
+			'3-line file uses incremental parsing until it shrinks below linesFrom (=3)',
+			lines('x <- 1', 'x <- 2', 'x <- 3'),
+			heuristicOverrides,
+			[
+				{ content: lines('x <- 1', 'x <- 2', 'x <- 30'), expectIncremental: true },
+				{ content: lines('x <- 1', 'x <- 2'),             expectIncremental: false }
+			]
+		);
+	});
+});
 
 describe('Incremental Parsing produces same results as Full Parsing', () => {
 	describe('one update set', () => {

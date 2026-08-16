@@ -53,6 +53,18 @@ describe('Resolve Value Query', withTreeSitter( parser => {
 
 	testQuery('Local defined by a call', 'p <- file.path("data", "x.csv")\nread.csv(p)', ['2@p'], [[setFrom(stringFrom('data/x.csv'))]]);
 
+	/* the project root `here` prefixes is implicit, so what it folds to is the path below it */
+	describe('here::here', () => {
+		testQuery('joins its arguments', 'p <- here::here("data", "x.csv")\nread.csv(p)', ['2@p'], [[setFrom(stringFrom('data/x.csv'))]]);
+		testQuery('the root itself', 'p <- here::here()\nread.csv(p)', ['2@p'], [[setFrom(stringFrom('.'))]]);
+		/* the fold belongs to the `here` package, another one of that name is a function we know nothing about */
+		testQuery('another package of that name is not folded', 'p <- foo::here("data")\nread.csv(p)', ['2@p'], [[Top]]);
+		testQuery('a paste of another package is not folded either', 'p <- foo::paste0("a", "b")\nread.csv(p)', ['2@p'], [[Top]]);
+		/* attaching the package must not hide what flowR states about its functions */
+		testQuery('the bare name once the package is attached', 'library(here)\np <- here("data", "x.csv")\nread.csv(p)', ['3@p'],
+			[[setFrom(stringFrom('data/x.csv'))]]);
+	});
+
 	describe('Resolve Parameters and Calls', () => {
 		testQuery('No call-sites', 'function() { x <- 1 }', ['1@x'], [[setFrom(intervalFrom(1, 1))]]);
 		testQuery('No call-sites with inner use', 'function() { x <- 42\n x }', ['2@x'], [[setFrom(intervalFrom(42, 42))]]);

@@ -6,8 +6,8 @@
  * including the older Node bundled in the VS Code extension host. Only the outer compression changes -- the
  * ranged reads and `.idx` seek logic operate on the decompressed plain NDJSON and are codec-agnostic.
  */
-import zlib from 'node:zlib';
-import type { Transform } from 'node:stream';
+import zlib from 'zlib';
+import type { Transform } from 'stream';
 
 // Node >= 22.15 / 23.8 ships zstd in `node:zlib`, but the installed @types/node (22.13) does not declare it yet.
 // Narrowly type just the members we use here instead of weakening the whole `zlib` import.

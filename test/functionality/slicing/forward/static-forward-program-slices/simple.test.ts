@@ -3,7 +3,7 @@ import { describe } from 'vitest';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 
-describe.sequential('Simple Forward', withShell(shell => {
+describe('Simple Forward', { concurrent: false }, withShell(shell => {
 	describe('Constant assignments', () => {
 		for(const i of [1, 2, 3]) {
 			assertSlicedF(label(`slice constant assignment ${i}`, ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines']),
@@ -185,4 +185,16 @@ cat(a)
 			'4@a', '4@$',
 			'6@cat', '6@a'
 		]);
+	/* a forward slice follows what the seed reaches, so an unrelated data flow stays out of it */
+	describe('Unrelated flows are not tainted', () => {
+		const code = `a <- read.csv("a.csv")
+b <- read.csv("b.csv")
+x <- undefined_symbol
+plot(a$v)
+plot(b$v)`;
+		assertSlicedF(label('a seed of its own reaches only its assignment', ['name-normal', 'function-calls', ...OperatorDatabase['<-'].capabilities]),
+			shell, code, ['3@x'], 'x <- undefined_symbol');
+		assertSlicedF(label('one of two reads taints only the plot using it', ['name-normal', 'function-calls', 'dollar-access', ...OperatorDatabase['<-'].capabilities]),
+			shell, code, ['1@a'], 'a <- read.csv("a.csv")\nplot(a$v)');
+	});
 }));

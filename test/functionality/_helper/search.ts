@@ -14,7 +14,7 @@ import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builde
 import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
-import { format } from 'node:util';
+import { format } from 'util';
 import type { RParseRequest } from '../../../src/r-bridge/retriever';
 
 /**

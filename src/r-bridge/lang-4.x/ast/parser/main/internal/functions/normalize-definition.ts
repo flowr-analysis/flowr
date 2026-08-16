@@ -35,7 +35,7 @@ export function tryNormalizeFunctionDefinition(data: NormalizerData, mappedWithN
 
 	const parameters: (undefined | RParameter)[] = splitParameters.map(x => tryNormalizeParameter(data, x));
 
-	if(parameters.some(p => p === undefined)) {
+	if(parameters.includes(undefined)) {
 		parseLog.error(`function had unexpected unknown parameters: ${JSON.stringify(parameters.filter(isNotUndefined))}, aborting.`);
 		return undefined;
 	}

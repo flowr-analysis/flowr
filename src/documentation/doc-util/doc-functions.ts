@@ -30,7 +30,7 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 			const name = node.expression.getText(sourceFile);
 			if(!fname || fname.test(name)) {
 				const comments =  ts.getLeadingCommentRanges(sourceFile.getText(sourceFile), node.getFullStart())?.map(c => {
-					return removeCommentSymbolsFromTypeScriptComment(sourceFile.getText(sourceFile).substring(c.pos, c.end).trim());
+					return removeCommentSymbolsFromTypeScriptComment(sourceFile.getText(sourceFile).slice(c.pos, c.end).trim());
 				});
 				hierarchyList.push({
 					name:       dropGenericsFromTypeName(name),

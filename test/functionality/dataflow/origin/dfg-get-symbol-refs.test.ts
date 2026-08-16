@@ -5,7 +5,7 @@ import { getAllRefsToSymbol } from '../../../../src/dataflow/origin/dfg-get-symb
 import { SlicingCriterion, type SlicingCriteria } from '../../../../src/slicing/criterion/parse';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
-describe.sequential('Get Symbol Refs Test', withTreeSitter(shell => {
+describe('Get Symbol Refs Test', { concurrent: false }, withTreeSitter(shell => {
 	function testCode(name: string, criterion: SlicingCriterion, code: string, expected: SlicingCriteria | undefined) {
 		test(name, async() => {
 			const { dataflow, normalize } =

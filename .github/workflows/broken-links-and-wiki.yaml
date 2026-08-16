@@ -178,6 +178,9 @@ jobs:
 
       - name: "🔎 Check the Wiki pages for broken external links"
         uses: becheran/mlc@v1.2.0
+        # thousands of links against a rate-limiting host can stall for hours; the step is allowed to
+        # fail, so hitting the limit only ends the check, it never ends the run
+        timeout-minutes: 20
         continue-on-error: true
         if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
         with:
@@ -189,6 +192,7 @@ jobs:
 
       - name: "🔎 Check the README for broken external links"
         uses: becheran/mlc@v1.2.0
+        timeout-minutes: 5
         continue-on-error: true
         if: ${{ (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && !failure() }}
         with:

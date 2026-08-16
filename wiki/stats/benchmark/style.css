@@ -1386,8 +1386,3 @@ footer {
 }
 
 .mark { flex: none; vertical-align: -.2em; margin-right: .3rem; }
-/* the light look wears the red flower, the dark one the blue */
-:root[data-theme="dark"] .mark { content: url("../../img/flowR-mark.svg"); }
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme="light"]) .mark { content: url("../../img/flowR-mark.svg"); }
-}

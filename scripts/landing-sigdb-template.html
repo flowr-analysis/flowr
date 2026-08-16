@@ -6,7 +6,6 @@
 <title>flowR &middot; signature database</title>
 <meta name="description" content="Search the R functions flowR knows: <!--FUNCTIONS--> exported names from <!--PACKAGES--> base-R and CRAN packages, the database behind its sophisticated call resolution.">
 <link rel="icon" href="../img/flowR-mark-red.svg" type="image/svg+xml">
-<link rel="icon" href="../img/flowR-mark.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
 <script>
 	/* the stored theme has to sit on the element before the first paint, or the page flashes the other one */
 	try {
@@ -61,10 +60,6 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .bar h2 { margin: 0; flex: none; font-size: 1.15rem; line-height: 1.2; }
 .bar h2 a { display: inline-flex; align-items: center; gap: .45rem; text-decoration: none; }
 .mark { flex: none; }
-:root[data-theme="dark"] .mark { content: url("../img/flowR-mark.svg"); }
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme="light"]) .mark { content: url("../img/flowR-mark.svg"); }
-}
 .bar nav { display: flex; flex-wrap: nowrap; gap: .1rem .2rem; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
 .bar nav::-webkit-scrollbar { display: none; }
 .bar nav a { white-space: nowrap; padding: .3rem .5rem; border-radius: .4rem; color: var(--muted); text-decoration: none; font-size: .82rem; }

@@ -6,7 +6,6 @@
 <title>flowR &middot; playground</title>
 <meta name="description" content="Run flowR on your own R code, in your browser: what a script touches, what the linter says, and the part that computes one value.">
 <link rel="icon" href="../img/flowR-mark-red.svg" type="image/svg+xml">
-<link rel="icon" href="../img/flowR-mark.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
 <script>
 	try {
 		const theme = localStorage.getItem('flowr-theme');
@@ -50,10 +49,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 }
 .top .brand { display: inline-flex; align-items: center; gap: .45rem; font-weight: 700; font-size: 1.15rem; text-decoration: none; color: var(--fg); }
 .mark { flex: none; }
-:root[data-theme="dark"] .mark { content: url("../img/flowR-mark.svg"); }
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme="light"]) .mark { content: url("../img/flowR-mark.svg"); }
-}
 .top .where { color: var(--muted); font-size: .9rem; white-space: nowrap; }
 .top .note { color: var(--muted); font-size: .8rem; line-height: 1.35; flex: 1 1 22rem; min-width: 14rem; max-width: 54rem; }
 /* a narrow window has no room for the aside, and the links matter more */

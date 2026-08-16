@@ -6,7 +6,6 @@
 <title>flowR &middot; program analysis for R</title>
 <meta name="description" content="flowR is a sophisticated static program analyzer for the R language: slicing, dependency and query analysis, shape inference, and linting, without needing to run your code.">
 <link rel="icon" href="wiki/img/flowR-mark-red.svg" type="image/svg+xml">
-<link rel="icon" href="wiki/img/flowR-mark.svg" type="image/svg+xml" media="(prefers-color-scheme: dark)">
 <script>
 	/* the stored theme has to sit on the element before the first paint, or the page flashes the other one */
 	try {
@@ -107,11 +106,6 @@ code, pre, .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, m
 .bar h2 { margin: 0; flex: none; font-size: 1.15rem; line-height: 1.2; }
 .bar h2 a { display: inline-flex; align-items: center; gap: .45rem; text-decoration: none; }
 .mark { color: var(--accent); flex: none; }
-/* the light look wears the red flower, the dark one the blue */
-:root[data-theme="dark"] .mark { content: url("wiki/img/flowR-mark.svg"); }
-@media (prefers-color-scheme: dark) {
-	:root:not([data-theme="light"]) .mark { content: url("wiki/img/flowR-mark.svg"); }
-}
 .bar nav { display: flex; flex-wrap: nowrap; gap: .1rem .2rem; margin-left: auto; }
 .bar nav a { white-space: nowrap; padding: .3rem .5rem; border-radius: .4rem; color: var(--muted); text-decoration: none; font-size: .82rem; }
 .bar nav a:hover { background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg); }

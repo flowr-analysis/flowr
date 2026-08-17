@@ -90,6 +90,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 }
 .tools button:hover { border-color: var(--accent); color: var(--accent); }
 .tools .hint { margin-left: auto; color: var(--muted); font-size: .8rem; }
+.tools .sharenote { color: var(--muted); font-size: .78rem; }
 /* the graphs flowR builds are handed to mermaid.live rather than drawn in here */
 #views {
 	flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .4rem;
@@ -104,7 +105,10 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .tools .preview { font-size: .8rem; font-weight: 700; color: var(--fg); }
 .top .version { color: var(--muted); font-size: .78rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
-.split { flex: 1; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); min-height: 0; }
+.split { flex: 1; display: grid; grid-template-columns: var(--split, 1.15fr) .35rem minmax(14rem, 1fr); min-height: 0; }
+/* the bar between the panes, dragged to give one of them more room */
+.divider { cursor: ew-resize; background: var(--border); }
+.divider:hover { background: var(--accent); }
 .pane { min-height: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
 /* the code and the configuration flowR reads it with, one at a time */
 .tabs { display: flex; align-items: center; gap: .2rem; flex: none; padding: .3rem .6rem 0; border-bottom: 1px solid var(--border); }
@@ -123,6 +127,35 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 }
 .tabreset:hover { color: var(--accent); border-color: var(--accent); }
 #editor, #config { min-height: 0; flex: 1; overflow: auto; }
+/* flowR's own repl, folded away under the panes until someone opens it */
+.drawer { flex: none; border-top: 1px solid var(--border); background: var(--panel); }
+.drawer > summary {
+	cursor: pointer; padding: .4rem 1rem; font-size: .82rem; font-weight: 600; list-style: none;
+	display: flex; align-items: baseline; gap: .6rem;
+}
+.drawer > summary::-webkit-details-marker { display: none; }
+.drawer > summary::before { content: "▸"; color: var(--muted); font-weight: 400; }
+.drawer[open] > summary::before { content: "▾"; }
+.drawer > summary .what { color: var(--muted); font-weight: 400; font-size: .78rem; }
+.drawer .body { display: flex; flex-direction: column; height: var(--repl-height, 14rem); border-top: 1px solid var(--border); }
+/* the bar one drags to give the repl more or less room */
+.drawer .grip { flex: none; height: .4rem; cursor: ns-resize; background: var(--sunk); }
+.drawer .grip:hover { background: color-mix(in srgb, var(--accent) 35%, var(--sunk)); }
+#repl .out {
+	flex: 1; min-height: 0; overflow: auto; margin: 0; padding: .6rem .8rem; white-space: pre-wrap;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem;
+}
+#repl .said { color: var(--accent); }
+#repl .out a { color: var(--accent); }
+#repl .bad { color: #d55e00; }
+#repl .ask { display: flex; align-items: center; gap: .4rem; padding: .4rem .8rem; border-top: 1px solid var(--border); }
+#repl .ask span { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+#repl input {
+	flex: 1; font: inherit; font-size: .82rem; padding: .2rem .4rem; color: var(--fg);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	border: 1px solid var(--border); border-radius: .3rem; background: var(--bg);
+}
+#repl input:focus { outline: none; border-color: var(--accent); }
 /* a call by name, which the R mode leaves plain: weight rather than colour */
 .cm-call { color: var(--fg); font-weight: 600; }
 /* what the linter marks, and what flowR can say about a name */
@@ -177,11 +210,17 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	margin: 1.2rem 0 .4rem; font-size: .72rem; font-weight: 700; letter-spacing: .08em;
 	text-transform: uppercase; color: var(--muted);
 }
+/* which way the slice runs, the pair the landing page offers */
+#panel .ways { margin-left: auto; display: inline-flex; border: 1px solid var(--border); border-radius: 1rem; overflow: hidden; }
 #panel .way {
-	margin-left: auto; font: inherit; font-size: .72rem; text-transform: none; letter-spacing: 0;
-	padding: .05rem .3rem; border-radius: .4rem; border: 1px solid var(--border);
-	background: var(--panel); color: var(--fg); cursor: pointer;
+	font: inherit; font-size: .72rem; text-transform: none; letter-spacing: 0; cursor: pointer;
+	padding: .1rem .6rem; border: 0; background: var(--panel); color: var(--muted);
 }
+#panel .way + .way { border-left: 1px solid var(--border); }
+#panel .way:hover { color: var(--fg); }
+#panel .way[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+/* the aside on a heading, which says what one can do with what is under it */
+#panel h3 .aside { font-weight: 400; letter-spacing: .04em; opacity: .65; }
 #panel .toggle { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; text-transform: none; letter-spacing: 0; font-weight: 400; cursor: pointer; }
 #panel .toggle input { accent-color: var(--accent); margin: 0; }
 #panel h3:first-child { margin-top: 0; }
@@ -198,7 +237,9 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 }
 #panel .copy:hover { color: var(--accent); border-color: var(--accent); }
 #panel pre { margin: 0; overflow-x: auto; font-size: .82rem; }
-#panel .row { display: grid; grid-template-columns: minmax(4.5rem, auto) 1fr 2.4rem; gap: .6rem; align-items: baseline; padding: .2rem 0; font-size: .86rem; }
+/* one grid for all dependency rows, so the chip, the name and the line number line up across them */
+#panel .deps { display: grid; grid-template-columns: minmax(4.5rem, auto) 1fr 2.4rem; column-gap: .6rem; }
+#panel .row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline; padding: .2rem 0; font-size: .86rem; }
 #panel .kind {
 	justify-self: start; white-space: nowrap; padding: 0 .45rem; border-radius: 1rem; font-size: .68rem; font-weight: 600;
 	color: var(--muted); border: 1px solid var(--border); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -216,12 +257,13 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 /* what a plot is drawn onto belongs to that plot, so it sits under it */
 #panel .row.part { padding-left: 1.2rem; }
 #panel .kind.part { color: var(--muted); border-style: dashed; opacity: .8; }
-#panel .lints { display: grid; grid-template-columns: auto 1fr 2.4rem; row-gap: .2rem; }
+/* the dependencies and the findings share one column layout, so their line numbers line up down the panel */
+#panel .lints { display: grid; grid-template-columns: minmax(4.5rem, auto) 1fr 2.4rem; column-gap: .6rem; row-gap: .2rem; }
 #panel .lints .lint {
 	display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
-	align-items: baseline; padding: .15rem .3rem; margin: 0 -.3rem;
+	align-items: baseline; padding: .15rem 0;
 }
-#panel .lints .says, #panel .lints .at { padding-left: .6rem; }
+
 #panel .says { font-size: .84rem; }
 #panel .rule {
 	--hue: #d55e00;
@@ -241,6 +283,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 @media (max-width: 52rem) {
 	body { height: auto; }
 	.split { grid-template-columns: 1fr; }
+	.divider { display: none; }
 	.pane { border-right: 0; border-bottom: 1px solid var(--border); }
 	#editor, #config { min-height: 18rem; }
 }
@@ -253,8 +296,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	<span class="where">/ Playground</span>
 	<span class="version"><!--VERSION--></span>
 	<span class="grow"></span>
-	<span class="note">Everything runs locally. This is a small part of flowR, the
-		<a href="https://github.com/flowr-analysis/flowr/wiki/Interface" target="_blank" rel="noopener">editor extensions</a> provide access to the rest.</span>
+	<span class="note">Fully local, selected features, use the
+		<a href="https://github.com/flowr-analysis/flowr/wiki/Interface" target="_blank" rel="noopener">editor extensions</a> for more.</span>
 	<a class="link" href="../../" target="_blank" rel="noopener">Landing Page</a>
 	<a class="link" href="../sigdb/" target="_blank" rel="noopener">Signature Database</a>
 	<a class="link" href="../stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
@@ -268,6 +311,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 
 <div class="tools">
 	<button type="button" data-sample="survey">Reset the example</button>
+	<button type="button" id="share" title="The address bar already holds this script; this copies it">Copy link</button>
+	<span class="sharenote" id="sharenote"></span>
 	<span class="preview">This is a feature preview</span>
 	<span class="hint">hover a name for its value, ctrl-click it to jump to its definition, click a dependency to slice for it</span>
 </div>
@@ -283,12 +328,22 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 		</div>
 		<div id="editor"></div>
 		<div id="config" hidden></div>
+		<details class="drawer" id="repl">
+	<summary>flowR repl<span class="what">every command the repl carries, over the script above; :help lists them</span></summary>
+	<div class="body">
+		<div class="grip" id="replgrip" role="separator" aria-label="Drag to resize the repl" title="drag to resize"></div>
+		<pre class="out" id="replout"></pre>
+		<div class="ask"><span>R&gt;</span><input id="replin" type="text" spellcheck="false" autocomplete="off" aria-label="a flowR repl command, :help lists them"></div>
 	</div>
+</details>
+	</div>
+	<div class="divider" id="divider" role="separator" aria-label="Drag to resize the code pane" title="drag to resize"></div>
 	<div class="right">
 		<div id="panel"></div>
 		<div id="pointed"><span id="pinfo"><span class="pvalue">hover a name for what flowR knows about it, ctrl-click it to jump to its definition</span></span><span id="took"></span></div>
 		<div id="signature" hidden></div>
-		<div id="views">
+
+<div id="views">
 			<span class="label">Open in mermaid.live</span>
 			<button type="button" data-view="dataflow">dataflow graph</button>
 			<button type="button" data-view="cfg">control flow</button>
@@ -299,6 +354,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 </div>
 
 <script type="text/plain" id="sigs"><!--SIGS--></script>
+<script type="application/json" id="pkgs"><!--PKGS--></script>
 <script type="application/json" id="cfgdocs"><!--CFGDOCS--></script>
 <script src="bundle.js"></script>
 </body>

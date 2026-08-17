@@ -579,6 +579,40 @@ function mergeConfigOntoDefaults(base: FlowrConfig, addon: DeepPartial<FlowrConf
 	return merge(base, addon) as FlowrConfig;
 }
 
+/** The shortest start of `key` that none of its `siblings` share, which is how a path stays short and readable. */
+function shortestPrefix(key: string, siblings: readonly string[] = []): string {
+	for(let length = 1; length < key.length; length++) {
+		const prefix = key.slice(0, length);
+		if(!siblings.some(other => other !== key && other.startsWith(prefix))) {
+			return prefix;
+		}
+	}
+	return key;
+}
+
+/**
+ * The full path a possibly shortened one names, walking `within` a segment at a time: a segment that names a
+ * key outright is that key, otherwise it has to start exactly one of them.
+ */
+function expandPath(path: string, within: unknown): string | undefined {
+	const full: string[] = [];
+	let at: unknown = within;
+	for(const segment of path.split('.')) {
+		if(at === null || typeof at !== 'object') {
+			return undefined;
+		}
+		const keys = Object.keys(at);
+		const key = keys.includes(segment) ? segment : keys.filter(other => other.startsWith(segment));
+		if(typeof key !== 'string' && key.length !== 1) {
+			return undefined;
+		}
+		const found = typeof key === 'string' ? key : key[0];
+		full.push(found);
+		at = (at as Record<string, unknown>)[found];
+	}
+	return full.length > 0 ? full.join('.') : undefined;
+}
+
 export const FlowrConfig = {
 	name: 'FlowrConfig',
 	/**
@@ -926,6 +960,54 @@ export const FlowrConfig = {
 			return defaultEngineConfigs[engine];
 		}
 	},
+	/**
+	 * Every key `config` changed against the {@link FlowrConfig.default|default}, as `a.b.c=<json>` lines.
+	 * A whole configuration is a long document while an edit to it is usually one line, which is what makes
+	 * this the form to hand around: a link, a command line, a bug report.
+	 * @see {@link FlowrConfig.applyPaths} - to read them back
+	 * @example
+	 * ```ts
+	 * FlowrConfig.changedPaths(config); // ['solver.sigdb.enabled=false']
+	 * ```
+	 */
+	changedPaths(this: void, config: FlowrConfig): string[] {
+		const found: string[] = [];
+		const walk = (current: unknown, base: unknown, path: string[], siblings: readonly string[][]): void => {
+			if(current !== null && base !== null && typeof current === 'object' && typeof base === 'object'
+				&& !Array.isArray(current) && !Array.isArray(base)) {
+				const keys = [...new Set([...Object.keys(current), ...Object.keys(base)])];
+				for(const key of keys) {
+					walk((current as Record<string, unknown>)[key], (base as Record<string, unknown>)[key],
+						[...path, key], [...siblings, keys]);
+				}
+			} else if(JSON.stringify(current) !== JSON.stringify(base)) {
+				const short = path.map((key, at) => shortestPrefix(key, siblings[at]));
+				found.push(`${short.join('.')}=${JSON.stringify(current)}`);
+			}
+		};
+		walk(config, FlowrConfig.default(), [], []);
+		return found;
+	},
+
+	/**
+	 * The inverse of {@link FlowrConfig.changedPaths}: the default configuration with those keys set again.
+	 * A line that names no known key, or whose value is not readable, is skipped rather than guessed at.
+	 */
+	applyPaths(this: void, paths: Iterable<string>, base: FlowrConfig = FlowrConfig.default()): FlowrConfig {
+		const config = structuredClone(base);
+		for(const line of paths) {
+			const at = line.indexOf('=');
+			const key = at < 0 ? undefined : expandPath(line.slice(0, at), config);
+			if(key === undefined) {
+				continue;
+			}
+			try {
+				objectPath.set(config, key, JSON.parse(line.slice(at + 1)));
+			} catch{ /* a value nobody can read is one to leave alone */ }
+		}
+		return config;
+	},
+
 	/**
 	 * Returns a new config object with the given value set at the given key, where the key is a dot-separated path to the value in the config object.
 	 * @see {@link setInConfigInPlace} for a version that modifies the config object in place instead of returning a new one.

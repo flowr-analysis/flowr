@@ -12,7 +12,7 @@ import type { DataflowGraph } from '../../../../graph/graph';
 import { NoEdges, FunctionArgument, UnknownSideEffect } from '../../../../graph/graph';
 import { type DataflowGraphVertexFunctionCall, FunctionCallVertex, VariableDefinitionVertex, VertexType } from '../../../../graph/vertex';
 import { linkExpressionIn, linkInputs } from '../../../linker';
-import { Nse } from './nse';
+import { type MaskingCall, Nse } from './nse';
 import { Deferred } from './deferred';
 import { FunctionDefinitionVertex } from '../../../../graph/vertex';
 
@@ -80,8 +80,12 @@ export const Quoted = {
 		let names: ReturnType<typeof Deferred.indexOf> | undefined = undefined;
 		let cfg: ControlFlowGraph | undefined | null = null;
 		const cfgOnce = () => (cfg === null ? (cfg = controlFlow()) : cfg);
+		const masking: MaskingCall[] = [];
 		for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
-			Nse.dropResolvedMask(graph, id, vertex.name);
+			const masks = Nse.dropResolvedMask(graph, id, vertex.name);
+			if(masks !== undefined) {
+				masking.push(masks);
+			}
 			if(DelayingCalls.has(Identifier.getName(vertex.name))) {
 				const promise = capturedArgumentOf(graph, id);
 				const binding = promise === undefined ? undefined : boundBy(graph, id);
@@ -101,6 +105,8 @@ export const Quoted = {
 				}
 			}
 		}
+		/* only once every mark has settled: the read a column gets makes it look bound from here on */
+		Nse.linkMasksToData(graph, masking);
 	}
 } as const;
 

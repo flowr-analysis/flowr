@@ -8,12 +8,14 @@ import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier, ReferenceType } from '../../../../environments/identifier';
 import { baseRExportOwner } from '../../../../../util/r-base-packages';
-import type { InGraphIdentifierDefinition } from '../../../../environments/identifier';
+import type { IdentifierDefinition, InGraphIdentifierDefinition } from '../../../../environments/identifier';
+import { statesNonStandardEvaluation, type BuiltInIdentifierDefinition } from '../../../../environments/built-in';
 import { EdgeType } from '../../../../graph/edge';
 import { attachExportVertex, loadNodesForNamespace } from './built-in/built-in-library';
 import type { DataflowGraph } from '../../../../graph/graph';
 import { FunctionCallVertex } from '../../../../graph/vertex';
 import { Resolve } from '../../../../environments/resolve-helper';
+import { isNotUndefined } from '../../../../../util/assert';
 
 
 function mergeInformation(info: DataflowInformation | undefined, newInfo: DataflowInformation): DataflowInformation {
@@ -31,6 +33,26 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 		exitPoints:        info.exitPoints.concat(newInfo.exitPoints),
 		hooks:             info.hooks.concat(newInfo.hooks)
 	};
+}
+
+/**
+ * The flowR definition of `pkg::fn` behind an export a signature database attached. Such an export binds the
+ * name in a layer below the global environment, which hides the built-in environment underneath, and with it
+ * how the call evaluates its arguments: without this lookup `library(dplyr); filter(df, id > 2)` loses the data
+ * mask of `dplyr::filter`. Only that is recovered here. What a definition merely states about a call (its
+ * properties, its signature) reaches every consumer through the export vertex already, so a definition saying
+ * nothing about evaluation is left to the default processor, which keeps the call to one target.
+ */
+function builtInBehindExport<OtherInfo>(
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	definition: IdentifierDefinition
+): BuiltInIdentifierDefinition | undefined {
+	if(definition.type !== ReferenceType.Function || definition.name === undefined || !NodeId.isBuiltIn(definition.nodeId)
+		|| Identifier.getNamespace(definition.name) === undefined) {
+		return undefined;
+	}
+	const known = data.ctx.env.builtInFunctionOf(definition.name);
+	return statesNonStandardEvaluation(known) ? known : undefined;
 }
 
 /**
@@ -71,13 +93,23 @@ export function processNamedCall<OtherInfo>(
 
 	let information: DataflowInformation | undefined = undefined;
 	let builtIn = false;
+	/* a set, because an export and the built-in behind it are two ways to the same definition */
+	const toRun = new Set<BuiltInIdentifierDefinition>();
 	for(const resolvedFunction of resolved) {
-		if(resolvedFunction.type === ReferenceType.BuiltInFunction && typeof resolvedFunction.processor === 'function') {
-			builtIn ||= resolvedFunction.config?.libFn !== true;
-			information = mergeInformation(information, resolvedFunction.processor(name, args, rootId, data));
-		} else {
+		const own = resolvedFunction.type === ReferenceType.BuiltInFunction && typeof resolvedFunction.processor === 'function'
+			? resolvedFunction
+			/* the call goes through the attached export, so it is not built-in only, but flowR's own
+			   definition of that export is what knows how to process it */
+			: builtInBehindExport(data, resolvedFunction);
+		if(own === undefined) {
 			defaultProcessor = true;
+			continue;
 		}
+		builtIn ||= own === resolvedFunction && own.config?.libFn !== true;
+		toRun.add(own);
+	}
+	for(const own of toRun) {
+		information = mergeInformation(information, own.processor(name, args, rootId, data));
 	}
 
 	if(defaultProcessor) {
@@ -110,9 +142,14 @@ export function processNamedCall<OtherInfo>(
 			}
 		}
 		const ns = Identifier.getNamespace(name.content);
-		// an explicit `pkg::fn` links to a database-unresolved `library(pkg)` recorded below the global env
-		if(ns !== undefined) {
-			for(const loadNode of loadNodesForNamespace(data.environment, ns)) {
+		// a call links to a database-unresolved `library(pkg)` recorded below the global env: `pkg::fn` names
+		// its package, a bare call takes it from what flowR resolved it to, which is what ties
+		// `filter(df, id > 2)` to the `library(dplyr)` that made it dplyr's
+		const owners = ns !== undefined ? [ns] : resolved
+			.map(r => r.type === ReferenceType.BuiltInFunction && r.name !== undefined ? Identifier.getNamespace(r.name) : undefined)
+			.filter(isNotUndefined);
+		for(const owner of owners) {
+			for(const loadNode of loadNodesForNamespace(data.environment, String(owner))) {
 				information.graph.addEdge(rootId, loadNode, EdgeType.Reads);
 			}
 		}

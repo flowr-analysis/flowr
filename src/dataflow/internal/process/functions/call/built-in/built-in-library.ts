@@ -195,7 +195,9 @@ export function processLibrary<OtherInfo>(
 		if(dependency){
 			linkLibrary(dependency, info, rootId, data, spec);
 		} else {
-			info.graph.markIdForUnknownSideEffects(rootId);
+			if(!data.ctx.env.knowsPackage(p)){
+				info.graph.markIdForUnknownSideEffects(rootId);
+			}
 			if(info.environment.level >= 0){
 				info.environment = recordUnresolvedLibraryLoad(info.environment, p, rootId, spec.pos, data.cds);
 			}
@@ -384,6 +386,9 @@ function recordUnresolvedLibraryLoad(envInfo: REnvironmentInformation, pack: str
  */
 export function loadNodesForNamespace(env: REnvironmentInformation, pack: string): NodeId[] {
 	const nodes: NodeId[] = [];
+	if(env.current.builtInEnv){
+		return nodes;   // resolving straight in the built-in environment (`get(x, envir = baseenv())`): no search path above it
+	}
 	for(let e: Environment = REnvironment.findGlobal(env.current).parent; e.t !== undefined && !e.builtInEnv; e = e.parent){
 		if(e.n !== pack){
 			continue;

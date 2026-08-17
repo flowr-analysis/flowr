@@ -36,6 +36,8 @@ export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments
 	readonly hasUnknownSideEffect?: boolean
 	/** The origin to use for the function being called. */
 	readonly origin:                FunctionOriginInformation | 'default'
+	/** see {@link ProcessAllArgumentInput#nonFunction} */
+	readonly nonFunction?:          ReadonlySet<NodeId>
 }
 
 /** The result of processing a known function call. */
@@ -132,7 +134,10 @@ function markArgument(graph: DataflowGraph, rootId: NodeId, arg: DataflowInforma
 		if(evaluated?.has(vtx)) {
 			continue;
 		}
-		if(kind === NseKind.Quoted || Nse.suppliedByMask(arg.graph, vtx, info)) {
+		/* every name in a mask is a candidate column, even one the caller binds: R asks the data first.
+		   {@link Nse.dropResolvedMask} takes the mark off the bound ones again, and keeps them as the
+		   names that mean both */
+		if(kind === NseKind.Quoted || Nse.maskCandidate(info)) {
 			graph.addEdge(rootId, vtx, EdgeType.NonStandardEvaluation);
 		}
 	}
@@ -143,7 +148,7 @@ function markArgument(graph: DataflowGraph, rootId: NodeId, arg: DataflowInforma
  * add any specific handling.
  */
 export function processKnownFunctionCall<OtherInfo>(
-	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect, origin }: ProcessKnownFunctionCallInput<OtherInfo>,
+	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect, origin, nonFunction }: ProcessKnownFunctionCallInput<OtherInfo>,
 ): ProcessKnownFunctionCallResult {
 	const functionName = processDataflowFor(name, data);
 	const finalGraph = new DataflowGraph(data.completeAst.idMap);
@@ -155,7 +160,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		callArgs,
 		remainingReadInArgs,
 		processedArguments
-	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forceArgs });
+	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forceArgs, nonFunction });
 	markArgumentsAsNonStandardEvaluation(finalGraph, rootId, processedArguments, markAsNSE, { kind: NseKind.Reevaluated });
 
 	const onlyBuiltin = data.builtInNoEnv === rootId;

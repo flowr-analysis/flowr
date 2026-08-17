@@ -13,7 +13,7 @@ import { ReadFunctions } from '../src/queries/catalog/dependencies-query/functio
 import { WriteFunctions } from '../src/queries/catalog/dependencies-query/function-info/write-functions';
 import { VisualizeFunctions } from '../src/queries/catalog/dependencies-query/function-info/visualize-functions';
 import { TestFunctions } from '../src/queries/catalog/dependencies-query/function-info/test-functions';
-import { DefaultBuiltinConfig } from '../src/dataflow/environments/default-builtin-config';
+import { DefaultBuiltinConfig, statedSignatures, type StatedSignature } from '../src/dataflow/environments/default-builtin-config';
 import { Identifier } from '../src/dataflow/environments/identifier';
 
 export interface PackageEntry {
@@ -41,6 +41,10 @@ export interface SigIndex {
 	readonly names:    number;
 	/** what flowR itself treats a name as: `read`, `write`, `visualize`, ... (see {@link DefaultDependencyCategories}) */
 	readonly kinds:    ReadonlyMap<string, string[]>;
+	/** what flowR states about the functions it defines itself, see {@link statedSignatures} */
+	readonly stated:   ReadonlyMap<string, StatedSignature[]>;
+	/** the formals the database records for base R, `name -> [package, parameters][]`, see {@link baseFormals} */
+	readonly formals:  ReadonlyMap<string, [pkg: string, params: string][]>;
 }
 
 /** one exported name, as much of it as fits in a page */
@@ -141,6 +145,17 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 			latest:    releases.length > 0 ? releases[releases.length - 1].date.getTime() : 0
 		});
 	}
+	/* the formals of base R, which is the part of the database small enough for a page to carry: nothing
+	   else can tell a reader what `stats::filter(x, filter, method, ...)` takes */
+	const formals = new Map<string, [pkg: string, params: string][]>();
+	for(const pkg of db.packageNames().filter(name => db.isBaseR(name))) {
+		const exported = new Set(db.lookup(pkg)?.exported ?? []);
+		for(const fn of db.functions(pkg) ?? []) {
+			if(exported.has(fn.name) && fn.signature.length > 0) {
+				formals.set(fn.name, [...(formals.get(fn.name) ?? []), [pkg, fn.signature.map(p => p.name).join(', ')]]);
+			}
+		}
+	}
 	db.close();
 	all.sort((a, b) => Number(b.base) - Number(a.base) || b.downloads - a.downloads);
 	const newest = all.reduce((latest, p) => p.latest > latest ? p.latest : latest, 0);
@@ -148,6 +163,8 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 		packages: all,
 		names:    new Set(all.flatMap(p => [...p.exports.keys()])).size,
 		kinds:    builtInKinds(),
+		stated:   statedSignatures(),
+		formals,
 		updated:  newest > 0 ? new Date(newest).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'an unknown date'
 	};
 }

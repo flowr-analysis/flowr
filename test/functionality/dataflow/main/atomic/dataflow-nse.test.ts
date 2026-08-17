@@ -7,6 +7,7 @@ import type { PipelineOutput } from '../../../../../src/core/steps/pipeline/pipe
 import { guard } from '../../../../../src/util/assert';
 import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
+import { NoEdges } from '../../../../../src/dataflow/graph/graph';
 import { OriginType } from '../../../../../src/dataflow/origin/dfg-get-origin';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 
@@ -53,6 +54,48 @@ describe('Dataflow', withTreeSitter(ts => {
 				'3@k':   '2@k',
 				'4@aaa': undefined
 			});
+
+		/* a comparison takes data, so a function of that name is not what it reads -- unless the script
+		   itself is the one defining it, in which case there is nothing else it could mean */
+		assertReads('a value position reads what the script defines, not what a package attached',
+			['function-calls', 'data-masking', 'binary-operator'],
+			'library(dplyr)\nx <- function() 1\ny <- x > 2\nd <- data.frame(c = 1, id = 2)\nfilter(d, c > 2)\nfilter(d, id > 2)', {
+				'3@x':  '2@x',
+				'5@c':  undefined,
+				'6@id': undefined
+			});
+
+		/* a name the caller binds to a value may still be a column, so it reads both; bound to a function it
+		   is the column and nothing else, as R asks the data first and a closure is not what `>` compares */
+		test(label('a masked name the caller binds reads the data as well', ['function-calls', 'data-masking'], ['dataflow']), async() => {
+			const code = 'library(dplyr)\ndf <- data.frame(id = 1:3)\nid <- function(k) k\nn <- 1\nfilter(df, id > n)';
+			const analysis = await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps();
+			const idMap = analysis.normalize.idMap;
+			const targets = (use: SlicingCriterion) =>
+				[...analysis.dataflow.graph.outgoingEdges(SlicingCriterion.parse(use, idMap)) ?? NoEdges].map(([target]) => target);
+			assert.deepStrictEqual(targets('5@id'), [SlicingCriterion.parse('5@df', idMap)], 'a name bound to a function is the column');
+			assert.sameMembers(targets('5@n'), [SlicingCriterion.parse('4@n', idMap), SlicingCriterion.parse('5@df', idMap)],
+				'a name bound to a value is both');
+		});
+
+		/* a closure with a class is a legitimate operand, as `>` may dispatch on it, and flowR cannot see
+		   that it does not: only a bare function is ruled out, so only that one loses its read */
+		describe(label('a classed closure in a mask keeps its read', ['function-calls', 'data-masking'], ['dataflow']), () => {
+			const head = 'library(dplyr)\ndf <- data.frame(id = 1:3)\n';
+			test.each([
+				['a bare closure is the column', head + 'id <- function(...) 42\nfilter(df, id > 42)', '4@id', false],
+				['structure() attaches a class', head + 'id <- structure(function(...) 42, class = "cls")\nfilter(df, id > 42)', '4@id', true],
+				['class<- attaches one too', head + 'id <- function(...) 42\nclass(id) <- "cls"\nfilter(df, id > 42)', '5@id', true]
+			] as const)('%s', async(_what, code, use, keepsIt) => {
+				const analysis = await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps();
+				const idMap = analysis.normalize.idMap;
+				const at = SlicingCriterion.parse(use, idMap);
+				const targets = [...analysis.dataflow.graph.outgoingEdges(at) ?? NoEdges].map(([target]) => target);
+				const data = SlicingCriterion.parse(`${use.slice(0, use.indexOf('@'))}@df` as SlicingCriterion, idMap);
+				assert.include(targets, data, 'the data it may be a column of');
+				assert.strictEqual(targets.length > 1, keepsIt, keepsIt ? 'the classed closure stays a candidate' : 'a bare closure is not one');
+			});
+		});
 
 		assertReads('the verbs without a data argument mask all of them',
 			['function-calls', 'data-masking'],

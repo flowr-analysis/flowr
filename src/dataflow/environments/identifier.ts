@@ -381,7 +381,12 @@ export enum ReferenceType {
 	/** Prefix to identify S3 methods, use this, to for example dispatch a call to `f` which will then link to `f.*` */
 	S3MethodPrefix = 1 << 8,
 	/** Prefix to identify S7 methods, use this, to for example dispatch a call to `f` which will then link to `f<7>*` */
-	S7MethodPrefix = 1 << 9
+	S7MethodPrefix = 1 << 9,
+	/**
+	 * Only ever a lookup target, never the type of a definition: everything a value position may see.
+	 * `id` in `id > 2` names data, so a function `id` in scope is not what the comparison reads.
+	 */
+	NonFunction = 1 << 10
 }
 
 /** Reverse mapping of the reference types so you can get the name from the bitmask (useful for debugging) */
@@ -399,7 +404,7 @@ export function isReferenceType(t: ReferenceType, target: ReferenceType): boolea
  * default definition for the assignment operator `<-`).
  * @see {@link InGraphIdentifierDefinition} - for the definition of an identifier within the graph
  */
-export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction>;
+export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction | ReferenceType.NonFunction>;
 
 /**
  * An identifier reference points to a variable like `a` in `b <- a`.

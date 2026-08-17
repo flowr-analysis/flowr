@@ -3,6 +3,7 @@ import { Ternary } from '../../util/logic';
 import { Identifier, type BrandedNamespace, type IdentifierDefinition, isReferenceType, ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
 import { S7DispatchSeparator } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** A namespaced lookup only sees its matching layer; a bare lookup skips loaded-but-unattached namespaces (`requireNamespace`). */
 function layerSkipped(layer: Environment, ns: BrandedNamespace | undefined): boolean {
@@ -17,6 +18,8 @@ const VariableTargetTypes = ReferenceType.Variable | ReferenceType.Parameter | R
 const ConstantTargetTypes = ReferenceType.Constant | ReferenceType.BuiltInConstant | ReferenceType.Unknown;
 const BuiltInConstantTargetTypes = ReferenceType.BuiltInConstant | ReferenceType.Unknown;
 const BuiltInFunctionTargetTypes = ReferenceType.BuiltInFunction | ReferenceType.Unknown;
+const NonFunctionTargetTypes = ReferenceType.Variable | ReferenceType.Parameter | ReferenceType.Argument | ReferenceType.Unknown
+	| ReferenceType.Constant | ReferenceType.BuiltInConstant;
 
 const inEveryBranch = (d: IdentifierDefinition) => happensInEveryBranch(d.cds);
 const notAParameter = (d: IdentifierDefinition) => d.type !== ReferenceType.Parameter;
@@ -32,7 +35,21 @@ const TargetTypePredicate = {
 	[ReferenceType.BuiltInFunction]: ({ type }: IdentifierDefinition) => isReferenceType(type, BuiltInFunctionTargetTypes),
 	[ReferenceType.S3MethodPrefix]:  ({ type }: IdentifierDefinition) => isReferenceType(type, FunctionTargetTypes),
 	[ReferenceType.S7MethodPrefix]:  ({ type }: IdentifierDefinition) => isReferenceType(type, FunctionTargetTypes),
+	[ReferenceType.NonFunction]:     ({ type }: IdentifierDefinition) => isReferenceType(type, NonFunctionTargetTypes),
 } as const satisfies Record<ReferenceType, (t: IdentifierDefinition) => boolean>;
+
+/**
+ * What the script itself defines under `id`, ignoring everything flowR carries or a database attached.
+ * This is the fallback of a value position ({@link ReferenceType.NonFunction}), and the two halves answer
+ * the two ways a value position meets a function of its name. In a project that attaches packages,
+ * `library(dplyr)` puts a function `id` in scope, and `filter(df, id > 2)` means the column, never that
+ * function. A script writing `x <- function() 1` and then `x > 2` has only that one `x` to mean, wrong as
+ * the comparison is, so the read stays: dropping it would leave the definition looking unused.
+ */
+function ownDefinitions(id: Identifier, environment: REnvironmentInformation): readonly IdentifierDefinition[] | undefined {
+	const own = resolveByNameAnyType(id, environment)?.filter(d => !NodeId.isBuiltIn(d.nodeId));
+	return own !== undefined && own.length > 0 ? own : undefined;
+}
 
 /**
  * Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.
@@ -48,6 +65,12 @@ export function resolveByName(id: Identifier, environment: REnvironmentInformati
 	if(target === ReferenceType.Unknown) {
 		return resolveByNameAnyType(id, environment);
 	}
+	const found = resolveByTargetType(id, environment, target);
+	return found === undefined && target === ReferenceType.NonFunction ? ownDefinitions(id, environment) : found;
+}
+
+/** {@link resolveByName} without its two special targets, i.e. the plain walk up the environments. */
+function resolveByTargetType(id: Identifier, environment: REnvironmentInformation, target: ReferenceType): readonly IdentifierDefinition[] | undefined {
 	/* read piecewise, `Identifier.toArray` would allocate a tuple per resolution */
 	const name = Identifier.getName(id);
 	const ns = Identifier.getNamespace(id);
@@ -98,12 +121,14 @@ export function resolveByName(id: Identifier, environment: REnvironmentInformati
 		current = current.parent;
 	} while(!current.builtInEnv);
 
-	const builtIns = current.memory.get(name);
+	/* the built-in layer is handed over as it is, except to a value position: `filter(df, c > 2)` means the
+	   column `c`, never `base::c`, and only with nothing left does `ownDefinitions` have its say */
+	const known = current.memory.get(name);
+	const builtIns = target === ReferenceType.NonFunction ? known?.filter(wantedType) : known;
 	if(definitions) {
-		return builtIns === undefined ? definitions : definitions.concat(builtIns);
-	} else {
-		return builtIns;
+		return builtIns === undefined || builtIns.length === 0 ? definitions : definitions.concat(builtIns);
 	}
+	return builtIns === undefined || builtIns.length > 0 ? builtIns : undefined;
 }
 
 /**

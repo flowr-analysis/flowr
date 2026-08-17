@@ -58,13 +58,14 @@ const ExpectedLabels: readonly (readonly [Identifier, CallProps])[] = [
 
 /** and the shapes a signature comes in */
 const ExpectedSigs: readonly (readonly [Identifier, FnSig])[] = [
-	[Identifier.from(['+', PkgName.Base]), [['e1', ArgProp.Value], ['e2', ArgProp.Value]]],
+	[Identifier.from(['+', PkgName.Base]), [['e1', ArgProp.Value | ArgProp.Atomic], ['e2', ArgProp.Value | ArgProp.Atomic]]],
 	[Identifier.from(['sum', PkgName.Base]), [['...', ArgProp.Value]]],
 	[Identifier.from(['missing', PkgName.Base]), [['x', ArgProp.Presence]]],
 	/* `Alias` is what states the argument handed back, so these have to keep declaring it */
 	[Identifier.from(['identity', PkgName.Base]), [['x', ArgProp.Alias | ArgProp.Forced]]],
 	[Identifier.from(['match.arg', PkgName.Base]), [['arg', ArgProp.Value], ['choices', ArgProp.Bounds]]],
-	[Identifier.from(['read.csv', PkgName.Utils]), [['file', ArgProp.Resource]]]
+	[Identifier.from(['read.csv', PkgName.Utils]), [['file', ArgProp.Resource], ['header', ArgProp.Flag], ['sep', ArgProp.Value],
+		['quote', ArgProp.Value], ['dec', ArgProp.Value], ['fill', ArgProp.Flag], ['comment.char', ArgProp.Value], ['...', ArgProp.Value]]]
 ];
 
 describe('Built-in properties', () => {
@@ -148,7 +149,7 @@ describe('Built-in properties', () => {
 		test(label('resolving in an environment finds the built-in', ['name-normal'], ['other']), () => {
 			const info = queryFnProps('nchar', { environment: defaultEnv() });
 			assert.strictEqual((info?.props ?? 0) & CallProp.Pure, CallProp.Pure);
-			assert.deepStrictEqual(info?.sig, [['x', ArgProp.Shape]]);
+			assert.deepStrictEqual(info?.sig, [['x', ArgProp.Shape], ['type', ArgProp.Value], ['allowNA', ArgProp.Flag], ['keepNA', ArgProp.Flag]]);
 		});
 		test(label('a definition in the code shadows the built-in', ['name-normal', 'normal-definition'], ['other']), () => {
 			const env = defaultEnv().defineFunction('nchar', '0', '0');

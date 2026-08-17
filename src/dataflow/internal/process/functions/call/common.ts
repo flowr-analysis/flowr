@@ -48,6 +48,8 @@ export interface ProcessAllArgumentInput<OtherInfo> extends ForceArguments {
 	readonly patchData?:     (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, i: number) => DataflowProcessorInformation<OtherInfo & ParentInformation>
 	/** which arguments are to be marked as {@link EdgeType#NonStandardEvaluation|non-standard-evaluation}? */
 	readonly markAsNSE?:     readonly number[]
+	/** symbols that name data rather than code, so they must not resolve to a function of the same name */
+	readonly nonFunction?:   ReadonlySet<NodeId>
 }
 
 export interface ProcessAllArgumentResult {
@@ -123,7 +125,7 @@ export function convertFnArgument<OtherInfo>(this: void, arg: typeof EmptyArgume
  * Processes all arguments for a function call, updating the given final graph and environment.
  */
 export function processAllArguments<OtherInfo>(
-	{ functionName, args, data, finalGraph, functionRootId, forceArgs = [], patchData }: ProcessAllArgumentInput<OtherInfo>,
+	{ functionName, args, data, finalGraph, functionRootId, forceArgs = [], patchData, nonFunction }: ProcessAllArgumentInput<OtherInfo>,
 ): ProcessAllArgumentResult {
 	let finalEnv = functionName.environment;
 	// arg env contains the environments with other args defined
@@ -158,10 +160,14 @@ export function processAllArguments<OtherInfo>(
 
 		// resolve reads within argument, we resolve before adding the `processed.environment` to avoid cyclic dependencies
 		for(const l of [processed.in, processed.unknownReferences]) {
-			for(const ingoing of l) {
+			for(const original of l) {
 				// check if it is called directly
-				const inId = ingoing.nodeId;
-				const refType = FunctionCallVertex.is(finalGraph.getVertex(inId)) ? ReferenceType.Function : ReferenceType.Unknown;
+				const inId = original.nodeId;
+				/* a data argument holds a value, so a function of that name is not what it reads; the narrowed
+				   type stays on the reference as it bubbles through the enclosing calls */
+				const ingoing = nonFunction?.has(inId) ? { ...original, type: ReferenceType.NonFunction } : original;
+				const refType = FunctionCallVertex.is(finalGraph.getVertex(inId)) ? ReferenceType.Function
+					: ingoing.type === ReferenceType.NonFunction ? ReferenceType.NonFunction : ReferenceType.Unknown;
 
 				const tryToResolve = ingoing.name ? resolveByName(ingoing.name, data.environment, refType) : undefined;
 				if(tryToResolve === undefined) {

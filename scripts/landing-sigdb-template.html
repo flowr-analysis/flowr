@@ -187,6 +187,15 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 #hits .kindtag.value { color: var(--muted); background: var(--sunk); border-color: var(--border); }
 #hits .kindtag.flowr { color: var(--muted); background: var(--panel); border-color: var(--border); font-weight: 500; }
 #hits .kindtag.gone { color: #d55e00; background: color-mix(in srgb, #d55e00 10%, transparent); border-color: color-mix(in srgb, #d55e00 35%, transparent); }
+/* what flowR states about the name, next to what the database says about it */
+#hits .kindtag.props { border-style: dashed; padding: 0 .35rem; opacity: .8; }
+#hits .flag.stated { border-style: dashed; color: var(--accent); }
+#hits .own .stated { max-width: 26rem; }
+#hits .stated {
+	font-size: .78rem; color: var(--muted); background: var(--sunk);
+	padding: .05rem .35rem; border-radius: .3rem; white-space: nowrap;
+	overflow: hidden; text-overflow: ellipsis; max-width: 22rem;
+}
 #hits .owners { margin-left: auto; display: flex; flex-wrap: wrap; gap: .3rem; }
 #hits .owners a {
 	font-size: .78rem; text-decoration: none; padding: .1rem .45rem; border-radius: .8rem;
@@ -262,7 +271,11 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 </main>
 <script type="text/plain" id="data"><!--DATA--></script>
 <script type="application/json" id="kinds">"<!--KINDS-->"</script>
+<script type="application/json" id="stated">"<!--STATED-->"</script>
+<script type="application/json" id="formals">"<!--FORMALS-->"</script>
 <script>
+/* the ranker the playground shares, written in from `src/util/text/name-rank.ts` by the build */
+<!--RANKER-->
 'use strict';
 const theme = document.getElementById('theme');
 theme.addEventListener('click', () => {
@@ -479,62 +492,22 @@ function marked(name, needle, at) {
 }
 
 /**
- * What a reader most likely meant: a well-used package first, base R ahead of CRAN, and the things one
- * rarely searches for last, which are S3 methods, `%operators%` and names that start with a dot.
+ * What a reader most likely meant, ordered by the ranker the playground's completion uses as well
+ * (`src/util/text/name-rank.ts`, written in here by the build): this only says what the page knows
+ * about a name, the weighing itself lives there.
  */
 function score(name, owners, rank, needle) {
 	const first = owner(owners.split(',')[0]);
 	const pkg = packages[first.index];
-	/* how well it matches comes first, then how short it is; popularity only settles what is left */
-	/* length only matters against something typed: with an empty box it would rank `AIC` above `mean` */
-	let points = -rank * 150 - (needle ? name.length * 12 : 0)
-		+ Math.min(Math.log10(Number(pkg?.[3] ?? 0) + 10), 8) * (needle ? 4 : 12);
-	/* what was typed, exactly, always comes first */
-	if(name === needle) {
-		points += 1200;
-	} else if(name.toLowerCase() === needle.toLowerCase()) {
-		points += 900;
-	}
-	/* a real function from base R is what a reader usually means; a lone symbol almost never is */
-	if(pkg?.[2] === '1' && name.length >= 3) {
-		points += 40;
-	}
-	if(first.flags.includes('v')) {
-		points -= 20;
-	}
-	if(name.length < 3) {
-		points -= 40;
-	}
-	/* `names<-` is the replacement form of `names`, and nobody searches for it first */
-	if(name.endsWith('<-')) {
-		points -= 35;
-	}
-	if(name.includes('.') && !needle.includes('.')) {
-		points -= 45;
-	}
-	/* `base` itself before the packages that merely ship with R */
-	if(pkg?.[0] === 'base') {
-		points += 20;
-	}
-	/* a name flowR recognises outranks a closer spelling it knows nothing about: typing `plot` should
-	   offer `ggplot` before `plotH`, because one of them is a function people actually call */
-	if(kinds.has(name)) {
-		points += 500;
-	}
-	if(first.flags.includes('3')) {
-		points -= 30;
-	}
-	/* operators, punctuation and SHOUTING names are rarely what someone is looking for */
-	if(/^%.*%$/.test(name) || /^[^\w.]/.test(name)) {
-		points -= 60;
-	}
-	if(name === name.toUpperCase() && /[A-Z]/.test(name) && name !== needle) {
-		points -= 30;
-	}
-	if(name.startsWith('.')) {
-		points -= 400;
-	}
-	return points;
+	return rankName({
+		name, needle, rank,
+		downloads: Number(pkg?.[3] ?? 0),
+		baseR:     pkg?.[2] === '1',
+		base:      pkg?.[0] === 'base',
+		known:     kinds.has(name),
+		s3:        first.flags.includes('3'),
+		variable:  first.flags.includes('v')
+	});
 }
 
 /** every character of the needle, in order but not necessarily adjacent: `rcsv` finds `read.csv` */
@@ -569,6 +542,10 @@ function owner(entry) {
 
 /* a Map, not the parsed object: R exports names like `toString`, and those would hit Object's prototype */
 const kinds = new Map(Object.entries(JSON.parse(document.getElementById('kinds').textContent)));
+/* `name -> [call, props]`: what flowR states about the functions it carries a definition for */
+const stated = new Map(Object.entries(JSON.parse(document.getElementById('stated').textContent)));
+/* `name -> [package, parameters][]`: what base R itself declares, which flowR states nothing about */
+const formals = new Map(Object.entries(JSON.parse(document.getElementById('formals').textContent)));
 /** how flowR describes what one of its known functions does */
 const KindNames = {
 	library: 'can load a package', source: 'can source a file', read: 'can read a file',
@@ -599,6 +576,8 @@ const Shown = 6;
 
 /** one aligned row per owning package, each one a link to that package's manual page for this name */
 function detail(name, owners) {
+	/* the packages flowR itself states something about, so its words land on the right row */
+	const statedFor = new Map((stated.get(name) ?? []).map(entry => [entry[0], entry]));
 	const box = document.createElement('div');
 	box.className = 'detail';
 	const list = document.createElement('div');
@@ -645,6 +624,22 @@ function detail(name, owners) {
 		const tag = document.createElement('span');
 		tag.className = 'tag';
 		tag.textContent = base === '1' ? 'base R' : 'CRAN';
+		const own = statedFor.get(pkg);
+		/* the signature flowR carries for this package's version of the name, which the head can only show
+		   for one of them: `filter` is `stats`'s to a reader and dplyr's to flowR */
+		const mineHere = own?.[1] ?? declaredIn(name, pkg);
+		if(mineHere) {
+			marks.append(signature(name, mineHere, own?.[1]
+				? 'what flowR models of ' + pkg + '::' + name
+				: 'what ' + pkg + ' declares for ' + name));
+		}
+		for(const word of (own?.[2] ?? '').split(' ').filter(Boolean)) {
+			const one = document.createElement('span');
+			one.className = 'flag stated';
+			one.textContent = word;
+			one.title = 'flowR states this about ' + pkg + '::' + name;
+			marks.append(one);
+		}
 		const go = document.createElement('span');
 		go.className = 'go';
 		go.textContent = '↗';
@@ -653,11 +648,19 @@ function detail(name, owners) {
 	}
 	const note = document.createElement('p');
 	note.className = 'ask';
-	note.textContent = ':query @signature ' + name;
+	const command = document.createElement('span');
+	/* pointing at a package means asking about that one, so the command says which */
+	const asks = qualified => command.textContent = ':query @signature ' + qualified;
+	asks(name);
 	const said = document.createElement('span');
 	said.textContent = 'for parameters and the call graph, ask flowR:';
+	note.append(said, command);
+	list.addEventListener('mouseover', event => {
+		const row = event.target.closest('.own');
+		asks(row === null ? name : row.querySelector('.pkg').textContent + '::' + name);
+	});
+	list.addEventListener('mouseleave', () => asks(name));
 	box.append(list, note);
-	note.prepend(said);
 	return box;
 }
 
@@ -765,6 +768,39 @@ function aboutPackage(index) {
 	return box;
 }
 
+/**
+ * The package flowR states a name for, put first among its owners when the database does not list it: `+` is
+ * base R's, but a primitive is in no NAMESPACE, so nothing exports it and the reader would see `lubridate`
+ * where they expect `base`.
+ */
+function withStatedOwner(name, owners) {
+	const mine = stated.get(name) ?? [];
+	if(mine.length === 0) {
+		return owners;
+	}
+	const already = new Set(owners.map(entry => packages[owner(entry).index]?.[0]));
+	const missing = mine.map(entry => entry[0]).filter(pkg => !already.has(pkg));
+	const found = missing.map(pkg => packages.findIndex(entry => entry[0] === pkg)).filter(at => at >= 0);
+	return found.length === 0 ? owners : [...found.map(String), ...owners];
+}
+
+/** `name(params)`, the one shape a signature is drawn in wherever it comes from */
+function signature(name, params, why) {
+	const said = document.createElement('code');
+	said.className = 'stated';
+	said.append(Object.assign(document.createElement('b'), { textContent: name }), '(' + params + ')');
+	said.title = why;
+	return said;
+}
+
+/** what base R declares for `name` in `pkg`, which the page carries for base R alone */
+function declaredIn(name, pkg) {
+	return (formals.get(name) ?? []).find(entry => entry[0] === pkg)?.[1];
+}
+
+/** the package the current search is scoped to, `dplyr` in `dplyr::filter` */
+let scoped;
+
 function show(name, needle, at, owners) {
 	const row = document.createElement('li');
 	const head = document.createElement('div');
@@ -779,6 +815,13 @@ function show(name, needle, at, owners) {
 		badge.textContent = 'value';
 		head.append(badge);
 	}
+	/* flowR's own statement about the name, which is the one thing the database cannot tell a reader.
+	   A name several packages define is stated per package, so the one the reader means is the one shown */
+	const mine = stated.get(name) ?? [];
+	/* the package the search named, else the one a reader most likely means */
+	const first = packages[owner(owners.find(entry => packages[owner(entry).index]?.[0] === scoped) ?? owners[0]).index];
+	const own = mine.find(entry => entry[0] === first?.[0]) ?? mine.find(entry => entry[0] === 'base') ?? mine[0];
+	const words = (own?.[2] ?? '').split(' ').filter(Boolean);
 	/* what the name does comes first, that flowR knows it at all comes after */
 	const known = kinds.get(name) ?? [];
 	for(const kind of [...known.filter(k => k !== 'builtin'), ...known.filter(k => k === 'builtin')]) {
@@ -786,6 +829,21 @@ function show(name, needle, at, owners) {
 		badge.className = kind === 'builtin' ? 'kindtag flowr' : 'kindtag';
 		badge.textContent = KindNames[kind] ?? kind;
 		head.append(badge);
+		if(kind === 'builtin' && words.length > 0) {
+			const more = document.createElement('span');
+			more.className = 'kindtag props';
+			more.textContent = '+' + words.length;
+			more.title = 'flowR states ' + words.join(', ') + ' about this call; open the entry to see which package for';
+			head.append(more);
+		}
+	}
+	/* flowR's own formals where it names any, else what base R declares: an empty list would read as
+	   `takes nothing`, which is not what a definition without a declared signature means */
+	const declared = own?.[1] ? undefined : declaredIn(name, first?.[0]);
+	if(own?.[1]) {
+		head.append(signature(name, own[1], 'what flowR models of this call: the arguments it has something to say about, not every formal R declares'));
+	} else if(declared) {
+		head.append(signature(name, declared, 'what ' + first[0] + ' declares for this function'));
 	}
 	const generic = genericOf(name, owners);
 	if(generic) {
@@ -835,6 +893,8 @@ async function search() {
 	const typed = q.value.trim().replace(/^\?/, '').replace(/\(\s*\)$/, '').trim();
 	const qualified = /^([\w.]+):::?(.*)$/.exec(typed);
 	const inPackage = qualified?.[1];
+	/* a search for `dplyr::filter` is about dplyr's, so that is the one a hit answers for */
+	scoped = inPackage;
 	const needle = (qualified?.[2] ?? typed).trim();
 	const run = ++pending;
 	hits.replaceChildren();
@@ -949,7 +1009,7 @@ async function search() {
 		inPackages = seen.size;
 	}
 	for(const [name, at, owners] of kept.slice(0, limit)) {
-		show(name, needle, at, owners.split(','));
+		show(name, needle, at, withStatedOwner(name, owners.split(',')));
 	}
 	const where = inPackage === undefined ? ''
 		: wanted === undefined ? ` (flowR knows no package called ${inPackage})` : ` in ${inPackage}`;

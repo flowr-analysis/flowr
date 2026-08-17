@@ -621,10 +621,11 @@ c <- (function() {
 				filter(Y > 5)`;
 			assertSliced(label('Require complete pipe', caps),
 				shell, code, ['1@x'], 'x <- fun %>% filter(X == "green") %>% dplyr::select(X, Y) %>% mutate(Z = 5) %>% distinct() %>% group_by(X) %>% summarize(Y = mean(Y)) %>% left_join(., ., by = "X") %>% ungroup() %>% mutate(Y = Y + 1) %>% filter(Y > 5)');
+			/* a name in a data mask is a column of the data handed to the verb, so the data is part of its slice */
 			assertSliced(label('Slice for variable in filter', caps),
-				shell, code, ['2@X'], 'X');
+				shell, code, ['2@X'], 'fun %>% X');
 			assertSliced(label('Slice for variable in last filter', caps),
-				shell, code, ['12@Y'], 'Y');
+				shell, code, ['12@Y'], 'fun %>% filter(X == "green") %>% dplyr::select(X, Y) %>% mutate(Z = 5) %>% distinct() %>% group_by(X) %>% summarize(Y = mean(Y)) %>% left_join(., ., by = "X") %>% ungroup() %>% mutate(Y = Y + 1) %>% Y');
 		});
 		describe('Functions in Unknown Call Contexts', () => {
 			const capabilities: SupportedFlowrCapabilityId[] = [

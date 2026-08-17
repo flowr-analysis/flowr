@@ -11,6 +11,8 @@ import { openDatabase } from './sigdb-index';
 import { rSourceUrl, rdrrDocUrl } from '../src/queries/catalog/signature-query/signature-query-executor';
 import { flowrVersion } from '../src/util/version';
 import { FlowrConfig } from '../src/config';
+import { DefaultBuiltinConfig } from '../src/dataflow/environments/default-builtin-config';
+import { Identifier } from '../src/dataflow/environments/identifier';
 
 /* flowR's CLI modules read `process` while they are being imported, so one has to exist */
 const ProcessShim = 'globalThis.process ??= { argv: [], argv0: "browser", env: {}, platform: "browser",'
@@ -68,6 +70,38 @@ async function baseSignatures(): Promise<string> {
 }
 
 /**
+ * The exports of every package the playground may attach, as `package -> [version, release, ...names]`. A browser can open no
+ * database, so without this `library(dplyr)` brings nothing into scope and every call it should resolve
+ * stays unknown. Base R plus the packages flowR carries definitions for is what a script typed into the
+ * page actually loads, and their export lists are small enough to ride along.
+ */
+async function packageExports(): Promise<string> {
+	const db = await openDatabase();
+	if(db === undefined) {
+		return '';
+	}
+	const wanted = new Set(db.packageNames().filter(name => db.isBaseR(name)));
+	for(const definition of DefaultBuiltinConfig) {
+		for(const id of definition.names) {
+			const namespace = Identifier.getNamespace(id);
+			if(namespace !== undefined) {
+				wanted.add(String(namespace));
+			}
+		}
+	}
+	const out: Record<string, readonly string[]> = {};
+	for(const pkg of wanted) {
+		const known = db.lookup(pkg);
+		if(known !== undefined && known.exported.length > 0) {
+			/* the version and its release date first: the exports were read from that release, and saying so
+			   is what keeps a query from reporting the package as one no database knows */
+			out[pkg] = [known.version, db.releaseDate(pkg)?.toISOString().slice(0, 10) ?? '', ...known.exported];
+		}
+	}
+	return JSON.stringify(out);
+}
+
+/**
  * What the configuration schema says about each of its keys, as `path -> {type, description, values}`.
  * Joi's browser build refuses `describe()`, so the answers are written out here instead.
  */
@@ -120,13 +154,16 @@ async function main(): Promise<void> {
 	   from a file:// url as well as over GitHub Pages */
 	const page = fs.readFileSync(path.join('scripts', 'playground', 'index.html'), 'utf8');
 	const signatures = await baseSignatures();
+	const exports = await packageExports();
 	fs.writeFileSync(path.join(Target, 'index.html'), page
 		.replace('<!--SIGS-->', signatures)
+		.replace('<!--PKGS-->', exports)
 		.replace('<!--CFGDOCS-->', configDocs())
 		.replace('<!--VERSION-->', `v${flowrVersion().format()}`));
 	const size = Object.values(result.metafile.outputs).reduce((sum, o) => sum + o.bytes, 0);
 	console.log(`  wrote ${Target} (${(size / 1024 / 1024).toFixed(1)} MB bundle, `
-		+ `${Math.round(signatures.length / 1024)} kB of base R signatures, not committed)`);
+		+ `${Math.round(signatures.length / 1024)} kB of base R signatures, `
+		+ `${Math.round(exports.length / 1024)} kB of package exports, not committed)`);
 }
 
 void main();

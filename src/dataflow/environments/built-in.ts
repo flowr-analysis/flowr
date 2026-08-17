@@ -29,6 +29,7 @@ import { processGet } from '../internal/process/functions/call/built-in/built-in
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { type BuiltIn, NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EdgeType } from '../graph/edge';
 import { processLibrary } from '../internal/process/functions/call/built-in/built-in-library';
@@ -102,6 +103,16 @@ export interface BuiltInIdentifierDefinition extends IdentifierReference {
 	evalHandler?: BuiltInEvalHandler
 }
 
+/**
+ * Whether the definition states that the call does not evaluate some of its arguments the standard way, either
+ * by quoting them or by handing them a data mask. Only such a definition changes what the arguments read, so
+ * only it has to run in place of the default processor.
+ */
+export function statesNonStandardEvaluation(definition: BuiltInIdentifierDefinition | undefined): boolean {
+	const config = definition?.config as Pick<DefaultBuiltInProcessorConfiguration, 'markArgsAsNSE' | 'markArgsAsMasked'> | undefined;
+	return config?.markArgsAsNSE !== undefined || config?.markArgsAsMasked !== undefined;
+}
+
 export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierReference {
 	type:      ReferenceType.BuiltInConstant
 	definedAt: BuiltIn
@@ -139,6 +150,34 @@ export interface BuiltInEvalHandlerArgs extends ResolveInfo {
 }
 export type BuiltInEvalHandler = (args: BuiltInEvalHandlerArgs) => Value;
 
+/**
+ * The symbols handed to an {@link ArgProp.Atomic} argument directly: only data works there, so `id` in `id > 2`
+ * names a variable and not a function `id` that happens to be in scope, even though `>` may dispatch on the
+ * operand's class. Anything bubbling up from a nested call is left alone, that call decided it already.
+ */
+function dataArgumentSymbols<OtherInfo>(
+	args: readonly (RNodeWithParent | PotentiallyEmptyRArgument<OtherInfo & ParentInformation>)[],
+	sig: FnSig | undefined
+): ReadonlySet<NodeId> | undefined {
+	const layout = sig === undefined ? undefined : FnSig.layout(sig);
+	if(layout === undefined || (layout.any & ArgProp.Atomic) === 0) {
+		return undefined;
+	}
+	let symbols: Set<NodeId> | undefined;
+	for(let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		const prop = FnSig.propAt(layout, i);
+		if(arg === EmptyArgument || (prop & ArgProp.Atomic) === 0 || (prop & (ArgProp.Callee | ArgProp.Nse)) !== 0) {
+			continue;
+		}
+		const value: RNodeWithParent | undefined = RArgument.is(arg) ? arg.value : arg;
+		if(value !== undefined && RSymbol.is(value)) {
+			(symbols ??= new Set()).add(value.info.id);
+		}
+	}
+	return symbols;
+}
+
 function defaultBuiltInProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -155,9 +194,11 @@ function defaultBuiltInProcessor<OtherInfo>(
 	const nsePositions = nsePositionsOf(nse, args.length);
 	let lastEnv = data.environment;
 	const { information: res, processedArguments } = processKnownFunctionCall({
-		name, args, rootId, data, forceArgs, origin:    useAsProcessor,
+		name, args, rootId, data, forceArgs,
+		origin:      useAsProcessor,
+		nonFunction: dataArgumentSymbols(args, sig),
 		/* an unevaluated argument must not read the current frame, so it is analyzed in a clean env like `quote` */
-		patchData: nsePositions === undefined ? undefined : (d, index) => {
+		patchData:   nsePositions === undefined ? undefined : (d, index) => {
 			if(nsePositions.has(index)) {
 				lastEnv = d.environment;
 				return { ...d, environment: d.ctx.env.makeCleanEnv() };
@@ -282,9 +323,10 @@ function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ useAsProcessor = BuiltInProcName.Default, forceArgs, markArgsAsNSE: nse, markArgsAsMasked: masked }: Pick<DefaultBuiltInProcessorConfiguration, 'useAsProcessor' | 'forceArgs' | 'markArgsAsNSE' | 'markArgsAsMasked'>
+	{ useAsProcessor = BuiltInProcName.Default, forceArgs, markArgsAsNSE: nse, markArgsAsMasked: masked, sig }: Pick<DefaultBuiltInProcessorConfiguration, 'useAsProcessor' | 'forceArgs' | 'markArgsAsNSE' | 'markArgsAsMasked' | 'sig'>
 ): DataflowInformation {
-	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: useAsProcessor });
+	const { information, processedArguments } = processKnownFunctionCall({
+		name, args, rootId, data, forceArgs, origin: useAsProcessor, nonFunction: dataArgumentSymbols(args, sig) });
 	const g = information.graph;
 	for(const arg of processedArguments) {
 		if(arg) {

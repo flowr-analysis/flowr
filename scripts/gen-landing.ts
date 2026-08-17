@@ -229,15 +229,15 @@ async function originLines(code: string): Promise<string[][]> {
 	return merged.map(([criterion, text, line]) => [criterion, text, line]);
 }
 
-/** How one origin reads in a sentence: what it is, and where the reader can look for it. */
+/** What one origin is, in as few words as say it: `calls function (line 3)` rather than a sentence. */
 function phrase(type: OriginType, what: string, line: number | undefined, builtIn: string): string {
-	const where = line !== undefined ? ` on line ${line}` : '';
+	const where = line !== undefined ? ` (line ${line})` : '';
 	switch(type) {
-		case OriginType.ReadVariableOrigin:    return `reads ${what}${line !== undefined ? ` from line ${line}` : ''}`;
+		case OriginType.ReadVariableOrigin:    return `reads ${what}${where}`;
 		case OriginType.WriteVariableOrigin:   return `writes ${what}${where}`;
-		case OriginType.ConstantOrigin:        return `is the constant ${what}`;
-		case OriginType.FunctionCallOrigin:    return `calls the function${where}`;
-		case OriginType.BuiltInFunctionOrigin: return `calls the built-in ${builtIn}`;
+		case OriginType.ConstantOrigin:        return `constant ${what}`;
+		case OriginType.FunctionCallOrigin:    return `calls function${where}`;
+		case OriginType.BuiltInFunctionOrigin: return `calls built-in ${builtIn}`;
 	}
 }
 

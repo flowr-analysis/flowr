@@ -565,6 +565,8 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 			loadsWithSideEffects: false,
 			callable:             exported
 		};
-		return new Package({ name, namespaceInfo, resolvedVersion: info.version });
+		/* a source may know the exports without knowing which release they are from, and then the package
+		   carries no version rather than a made-up one */
+		return new Package({ name, namespaceInfo, resolvedVersion: info.version || undefined });
 	}
 }

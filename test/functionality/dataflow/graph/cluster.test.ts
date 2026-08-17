@@ -172,8 +172,9 @@ cat(product)
 			});
 		});
 		describe('unknown side effects', () => {
-			check('unknown side effects should get their own cluster', 'library(dplyr)\nx', [
-				{ members: ['1@library', '1@dplyr'], hasUnknownSideEffects: true },
+			/* a package neither a database nor flowR itself knows: attaching it really is a step into the dark */
+			check('unknown side effects should get their own cluster', 'library(zzznotapackage)\nx', [
+				{ members: ['1@library', '1@zzznotapackage'], hasUnknownSideEffects: true },
 				['2@x']
 			]);
 			check('unknown side effects should be marked as such', 'x <- vx\nrequire(vx)\nx', [

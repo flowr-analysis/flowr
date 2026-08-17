@@ -29,7 +29,12 @@ export enum ArgProp {
 	 * the result is one of this argument's values, like `choices` in `match.arg(arg, choices)`. The bounding
 	 * argument of a {@link CallProp.Narrows} call; without one such a call yields a value of its own making.
 	 */
-	Bounds   = 1 << 10
+	Bounds   = 1 << 10,
+	/**
+	 * only atomic data works here, never a closure, as with `e1` in `e1 > e2`. A bare symbol in such an
+	 * argument therefore names a variable even when a function of that name is in scope.
+	 */
+	Atomic   = 1 << 11
 }
 
 /**
@@ -181,6 +186,20 @@ export const FnSig = {
 	/** The positions carrying any of the given roles; see {@link argsWith}. */
 	posWith: argsWith
 } as const;
+
+/** the {@link CallProp} bits as the words a reader wants, in the order they are declared */
+const CallPropNames: readonly (readonly [CallProp, string])[] = [
+	[CallProp.Pure, 'pure'], [CallProp.Throws, 'can throw'], [CallProp.Invisible, 'invisible'],
+	[CallProp.Generic, 'generic'], [CallProp.Method, 's3 method'], [CallProp.Scope, 'changes scope'],
+	[CallProp.NonDet, 'non deterministic'], [CallProp.Random, 'random'], [CallProp.Ambient, 'ambient state'],
+	[CallProp.File, 'file system'], [CallProp.Reads, 'reads'], [CallProp.Writes, 'writes'],
+	[CallProp.Network, 'network'], [CallProp.Prints, 'prints']
+];
+
+/** What a call states about itself, as words rather than as a bit mask, for anything showing it to a reader. */
+export function callPropWords(props: CallProps | undefined): string[] {
+	return props === undefined ? [] : CallPropNames.filter(([bit]) => (props & bit) !== 0).map(([, word]) => word);
+}
 
 /**
  * Semantics of a built-in that hold no matter which processor handles the call. The remaining facts already

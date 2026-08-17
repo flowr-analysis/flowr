@@ -19,6 +19,7 @@ import { unescapeSpecialChars, unquoteArgument } from '../resolve-args';
 import type { DataFrameShapeInferenceVisitor } from '../shape-inference';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
+import { Nse } from '../../../dataflow/internal/process/functions/call/nse';
 
 /** Regular expression representing valid columns names, e.g. for `data.frame` */
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
@@ -190,7 +191,8 @@ export function getUnresolvedSymbolsInExpression(
 			const symbolName = Identifier.mapName(node.content, unquoteArgument);
 
 			// ignore symbols named ".", as they are used as argument placeholder in magrittr pipe operations
-			if(UseVertex.is(vertex?.[0]) && vertex[1].size === 0 && symbolName !== '.') {
+			/* the mask read the dataflow adds to a column keeps the name a column, so ask the mark rather than the edges */
+			if(UseVertex.is(vertex?.[0]) && symbolName !== '.' && (vertex[1].size === 0 || Nse.maskedName(dfg, node.info.id))) {
 				unresolvedSymbols.push(symbolName);
 			}
 		}

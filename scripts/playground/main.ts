@@ -5,7 +5,7 @@
 import { EditorView, basicSetup } from 'codemirror';
 import { Decoration, hoverTooltip, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { StateEffect, StateField } from '@codemirror/state';
-import { autocompletion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
+import { autocompletion, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
 import { HighlightStyle, StreamLanguage, syntaxHighlighting } from '@codemirror/language';
 import { highlightCode, tags } from '@lezer/highlight';
 import { r } from '@codemirror/legacy-modes/mode/r';
@@ -16,10 +16,19 @@ import { FlowrAnalyzerBuilder } from '../../src/project/flowr-analyzer-builder';
 import { stringifyValue } from '../../src/dataflow/eval/values/r-value';
 import { LintingRules } from '../../src/linter/linter-rules';
 import { LintingPrettyPrintContext } from '../../src/linter/linter-format';
-import { DefaultBuiltinConfig } from '../../src/dataflow/environments/default-builtin-config';
+import { DefaultBuiltinConfig, statedSignatureOf, statedSignatures } from '../../src/dataflow/environments/default-builtin-config';
+import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
+import { memorySourceOfPackages } from '../../src/project/sigdb/memory-source';
 import { Identifier } from '../../src/dataflow/environments/identifier';
-import { CallProp } from '../../src/dataflow/environments/built-in-props';
 import { SliceDirection } from '../../src/util/slice-direction';
+import { rankName } from '../../src/util/text/name-rank';
+import { stripAnsi, voidFormatter } from '../../src/util/text/ansi';
+import { replCompleter, replProcessAnswer } from '../../src/cli/repl/core';
+import { getCommand } from '../../src/cli/repl/commands/repl-commands';
+import { splitAtEscapeSensitive } from '../../src/util/text/args';
+import type { ReplOutput } from '../../src/cli/repl/commands/repl-main';
+import { packForUrl, toBase64, unpackFromUrl } from '../../src/util/text/url-encoding';
+import { baseRPackages } from '../../src/util/r-base-packages';
 import { DataflowMermaid } from '../../src/util/mermaid/dfg';
 import { cfgToMermaid } from '../../src/util/mermaid/cfg';
 import { normalizedAstToMermaid } from '../../src/util/mermaid/ast';
@@ -306,34 +315,11 @@ for(const definition of DefaultBuiltinConfig) {
 }
 
 /** flowR's own definitions, for the primitives (`sum`, `max`, `c`) the database cannot describe */
-const builtins = new Map<string, Signature>();
-for(const definition of DefaultBuiltinConfig) {
-	const config = (definition as { config?: { props?: number, sig?: [string, number][] } }).config;
-	for(const id of definition.names) {
-		const name = String(Identifier.getName(id));
-		if(builtins.has(name)) {
-			continue;
-		}
-		const namespace = Identifier.getNamespace(id);
-		const params = (config?.sig ?? []).map(([param]) => param).join(', ');
-		builtins.set(name, {
-			call:  `${namespace === undefined ? 'base' : String(namespace)}::${name}(${params})`,
-			props: propsOf(config?.props ?? 0),
-			where: ''
-		});
-	}
-}
-
-/** the properties flowR states for a call, as words rather than as a bit mask */
-function propsOf(props: number): string {
-	const names: [number, string][] = [
-		[CallProp.Pure, 'pure'], [CallProp.Throws, 'can throw'], [CallProp.Invisible, 'invisible'],
-		[CallProp.Generic, 'generic'], [CallProp.Method, 's3 method'], [CallProp.Scope, 'changes scope'],
-		[CallProp.NonDet, 'non deterministic'], [CallProp.Random, 'random'], [CallProp.Ambient, 'ambient state'],
-		[CallProp.File, 'file system'], [CallProp.Reads, 'reads'], [CallProp.Writes, 'writes'],
-		[CallProp.Network, 'network'], [CallProp.Prints, 'prints']
-	];
-	return names.filter(([bit]) => (props & bit) !== 0).map(([, word]) => word).join(' ');
+const stated = statedSignatures();
+function builtinSignature(name: string, pkg?: string): Signature | undefined {
+	const own = statedSignatureOf(stated, name, pkg);
+	return own === undefined ? undefined
+		: { call: `${own.pkg}::${name}${own.params === undefined ? '' : `(${own.params})`}`, props: own.props.join(' '), where: '' };
 }
 
 /** the packages the script attaches, which is what decides who owns a name */
@@ -363,7 +349,7 @@ function signatureOf(name: string, pkg?: string): Signature | undefined {
 	const found = signatures.get(name);
 	if(found === undefined || (pkg !== undefined && pkg !== found[1])) {
 		/* a primitive has no source to point at, but flowR still states what it does */
-		const own = builtins.get(name);
+		const own = builtinSignature(name, pkg);
 		if(found === undefined && own !== undefined && (pkg === undefined || own.call.startsWith(`${pkg}::`))) {
 			return own;
 		}
@@ -471,18 +457,105 @@ function showPointed(name: string, said: string | undefined): void {
 const builtInNames = [...new Set(DefaultBuiltinConfig.flatMap(d => d.names.map(id => String(Identifier.getName(id)))))]
 	.filter(n => /^[A-Za-z.][\w._]*$/.test(n));
 
+/** the exports of every package this page carries, `package -> names`, written in by the build */
+const bakedPackages: Readonly<Record<string, readonly string[]>> = (() => {
+	const baked = document.getElementById('pkgs')?.textContent?.trim();
+	try {
+		return baked ? JSON.parse(baked) as Record<string, string[]> : {};
+	} catch{
+		return {};   /* built without a database */
+	}
+})();
+
+/** what a package carries in the baked table, past the version and release date it starts with */
+const exportsFrom = (entry: readonly string[] = []): readonly string[] => entry.slice(2);
+
+/** the packages whose names a `library()` call may ask for */
+const packageNames = Object.keys(bakedPackages).sort((a, b) => a.localeCompare(b));
+
+/** a package's exports as a set, so telling `print.foo` from `print` costs nothing per keystroke */
+const exportSets = new Map<string, ReadonlySet<string>>();
+function exportsOf(pkg: string): ReadonlySet<string> {
+	let known = exportSets.get(pkg);
+	if(known === undefined) {
+		known = new Set(exportsFrom(bakedPackages[pkg]));
+		exportSets.set(pkg, known);
+	}
+	return known;
+}
+
+/** `dplyr::` asks about one package, and then nothing but that package's exports belongs in the list */
+const Qualified = /^([A-Za-z.][\w.]*)(:{2,3})([\w._]*)$/;
+/** the argument of a call that names a package rather than a value, where only package names belong */
+const Loading = /\b(?:library|require|loadNamespace|requireNamespace|attachNamespace|load_all)\(\s*["']?([\w.]*)$/;
+/** the base R packages the page carries, which the ranker puts ahead of what CRAN adds */
+const BaseRPackages = new Set(baseRPackages());
+
+/** one name to offer, weighed by the {@link rankName} the signature browser ranks its hits with */
+function offer(label: string, needle: string, where: { pkg?: string, type: string, detail: string, siblings?: ReadonlySet<string> }): Completion & { boost: number } {
+	const dot = label.indexOf('.');
+	/* `print.foo` is a method of `print` when the generic is a name of its own, as the database decides it */
+	const generic = dot > 0 ? label.slice(0, dot) : undefined;
+	const points = rankName({
+		name:     label,
+		needle,
+		known:    knownNames.has(label),
+		baseR:    where.pkg !== undefined && BaseRPackages.has(where.pkg),
+		base:     where.pkg === 'base',
+		s3:       generic !== undefined && (knownNames.has(generic) || (where.siblings?.has(generic) ?? false)),
+		variable: where.type === 'variable'
+	});
+	return { label, type: where.type, detail: where.detail, boost: points };
+}
+
+/** the names flowR has a definition for, which is what tells a function people call from a lone symbol */
+const knownNames = new Set(builtInNames);
+
+/**
+ * CodeMirror takes `boost` as a number between -99 and 99, while the ranker answers on a far wider scale
+ * with the odd outlier (an exact hit is worth a thousand). Their order is what matters, so the list is
+ * sorted by points and spread evenly across the range rather than scaled, which no outlier can flatten.
+ */
+function ranked(options: readonly (Completion & { boost: number })[]): Completion[] {
+	const sorted = [...options].sort((a, b) => b.boost - a.boost);
+	const last = Math.max(1, sorted.length - 1);
+	return sorted.map((option, at) => ({ ...option, boost: Math.round(99 - at / last * 198) }));
+}
+
 function complete(context: CompletionContext): CompletionResult | null {
+	const qualified = Qualified.exec(context.matchBefore(/[A-Za-z.][\w.]*:{2,3}[\w._]*/)?.text ?? '');
+	if(qualified !== null) {
+		const [, pkg, colons, written] = qualified;
+		const exported = bakedPackages[pkg] === undefined ? undefined : exportsFrom(bakedPackages[pkg]);
+		return exported === undefined ? null : {
+			from:    context.pos - written.length,
+			options: ranked(exported.map(label => offer(label, written, { pkg, type: 'function', detail: `${pkg}${colons}`, siblings: exportsOf(pkg) })))
+		};
+	}
+	const loading = Loading.exec(context.matchBefore(Loading)?.text ?? '');
+	if(loading !== null) {
+		/* a call that loads a package takes a package and nothing else */
+		return {
+			from:    context.pos - loading[1].length,
+			options: ranked(packageNames.map(label => offer(label, loading[1], { pkg: label, type: 'namespace', detail: 'package' })))
+		};
+	}
 	const word = context.matchBefore(/[\w._]+/);
 	if(word === null || (word.from === word.to && !context.explicit)) {
 		return null;
 	}
+	/* only what R would find at this position: what the script binds, what it attached, and the rest of
+	   the search path. A package name is not bound to anything, so it belongs in `library()` alone */
+	const needle = word.text;
 	const defined = [...new Set([...context.state.doc.toString().matchAll(/([A-Za-z.][\w._]*)\s*(?:<-|=(?!=))/g)].map(m => m[1]))];
 	return {
 		from:    word.from,
-		options: [
-			...defined.map(label => ({ label, type: 'variable', detail: 'in this script' })),
-			...builtInNames.map(label => ({ label, type: 'function', detail: 'flowR built-in' }))
-		]
+		options: ranked([
+			...defined.map(label => offer(label, needle, { type: 'variable', detail: 'in this script' })),
+			/* what the script attached is nearer than what flowR knows without it */
+			...[...attached].flatMap(pkg => exportsFrom(bakedPackages[pkg]).map(label => offer(label, needle, { pkg, type: 'function', detail: pkg }))),
+			...builtInNames.map(label => offer(label, needle, { type: 'function', detail: 'flowR built-in' }))
+		])
 	};
 }
 
@@ -564,6 +637,71 @@ const configTips = hoverTooltip((view, pos) => {
 });
 
 /* the configuration flowR runs with, as JSON: invalid text keeps the last one that worked */
+/**
+ * A short script and a changed configuration live in the page's own url, so a link is the example: paste it
+ * to someone and they open what you were looking at. Only what stays within {@link MaxShared} is kept, since
+ * a link nobody can send is worse than none, and a configuration left at its defaults is not written at all.
+ */
+const MaxShared = 4000;
+const shared = (() => {
+	const params = new URLSearchParams(location.hash.replace(/^#/, ''));
+	const read = (key: string) => {
+		const found = params.get(key);
+		return found === null ? undefined : unpackFromUrl(found);
+	};
+	/* the configuration travels as the keys it changed, `a.b.c=<json>` joined by `;`, which is short
+	   enough to read in the address bar and to paste into a bug report */
+	const changed = params.get('k')?.split(';').filter(line => line.length > 0);
+	/* everything about the view is one field, `<code width>,<repl height>,<flags>`, because four of them
+	   would be four `&`-separated names for what is really one thing: how the page was left looking */
+	const [split = '', repl = '', flags = ''] = (params.get('v') ?? '').split(',');
+	return {
+		code:      read('c'),
+		config:    changed === undefined ? undefined : JSON.stringify(FlowrConfig.applyPaths(changed), null, 2),
+		/* `>` is how the landing page writes the forward direction, so a link reads the same on both */
+		direction: flags.includes('>') ? SliceDirection.Forward : undefined,
+		split:     split.length > 0 ? split : undefined,
+		repl:      repl.length > 0 ? repl : undefined
+	};
+})();
+
+/** what the tools bar says about the link, next to the button that copies it */
+function showShared(text: string): void {
+	const at = document.getElementById('sharenote');
+	if(at !== null) {
+		at.textContent = text;
+	}
+}
+
+let shareTimer = 0;
+/** writes the current script and configuration into the url, replacing rather than growing the history */
+function remember(): void {
+	clearTimeout(shareTimer);
+	shareTimer = window.setTimeout(() => {
+		const params = new URLSearchParams();
+		const written = editor.state.doc.toString();
+		/* the sample is what the page opens with anyway, so a link to it carries nothing */
+		if(written !== Sample) {
+			params.set('c', packForUrl(written));
+		}
+		const settings = FlowrConfig.parse(config.state.doc.toString());
+		const changed = settings === undefined ? [] : FlowrConfig.changedPaths(settings);
+		if(changed.length > 0) {
+			params.set('k', changed.join(';'));
+		}
+		const dragged = (property: string) => document.documentElement.style.getPropertyValue(property);
+		const flags = direction === SliceDirection.Forward ? '>' : '';
+		const view = [dragged('--split'), dragged('--repl-height'), flags].join(',');
+		if(view.replaceAll(',', '').length > 0) {
+			params.set('v', view);
+		}
+		const hash = params.toString();
+		const fits = hash.length <= MaxShared;
+		history.replaceState(null, '', fits ? `#${hash}` : location.pathname + location.search);
+		showShared(fits ? '' : 'too long for a link, the script stays on this page only');
+	}, 800);
+}
+
 let settings: ReturnType<typeof FlowrConfig.parse>;
 const note = document.getElementById('confignote');
 
@@ -587,13 +725,14 @@ function readSettings(): void {
 
 const Defaults = JSON.stringify(FlowrConfig.default(), null, 2);
 const config = new EditorView({
-	doc:        Defaults,
+	doc:        shared.config ?? Defaults,
 	extensions: [
 		basicSetup, StreamLanguage.define(json), look, syntaxHighlighting(highlight), configTips,
 		EditorView.updateListener.of(update => {
 			if(update.docChanged) {
 				clearTimeout(configTimer);
 				configTimer = window.setTimeout(readSettings, 600);
+				remember();
 			}
 		})
 	],
@@ -628,13 +767,14 @@ for(const tab of document.querySelectorAll('.tab')) {
 }
 
 const editor = new EditorView({
-	doc:        Sample,
+	doc:        shared.code ?? Sample,
 	extensions: [
 		basicSetup, rLanguage, look, syntaxHighlighting(highlight), callMarks,
 		lintMarks, sliceMarks, linkMarks, valueTips, autocompletion({ override: [complete] }),
 		EditorView.updateListener.of(update => {
 			if(update.docChanged) {
 				schedule();
+				remember();
 			} else if(update.selectionSet) {
 				schedule(400);
 			}
@@ -672,9 +812,15 @@ function cursorName(): string | undefined {
 	return found === undefined ? undefined : `${line.number}@${found.name}`;
 }
 
-function section(title: string): void {
+function section(title: string, aside?: string): void {
 	const head = document.createElement('h3');
 	head.textContent = title;
+	if(aside !== undefined) {
+		const said = document.createElement('span');
+		said.className = 'aside';
+		said.textContent = aside;
+		head.append(said);
+	}
 	panel.append(head);
 }
 
@@ -699,11 +845,27 @@ function nothing(text: string): HTMLElement {
 	return el;
 }
 
+/**
+ * The signature database of this page: a browser opens no file, so the build writes the exports of every
+ * package the playground may attach into it, and they are handed to the resolver as a source of their own.
+ * That is what makes `library(dplyr)` bring dplyr's names into scope here as it does on a machine with the
+ * database, down to `filter` being dplyr's rather than the one in `stats`.
+ */
+function packageSource(): FlowrAnalyzerPackageVersionsSigDbPlugin | undefined {
+	return packageNames.length === 0 ? undefined
+		: new FlowrAnalyzerPackageVersionsSigDbPlugin(memorySourceOfPackages(bakedPackages));
+}
+const packages = packageSource();
+
 let ready: Promise<void> | undefined;
 async function analyzer() {
 	ready ??= TreeSitterExecutor.initTreeSitter(undefined, rWasm, treeSitterWasm);
 	await ready;
 	const builder = new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor());
+	if(packages !== undefined) {
+		/* the shipped resolver would look for database files, which a browser has none of */
+		builder.unregisterPlugins(SigDbPluginName).registerPlugins(packages);
+	}
 	if(settings !== undefined) {
 		builder.setConfig(settings);
 	}
@@ -800,7 +962,7 @@ async function describe(criterion: string): Promise<Known> {
 		/* `filter` is dplyr's once dplyr is attached, and flowR says so: `built-in:dplyr:filter` */
 		const attached = origins.map(o => /^built-in:([^:]+):/.exec(o.proc ?? '')?.[1]).find(p => p !== undefined);
 		answer = {
-			said: [shape, resolved.length > 0 ? resolved.join(', ') : undefined, from.length > 0 ? `from line ${from.join(', ')}` : undefined]
+			said: [shape, resolved.length > 0 ? resolved.join(', ') : undefined, from.length > 0 ? `(line ${from.join(', ')})` : undefined]
 				.filter(Boolean).join(' · ') || undefined,
 			pkg:   attached,
 			local: origins.length > 0 && origins.every(o => o.proc === undefined)
@@ -861,12 +1023,7 @@ const Views: Record<string, () => Promise<string>> = {
 /** mermaid.live reads its state from the fragment, and `btoa` wants bytes rather than characters */
 function liveUrl(code: string): string {
 	const state = JSON.stringify({ code, mermaid: { autoSync: true } });
-	const bytes = new TextEncoder().encode(state);
-	let binary = '';
-	for(const byte of bytes) {
-		binary += String.fromCharCode(byte);
-	}
-	return `https://mermaid.live/edit#base64:${btoa(binary)}`;
+	return `https://mermaid.live/edit#base64:${toBase64(new TextEncoder().encode(state))}`;
 }
 
 for(const button of document.querySelectorAll('[data-view]')) {
@@ -921,21 +1078,31 @@ async function analyze(): Promise<number> {
 
 	const head = document.createElement('h3');
 	head.textContent = asked === undefined ? 'Program slice' : `Program slice · ${asked}`;
-	const way = document.createElement('select');
-	way.className = 'way';
-	way.title = 'origin: what this value is built from. impact: what depends on it';
-	for(const [value, label] of [[SliceDirection.Backward, 'origin (backward)'], [SliceDirection.Forward, 'impact (forward)']] as const) {
-		const option = document.createElement('option');
-		option.value = value;
-		option.textContent = label;
-		option.selected = value === direction;
-		way.append(option);
+	/* the same pair the landing page offers: what this value is built from, or what depends on it */
+	const ways = document.createElement('span');
+	ways.className = 'ways';
+	ways.setAttribute('role', 'group');
+	ways.setAttribute('aria-label', 'which way to slice');
+	for(const [value, label, hint] of [
+		[SliceDirection.Backward, 'origin', 'what this value is built from'],
+		[SliceDirection.Forward, 'impact', 'what depends on this value']
+	] as const) {
+		const button = document.createElement('button');
+		button.type = 'button';
+		button.className = 'way';
+		button.textContent = label;
+		button.title = hint;
+		button.setAttribute('aria-pressed', String(value === direction));
+		button.addEventListener('click', () => {
+			if(direction !== value) {
+				direction = value;
+				remember();
+				void run();
+			}
+		});
+		ways.append(button);
 	}
-	way.addEventListener('change', () => {
-		direction = way.value as SliceDirection;
-		void run();
-	});
-	head.append(way);
+	head.append(ways);
 	const dimmer = document.createElement('label');
 	dimmer.className = 'toggle';
 	const box = document.createElement('input');
@@ -1001,7 +1168,8 @@ async function analyze(): Promise<number> {
 		return onto === undefined;
 	});
 	attached = new Set(deps.filter(d => d.kind === 'library' && d.value !== undefined).map(d => d.value as string));
-	section(`Dependencies: ${deps.length}`);
+	// eslint-disable-next-line no-irregular-whitespace
+	section(`Dependencies: ${deps.length}  (click to slice)`);
 	const shownDep = (d: DepRow, part: boolean): HTMLElement => {
 		const what = document.createElement('span');
 		what.className = 'what';
@@ -1031,9 +1199,14 @@ async function analyze(): Promise<number> {
 		}
 		return line;
 	};
-	panel.append(...(deps.length > 0
-		? top.flatMap(d => [shownDep(d, false), ...d.parts.map(p => shownDep(p, true))])
-		: [nothing('nothing outside this script')]));
+	if(deps.length > 0) {
+		const rows = document.createElement('div');
+		rows.className = 'deps';
+		rows.append(...top.flatMap(d => [shownDep(d, false), ...d.parts.map(p => shownDep(p, true))]));
+		panel.append(rows);
+	} else {
+		panel.append(nothing('nothing outside this script'));
+	}
 
 	const found = Object.entries(answers.linter?.results ?? {}).flatMap(([rule, per]) =>
 		(per?.results ?? []).map(f => ({ rule, line: f.loc?.[0], loc: f.loc, message: explain(rule, f, per?.['.meta']) })));
@@ -1074,7 +1247,7 @@ async function analyze(): Promise<number> {
 
 /* whether the lines outside the slice step back in the editor, what the last slice kept, and which way it runs */
 let dimOutside = false, lastKept: readonly number[] = [];
-let direction: SliceDirection = SliceDirection.Backward;
+let direction: SliceDirection = shared.direction ?? SliceDirection.Backward;
 let working = false, again = false;
 async function run(): Promise<void> {
 	if(working) {
@@ -1107,10 +1280,171 @@ function schedule(delay = 700): void {
 
 document.querySelector('[data-sample]')?.addEventListener('click', () => {
 	editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: Sample } });
+	config.dispatch({ changes: { from: 0, to: config.state.doc.length, insert: Defaults } });
+});
+
+/* the url already carries the example, so sharing is a matter of handing the link over */
+document.getElementById('share')?.addEventListener('click', () => {
+	void navigator.clipboard?.writeText(location.href).then(
+		() => showShared('link copied'),
+		() => showShared('could not copy, the link is in the address bar')
+	);
 });
 editor.dom.addEventListener('click', event => {
 	if(event.ctrlKey || event.metaKey) {
 		void jumpToDefinition();
+	}
+});
+
+if(shared.config !== undefined) {
+	readSettings();   /* a configuration from the link is what the first analysis has to run with */
+}
+
+/**
+ * flowR's own repl over the script in the editor: the page hands {@link replProcessAnswer} a place to write
+ * to and lets it dispatch, so every command the repl carries is here and none of them is written twice.
+ * What needs a machine (an R session, files, the scripts) says so itself when asked.
+ */
+const replOut = document.getElementById('replout');
+const replIn = document.getElementById('replin') as HTMLInputElement | null;
+
+/** commands like `:dataflow*` answer with a url, and a url one cannot click is a url one has to select */
+const Url = /(https?:\/\/\S+)/g;
+
+function say(text: string, how?: 'said' | 'bad'): void {
+	if(replOut === null || text.length === 0) {
+		return;
+	}
+	const line = document.createElement('div');
+	if(how !== undefined) {
+		line.className = how;
+	}
+	for(const [at, part] of text.split(Url).entries()) {
+		if(at % 2 === 0) {
+			line.append(part);
+			continue;
+		}
+		const link = document.createElement('a');
+		link.href = part;
+		link.target = '_blank';
+		link.rel = 'noopener';
+		/* the whole base64 of a graph is unreadable and endless, so the link says where it goes */
+		link.textContent = part.length > 60 ? `${part.slice(0, part.indexOf('#') + 1) || part.slice(0, 40)}…` : part;
+		link.title = part;
+		line.append(link);
+	}
+	replOut.append(line);
+	replOut.scrollTop = replOut.scrollHeight;
+}
+
+/**
+ * A command that shells out to one of flowR's scripts (`:benchmark`, `:slicer`, ...) needs a machine to run
+ * it on, which a page is not. They are refused before the repl gets to try, statement by statement, the same
+ * way {@link replProcessAnswer} splits them.
+ */
+function refusedScript(line: string): string | undefined {
+	for(const statement of splitAtEscapeSensitive(line, false, /^;\s*:/)) {
+		const name = /^\s*:(\S+)/.exec(statement)?.[1];
+		if(name !== undefined && getCommand(name)?.script === true) {
+			return `:${name} runs one of flowR's own scripts, which this page has no machine for`;
+		}
+	}
+	return undefined;
+}
+
+const replSink: ReplOutput = {
+	formatter: voidFormatter,
+	/* a command may colour its own output whatever the formatter says, and `[0m` is not a colour here */
+	stdout:    text => say(stripAnsi(text)),
+	stderr:    text => say(stripAnsi(text), 'bad')
+};
+
+const replHistory: string[] = [];
+let replAt = 0;
+
+replIn?.addEventListener('keydown', event => {
+	if(event.key === 'Tab') {
+		/* flowR's own completer, so the page offers exactly what the repl does */
+		event.preventDefault();
+		const [options, prefix] = replCompleter(replIn.value, settings ?? FlowrConfig.default());
+		if(options.length === 1) {
+			replIn.value = replIn.value.slice(0, replIn.value.length - prefix.length) + options[0];
+		} else if(options.length > 1) {
+			say(options.join('  '));
+		}
+		return;
+	} else if(event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+		event.preventDefault();
+		replAt = Math.min(Math.max(0, replAt + (event.key === 'ArrowUp' ? -1 : 1)), replHistory.length);
+		replIn.value = replHistory[replAt] ?? '';
+		return;
+	} else if(event.key !== 'Enter') {
+		return;
+	}
+	const line = replIn.value;
+	if(line.trim().length === 0) {
+		return;
+	}
+	replIn.value = '';
+	replHistory.push(line);
+	replAt = replHistory.length;
+	say(`R> ${line}`, 'said');
+	const refused = refusedScript(line);
+	if(refused !== undefined) {
+		say(refused, 'bad');
+		return;
+	}
+	void analyzer()
+		/* no R session in a browser, so `allowRSessionAccess` is off and bare R stays unevaluated */
+		.then(built => replProcessAnswer(built, replSink, line, false))
+		.catch((e: unknown) => say(String(e), 'bad'));
+});
+say('flowR\'s repl, over whatever the editor holds. :help lists what it knows, tab completes.');
+
+/**
+ * The two things one drags: how wide the code pane is and how much room the repl gets. Both are written
+ * into the page as a custom property, and from there into the link, so a shared example opens laid out the
+ * way it was left.
+ */
+function draggable(handle: HTMLElement | null, property: string, begin: () => number, measure: (event: PointerEvent, from: PointerEvent, begun: number) => string): void {
+	handle?.addEventListener('pointerdown', start => {
+		start.preventDefault();
+		handle.setPointerCapture(start.pointerId);
+		/* what it measured before the drag: reading it again on every move would compound the delta */
+		const begun = begin();
+		const drag = (at: PointerEvent) => document.documentElement.style.setProperty(property, measure(at, start, begun));
+		const done = () => {
+			handle.releasePointerCapture(start.pointerId);
+			handle.removeEventListener('pointermove', drag);
+			handle.removeEventListener('pointerup', done);
+			remember();
+		};
+		handle.addEventListener('pointermove', drag);
+		handle.addEventListener('pointerup', done);
+	});
+}
+
+const between = (low: number, value: number, high: number): number => Math.min(Math.max(low, value), high);
+
+const replBody = () => document.getElementById('repl')?.querySelector('.body')?.getBoundingClientRect().height ?? 224;
+draggable(document.getElementById('divider'), '--split', () => 0, at => {
+	const split = document.querySelector('.split')?.getBoundingClientRect();
+	const wanted = split === undefined ? 50 : (at.clientX - split.left) / split.width * 100;
+	return `${between(15, wanted, 85).toFixed(1)}%`;
+});
+draggable(document.getElementById('replgrip'), '--repl-height', replBody, (at, from, begun) =>
+	`${Math.round(between(6 * 16, begun + (from.clientY - at.clientY), window.innerHeight * 0.8))}px`);
+
+/* a link that was shared with a layout opens with it */
+for(const [property, value] of [['--split', shared.split], ['--repl-height', shared.repl]] as const) {
+	if(value !== undefined && /^[\d.]+(%|px)$/.test(value)) {
+		document.documentElement.style.setProperty(property, value);
+	}
+}
+/* opening it is what someone does to type into it */
+document.getElementById('repl')?.addEventListener('toggle', () => {
+	if((document.getElementById('repl') as HTMLDetailsElement | null)?.open) {
+		replIn?.focus();
 	}
 });
 

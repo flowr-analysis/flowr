@@ -69,7 +69,22 @@ async function sliceLines(code: string, criterion: string, direction = SliceDire
 	const answers = (result['static-slice'] as { results?: Record<string, { slice?: { result?: Iterable<unknown> } }> } | undefined)?.results ?? {};
 	const ids = Object.values(answers).flatMap(answer => [...(answer?.slice?.result ?? [])]);
 	const map = (await analyzer.normalize()).idMap;
-	return [...new Set(ids.map(id => map?.get(id as never)?.location?.[0]).filter((l): l is number => typeof l === 'number'))].sort((a, b) => a - b);
+	const lines = new Set<number>();
+	for(const id of ids) {
+		const node = map?.get(id as never);
+		const start = node?.location?.[0];
+		if(typeof start !== 'number') {
+			continue;
+		}
+		lines.add(start);
+		/* a kept node that closes with a brace keeps the line that brace sits on, the way the
+		   reconstructed slice prints it; without it the block looks cut off in the highlighting */
+		const full = node?.info?.fullRange;
+		if(full !== undefined && full[2] > full[0] && node?.info?.fullLexeme?.trimEnd().endsWith('}')) {
+			lines.add(full[2]);
+		}
+	}
+	return [...lines].sort((a, b) => a - b);
 }
 
 /** Every dependency, with the line it was found on so the code and the answer can point at each other. */

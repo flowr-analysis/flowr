@@ -101,6 +101,12 @@ jobs:
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"
 
+      # `test:full` excludes them, so the matrix is the only place they meet macOS and windows. They shell out to
+      # the cli, and the windows leg has never run them, so it reports without holding up a release until it is green.
+      - name: "⚙️ Run System Tests"
+        continue-on-error: ${{ matrix.os == 'windows-latest' }}
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test:system -- --no-watch"
+
       - name: "⬆️ Upload Test Label Details"
         # the test job is a matrix, so only one leg may claim the artifact name
         if: matrix.os == 'ubuntu-latest' && matrix.r-version == '4.5.0'

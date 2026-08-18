@@ -5,6 +5,9 @@ name: "Release Action"
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: "👩‍🏫 Linting (Full)"
@@ -19,7 +22,6 @@ jobs:
             submodules: true
 
       - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
@@ -34,15 +36,9 @@ jobs:
   test-full:
     name: "🧪 Test Suite (full)"
     needs: ['lint']
-    if: ${{
-          startsWith(github.event.head_commit.message, '[release:minor]') ||
-          startsWith(github.event.head_commit.message, '[release:major]') ||
-          startsWith(github.event.head_commit.message, '[release:patch]') || (
-            always()
-            && !failure()
-            && (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main')
-          )
-        }}
+    if: startsWith(github.event.head_commit.message, '[release:minor]') ||
+        startsWith(github.event.head_commit.message, '[release:major]') ||
+        startsWith(github.event.head_commit.message, '[release:patch]')
     timeout-minutes: 25
     strategy:
       fail-fast: false
@@ -65,7 +61,6 @@ jobs:
             submodules: true
 
       - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
@@ -123,7 +118,6 @@ jobs:
           fetch-depth: 0
 
       - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
@@ -144,11 +138,10 @@ jobs:
             any::dplyr
             any::readr
 
-      - name: "⚙️ Name and Email for Git (config) and update"
+      - name: "⚙️ Name and Email for Git (config)"
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git pull
 
       - name: "📦 Install Dependencies"
         run: npm ci
@@ -267,8 +260,6 @@ jobs:
             SUFFIX=""
           fi
           docker save flowr | gzip > "./flowr-${{ env.THE_FLOWR_VERSION }}$SUFFIX.tar.gz"
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
       - name: "⬆️ Upload the compressed image to the workflow"
         uses: actions/upload-artifact@v6
@@ -298,7 +289,6 @@ jobs:
             submodules: true
 
       - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
@@ -569,14 +559,11 @@ jobs:
         run: bash .github/workflows/scripts/run-flowr-command.sh benchmark:compact
 
       - name: "⬆️ Push benchmark results"
-        # we manipulate the name of the last commit message
         run: |
-          git reset --soft HEAD~2
+          git fetch origin main
+          git reset --soft origin/main
           git add -f wiki/stats/benchmark/
           git commit -m "[skip ci] doc: new benchmark data"
 
       - name: "⬆️ Push changes"
-        uses: ad-m/github-push-action@master
-        with:
-          branch: main
-          github_token: ${{ secrets.RELEASE_TOKEN }}
+        run: git push origin HEAD:main

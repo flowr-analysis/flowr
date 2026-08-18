@@ -9,8 +9,10 @@ import type {
 	LinkTo,
 	SubCallContextQueryFormat
 } from './call-context-query-format';
-import { type NodeId, recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../../dataflow/graph/vertex';
+import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
@@ -26,7 +28,9 @@ import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { ArrayQueue } from '../../../util/collections/queue';
 import { baseRExportOwner } from '../../../util/r-base-packages';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
-import { isNotUndefined } from '../../../util/assert';
+import { isNotUndefined, isUndefined } from '../../../util/assert';
+import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
+import type { DataflowInformation } from '../../../dataflow/info';
 
 function makeReport(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>): CallContextQueryKindResult {
 	const result: CallContextQueryKindResult = {};
@@ -261,6 +265,74 @@ function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
 	return false;
 }
 
+//todo: hier noch methodenbeschreibung
+export function doesRelyOnCriteria(reliesOn: (CallNameTypes | [CallNameTypes, CallNameTypes])[] | (string | [string, string])[], fCall: Required<DataflowGraphVertexFunctionCall> & { tag: VertexType.FunctionCall; }, dataflow: DataflowInformation & PipelinePerStepMetaInformation){
+	//must be a regex that no parameter can match on
+	const generalCriteria = new RegExp('^\\?$');
+	//Maps regex for parameter to regex of calls it must depend on. Regex of calls only one unspecified parameter must depend on are mapped to generalCriteria
+	const queryMap =  reliesOn.reduce((map, e) => {
+		const [arg, dep] = Array.isArray(e) ? [new RegExp(e[0].toString()), new RegExp(e[1].toString())] : [generalCriteria, new RegExp(e.toString())];
+		let h = map.get(arg);
+		if(isUndefined(h)){
+			h = [] as RegExp[];
+			map.set(arg, h);
+		}
+		h.push(dep);
+		return map;
+	}, new Map<RegExp, RegExp[]>());
+
+	//one unspecified parameter must depend on this
+	const generalDependencies = queryMap.get(generalCriteria) ? new Set(queryMap.get(generalCriteria) as RegExp[]) : new Set<RegExp>();
+	for(const fArg of fCall.args){
+		const argId = FunctionArgument.getId(fArg);
+		if(isUndefined(argId)){
+			continue;
+		}
+		let fargQueryMap = new Set<RegExp>();
+		for(const qu of queryMap.keys()){
+			if(FunctionArgument.getName(fArg) && qu.test(FunctionArgument.getName(fArg) as string)){
+				if(isNotUndefined(queryMap.get(qu))){
+					fargQueryMap = fargQueryMap.union(new Set(queryMap.get(qu) as RegExp[]));
+				}
+			}
+		}
+		const visitedNodes = new Set<NodeId>();
+		const argDepList = [argId];
+		while(argDepList.length > 0){
+			const dep = argDepList.pop() as NodeId;
+			if(visitedNodes.has(dep)){
+				continue;
+			} else {
+				visitedNodes.add(dep);
+			}
+			const v = dataflow.graph.getVertex(dep);
+			for(const qu of fargQueryMap){
+				if((v?.tag === VertexType.FunctionCall && qu.test(Identifier.getName(v.name)))){
+					fargQueryMap.delete(qu);
+				}
+			}
+			for(const qu of generalDependencies){
+				if((v?.tag === VertexType.FunctionCall && qu.test(Identifier.getName(v.name)))){
+					generalDependencies.delete(qu);
+				}
+			}
+			const additionalDependencies = dataflow.graph.outgoingEdges(dep)?.keys().toArray() ?? [] as NodeId[];
+			for(const elem of additionalDependencies){
+				argDepList.push(elem);
+			}
+		}
+		//(criteria not fulfilled
+		if(fargQueryMap.size > 0){
+			return false;
+		}
+	}
+	//criteria not fulfilled
+	if(generalDependencies.size > 0){
+		return false;
+	}
+	return true;
+}
+
 /**
  * Multi-stage call context query resolve.
  *
@@ -366,34 +438,8 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 			} else if(query.ignoreParameterValues && isParameterDefaultValue(nodeId, ast)) {
 				continue;
 			}
-			if(query.reliesOn){
-				const reliesOn = new RegExp(query.reliesOn.toString());
-				const visitedNodes: Set<NodeId> = new Set();
-				const argDep = info.args.map(element => {
-					return FunctionArgument.getId(element);
-				}).filter(element => {
-					return isNotUndefined(element);
-				});
-				let doesRelyOn = false;
-				while(argDep.length > 0){
-					const dep = argDep.pop() as NodeId;
-					if(visitedNodes.has(dep)){
-						continue;
-					} else {
-						visitedNodes.add(dep);
-					}
-					const v = dataflow.graph.getVertex(dep);
-					if((v?.tag === VertexType.FunctionCall && reliesOn.test(Identifier.getName(v.name)))){
-						doesRelyOn = true;
-						break;
-					} else {
-						const additionalDependencies = dataflow.graph.outgoingEdges(dep)?.keys().toArray() ?? [] as NodeId[];
-						for(const elem of additionalDependencies){
-							argDep.push(elem);
-						}
-					}
-				}
-				if(!doesRelyOn){
+			if(query.reliesOnCriteria){
+				if(!doesRelyOnCriteria(query.reliesOnCriteria, info, dataflow)){
 					continue;
 				}
 			}

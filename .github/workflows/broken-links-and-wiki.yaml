@@ -31,6 +31,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: ${{ !(github.event_name == 'push' && startsWith(github.event.head_commit.message, '[release:'))
       && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
     outputs:
@@ -58,9 +59,20 @@ jobs:
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
+          cache: npm
 
       - name: "⬇️ Setup R"
+        id: setup-r
         uses: r-lib/actions/setup-r@v2
+        timeout-minutes: 8
+        continue-on-error: true
+        with:
+          r-version: ${{ env.ACTION_R_VERSION }}
+
+      - name: "⬇️ Setup R (retry)"
+        if: steps.setup-r.outcome == 'failure'
+        uses: r-lib/actions/setup-r@v2
+        timeout-minutes: 8
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
           use-public-rspm: true
@@ -232,9 +244,20 @@ jobs:
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
+          cache: npm
 
       - name: "⬇️ Setup R"
+        id: setup-r
         uses: r-lib/actions/setup-r@v2
+        timeout-minutes: 8
+        continue-on-error: true
+        with:
+          r-version: ${{ env.ACTION_R_VERSION }}
+
+      - name: "⬇️ Setup R (retry)"
+        if: steps.setup-r.outcome == 'failure'
+        uses: r-lib/actions/setup-r@v2
+        timeout-minutes: 8
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
 

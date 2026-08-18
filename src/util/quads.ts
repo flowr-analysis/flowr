@@ -7,13 +7,28 @@
  * @module
  */
 
-import { type NamedNode, type Quad, DataFactory, Writer } from 'n3';
-const namedNode = (v: string) => DataFactory.namedNode(v);
-const quad = (s: RDF.Quad_Subject, p: RDF.Quad_Predicate, o: RDF.Quad_Object, g?: RDF.Quad_Graph) => DataFactory.quad(s, p, o, g);
+/* type-only, `n3` is optional: quad export is a side feature, so the package is resolved at call time */
+import type { NamedNode, Quad, Writer } from 'n3';
+
+/**
+ * The `n3` module, or a clear error if the optional dependency is missing.
+ * Install it to serialize quads (`npm i n3`), everything else works without it.
+ */
+function n3(): typeof import('n3') {
+	try {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports -- optional dependency, resolved only when quads are requested
+		return require('n3') as typeof import('n3');
+	} catch{
+		throw new Error('quad serialization needs the optional `n3` dependency, install it with `npm i n3`');
+	}
+}
+
+const namedNode = (v: string) => n3().DataFactory.namedNode(v);
+const quad = (s: RDF.Quad_Subject, p: RDF.Quad_Predicate, o: RDF.Quad_Object, g?: RDF.Quad_Graph) => n3().DataFactory.quad(s, p, o, g);
 import { type MergeableRecord, deepMergeObject, isObjectOrArray } from './objects';
 import { guard } from './assert';
 import { DefaultMap } from './collections/defaultmap';
-const literal = (v: string, n?: string | RDF.NamedNode) => DataFactory.literal(v, n);
+const literal = (v: string, n?: string | RDF.NamedNode) => n3().DataFactory.literal(v, n);
 import { log } from './log';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type * as RDF from '@rdfjs/types';
@@ -96,7 +111,8 @@ function retrieveContext(context: QuadContextRetriever, obj: DataForQuad): strin
 }
 
 
-const writer = new Writer( { format: 'N-Quads' });
+let cachedWriter: Writer | undefined;
+const writer = (): Writer => cachedWriter ??= new (n3().Writer)({ format: 'N-Quads' });
 
 /**
  * Serializes the given object or array to rdf quads.
@@ -113,7 +129,7 @@ export function serialize2quads(obj: RecordForQuad, config: QuadSerializationCon
 	store = new Set();
 	const quads: Quad[] = [];
 	serializeObject(obj, quads, useConfig);
-	return writer.quadsToString(quads);
+	return writer().quadsToString(quads);
 }
 
 export type VertexInformationForQuad<AdditionalInformation extends MergeableRecord> = MergeableRecord & AdditionalInformation & {

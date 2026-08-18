@@ -7,11 +7,12 @@ import type { BuiltInEvalHandlerArgs } from '../../environments/built-in';
 import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-constants';
 import { Top, type Value } from '../values/r-value';
 import { valueSetGuard } from '../values/general';
-import { resolveIdToValue } from './alias-tracking';
+import { Resolve } from '../../environments/resolve-helper';
+import { NodeValue } from './node-value';
 
 /** the scalar an operand folds to, with a logical counting as its `0`/`1` just like R would coerce it */
 function operand(node: RNodeWithParent, args: BuiltInEvalHandlerArgs): number | string | undefined {
-	const value = unliftRValue(resolveIdToValue(node, args));
+	const value = unliftRValue(Resolve.toValue(node, args));
 	if(typeof value === 'boolean') {
 		return Number(value);
 	} else if(isRNumberValue(value)) {
@@ -110,6 +111,5 @@ export function resolveAsGroup(args: BuiltInEvalHandlerArgs): Value {
 		return Top;
 	}
 	/* unwrap the set again, as the caller of a handler wraps the returned value in one */
-	const values = valueSetGuard(resolveIdToValue(node.children[0], args));
-	return values?.elements.length === 1 ? values.elements[0] : Top;
+	return NodeValue.sole(valueSetGuard(Resolve.toValue(node.children[0], args))) ?? Top;
 }

@@ -16,6 +16,7 @@ import { DfEdge, EdgeType } from '../../graph/edge';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { toPosixPath } from '../../../util/files';
 import { platformDirname } from '../../internal/process/functions/call/built-in/built-in-source';
+import { NoEdges } from '../../graph/graph';
 
 /** a resolved `setwd`-style call: its `dir` is `undefined` when it cannot be determined statically */
 export interface WorkingDirectoryChange {
@@ -176,7 +177,7 @@ function collect(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): Worki
 	// a function's setwd is propagated to its call sites; only a lone unconditional setwd has a site-independent effect
 	for(const [fn, setwds] of byFn.entries()) {
 		const net = setwds.length === 1 && setwds[0].cds.length === 0 && !setwds[0].iterated ? setwds[0].dir : undefined;
-		for(const [site, edge] of graph.ingoingEdges(fn) ?? []) {
+		for(const [site, edge] of graph.ingoingEdges(fn) ?? NoEdges) {
 			if(!DfEdge.includesType(edge, EdgeType.Calls)) {
 				continue;
 			}

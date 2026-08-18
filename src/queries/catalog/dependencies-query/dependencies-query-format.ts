@@ -8,6 +8,7 @@ import { executeDependenciesQuery } from './dependencies-query-executor';
 import type { FunctionInfo } from './function-info/function-info';
 import { LibraryFunctions } from './function-info/library-functions';
 import { SourceFunctions } from './function-info/source-functions';
+import { RemoteFunctions, remoteTarget } from './function-info/remote-functions';
 import { ReadFunctions } from './function-info/read-functions';
 import { WriteFunctions } from './function-info/write-functions';
 import { VisualizeFunctions } from './function-info/visualize-functions';
@@ -16,13 +17,21 @@ import type { CallContextQueryResult } from '../call-context-query/call-context-
 import type { Range } from 'semver';
 import type { AsyncOrSync, MarkOptional } from 'ts-essentials';
 import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
-import { TestFunctions } from './function-info/test-functions';
+import { ExpectFunctionNames, TestFunctions } from './function-info/test-functions';
 import type { BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { compactRecord } from '../../../util/objects';
+import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
+import { CallProp } from '../../../dataflow/environments/built-in-props';
+import { FunctionCallVertex } from '../../../dataflow/graph/vertex';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
 
+/** The value could not be resolved, e.g. a path assembled at runtime. Such a dependency may be missing or fetchable. */
 export const Unknown = 'unknown';
+/** The value resolved, but to data given inline rather than to a path (`matrix(0, 2, 2)`, `data.frame(a = 1)`). */
+export const Constant = 'constant';
 
 export interface DependencyCategorySettings {
 	queryDisplayName?:   string
@@ -59,11 +68,25 @@ export const DefaultDependencyCategories = {
 							functionName:       RNode.lexeme(node).includes(':::') ? ':::' : '::',
 							value:              ns,
 							versionConstraints: dep?.versionConstraints,
-							derivedRange:       dep?.derivedRange,
+							derivedRange:       dep?.effectiveRange,
 							namespaceInfo:      dep?.namespaceInfo
 						});
 					}
 				});
+			}
+		}
+	},
+	'remote': {
+		queryDisplayName:   'Remote Installs',
+		functions:          RemoteFunctions,
+		defaultValue:       Unknown,
+		/* the value is the reference as written, which names the package only implicitly */
+		additionalAnalysis: (_data, _ignoreDefault, _functions, _queryResults, result) => {
+			for(const [at, info] of result.entries()) {
+				const target = remoteTarget(info.value);
+				if(target !== undefined) {
+					result[at] = { ...info, ...target };
+				}
 			}
 		}
 	},
@@ -82,6 +105,37 @@ export const DefaultDependencyCategories = {
 		functions:        WriteFunctions,
 		defaultValue:     'stdout'
 	},
+	'print': {
+		queryDisplayName:   'Auto-printed Results',
+		functions:          [],
+		defaultValue:       'stdout',
+		additionalAnalysis: async(data, ignoreDefault, _functions, queryResults, result) => {
+			if(ignoreDefault) {
+				return;
+			}
+			const [{ ast }, dataflow] = await Promise.all([data.analyzer.normalize(), data.analyzer.dataflow()]);
+			const accountedFor = new Set(Object.values(queryResults?.kinds ?? {})
+				.flatMap(k => Object.values(k.subkinds).flat()).map(r => r.id));
+			for(const file of ast.files) {
+				for(const statement of file.root.children) {
+					if(statement.type !== RType.FunctionCall || accountedFor.has(statement.info.id)) {
+						continue;
+					}
+					const vertex = dataflow.graph.getVertex(statement.info.id);
+					const functionName = FunctionCallVertex.is(vertex)
+						? Dataflow.qualify(statement.info.id, dataflow.graph, false) ?? vertex.name : undefined;
+					if(functionName === undefined) {
+						continue;
+					}
+					const props = queryFnProps(functionName, { environment: dataflow.environment })?.props ?? 0;
+					if((props & (CallProp.Invisible | CallProp.Graphics)) !== 0 || ExpectFunctionNames.test(Identifier.getName(functionName))) {
+						continue;
+					}
+					result.push({ nodeId: statement.info.id, functionName, value: 'stdout' });
+				}
+			}
+		}
+	},
 	'visualize': {
 		queryDisplayName: 'Visualizations',
 		functions:        VisualizeFunctions
@@ -98,6 +152,7 @@ export interface DependenciesQuery extends BaseQueryFormat, Partial<Record<`${De
 	readonly type:                    'dependencies'
 	readonly enabledCategories?:      DependencyCategoryName[]
 	readonly ignoreDefaultFunctions?: boolean
+	/** Naming a built-in category extends it; use `ignoreDefaultFunctions` to drop the built-in functions. */
 	readonly additionalCategories?:   Record<string, MarkOptional<DependencyCategorySettings, 'additionalAnalysis'>>
 }
 
@@ -109,13 +164,28 @@ export interface DependencyInfo extends Record<string, unknown>{
 	/** the called name; an {@link Identifier}, so a namespaced call like `maps::map` keeps its package */
 	functionName:        Identifier
 	linkedIds?:          readonly NodeId[]
-	/** the lexeme is presented whenever the specific info is of {@link Unknown} */
+	/**
+	 * The other statements that build this output: for a plot, the addons drawn onto it and, when it lands in a
+	 * file, the device opener and closer around it. Answers *which statements produce this output* without
+	 * rebuilding it from {@link linkedIds}.
+	 */
+	parts?:              readonly NodeId[]
+	/**
+	 * the argument the value was read from, under the id the {@link InputSourcesQuery} reports it with: ask that
+	 * query about {@link nodeId} and this entry of its answer says whether the value is a glob, a prompt, ...
+	 */
+	argumentId?:         NodeId
+	/** the lexeme is presented whenever the specific info is {@link Unknown} or {@link Constant} */
 	lexemeOfArgument?:   string;
 	/** The library name, file, source, destination etc. being sourced, read from, or written to. */
 	value?:              string
 	versionConstraints?: readonly Range[],
 	derivedRange?:       Range,
 	namespaceInfo?:      NamespaceInfo,
+	/** the package the dependency provides, when the {@link value} names it only implicitly (a `user/repo` slug, a clone url) */
+	packageName?:        string
+	/** the revision such a reference pins, the `v1.2` of `user/repo@v1.2` */
+	revision?:           string
 }
 
 function printResultSection(title: string, infos: DependencyInfo[], result: string[], formatter: OutputFormatter): void {
@@ -126,7 +196,9 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 	// one line per dependency: the value (package/file) up front, its function + node as a faint provenance suffix
 	for(const i of infos) {
 		const fn = Identifier.getName(i.functionName);
-		const value = i.value !== undefined ? bold(i.value, formatter) : faint('<unresolved>', formatter);
+		/* neither names a resource: inline data is resolved but no path, `unknown` is a path we could not resolve */
+		const stands = i.value === Constant ? '<inline data>' : i.value === Unknown || i.value === undefined ? '<unresolved>' : undefined;
+		const value = stands !== undefined ? faint(stands, formatter) : bold(i.value as string, formatter);
 		const version = i.derivedRange !== undefined ? ` ${faint(i.derivedRange.format(), formatter)}` : '';
 		const linked = i.linkedIds ? `, linked ${i.linkedIds.join(', ')}` : '';
 		result.push(`     ${value}${version} ${faint(`via ${fn} (node ${i.nodeId}${linked})`, formatter)}`);
@@ -135,12 +207,18 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 
 /**
  * Gets all dependency categories, including user-defined additional categories.
+ * A category named like a built-in one extends it instead of replacing it.
  */
 export function getAllCategories(queries: readonly DependenciesQuery[]): Record<DependencyCategoryName, DependencyCategorySettings> {
-	let categories = DefaultDependencyCategories;
+	const categories: Record<DependencyCategoryName, DependencyCategorySettings> = { ...DefaultDependencyCategories };
 	for(const query of queries) {
-		if(query.additionalCategories) {
-			categories = { ...categories, ...query.additionalCategories };
+		for(const [name, settings] of Object.entries(query.additionalCategories ?? {})) {
+			const known = categories[name];
+			categories[name] = known === undefined ? settings : {
+				...known,
+				...compactRecord(settings),
+				functions: [...known.functions, ...settings.functions]
+			};
 		}
 	}
 	return categories;
@@ -173,7 +251,7 @@ export const DependenciesQueryDefinition = {
 			queryDisplayName: Joi.string().description('The display name in the query result.'),
 			functions:        functionInfoSchema.description('The functions that this additional category should search for.'),
 			defaultValue:     Joi.string().description('The default value to return when there is no value to gather from the function information.').optional()
-		})).description('A set of additional, user-supplied dependency categories, whose results will be included in the query return value.').optional()
+		})).description('A set of additional, user-supplied dependency categories, whose results will be included in the query return value. Using the name of a built-in category extends it instead of replacing it.').optional()
 	}).description('The dependencies query retrieves and returns the set of all dependencies in the dataflow graph, which includes libraries, sourced files, read data, and written data.'),
 	flattenInvolvedNodes: (queryResults, query): NodeId[] => {
 		const out = queryResults as DependenciesQueryResult;

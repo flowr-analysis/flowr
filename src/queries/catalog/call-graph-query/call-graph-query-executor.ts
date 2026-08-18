@@ -2,6 +2,7 @@ import type { CallGraphQuery, CallGraphQueryResult } from './call-graph-query-fo
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import { expandCallGraphLibraryInternals } from './expand-library-internals';
+import { CallGraph } from '../../../dataflow/graph/call-graph';
 
 /**
  * Executes the given call graph queries.
@@ -17,6 +18,7 @@ export async function executeCallGraphQuery({ analyzer }: BasicQueryData, querie
 		'.meta': {
 			timing: Date.now() - startTime
 		},
-		graph: expand ? expandCallGraphLibraryInternals(graph, analyzer.inspectContext().deps) : graph
+		graph:       expand ? expandCallGraphLibraryInternals(graph, analyzer.inspectContext().deps) : graph,
+		unreachable: queries.some(q => q.reportUnreachable) ? CallGraph.unreachableCalls(graph) : undefined
 	};
 }

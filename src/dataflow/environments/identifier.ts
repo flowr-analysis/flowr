@@ -47,7 +47,7 @@ export const Identifier = {
 	 */
 	make(this: void, name: BrandedIdentifier, namespace?: BrandedNamespace, internal: boolean = false): Identifier {
 		if(startAndEndsWith(name, '`')) {
-			name = name.substring(1, name.length - 1);
+			name = name.slice(1, -1);
 		}
 		if(namespace) {
 			return [name, namespace, internal];
@@ -104,12 +104,12 @@ export const Identifier = {
 	 * In this scenario, see {@link Identifier.make} instead.
 	 */
 	parse(this: void, str: string): Identifier {
-		const internal = str.includes(':::');
-		const parts = str.split(internal ? ':::' : '::');
-		if(parts.length === 2) {
-			return [parts[1], parts[0], internal];
+		const at = namespaceSeparatorAt(str);
+		if(at < 0) {
+			return str;
 		}
-		return parts[0];
+		const internal = str[at + 2] === ':';
+		return [str.slice(at + (internal ? 3 : 2)), str.slice(0, at), internal] as Identifier;
 	},
 	/**
 	 * Get the name part of the identifier
@@ -272,6 +272,19 @@ export const Identifier = {
 	}
 } as const;
 
+/** The index of the `::` separating namespace from name, skipping backtick-quoted spans; `-1` if there is none. */
+function namespaceSeparatorAt(str: string): number {
+	let quoted = false;
+	for(let i = 0; i < str.length; i++) {
+		if(str[i] === '`') {
+			quoted = !quoted;
+		} else if(!quoted && str[i] === ':' && str[i + 1] === ':') {
+			return i;
+		}
+	}
+	return -1;
+}
+
 /**
  * Well-known R package names used in {@link DefaultBuiltinConfig}.
  * Using a const enum keeps the string values inlined at compile time.
@@ -296,6 +309,7 @@ export const enum PkgName {
 	Fs           = 'fs',
 	Functools    = 'functools',
 	GgPlot2      = 'ggplot2',
+	Here         = 'here',
 	Hmisc        = 'Hmisc',
 	Import       = 'import',
 	Inferference = 'inferference',
@@ -327,6 +341,9 @@ export const enum PkgName {
 	Tcltk        = 'tcltk',
 	Testthat     = 'testthat',
 	TidyR        = 'tidyr',
+	Tibble       = 'tibble',
+	Glue         = 'glue',
+	Stringr      = 'stringr',
 	TinyPlot     = 'tinyplot',
 	TryCatchLog  = 'tryCatchLog',
 	Withr        = 'withr',
@@ -364,7 +381,12 @@ export enum ReferenceType {
 	/** Prefix to identify S3 methods, use this, to for example dispatch a call to `f` which will then link to `f.*` */
 	S3MethodPrefix = 1 << 8,
 	/** Prefix to identify S7 methods, use this, to for example dispatch a call to `f` which will then link to `f<7>*` */
-	S7MethodPrefix = 1 << 9
+	S7MethodPrefix = 1 << 9,
+	/**
+	 * Only ever a lookup target, never the type of a definition: everything a value position may see.
+	 * `id` in `id > 2` names data, so a function `id` in scope is not what the comparison reads.
+	 */
+	NonFunction = 1 << 10
 }
 
 /** Reverse mapping of the reference types so you can get the name from the bitmask (useful for debugging) */
@@ -382,7 +404,7 @@ export function isReferenceType(t: ReferenceType, target: ReferenceType): boolea
  * default definition for the assignment operator `<-`).
  * @see {@link InGraphIdentifierDefinition} - for the definition of an identifier within the graph
  */
-export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction>;
+export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction | ReferenceType.NonFunction>;
 
 /**
  * An identifier reference points to a variable like `a` in `b <- a`.
@@ -448,6 +470,11 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	 * that the function returns (best-effort: only set when statically detectable).
 	 */
 	readonly returnsEnvState?: REnvironmentInformation
+	/**
+	 * Whether {@link value} names the sequence this identifier iterates over rather than what it holds, as a
+	 * `for` loop's variable does: it takes one element of that sequence at a time.
+	 */
+	readonly iterated?:        boolean
 }
 
 /**

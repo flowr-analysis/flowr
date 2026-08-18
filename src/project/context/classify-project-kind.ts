@@ -7,7 +7,7 @@ const shinyEntryFiles = new Set(['app.r', 'ui.r', 'server.r', 'global.r']);
 /** default evidence that a file is part of a shiny app (a load of the shiny stack or a call to one of its entry points) */
 const shinyUsage = /(?:library|require|requireNamespace|loadNamespace)\s*\(\s*['"]?(?:shiny|bslib|shinydashboard|shinyMobile|golem|flexdashboard)\b|\b(?:shinyApp|shinyServer|shinyUI|runApp|fluidPage|fluidRow|navbarPage|bootstrapPage|fillPage|dashboardPage|page_fluid|page_sidebar|page_navbar|pageWithSidebar)\s*\(/;
 /** default extensions marking a notebook / literate document */
-const notebookExtension = /\.(ipynb|rmd|qmd|rnw)$/;
+const notebookExtension = /\.(ipynb|rmd|rmarkdown|qmd|rnw)$/;
 
 /** Lazily read a shiny-entry file's content; returns `undefined` when it cannot be read. */
 export type ContentReader = () => string | undefined;

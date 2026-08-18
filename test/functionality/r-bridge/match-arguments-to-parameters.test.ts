@@ -83,12 +83,12 @@ describe('RFunctionCall.matchArgumentsToParameters (R argument matching)', () =>
 		expect(m.get('x')).toBe(first);
 	});
 
-	test('empty arguments (a(1, , 3)) are skipped, not bound to a formal', () => {
+	test('an empty argument (a(1, , 3)) takes its formal but binds nothing to it', () => {
 		const a = pos(), c = pos();
 		const m = match([a, EmptyArgument, c], ['x', 'y', 'z']);
 		expect(m.get('x')).toBe(a);
-		expect(m.get('y')).toBe(c);
-		expect(m.get('z')).toBeUndefined();
+		expect(m.get('y')).toBeUndefined();
+		expect(m.get('z')).toBe(c);
 	});
 });
 

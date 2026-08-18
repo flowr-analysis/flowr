@@ -22,9 +22,9 @@ import type { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/as
 import { isNotUndefined } from '../../../../../../util/assert';
 import type { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { Identifier } from '../../../../../environments/identifier';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
-import { VertexType } from '../../../../../graph/vertex';
+import { VertexType, UseVertex, FunctionDefinitionVertex } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
@@ -64,7 +64,7 @@ export function processS7NewGeneric<OtherInfo>(
 	if(!genName) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const n = resolveIdToValue(genName.info.id, { environment: data.environment, resolve: data.ctx.config.solver.variables, idMap: data.completeAst.idMap, full: true, ctx: data.ctx });
+	const n = NodeValue.of(genName.info.id, data);
 	const accessedIdentifiers: string[] = [];
 	if(n.type === 'set') {
 		for(const elem of n.elements) {
@@ -93,7 +93,7 @@ export function processS7NewGeneric<OtherInfo>(
 	info.graph.addEdge(rootId, funArg, EdgeType.Returns);
 	info.entryPoint = funArg;
 	const fArg = info.graph.getVertex(funArg);
-	if(fArg?.tag === VertexType.FunctionDefinition) {
+	if(FunctionDefinitionVertex.is(fArg)) {
 		fArg.mode ??= ['s4', 's7'];
 	}
 	return info;
@@ -118,7 +118,7 @@ export function processMakeConstructor<OtherInfo>(
 	info.graph.addEdge(rootId, funId, EdgeType.Returns);
 	info.entryPoint = funId;
 	const fArg = info.graph.getVertex(funId);
-	if(fArg?.tag === VertexType.FunctionDefinition && config?.mode) {
+	if(FunctionDefinitionVertex.is(fArg) && config?.mode) {
 		fArg.mode ??= config.mode.slice();   // copy: mode is mutated in place later, config.mode is shared
 	}
 	if(config?.wrapIndex !== undefined) {
@@ -160,7 +160,7 @@ function linkWrappedFunction<OtherInfo>(
 		return;
 	}
 	const vertex = info.graph.getVertex(resolved.functionId);
-	if(vertex?.tag !== VertexType.Use) {
+	if(!UseVertex.is(vertex)) {
 		return;
 	}
 	info.graph.updateToFunctionCall({

@@ -71,6 +71,8 @@ function calculateReductionForSlice(input: SlicerStatsInput, dataflow: SlicerSta
 /**
  * Summarizes the given stats by calculating the min, max, median, mean, and the standard deviation for each measurement.
  * @see Slicer
+ * The re-parse below measures the raw parser on the sliced output, the analyzer's pipeline would measure something else.
+ * @lintIgnore use-instead
  */
 export async function summarizeSlicerStats(
 	stats: SlicerStats,
@@ -85,6 +87,10 @@ export async function summarizeSlicerStats(
 	const sliceTimes: TimePerToken<number>[] = [];
 	const reconstructTimes: TimePerToken<number>[] = [];
 	const totalTimes: TimePerToken<number>[] = [];
+	const sliceTimesPer100Lines: number[] = [];
+	const reconstructTimesPer100Lines: number[] = [];
+	const totalTimesPer100Lines: number[] = [];
+	const per100Lines = 100 / stats.input.numberOfLines;
 	const reductions: Reduction<number | undefined>[] = [];
 	const reductionsNoFluff: Reduction<number | undefined>[] = [];
 
@@ -113,6 +119,11 @@ export async function summarizeSlicerStats(
 		}
 		sizeOfSliceCriteria.push(perSliceStat.slicingCriteria.length);
 		timesHitThreshold += perSliceStat.timesHitThreshold > 0 ? 1 : 0;
+		const sliceTime = Number(perSliceStat.measurements.get('static slicing'));
+		const reconstructTime = Number(perSliceStat.measurements.get('reconstruct code'));
+		sliceTimesPer100Lines.push(sliceTime * per100Lines);
+		reconstructTimesPer100Lines.push(reconstructTime * per100Lines);
+		totalTimesPer100Lines.push((sliceTime + reconstructTime) * per100Lines);
 		const { code: output, linesWithAutoSelected } = perSliceStat.reconstructedCode;
 		sliceSize.linesWithAutoSelected.push(linesWithAutoSelected);
 		const split = (output as string).split('\n');
@@ -174,8 +185,6 @@ export async function summarizeSlicerStats(
 			reductions.push(calculateReductionForSlice(stats.input, stats.dataflow, perSlice, false));
 			reductionsNoFluff.push(calculateReductionForSlice(stats.input, stats.dataflow, perSlice, true));
 
-			const sliceTime = Number(perSliceStat.measurements.get('static slicing'));
-			const reconstructTime = Number(perSliceStat.measurements.get('reconstruct code'));
 			sliceTimes.push({
 				raw:        sliceTime / numberOfRTokens,
 				normalized: sliceTime / numberOfNormalizedTokens
@@ -208,17 +217,20 @@ export async function summarizeSlicerStats(
 	return {
 		...stats,
 		perSliceMeasurements: {
-			numberOfSlices:            stats.perSliceMeasurements.size,
-			sliceCriteriaSizes:        summarizeMeasurement(sizeOfSliceCriteria),
-			measurements:              summarized,
-			failedToRepParse:          failedOutputs,
+			numberOfSlices:               stats.perSliceMeasurements.size,
+			sliceCriteriaSizes:           summarizeMeasurement(sizeOfSliceCriteria),
+			measurements:                 summarized,
+			failedToRepParse:             failedOutputs,
 			timesHitThreshold,
-			reduction:                 summarizeReductions(reductions),
-			reductionNoFluff:          summarizeReductions(reductionsNoFluff),
-			sliceTimePerToken:         summarizeTimePerToken(sliceTimes),
-			reconstructTimePerToken:   summarizeTimePerToken(reconstructTimes),
-			totalPerSliceTimePerToken: summarizeTimePerToken(totalTimes),
-			sliceSize:                 {
+			reduction:                    summarizeReductions(reductions),
+			reductionNoFluff:             summarizeReductions(reductionsNoFluff),
+			sliceTimePerToken:            summarizeTimePerToken(sliceTimes),
+			reconstructTimePerToken:      summarizeTimePerToken(reconstructTimes),
+			totalPerSliceTimePerToken:    summarizeTimePerToken(totalTimes),
+			sliceTimePer100Lines:         summarizeMeasurement(sliceTimesPer100Lines),
+			reconstructTimePer100Lines:   summarizeMeasurement(reconstructTimesPer100Lines),
+			totalPerSliceTimePer100Lines: summarizeMeasurement(totalTimesPer100Lines),
+			sliceSize:                    {
 				lines:                             summarizeMeasurement(sliceSize.lines),
 				nonEmptyLines:                     summarizeMeasurement(sliceSize.nonEmptyLines),
 				characters:                        summarizeMeasurement(sliceSize.characters),

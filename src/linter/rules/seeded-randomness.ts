@@ -18,8 +18,7 @@ import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { LintingRuleTag } from '../linter-tags';
 import type { BuiltInFunctionDefinition } from '../../dataflow/environments/built-in-config';
-import { resolveIdToValue } from '../../dataflow/eval/resolve/alias-tracking';
-import { valueSetGuard } from '../../dataflow/eval/values/general';
+import { NodeValue } from '../../dataflow/eval/resolve/node-value';
 import { VariableResolve } from '../../config';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { VertexType } from '../../dataflow/graph/vertex';
@@ -195,12 +194,13 @@ export const SEEDED_RANDOMNESS = {
 } as const satisfies LintingRule<SeededRandomnessResult, SeededRandomnessMeta, SeededRandomnessConfig>;
 
 function getDefaultAssignments(): BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike>[] {
-	return DefaultBuiltinConfig.filter(b => b.type === 'function' && (b.processor === BuiltInProcName.Assignment || b.processor === BuiltInProcName.AssignmentLike));
+	return DefaultBuiltinConfig.filter((b): b is BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike> =>
+		b.type === 'function' && (b.processor === BuiltInProcName.Assignment || b.processor === BuiltInProcName.AssignmentLike));
 }
 
 function isConstantArgument(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, argIndex: number, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	const args = call.args.filter(arg => arg !== EmptyArgument && !arg.name).map(FunctionArgument.getReference);
-	const values = valueSetGuard(resolveIdToValue(args[argIndex], { graph: graph, resolve: VariableResolve.Alias, ctx }));
+	const values = NodeValue.inGraph.setOf(args[argIndex], graph, ctx, { resolve: VariableResolve.Alias });
 	return values?.elements.every(v =>
 		v.type === 'number' ||
 		v.type === 'logical' ||

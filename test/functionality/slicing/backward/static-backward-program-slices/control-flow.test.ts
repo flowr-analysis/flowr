@@ -4,7 +4,7 @@ import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { describe } from 'vitest';
 
-describe.sequential('Control flow', withShell(shell => {
+describe('Control flow', { concurrent: false }, withShell(shell => {
 	describe('Branch Coverage', () => {
 		assertSliced(label('nested if', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'if', 'unnamed-arguments']),
 			shell, `x <- 1

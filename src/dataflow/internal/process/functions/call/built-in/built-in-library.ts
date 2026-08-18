@@ -1,4 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { RValue } from '../../../../../eval/values/r-value';
 import type { DataflowInformation, ControlDependency } from '../../../../../info';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -22,9 +23,9 @@ import type { FlowrAnalyzerContext } from '../../../../../../project/context/flo
 import { EdgeType } from '../../../../../graph/edge';
 import { isNotUndefined, isUndefined } from '../../../../../../util/assert';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
-import { valueSetGuard } from '../../../../../eval/values/general';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { Package } from '../../../../../../project/plugins/package-version-plugins/package';
+import { attachedAlongside } from '../../../../../../project/attached-packages';
 import { getCallables, type NamespaceInfo } from '../../../../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { convertFnArguments } from '../common';
 import { pMatch } from '../../../../linker';
@@ -84,7 +85,6 @@ export function processLibrary<OtherInfo>(
 		/* last, so the positional fallback keeps its previous order */
 		'pos':            'pos'
 	};
-	const resolveArgs = { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx };
 	const argMaps = pMatch(convertFnArguments(args), params);
 	const packageId = Array.from(new Set(argMaps.get('pkg')));
 	const charId = Array.from(new Set(argMaps.get('char')));
@@ -105,7 +105,7 @@ export function processLibrary<OtherInfo>(
 	}
 	let isCharacterOnly: Lift<TernaryLogical> = config.characterOnly === true;
 	if(!config.characterOnly && charId.length >= 1){
-		const values = valueSetGuard(resolveIdToValue(charId[0], resolveArgs));
+		const values = NodeValue.setOf(charId[0], data);
 		if(values?.type === 'set' && values?.elements.length > 0) {
 			let hasTrue = 0;
 			let hasFalse = 0;
@@ -140,11 +140,12 @@ export function processLibrary<OtherInfo>(
 	//case: true or maybe
 	if(isCharacterOnly){
 		for(const nameToLoad of namesToLoad){
-			const values = valueSetGuard(resolveIdToValue(nameToLoad.info.id, resolveArgs));
+			const values = NodeValue.setOf(nameToLoad.info.id, data);
 			if(values?.type === 'set' && values.elements.length !== 0){
 				for(const elem of values.elements){
-					if(elem.type === 'string' && 'str' in elem.value){
-						packetName.push(elem.value.str);
+					const name = RValue.stringOf(elem);
+					if(name !== undefined){
+						packetName.push(name);
 					}
 				}
 			}
@@ -190,14 +191,13 @@ export function processLibrary<OtherInfo>(
 	}).information;
 
 	for(const p of packetName){
-		const dependency = data.ctx.deps.getDependency(p);
+		const dependency = data.ctx.deps.loadDependency(p);
 		if(dependency){
 			linkLibrary(dependency, info, rootId, data, spec);
 		} else {
-			info.graph.markIdForUnknownSideEffects(rootId);
-			// no database resolves the package, but the load is syntactically known: record it so an explicit
-			// `p::fn` can still link back to this call. requireNamespace/loadNamespace are recorded too, since
-			// they equally make `p::fn` valid.
+			if(!data.ctx.env.knowsPackage(p)){
+				info.graph.markIdForUnknownSideEffects(rootId);
+			}
 			if(info.environment.level >= 0){
 				info.environment = recordUnresolvedLibraryLoad(info.environment, p, rootId, spec.pos, data.cds);
 			}
@@ -386,6 +386,9 @@ function recordUnresolvedLibraryLoad(envInfo: REnvironmentInformation, pack: str
  */
 export function loadNodesForNamespace(env: REnvironmentInformation, pack: string): NodeId[] {
 	const nodes: NodeId[] = [];
+	if(env.current.builtInEnv){
+		return nodes;   // resolving straight in the built-in environment (`get(x, envir = baseenv())`): no search path above it
+	}
 	for(let e: Environment = REnvironment.findGlobal(env.current).parent; e.t !== undefined && !e.builtInEnv; e = e.parent){
 		if(e.n !== pack){
 			continue;
@@ -474,7 +477,12 @@ export function attachDependencyToEnvironment(dependency: Package, envInfo: REnv
 	importsEnv = recImports(importsEnv, dependency.namespaceInfo, ctx, new Set());
 	const namespaceEnv = new Environment(importsEnv).asLibrary(pack, EnvType.Namespace)
 		.defineAll(exports.map(exp => exportDefinition(pack, exp, definedAt)));
-	return { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, namespaceEnv, importsEnv, spec.pos) };
+	const attached = { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, namespaceEnv, importsEnv, spec.pos) };
+	/* whatever R puts on the search path with it, `pack` first so a dependency cycle stays finite (the guard above stops it) */
+	return attachedAlongside(pack, ctx.deps.signatureSources()).reduce((env, alongside) => {
+		const dependency = ctx.deps.getDependency(alongside);
+		return dependency === undefined ? env : attachDependencyToEnvironment(dependency, env, ctx, spec, definedAt);
+	}, attached);
 }
 
 /** A namespace-only load is subsumed by any layer for `pack`; a full attach ignores a mere {@link EnvType.LoadedNamespace}. */

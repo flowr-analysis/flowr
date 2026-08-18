@@ -83,6 +83,65 @@ export function reconstructS3Generics(exported: readonly string[]): Map<string, 
 	return generics;
 }
 
+/** the built {@link ExportIndex} of each source, see {@link ExportIndex.of} for why it is keyed by the source */
+const exportIndices = new WeakMap<PackageSignatureSource, ReadonlyMap<string, ExportIndexEntry>>();
+
+/**
+ * The packages exporting one name: the sole exporter bare, the rivals as an array. Roughly 95% of the names in a
+ * bundle are exported by exactly one package, so giving those an array of their own would cost more than the
+ * index itself.
+ */
+export type ExportIndexEntry = string | string[];
+
+/**
+ * The reverse `export name -> packages exporting it` view of a signature source, each entry ordered by download
+ * count (descending, ties by name) so whoever has to pick one exporter starts with the package a script most
+ * likely means.
+ *
+ * Building the view reads every package blob of a bundle, which is why {@link of} memoizes it on the source
+ * object rather than on the caller: signature sources are opened once per process (see {@link getSharedSigSource})
+ * and are immutable, so every analyzer mounting the same bundle shares one index instead of re-scanning the
+ * database per analysis. It is deliberately analyzer-independent -- self-package exclusion belongs to the caller
+ * (see {@link FlowrAnalyzerPackageVersionsSigDbPlugin.packagesExporting}), not to the index.
+ */
+export const ExportIndex = {
+	name: 'ExportIndex',
+	/** The index of `src`, built on first use and shared by every later caller; see {@link ExportIndex}. */
+	of(this: void, src: PackageSignatureSource): ReadonlyMap<string, ExportIndexEntry> {
+		const cached = exportIndices.get(src);
+		if(cached !== undefined) {
+			return cached;
+		}
+		const index = new Map<string, ExportIndexEntry>();
+		for(const pkg of src.packageNames()) {
+			for(const exp of src.lookup(pkg)?.exported ?? []) {
+				const owners = index.get(exp);
+				if(owners === undefined) {
+					index.set(exp, pkg);
+				} else if(typeof owners === 'string') {
+					if(owners !== pkg) {
+						index.set(exp, [owners, pkg]);
+					}
+				} else if(owners[owners.length - 1] !== pkg) {
+					owners.push(pkg);
+				}
+			}
+		}
+		// sorting once per name here beats sorting at every lookup
+		for(const owners of index.values()) {
+			if(typeof owners !== 'string') {
+				owners.sort((a, b) => src.downloads(b) - src.downloads(a) || a.localeCompare(b));
+			}
+		}
+		exportIndices.set(src, index);
+		return index;
+	},
+	/** The packages an {@link ExportIndexEntry} names, as a list; empty when no package exports the name. */
+	owners(this: void, entry: ExportIndexEntry | undefined): readonly string[] {
+		return entry === undefined ? [] : typeof entry === 'string' ? [entry] : entry;
+	}
+} as const;
+
 /**
  * Resolves `library(pkg)` / `use(pkg, fn)` from precomputed `flowr-sigdb` databases via the
  * {@link PackageSignatureSource} contract. For an R-core package it picks the version shipped with the assumed
@@ -99,8 +158,8 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	/** the `additionalPaths` the current {@link sources} were assembled with, so a later config resolves a rebuild */
 	private sourcesKey:               string | undefined;
 	private analyzerCtx:              FlowrAnalyzerContext | undefined;
-	/** cached reverse index `export name -> packages exporting it`, built once per source set (see {@link packagesExporting}) */
-	private exportIndex:              Map<string, string[]> | undefined;
+	/** `packagesExporting` answers, merged across the source set and self-filtered; the scan itself is {@link ExportIndex} */
+	private exportsByName             = new Map<string, readonly string[]>();
 	/** `pkg@assumedR` keys already reported via {@link baseVersionFor}'s fallback, so the info is logged once */
 	private readonly baseFallbacksLogged = new Set<string>();
 	/** installed package versions for `versionSelection: 'system'`, read once from R (see {@link warmInstalledVersions}) */
@@ -112,7 +171,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	private resetAssembled(): void {
 		this.sources = undefined;
 		this.sourcesKey = undefined;
-		this.exportIndex = undefined;
+		this.exportsByName = new Map();
 	}
 
 	public constructor(...sources: SigDbSource[]) {
@@ -242,48 +301,39 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	/**
 	 * Packages in the loaded sources (respecting `self`-package exclusion) that export `name`, **most downloaded
 	 * first**, so whoever has to pick one (or show only a few) starts with the package a script most likely means.
-	 * Backed by a reverse index built once per source set, so repeated hint lookups (e.g. from the
-	 * `undefined-symbol` linter) do not re-scan every package. The first call still pays one full pass over the
-	 * sources.
+	 * Backed by {@link ExportIndex}, a reverse index built once per *source* (and hence shared by every analyzer
+	 * mounting the same bundle), so repeated hint lookups (e.g. from the `undefined-symbol` linter) do not re-scan
+	 * every package. Self-package exclusion is applied here rather than baked into the index, which keeps the
+	 * index analyzer-independent.
 	 */
 	public override packagesExporting(name: string): readonly string[] {
 		if(!isSigDbEnabled(this.analyzerCtx?.config)) {
 			return [];
 		}
-		this.exportIndex ??= this.buildExportIndex();
-		return this.exportIndex.get(name) ?? [];
-	}
-
-	/**
-	 * One pass over every loaded source building `export name -> packages`, honoring self-package exclusion.
-	 * Each list ends up sorted by download count (descending, ties by name), which the sort at the end does
-	 * once per name rather than at every lookup.
-	 */
-	private buildExportIndex(): Map<string, string[]> {
-		const index = new Map<string, string[]>();
-		const downloads = new Map<string, number>();
-		for(const src of this.loadSources()) {
-			for(const pkg of src.packageNames()) {
-				if(this.isSelfPackage(pkg)) {
-					continue;
-				}
-				downloads.set(pkg, Math.max(downloads.get(pkg) ?? 0, src.downloads(pkg)));
-				for(const exp of src.lookup(pkg)?.exported ?? []) {
-					const owners = index.get(exp);
-					if(owners === undefined) {
-						index.set(exp, [pkg]);
-					} else if(!owners.includes(pkg)) {
-						owners.push(pkg);
-					}
+		const cached = this.exportsByName.get(name);
+		if(cached !== undefined) {
+			return cached;
+		}
+		const sources = this.loadSources();
+		const seen = new Set<string>();
+		const owners: string[] = [];
+		for(const src of sources) {
+			for(const pkg of src.packagesExporting(name)) {
+				if(!seen.has(pkg) && !this.isSelfPackage(pkg)) {
+					seen.add(pkg);
+					owners.push(pkg);
 				}
 			}
 		}
-		for(const owners of index.values()) {
-			if(owners.length > 1) {
-				owners.sort((a, b) => (downloads.get(b) ?? 0) - (downloads.get(a) ?? 0) || a.localeCompare(b));
-			}
+		// each source's list is already sorted; a merge of several needs one more pass to be globally ordered
+		if(owners.length > 1 && sources.length > 1) {
+			/* the comparator runs O(n log n) times, so each package is counted once up front */
+			const downloads = new Map(owners.map(pkg =>
+				[pkg, sources.reduce((m, s) => Math.max(m, s.has(pkg) ? s.downloads(pkg) : 0), 0)]));
+			owners.sort((a, b) => (downloads.get(b) as number) - (downloads.get(a) as number) || a.localeCompare(b));
 		}
-		return index;
+		this.exportsByName.set(name, owners);
+		return owners;
 	}
 
 	/**
@@ -515,6 +565,8 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 			loadsWithSideEffects: false,
 			callable:             exported
 		};
-		return new Package({ name, namespaceInfo, resolvedVersion: info.version });
+		/* a source may know the exports without knowing which release they are from, and then the package
+		   carries no version rather than a made-up one */
+		return new Package({ name, namespaceInfo, resolvedVersion: info.version || undefined });
 	}
 }

@@ -19,7 +19,8 @@ import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/re
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { unpackArg } from '../argument/unpack-argument';
 import { resolveSymbolToEnvir } from './built-in-envir-utils';
-import { resolveNodeToStackEnv } from './built-in-stack-env';
+import { resolveNodeToStackEnv, stackEnvInheritsFields } from './built-in-stack-env';
+import { Resolve } from '../../../../../environments/resolve-helper';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -95,7 +96,9 @@ export function processAccess<OtherInfo>(
 		if(envState) {
 			const fieldNode = unpackArg(args[1]);
 			const fieldName = fieldNode?.type === RType.String ? fieldNode.content.str : (config.treatIndicesAsString ? fieldNode?.lexeme : undefined);
-			const fieldDefs = fieldName ? envState.current.memory.get(fieldName) : undefined;
+			const fieldDefs = fieldName
+				? (stackEnvInheritsFields(head.value) ? Resolve.byNameAndType(fieldName, envState, ReferenceType.Unknown) : envState.current.memory.get(fieldName))
+				: undefined;
 			for(const fd of fieldDefs ?? []) {
 				info.graph.addEdge(name.info.id, fd.nodeId, EdgeType.Reads);
 				if(stackEnvState === undefined && fd.type === ReferenceType.Function) {
@@ -151,7 +154,7 @@ function processNumberBasedAccess<OtherInfo>(
 	const existing = data.environment.current.memory.get(':=');
 	const outInfo = { definitionRootNodes: [] };
 	const tableAssignId = NodeId.toBuiltIn(':=-table');
-	data.environment.current.memory.set(':=', [{
+	data.environment.current.writableMemory.set(':=', [{
 		type:      ReferenceType.BuiltInFunction,
 		definedAt: tableAssignId,
 		cds:       undefined,
@@ -164,7 +167,7 @@ function processNumberBasedAccess<OtherInfo>(
 
 	/* recover the environment */
 	if(existing !== undefined) {
-		data.environment.current.memory.set(':=', existing);
+		data.environment.current.writableMemory.set(':=', existing);
 	}
 	if(head.value && outInfo.definitionRootNodes.length > 0) {
 		markAsAssignment(fnCall.information, { type: ReferenceType.Variable, name: head.value.lexeme ?? '', nodeId: head.value.info.id, definedAt: rootId, cds: [] },

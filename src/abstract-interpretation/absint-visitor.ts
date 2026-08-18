@@ -3,7 +3,7 @@ import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration } 
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, FunctionCallVertex, VertexType } from '../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, FunctionCallVertex } from '../dataflow/graph/vertex';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
 import { type NoInfo, RLoopConstructs, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -344,7 +344,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 		}
 		const dataflowVertex = this.getDataflowGraph(nodeId);
 
-		if(dataflowVertex?.tag !== VertexType.FunctionCall || !Array.isArray(dataflowVertex.origin)) {
+		if(!FunctionCallVertex.is(dataflowVertex) || !Array.isArray(dataflowVertex.origin)) {
 			return false;
 		}
 		const origin = dataflowVertex.origin;

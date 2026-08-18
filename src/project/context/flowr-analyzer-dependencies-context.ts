@@ -109,6 +109,8 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	public readonly functionsContext: FlowrAnalyzerFunctionsContext;
 
 	private dependencies:  Map<string, Package> = new Map();
+	/** what {@link getDependency} resolved for a package the project does not depend on, so a lookup never makes it one */
+	private resolvedOnly:  Map<string, Package> = new Map();
 	private staticsLoaded = false;
 	/** resolvers consulted lazily to fill in exports; `existing` carries version info from other plugins */
 	private lazyResolvers: ((name: string, existing?: Package) => Package | undefined)[] = [];
@@ -116,6 +118,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 
 	public reset(): void {
 		this.dependencies = new Map();
+		this.resolvedOnly = new Map();
 		this.staticsLoaded = false;
 		this.lazyResolvers = [];
 		this.resolvedMisses = new Set();
@@ -254,12 +257,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	}
 
 	public addDependency(pkg: Package): this {
-		const p = this.dependencies.get(pkg.name);
-		if(p) {
-			p.mergeInPlace(pkg);
-		} else {
-			this.dependencies.set(pkg.name, pkg);
-		}
+		mergeIntoMap(this.dependencies, pkg);
 		return this;
 	}
 
@@ -270,7 +268,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		if(version !== undefined) {
 			return this.resolvePinnedDependency(name, typeof version === 'string' ? RRange.parse('=' + version) : version);
 		}
-		const existing = this.dependencies.get(name);
+		const existing = this.dependencies.get(name) ?? this.resolvedOnly.get(name);
 		// a package already carrying exports is complete; a version-only one is still enriched below
 		if(existing?.namespaceInfo || (!existing && this.resolvedMisses.has(name))) {
 			return existing;
@@ -279,13 +277,26 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 			for(const resolve of this.lazyResolvers) {
 				const resolved = resolve(name, existing);
 				if(resolved) {
-					this.addDependency(resolved);   // merges exports into any existing version info
-					return this.dependencies.get(name);
+					// merges exports into any existing version info, of a dependency or of a mere lookup
+					const into = this.dependencies.has(name) ? this.dependencies : this.resolvedOnly;
+					mergeIntoMap(into, resolved);
+					return into.get(name);
 				}
 			}
 			this.resolvedMisses.add(name);
 		}
 		return existing;
+	}
+
+	/** Like {@link getDependency}, but for a package the code pulls in (`library(p)`): the result joins the project's {@link getDependencies|dependencies}. */
+	public loadDependency(name: string): Package | undefined {
+		const found = this.getDependency(name);
+		const cached = this.resolvedOnly.get(name);
+		if(cached !== undefined) {
+			this.resolvedOnly.delete(name);
+			mergeIntoMap(this.dependencies, cached);
+		}
+		return this.dependencies.get(name) ?? found;
 	}
 
 	/** Resolve `name` constrained to `range` via the plugins (uncached); falls back to the cached dependency. */
@@ -316,5 +327,14 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		this.ensureStaticsLoaded();
 		const declared: readonly (readonly Package[] | undefined)[] = Object.values(this.ctx.meta.getDeclaredPackages());
 		return [...new Set(declared.flatMap(group => group?.map(p => p.name) ?? []))];
+	}
+}
+
+function mergeIntoMap(map: Map<string, Package>, pkg: Package): void {
+	const existing = map.get(pkg.name);
+	if(existing) {
+		existing.mergeInPlace(pkg);
+	} else {
+		map.set(pkg.name, pkg);
 	}
 }

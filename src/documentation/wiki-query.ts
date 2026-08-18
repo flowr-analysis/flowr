@@ -56,6 +56,7 @@ import type { AbsintQueryType } from '../queries/catalog/absint-query/absint-que
 import { executeDiceQuery } from '../queries/catalog/dice-query/dice-query-executor';
 import { executeDataflowLensQuery } from '../queries/catalog/dataflow-lens-query/dataflow-lens-query-executor';
 import { executeSignatureQuery } from '../queries/catalog/signature-query/signature-query-executor';
+import { warnMissingSigDb } from './doc-util/doc-sigdb';
 import {
 	executeGuessDepVersionsQuery
 } from '../queries/catalog/guess-dep-versions-query/guess-dep-versions-query-executor';
@@ -1203,6 +1204,8 @@ export class WikiQuery extends DocMaker<'wiki/Query API.md'> {
 
 	protected async text({ ctx, shell }: DocMakerArgs): Promise<string> {
 		assertAllQueriesDocumented();
+		/* the signature query documented here answers from the database, so its examples need one */
+		warnMissingSigDb(this.getTarget());
 		for(const [file, content] of Object.entries({
 			...await queryPages(shell, ctx, 'active'),
 			...await queryPages(shell, ctx, 'virtual')
@@ -1219,7 +1222,7 @@ ${
 		content: `
 There are many ways to query a dataflow graph created by flowR.
 For example, you can use the ${ctx.linkPage('wiki/Interface', '`request-query`', 'message-request-query')} message
-with a running flowR server, or the ${getReplCommand('query')} command in the flowR ${ctx.linkPage('wiki/Interface', 'REPL', 'repl')}.
+with a running flowR server, or the ${getReplCommand('query')} command in the flowR ${ctx.linkPage('wiki/Interface', 'REPL', '-using-the-repl')}.
 
 Also, check out the [${FlowrGithubGroupName}/sample-analyzer-project-query](${FlowrGithubBaseRef}/sample-analyzer-project-query) repository for a complete example project using the query API.
 			`.trim()

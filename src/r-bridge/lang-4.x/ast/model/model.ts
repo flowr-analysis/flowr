@@ -1,5 +1,4 @@
-import type { SourceRange } from '../../../../util/range';
-import { SourceLocation } from '../../../../util/range';
+import { SourceLocation, SourceRange } from '../../../../util/range';
 import { RType } from './type';
 import type { MergeableRecord } from '../../../../util/objects';
 import type { RNumber } from './nodes/r-number';
@@ -290,6 +289,50 @@ export const RNode = {
 	 */
 	getId(this: void, node: RNode<ParentInformation>): NodeId {
 		return node.info.id;
+	},
+	/**
+	 * An identity for `node` that two analyses of the same source agree on, unlike {@link RNode.getId|the numeric
+	 * id}, which only means something within the analysis that handed it out. Made of the file the node came
+	 * from, where it starts, and what it is: `<file>:<line>:<column>:<type>`.
+	 *
+	 * This survives re-analyzing the same text, not editing it -- an edit above the node moves it.
+	 * `undefined` for a node that carries no location (an artificial node, e.g. a built-in).
+	 */
+	stableId(this: void, node: RNode<ParentInformation>): string | undefined {
+		const location = node.location;
+		return location === undefined ? undefined : `${node.info.file ?? ''}:${location[0]}:${location[1]}:${node.type}`;
+	},
+	/**
+	 * The source range the whole subtree of `node` covers, from the first position any of its nodes starts at to
+	 * the last one any of them ends at. Unlike {@link SourceRange.fromNode} this does not stop at what the node
+	 * itself is written as: the span of the `<-` in a multi-line assignment is the whole assignment.
+	 * `undefined` if neither the node nor anything below it carries a location.
+	 * @see {@link RNode.topLevelStatement} - for the node to ask this of when the whole statement is wanted
+	 */
+	span<OtherInfo>(this: void, node: RNode<OtherInfo> | undefined): SourceRange | undefined {
+		const ranges: SourceRange[] = [];
+		RNode.visitAst(node, n => {
+			const range = SourceRange.fromNode(n);
+			if(range !== undefined) {
+				ranges.push(range);
+			}
+		});
+		return ranges.length > 0 ? SourceRange.merge(ranges) : undefined;
+	},
+	/**
+	 * The top-level statement `node` belongs to: the ancestor that is a direct child of the root of its file
+	 * (`node` itself if it already is one). A node with no parent is its own statement.
+	 */
+	topLevelStatement<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation>, idMap: AstIdMap<OtherInfo & ParentInformation>): RNode<OtherInfo & ParentInformation> {
+		let current = node;
+		for(;;) {
+			const parent = current.info.parent === undefined ? undefined : idMap.get(current.info.parent);
+			/* the root of a file has no parent of its own, so the node below it is the statement */
+			if(parent?.info.parent === undefined) {
+				return current;
+			}
+			current = parent;
+		}
 	},
 	/**
 	 * A helper function to retrieve the type of a given node.

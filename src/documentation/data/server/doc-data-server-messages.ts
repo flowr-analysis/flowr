@@ -53,7 +53,7 @@ ${codeBlock('json',
 
 There are currently a few messages that you can send after the hello message.
 If you want to _slice_ a piece of R code you first have to send an [analysis request](#message-request-file-analysis), so that you can send one or multiple slice requests afterward.
-Requests for the [REPL](#message-request-repl) are independent of that.
+Requests for the [REPL](#message-request-repl-execution) are independent of that.
 	`;
 		}
 	});

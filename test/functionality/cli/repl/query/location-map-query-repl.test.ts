@@ -1,6 +1,7 @@
 import { describe } from 'vitest';
 import { SupportedQueries } from '../../../../../src/queries/query';
 import { assertReplParser } from '../../../_helper/repl';
+import { LocationMapSpan } from '../../../../../src/queries/catalog/location-map-query/location-map-query-format';
 
 describe('Location Map Query REPL Parser', () => {
 	const parser = SupportedQueries['location-map'].fromLine;
@@ -12,7 +13,7 @@ describe('Location Map Query REPL Parser', () => {
 				type: 'location-map',
 				ids:  undefined
 			},
-			rCode: ''
+			rCode: undefined
 		},
 	});
 	assertReplParser({ parser,
@@ -44,6 +45,30 @@ describe('Location Map Query REPL Parser', () => {
 			query: {
 				type: 'location-map',
 				ids:  undefined
+			},
+			rCode: 'someCode',
+		},
+	});
+	assertReplParser({ parser,
+		label:         'with a span',
+		line:          ['(1@var)', 'statement', 'someCode'],
+		expectedParse: {
+			query: {
+				type: 'location-map',
+				ids:  ['1@var'],
+				span: LocationMapSpan.Statement
+			},
+			rCode: 'someCode',
+		},
+	});
+	assertReplParser({ parser,
+		label:         'a span without criteria',
+		line:          ['full', 'someCode'],
+		expectedParse: {
+			query: {
+				type: 'location-map',
+				ids:  undefined,
+				span: LocationMapSpan.Full
 			},
 			rCode: 'someCode',
 		},

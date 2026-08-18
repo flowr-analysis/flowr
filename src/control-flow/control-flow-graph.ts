@@ -75,6 +75,7 @@ export type CfgVertex = CfgStatementVertex | CfgExpressionVertex | CfgBasicBlock
  * Helper object for {@link CfgVertex} - a vertex in the {@link ControlFlowGraph} that may have markers attached to it (e.g., for function calls).
  */
 export const CfgVertex = {
+	name: 'CfgVertex',
 	/**
 	 * Create a new expression vertex with the given id, children, call targets, and markers.
 	 * @param id          - the id of the vertex, which should directly relate to the AST node
@@ -441,6 +442,7 @@ export type CfgEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge;
  * Helper object for {@link CfgEdge} - an edge in the {@link ControlFlowGraph}.
  */
 export const CfgEdge = {
+	name: 'CfgEdge',
 	/**
 	 * Check whether the given edge is a flow dependency edge.
 	 */

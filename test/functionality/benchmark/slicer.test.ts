@@ -29,7 +29,7 @@ describe('Benchmark Slicer', () => {
 		assert.equal(formatNanoseconds(234892342839398).trim(), '234892.342:839398 s');
 	});
 
-	describe.sequential('Stats by parsing text-based inputs', function() {
+	describe('Stats by parsing text-based inputs', { concurrent: false }, function() {
 		test('Simple slice for simple line', { timeout: 15 * 60 * 1000 }, async() => {
 			const slicer = new BenchmarkSlicer('r-shell');
 			const request = { request: 'text' as const, content: 'a <- b' };

@@ -10,9 +10,9 @@ import {
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { pMatch } from '../../../../linker';
+import { ClosureRefs, pMatch } from '../../../../linker';
 import type { DataflowGraphVertexInfo } from '../../../../../graph/vertex';
-import { VertexType } from '../../../../../graph/vertex';
+import { VertexType, FunctionDefinitionVertex } from '../../../../../graph/vertex';
 import { tryUnpackNoNameArg, unpackArg } from '../argument/unpack-argument';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -20,9 +20,6 @@ import { isUndefined } from '../../../../../../util/assert';
 import { EdgeType } from '../../../../../graph/edge';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import { Identifier, type IdentifierReference } from '../../../../../environments/identifier';
-import { isReferenceType, ReferenceType } from '../../../../../environments/identifier';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
-import { expensiveTrace } from '../../../../../../util/log';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 /**
@@ -108,7 +105,14 @@ export function processTryCatch<OtherInfo>(
 			info.graph.addEdge(rootId, e.nodeId, EdgeType.Returns);
 		}
 	}
-	return info;
+	/* block and finally are evaluated in the enclosing environment, so their definitions have to bubble up */
+	const escaping: IdentifierReference[] = [];
+	for(const arg of res.processedArguments) {
+		if(arg && (blockArg.has(arg.entryPoint) || finallyArg.has(arg.entryPoint))) {
+			escaping.push(...arg.out);
+		}
+	}
+	return escaping.length > 0 ? { ...info, out: info.out.concat(escaping) } : info;
 }
 
 function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: DataflowInformation, data: DataflowProcessorInformation<ParentInformation & OtherInfo>): NodeId | undefined {
@@ -138,31 +142,8 @@ function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: Dataf
 		info.graph.addEdge(arg, functionId, EdgeType.Calls | EdgeType.Reads);
 
 		const dfVert = info.graph.getVertex(call);
-		if(dfVert && dfVert.tag === VertexType.FunctionDefinition) {
-			// resolve all ingoings against the environment
-			const ingoingRefs = dfVert.subflow.in;
-			const remainingIn: IdentifierReference[] = [];
-			for(const ingoing of ingoingRefs) {
-				const resolved = ingoing.name ? resolveByName(ingoing.name, data.environment, ingoing.type) : undefined;
-				if(resolved === undefined) {
-					remainingIn.push(ingoing);
-					continue;
-				}
-				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${ingoing.nodeId} in closure of function definition ${call}`);
-				let allBuiltIn = true;
-				for(const ref of resolved) {
-					const rid = ref.nodeId;
-					info.graph.addEdge(ingoing.nodeId, rid, EdgeType.Reads);
-					info.graph.addEdge(call, rid, EdgeType.Reads); // because the def. is the anonymous call
-					if(!isReferenceType(ref.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
-						allBuiltIn = false;
-					}
-				}
-				if(allBuiltIn) {
-					remainingIn.push(ingoing);
-				}
-			}
-			dfVert.subflow.in = remainingIn;
+		if(dfVert && FunctionDefinitionVertex.is(dfVert)) {
+			ClosureRefs.resolveOpenIngoing(info.graph, call, dfVert, data.environment);
 		}
 		// we did the linking
 		return undefined;
@@ -185,7 +166,7 @@ function getExitPoints(vertex: DataflowGraphVertexInfo | undefined, graph: Dataf
 	if(!vertex) {
 		return undefined;
 	}
-	if(vertex.tag === VertexType.FunctionDefinition) {
+	if(FunctionDefinitionVertex.is(vertex)) {
 		return vertex.exitPoints;
 	}
 	// we assumed named argument
@@ -195,7 +176,7 @@ function getExitPoints(vertex: DataflowGraphVertexInfo | undefined, graph: Dataf
 	}
 	if(n.type === RType.Argument && n.value?.type === RType.FunctionDefinition) {
 		const fdefV = graph.getVertex(n.value.info.id);
-		if(fdefV?.tag === VertexType.FunctionDefinition) {
+		if(FunctionDefinitionVertex.is(fdefV)) {
 			return fdefV.exitPoints;
 		}
 	}

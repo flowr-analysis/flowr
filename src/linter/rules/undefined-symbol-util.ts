@@ -1,9 +1,11 @@
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
+import { Dataflow } from '../../dataflow/graph/df-helper';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { VertexType } from '../../dataflow/graph/vertex';
+import { FunctionDefinitionVertex, VariableDefinitionVertex } from '../../dataflow/graph/vertex';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { NoEdges } from '../../dataflow/graph/graph';
 
 /**
  * Path heuristic for an R package `inst/` resource (installed verbatim, not namespace source). Fallback for
@@ -17,10 +19,10 @@ const ResolveEdges: number = EdgeType.Reads | EdgeType.DefinedByOnCall;
 
 /**
  * Whether the variable use `id` resolves to a local definition, a parameter, or a built-in (function or
- * constant such as `T`, `pi`). Broader than `getOriginInDfg`, which misses built-in constants.
+ * constant such as `T`, `pi`). Broader than `Dataflow.origin`, which misses built-in constants.
  */
 export function useResolvesToDefinitionOrBuiltin(graph: DataflowGraph, id: NodeId): boolean {
-	for(const [target, edge] of graph.outgoingEdges(id) ?? []) {
+	for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
 		if(DfEdge.doesNotIncludeType(edge, ResolveEdges) || DfEdge.includesType(edge, EdgeType.NonStandardEvaluation)) {
 			continue;
 		}
@@ -28,17 +30,19 @@ export function useResolvesToDefinitionOrBuiltin(graph: DataflowGraph, id: NodeI
 			return true;
 		}
 		const targetVtx = graph.getVertex(target);
-		if(targetVtx?.tag === VertexType.VariableDefinition || targetVtx?.tag === VertexType.FunctionDefinition) {
+		if(VariableDefinitionVertex.is(targetVtx) || FunctionDefinitionVertex.is(targetVtx)) {
 			return true;
 		}
 	}
 	return false;
 }
 
-/** Whether any edge incident to `id` marks it as non-standard-evaluated (quoted), e.g. `quote`/`substitute`. */
+/**
+ * Whether any edge incident to `id` marks it as non-standard-evaluated (quoted), e.g. `quote`/`substitute`.
+ * A loop body is marked as non-standard-evaluated too, but it is evaluated, so it does not count here.
+ */
 export function isNonStandardEvaluated(graph: DataflowGraph, id: NodeId): boolean {
-	const nse = (edge: DfEdge): boolean => DfEdge.includesType(edge, EdgeType.NonStandardEvaluation);
-	return (graph.outgoingEdges(id)?.values().some(nse) ?? false) || (graph.ingoingEdges(id)?.values().some(nse) ?? false);
+	return Dataflow.isQuoted(id, graph, true);
 }
 
 /**
@@ -113,7 +117,7 @@ export function collectScopeDefinedNames(graph: DataflowGraph): ScopeDefinedName
 		return byScope;
 	}
 	for(const [id, vtx] of graph.vertices(true)) {
-		if(vtx.tag !== VertexType.VariableDefinition) {
+		if(!VariableDefinitionVertex.is(vtx)) {
 			continue;   // function bindings/params surface as variable definitions of their name symbol
 		}
 		const name = idMap.get(id)?.lexeme;

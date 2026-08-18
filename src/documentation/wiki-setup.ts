@@ -1,6 +1,7 @@
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
+import { minimumNodeMajor } from '../util/node-version';
 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Setup
@@ -24,7 +25,7 @@ or use its ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')} and $
 
 
 If you want to develop for _flowR_, you want to see how to [build from scratch](#-building-from-scratch) and have a 
-look at the [Contributing Guidelines](${RemoteFlowrFilePathBaseRef}/.github/CONTRIBUTING.md).
+look at the [Contributing Guidelines](${RemoteFlowrFilePathBaseRef}.github/CONTRIBUTING.md).
 
 ## 🗒️ Using the Visual Studio Code Extension
 
@@ -76,7 +77,7 @@ Again, you only require this for the ${ctx.linkPage('wiki/Engines', '`r-shell` e
 ### Installing Node.js
 
 Furthermore, you need the [node package manager](https://www.npmjs.com/) (for Linux, we recommend using [nvm](https://github.com/nvm-sh/nvm)).
-To work, we currently rely on node versions starting from \`22.x\`.
+To work, we currently rely on node versions starting from \`${minimumNodeMajor()}.x\` (as declared by the \`engines.node\` field of the [package.json](${RemoteFlowrFilePathBaseRef}package.json)).
 
 ### Installing _flowR_
 
@@ -106,7 +107,7 @@ At the time of writing this, there is currently no page for frequently encounter
 ## 📜 Developing for _flowR_
 
 If you want to develop for _flowR_, explore the wiki.
-For details on _how_ to contribute, please refer to the [CONTRIBUTING.md](${RemoteFlowrFilePathBaseRef}/.github/CONTRIBUTING.md) in the repository.
+For details on _how_ to contribute, please refer to the [CONTRIBUTING.md](${RemoteFlowrFilePathBaseRef}.github/CONTRIBUTING.md) in the repository.
 
 ### 📦 The Signature Database
 
@@ -116,7 +117,7 @@ _flowR_ resolves \`library(pkg)\`/\`pkg::fn\` calls from a downloaded signature 
 <a id="note1" href="#note1ref">&lt;1&gt;</a>: Currently, _flowR_ is only tested with R versions \`4.x\` and \`3.6.x\`.
 
 <a id="note2" href="#note2ref">&lt;2&gt;</a>: We use
-[git-lfs](https://git-lfs.com/) to store larger files, especially for the wiki pages. So if you want to work on these parts, make sure to have it set-up (see the [CONTRIBUTING.md](${RemoteFlowrFilePathBaseRef}/.github/CONTRIBUTING.md) in the repository for more information).
+[git-lfs](https://git-lfs.com/) to store larger files, especially for the wiki pages. So if you want to work on these parts, make sure to have it set-up (see the [CONTRIBUTING.md](${RemoteFlowrFilePathBaseRef}.github/CONTRIBUTING.md) in the repository for more information).
     `.trim();
 	}
 }

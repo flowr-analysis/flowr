@@ -1,11 +1,10 @@
 import {
 	FlowrDockerRef,
 	FlowrGithubBaseRef,
-	FlowrPositron, FlowrSiteBaseRef,
+	FlowrPositron,
 	FlowrVsCode,
 	getFileContentFromRoot,
-	linkFlowRSourceFile
-} from './doc-util/doc-files';
+	linkFlowRSourceFile, FlowrSiteBaseRef } from './doc-util/doc-files';
 import { codeBlock } from './doc-util/doc-code';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { getLastBenchmarkUpdate, getLatestDfAnalysisTime } from './doc-util/doc-benchmarks';
@@ -144,7 +143,7 @@ export class DocReadme extends DocMaker<'README.md'> {
 		const dateOptions: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
 
 		return `
-[![flowR logo](https://raw.githubusercontent.com/wiki/flowr-analysis/flowr/img/flowR.png)](${FlowrGithubBaseRef}/flowr/wiki)\\
+[![flowR logo](https://raw.githubusercontent.com/wiki/flowr-analysis/flowr/img/flowR.png)](${FlowrSiteBaseRef}/)\\
 [![QA (and potentially deploy)](${FlowrGithubBaseRef}/flowr/actions/workflows/qa.yaml/badge.svg)](${FlowrGithubBaseRef}/flowr/actions/workflows/qa.yaml)
 [![codecov](https://codecov.io/gh/flowr-analysis/flowr/graph/badge.svg)](https://codecov.io/gh/flowr-analysis/flowr)
 [![Docker Image Version (latest semver)](https://img.shields.io/docker/v/eagleoutice/flowr?logo=docker&logoColor=white&label=dockerhub)](${FlowrDockerRef})
@@ -219,7 +218,7 @@ ${await documentReplSession(treeSitter, [{
    `), '    ')}
 
 * 🚀 **fast call-graph, data-, and control-flow graphs**\\
-  Within just [${'<i>' + textWithTooltip(roundToDecimals(await getLatestDfAnalysisTime('"social-science" Benchmark Suite (tree-sitter)'), 1) + ' ms', 'This measurement is automatically fetched from the latest benchmark!') + '</i>'} (as of ${new Date(await getLastBenchmarkUpdate()).toLocaleDateString('en-US', dateOptions)})](${FlowrSiteBaseRef}/wiki/stats/benchmark), 
+  Within just ${ctx.linkPage('flowr:benchmarks', `${'<i>' + textWithTooltip(roundToDecimals(await getLatestDfAnalysisTime('"real-world" Benchmark Suite (tree-sitter)'), 1) + ' ms', 'This measurement is automatically fetched from the latest benchmark!') + '</i>'} (as of ${new Date(await getLastBenchmarkUpdate()).toLocaleDateString('en-US', dateOptions)})`)},
   _flowR_ can analyze the data- and control-flow of the average real-world R&nbsp;script. See the ${ctx.linkPage('flowr:benchmarks', 'benchmarks')} for more information,
   and consult the ${ctx.linkPage('wiki/Dataflow Graph', 'wiki pages')} for more details on the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graphs')} as well as ${ctx.linkPage('wiki/Dataflow Graph', 'call graphs', 'perspectives-cg')}.
 
@@ -294,7 +293,10 @@ ${printPublications()}
 
 ## 🚀 Contributing
 
-We welcome every contribution! Please check out the ${ctx.linkPage('wiki/Onboarding', 'developer onboarding')} section in the wiki for all the information you will need.
+We welcome every contribution! The ${ctx.linkPage('wiki/Onboarding', 'developer onboarding')} page has everything you need to get started.
+With **R** and **Node.js** installed, \`npm run setup:dev\` checks your prerequisites, installs the dependencies, and configures the git hooks.
+The [contributing guidelines](${FlowrGithubBaseRef}/flowr/tree/main/.github/CONTRIBUTING.md) explain our commit conventions,
+and ${ctx.linkPage('wiki/Linting and Testing')} shows how to run the tests.
 
 ### Contributors
 

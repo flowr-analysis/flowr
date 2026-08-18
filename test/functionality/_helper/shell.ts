@@ -70,7 +70,7 @@ let testShell: RShell | undefined = undefined;
 
 /**
  * Produces a shell session for you, can be used within a `describe` block.
- * Please use **describe.sequential** as the RShell does not fare well with parallelization.
+ * Pass `{ concurrent: false }` to the `describe`, the RShell does not fare well with parallelization.
  * @param fn       - function to use the shell
  * @param newShell - whether to create a new shell or reuse a global shell instance for the tests
  * @see {@link withTreeSitter}
@@ -369,7 +369,7 @@ interface DataflowTestConfiguration extends TestConfigurationWithOutput {
 }
 
 function cropIfTooLong(str: string): string {
-	return str.length > 100 ? str.substring(0, 100) + '...' : str;
+	return str.length > 100 ? str.slice(0, 100) + '...' : str;
 }
 
 /**

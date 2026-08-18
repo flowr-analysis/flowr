@@ -12,6 +12,14 @@ export interface Table {
 	rows:   string[][]
 }
 
+/** Rethrows if the caller asked for it, otherwise reports the directory as skipped. */
+function skipUnreadableDir(dir: string, e: unknown, throwOnError: boolean): void {
+	if(throwOnError) {
+		throw e;
+	}
+	log.warn(`Skipping '${dir}' during file discovery: ${e instanceof Error ? e.message : String(e)}`);
+}
+
 /**
  * Retrieves all files in the given directory recursively
  * @param dir          - Directory path to start the search from
@@ -25,10 +33,7 @@ export async function* getAllFiles(dir: string, suffix = /.*/, throwOnError = fa
 	try {
 		entries = await fsPromise.readdir(dir, { withFileTypes: true, recursive: false });
 	} catch(e) {
-		if(throwOnError) {
-			throw e;
-		}
-		log.warn(`Skipping '${dir}' during file discovery: ${e instanceof Error ? e.message : String(e)}`);
+		skipUnreadableDir(dir, e, throwOnError);
 		return;
 	}
 	for(const subEntries of entries) {
@@ -56,10 +61,7 @@ export function* getAllFilesSync(dir: string, suffix = /.*/, ignoreDirs: RegExp 
 	try {
 		entries = fs.readdirSync(dir, { withFileTypes: true, recursive: false });
 	} catch(e) {
-		if(throwOnError) {
-			throw e;
-		}
-		log.warn(`Skipping '${dir}' during file discovery: ${e instanceof Error ? e.message : String(e)}`);
+		skipUnreadableDir(dir, e, throwOnError);
 		return;
 	}
 	for(const subEntries of entries) {

@@ -11,7 +11,7 @@ import path from 'path';
  * a selected subset of shards and `preload` warms everything (including the full-history shards). Runs against
  * the bundled sharded manifest; skipped when a checkout ships no generated database.
  */
-describe.sequential('SigDb preload', () => {
+describe('SigDb preload', { concurrent: false }, () => {
 	const manifest = defaultSigDbPath();
 	const hasBundledSet = manifest !== undefined && /\.manifest\.json(\.br)?$/.test(manifest);
 

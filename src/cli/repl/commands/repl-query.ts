@@ -170,6 +170,7 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 	}
 
 	if(input) {
+		input = unquoteWhole(input);
 		input = handlePathLikeInput(output, input, analyzer.flowrConfig);
 		// reuse a prior analysis (e.g. a dataflow from :df#) when the target is unchanged
 		if(!analyzerHasTarget(analyzer, input)) {
@@ -203,11 +204,47 @@ function parseArgs(line: string) {
 		const [, name, rest] = configMatch;
 		return { rCode: undefined, remaining: rest === undefined ? [name] : [name, rest] };
 	}
-	const args = splitAtEscapeSensitive(line);
+	const [query, rest] = splitQueryFromRest(line);
 	return {
 		rCode:     undefined,
-		remaining: args
+		/* the rest keeps its quotes: they belong to the R code, where dropping them turns a string into a symbol */
+		remaining: [query, ...splitAtEscapeSensitive(rest, false)]
 	};
+}
+
+/**
+ * Undoes a wrapping of the whole code in quotes, as `:query \@dependencies "library(x)"` writes it. A quote the
+ * code itself contains ends the wrapping early, so it is left alone.
+ */
+function unquoteWhole(code: string): string {
+	const quote = code[0];
+	if((quote !== '"' && quote !== '\'') || code.length < 2 || code[code.length - 1] !== quote) {
+		return code;
+	}
+	for(let i = 1; i < code.length - 1; i++) {
+		if(code[i] === quote && code[i - 1] !== '\\') {
+			return code;
+		}
+	}
+	return code.slice(1, -1);
+}
+
+/**
+ * Separates the query from everything after it. The query is either a bare token (`@static-slice`) or the
+ * quoted JSON form (`"[{\"type\": ...}]"`), whose escapes are undone; the rest is handed on verbatim.
+ */
+function splitQueryFromRest(line: string): readonly [query: string, rest: string] {
+	const trimmed = line.trimStart();
+	const quote = trimmed[0];
+	if(quote !== '"' && quote !== '\'') {
+		const space = trimmed.indexOf(' ');
+		return space < 0 ? [trimmed, ''] : [trimmed.slice(0, space), trimmed.slice(space + 1)];
+	}
+	let end = 1;
+	while(end < trimmed.length && !(trimmed[end] === quote && trimmed[end - 1] !== '\\')) {
+		end++;
+	}
+	return [trimmed.slice(1, end).replace(/\\(.)/g, '$1'), trimmed.slice(end + 1).trimStart()];
 }
 
 export const queryCommand: ReplCodeCommand = {

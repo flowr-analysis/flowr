@@ -1,9 +1,10 @@
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { VertexType } from '../graph/vertex';
 import type { ControlDependency } from '../info';
 import { ExitPointType } from '../info';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import type { CallGraph } from '../graph/call-graph';
+import { FunctionCallVertex, FunctionDefinitionVertex } from '../graph/vertex';
+import { NoEdges } from '../graph/graph';
 
 const CatchHandlers: ReadonlySet<string> = new Set<BuiltInProcName>([BuiltInProcName.Try]);
 export interface ExceptionPoint {
@@ -48,7 +49,7 @@ export function calculateExceptionsOfFunction(id: NodeId, graph: CallGraph, know
 			continue;
 		}
 
-		if(vtx.tag === VertexType.FunctionDefinition) {
+		if(FunctionDefinitionVertex.is(vtx)) {
 			const es = vtx.exitPoints.filter(e => e.type === ExitPointType.Error).map(e => ({ id: e.nodeId, cds: e.cds }));
 			for(const e of es) {
 				if(!mine.includes(e)) {
@@ -56,12 +57,12 @@ export function calculateExceptionsOfFunction(id: NodeId, graph: CallGraph, know
 				}
 			}
 			collectedExceptions[vtx.id] = es;
-		} else if(vtx.tag === VertexType.FunctionCall && vtx.origin !== 'unnamed' && vtx.origin.some(c => CatchHandlers.has(c))) {
+		} else if(FunctionCallVertex.is(vtx) && vtx.origin !== 'unnamed' && vtx.origin.some(c => CatchHandlers.has(c))) {
 			// skip the try-catch handlers as they catch all exceptions within their body
 			continue;
 		}
 
-		const outEdges = graph.outgoingEdges(currentId) ?? [];
+		const outEdges = graph.outgoingEdges(currentId) ?? NoEdges;
 		for(const [out] of outEdges) {
 			if(!visited.has(out)) {
 				toVisit.push(out);

@@ -2,6 +2,7 @@
  * Helper for transforming records.
  */
 export const Record = {
+	name: 'Record',
 	/**
 	 * Returns an array of the names of the properties of a record.
 	 * @param object - The record to get the property names from.

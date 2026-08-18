@@ -71,7 +71,6 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 		this.log('Done summarizing');
 	}
 
-	// eslint-disable-next-line @typescript-eslint/require-await -- just to obey the structure
 	public async summarizePhase(): Promise<UltimateSlicerStats> {
 		this.log(`Summarizing all summaries from ${this.summaryFile()}...`);
 
@@ -86,7 +85,7 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 		console.log(ultimateStats2String(ultimate));
 
 		if(this.config.graphOutputPath) {
-			writeGraphOutput(ultimate, this.config.graphOutputPath);
+			await writeGraphOutput(ultimate, this.config.graphOutputPath);
 		}
 		return ultimate;
 	}

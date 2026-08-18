@@ -84,7 +84,7 @@ export function firstUnknownSchemaSegment(description: Joi.Description, path: re
 			const pattern = patternObject(node);
 			if(pattern !== undefined) {
 				if(pattern.keyValids !== undefined && !pattern.keyValids.includes(path[i])) {
-					return { segment: path[i], available: pattern.keyValids.map(v => String(v)), at: path.slice(0, i) };
+					return { segment: path[i], available: pattern.keyValids.map(String), at: path.slice(0, i) };
 				}
 				node = pattern.value;
 				continue;
@@ -120,7 +120,7 @@ export function descriptionPathKeys(description: Joi.Description, path: readonly
 	}
 	const keys = Object.keys((node.keys ?? {}) as Record<string, Joi.Description>);
 	// a `.pattern()` object declares no keys, but a `.valid(...)` key schema restricts them to a known set
-	const valids = patternObject(node)?.keyValids?.map(v => String(v)) ?? [];
+	const valids = patternObject(node)?.keyValids?.map(String) ?? [];
 	return [...keys, ...valids.filter(v => !keys.includes(v))];
 }
 

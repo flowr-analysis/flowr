@@ -152,11 +152,9 @@ export const SourceRange = {
 	startsCompletelyBefore(this: void, [,,r1el, r1ec]: SourceRange, [r2sl, r2sc,,]: SourceRange): boolean {
 		return r1el < r2sl || (r1el === r2sl && r1ec < r2sc);
 	},
-	/**
-	 * Checks if the two ranges overlap.
-	 */
-	overlap(this: void, [r1sl, r1sc, r1el, r1ec]: SourceRange, [r2sl, r2sc, r2el, r2ec]: SourceRange): boolean {
-		return r1sl <= r2el && r2sl <= r1el && r1sc <= r2ec && r2sc <= r1ec;
+	/** Checks if the two ranges overlap, i.e. whether neither of them lies completely before the other. */
+	overlap(this: void, r1: SourceRange, r2: SourceRange): boolean {
+		return !SourceRange.startsCompletelyBefore(r1, r2) && !SourceRange.startsCompletelyBefore(r2, r1);
 	},
 	/**
 	 * Calculates the component-wise sum of two ranges.
@@ -310,23 +308,24 @@ export const SourceLocation = {
 			return SourceRange.format(location as SourceRange);
 		}
 	},
-	/**
-	 * Returns the {@link SourceRange|source range} part of a {@link SourceLocation|source location}.
-	 */
-	getRange(this: void, location: SourceLocation): SourceRange {
-		return location as SourceRange;
+	/** Returns the {@link SourceRange|source range} part of a {@link SourceLocation|source location}, file excluded. */
+	getRange(this: void, [sl, sc, el, ec]: SourceLocation): SourceRange {
+		return [sl, sc, el, ec];
 	},
+	/**
+	 * Returns the file part of a {@link SourceLocation|source location}, or `undefined` if no file is set.
+	 */
 	getFile(this: void, location: SourceLocation): string | undefined {
 		return location[4];
 	},
 	/**
-	 * Returns the file part of a {@link SourceLocation|source location}, or `undefined` if no file is set.
+	 * Creates a {@link SourceLocation|source location} from a {@link SourceRange|source range} and a file name.
 	 */
 	from(this: void, range: SourceRange, file?: string): SourceLocation {
 		return file !== undefined ? [...range, file] : range;
 	},
 	/**
-	 * Creates a {@link SourceLocation|source location} from a {@link SourceRange|source range} and a file name.
+	 * The {@link SourceLocation|source location} of an AST node, file included.
 	 * @returns undefined if the given range is undefined
 	 * @see {@link SourceRange.fromNode} for getting the range from an AST node
 	 */

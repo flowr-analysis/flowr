@@ -4,7 +4,7 @@ import type { DataflowQuery } from '../../../../src/queries/catalog/dataflow-que
 import { withTreeSitter } from '../../_helper/shell';
 import { describe } from 'vitest';
 
-describe.sequential('Dataflow Query', withTreeSitter(parser => {
+describe('Dataflow Query', { concurrent: false }, withTreeSitter(parser => {
 	function testQuery(name: string, code: string, query: readonly DataflowQuery[]) {
 		assertQuery(label(name), parser, code, query, ({ dataflow }) => ({ dataflow: { graph: dataflow.graph } }));
 	}

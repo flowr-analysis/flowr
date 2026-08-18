@@ -6,7 +6,6 @@ import type { OptionDefinition } from 'command-line-usage';
 import {
 	benchmarkHelperOptions,
 	benchmarkOptions,
-	exportQuadsOptions,
 	slicerOptions,
 	summarizerOptions
 } from './options';
@@ -72,14 +71,6 @@ const _scripts = {
 		description:  'Summarize the results of the benchmark',
 		options:      summarizerOptions,
 		usageExample: 'summarizer "benchmark.json"',
-		type:         'master script',
-	},
-	'export-quads': {
-		toolName:     'export-quads',
-		target:       'export-quads-app',
-		description:  'Export quads of the normalized AST of a given R code file',
-		usageExample: 'export-quads "example.R" --output "example.quads"',
-		options:      exportQuadsOptions,
 		type:         'master script',
 	}
 };

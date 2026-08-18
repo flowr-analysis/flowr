@@ -11,7 +11,7 @@ export const MIN_VERSION_HEAD_TAIL_VECTOR = '4.0.0';
 
 const DataFrameTop = { colnames: [[], Top] as [[], typeof Top], cols: PosIntervalTop, rows: PosIntervalTop } as const;
 
-describe.sequential('Data Frame Shape Inference', withShell(shell => {
+describe('Data Frame Shape Inference', { concurrent: false }, withShell(shell => {
 	let librariesInstalled = false;
 	const skipLibraries = () => !librariesInstalled;
 

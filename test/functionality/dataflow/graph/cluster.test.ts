@@ -31,7 +31,7 @@ describe('Graph Clustering', () => {
 			]);
 	});
 
-	describe.sequential('Code Snippets', withShell(shell => {
+	describe('Code Snippets', { concurrent: false }, withShell(shell => {
 		function check(name: string, code: string, clusters: readonly (SlicingCriteria | { members: SlicingCriteria, hasUnknownSideEffects: boolean })[]): void {
 			test(`${name} [${code.split('\n').join('\\n')}]`, async() => {
 				const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -44,7 +44,7 @@ describe('Graph Clustering', () => {
 
 				// resolve all criteria
 				const resolved = clusters.map<DataflowGraphCluster>(c => {
-					const { members, hasUnknownSideEffects } = c instanceof Array ? {
+					const { members, hasUnknownSideEffects } = Array.isArray(c) ? {
 						members:               c,
 						hasUnknownSideEffects: false
 					} : c;
@@ -172,8 +172,9 @@ cat(product)
 			});
 		});
 		describe('unknown side effects', () => {
-			check('unknown side effects should get their own cluster', 'library(dplyr)\nx', [
-				{ members: ['1@library', '1@dplyr'], hasUnknownSideEffects: true },
+			/* a package neither a database nor flowR itself knows: attaching it really is a step into the dark */
+			check('unknown side effects should get their own cluster', 'library(zzznotapackage)\nx', [
+				{ members: ['1@library', '1@zzznotapackage'], hasUnknownSideEffects: true },
 				['2@x']
 			]);
 			check('unknown side effects should be marked as such', 'x <- vx\nrequire(vx)\nx', [

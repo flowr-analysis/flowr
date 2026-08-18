@@ -41,7 +41,7 @@ jobs:
     if: startsWith(github.event.head_commit.message, '[release:minor]') ||
         startsWith(github.event.head_commit.message, '[release:major]') ||
         startsWith(github.event.head_commit.message, '[release:patch]')
-    timeout-minutes: 25
+    timeout-minutes: 50
     strategy:
       fail-fast: false
       matrix:
@@ -75,15 +75,22 @@ jobs:
       - name: "⬇️ Setup R"
         id: setup-r
         uses: r-lib/actions/setup-r@v2
-        timeout-minutes: 8
+        timeout-minutes: 15
         continue-on-error: true
         with:
           r-version: ${{ matrix.r-version }}
 
+      - name: "🧹 Free the apt Lock"
+        if: steps.setup-r.outcome == 'failure'
+        run: |
+          sudo pkill -f 'apt-get|dpkg' || true
+          sudo rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/cache/apt/archives/lock
+          sudo dpkg --configure -a || true
+
       - name: "⬇️ Setup R (retry)"
         if: steps.setup-r.outcome == 'failure'
         uses: r-lib/actions/setup-r@v2
-        timeout-minutes: 8
+        timeout-minutes: 15
         with:
           r-version: ${{ matrix.r-version }}
 
@@ -144,15 +151,22 @@ jobs:
       - name: "⬇️ Setup R"
         id: setup-r
         uses: r-lib/actions/setup-r@v2
-        timeout-minutes: 8
+        timeout-minutes: 15
         continue-on-error: true
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
 
+      - name: "🧹 Free the apt Lock"
+        if: steps.setup-r.outcome == 'failure'
+        run: |
+          sudo pkill -f 'apt-get|dpkg' || true
+          sudo rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/cache/apt/archives/lock
+          sudo dpkg --configure -a || true
+
       - name: "⬇️ Setup R (retry)"
         if: steps.setup-r.outcome == 'failure'
         uses: r-lib/actions/setup-r@v2
-        timeout-minutes: 8
+        timeout-minutes: 15
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
 
@@ -327,15 +341,22 @@ jobs:
       - name: "⬇️ Setup R"
         id: setup-r
         uses: r-lib/actions/setup-r@v2
-        timeout-minutes: 8
+        timeout-minutes: 15
         continue-on-error: true
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
 
+      - name: "🧹 Free the apt Lock"
+        if: steps.setup-r.outcome == 'failure'
+        run: |
+          sudo pkill -f 'apt-get|dpkg' || true
+          sudo rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/cache/apt/archives/lock
+          sudo dpkg --configure -a || true
+
       - name: "⬇️ Setup R (retry)"
         if: steps.setup-r.outcome == 'failure'
         uses: r-lib/actions/setup-r@v2
-        timeout-minutes: 8
+        timeout-minutes: 15
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
 

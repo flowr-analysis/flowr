@@ -52,7 +52,7 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    Query: linter (4 ms)
+    Query: linter (7 ms)
        ╰ Deprecated Functions (deprecated-functions): no findings
        ╰ File Path Validity (file-path-validity): no findings
        ╰ Seeded Randomness (seeded-randomness): no findings
@@ -67,7 +67,8 @@ It offers a wide variety of features, for example:
        ╰ Roxygen Arguments (roxygen-arguments): no findings
        ╰ No Leaked Credentials (no-leaked-credentials): no findings
        ╰ Undefined Symbol (undefined-symbol): no findings
-    All queries together required ≈4 ms (1ms accuracy, total 4 ms)
+       ╰ Unclosed Connection (unclosed-connection): no findings
+    All queries together required ≈7 ms (1ms accuracy, total 7 ms)
     ```
     
     
@@ -89,7 +90,7 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (9 ms)\
+    Query: **linter** (15 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -110,11 +111,12 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Roxygen Arguments** (roxygen-arguments): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **No Leaked Credentials** (no-leaked-credentials): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol): _no findings_\
-    _All queries together required ≈9 ms (1ms accuracy, total 9 ms)_
+    &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
+    _All queries together required ≈15 ms (1ms accuracy, total 16 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _9.3 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis required _16.3 ms_ (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -132,7 +134,7 @@ It offers a wide variety of features, for example:
               "totalCalls": 0,
               "totalFunctionDefinitions": 0,
               "searchTimeMs": 2,
-              "processTimeMs": 1
+              "processTimeMs": 4
             }
           },
           "file-path-validity": {
@@ -166,7 +168,7 @@ It offers a wide variety of features, for example:
               "callsWithAssignmentProducers": 0,
               "callsWithNonConstantProducers": 0,
               "callsWithOtherBranchProducers": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -203,7 +205,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalCalls": 0,
               "totalFunctionDefinitions": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -229,7 +231,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "numOfUselessLoops": 0,
               "searchTimeMs": 0,
-              "processTimeMs": 0
+              "processTimeMs": 1
             }
           },
           "problematic-inputs": {
@@ -277,14 +279,23 @@ It offers a wide variety of features, for example:
               "searchTimeMs": 0,
               "processTimeMs": 2
             }
+          },
+          "unclosed-connection": {
+            "results": [],
+            ".meta": {
+              "totalOpened": 0,
+              "totalClosed": 0,
+              "searchTimeMs": 0,
+              "processTimeMs": 0
+            }
           }
         },
         ".meta": {
-          "timing": 9
+          "timing": 15
         }
       },
       ".meta": {
-        "timing": 9
+        "timing": 15
       }
     }
     ```
@@ -362,7 +373,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈3 ms (1ms accuracy, total 3 ms)
+    All queries together required ≈5 ms (1ms accuracy, total 5 ms)
     ```
     
     
@@ -686,7 +697,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _1.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+    (The analysis required _3.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
     
     
     

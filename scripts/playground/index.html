@@ -231,6 +231,13 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #panel .way + .way { border-left: 1px solid var(--border); }
 #panel .way:hover { color: var(--fg); }
 #panel .way[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+/* the way to ask for a new linting rule, at the end of the lint heading */
+#panel h3 .suggest {
+	margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0;
+	padding: .1rem .6rem; border: 1px solid var(--border); border-radius: 1rem;
+	color: var(--muted); text-decoration: none;
+}
+#panel h3 .suggest:hover { color: var(--fg); }
 /* the aside on a heading, which says what one can do with what is under it */
 #panel h3 .aside { font-weight: 400; letter-spacing: .04em; opacity: .65; }
 #panel .toggle { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; text-transform: none; letter-spacing: 0; font-weight: 400; cursor: pointer; }
@@ -301,6 +308,9 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	#panel .kind, #panel .rule { grid-column: 1; grid-row: 1; }
 	#panel .at { grid-column: 2; grid-row: 1; }
 	#panel .what, #panel .says { grid-column: 1 / -1; grid-row: 2; }
+	/* the headings keep their controls, but only the words they need for them */
+	#panel .wide, #panel h3 .aside { display: none; }
+	#panel .way, #panel h3 .suggest { padding: .1rem .4rem; }
 }
 
 @media (max-width: 52rem) {

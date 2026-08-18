@@ -174,16 +174,46 @@
 		return values.map(v => num(v) === null ? null : (v / baseline - 1) * 100);
 	}
 
-	/**
-	 * Machine speed factor per run, relative to the median run of the calibration series.
-	 * A factor above one means the runner was slower than usual.
-	 */
-	function calibrationFactors(calibration) {
-		const med = median(calibration);
-		if(!isFinite(med) || med === 0) {
-			return calibration.map(() => 1);
+	const CALIBRATION_BREAK = 3;
+	const CALIBRATION_MIN_SEGMENT = 2;
+
+	/** splits the calibration series wherever its scale breaks, holes stay with the scale around them */
+	function calibrationScales(calibration) {
+		const scales = [];
+		let current = [];
+		for(const raw of calibration || []) {
+			const v = num(raw) !== null && raw > 0 ? raw : null;
+			if(v === null) {
+				current.push(null);
+				continue;
+			}
+			const ref = median(current);
+			if(isFinite(ref) && ref > 0 && (v / ref >= CALIBRATION_BREAK || ref / v >= CALIBRATION_BREAK)) {
+				scales.push(current);
+				current = [];
+			}
+			current.push(v);
 		}
-		return calibration.map(v => num(v) !== null && v > 0 ? v / med : 1);
+		scales.push(current);
+		return scales;
+	}
+
+	/** machine speed factor per run, relative to the median run measured on the same calibration scale */
+	function calibrationFactors(calibration) {
+		const factors = new Array((calibration || []).length).fill(1);
+		let at = 0;
+		for(const scale of calibrationScales(calibration)) {
+			const med = median(scale);
+			const usable = scale.filter(v => v !== null).length >= CALIBRATION_MIN_SEGMENT && isFinite(med) && med > 0;
+			for(let i = 0; i < scale.length; i++) {
+				const v = scale[i];
+				if(usable && v !== null) {
+					factors[at + i] = Math.min(CALIBRATION_BREAK, Math.max(1 / CALIBRATION_BREAK, v / med));
+				}
+			}
+			at += scale.length;
+		}
+		return factors;
 	}
 
 	/** divide out the machine speed, keeping the original unit */
@@ -669,7 +699,7 @@
 	}
 
 	root.BenchStats = {
-		median, rollingMedian, rollingSmooth, baselineOf, toPercentDelta, calibrationFactors, applyFactors,
+		median, rollingMedian, rollingSmooth, baselineOf, toPercentDelta, calibrationScales, calibrationFactors, applyFactors,
 		parseVersion, runLabel, commitTitle, shortName, tagLabel, releaseBumps, segments, smoothPath, ticks, groupOf, betterOf,
 		logTicks, tickIndices, fitLabels, stateChanges, pickColors, mergeInfoSuites, encodeGroups, decodeGroups, GROUPS
 	};

@@ -976,17 +976,20 @@
 		fillOptions(ui.engine, [...new Set(parts.map(p => p.engine))], 'tree-sitter');
 	}
 
+	/** the newest run decides, so that a renamed calibration wins over the one it replaced */
 	function calibrationMetric(runs) {
-		for(const name of metricsOf(runs).keys()) {
-			if(name.toLowerCase().includes('calibration')) {
-				return name;
+		for(let i = runs.length - 1; i >= 0; i--) {
+			for(const b of runs[i].benches) {
+				if(String(b.name).toLowerCase().includes('calibration')) {
+					return b.name;
+				}
 			}
 		}
 		return null;
 	}
 
-	/** a calibration measured this rarely, or one that never moved at all, would divide every run by the same number */
-	const CALIBRATION_MIN_RUNS = 2, CALIBRATION_MIN_SPREAD = 1.001;
+	/** a calibration that never moved at all would divide every run by the same number */
+	const CALIBRATION_MIN_SPREAD = 0.001;
 
 	/**
 	 * Only a duration scales with the machine, so counts, sizes, and ratios keep their raw value
@@ -996,19 +999,13 @@
 		return unit === 'ms' && name !== calib;
 	}
 
-	/**
-	 * The name of the calibration if dividing by it would change the picture, null otherwise: it needs
-	 * at least two runs to compare and a machine that actually differed between them.
-	 */
+	/** the name of the calibration if dividing by it would change the picture, null otherwise */
 	function usableCalibration(runs, name) {
 		if(!name) {
 			return null;
 		}
-		const values = runs.map(r => valueOf(r, name)).filter(v => typeof v === 'number' && v > 0);
-		if(values.length < CALIBRATION_MIN_RUNS) {
-			return null;
-		}
-		return Math.max(...values) / Math.min(...values) >= CALIBRATION_MIN_SPREAD ? name : null;
+		const factors = S.calibrationFactors(runs.map(r => valueOf(r, name)));
+		return factors.some(f => Math.abs(f - 1) >= CALIBRATION_MIN_SPREAD) ? name : null;
 	}
 
 	/**
@@ -1283,14 +1280,22 @@
 			b, at: axis.x(b.index), text: b.kind === 'major' ? 'v' + b.version : b.version.replace(/\.\d+$/, '')
 		}));
 		// roughly five pixels per character, enough to keep the labels apart
-		const fits = S.fitLabels(marks.map(m => [m.at, m.text.length * 5 + 6]));
+		for(const m of marks) {
+			m.width = m.text.length * 5 + 6;
+			// the newest release sits at the border, so its label hangs to the left instead of being cut off
+			m.flip = m.at + m.width > W;
+			m.x = m.flip ? m.at - 3 : m.at + 3;
+		}
+		const fits = S.fitLabels(marks.map(m => [m.flip ? m.at - m.width : m.at, m.width]));
 		marks.forEach((m, k) => {
 			const guide = tag('line', { class: 'marker ' + m.b.kind, x1: m.at, x2: m.at, y1: PAD_T - 6, y2: H - PAD_B });
 			guide.appendChild(tag('title', {}, (m.b.kind === 'major' ? 'major release ' : 'minor release ') + m.b.version
 				+ ', ' + fmtDate(runs[m.b.index].date)));
 			svg.appendChild(guide);
 			if(fits[k]) {
-				svg.appendChild(tag('text', { class: 'axis release ' + m.b.kind, x: m.at + 3, y: PAD_T - 8 }, m.text));
+				svg.appendChild(tag('text', {
+					class: 'axis release ' + m.b.kind, x: m.x, y: PAD_T - 8, ...(m.flip ? { 'text-anchor': 'end' } : {})
+				}, m.text));
 			}
 		});
 	}

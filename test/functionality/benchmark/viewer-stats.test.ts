@@ -12,6 +12,7 @@ interface BenchStats {
 	baselineOf(values: readonly (number | null)[], n: number): number;
 	toPercentDelta(values: readonly (number | null)[], baseline: number): (number | null)[];
 	calibrationFactors(values: readonly (number | null)[]): number[];
+	calibrationScales(values: readonly (number | null)[]): (number | null)[][];
 	applyFactors(values: readonly (number | null)[], factors: readonly number[] | null): (number | null)[];
 	parseVersion(message: string): { major: number, minor: number, patch: number, text: string } | null;
 	releaseBumps(runs: readonly { commit: { message: string } }[]): { index: number, version: string, kind: string }[];
@@ -80,6 +81,21 @@ describe('Benchmark page helpers', () => {
 		assert.deepStrictEqual(factors, [1, 1.25, 1], 'the median run is the reference');
 		assert.deepStrictEqual(S.applyFactors([200, 250, 200], factors), [200, 200, 200]);
 		assert.deepStrictEqual(S.applyFactors([200], null), [200], 'without a calibration nothing changes');
+	});
+
+	test('keep a redefined calibration workload to itself', () => {
+		assert.deepStrictEqual(S.calibrationScales([15, 16, 1.5, 1.6]), [[15, 16], [1.5, 1.6]],
+			'an order of magnitude is a new workload, not a slower machine');
+		assert.deepStrictEqual(S.calibrationScales([15, null, 16]), [[15, null, 16]],
+			'a run without a calibration stays with the scale around it');
+		assert.deepStrictEqual(S.calibrationFactors([100, 125, 100, 10, 12.5, 10]),
+			[1, 1.25, 1, 1, 1.25, 1], 'every scale is its own yardstick');
+		assert.deepStrictEqual(S.calibrationFactors([100, 125, 100, 10]), [1, 1.25, 1, 1],
+			'a scale of one run has no median to divide by, so the run keeps its numbers');
+		assert.deepStrictEqual(S.calibrationFactors([100, null, 100]), [1, 1, 1]);
+		assert.deepStrictEqual(S.calibrationFactors([]), []);
+		const clamped = S.calibrationFactors([100, 100, 299, 100, 100]);
+		assert.strictEqual(clamped[2], 2.99, 'a lone slow run still counts, it is only bounded');
 	});
 
 	test('read the version of a run', () => {

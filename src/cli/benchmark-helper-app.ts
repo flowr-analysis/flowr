@@ -24,6 +24,7 @@ export interface SingleBenchmarkCliOptions {
 	cfg:                         boolean
 	cg:                          boolean
 	'no-extra-phases':           boolean
+	calibrate:                   boolean
 	threshold?:                  number
 	'sampling-strategy':         string
 	seed?:                       string
@@ -118,9 +119,9 @@ async function benchmark() {
 			}
 		}
 
-		console.log(`${prefix} Measuring the additional phases (dependencies query, linter, calibration)`);
+		console.log(`${prefix} Measuring the additional phases (dependencies query, linter${options.calibrate ? ', calibration' : ''})`);
 		if(!options['no-extra-phases']) {
-			await slicer.measureAdditionalPhases();
+			await slicer.measureAdditionalPhases(options.calibrate);
 		}
 
 		const { stats } = slicer.finish();

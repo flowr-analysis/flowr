@@ -466,8 +466,9 @@ export class BenchmarkSlicer {
 	 * These run *after* all other steps and are excluded from the {@link CommonSlicerMeasurements} (and hence from
 	 * the `total`), so that they cannot distort any of the existing measurements.
 	 * A failing phase is logged and skipped, it never aborts the benchmark.
+	 * @param calibrate - whether to run the calibration, which describes the machine and hence only has to run for some files of a suite
 	 */
-	public async measureAdditionalPhases(): Promise<void> {
+	public async measureAdditionalPhases(calibrate = true): Promise<void> {
 		this.totalStopwatch.pause();
 		try {
 			this.guardActive();
@@ -476,8 +477,10 @@ export class BenchmarkSlicer {
 				await this.measureAdditional('dependencies query', () => analyzer.query([{ type: 'dependencies' }]));
 				await this.measureAdditional('linter run', () => analyzer.query([{ type: 'linter' }]));
 			}
-			/* the calibration times itself, so that neither the warmup nor the rounds it discards count */
-			this.additionalMeasurements.set('calibration', runCalibration());
+			if(calibrate) {
+				/* the calibration times itself, so that neither the warmup nor the reps it discards count */
+				this.additionalMeasurements.set('calibration', runCalibration());
+			}
 		} catch(e: unknown) {
 			benchmarkLogger.error(`failed to measure the additional phases: ${e instanceof Error ? e.message : String(e)}`);
 		} finally {

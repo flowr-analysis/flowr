@@ -10,6 +10,9 @@ import { Identifier, ReferenceType } from './identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PackageSignatureSource } from '../../project/sigdb/reader';
 import { Resolve } from './resolve-helper';
+import type { DataflowInformation } from '../info';
+import { FunctionCallVertex } from '../graph/vertex';
+import { Dataflow } from '../graph/df-helper';
 
 /**
  * Where to look up what flowR knows about a function, in that order:
@@ -96,6 +99,24 @@ export function queryFnProps(name: Identifier, { environment, builtIns, signatur
 		return info;
 	}
 	return { sig: info?.sig ?? known.sig, props: (info?.props ?? 0) | (known.props ?? 0) };
+}
+
+/** What flowR states about the call `id` makes, together with the name the call resolved to. */
+export function callFnProps(id: NodeId, { graph, environment }: Pick<DataflowInformation, 'graph' | 'environment'>): (BuiltInFnInfo & { name: Identifier }) | undefined {
+	const vertex = graph.getVertex(id);
+	if(!FunctionCallVertex.is(vertex)) {
+		return undefined;
+	}
+	/* what the call resolved to decides, as a definition in the analyzed code shadows the built-in; a call
+	 * flowR settled on the built-ins keeps no environment, and a later redefinition must not speak for it */
+	const known = vertex.environment ?? environment;
+	const name = Dataflow.qualify(id, graph, false) ?? vertex.name;
+	return {
+		name,
+		...queryFnProps(name, {
+			environment: vertex.onlyBuiltin ? { level: 0, current: REnvironment.findBuiltIn(known.current) } : known
+		})
+	};
 }
 
 /**

@@ -6,6 +6,9 @@ import { DataflowGraph } from './graph/graph';
 import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../util/diff';
 import { isNotUndefined } from '../util/assert';
 import type { HookInformation } from './hooks';
+import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
 
 
 /**
@@ -32,6 +35,33 @@ export interface ControlDependency {
 function sameControlDependency(a: ControlDependency, b: ControlDependency): boolean {
 	return a.id === b.id && a.when === b.when;
 }
+
+/**
+ * Utility functions to work with {@link ControlDependency|control dependencies}.
+ */
+export const ControlDependency = {
+	name:   'ControlDependency',
+	/** Whether the two trigger on the same condition and branch. */
+	same:   sameControlDependency,
+	/** @see {@link appendCds} */
+	append: appendCds,
+	/** @see {@link withCds} */
+	with:   withCds,
+	/** @see {@link negateControlDependency} */
+	negate: negateControlDependency,
+	/** @see {@link happensInEveryBranch} */
+	happensInEveryBranch,
+	/** @see {@link happensInEveryBranchSet} */
+	happensInEveryBranchSet,
+	/** Whether the dependency stems from a loop, so what it guards may happen more than once. */
+	isIterated(this: void, cd: ControlDependency, idMap: AstIdMap | undefined): boolean {
+		return cd.byIteration === true || RLoopConstructs.loopConstructTypes.has(idMap?.get(cd.id)?.type as RType);
+	},
+	/** The dependencies of `a` that `b` is not subject to as well. */
+	minus(this: void, a: readonly ControlDependency[], b: readonly ControlDependency[]): ControlDependency[] {
+		return a.filter(cd => !b.some(other => sameControlDependency(other, cd)));
+	}
+} as const;
 
 /** Appends the given control dependencies to `target`, skipping the ones that are already in there. */
 export function appendCds(target: ControlDependency[], toAdd: readonly ControlDependency[] | undefined): void {

@@ -10,10 +10,8 @@ import type { BuiltInProcName } from '../dataflow/environments/built-in-proc-nam
 import type { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { looselyCompareObjects } from '../util/objects';
 import { searchLogger } from './search-executor/search-generators';
-import { queryFnProps } from '../dataflow/environments/query-fn-props';
+import { callFnProps } from '../dataflow/environments/query-fn-props';
 import type { CallProp, CallProps } from '../dataflow/environments/built-in-props';
-import { Dataflow } from '../dataflow/graph/df-helper';
-import { REnvironment } from '../dataflow/environments/environment';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
 interface FlowrFilterWithArgs<Filter extends FlowrFilterName, Args extends FlowrFilterArgs<Filter>> {
@@ -88,17 +86,7 @@ export const FlowrFilters = {
 		return rx.test(file ?? '');
 	}) satisfies FlowrFilterFunction<FilePathFilterArgs>,
 	[FlowrFilter.CallProps]: ((e: FlowrSearchElement<ParentInformation>, args: CallPropsArgs, data: { dataflow: DataflowInformation }) => {
-		const graph = data.dataflow.graph;
-		const vertex = graph.getVertex(e.node.info.id);
-		if(!FunctionCallVertex.is(vertex)) {
-			return false;
-		}
-		/* what the call resolved to decides, as a definition in the analyzed code shadows the built-in; a call
-		 * flowR settled on the built-ins keeps no environment, and a later redefinition must not speak for it */
-		const known = vertex.environment ?? data.dataflow.environment;
-		const environment = vertex.onlyBuiltin ? { level: 0, current: REnvironment.findBuiltIn(known.current) } : known;
-		const name = Dataflow.qualify(e.node.info.id, graph, false) ?? vertex.name;
-		const props = queryFnProps(name, { environment })?.props ?? 0;
+		const props = callFnProps(e.node.info.id, data.dataflow)?.props ?? 0;
 		return args.matchType === 'every' ? (props & args.props) === args.props : (props & args.props) !== 0;
 	}) satisfies FlowrFilterFunction<CallPropsArgs>
 } as const;

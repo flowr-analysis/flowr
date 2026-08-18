@@ -1,21 +1,15 @@
 import type { DependencyInfo } from './dependencies-query-format';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
-import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
+import { callFnProps } from '../../../dataflow/environments/query-fn-props';
 import { CallProp } from '../../../dataflow/environments/built-in-props';
 import { FunctionCallVertex } from '../../../dataflow/graph/vertex';
-import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { SourceRange } from '../../../util/range';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** the {@link CallProp} bits of the call `id` makes */
-function propsOf(id: NodeId, { graph, environment }: DataflowInformation): number {
-	const vertex = graph.getVertex(id);
-	if(!FunctionCallVertex.is(vertex)) {
-		return 0;
-	}
-	const name = Dataflow.qualify(id, graph, false) ?? vertex.name;
-	return queryFnProps(name, { environment: vertex.environment ?? environment })?.props ?? 0;
+function propsOf(id: NodeId, dataflow: DataflowInformation): number {
+	return callFnProps(id, dataflow)?.props ?? 0;
 }
 
 /**

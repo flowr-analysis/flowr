@@ -1,7 +1,9 @@
 import { type MergeableRecord,
 	deepMergeObject,
 	deepClonePreserveUnclonable,
-	isPlainObject
+	isPlainObject,
+	getOnPath,
+	setOnPath
 } from './util/objects';
 import path from 'path';
 import fs from 'fs';
@@ -16,7 +18,6 @@ import type { DataflowProcessors } from './dataflow/processor';
 import type { ParentInformation } from './r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrAnalyzerContext } from './project/context/flowr-analyzer-context';
 import { ProjectKind } from './project/context/project-kind';
-import objectPath from 'object-path';
 import type { BuiltInFlowrPluginArgs, BuiltInFlowrPluginName } from './project/plugins/plugin-registry';
 import { type FlowrGasConfig, GasWikiRef } from './gas';
 import type { InputClassifierConfig } from './queries/catalog/input-sources-query/simple-input-classifier';
@@ -1002,7 +1003,7 @@ export const FlowrConfig = {
 				continue;
 			}
 			try {
-				objectPath.set(config, key, JSON.parse(line.slice(at + 1)));
+				setOnPath(config, key, JSON.parse(line.slice(at + 1)));
 			} catch{ /* a value nobody can read is one to leave alone */ }
 		}
 		return config;
@@ -1021,7 +1022,7 @@ export const FlowrConfig = {
 	 */
 	setInConfig<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: PathValue<FlowrConfig, Path>): FlowrConfig {
 		const clone = FlowrConfig.clone(config);
-		objectPath.set(clone, key, value);
+		setOnPath(clone, key, value);
 		return clone;
 	},
 	/**
@@ -1029,7 +1030,7 @@ export const FlowrConfig = {
 	 * @see {@link setInConfig} for a version that returns a new config object instead of modifying the given one in place.
 	 */
 	setInConfigInPlace<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: PathValue<FlowrConfig, Path>): void {
-		objectPath.set(config, key, value);
+		setOnPath(config, key, value);
 	},
 } as const;
 
@@ -1051,9 +1052,9 @@ export function persistSigDbPathToGlobalConfig(dbPath: string): string {
 	} catch(e) {
 		log.warn(`Could not read global config ${file}, recreating it: ${(e as Error).message}`);
 	}
-	const current: unknown = objectPath.get(raw, 'solver.sigdb.additionalPaths');
+	const current: unknown = getOnPath(raw, 'solver.sigdb.additionalPaths');
 	const paths = Array.isArray(current) ? current as string[] : [];
-	objectPath.set(raw, 'solver.sigdb.additionalPaths', [...new Set([...paths, dbPath])]);
+	setOnPath(raw, 'solver.sigdb.additionalPaths', [...new Set([...paths, dbPath])]);
 	fs.mkdirSync(path.dirname(file), { recursive: true });
 	fs.writeFileSync(file, JSON.stringify(raw, null, '\t') + '\n');
 	return file;

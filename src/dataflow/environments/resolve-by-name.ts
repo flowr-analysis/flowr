@@ -104,8 +104,20 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 		}
 		if(definition !== undefined && definition.length > 0) {
 			/* ask before filtering: the common case wants all of them and needs no copy */
-			const allWanted = definition.every(wantedType);
-			if(allWanted && (target !== ReferenceType.Function || definition.every(notAParameter)) && definition.every(inEveryBranch)) {
+			let allWanted = true;
+			let allOk = true;
+			const checkParameters = target === ReferenceType.Function;
+			for(const def of definition) {
+				if(!wantedType(def)) {
+					allWanted = false;
+					allOk = false;
+					break;
+				}
+				if(allOk && ((checkParameters && !notAParameter(def)) || !inEveryBranch(def))) {
+					allOk = false;
+				}
+			}
+			if(allOk) {
 				return definition;
 			}
 			/* never alias the environment's own array, it is appended to below */

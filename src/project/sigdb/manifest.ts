@@ -103,15 +103,18 @@ const ManifestFilePattern = new RegExp(`\\.manifest\\.json${CompressedExtPattern
 /** a `<name>.sigs.ndjson` bundle, in any of the codecs we can read */
 const BundleFilePattern = new RegExp(`${SigDbExt.replace(/\./g, '\\.')}${CompressedExtPattern}$`);
 
-function sigDbBundleDirs(): string[] {
+function sigDbBundleDirs(watched?: [string, number][]): string[] {
 	if(typeof fs?.readdirSync !== 'function') {
 		return [];
 	}
 	try {
 		const bundles = path.join(sigDbCacheDir(undefined, false), 'bundles');
-		return fs.readdirSync(bundles, { withFileTypes: true })
+		const mtimeMs = fs.statSync(bundles).mtimeMs;
+		const dirs = fs.readdirSync(bundles, { withFileTypes: true })
 			.filter(e => e.isDirectory())
 			.map(e => path.join(bundles, e.name));
+		watched?.push([bundles, mtimeMs]);   // a bundle directory appearing here has to be picked up too
+		return dirs;
 	} catch{
 		return [];
 	}
@@ -181,6 +184,33 @@ export function defaultSigDbPath(scope?: SigDbScope, searchRoots?: readonly stri
 }
 
 /**
+ * Memo for {@link defaultSigDbPaths}, keyed by the resolved search roots. The scan costs ~70 `readdirSync` calls
+ * to answer with a handful of paths and an analyzer asks for it once on construction, so a per-analyzer run
+ * repeats it for nothing. Kept honest by remembering the modification time of every directory the scan read: a
+ * bundle dropped next to the shipped ones bumps that directory and the next call rescans.
+ */
+const defaultSigDbPathsMemo = new Map<string, { paths: readonly string[], watched: readonly (readonly [string, number])[] }>();
+
+/** Forget what {@link defaultSigDbPaths} discovered, so the next call scans the filesystem again. */
+export function clearDefaultSigDbPathsMemo(): void {
+	defaultSigDbPathsMemo.clear();
+}
+
+/** Whether every directory the memoized scan read still carries the modification time it had back then */
+function memoizedScanStillCurrent(watched: readonly (readonly [string, number])[]): boolean {
+	for(const [dir, mtimeMs] of watched) {
+		try {
+			if(fs.statSync(dir).mtimeMs !== mtimeMs) {
+				return false;
+			}
+		} catch{
+			return false;   // the directory went away
+		}
+	}
+	return true;
+}
+
+/**
  * Every distinct sigdb bundle discoverable in the search dirs (see {@link defaultSigDbPath}) -- not just the
  * richest scope. So dropping an extra bundle next to the shipped default (a downloaded full-history
  * `full.manifest.json.br`, a custom `*.manifest.json`, or a standalone `*.sigs.ndjson`) makes flowR mount it
@@ -191,6 +221,14 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 	if(typeof fs?.readdirSync !== 'function') {
 		return [];
 	}
+	const roots = sigDbSearchRoots(searchRoots);
+	const memoKey = roots.join('\0');
+	const memoized = defaultSigDbPathsMemo.get(memoKey);
+	if(memoized !== undefined && memoizedScanStillCurrent(memoized.watched)) {
+		return [...memoized.paths];
+	}
+	/** every directory the scan below read, with its modification time taken _before_ the read so a concurrent write invalidates rather than sticks */
+	const watched: [string, number][] = [];
 	const manifests = new Map<string, string>();    // `<name>.manifest.json` (ignoring compression ext) -> first-found path
 	const standalones = new Map<string, string>();   // `<name>.sigs.ndjson` (ignoring compression ext) -> first-found path
 	const foundIn = new Map<string, string>();       // where a key was first found, to only compare codecs within one directory
@@ -206,13 +244,15 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 	};
 	const scanDir = (base: string): void => {
 		for(const sub of SigDbSubDirs) {
+			const dir = path.join(base, sub);
 			let entries: string[];
 			try {
-				entries = fs.readdirSync(path.join(base, sub));
+				const mtimeMs = fs.statSync(dir).mtimeMs;
+				entries = fs.readdirSync(dir);
+				watched.push([dir, mtimeMs]);
 			} catch{
 				continue;   // directory does not exist on this root
 			}
-			const dir = path.join(base, sub);
 			for(const file of entries) {
 				if(ManifestFilePattern.test(file)) {
 					keep(manifests, stripCompressedExt(file), path.join(dir, file), dir);
@@ -222,7 +262,7 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 			}
 		}
 	};
-	for(const root of sigDbSearchRoots(searchRoots)) {
+	for(const root of roots) {
 		for(let dir = root, i = 0; i < 10; i++) {
 			scanDir(dir);
 			const parent = path.dirname(dir);
@@ -232,7 +272,7 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 			dir = parent;
 		}
 	}
-	for(const bundle of sigDbBundleDirs()) {
+	for(const bundle of sigDbBundleDirs(watched)) {
 		scanDir(bundle);
 	}
 	// a standalone bundle is a `.sigs.ndjson` that is not a shard of a discovered manifest (`<manifest>.<shard>...`)
@@ -248,5 +288,7 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 	const orderedManifests = [...manifests.entries()]
 		.sort((a, b) => scopeRank(a[0]) - scopeRank(b[0]) || a[0].localeCompare(b[0])).map(([, p]) => p);
 	const bundles = standalones.entries().filter(([name]) => !isShard(name)).map(([, p]) => p);
-	return [...orderedManifests, ...bundles];
+	const paths = [...orderedManifests, ...bundles];
+	defaultSigDbPathsMemo.set(memoKey, { paths, watched });
+	return [...paths];
 }

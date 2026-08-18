@@ -185,6 +185,11 @@ export type OutgoingEdges<Edge extends DfEdge = DfEdge> = Map<NodeId, Edge>;
  * In other words, it maps the source to the edge information.
  */
 export type IngoingEdges<Edge extends DfEdge = DfEdge> = Map<NodeId, Edge>;
+/**
+ * {@link IngoingEdges} as handed out by {@link DataflowGraph#ingoingEdges|ingoingEdges()}: a vertex without any
+ * shares the single {@link NoEdges}, so what a caller gets back is not theirs to write into.
+ */
+export type ReadonlyIngoingEdges<Edge extends DfEdge = DfEdge> = ReadonlyMap<NodeId, Edge>;
 
 /**
  * The shared answer for a vertex without edges. Use it instead of a fresh `[]` fallback, the lookups sit in
@@ -360,7 +365,7 @@ export class DataflowGraph<
 		return this.edgeInformation.get(id);
 	}
 
-	public ingoingEdges(id: NodeId): IngoingEdges | undefined {
+	public ingoingEdges(id: NodeId): ReadonlyIngoingEdges | undefined {
 		if(this.incomingIndex === undefined) {
 			const index = new Map<NodeId, IngoingEdges<Edge>>();
 			for(const [source, outgoing] of this.edgeInformation.entries()) {
@@ -375,8 +380,9 @@ export class DataflowGraph<
 			}
 			this.incomingIndex = index;
 		}
-		/* the historic contract is an (possibly empty) map for every id, never `undefined` */
-		return this.incomingIndex.get(id) ?? new Map<NodeId, Edge>();
+		/* the historic contract is an (possibly empty) map for every id, never `undefined`; the miss is the common
+		 * case in traversal loops, so it answers with the shared empty map rather than a fresh one */
+		return this.incomingIndex.get(id) ?? NoEdges;
 	}
 
 	/**

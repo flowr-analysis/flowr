@@ -72,13 +72,16 @@ export class Environment implements IEnvironment {
 	builtInEnv?:           true;
 	/** {@link memory} is shared with a clone; writing needs {@link writableMemory} to unshare it first */
 	private sharedMemory?: true;
+	/** {@link parent} is shared with the environment this was cloned from; writing through it needs {@link writableParent} */
+	private sharedParent?: true;
 	/** marks the global environment (`.GlobalEnv`); attached packages (see {@link EnvType}) live below it */
 	globalEnv?:            true;
 
-	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined) {
+	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined, memory?: BuiltInMemory) {
 		this.id = isBuiltInDefault ? 0 : environmentIdCounter++;
 		this.parent = parent;
-		this.memory = new Map();
+		/* a clone hands its own (then shared) memory in, so the fresh map a new frame needs is not allocated to be dropped */
+		this.memory = memory ?? new Map<BrandedIdentifier, IdentifierDefinition[]>();
 		// do not store if not needed!
 		if(isBuiltInDefault) {
 			this.builtInEnv = isBuiltInDefault;
@@ -113,6 +116,21 @@ export class Environment implements IEnvironment {
 	 * rather than through {@link memory} directly, as {@link clone} hands the map itself to the clone and only
 	 * the first writer of either side copies it (copy-on-write).
 	 */
+	/**
+	 * The parent, unshared first when a write is about to go through it. A `clone(true)` hands out the original
+	 * chain and lets it materialize one frame at a time here, because a removal usually reaches a frame or two,
+	 * not the ~20 an attached-package search path is deep.
+	 */
+	public get writableParent(): Environment {
+		if(this.sharedParent) {
+			const parent = this.parent.clone(false);
+			parent.sharedParent = true;
+			this.parent = parent;
+			this.sharedParent = undefined;
+		}
+		return this.parent;
+	}
+
 	public get writableMemory(): BuiltInMemory {
 		if(this.sharedMemory) {
 			this.memory = new Map(this.memory);
@@ -134,14 +152,15 @@ export class Environment implements IEnvironment {
 			return this; // do not clone the built-in environment
 		}
 
-		const parent = recurseParents ? this.parent.clone(recurseParents) : this.parent;
-		const clone = new Environment(parent, this.builtInEnv);
+		const clone = new Environment(this.parent, this.builtInEnv, this.memory);
 		clone.c = this.c;
 		clone.n = this.n;
 		clone.t = this.t;
 		clone.globalEnv = this.globalEnv;
-		clone.memory = this.memory;
 		clone.sharedMemory = this.sharedMemory = true;
+		if(recurseParents && !this.parent.builtInEnv) {
+			clone.sharedParent = true;
+		}
 		return clone;
 	}
 
@@ -425,7 +444,7 @@ export class Environment implements IEnvironment {
 		}
 		const [name, ns] = Identifier.toArray(id);
 		if(ns !== undefined && this.n !== ns) {
-			this.parent.remove(id);
+			this.writableParent.remove(id);
 			return this;
 		}
 		const definition = this.memory.get(name);
@@ -436,7 +455,7 @@ export class Environment implements IEnvironment {
 			cont = !definition.every(d => happensInEveryBranch(d.cds));
 		}
 		if(cont) {
-			this.parent.remove(name);
+			this.writableParent.remove(name);
 		}
 
 		return this;

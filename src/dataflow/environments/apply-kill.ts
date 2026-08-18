@@ -77,7 +77,7 @@ function weakenName(env: Environment, name: Identifier, cds: readonly ControlDep
 				current.cache?.delete(plainName);
 			}
 		}
-		current = current.parent;
+		current = current.writableParent;
 	}
 }
 

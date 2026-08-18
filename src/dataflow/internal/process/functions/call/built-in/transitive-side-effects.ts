@@ -97,6 +97,20 @@ export function computeCallGraphSummaries<T>(this: void, graph: DataflowGraph, o
  * Only vertices created on demand (exports actually referenced) get an edge, keeping the graph small.
  */
 export function linkMaterializedExportsToLoaders(graph: DataflowGraph, environment: REnvironmentInformation): void {
+	/* the attached namespaces hold every export of every package, far more than the graph ever materializes, so the
+	 * cheap direction is to ask the graph first: an export earns an edge only if it is a vertex or the target of a
+	 * `calls` edge. Both are read off the graph once here instead of per export binding. */
+	const called = new Set<NodeId>();
+	for(const [id] of graph.vertices(true)) {
+		called.add(id);
+	}
+	for(const [, outgoing] of graph.edges()) {
+		for(const [target, edge] of outgoing) {
+			if(DfEdge.includesType(edge, EdgeType.Calls)) {
+				called.add(target);
+			}
+		}
+	}
 	// export node id -> its loading `library()`/`use()` call, from the final environment
 	const loaders = new Map<NodeId, NodeId>();
 	for(let e: Environment | undefined = environment.current; e !== undefined && !e.builtInEnv; e = e.parent) {
@@ -105,19 +119,16 @@ export function linkMaterializedExportsToLoaders(graph: DataflowGraph, environme
 		}
 		for(const defs of e.memory.values()) {
 			for(const d of defs) {
-				if(!NodeId.isBuiltIn(d.definedAt)) {
+				if(called.has(d.nodeId) && !NodeId.isBuiltIn(d.definedAt)) {
 					loaders.set(d.nodeId, d.definedAt);
 				}
 			}
 		}
 	}
-	// only exports actually called (a materialized vertex or the target of a `calls` edge) get a loader edge
+	/* the loader targets are `library()` call ids, never export ids, so the edges added here never make a further
+	 * export qualify -- the lazy checks this replaces could not have observed one either */
 	for(const [id, loadedAt] of loaders) {
-		const called = graph.hasVertex(id)
-			|| [...graph.ingoingEdges(id)?.values() ?? []].some(e => DfEdge.includesType(e, EdgeType.Calls));
-		if(called) {
-			graph.addEdge(id, loadedAt, EdgeType.Reads | EdgeType.Calls);
-		}
+		graph.addEdge(id, loadedAt, EdgeType.Reads | EdgeType.Calls);
 	}
 }
 
@@ -160,7 +171,17 @@ function escapedDefinitions(this: void): (id: NodeId, fdef: DataflowGraphVertexF
 		for(const e of escapeTargetFrames(fdef)) {
 			let escaped = perFrame.get(e.memory);
 			if(escaped === undefined) {
-				escaped = [...e.memory.values()].flatMap(ds => ds.filter(d => !NodeId.isBuiltIn(d.nodeId)).map(d => d.nodeId));
+				/* a package frame holds thousands of entries and keeps none of them, so this walks them in place
+				 * rather than through a spread/flatMap/filter/map chain that allocates an array per step */
+				const collected: NodeId[] = [];
+				for(const ds of e.memory.values()) {
+					for(const d of ds) {
+						if(!NodeId.isBuiltIn(d.nodeId)) {
+							collected.push(d.nodeId);
+						}
+					}
+				}
+				escaped = collected;
 				perFrame.set(e.memory, escaped);
 			}
 			for(const d of escaped) {

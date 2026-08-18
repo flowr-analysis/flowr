@@ -568,7 +568,7 @@ export class SigDatabase implements PackageSignatureSource {
 			return [];
 		}
 		const found: string[] = [];
-		for(const pkg of this.packageNames()) {
+		for(const pkg in this.index.pkgs) {
 			if(this.mayOffer(pkg, name) && this.lookup(pkg)?.exported.includes(name)) {
 				found.push(pkg);
 			}

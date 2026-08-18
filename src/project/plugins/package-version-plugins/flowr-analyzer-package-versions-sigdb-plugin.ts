@@ -87,6 +87,29 @@ export function reconstructS3Generics(exported: readonly string[]): Map<string, 
 const exportIndices = new WeakMap<PackageSignatureSource, ReadonlyMap<string, ExportIndexEntry>>();
 
 /**
+ * `name -> the packages of a source exporting it`, filled one name at a time as it is asked for and shared by
+ * every analyzer mounting that source. The eager {@link ExportIndex} answers the same question with no scan at
+ * all, but it holds every export name of the bundle (~1.1M for the shipped one); a lint run asks for a few
+ * hundred distinct names, so this keeps the memo proportional to what was actually asked instead.
+ */
+const exportOwnersBySource = new WeakMap<PackageSignatureSource, Map<string, readonly string[]>>();
+
+/** The packages of `src` exporting `name`, most downloaded first, scanning only the first time a name is asked. */
+function exportOwners(src: PackageSignatureSource, name: string): readonly string[] {
+	let byName = exportOwnersBySource.get(src);
+	if(byName === undefined) {
+		byName = new Map();
+		exportOwnersBySource.set(src, byName);
+	}
+	let owners = byName.get(name);
+	if(owners === undefined) {
+		owners = src.packagesExporting(name);
+		byName.set(name, owners);
+	}
+	return owners;
+}
+
+/**
  * The packages exporting one name: the sole exporter bare, the rivals as an array. Roughly 95% of the names in a
  * bundle are exported by exactly one package, so giving those an array of their own would cost more than the
  * index itself.
@@ -106,6 +129,10 @@ export type ExportIndexEntry = string | string[];
  */
 export const ExportIndex = {
 	name: 'ExportIndex',
+	/* not what `packagesExporting` uses: building this reads every package blob of the bundle to hold every export
+	 * name (~1.1M for the shipped one), which measured both slower and ~330MB heavier than the few hundred scans
+	 * {@link exportOwners} does for the names a run actually asks about. Kept for a caller that needs the whole
+	 * reverse mapping at once. */
 	/** The index of `src`, built on first use and shared by every later caller; see {@link ExportIndex}. */
 	of(this: void, src: PackageSignatureSource): ReadonlyMap<string, ExportIndexEntry> {
 		const cached = exportIndices.get(src);
@@ -158,7 +185,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	/** the `additionalPaths` the current {@link sources} were assembled with, so a later config resolves a rebuild */
 	private sourcesKey:               string | undefined;
 	private analyzerCtx:              FlowrAnalyzerContext | undefined;
-	/** `packagesExporting` answers, merged across the source set and self-filtered; the scan itself is {@link ExportIndex} */
+	/** `packagesExporting` answers, merged across the source set and self-filtered; the per-source half is {@link exportOwners} */
 	private exportsByName             = new Map<string, readonly string[]>();
 	/** `pkg@assumedR` keys already reported via {@link baseVersionFor}'s fallback, so the info is logged once */
 	private readonly baseFallbacksLogged = new Set<string>();
@@ -301,10 +328,10 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	/**
 	 * Packages in the loaded sources (respecting `self`-package exclusion) that export `name`, **most downloaded
 	 * first**, so whoever has to pick one (or show only a few) starts with the package a script most likely means.
-	 * Backed by {@link ExportIndex}, a reverse index built once per *source* (and hence shared by every analyzer
-	 * mounting the same bundle), so repeated hint lookups (e.g. from the `undefined-symbol` linter) do not re-scan
-	 * every package. Self-package exclusion is applied here rather than baked into the index, which keeps the
-	 * index analyzer-independent.
+	 * Backed by {@link exportOwners}, which memoizes per *source* (and hence shares across every analyzer mounting
+	 * the same bundle), so the repeated hint lookups of a linter run scan every package once per distinct name
+	 * rather than once per call. Self-package exclusion is applied here rather than in that memo, which keeps the
+	 * memo analyzer-independent.
 	 */
 	public override packagesExporting(name: string): readonly string[] {
 		if(!isSigDbEnabled(this.analyzerCtx?.config)) {
@@ -318,7 +345,9 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		const seen = new Set<string>();
 		const owners: string[] = [];
 		for(const src of sources) {
-			for(const pkg of src.packagesExporting(name)) {
+			/* memoized per source, not per analyzer: the same handful of unresolved names comes back for every
+			 * file the linter walks, and a miss is a scan over every package of the bundle */
+			for(const pkg of exportOwners(src, name)) {
 				if(!seen.has(pkg) && !this.isSelfPackage(pkg)) {
 					seen.add(pkg);
 					owners.push(pkg);

@@ -387,7 +387,14 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 			asked = true;
 			fetch('https://api.github.com/repos/flowr-analysis/flowr/releases/tags/' + tag.textContent)
 				.then(r => r.ok ? r.json() : Promise.reject(r.status))
-				.then(release => { if(release.name) { tag.title = release.name; } })
+				.then(release => {
+				if(release.name) {
+					const when = release.published_at
+						? new Date(release.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+						: '';
+					tag.title = when ? release.name + ', released ' + when : release.name;
+				}
+			})
 				.catch(() => { /* the title it already carries says enough */ });
 		};
 		tag.addEventListener('pointerenter', name);

@@ -2137,7 +2137,8 @@
 				.then(r => r.ok ? r.json() : Promise.reject(r.status))
 				.then(release => {
 					if(release.name) {
-						tagEl.title = release.name;
+						const when = release.published_at ? fmtDate(release.published_at) : '';
+						tagEl.title = when ? release.name + ', released ' + when : release.name;
 					}
 				})
 				.catch(() => { /* the title it already carries says enough */ });

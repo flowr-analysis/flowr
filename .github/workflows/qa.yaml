@@ -239,7 +239,7 @@ jobs:
           
           rm -rf dist
           npm run build
-          npm run publish-library
+          npm run publish-library -- --tag latest
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
 

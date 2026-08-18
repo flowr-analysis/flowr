@@ -140,9 +140,15 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	display: flex; align-items: baseline; gap: .6rem;
 }
 .drawer > summary::-webkit-details-marker { display: none; }
-.drawer > summary::before { content: "▸"; color: var(--muted); font-weight: 400; }
+.drawer > summary::before { content: "▸"; color: var(--muted); font-weight: 400; flex: none; }
 .drawer[open] > summary::before { content: "▾"; }
-.drawer > summary .what { color: var(--muted); font-weight: 400; font-size: .78rem; }
+.drawer > summary:hover { color: var(--accent); }
+.drawer > summary .label { flex: none; white-space: nowrap; }
+.drawer > summary .what {
+	color: var(--muted); font-weight: 400; font-size: .78rem;
+	min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.drawer > summary .what code { font-size: .95em; }
 .drawer .body { display: flex; flex-direction: column; height: var(--repl-height, 14rem); border-top: 1px solid var(--border); }
 /* the bar one drags to give the repl more or less room */
 .drawer .grip { flex: none; height: .4rem; cursor: ns-resize; background: var(--sunk); }
@@ -348,7 +354,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 		<div id="editor"></div>
 		<div id="config" hidden></div>
 		<details class="drawer" id="repl">
-	<summary>flowR repl<span class="what">every command the repl carries, over the script above; :help lists them</span></summary>
+	<summary><span class="label">flowR repl</span><span class="what" title="every command the repl carries, over the script above; :help lists them">every command the repl carries, over the script above; <code>:help</code> lists them</span></summary>
 	<div class="body">
 		<div class="grip" id="replgrip" role="separator" aria-label="Drag to resize the repl" title="drag to resize"></div>
 		<pre class="out" id="replout"></pre>

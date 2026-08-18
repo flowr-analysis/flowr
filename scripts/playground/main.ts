@@ -661,7 +661,14 @@ const shared = (() => {
 		/* `>` is how the landing page writes the forward direction, so a link reads the same on both */
 		direction: flags.includes('>') ? SliceDirection.Forward : undefined,
 		split:     split.length > 0 ? split : undefined,
-		repl:      repl.length > 0 ? repl : undefined
+		repl:      repl.length > 0 ? repl : undefined,
+		/* the line the cursor sat on rides along, so a link opens on the criterion it was shared for */
+		cursor:    (() => {
+			const [line, column] = (params.get('p') ?? '').split(':').map(Number);
+			return Number.isInteger(line) && line > 0
+				? { line, column: Number.isInteger(column) && column > 0 ? column : 1 }
+				: undefined;
+		})()
 	};
 })();
 
@@ -697,8 +704,13 @@ function remember(): void {
 		}
 		const hash = params.toString();
 		const fits = hash.length <= MaxShared;
-		history.replaceState(null, '', fits ? `#${hash}` : location.pathname + location.search);
-		showShared(fits ? '' : 'too long for a link, the script stays on this page only');
+		try {
+			history.replaceState(null, '', fits ? `#${hash}` : location.pathname + location.search);
+			showShared(fits ? '' : 'too long for a link, the script stays on this page only');
+		} catch{
+			/* opened over file://, where some browsers refuse to rewrite the address */
+			showShared('this browser keeps the address bar as it is, so the link does not follow along');
+		}
 	}, 800);
 }
 
@@ -782,6 +794,7 @@ const editor = new EditorView({
 	],
 	parent: document.getElementById('editor') as HTMLElement
 });
+
 
 document.getElementById('theme')?.addEventListener('click', () => {
 	const dark = matchMedia('(prefers-color-scheme: dark)').matches;
@@ -1285,11 +1298,27 @@ document.querySelector('[data-sample]')?.addEventListener('click', () => {
 	config.dispatch({ changes: { from: 0, to: config.state.doc.length, insert: Defaults } });
 });
 
-/* the url already carries the example, so sharing is a matter of handing the link over */
+/* the url already carries the example, so sharing is a matter of handing the link over; the cursor is
+   written here rather than in {@link remember}, so the address bar does not churn on every click */
 document.getElementById('share')?.addEventListener('click', () => {
-	void navigator.clipboard?.writeText(location.href).then(
-		() => showShared('link copied'),
-		() => showShared('could not copy, the link is in the address bar')
+	const params = new URLSearchParams(location.hash.replace(/^#/, ''));
+	const head = editor.state.selection.main.head;
+	const line = editor.state.doc.lineAt(head);
+	if(line.number > 1 || head > line.from) {
+		params.set('p', `${line.number}:${head - line.from + 1}`);
+	}
+	const hash = params.toString();
+	const link = location.href.replace(/#.*$/, '') + (hash.length > 0 ? `#${hash}` : '');
+	void navigator.clipboard?.writeText(link).then(
+		() => showShared('link copied, with the line you are on'),
+		() => {
+			try {
+				history.replaceState(null, '', link);
+				showShared('could not copy, the link is in the address bar');
+			} catch{
+				showShared('could not copy, and this browser will not put the link in the address bar');
+			}
+		}
 	);
 });
 editor.dom.addEventListener('click', event => {
@@ -1450,11 +1479,19 @@ document.getElementById('repl')?.addEventListener('toggle', () => {
 	}
 });
 
-/* the cursor starts on the call in the last line: slicing for `library` says nothing worth reading */
-const last = editor.state.doc.line(editor.state.doc.lines);
-const first = /[A-Za-z.][\w._]*/.exec(last.text);
-if(first?.index !== undefined) {
-	editor.dispatch({ selection: { anchor: last.from + first.index } });
+/* a link that carried a cursor opens on it; otherwise the cursor starts on the call in the last line,
+   because slicing for `library` says nothing worth reading */
+const start = (() => {
+	if(shared.cursor !== undefined) {
+		const line = editor.state.doc.line(Math.min(shared.cursor.line, editor.state.doc.lines));
+		return Math.min(line.from + shared.cursor.column - 1, line.to);
+	}
+	const last = editor.state.doc.line(editor.state.doc.lines);
+	const first = /[A-Za-z.][\w._]*/.exec(last.text);
+	return first?.index === undefined ? undefined : last.from + first.index;
+})();
+if(start !== undefined) {
+	editor.dispatch({ selection: { anchor: start }, scrollIntoView: true });
 }
 
 void run();

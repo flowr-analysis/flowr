@@ -655,13 +655,16 @@ const shared = (() => {
 	/* everything about the view is one field, `<code width>,<repl height>,<flags>`, because four of them
 	   would be four `&`-separated names for what is really one thing: how the page was left looking */
 	const [split = '', repl = '', flags = ''] = (params.get('v') ?? '').split(',');
+	/* the unit is the same every time, so a link carries the bare number and gets it back here; links
+	   written before that spelled the unit out and still read as they did */
+	const sized = (value: string, unit: string) => value.length === 0 ? undefined : /^[\d.]+$/.test(value) ? value + unit : value;
 	return {
 		code:      read('c'),
 		config:    changed === undefined ? undefined : JSON.stringify(FlowrConfig.applyPaths(changed), null, 2),
 		/* `>` is how the landing page writes the forward direction, so a link reads the same on both */
 		direction: flags.includes('>') ? SliceDirection.Forward : undefined,
-		split:     split.length > 0 ? split : undefined,
-		repl:      repl.length > 0 ? repl : undefined,
+		split:     sized(split, '%'),
+		repl:      sized(repl, 'px'),
 		/* the line the cursor sat on rides along, so a link opens on the criterion it was shared for */
 		cursor:    (() => {
 			const [line, column] = (params.get('p') ?? '').split(':').map(Number);
@@ -681,28 +684,45 @@ function showShared(text: string): void {
 }
 
 let shareTimer = 0;
+/**
+ * A fragment is not a query, so `,`, `:` and the braces a configuration carries stand in it as they are and
+ * only what would end it, split it, or read back as something else has to be escaped. `URLSearchParams`
+ * escapes far more than that, which is what made a shared link a wall of `%2C` that chat clients cut short.
+ */
+function writeHash(fields: readonly (readonly [string, string])[]): string {
+	const hash = fields.map(([key, value]) => `${key}=${value.replace(/[%&#+<\s]/g, character => encodeURIComponent(character))}`).join('&');
+	/* a chat client stops a link before whatever could be the punctuation ending the sentence around it, so
+	   the fragment is made not to end on one */
+	return hash.replace(/[.,:;"')\]]$/, character => encodeURIComponent(character));
+}
+
 /** writes the current script and configuration into the url, replacing rather than growing the history */
 function remember(): void {
 	clearTimeout(shareTimer);
 	shareTimer = window.setTimeout(() => {
-		const params = new URLSearchParams();
+		const fields: [string, string][] = [];
 		const written = editor.state.doc.toString();
 		/* the sample is what the page opens with anyway, so a link to it carries nothing */
 		if(written !== Sample) {
-			params.set('c', packForUrl(written));
+			fields.push(['c', packForUrl(written)]);
 		}
 		const settings = FlowrConfig.parse(config.state.doc.toString());
 		const changed = settings === undefined ? [] : FlowrConfig.changedPaths(settings);
 		if(changed.length > 0) {
-			params.set('k', changed.join(';'));
+			fields.push(['k', changed.join(';')]);
 		}
-		const dragged = (property: string) => document.documentElement.style.getPropertyValue(property);
+		const dragged = (property: string, unit: string) => document.documentElement.style.getPropertyValue(property).replace(unit, '');
 		const flags = direction === SliceDirection.Forward ? '>' : '';
-		const view = [dragged('--split'), dragged('--repl-height'), flags].join(',');
-		if(view.replaceAll(',', '').length > 0) {
-			params.set('v', view);
+		const view = [dragged('--split', '%'), dragged('--repl-height', 'px'), flags];
+		/* a trailing empty field says nothing and would leave the link ending in a comma, which is where a
+		   chat client stops reading it */
+		while(view.length > 0 && view[view.length - 1].length === 0) {
+			view.pop();
 		}
-		const hash = params.toString();
+		if(view.length > 0) {
+			fields.push(['v', view.join(',')]);
+		}
+		const hash = writeHash(fields);
 		const fits = hash.length <= MaxShared;
 		try {
 			history.replaceState(null, '', fits ? `#${hash}` : location.pathname + location.search);
@@ -1301,13 +1321,15 @@ document.querySelector('[data-sample]')?.addEventListener('click', () => {
 /* the url already carries the example, so sharing is a matter of handing the link over; the cursor is
    written here rather than in {@link remember}, so the address bar does not churn on every click */
 document.getElementById('share')?.addEventListener('click', () => {
-	const params = new URLSearchParams(location.hash.replace(/^#/, ''));
+	/* the fields the address bar already holds are handed on as they are: reading them out and writing them
+	   back would escape them a second time */
+	const fields = location.hash.replace(/^#/, '').split('&').filter(field => field.length > 0 && !field.startsWith('p='));
 	const head = editor.state.selection.main.head;
 	const line = editor.state.doc.lineAt(head);
 	if(line.number > 1 || head > line.from) {
-		params.set('p', `${line.number}:${head - line.from + 1}`);
+		fields.push(`p=${line.number}:${head - line.from + 1}`);
 	}
-	const hash = params.toString();
+	const hash = fields.join('&');
 	const link = location.href.replace(/#.*$/, '') + (hash.length > 0 ? `#${hash}` : '');
 	void navigator.clipboard?.writeText(link).then(
 		() => showShared('link copied'),

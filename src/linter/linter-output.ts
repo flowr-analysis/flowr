@@ -109,7 +109,7 @@ function lintsToSarif(results: LintResultsByRule, flowrVersion: string): string 
 /** GitHub has no 'note' */
 const githubCommand: Record<Level, string> = { error: 'error', warning: 'warning', note: 'notice' };
 
-/** `%`, `\r` and `\n` would end the workflow command */
+/** `%`, `\r`, and `\n` would end the workflow command */
 function escapeGithubData(text: string): string {
 	return text.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A');
 }

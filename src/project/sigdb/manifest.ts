@@ -95,7 +95,7 @@ export function readManifestDate(manifestFile: string): string | undefined {
 export type SigDbScope = 'base' | 'current' | 'full';
 /** richest first: a container shipping the full set uses it, else the slim `current`, else the `base` floor */
 const SigDbScopeOrder: readonly SigDbScope[] = ['full', 'current', 'base'];
-/** layouts a bundled sigdb may sit in, relative to a search root -- the root itself (e.g. a `$FLOWR_SIGDB_DIR` data mount), then the dev `src`, build `dist` and data-dir layouts */
+/** layouts a bundled sigdb may sit in, relative to a search root -- the root itself (e.g. a `$FLOWR_SIGDB_DIR` data mount), then the dev `src`, build `dist`, and data-dir layouts */
 const SigDbSubDirs = ['', 'data/sigdb', 'src/data/sigdb', 'dist/src/data/sigdb'];
 
 /** a `<scope>.manifest.json`, in any of the codecs we can read */
@@ -135,7 +135,7 @@ function sigDbSearchRoots(extra?: readonly string[]): string[] {
 
 /**
  * Location of a bundled sigdb **manifest**, found by walking up from several roots (this module,
- * `$FLOWR_SIGDB_DIR`, the working directory) across the dev (`src`), build (`dist`) and data-mount
+ * `$FLOWR_SIGDB_DIR`, the working directory) across the dev (`src`), build (`dist`), and data-mount
  * layouts. With no `scope` it returns the richest available (`full` &gt; `current` &gt; `base`), so a
  * container that ships the full set uses it automatically while a plain npm install falls back to the
  * bundled `base`. Node only (needs `fs`); pass `searchRoots` to override where it looks.

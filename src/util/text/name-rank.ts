@@ -1,6 +1,6 @@
 /**
  * What a reader most likely meant when typing a name: a well-used package first, base R ahead of CRAN, and
- * the things one rarely reaches for last, which are S3 methods, `%operators%` and names starting with a dot.
+ * the things one rarely reaches for last, which are S3 methods, `%operators%`, and names starting with a dot.
  *
  * The signature browser and the playground's completion both offer names out of the same database, so they
  * order them with the same {@link rankName}, and what one of them learns the other one knows.
@@ -47,7 +47,7 @@ const Adjustments: readonly (readonly [points: number, when: (of: NameRankInput)
 	   offer `ggplot` before `plotH`, because one of them is a function people actually call */
 	[500, ({ known }) => known === true],
 	[-30, ({ s3 }) => s3 === true],
-	/* operators, punctuation and SHOUTING names are rarely what someone is looking for */
+	/* operators, punctuation, and SHOUTING names are rarely what someone is looking for */
 	[-60, ({ name }) => /^%.*%$/.test(name) || /^[^\w.]/.test(name)],
 	[-30, ({ name, needle }) => name === name.toUpperCase() && /[A-Z]/.test(name) && name !== needle],
 	[-400, ({ name }) => name.startsWith('.')]

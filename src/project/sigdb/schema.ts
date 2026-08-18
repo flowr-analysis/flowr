@@ -1,6 +1,6 @@
 /**
- * On-disk schema of the `flowr-sigdb` database (schema 5): the constants, enums, numeric tuple forms and
- * data interfaces that define the serialized format and its read view. The reader/writer/builder logic that
+ * On-disk schema of the `flowr-sigdb` database (schema 5): the constants, enums, numeric tuple forms,
+ * and data interfaces that define the serialized format and its read view. The reader/writer/builder logic that
  * operates on these lives in `./sigdb` (which re-exports this module, so `./sigdb` stays the single entry point).
  */
 

@@ -692,7 +692,7 @@ export interface VersionSpaceOptions {
 	readonly disabled?: ReadonlySet<ConstraintSource>;
 }
 
-/** a target's sigdb package key, merged source and memoized signature resolver */
+/** a target's sigdb package key, merged source, and memoized signature resolver */
 interface PackageResolution {
 	readonly key:         string;
 	readonly src:         PackageSignatureSource | undefined;
@@ -729,7 +729,7 @@ function makeSignatureFilter(src: PackageSignatureSource | undefined, pkg: strin
 /**
  * The version space of one analysis: the surviving versions of each dependency and the transitive constraints
  * refined to a fixpoint. Holding the shared inputs here keeps the passes to a handful of arguments and lets each
- * package's sigdb key, source and decoded signatures be resolved once. The passes revisit the same versions
+ * package's sigdb key, source, and decoded signatures be resolved once. The passes revisit the same versions
  * repeatedly, so that memoization is what makes the fixpoint affordable.
  */
 export class VersionSpace {
@@ -750,7 +750,7 @@ export class VersionSpace {
 		this.disabled = disabled;
 	}
 
-	/** the sigdb package, source and signature resolver of a target, resolved once */
+	/** the sigdb package, source, and signature resolver of a target, resolved once */
 	public resolve(name: string): PackageResolution {
 		let entry = this.resolved.get(name);
 		if(entry === undefined) {

@@ -17,7 +17,7 @@ export type SlicingCriterion = `${number}:${number}${FileFilterSuffix}` | `${num
 
 /**
  * The helper object associated with {@link SlicingCriterion} which makes it easy
- * to parse, validate and resolve slicing criteria.
+ * to parse, validate, and resolve slicing criteria.
  */
 export const SlicingCriterion = {
 	name: 'SlicingCriterion',
@@ -106,7 +106,7 @@ export interface DecodedCriterion {
 export type DecodedCriteria = ReadonlyArray<DecodedCriterion>;
 
 /**
- * The helper object associated with {@link SlicingCriteria} which makes it easy to parse, validate and resolve slicing criteria.
+ * The helper object associated with {@link SlicingCriteria} which makes it easy to parse, validate, and resolve slicing criteria.
  */
 export const SlicingCriteria = {
 	name: 'SlicingCriteria',

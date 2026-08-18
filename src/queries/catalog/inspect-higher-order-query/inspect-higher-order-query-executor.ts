@@ -17,6 +17,7 @@ export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, quer
 	const graph = (await analyzer.dataflow()).graph;
 
 	const fns = graph.verticesOfType(VertexType.FunctionDefinition)
+		.filter(([id]) => QueryFunctionFilter.written(id))
 		.filter(([,v]) => filterFor.size === 0 || filterFor.has(v.id));
 
 	let invertedGraph: DataflowGraph | undefined;

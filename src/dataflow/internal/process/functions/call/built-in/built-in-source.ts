@@ -229,7 +229,7 @@ export function processSourceCall<OtherInfo>(
  * Otherwise, this can be an {@link RProjectFile} representing a standalone source file
  */
 export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest | RProjectFile<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, makeMaybe: boolean, getId?: IdGenerator<NoInfo>, evaluatedByRoot = false): DataflowInformation {
-	// parse, normalize and dataflow the sourced file
+	// parse, normalize, and dataflow the sourced file
 	let dataflow: DataflowInformation;
 	let fst: RProjectFile<OtherInfo & ParentInformation>;
 	let filePath: string | undefined;

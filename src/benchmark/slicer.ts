@@ -105,7 +105,7 @@ export type SamplingStrategy = 'random' | 'equidistant';
 
 /**
  * A slicer that can be used to slice exactly one file (multiple times).
- * It holds its own {@link RShell} instance, maintains a cached dataflow and keeps measurements.
+ * It holds its own {@link RShell} instance, maintains a cached dataflow, and keeps measurements.
  *
  * Make sure to call {@link init} to initialize the slicer, before calling {@link slice}.
  * After slicing, call {@link finish} to close the R session and retrieve the stats.

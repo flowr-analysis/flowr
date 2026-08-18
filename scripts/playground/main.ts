@@ -1310,7 +1310,7 @@ document.getElementById('share')?.addEventListener('click', () => {
 	const hash = params.toString();
 	const link = location.href.replace(/#.*$/, '') + (hash.length > 0 ? `#${hash}` : '');
 	void navigator.clipboard?.writeText(link).then(
-		() => showShared('link copied, with the line you are on'),
+		() => showShared('link copied'),
 		() => {
 			try {
 				history.replaceState(null, '', link);

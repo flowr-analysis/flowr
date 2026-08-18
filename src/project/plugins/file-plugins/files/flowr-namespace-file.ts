@@ -225,7 +225,7 @@ function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContex
 	});
 }
 
-/** All exported names of a namespace that can be referenced (functions, symbols, patterns and S3 methods as `generic.class`). */
+/** All exported names of a namespace that can be referenced (functions, symbols, patterns, and S3 methods as `generic.class`). */
 export function getExportedNames(info: NamespaceInfo): string[] {
 	const s3: string[] = [];
 	for(const [g, methods] of info.exportS3Generics){

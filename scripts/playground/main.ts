@@ -685,7 +685,7 @@ function showShared(text: string): void {
 
 let shareTimer = 0;
 /**
- * A fragment is not a query, so `,`, `:` and the braces a configuration carries stand in it as they are and
+ * A fragment is not a query, so `,`, `:`, and the braces a configuration carries stand in it as they are and
  * only what would end it, split it, or read back as something else has to be escaped. `URLSearchParams`
  * escapes far more than that, which is what made a shared link a wall of `%2C` that chat clients cut short.
  */

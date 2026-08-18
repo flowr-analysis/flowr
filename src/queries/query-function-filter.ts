@@ -1,4 +1,4 @@
-import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { SlicingCriterion } from '../slicing/criterion/parse';
 import { VertexType } from '../dataflow/graph/vertex';
@@ -13,6 +13,14 @@ interface FunctionFilteringQuery {
  */
 export const QueryFunctionFilter = {
 	name: 'QueryFunctionFilter',
+	/**
+	 * Whether the definition is one the analyzed code writes. A deferred expression (`on.exit` and its
+	 * relatives) is wrapped in a definition of its own, which carries an id no node of the ast does, and
+	 * nobody asks about a function they never wrote.
+	 */
+	written(this: void, id: NodeId): boolean {
+		return typeof NodeId.normalize(id) === 'number';
+	},
 	/** The ids the given queries restrict themselves to; empty if at least one query wants all functions. */
 	async criteria(this: void, queries: readonly FunctionFilteringQuery[], analyzer: ReadonlyFlowrAnalysisProvider): Promise<ReadonlySet<NodeId>> {
 		let filters: SlicingCriterion[] | undefined = undefined;
@@ -45,7 +53,8 @@ export const QueryFunctionFilter = {
 		const filterFor = await QueryFunctionFilter.criteria(queries, analyzer);
 		const cg = await analyzer.callGraph();
 
-		let fns = (onlyDefinitions || filterFor.size === 0 ? cg.verticesOfType(VertexType.FunctionDefinition) : cg.vertices(true));
+		let fns = (onlyDefinitions || filterFor.size === 0 ? cg.verticesOfType(VertexType.FunctionDefinition) : cg.vertices(true))
+			.filter(([id]) => QueryFunctionFilter.written(id));
 		if(filterFor.size > 0) {
 			fns = fns.filter(([id]) => filterFor.has(id));
 		}

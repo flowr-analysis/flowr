@@ -16,7 +16,7 @@ const HashOptions = {
 	replacer:                  (v: unknown) => isDefaultBuiltInEnvironment(v) ? undefined : v
 } as const satisfies objectHash.NormalOption;
 
-/* definitions, definition maps and frames are shared across the environments a slice builds, and a definition may
+/* definitions, definition maps, and frames are shared across the environments a slice builds, and a definition may
  * hold a whole environment of its own (`envState`), so each is hashed once instead of on every fingerprint. The
  * map is keyed separately from the frame because cloning a frame shares its definitions until one side writes
  * (see {@link Environment#clone}): the graph holds many frames per distinct set of definitions, and hashing that

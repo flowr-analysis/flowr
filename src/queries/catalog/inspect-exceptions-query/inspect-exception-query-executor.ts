@@ -31,6 +31,7 @@ export async function executeExceptionQuery({ analyzer }: BasicQueryData, querie
 		'.meta': {
 			timing: Date.now() - start
 		},
-		exceptions: result
+		/* collecting walks whatever the call graph holds, reporting stays with the definitions someone wrote */
+		exceptions: Object.fromEntries(Object.entries(result).filter(([id]) => QueryFunctionFilter.written(id)))
 	};
 }

@@ -241,7 +241,7 @@ export class RDAParser{
 	/**
 	 * Parses an RDA file.
 	 *
-	 * The file is decompressed, deserialized and converted into a flattened
+	 * The file is decompressed, deserialized, and converted into a flattened
 	 * object representation.
 	 * @param file - RDA file provider.
 	 * @param shortcut - When `true`, only names and types are collected.

@@ -21,7 +21,7 @@ function operand(node: RNodeWithParent, args: BuiltInEvalHandlerArgs): number | 
 	return typeof value === 'object' && value !== null && 'str' in value ? value.str : undefined;
 }
 
-/** as a condition, R takes any non-zero number for `TRUE`; `NA`, strings and everything else do not fold */
+/** as a condition, R takes any non-zero number for `TRUE`; `NA`, strings, and everything else do not fold */
 function asLogical(node: RNodeWithParent, args: BuiltInEvalHandlerArgs): boolean | undefined {
 	const value = operand(node, args);
 	return typeof value === 'number' && !Number.isNaN(value) ? value !== 0 : undefined;

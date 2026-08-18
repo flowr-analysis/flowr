@@ -2111,13 +2111,39 @@
 			return;
 		}
 		const label = S.runLabel(run);
-		const name = run.commit.url
-			? dom('a', { className: 'version', href: run.commit.url, textContent: label, target: '_blank', rel: 'noopener' })
+		const tag = /^\d+\.\d+\.\d+$/.test(label) ? 'v' + label : null;
+		const href = tag ? 'https://github.com/flowr-analysis/flowr/releases/tag/' + tag : run.commit.url;
+		const name = href
+			? dom('a', { className: 'version', href: href, textContent: tag || label, target: '_blank', rel: 'noopener' })
 			: dom('span', { className: 'version', textContent: label });
-		/* the line has room for the number and no more, so the rest of what it says waits for a hover */
+		/* the tag has room for the number and no more, so the rest of what it says waits for a hover */
 		name.title = 'newest release, ' + fmtDate(run.date) + ': ' + S.commitTitle(run.commit.message);
+		if(tag) {
+			releaseName(name, tag);
+		}
 		ui.latest.hidden = false;
 		ui.latest.replaceChildren(name);
+	}
+
+	/** the name a release carries only lives on GitHub, so it is fetched once someone asks for it */
+	function releaseName(tagEl, tag) {
+		let asked = false;
+		const ask = () => {
+			if(asked) {
+				return;
+			}
+			asked = true;
+			fetch('https://api.github.com/repos/flowr-analysis/flowr/releases/tags/' + tag)
+				.then(r => r.ok ? r.json() : Promise.reject(r.status))
+				.then(release => {
+					if(release.name) {
+						tagEl.title = release.name;
+					}
+				})
+				.catch(() => { /* the title it already carries says enough */ });
+		};
+		tagEl.addEventListener('pointerenter', ask);
+		tagEl.addEventListener('focus', ask);
 	}
 
 	/**

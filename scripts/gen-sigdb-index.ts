@@ -13,6 +13,7 @@ import fs from 'fs';
 import path from 'path';
 import { build } from 'esbuild';
 import { encode, pack, readSigIndex } from './sigdb-index';
+import { flowrVersion } from '../src/util/version';
 
 /**
  * The name ranker as plain script, so this page orders its hits with the very function the playground's
@@ -53,6 +54,7 @@ async function main(): Promise<void> {
 	const stated = JSON.stringify(Object.fromEntries([...index.stated].map(([name, entries]) =>
 		[name, entries.map(({ pkg, params, props }) => [pkg, params ?? '', props.join(' ')])]))).replaceAll('</', '<\\/');
 	const page = Template
+		.replaceAll('<!--VERSION-->', `v${flowrVersion().format()}`)
 		.replaceAll('<!--UPDATED-->', index.updated)
 		.replaceAll('<!--PACKAGES-->', group(index.packages.length))
 		.replaceAll('<!--FUNCTIONS-->', group(blobs.count))

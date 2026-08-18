@@ -47,9 +47,15 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .8rem; padding: .5rem 1rem; flex: none;
 	border-bottom: 1px solid var(--border); background: var(--panel);
 }
+/* the brand box takes its baseline from the mark, not from its text, so the row centres instead */
+.top .ident { display: inline-flex; align-items: center; flex: none; }
 .top .brand { display: inline-flex; align-items: center; gap: .45rem; font-weight: 700; font-size: 1.15rem; text-decoration: none; color: var(--fg); }
 .mark { flex: none; }
-.top .where { color: var(--muted); font-size: .9rem; white-space: nowrap; }
+/* the slash owns the space on both of its sides, so the two names sit evenly around it */
+.top .where { color: var(--muted); font-size: 1.05rem; white-space: nowrap; }
+.top .where::before { content: "/"; margin: 0 .5rem; opacity: .55; }
+.top .version { margin-left: .55rem; font-size: .82rem; color: var(--muted); text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.top .version:hover { color: var(--fg); }
 .top .note { color: var(--muted); font-size: .8rem; line-height: 1.35; flex: 1 1 22rem; min-width: 14rem; max-width: 54rem; }
 /* a narrow window has no room for the aside, and the links matter more */
 @media (max-width: 68rem) { .top .note { display: none; } }
@@ -190,7 +196,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .pname { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; font-size: .85rem; color: var(--fg); text-decoration: none; }
 .pname:hover { color: var(--accent); text-decoration: underline; }
 .pvalue { color: var(--muted); font-size: .82rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-#panel { min-height: 0; flex: 1; overflow: auto; padding: 1rem; }
+#panel { min-height: 0; flex: 1; overflow: auto; padding: 1rem; container: panel / inline-size; }
 /* what the signature database says about the name under the pointer, under everything else */
 #signature { flex: none; padding: .7rem 1rem .9rem; border-top: 1px solid var(--border); background: var(--panel); }
 #signature h3 { margin-top: 0; }
@@ -238,15 +244,15 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #panel .copy:hover { color: var(--accent); border-color: var(--accent); }
 #panel pre { margin: 0; overflow-x: auto; font-size: .82rem; }
 /* one grid for all dependency rows, so the chip, the name and the line number line up across them */
-#panel .deps { display: grid; grid-template-columns: minmax(4.5rem, auto) 1fr 2.4rem; column-gap: .6rem; }
+#panel .deps { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: .6rem; }
 #panel .row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline; padding: .2rem 0; font-size: .86rem; }
 #panel .kind {
-	justify-self: start; white-space: nowrap; padding: 0 .45rem; border-radius: 1rem; font-size: .68rem; font-weight: 600;
+	justify-self: start; white-space: nowrap; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; padding: 0 .45rem; border-radius: 1rem; font-size: .68rem; font-weight: 600;
 	color: var(--muted); border: 1px solid var(--border); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
-#panel .at { color: var(--muted); font-size: .78rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-align: left; }
+#panel .at { color: var(--muted); font-size: .78rem; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-align: left; }
 #panel .empty { color: var(--muted); font-size: .86rem; }
-#panel .what { display: flex; align-items: baseline; gap: .4rem; min-width: 0; }
+#panel .what { display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem; min-width: 0; overflow-wrap: anywhere; }
 #panel .call {
 	color: var(--muted); border: 0; padding: 0; font-size: .74rem;
 	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -258,7 +264,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #panel .row.part { padding-left: 1.2rem; }
 #panel .kind.part { color: var(--muted); border-style: dashed; opacity: .8; }
 /* the dependencies and the findings share one column layout, so their line numbers line up down the panel */
-#panel .lints { display: grid; grid-template-columns: minmax(4.5rem, auto) 1fr 2.4rem; column-gap: .6rem; row-gap: .2rem; }
+#panel .lints { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: .6rem; row-gap: .2rem; }
 #panel .lints .lint {
 	display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
 	align-items: baseline; padding: .15rem 0;
@@ -268,6 +274,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #panel .rule {
 	--hue: #d55e00;
 	padding: 0 .45rem; border-radius: 1rem; font-size: .72rem; font-weight: 600; white-space: nowrap;
+	justify-self: start; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
 	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 	color: var(--hue); border: 1px solid color-mix(in srgb, var(--hue) 40%, transparent);
 	background: color-mix(in srgb, var(--hue) 12%, transparent);
@@ -279,6 +286,16 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #panel .rule[data-category="deprecated"] { --hue: #b07d00; }
 #panel .rule[data-category="style"], #panel .rule[data-category="smell"] { --hue: #0f766e; }
 #panel .rule[data-category="other"] { --hue: var(--muted); }
+
+/* a narrow panel has no room for the chip, the text and the line number side by side, so the text
+   moves under the two of them instead of being squeezed into a word per line */
+@container panel (max-width: 22rem) {
+	#panel .deps, #panel .lints { grid-template-columns: minmax(0, 1fr) auto; }
+	#panel .row, #panel .lints .lint { grid-template-rows: auto auto; row-gap: .1rem; }
+	#panel .kind, #panel .rule { grid-column: 1; grid-row: 1; }
+	#panel .at { grid-column: 2; grid-row: 1; }
+	#panel .what, #panel .says { grid-column: 1 / -1; grid-row: 2; }
+}
 
 @media (max-width: 52rem) {
 	body { height: auto; }
@@ -292,14 +309,16 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 <body>
 
 <div class="top">
-	<a class="brand" href="../../"><img class="mark" src="../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a>
-	<span class="where">/ Playground</span>
-	<span class="version"><!--VERSION--></span>
+	<span class="ident">
+		<a class="brand" href="../../"><img class="mark" src="../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a>
+		<span class="where">Playground</span>
+		<a class="version" id="version" href="https://github.com/flowr-analysis/flowr/releases/tag/<!--VERSION-->" target="_blank" rel="noopener" title="the release notes of flowR <!--VERSION-->"><!--VERSION--></a>
+	</span>
 	<span class="grow"></span>
 	<span class="note">Fully local, selected features, use the
 		<a href="https://github.com/flowr-analysis/flowr/wiki/Interface" target="_blank" rel="noopener">editor extensions</a> for more.</span>
 	<a class="link" href="../../" target="_blank" rel="noopener">Landing Page</a>
-	<a class="link" href="../sigdb/" target="_blank" rel="noopener">Signature Database</a>
+	<a class="link" href="../sigdb/" target="_blank" rel="noopener">Signature DB</a>
 	<a class="link" href="../stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
 	<a class="link" href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
 	<a class="link gh" href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener" title="flowR on GitHub" aria-label="flowR on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg></a>
@@ -357,5 +376,23 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 <script type="application/json" id="pkgs"><!--PKGS--></script>
 <script type="application/json" id="cfgdocs"><!--CFGDOCS--></script>
 <script src="bundle.js"></script>
+<script>
+	/* the tag says the number, the name that release carries only lives on GitHub, so it is fetched once someone asks for it */
+	(function() {
+		const tag = document.getElementById('version');
+		if(!tag) { return; }
+		let asked = false;
+		const name = () => {
+			if(asked || !tag.textContent) { return; }
+			asked = true;
+			fetch('https://api.github.com/repos/flowr-analysis/flowr/releases/tags/' + tag.textContent)
+				.then(r => r.ok ? r.json() : Promise.reject(r.status))
+				.then(release => { if(release.name) { tag.title = release.name; } })
+				.catch(() => { /* the title it already carries says enough */ });
+		};
+		tag.addEventListener('pointerenter', name);
+		tag.addEventListener('focus', name);
+	})();
+</script>
 </body>
 </html>

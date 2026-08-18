@@ -159,7 +159,7 @@ async function main(): Promise<void> {
 		.replace('<!--SIGS-->', signatures)
 		.replace('<!--PKGS-->', exports)
 		.replace('<!--CFGDOCS-->', configDocs())
-		.replace('<!--VERSION-->', `v${flowrVersion().format()}`));
+		.replaceAll('<!--VERSION-->', `v${flowrVersion().format()}`));
 	const size = Object.values(result.metafile.outputs).reduce((sum, o) => sum + o.bytes, 0);
 	console.log(`  wrote ${Target} (${(size / 1024 / 1024).toFixed(1)} MB bundle, `
 		+ `${Math.round(signatures.length / 1024)} kB of base R signatures, `

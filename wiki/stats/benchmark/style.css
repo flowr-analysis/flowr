@@ -140,9 +140,30 @@ header {
 	margin: 0;
 	font-size: 1.15rem;
 	line-height: 1.2;
+	/* the brand box takes its baseline from the mark, not from its text, so the row centres instead */
+	display: inline-flex;
+	align-items: center;
 }
 
-.titles h1 a { display: inline; text-decoration: none; }
+.titles h1 a.brand {
+	display: inline-flex;
+	align-items: center;
+	gap: .45rem;
+	color: var(--fg);
+	text-decoration: none;
+}
+
+.mark { flex: none; }
+
+/* the slash owns the space on both of its sides, so the two names sit evenly around it */
+.titles h1 .where {
+	color: var(--muted);
+	font-weight: 400;
+	font-size: 1.05rem;
+	white-space: nowrap;
+}
+
+.titles h1 .where::before { content: "/"; margin: 0 .5rem; opacity: .55; }
 
 /* a grid is only as wide as its widest row, which puts the release above the end of the intro */
 .titles {
@@ -170,25 +191,23 @@ header {
 /* the release this page is about, which is what a reader looks for first */
 /* the size of the title it shares its line with, so the two read as one heading */
 .latest {
-	margin: 0 0 0 auto;
-	font-size: 1.15rem;
-	line-height: 1.2;
+	margin-left: .55rem;
 	white-space: nowrap;
 }
 
-/* a link that carries its own weight instead of an underline, which would fight the title beside it */
+/* the number of the release the page is about, in the same plain text every flowR page carries */
 .latest .version {
-	color: var(--fg);
-	opacity: .35;
-	font-weight: 700;
+	font-size: .82rem;
+	font-weight: 400;
+	color: var(--muted);
 	font-variant-numeric: tabular-nums;
 	text-decoration: none;
-	transition: opacity .18s ease;
+	transition: color .18s ease;
 }
 
 .latest .version:hover,
 .latest .version:focus-visible {
-	opacity: 1;
+	color: var(--fg);
 }
 
 .theme {

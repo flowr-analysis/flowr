@@ -502,7 +502,7 @@ function render(data: PageData): string {
 
 	const version = (JSON.parse(fs.readFileSync('package.json', 'utf8')) as { version: string }).version;
 	return Template
-		.replace('<!--VERSION-->', `v${version}`)
+		.replaceAll('<!--VERSION-->', `v${version}`)
 		.replace('<!--TIMES-->', bars)
 		.replace('<!--BENCHFILES-->', measured?.files ?? '')
 		.replace('<!--BENCHLINES-->', measured?.lines ?? '')

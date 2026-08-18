@@ -57,8 +57,13 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 	display: flex; gap: .5rem 1rem; align-items: center; justify-content: space-between;
 	padding: .8rem 0 .6rem; border-bottom: 1px solid var(--border);
 }
-.bar h2 { margin: 0; flex: none; font-size: 1.15rem; line-height: 1.2; }
-.bar h2 a { display: inline-flex; align-items: center; gap: .45rem; text-decoration: none; }
+.bar h2 { margin: 0; flex: none; font-size: 1.15rem; line-height: 1.2; display: inline-flex; align-items: center; }
+.bar h2 a.brand { display: inline-flex; align-items: center; gap: .45rem; text-decoration: none; color: var(--fg); }
+/* the slash owns the space on both of its sides, so the two names sit evenly around it */
+.bar .where { color: var(--muted); font-weight: 400; font-size: 1.05rem; white-space: nowrap; }
+.bar .where::before { content: "/"; margin: 0 .5rem; opacity: .55; }
+.bar .version { margin-left: .55rem; font-size: .82rem; font-weight: 400; color: var(--muted); text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bar .version:hover { color: var(--fg); }
 .mark { flex: none; }
 .bar nav { display: flex; flex-wrap: nowrap; gap: .1rem .2rem; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
 .bar nav::-webkit-scrollbar { display: none; }
@@ -138,14 +143,14 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 #hits .detail { margin-top: .55rem; border-top: 1px solid var(--border); padding-top: .55rem; }
 #hits .detail p { margin: .1rem 0; font-size: .85rem; }
 #hits .pkghit .detail p {
-	display: grid; grid-template-columns: 9rem 1fr; gap: .8rem; align-items: baseline; color: var(--fg);
+	display: grid; grid-template-columns: minmax(0, 9rem) minmax(0, 1fr); gap: .8rem; align-items: baseline; color: var(--fg);
 }
 #hits .pkghit .detail .kind { color: var(--muted); }
 #hits .detail .links { display: flex; gap: 1.2rem; margin-top: .6rem; }
 #hits .detail .links a { font-size: .85rem; }
 #hits .owns { display: grid; gap: .1rem; max-height: 19rem; overflow-y: auto; }
 #hits .own {
-	display: grid; grid-template-columns: auto 1fr auto 4.2rem 1rem; gap: .8rem; align-items: baseline;
+	display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto minmax(4.2rem, auto) 1rem; gap: .8rem; align-items: baseline;
 	padding: .3rem .5rem; border-radius: .4rem; text-decoration: none; color: var(--fg); font-size: .85rem;
 }
 #hits .own:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
@@ -153,6 +158,8 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 #hits .own.undocumented .go { opacity: .5; }
 #hits .pkg { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; }
 #hits .ver, #hits .go { color: var(--muted); font-size: .78rem; }
+/* a long name or a version with its download count next to it gives way rather than running into the column beside it */
+#hits .pkg, #hits .ver { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #hits .tag {
 	justify-self: start; padding: 0 .45rem; border-radius: 1rem; font-size: .68rem; font-weight: 600;
 	letter-spacing: .03em; color: var(--muted); border: 1px solid var(--border);
@@ -218,7 +225,7 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 <main>
 
 <div class="bar">
-	<h2><a href="../../"><img class="mark" src="../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a></h2>
+	<h2><a class="brand" href="../../"><img class="mark" src="../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><span class="where">Signature DB</span><a class="version" id="version" href="https://github.com/flowr-analysis/flowr/releases/tag/<!--VERSION-->" target="_blank" rel="noopener" title="the release notes of flowR <!--VERSION-->"><!--VERSION--></a></h2>
 	<nav>
 		<a href="../../" target="_blank" rel="noopener">Landing Page</a>
 		<a href="../playground/" target="_blank" rel="noopener">Playground</a>
@@ -1058,6 +1065,24 @@ const ready = unpack().then(() => search(), error => {
 	status.textContent = `This browser could not unpack the database, sorry (${error}).`;
 });
 q.addEventListener('change', () => history.replaceState(null, '', q.value ? '?q=' + encodeURIComponent(q.value) : location.pathname));
+</script>
+<script>
+	/* the tag says the number, the name that release carries only lives on GitHub, so it is fetched once someone asks for it */
+	(function() {
+		const tag = document.getElementById('version');
+		if(!tag) { return; }
+		let asked = false;
+		const name = () => {
+			if(asked || !tag.textContent) { return; }
+			asked = true;
+			fetch('https://api.github.com/repos/flowr-analysis/flowr/releases/tags/' + tag.textContent)
+				.then(r => r.ok ? r.json() : Promise.reject(r.status))
+				.then(release => { if(release.name) { tag.title = release.name; } })
+				.catch(() => { /* the title it already carries says enough */ });
+		};
+		tag.addEventListener('pointerenter', name);
+		tag.addEventListener('focus', name);
+	})();
 </script>
 </body>
 </html>

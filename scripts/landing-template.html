@@ -101,10 +101,13 @@ code, pre, .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, m
 }
 .bar nav { overflow-x: auto; scrollbar-width: none; }
 .bar nav::-webkit-scrollbar { display: none; }
-.bar h2 { margin: 0; flex: none; font-size: 1.15rem; line-height: 1.2; }
-#version { color: var(--muted); font-weight: 400; font-size: .82rem; }
-.bar h2 { margin: 0; flex: none; font-size: 1.15rem; line-height: 1.2; }
-.bar h2 a { display: inline-flex; align-items: center; gap: .45rem; text-decoration: none; }
+.bar h2 { margin: 0; flex: none; font-size: 1.15rem; line-height: 1.2; display: inline-flex; align-items: center; }
+.bar h2 a.brand { display: inline-flex; align-items: center; gap: .45rem; text-decoration: none; color: var(--fg); }
+/* the slash owns the space on both of its sides, so the two names sit evenly around it */
+.bar .where { color: var(--muted); font-weight: 400; font-size: 1.05rem; white-space: nowrap; }
+.bar .where::before { content: "/"; margin: 0 .5rem; opacity: .55; }
+.bar .version { margin-left: .55rem; font-size: .82rem; font-weight: 400; color: var(--muted); text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.bar .version:hover { color: var(--fg); }
 .mark { color: var(--accent); flex: none; }
 .bar nav { display: flex; flex-wrap: nowrap; gap: .1rem .2rem; margin-left: auto; }
 .bar nav a { white-space: nowrap; padding: .3rem .5rem; border-radius: .4rem; color: var(--muted); text-decoration: none; font-size: .82rem; }
@@ -425,10 +428,10 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 <main>
 
 <div class="bar">
-	<h2><a href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a> <span id="version"></span></h2>
+	<h2><a class="brand" href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><a class="version" id="version" href="https://github.com/flowr-analysis/flowr/releases/tag/<!--VERSION-->" target="_blank" rel="noopener" title="the release notes of flowR <!--VERSION-->"><!--VERSION--></a></h2>
 	<nav>
 		<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
-		<a href="wiki/sigdb/" target="_blank" rel="noopener">Signature Database</a>
+		<a href="wiki/sigdb/" target="_blank" rel="noopener">Signature DB</a>
 		<a href="wiki/stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
 		<a href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
 	</nav>
@@ -729,7 +732,7 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 		<div>
 			<b>Pages</b>
 			<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
-			<a href="wiki/sigdb/" target="_blank" rel="noopener">Signature Database</a>
+			<a href="wiki/sigdb/" target="_blank" rel="noopener">Signature DB</a>
 			<a href="wiki/stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
 		</div>
 	</div>
@@ -898,6 +901,24 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 		`★ ${repo.stargazers_count}`,
 		`<a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">${repo.license?.spdx_id ?? 'GPL-3.0'}</a>`
 	].join(' &middot; ')).catch(() => { /* the page reads fine without it */ });
+</script>
+<script>
+	/* the tag says the number, the name that release carries only lives on GitHub, so it is fetched once someone asks for it */
+	(function() {
+		const tag = document.getElementById('version');
+		if(!tag) { return; }
+		let asked = false;
+		const name = () => {
+			if(asked || !tag.textContent) { return; }
+			asked = true;
+			fetch('https://api.github.com/repos/flowr-analysis/flowr/releases/tags/' + tag.textContent)
+				.then(r => r.ok ? r.json() : Promise.reject(r.status))
+				.then(release => { if(release.name) { tag.title = release.name; } })
+				.catch(() => { /* the title it already carries says enough */ });
+		};
+		tag.addEventListener('pointerenter', name);
+		tag.addEventListener('focus', name);
+	})();
 </script>
 </body>
 </html>

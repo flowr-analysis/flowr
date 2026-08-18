@@ -1234,6 +1234,8 @@ async function analyze(): Promise<number> {
 		said.textContent = f.message;
 		const chip = tag(f.rule, 'rule');
 		chip.dataset.category = category(f.rule);
+		/* a narrow panel cuts the name short, so the whole of it waits under the pointer */
+		chip.title = f.rule;
 		/* one element per finding, so the hover lights the whole row; the columns still line up
 		   because the row borrows the surrounding grid */
 		const line = document.createElement('div');

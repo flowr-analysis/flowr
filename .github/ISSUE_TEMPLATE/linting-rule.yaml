@@ -38,6 +38,7 @@ body:
         - Software Has Tests
         - Stop without call.=False argument
         - Syntactically Valid
+        - Unclosed Connection
         - Undefined Symbol
         - Unused Definitions
         - Useless Loops

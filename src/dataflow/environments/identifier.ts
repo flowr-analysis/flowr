@@ -304,6 +304,7 @@ export const enum PkgName {
 	Cli          = 'cli',
 	CohortBuilder = 'cohortBuilder',
 	DataTable    = 'data.table',
+	Dbi          = 'DBI',
 	Devtools     = 'devtools',
 	Dplyr        = 'dplyr',
 	Fs           = 'fs',

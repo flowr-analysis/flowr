@@ -825,7 +825,7 @@ function cursorName(): string | undefined {
 	return found === undefined ? undefined : `${line.number}@${found.name}`;
 }
 
-function section(title: string, aside?: string): void {
+function section(title: string, aside?: string, end?: Node): void {
 	const head = document.createElement('h3');
 	head.textContent = title;
 	if(aside !== undefined) {
@@ -834,7 +834,22 @@ function section(title: string, aside?: string): void {
 		said.textContent = aside;
 		head.append(said);
 	}
+	if(end !== undefined) {
+		head.append(end);
+	}
 	panel.append(head);
+}
+
+/* the linter is only as good as its rules, so the heading offers a way to ask for another one */
+function suggestRule(): HTMLElement {
+	const link = document.createElement('a');
+	link.className = 'suggest';
+	link.href = 'https://github.com/flowr-analysis/flowr/issues/new?template=linting-rule.yaml';
+	link.target = '_blank';
+	link.rel = 'noopener';
+	link.append(document.createTextNode('suggest'), tag(' a rule', 'wide'));
+	link.title = 'suggest a new linting rule';
+	return link;
 }
 
 function row(...cells: (string | Node)[]): HTMLElement {
@@ -1125,7 +1140,7 @@ async function analyze(): Promise<number> {
 		dimOutside = box.checked;
 		editor.dispatch({ effects: setSlice.of(dimOutside && lastKept.length > 0 ? lastKept : undefined) });
 	});
-	dimmer.append(box, document.createTextNode('dim the rest'));
+	dimmer.append(box, document.createTextNode('dim'), tag(' the rest', 'wide'));
 	head.append(dimmer);
 	panel.append(head);
 	if(code !== undefined) {
@@ -1181,8 +1196,7 @@ async function analyze(): Promise<number> {
 		return onto === undefined;
 	});
 	attached = new Set(deps.filter(d => d.kind === 'library' && d.value !== undefined).map(d => d.value as string));
-	// eslint-disable-next-line no-irregular-whitespace
-	section(`Dependencies: ${deps.length}  (click to slice)`);
+	section(`Dependencies: ${deps.length}`, '(click to slice)');
 	const shownDep = (d: DepRow, part: boolean): HTMLElement => {
 		const what = document.createElement('span');
 		what.className = 'what';
@@ -1234,7 +1248,7 @@ async function analyze(): Promise<number> {
 		const line = editor.state.doc.line(startLine);
 		return [{ from: line.from + startCol - 1, to: Math.min(line.to, line.from + endCol), message: `${f.rule}: ${f.message}` }];
 	})) });
-	section(`Lints: ${found.length}`);
+	section(`Lints: ${found.length}`, undefined, suggestRule());
 	if(found.length === 0) {
 		panel.append(nothing('no findings'));
 		return took;

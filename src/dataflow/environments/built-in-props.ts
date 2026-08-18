@@ -34,7 +34,9 @@ export enum ArgProp {
 	 * only atomic data works here, never a closure, as with `e1` in `e1 > e2`. A bare symbol in such an
 	 * argument therefore names a variable even when a function of that name is in scope.
 	 */
-	Atomic   = 1 << 11
+	Atomic   = 1 << 11,
+	/** the open handle the call acts on, like `con` in `close(con)` */
+	Handle   = 1 << 12
 }
 
 /**
@@ -109,7 +111,9 @@ export enum CallProp {
 	/** yields the paths it matches at run time rather than one it was handed (`list.files`, `Sys.glob`); empty is an answer */
 	Glob       = 1 << 25,
 	/** hands back what the program was invoked with, as `commandArgs` and the option parsers built on it do */
-	CommandLine = 1 << 26
+	CommandLine = 1 << 26,
+	/** hands back a handle the program is expected to close again, like `file` or `DBI::dbConnect` */
+	Opens       = 1 << 27
 }
 
 /**
@@ -119,7 +123,7 @@ export enum CallProp {
 export const ImpureProps = CallProp.MayPure | CallProp.Scope | CallProp.NonDet | CallProp.Random | CallProp.Ambient
 	| CallProp.File | CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang
 	| CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes | CallProp.Prints
-	| CallProp.Configures | CallProp.Closes | CallProp.CommandLine;
+	| CallProp.Configures | CallProp.Closes | CallProp.Opens | CallProp.CommandLine;
 
 /**
  * Which {@link CallProp} bits rule each other out, as `[bit, everything stating it forbids]`. A definition

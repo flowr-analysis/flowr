@@ -10,7 +10,7 @@ import { describe, assert, test, expect } from 'vitest';
 import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 import { SourceRange } from '../../../../../src/util/range';
 
-describe.sequential('CSV parsing', withShell(shell => {
+describe('CSV parsing', { concurrent: false }, withShell(shell => {
 	test('simple', async() => {
 		const code = await retrieveParseDataFromRCode({
 			request: 'text',
@@ -48,7 +48,7 @@ describe.sequential('CSV parsing', withShell(shell => {
 	});
 }));
 
-describe.sequential('Constant Parsing', withShell(shell => {
+describe('Constant Parsing', { concurrent: false }, withShell(shell => {
 	describe('parse empty', () => {
 		assertAst(label('nothing', []),
 			shell, '', exprList()

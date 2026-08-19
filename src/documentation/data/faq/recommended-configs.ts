@@ -24,7 +24,7 @@ export const recommendedVsCodeTask = {
 				'node_modules/**'
 			],
 			'program':       '${workspaceFolder}/src/cli/flowr.ts',
-			'preLaunchTask': 'npm: build-dev',
+			'preLaunchTask': 'npm: build:dev',
 			'console':       'integratedTerminal',
 		},
 		{

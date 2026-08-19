@@ -1,5 +1,6 @@
 import type { BasicQueryData } from '../../base-query-format';
 import type { HappensBeforeQuery, HappensBeforeQueryResult } from './happens-before-query-format';
+import { HappensBeforeKey } from './happens-before-query-format';
 import { Ternary } from '../../../util/logic';
 import { log } from '../../../util/log';
 import { happensBefore } from '../../../control-flow/happens-before';
@@ -17,7 +18,7 @@ export async function executeHappensBefore({ analyzer }: BasicQueryData, queries
 	const cfg = await analyzer.controlflow(undefined, CfgKind.Quick);
 	for(const query of queries) {
 		const { a, b } = query;
-		const fingerprint = `${a}<${b}`;
+		const fingerprint = HappensBeforeKey.of(a, b);
 		if(fingerprint in results) {
 			log.warn('Duplicate happens-before query', query, 'ignoring');
 		}

@@ -76,4 +76,36 @@ j <- function() { tryCatch({ g() }, finally={stop("also direct")}) }
 		'6@function': ['6@stop'] // j
 	});
 
+	test('every definition the walk passes counts what it calls', async() => {
+		const analyzer = new FlowrAnalyzerBuilder().setParser(ts).buildSync();
+		analyzer.addRequest(requestFromInput('h <- function() stop("boom")\ng <- function() h()\nf <- function() g()'));
+		const idMap = (await analyzer.normalize()).idMap;
+		const at = (c: SlicingCriterion) => SlicingCriterion.parse(c, idMap);
+		const found = calculateExceptionsOfFunction(at('3@function'), await analyzer.callGraph());
+		const raised = [{ id: at('1@stop'), cds: undefined }];
+		/* asking about `f` also answers for the `g` between it and the `stop`, which is what makes the
+		   answer fit to hand back as `knownThrower` */
+		assert.deepStrictEqual(found[at('3@function')], raised, 'f');
+		assert.deepStrictEqual(found[at('2@function')], raised, 'g');
+		assert.deepStrictEqual(found[at('1@function')], raised, 'h');
+	});
+
+	test('a point reached along two paths is one point', async() => {
+		const analyzer = new FlowrAnalyzerBuilder().setParser(ts).buildSync();
+		analyzer.addRequest(requestFromInput('h <- function() stop("boom")\nf <- function() { h(); h() }'));
+		const idMap = (await analyzer.normalize()).idMap;
+		const found = calculateExceptionsOfFunction(SlicingCriterion.parse('2@function', idMap), await analyzer.callGraph());
+		assert.deepStrictEqual(found[SlicingCriterion.parse('2@function', idMap)], [{ id: SlicingCriterion.parse('1@stop', idMap), cds: undefined }]);
+	});
+
+	test('functions calling each other settle on what they raise', async() => {
+		const analyzer = new FlowrAnalyzerBuilder().setParser(ts).buildSync();
+		analyzer.addRequest(requestFromInput('a <- function() { b(); stop("x") }\nb <- function() a()'));
+		const idMap = (await analyzer.normalize()).idMap;
+		const raised = [{ id: SlicingCriterion.parse('1@stop', idMap), cds: undefined }];
+		const found = calculateExceptionsOfFunction(SlicingCriterion.parse('1@function', idMap), await analyzer.callGraph());
+		assert.deepStrictEqual(found[SlicingCriterion.parse('1@function', idMap)], raised, 'a');
+		assert.deepStrictEqual(found[SlicingCriterion.parse('2@function', idMap)], raised, 'b');
+	});
+
 }));

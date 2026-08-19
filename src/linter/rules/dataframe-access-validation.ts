@@ -1,6 +1,6 @@
 import type { DataFrameDomain } from '../../abstract-interpretation/data-frame/dataframe-domain';
 import { DataFrameShapeInferenceVisitor, type DataFrameOperationType } from '../../abstract-interpretation/data-frame/shape-inference';
-import { NumericalComparator, SetComparator } from '../../abstract-interpretation/domains/satisfiable-domain';
+import { NumericalComparator, SetComparator } from '../../abstract-interpretation/domains/value-abstract-domain';
 import { FlowrConfig } from '../../config';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { CfgKind } from '../../project/cfg-kind';
@@ -10,7 +10,7 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { FlowrSearchElements } from '../../search/flowr-search';
 import { Q } from '../../search/flowr-search-builder';
 import { Ternary } from '../../util/logic';
-import { type MergeableRecord } from '../../util/objects';
+import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty, type LintingResult, type LintingRule } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';

@@ -45,6 +45,7 @@ export interface FlowrCliOptions {
 	'config-file':      string
 	'config-json':      string
 	'no-ansi':          boolean
+	'no-fs':            boolean
 	'r-path':           string | undefined
 	'r-session-access': boolean
 	execute:            string | undefined
@@ -108,14 +109,18 @@ function createConfig(): FlowrConfig {
 		}
 	}
 	if(config == undefined) {
-		if(options['config-file']) {
-			// validate it exists
-			if(!fs.existsSync(path.resolve(options['config-file']))) {
-				log.error(`Config file '${options['config-file']}' does not exist`);
-				process.exit(1);
+		if(options['no-fs']) {
+			config = FlowrConfig.default();
+		} else {
+			if(options['config-file']) {
+				// validate it exists
+				if(!fs.existsSync(path.resolve(options['config-file']))) {
+					log.error(`Config file '${options['config-file']}' does not exist`);
+					process.exit(1);
+				}
 			}
+			config = FlowrConfig.fromFile(options['config-file'] ?? defaultConfigFile);
 		}
-		config = FlowrConfig.fromFile(options['config-file'] ?? defaultConfigFile);
 	}
 
 
@@ -137,7 +142,11 @@ function createConfig(): FlowrConfig {
 		}
 
 		if(options['default-engine']) {
-			(c.defaultEngine as string) = options['default-engine'] as EngineConfig['type'];
+			(c.defaultEngine as string) = options['default-engine'];
+		}
+
+		if(options['no-fs']) {
+			(c.solver.sigdb as { enabled: boolean }).enabled = false;
 		}
 
 		return c;
@@ -191,8 +200,15 @@ async function mainRepl() {
 	const defaultEngine = engines.engines[engines.default] as KnownParser;
 
 	if(options.version) {
-		for(const engine of Object.values(engines.engines)) {
-			await printVersionInformation(standardReplOutput, engine);
+		const enginesList = Object.values(engines.engines);
+		if(enginesList.length > 0) {
+			await printVersionInformation(standardReplOutput, enginesList[0]);
+			for(const engine of enginesList.slice(1)) {
+				console.log('');
+				await printVersionInformation(standardReplOutput, engine, true);
+			}
+		}
+		for(const engine of enginesList) {
 			engine?.close();
 		}
 		return exitSafe(0);
@@ -212,7 +228,7 @@ async function mainRepl() {
 		await printVersionRepl(defaultEngine);
 		const w = (x: string) => ansiFormatter.format(x, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
 		console.log(w('use ') + ansiFormatter.format(':help', { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Bold })  + w(' to get a list of available commands.'));
-		await repl({ analyzer, allowRSessionAccess });
+		await repl({ analyzer, allowRSessionAccess, ...(options['no-fs'] ? { historyFile: '' } : {}) });
 	}
 	exitSafe(0);
 }
@@ -230,8 +246,23 @@ async function mainServer(useWebSocket: boolean) {
 }
 
 
-if(options.server) {
-	void mainServer(options.ws);
-} else {
-	void mainRepl();
+async function main() {
+	try {
+		if(options.server) {
+			await mainServer(options.ws);
+		} else {
+			await mainRepl();
+		}
+	} catch(e) {
+		const err = e as Error;
+		console.error(formatter.format(`flowR failed to start: ${err.message}`, { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
+		if(options.verbose) {
+			console.error(err.stack);
+		} else {
+			console.error(italic('Run again with --verbose for the full stack trace.'));
+		}
+		exitSafe(1);
+	}
 }
+
+void main();

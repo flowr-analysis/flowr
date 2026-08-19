@@ -288,7 +288,7 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 		other: FlowrSearchBuilder<Generator2, Transformers2, Info, OtherElementType> /* | FlowrSearch<Info, Generator2, Transformers2, OtherElementType> */
 	): FlowrSearchBuilder<Generator, Transformers, Info> {
 		this.search.push({ type: 'transformer', name: 'merge', args: { generator: other.generator, search: other.search  } });
-		return this as unknown as FlowrSearchBuilder<Generator, Transformers, Info>;
+		return this;
 	}
 
 	/**

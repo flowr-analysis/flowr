@@ -5,21 +5,22 @@ import { processSymbol } from './internal/process/process-symbol';
 import { processFunctionCall } from './internal/process/functions/call/default-call-handling';
 import { processFunctionParameter } from './internal/process/functions/process-parameter';
 import { processFunctionArgument } from './internal/process/functions/process-argument';
-import { processAsNamedCall } from './internal/process/process-named-call';
+import { processAsNamedCall, processChainedCall } from './internal/process/process-named-call';
 import { processValue } from './internal/process/process-value';
 import { processNamedCall } from './internal/process/functions/call/named-call-handling';
 import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument/make-argument';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
-import type { DataflowGraph } from './graph/graph';
+import { attachProject } from './internal/process/functions/call/built-in/built-in-library';
+import { type DataflowGraph, UnknownSideEffect } from './graph/graph';
 import { extractCfgQuick, getCallsInCfg } from '../control-flow/extract-cfg';
 import { EdgeType } from './graph/edge';
 import { identifyLinkToLastCallRelationSync
 } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
-import { propagateTransitiveSideEffects, reResolveOpenReferences, linkMaterializedExportsToLoaders } from './internal/process/functions/call/built-in/transitive-side-effects';
+import { reResolveOpenReferences, linkMaterializedExportsToLoaders } from './internal/process/functions/call/built-in/transitive-side-effects';
 import type { REnvironmentInformation } from './environments/environment';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
@@ -31,9 +32,11 @@ import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
 const transitiveSideEffectRounds = 32;
 import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
 import { Identifier } from './environments/identifier';
+import { Quoted } from './internal/process/functions/call/quoted';
 import { SourceRange } from '../util/range';
 import { dataflowLogger } from './logger';
 import { GasFeatureKey, GasLevel, GasWikiRef } from '../gas';
+import { Dataflow } from './graph/df-helper';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -47,8 +50,8 @@ export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.LineDirective]:      processUninterestingLeaf,
 	[RType.Symbol]:             processSymbol,
 	[RType.Access]:             (n, d) => processAsNamedCall(n, d, n.operator, [n.accessed, ...n.access]),
-	[RType.BinaryOp]:           (n, d) => processAsNamedCall(n, d, n.operator, [n.lhs, n.rhs]),
-	[RType.Pipe]:               (n, d) => processAsNamedCall(n, d, n.lexeme, [n.lhs, n.rhs]),
+	[RType.BinaryOp]:           processChainedCall,
+	[RType.Pipe]:               processChainedCall,
 	[RType.UnaryOp]:            (n, d) => processAsNamedCall(n, d, n.operator, [n.operand]),
 	[RType.ForLoop]:            (n, d) => processAsNamedCall(n, d, n.lexeme, [n.variable, n.vector, n.body]),
 	[RType.WhileLoop]:          (n, d) => processAsNamedCall(n, d, n.lexeme, [n.condition, n.body]),
@@ -88,7 +91,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph, ctx:
 	const killedRegexes = new Set<string>();
 	const handled = new Set<NodeId>();
 	for(const s of graph.unknownSideEffects) {
-		if(typeof s !== 'object') {
+		if(!UnknownSideEffect.isLinked(s)) {
 			continue;
 		}
 		if(cf === undefined) {
@@ -143,11 +146,12 @@ export function produceDataFlowGraph<OtherInfo>(
 
 	const env = ctx.env.makeCleanEnv();
 	env.current.n = ctx.meta.getNamespace();
+	const environment = attachProject(env, ctx);
 
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
-		environment:    env,
+		environment,
 		processors:     ctx.config.solver.instrument.dataflowExtractors?.(processors, ctx) ?? processors,
 		cds:            undefined,
 		referenceChain: [files[0].filePath],
@@ -172,7 +176,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	updateNestedFunctionCalls(df.graph, df.environment, ctx);
 	const escapedNames = new Set<string>();
 	for(let round = 0; round < transitiveSideEffectRounds; round++) {
-		const { environment, grew, escapedNames: roundNames } = propagateTransitiveSideEffects(df.graph, df.environment, ctx);
+		const { environment, grew, escapedNames: roundNames } = Dataflow.sideEffects.propagateTransitive(df.graph, df.environment, ctx);
 		(df as { environment: REnvironmentInformation }).environment = environment;
 		for(const n of roundNames) {
 			escapedNames.add(n);
@@ -188,6 +192,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	}
 	// link on-demand-materialized package exports back to their `library()` loaders
 	linkMaterializedExportsToLoaders(df.graph, df.environment);
+	Quoted.finalize(df.graph, completeAst.idMap, () => extractCfgQuick(completeAst).graph);
 
 	(df as { cfgQuick?: ControlFlowInformation }).cfgQuick = resolveLinkToSideEffects(completeAst, df.graph, ctx);
 

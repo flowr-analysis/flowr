@@ -1,38 +1,35 @@
-import { type DataflowProcessorInformation } from '../../../../../processor';
+import type { DataflowProcessorInformation } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { requestFromInput } from '../../../../../../r-bridge/retriever';
 import {
-	type AstIdMap,
 	type ParentInformation,
 	sourcedDeterministicCountingIdGenerator
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
 	EmptyArgument,
-	type PotentiallyEmptyRArgument
+	type PotentiallyEmptyRArgument,
+	RFunctionCall
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { expensiveTrace } from '../../../../../../util/log';
-import { sourceRequest } from './built-in-source';
+import { mergeSourced, sourceRequest } from './built-in-source';
 import { EdgeType } from '../../../../../graph/edge';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { appendEnvironment } from '../../../../../environments/append';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { isUndefined } from '../../../../../../util/assert';
-import { valueSetGuard } from '../../../../../eval/values/general';
-import { collectStrings } from '../../../../../eval/values/string/string-constants';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { cartesianProduct } from '../../../../../../util/collections/arrays';
-import type { FlowrConfig } from '../../../../../../config';
-import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { Identifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
+
+/** the formals of `eval(expr, envir, enclos)` */
+const EvalParameterNames = ['expr', 'envir', 'enclos'] as const;
 
 /**
  * Process a call to `eval()`, trying to resolve the code being evaluated if possible.
@@ -49,20 +46,26 @@ export function processEvalCall<OtherInfo>(
 		supportFunctionCall?: boolean
 	}
 ): DataflowInformation {
-	if(args.length !== 1 || args[0] === EmptyArgument || !args[0].value) {
-		dataflowLogger.warn(`Expected exactly one argument for eval currently, but got ${args.length} instead, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
+	const bound = RFunctionCall.matchArgsToParams(args, EvalParameterNames);
+	/* `evalText` names its formal differently, so a lone argument is the expression whatever it is called */
+	const evalArgument = (bound.get('expr') ?? RFunctionCall.soleArgument(args))?.value;
+	const envirArg = bound.get('envir');
+
+	if(evalArgument === undefined) {
+		dataflowLogger.warn(`Expected an expression argument for eval, but got ${args.length} argument(s), skipping`);
+		const bail = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
+		handleUnknownSideEffect(bail.graph, bail.environment, rootId);
+		return bail;
 	}
 
 	const information = config.includeFunctionCall ?
 		processKnownFunctionCall({ name, args, rootId, data, forceArgs: [true], origin: BuiltInProcName.Eval }).information
 		: DataflowInformation.initialize(rootId, data);
-	const evalArgument = args[0];
 
 	if(config.includeFunctionCall) {
 		information.graph.addEdge(
 			rootId,
-			args[0].value.info.id,
+			evalArgument.info.id,
 			EdgeType.Returns
 		);
 	}
@@ -73,9 +76,14 @@ export function processEvalCall<OtherInfo>(
 		return information;
 	}
 
-	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<never>, config, data);
+	const code: string[] | undefined = resolveEvalToCode(evalArgument as RNode<never>, config, data);
 
 	if(code) {
+		if(envirArg !== undefined) {
+			/* the code runs in another environment, so its definitions do not land in the current one and
+			 * pretending they do would produce wrong edges */
+			handleUnknownSideEffect(information.graph, information.environment, rootId);
+		}
 		const idGenerator = sourcedDeterministicCountingIdGenerator(name.lexeme + '::' + rootId, name.location);
 
 		data = {
@@ -94,16 +102,7 @@ export function processEvalCall<OtherInfo>(
 				information.graph.addEdge(rootId, e.nodeId, EdgeType.Returns);
 			}
 		}
-		return {
-			graph:             result.reduce((acc, r) => acc.mergeWith(r.graph), information.graph),
-			environment:       result.reduce((acc, r) => appendEnvironment(acc, r.environment), information.environment),
-			entryPoint:        rootId,
-			out:               information.out.concat(result.flatMap(r => r.out)),
-			in:                information.in.concat(result.flatMap(r => r.in)),
-			unknownReferences: information.unknownReferences.concat(result.flatMap(r => r.unknownReferences)),
-			exitPoints:        information.exitPoints.concat(result.flatMap(r => r.exitPoints)),
-			hooks:             information.hooks.concat(result.flatMap(r => r.hooks)),
-		};
+		return mergeSourced({ ...information, entryPoint: rootId }, result);
 	}
 
 	expensiveTrace(dataflowLogger, () => `Non-constant argument ${JSON.stringify(args)} for eval is currently not supported, skipping`);
@@ -112,21 +111,10 @@ export function processEvalCall<OtherInfo>(
 }
 
 function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, config: { includeFunctionCall?: boolean, supportFunctionCall?: boolean }, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
-	const ctx = data.ctx;
-	const env = data.environment;
-	const idMap = data.completeAst.idMap;
 	const val = evalArgument;
 
 	if(config.supportFunctionCall){
-		if(val.type === RType.String){
-			return [val.content.str];
-		} else if(val.type === RType.Symbol){
-			const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: env, idMap: idMap, resolve: ctx.config.solver.variables, ctx }));
-			if(resolved) {
-				return collectStrings(resolved.elements);
-			}
-		}
-		return undefined;
+		return getAsString(val, data);
 	} else {
 		if(
 			val.type === RType.FunctionCall && val.named && val.functionName.content === 'parse'
@@ -136,17 +124,10 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 			if(nArg !== undefined || arg === undefined || arg === EmptyArgument) {
 				return undefined;
 			}
-			if(arg.value?.type === RType.String) {
-				return [arg.value.content.str];
-			} else if(arg.value?.type === RType.Symbol) {
-				const resolved = valueSetGuard(resolveIdToValue(arg.value.info.id, { environment: env, idMap: idMap, resolve: ctx.config.solver.variables, ctx }));
-				if(resolved) {
-					return collectStrings(resolved.elements);
-				}
-			} else if(arg.value?.type === RType.FunctionCall && arg.value.named && ['paste', 'paste0'].includes(Identifier.getName(arg.value.functionName.content))) {
-				return handlePaste(ctx.config, arg.value.arguments, env, idMap, arg.value.functionName.content === 'paste' ? [' '] : [''], ctx);
+			if(arg.value?.type === RType.FunctionCall && arg.value.named && ['paste', 'paste0'].includes(Identifier.getName(arg.value.functionName.content))) {
+				return handlePaste(arg.value.arguments, data, arg.value.functionName.content === 'paste' ? [' '] : ['']);
 			}
-			return undefined;
+			return getAsString(arg.value, data);
 		} else if(val.type === RType.Symbol) {
 			// const resolved = resolveValueOfVariable(val.content, env);
 			// see https://github.com/flowr-analysis/flowr/pull/1467
@@ -158,25 +139,22 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 }
 
 
-function getAsString(config: FlowrConfig, val: RNode<ParentInformation> | undefined, env: REnvironmentInformation, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
+function getAsString<OtherInfo>(val: RNode<ParentInformation> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
 	if(!val) {
 		return undefined;
 	}
 	if(val.type === RType.String) {
 		return [val.content.str];
 	} else if(val.type === RType.Symbol) {
-		const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: env, idMap: idMap, resolve: config.solver.variables, ctx }));
-		if(resolved) {
-			return collectStrings(resolved.elements);
-		}
+		return NodeValue.stringsOf(val.info.id, data);
 	}
 	return undefined;
 }
 
-function handlePaste(config: FlowrConfig, args: readonly PotentiallyEmptyRArgument<ParentInformation>[], env: REnvironmentInformation, idMap: AstIdMap, sepDefault: string[], ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
+function handlePaste<OtherInfo>(args: readonly PotentiallyEmptyRArgument<ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>, sepDefault: string[]): string[] | undefined {
 	const sepArg = args.find(v => v !== EmptyArgument && v.name?.content === 'sep');
 	if(sepArg) {
-		const res = sepArg !== EmptyArgument && sepArg.value ? getAsString(config, sepArg.value, env, idMap, ctx) : undefined;
+		const res = sepArg !== EmptyArgument && sepArg.value ? getAsString(sepArg.value, data) : undefined;
 		if(!res) {
 			// sep not resolvable clearly / unknown
 			return undefined;
@@ -186,7 +164,7 @@ function handlePaste(config: FlowrConfig, args: readonly PotentiallyEmptyRArgume
 
 	const allArgs = args
 		.filter(v => v !== EmptyArgument && v.name?.content !== 'sep' && v.value)
-		.map(v => getAsString(config, (v as RArgument<ParentInformation>).value, env, idMap, ctx));
+		.map(v => getAsString((v as RArgument<ParentInformation>).value, data));
 	if(allArgs.some(isUndefined)) {
 		return undefined;
 	}

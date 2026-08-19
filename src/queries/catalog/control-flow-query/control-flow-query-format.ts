@@ -27,6 +27,7 @@ export interface ControlFlowQueryResult extends BaseQueryResult {
 }
 
 export const ControlFlowQueryDefinition = {
+	title:           'Control-Flow Query',
 	executor:        executeControlFlowQuery,
 	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'control-flow'>['control-flow'];

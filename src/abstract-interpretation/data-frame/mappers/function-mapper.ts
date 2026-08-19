@@ -1,5 +1,5 @@
 import { VariableResolve } from '../../../config';
-import { type ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
+import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import { findSource } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
@@ -11,12 +11,13 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { requestFromInput, type RParseRequest } from '../../../r-bridge/retriever';
 import { assertUnreachable, isNotUndefined, isUndefined } from '../../../util/assert';
 import { DataFrameDomain } from '../dataframe-domain';
-import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars } from '../resolve-args';
+import { unescapeSpecialChars } from '../resolve-args';
 import { ConstraintType } from '../semantics';
 import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../shape-inference';
 import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isRNull, parseRequestContent, type FunctionParameterLocation } from './arguments';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { Resolve } from '../../../dataflow/environments/resolve-helper';
 
 /**
  * Represents the different types of data frames in R
@@ -689,8 +690,8 @@ function mapDataFrameCreate(
 	const noDupNames = getArgumentValue(args, params.noDupNames, info);
 	args = getEffectiveArgs(args, params.special);
 
-	const argNames = args.map(arg => resolveIdToArgName(arg, info));
-	const argLengths = args.map(arg => resolveIdToArgVectorLength(arg, info));
+	const argNames = args.map(arg => Resolve.argument.toName(arg, info));
+	const argLengths = args.map(arg => Resolve.argument.vectorLength(arg, info));
 	const allVectors = argLengths.every(isNotUndefined);
 	const rows = allVectors ? Math.max(...argLengths, 0) : undefined;
 	let colnames: (string | undefined)[] | undefined = argNames;
@@ -834,8 +835,8 @@ function mapDataFrameColBind(
 				});
 				operand = undefined;
 			// added columns are top if argument cannot be resolved to constant (vector-like) value
-			} else if(resolveIdToArgValue(arg, info) !== undefined) {
-				const colname = resolveIdToArgName(arg, info);
+			} else if(Resolve.argument.value(arg, info) !== undefined) {
+				const colname = Resolve.argument.toName(arg, info);
 				colnames?.push(colname);
 			} else {
 				colnames = undefined;
@@ -882,7 +883,7 @@ function mapDataFrameRowBind(
 				});
 				operand = undefined;
 			// number of added rows is top if arguments cannot be resolved to constant (vector-like) value
-			} else if(resolveIdToArgValue(arg, info) !== undefined) {
+			} else if(Resolve.argument.value(arg, info) !== undefined) {
 				rows = rows !== undefined ? rows + 1 : undefined;
 			} else {
 				rows = undefined;
@@ -959,7 +960,7 @@ function mapDataFrameSubset(
 	let operand: RNode<ParentInformation> | undefined = dataFrame.value;
 
 	const filterArg = getFunctionArgument(args, params.subset, info);
-	const filterValue = resolveIdToArgValue(filterArg, info);
+	const filterValue = Resolve.argument.value(filterArg, info);
 	const selectArg = getFunctionArgument(args, params.select, info);
 	const dropArg = getFunctionArgument(args, params.drop, info);
 
@@ -1011,6 +1012,7 @@ function mapDataFrameSubset(
 				colnames:  selectedCols?.map(col => typeof col === 'string' ? col : undefined),
 				...(duplicateCols || mixedAccess ? { options: { duplicateCols: true } } : {})
 			});
+			// eslint-disable-next-line no-useless-assignment -- ends the chain
 			operand = undefined;
 		}
 	}
@@ -1034,10 +1036,10 @@ function mapDataFrameFilter(
 	const result: DataFrameOperations = [];
 
 	const filterArgs = args.filter(arg => arg !== dataFrame);
-	const filterValues = filterArgs.map(arg => resolveIdToArgValue(arg, info));
+	const filterValues = filterArgs.map(arg => Resolve.argument.value(arg, info));
 
 	const accessedNames = filterArgs.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph).map(Identifier.getName));
-	const condition = filterValues.every(value => typeof value === 'boolean') ? filterValues.every(cond => cond) : undefined;
+	const condition = filterValues.every(value => typeof value === 'boolean') ? filterValues.every(Boolean) : undefined;
 
 	if(accessedNames.length > 0) {
 		result.push({
@@ -1115,6 +1117,7 @@ function mapDataFrameSelect(
 			colnames:  selectedCols?.map(col => typeof col === 'string' ? col : undefined),
 			...(renamedCols ? { options: { renamedCols: true } } : {})
 		});
+		// eslint-disable-next-line no-useless-assignment -- ends the chain
 		operand = undefined;
 	}
 	return result;
@@ -1146,10 +1149,10 @@ function mapDataFrameMutate(
 
 	let deletedCols: (string | undefined)[] | undefined = mutateArgs
 		.filter(isRNull)
-		.map(arg => resolveIdToArgName(arg, info));
+		.map(arg => Resolve.argument.toName(arg, info));
 	let mutatedCols: (string | undefined)[] | undefined = mutateArgs
 		.filter(arg => !isRNull(arg))
-		.map(arg => resolveIdToArgName(arg, info));
+		.map(arg => Resolve.argument.toName(arg, info));
 
 	// only column names that are not created by mutation are preconditions on the operand
 	const accessedNames = mutateArgs
@@ -1182,6 +1185,7 @@ function mapDataFrameMutate(
 			colnames:  deletedCols,
 			options:   { maybe: true }
 		});
+		// eslint-disable-next-line no-useless-assignment -- ends the chain
 		operand = undefined;
 	}
 	return result;
@@ -1209,7 +1213,7 @@ function mapDataFrameGroupBy(
 	const byArgs = args.filter(arg => arg !== dataFrame);
 
 	const accessedNames = byArgs.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph)).map(Identifier.toString);
-	const byNames = byArgs.map(arg => RArgument.isNamed(arg) ? resolveIdToArgName(arg, info) : resolveIdToArgValueSymbolName(arg, info));
+	const byNames = byArgs.map(arg => RArgument.isNamed(arg) ? Resolve.argument.toName(arg, info) : Resolve.argument.symbolName(arg, info));
 
 	const mutatedCols = byArgs.some(RArgument.isNamed) || byNames.some(isUndefined);
 
@@ -1245,7 +1249,7 @@ function mapDataFrameSummarize(
 	const result: DataFrameOperations = [];
 	const summarizeArgs = args.filter(arg => arg !== dataFrame);
 
-	const summarizedCols = summarizeArgs.map(arg => resolveIdToArgName(arg, info));
+	const summarizedCols = summarizeArgs.map(arg => Resolve.argument.toName(arg, info));
 
 	// only column names that are not created by summarize are preconditions on the operand
 	const accessedNames = summarizeArgs
@@ -1304,7 +1308,7 @@ function mapDataFrameJoin(
 	const joinType = getJoinType(joinAll, joinLeft, joinRight);
 
 	if(byArg !== undefined) {
-		const byValue = resolveIdToArgValue(byArg, info);
+		const byValue = Resolve.argument.value(byArg, info);
 
 		if(typeof byValue === 'string' || typeof byValue === 'number') {
 			byCols = [byValue];
@@ -1399,7 +1403,7 @@ function getRequestFromRead(
 	let request: RParseRequest | undefined;
 
 	if(fileNameArg !== undefined && fileNameArg !== EmptyArgument) {
-		const fileName = resolveIdToArgValue(fileNameArg, info);
+		const fileName = Resolve.argument.value(fileNameArg, info);
 
 		if(typeof fileName === 'string') {
 			const text = unescapeSpecialChars(fileName);
@@ -1417,7 +1421,7 @@ function getRequestFromRead(
 			}
 		}
 	} else if(textArg !== undefined && textArg !== EmptyArgument) {
-		const text = resolveIdToArgValue(textArg, info);
+		const text = Resolve.argument.value(textArg, info);
 
 		if(typeof text === 'string') {
 			request = requestFromInput(unescapeSpecialChars(text));
@@ -1474,7 +1478,7 @@ function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInfo
 				selectedCols = joinColumns(selectedCols, result.unselectedCols);
 				unselectedCols = joinColumns(unselectedCols, result.selectedCols);
 			} else if(arg.value?.type === RType.BinaryOp && arg.value.operator === ':' && info.idMap !== undefined) {
-				const values = resolveIdToArgValue(toUnnamedArgument(arg.value, info.idMap), { ...info, resolve: VariableResolve.Disabled });
+				const values = Resolve.argument.value(toUnnamedArgument(arg.value, info.idMap), { ...info, resolve: VariableResolve.Disabled });
 
 				if(Array.isArray(values) && values.every(value => typeof value === 'number')) {
 					selectedCols = joinColumns(selectedCols, values.filter(value => value >= 0));
@@ -1483,7 +1487,7 @@ function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInfo
 					selectedCols = undefined;
 				}
 			} else if(arg.value?.type === RType.Symbol || arg.value?.type === RType.String) {
-				selectedCols?.push(resolveIdToArgValueSymbolName(arg, info));
+				selectedCols?.push(Resolve.argument.symbolName(arg, info));
 			} else if(arg.value?.type === RType.Number) {
 				selectedCols?.push(arg.value.content.num);
 			} else {

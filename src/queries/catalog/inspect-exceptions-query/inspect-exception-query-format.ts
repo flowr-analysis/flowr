@@ -6,7 +6,7 @@ import { executeExceptionQuery } from './inspect-exception-query-executor';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import { criteriaQueryCompleter, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { SourceLocation } from '../../../util/range';
 import type { ExceptionPoint } from '../../../dataflow/fn/exceptions-of-function';
 import { happensInEveryBranch } from '../../../dataflow/info';
@@ -37,11 +37,12 @@ function inspectExceptionLineParser(_output: ReplOutput, line: readonly string[]
 			type:   'inspect-exception',
 			filter: criteria
 		},
-		rCode: criteria ? line[1] : line[0]
+		rCode: queryLineCode(line, criteria ? 1 : 0)
 	};
 }
 
 export const InspectExceptionQueryDefinition = {
+	title:           'Inspect Exceptions of Functions Query',
 	executor:        executeExceptionQuery,
 	asciiSummarizer: async(formatter, processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'inspect-exception'>['inspect-exception'];
@@ -64,6 +65,7 @@ export const InspectExceptionQueryDefinition = {
 	},
 	fromLine:  inspectExceptionLineParser,
 	completer: criteriaQueryCompleter,
+	syntax:    '@inspect-exception [(<crit>;...)] <code | file://path>',
 	schema:    Joi.object({
 		type:   Joi.string().valid('inspect-exception').required().description('The type of the query.'),
 		filter: Joi.array().items(Joi.string().required()).optional().description('If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered.'),

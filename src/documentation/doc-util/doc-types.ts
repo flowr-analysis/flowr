@@ -192,6 +192,20 @@ function followTypeReference(type: ts.TypeReferenceNode, sourceFile: ts.SourceFi
 	return [nodeLexeme, baseLexeme, ...args];
 }
 
+/** The base types a declaration extends or implements, with their generics dropped. */
+function heritageTypeNames(node: ts.ClassDeclaration | ts.InterfaceDeclaration, sourceFile: ts.SourceFile): string[] {
+	return node.heritageClauses?.flatMap(clause =>
+		clause.types
+			.map(type => type.getText(sourceFile) ?? '')
+			.map(dropGenericsFromTypeName)
+	) ?? [];
+}
+
+/** The names of the type parameters a declaration takes. */
+function genericNames(node: { readonly typeParameters?: ts.NodeArray<ts.TypeParameterDeclaration> }, sourceFile: ts.SourceFile): string[] {
+	return node.typeParameters?.map(param => param.getText(sourceFile) ?? '') ?? [];
+}
+
 function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], options: GetTypesWithProgramOption): TypeElementInSource[] {
 	const hierarchyList: TypeElementInSource[] = [];
 	const typeChecker = options.program.getTypeChecker();
@@ -202,12 +216,8 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 
 		if(ts.isInterfaceDeclaration(node)) {
 			const interfaceName = node.name?.getText(sourceFile) ?? '';
-			const baseTypes = node.heritageClauses?.flatMap(clause =>
-				clause.types
-					.map(type => type.getText(sourceFile) ?? '')
-					.map(dropGenericsFromTypeName)
-			) ?? [];
-			const generics = node.typeParameters?.map(param => param.getText(sourceFile) ?? '') ?? [];
+			const baseTypes = heritageTypeNames(node, sourceFile);
+			const generics = genericNames(node, sourceFile);
 
 			hierarchyList.push({
 				name:       dropGenericsFromTypeName(interfaceName),
@@ -232,7 +242,7 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 				baseTypes = followTypeReference(node.type, sourceFile).map(dropGenericsFromTypeName);
 			}
 
-			const generics = node.typeParameters?.map(param => param.getText(sourceFile) ?? '') ?? [];
+			const generics = genericNames(node, sourceFile);
 
 			hierarchyList.push({
 				name:       dropGenericsFromTypeName(typeName),
@@ -272,12 +282,8 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 			});
 		} else if(ts.isClassDeclaration(node)) {
 			const className = node.name?.getText(sourceFile) ?? '';
-			const baseTypes = node.heritageClauses?.flatMap(clause =>
-				clause.types
-					.map(type => type.getText(sourceFile) ?? '')
-					.map(dropGenericsFromTypeName)
-			) ?? [];
-			const generics = node.typeParameters?.map(param => param.getText(sourceFile) ?? '') ?? [];
+			const baseTypes = heritageTypeNames(node, sourceFile);
+			const generics = genericNames(node, sourceFile);
 
 			hierarchyList.push({
 				name:       dropGenericsFromTypeName(className),
@@ -524,7 +530,7 @@ function implSnippet(node: TypeElementInSource | undefined, program: ts.Program,
 		text = '  ' + text;
 	}
 	if(showImplSnippet) {
-		const code = node.node.getFullText(program.getSourceFile(node.node.getSourceFile().fileName));
+		const code = node.node.getFullText(program.getSourceFile(node.node.getSourceFile().fileName)).trim();
 		text += `\n<details${open ? ' open' : ''}><summary style="color:gray">Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, true)}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
 	} else {
 		text += `\n<br/><i>(Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, true)}</a>)</i>\n`;

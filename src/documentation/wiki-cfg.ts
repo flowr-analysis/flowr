@@ -1,4 +1,5 @@
 import { getReplCommand } from './doc-util/doc-cli-option';
+import { linkToQueryOfName } from './doc-util/doc-query';
 import { block, details, section } from './doc-util/doc-structure';
 import { getCfg, printCfgCode } from './doc-util/doc-cfg';
 import { visitCfgInOrder, visitCfgInReverseOrder } from '../control-flow/simple-visitor';
@@ -21,7 +22,6 @@ import { BasicCfgGuidedVisitor } from '../control-flow/basic-cfg-guided-visitor'
 import { SyntaxAwareCfgGuidedVisitor } from '../control-flow/syntax-cfg-guided-visitor';
 import { diffOfControlFlowGraphs } from '../control-flow/diff-cfg';
 import { type NodeId, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
 import { DataflowAwareCfgGuidedVisitor } from '../control-flow/dfg-cfg-guided-visitor';
 import type { DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import { type SemanticCfgGuidedVisitorConfiguration, SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
@@ -35,6 +35,7 @@ import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { prefixLines } from './doc-util/doc-general';
 import { codeBlock } from './doc-util/doc-code';
+import { Dataflow } from '../dataflow/graph/df-helper';
 
 const CfgLongExample = `f <- function(a, b = 3) {
  if(a > b) {
@@ -150,7 +151,7 @@ export class WikiCfg extends DocMaker<'wiki/Control Flow Graph.md'> {
 		return `
 _flowR_ produces three main perspectives of the program: 1) a ${ctx.linkPage('wiki/Normalized AST', 'normalized version of the AST')}
 and 2) a ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, and 3) a control flow graph (CFG).
-flowR uses this CFG interweaved with its data flow analysis and for some of its queries (e.g., to link to the last call in a ${ctx.linkPage('wiki/Query API', 'Call-Context Query', 'call-context-query')}).
+flowR uses this CFG interweaved with its data flow analysis and for some of its queries (e.g., to link to the last call in a ${linkToQueryOfName('call-context')}).
 
 Please note that, mostly due to historical reasons, the ${ctx.linkPage('wiki/Dataflow Graph', 'control dependencies', 'control-dependencies')} that are stored directly within the
 DFG provide only a partial view of the CFG. While they provide you with information on the conditional execution of vertices, they do not encode the order of execution.
@@ -424,7 +425,7 @@ ${await (async() => {
 })()}
 
 A more useful appearance of these visitors occurs with ${ctx.link(happensBefore)} which uses the CFG to determine whether the execution
-of one vertex always, maybe, or never happens before another vertex (see the corresponding ${ctx.linkPage('wiki/Query API', 'query documentation', 'happens-before-query')} for more information).
+of one vertex always, maybe, or never happens before another vertex (see the corresponding ${linkToQueryOfName('happens-before', 'query documentation')} for more information).
 
 
 ${section('Diffing and Testing', 3, 'cfg-diff-and-test')}
@@ -498,7 +499,7 @@ ${section('Dataflow-Aware CFG Visitor', 4, 'cfg-traversal-dfg')}
 
 There is a lot of benefit in incorporating the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow information')} into the CFG traversal, as it contains
 information about overwritten function calls, definition targets, and so on.
-Our best friend is the ${ctx.link(getOriginInDfg)} function which provides the important information about the origin of a vertex in the dataflow graph.
+Our best friend is the ${ctx.link(Dataflow.origin)} function which provides the important information about the origin of a vertex in the dataflow graph.
 The ${ctx.link(DataflowAwareCfgGuidedVisitor)} class does some of the basic lifting for us.
 While it is not ideal for our goal of collecting all numbers, it shines in other areas such as collecting all used variables,&nbsp;...
 

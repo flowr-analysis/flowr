@@ -38,7 +38,11 @@ import { FlowrAnalyzerPlugin } from '../project/plugins/flowr-analyzer-plugin';
 import { FlowrAnalyzerEnvironmentContext } from '../project/context/flowr-analyzer-environment-context';
 import { FlowrAnalyzerFunctionsContext } from '../project/context/flowr-analyzer-functions-context';
 import { FlowrAnalyzerMetaContext } from '../project/context/flowr-analyzer-meta-context';
+import { FlowrAnalyzerIncrementalAnalysisContext } from '../project/context/flowr-analyzer-incremental-analysis-context';
+import { FlowrAnalyzerGasContext } from '../project/context/flowr-analyzer-gas-context';
+import { FlowrAnalyzerGasPlugin } from '../project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { FlowrConfig } from '../config';
+import { FlowrInlineTextFile } from '../project/context/flowr-file';
 
 async function analyzerQuickExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -98,11 +102,13 @@ ${
 			'How to add a new plugin': undefined,
 		},
 		'Context Information': {
-			'Files Context':         undefined,
-			'Loading Order Context': undefined,
-			'Dependencies Context':  undefined,
-			'Environment Context':   undefined,
-			'Meta Context':          undefined,
+			'Files Context':                undefined,
+			'Loading Order Context':        undefined,
+			'Dependencies Context':         undefined,
+			'Environment Context':          undefined,
+			'Meta Context':                 undefined,
+			'Gas Context':                  undefined,
+			'Incremental Analysis Context': undefined,
 		},
 		'Caching': undefined
 	})
@@ -112,7 +118,7 @@ ${
 ${section('Overview', 2)}
 
 No matter whether you want to analyze a single R script, a couple of R notebooks, a complete project, or an R package,
-your journey starts with the ${ctx.link(FlowrAnalyzerBuilder)} (further described in [Builder Configuration](#builder-configuration) below).
+your journey starts with the ${ctx.link(FlowrAnalyzerBuilder)} (further described in [Builder Configuration](#Builder_Configuration) below).
 This builder allows you to configure the analysis in many different ways, for example, by specifying which [plugins](#Plugins) to use or
 what ${ctx.linkPage('wiki/Engines', 'engine')} to use for the analysis.
 
@@ -132,7 +138,7 @@ The builder provides two methods for building the analyzer:
 	which requires that the engine (e.g., TreeSitter) has already been initialized before calling this method.
 	Yet, as Engines only have to be initialized once per process, this method is often more convenient to use.
 
-	For more information on how to configure the builder, please refer to the [Builder Configuration](#builder-configuration) section below.
+	For more information on how to configure the builder, please refer to the [Builder Configuration](#Builder_Configuration) section below.
 
 ${section('Overview of the Analyzer', 3)}
 
@@ -182,12 +188,12 @@ We work on providing a set of example repositories that demonstrate how to use t
 
 ${section('Builder Configuration', 2)}
 
-If you are interested in all available options, have a look at the [Builder Reference](#builder-reference) below.
+If you are interested in all available options, have a look at the [Builder Reference](#Builder_Reference) below.
 The following sections highlight some of the most important configuration options:
 
-1. How to [configure flowR](#configuring-flowr)
-1. How to [configure the engine](#configuring-the-engine)
-2. How to [register plugins](#configuring-plugins)
+1. How to [configure flowR](#Configuring_flowR)
+1. How to [configure the engine](#Configuring_the_Engine)
+2. How to [register plugins](#Configuring_Plugins)
 
 ${section('Configuring flowR', 3)}
 
@@ -280,18 +286,21 @@ Plugins allow you to extend the capabilities of the analyzer in many different w
 For example, they can be used to support other file formats, or to provide new algorithms to determine the loading order of files in a project.
 All plugins have to extend the ${ctx.link(FlowrAnalyzerPlugin)} base class and specify their ${ctx.link('PluginType')}.
 During the analysis, the analyzer will apply all registered plugins of the different types at the appropriate stages of the analysis.
-If you just want to _use_ these plugins, you can usually ignore their [type](#plugin-types) and just register them with the builder as described
-in the [Builder Configuration](#builder-configuration) section above.
+If you just want to _use_ these plugins, you can usually ignore their [type](#Plugin_Types) and just register them with the builder as described
+in the [Builder Configuration](#Builder_Configuration) section above.
 However, if you want to _create_ new plugins, you should be aware of the different plugin types and when they are applied during the analysis.
 
 Currently, flowR supports the following plugin types built-in:
 
-| Name | Class | Type | Description |
-|------|-------|------|-------------|
+| Name | Type | What it does | Class |
+|------|------|--------------|-------|
 ${
-	BuiltInPlugins.sort(([a], [b]) => a.localeCompare(b)).map(
-		([key, value]) => `| ${codeInline(key)} | ${ctx.link( `${value.name}`)} |  ${new value().type} | ${ctx.doc(`${value.name}`).replaceAll('|', '&#124;').replaceAll('\n', ' ')} |`
-	).join('\n')
+	BuiltInPlugins.sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => {
+		const plugin = new value();
+		/* the plugin states what it does in one line, the class doc is the fallback for the ones that do not */
+		const describe = plugin.description || ctx.doc(`${value.name}`);
+		return `| ${codeInline(key)} | ${codeInline(plugin.type)} | ${describe.replaceAll('|', '&#124;').replaceAll('\n', ' ').trim()} | ${ctx.link(`${value.name}`)} |`;
+	}).join('\n')
 }
 
 
@@ -356,7 +365,7 @@ All loading order plugins should conform to the ${ctx.link(FlowrAnalyzerLoadingO
 
 ${section('How to add a new plugin', 3)}
 
-If you want to make a new plugin you first have to decide which type of plugin you want to create (see [Plugin Types](#plugin-types) above).
+If you want to make a new plugin you first have to decide which type of plugin you want to create (see [Plugin Types](#Plugin_Types) above).
 Then, you must create a new class that extends the corresponding base class (e.g., ${ctx.link(FlowrAnalyzerFilePlugin)} for file loading plugins).
 In general, most plugins operate on the [context information](#Context_Information) provided by the analyzer.
 Usually it is a good idea to have a look at the existing plugins of the same type to get an idea of how to implement your own plugin.
@@ -474,6 +483,83 @@ ${ctx.linkM(FlowrAnalyzerMetaContext, 'getProjectVersion', { codeFont: true, rea
 and the project namespace via
 ${ctx.linkM(FlowrAnalyzerMetaContext, 'getNamespace', { codeFont: true, realNameWrapper: 'i' })}.
 
+${section('Gas Context', 3)}
+
+The ${ctx.link(FlowrAnalyzerGasContext)} (reachable as \`ctx.gas\`) acts as the resource guard of an analysis:
+
+${ctx.hierarchy(FlowrAnalyzerGasContext, { showImplSnippet: false })}
+
+Expensive analysis sites ask for the current resource pressure with
+${ctx.linkM(FlowrAnalyzerGasContext, 'checkGas', { codeFont: true, realNameWrapper: 'i' })}, passing the name of the feature they are about to run
+(see ${ctx.link('GasFeatureKey')}), and may then degrade or skip their work.
+The level combines the current heap usage and the time elapsed within the contingent of the current operation,
+each scaled by the per-feature factor from \`config.gas.features\` and compared against the thresholds
+configured for that key (see ${ctx.link('GasThresholdSpec')}).
+Registered ${ctx.link(FlowrAnalyzerGasPlugin)}s may escalate the level for any key.
+
+Every operation gets a contingent of its own, and anything beginning a new analysis (an added file, a cache
+invalidation, a ${ctx.linkM(FlowrAnalyzerContext, 'reset')}) restarts it. To restart it between your own
+phases, call ${ctx.linkM(FlowrAnalyzerGasContext, 'reset', { codeFont: true, realNameWrapper: 'i' })} on the
+writeable context (\`analyzer.context().gas.reset()\`). To bound a single call, pass \`gas\` overrides to it
+(\`analyzer.query([...], { gas: { slicer: { critical: 30_000 } } })\`) or derive a bounded view with
+${ctx.linkM(FlowrAnalyzerGasContext, 'scope', { codeFont: true, realNameWrapper: 'i' })}.
+
+${
+	block({
+		type:    'NOTE',
+		content: `
+Gas is disabled for every feature by default, and with no gas plugins registered
+${ctx.linkM(FlowrAnalyzerGasContext, 'checkGas', { codeFont: true, realNameWrapper: 'i' })} returns \`GasLevel.Normal\` without measuring anything.
+See the ${ctx.linkPage('wiki/Core', 'gas section of the Core wiki page', 'gas-resource-guard')} for the levels, the configuration, and how to write a gas plugin.
+`.trim()
+	})
+}
+
+${section('Incremental Analysis Context', 3)}
+
+The ${ctx.link(FlowrAnalyzerIncrementalAnalysisContext)} is a context that stores analysis information needed for making the next analysis run incremental by reusing the previous analysis results:
+
+${ctx.hierarchy(FlowrAnalyzerIncrementalAnalysisContext, { showImplSnippet: false })}
+
+This context is not an analysis-result cache by itself.
+Instead, it carries forward the minimal state needed by future incremental phases after an invalidation happened.
+At the moment, it is used for incremental parsing with Tree-sitter, but it is intended to become the shared context for additional incremental analysis stages as well.
+
+If the analyzer or context is reset, the incremental information is discarded via
+${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'reset', { codeFont: true, realNameWrapper: 'i' })}.
+In other words, this context only transports incremental handoff state between analysis runs.
+
+${section('Incremental Parsing', 4)}
+
+This context is used to exploit Tree-sitter's incremental parsing feature.
+For one file, the incremental state follows a fixed lifecycle:
+
+1. After a successful parse-oriented analysis run, the analyzer cache stores the latest Tree-sitter parse tree via
+   ${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'storeOldParseResults', { codeFont: true, realNameWrapper: 'i' })}.
+   This tree is the baseline for the next incremental parse of that file.
+2. When a mutable file provider such as ${ctx.link('FlowrInlineTextFile')} is invalidated via
+   ${ctx.linkM(FlowrInlineTextFile, 'invalidate', { codeFont: true, realNameWrapper: 'i' })},
+   the analyzer receives a file invalidation event and stores the file path together with the old source text.
+   If the same file is invalidated again before the next parse, this stored old text is intentionally **not** replaced:
+   the stored parse tree still belongs to the version from before the first invalidation, so the incremental parse must keep that matching old-content baseline.
+3. When parsing is requested again, flowR retrieves
+   * the previous parse tree from
+     ${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'getOldParseResultOf', { codeFont: true, realNameWrapper: 'i' })}
+   * the stored old source text from
+     ${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'getOldContentOf', { codeFont: true, realNameWrapper: 'i' })}
+
+   Using these together with the current file content, flowR computes a minimal ${ctx.link('Parser.Edit')} only when a new parse is actually requested.
+   If the file content did not change, the previous tree can be reused directly.
+   Otherwise, the edit is applied to the previous tree and Tree-sitter reparses incrementally instead of starting from scratch.
+4. The stored old-content entry is removed when it is used because it belongs only to that previous parse snapshot.
+   After the new parse succeeds, the analyzer stores a new parse tree baseline.
+   A later invalidation must then be able to record a fresh old-content value that matches this new tree.
+   If the old-content entry were kept, later invalidations of the same file would not replace it, and the next incremental parse could compare the current file content against stale old text that no longer matches the stored previous tree.
+
+${section('Incremental Dataflow', 4)}
+
+This context is planned to also support future incremental dataflow graph computation.
+
 
 ${section('Caching', 2)}
 
@@ -482,7 +568,7 @@ The cache is maintained by the ${ctx.link(FlowrAnalyzerCache)} class and is used
 Underlying, it relies on the ${ctx.link(PipelineExecutor)} to cache results of different pipeline stages.
 
 Usually, you do not have to worry about the cache, as it is managed automatically by the analyzer.
-If you want to overwrite cache information, the analysis methods in ${ctx.link(FlowrAnalyzer)} (see [Conducting Analyses](#conducting-analyses) above)
+If you want to overwrite cache information, the analysis methods in ${ctx.link(FlowrAnalyzer)} (see [Conducting Analyses](#Conducting_Analyses) above)
 usually provide an optional \`force\` parameter to control whether to use the cache or recompute the results.
 `;
 	}

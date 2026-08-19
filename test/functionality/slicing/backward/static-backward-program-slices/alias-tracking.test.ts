@@ -19,7 +19,7 @@ async function runPipeline(code: string, shell: RShell, ctx: FlowrAnalyzerContex
 	}).allRemainingSteps();
 }
 
-describe.sequential('Alias Tracking', withShell(shell => {
+describe('Alias Tracking', { concurrent: false }, withShell(shell => {
 	test.each([
 		['x <- TRUE; print(x);', 'x', setFrom(valueFromTsValue(true))],
 		['x <- TRUE; y <- x; print(y);', 'y', setFrom(valueFromTsValue(true))],

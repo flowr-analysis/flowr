@@ -32,7 +32,7 @@ import { WikiSetup } from '../documentation/wiki-setup';
 import { WikiOverview } from '../documentation/wiki-overview';
 import { WikiAbsint } from '../documentation/wiki-absint';
 import { WikiCreateLintingRules } from '../documentation/wiki-create-linting-rules';
-import { WikiPackageDatabase } from '../documentation/wiki-package-database';
+import { WikiSignatureDatabase } from '../documentation/wiki-signature-database';
 
 export const AllWikiDocuments = [
 	new WikiFaq(),
@@ -52,7 +52,7 @@ export const AllWikiDocuments = [
 	new WikiLinter(),
 	new WikiAbsint(),
 	new WikiCreateLintingRules(),
-	new WikiPackageDatabase(),
+	new WikiSignatureDatabase(),
 	new IssueLintingRule(),
 	new DocReadme(),
 	new DocCapabilities()

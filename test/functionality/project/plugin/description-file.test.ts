@@ -10,6 +10,9 @@ import {
 import {
 	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
 } from '../../../../src/project/plugins/loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
+import {
+	FlowrAnalyzerMetaDescriptionFilePlugin
+} from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-meta-description-file-plugin';
 import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { AuthorRole } from '../../../../src/util/r-author';
 import type { FlowrDescriptionFile } from '../../../../src/project/plugins/file-plugins/files/flowr-description-file';
@@ -82,6 +85,7 @@ function contextWithFile(desc: string): FlowrAnalyzerContext {
 		arraysGroupBy([
 			new FlowrAnalyzerDescriptionFilePlugin(),
 			new FlowrAnalyzerPackageVersionsDescriptionFilePlugin(),
+			new FlowrAnalyzerMetaDescriptionFilePlugin(),
 			new FlowrAnalyzerLoadingOrderDescriptionFilePlugin()
 		], p => p.type)
 	);
@@ -104,7 +108,7 @@ describe('DESCRIPTION-file', function() {
 		test('Library-Versions-Plugin', () => {
 			assert.isTrue(
 				ctx.deps.getDependency('dplyr')
-					?.derivedVersion
+					?.derivedRange
 					?.test('1.4.0')
 			);
 		});
@@ -148,6 +152,13 @@ describe('DESCRIPTION-file', function() {
 				['sf', 'tibble', 'testthat', 'svglite', 'xml2', 'vdiffr']
 			);
 		});
+		test('Enhances Retrieval', () => {
+			assert.deepStrictEqual(getDescContent(ctx).enhances()?.map(n => n.name), ['something']);
+		});
+		test('Declared package names span every dependency field', () => {
+			// `Suggests`/`Enhances` do not become loadable dependencies, but they still name packages the project declares
+			assert.includeMembers(ctx.deps.declaredPackageNames(), ['R', 'dplyr', 'ggplot2', 'testthat', 'vdiffr', 'something']);
+		});
 		test('Collate Parsing', () => {
 			const collate = getDescContent(ctx).collate();
 			assert.deepStrictEqual(
@@ -164,8 +175,8 @@ describe('DESCRIPTION-file', function() {
 			assert.includeMembers(deps.map(n => n.name), ['methods', 'utils', 'ggplot2', 'rlang', 'R']);
 			const rDep = ctx.deps.getDependency('R');
 			assert.isDefined(rDep);
-			assert.isTrue(rDep?.derivedVersion?.test('3.5.0'));
-			assert.isFalse(rDep?.derivedVersion?.test('3.4.0'));
+			assert.isTrue(rDep?.derivedRange?.test('3.5.0'));
+			assert.isFalse(rDep?.derivedRange?.test('3.4.0'));
 		});
 		test('License parsing', () => {
 			const license = getDescContent(ctx).license();
@@ -196,6 +207,20 @@ describe('DESCRIPTION-file', function() {
 				sugg?.map(n => n.name),
 				['knitr', 'rmarkdown', 'testthat', 'covr']
 			);
+		});
+	});
+
+	describe('Leading UTF-8 BOM', () => {
+		test('the first field (Package) is still parsed when the file starts with a BOM', () => {
+			// a BOM matches the continuation-line test (`\s` includes U+FEFF); without stripping it the
+			// `Package:` field would be swallowed and packageName() would come back undefined
+			const withBom = contextWithFile('﻿' + DescriptionB);
+			assert.strictEqual(getDescContent(withBom).packageName(), 'Sample');
+			// and the rest of the fields are unaffected
+			assert.includeMembers(withBom.deps.getDependencies().map(n => n.name), ['ggplot2', 'R']);
+
+			// control: the exact same content without a BOM parses identically
+			assert.strictEqual(getDescContent(contextWithFile(DescriptionB)).packageName(), 'Sample');
 		});
 	});
 });

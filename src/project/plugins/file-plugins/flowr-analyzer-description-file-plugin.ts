@@ -11,12 +11,28 @@ export const descriptionFileLog = log.getSubLogger({ name: 'flowr-analyzer-loadi
 
 const DescriptionFilePattern = /^DESCRIPTION(\.(txt|in))?$/i;
 
+/** Access to the `DESCRIPTION` file of the analyzed project. */
+export const DescriptionFile = {
+	name: 'DescriptionFile',
+	/** The project's only `DESCRIPTION` file, `undefined` if there is none; `missing` states what cannot be done then. */
+	single(this: void, ctx: FlowrAnalyzerContext, missing: string) {
+		const descFiles = ctx.files.getFilesByRole(FileRole.Description);
+		if(descFiles.length === 0) {
+			descriptionFileLog.debug(missing);
+			return undefined;
+		} else if(descFiles.length > 1) {
+			descriptionFileLog.warn(`Found ${descFiles.length} description files, expected exactly one.`);
+		}
+		return descFiles[0];
+	}
+} as const;
+
 /**
  * This plugin provides support for R `DESCRIPTION` files.
  */
 export class FlowrAnalyzerDescriptionFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name = 'flowr-analyzer-description-file-plugin';
-	public readonly description = 'This plugin provides support for DESCRIPTION files and extracts their content into key-value(s) pairs.';
+	public readonly description = 'Reads DESCRIPTION files into key-value pairs.';
 	public readonly version = new SemVer('0.1.0');
 	private readonly pattern: RegExp;
 

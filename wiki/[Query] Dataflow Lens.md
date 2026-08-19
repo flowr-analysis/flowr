@@ -1,0 +1,85 @@
+_<span title="an overview of flowR's query API">Generated</span> from '[src/documentation/wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts)' on 2026-08-16, 06:15:25 UTC (v2.13.16), so please do not edit it directly._
+<h2 id="Dataflow Lens Query">Dataflow Lens Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
+
+Returns a simplified view on the dataflow graph, reduced to definitions, uses, and calls.\
+_This query is requested with the type `dataflow-lens`._
+
+
+The [Dataflow Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dataflow) hands you the complete dataflow graph, which is precise but quickly grows too large to read.
+The dataflow lens returns a _reduced_ view of that same graph, keeping only what is usually interesting when looking at it by hand:
+
+* only vertices tagged as a use, a variable definition, a function definition, or a function call (value vertices are dropped),
+* without the environment captured at each vertex (control dependencies are kept),
+* and without the vertices for plain operators and keywords (`<-`, `=`, `+`, `|>`, `if`, `function`, ...).
+
+Edges survive only if both of their endpoints do. The query takes no further arguments.
+
+
+```r
+f <- function(a) a + 1
+x <- 1
+y <- f(x)
+print(y)
+```
+
+
+
+
+
+```json
+[
+  {
+    "type": "dataflow-lens"
+  }
+]
+```
+
+
+(This can be shortened to `@dataflow-lens` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
+
+
+
+_Results (prettified and summarized):_
+
+Query: **dataflow-lens** (3 ms)\
+&nbsp;&nbsp;&nbsp;╰ [Simplified Graph](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMFtcImAqKmYqKiAoTC4gMSlcbipSU3ltYm9sKmBcIl1cbiAgICUlIE5vIGVkZ2VzIGZvdW5kIGZvciAwXG4gICAgOVtcImAqKngqKiAoTC4gMilcbipSU3ltYm9sKmBcIl1cbiAgICUlIE5vIGVkZ2VzIGZvdW5kIGZvciA5XG4gICAgMTQoW1wiYCoqeCoqIChMLiAzKVxuKlJTeW1ib2wqYFwiXSlcbiAgICAxNltbXCJgKipmKiogKEwuIDMpXG4qUkZ1bmN0aW9uQ2FsbCpgXCJdXVxuICAgIDEyW1wiYCoqeSoqIChMLiAzKVxuKlJTeW1ib2wqYFwiXVxuICAgIDE5KFtcImAqKnkqKiAoTC4gNClcbipSU3ltYm9sKmBcIl0pXG4gICAgMjFbW1wiYGJhc2UjNTg7IzU4OyoqcHJpbnQqKiAoTC4gNClcbipSRnVuY3Rpb25DYWxsKmBcIl1dXG4gICAgMTQgLS0+fFwicmVhZHNcInwgOVxuICAgIDE2IC0tPnxcInJlYWRzLCBhcmdcInwgMTRcbiAgICAxNiAtLT58XCJyZWFkc1wifCAwXG4gICAgMTIgLS0+fFwiZGVmaW5lZC1ieVwifCAxNlxuICAgIDE5IC0tPnxcInJlYWRzXCJ8IDEyXG4gICAgMjEgLS0+fFwicmVhZHMsIHJldHVybnMsIGFyZ1wifCAxOSIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==)\
+_All queries together required ≈3 ms (1ms accuracy, total 4 ms)_
+
+<details> <summary style="color:gray">Show Detailed Results as Json</summary>
+
+The analysis required _3.9 ms_ (including parsing and normalization and the query) within the generation environment.
+
+In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
+Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
+
+
+_As the code is pretty long, we inhibit pretty printing and syntax highlighting (JSON, hiding built-in):_
+
+```text
+{"dataflow-lens":{".meta":{"timing":3},"simplifiedGraph":{"rootVertices":[0,9,14,16,12,19,21],"vertexInformation":[[0,{"tag":"vdef","id":0,"source":[7]}],[9,{"tag":"vdef","id":9,"source":[10]}],[14,{"tag":"use","id":14}],[16,{"tag":"fcall","id":16,"environment":{"current":{"id":3328,"parent":"<BuiltInEnvironment>","memory":[],"globalEnv":true},"level":0},"name":"f","onlyBuiltin":false,"args":[{"nodeId":14,"type":32}],"origin":["function"]}],[12,{"tag":"vdef","id":12,"source":[16]}],[19,{"tag":"use","id":19}],[21,{"tag":"fcall","id":21,"name":"print","onlyBuiltin":true,"args":[{"nodeId":19,"type":32}],"origin":["builtin:d"]}]],"edgeInformation":[[14,[[9,{"types":1}]]],[16,[[14,{"types":65}],[0,{"types":1}]]],[12,[[16,{"types":2}]]],[21,[[19,{"types":73}]]],[19,[[12,{"types":1}]]]],"_unknownSideEffects":[]}},".meta":{"timing":3}}
+```
+
+
+
+</details>
+
+
+
+
+
+	
+
+
+> [!NOTE]
+> This is a presentation aid, not a semantic one: the reduced graph is not a sound basis for slicing.
+> Use the [Dataflow Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dataflow) if you need the complete graph, or the [Dataflow Cluster Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dataflow-Cluster) if you want the graph partitioned instead of shrunk.
+
+		
+
+<details>
+
+<summary style="color:gray">Implementation Details</summary>
+
+Responsible for the execution of the Dataflow Lens Query query is `executeDataflowLensQuery` in [`./src/queries/catalog/dataflow-lens-query/dataflow-lens-query-executor.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/dataflow-lens-query/dataflow-lens-query-executor.ts).
+
+</details>

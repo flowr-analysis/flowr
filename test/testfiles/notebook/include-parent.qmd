@@ -1,0 +1,13 @@
+---
+title: Include Demo
+---
+
+```{r}
+x <- "the cake is"
+```
+
+{{< include child.Rmd >}}
+
+```{r}
+print(x)
+```

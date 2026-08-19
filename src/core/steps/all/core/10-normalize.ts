@@ -19,6 +19,15 @@ export interface NormalizeRequiredInput {
 	readonly context: FlowrAnalyzerContext
 }
 
+/** The output formats shared by every normalization step. */
+export const NormalizePrinters = {
+	[StepOutputFormat.Internal]:   internalPrinter,
+	[StepOutputFormat.Json]:       normalizedAstToJson,
+	[StepOutputFormat.RdfQuads]:   normalizedAstToQuads,
+	[StepOutputFormat.Mermaid]:    printNormalizedAstToMermaid,
+	[StepOutputFormat.MermaidUrl]: printNormalizedAstToMermaidUrl
+} as const;
+
 function processor(results: { parse?: ParseStepOutput<string> }, input: Partial<NormalizeRequiredInput>) {
 	return normalize(results.parse as ParseStepOutput<string>, input.getId);
 }
@@ -29,13 +38,7 @@ export const NORMALIZE = {
 	description:       'Normalize the AST to flowR\'s AST',
 	processor,
 	executed:          PipelineStepStage.OncePerFile,
-	printer:           {
-		[StepOutputFormat.Internal]:   internalPrinter,
-		[StepOutputFormat.Json]:       normalizedAstToJson,
-		[StepOutputFormat.RdfQuads]:   normalizedAstToQuads,
-		[StepOutputFormat.Mermaid]:    printNormalizedAstToMermaid,
-		[StepOutputFormat.MermaidUrl]: printNormalizedAstToMermaidUrl
-	},
-	dependencies:  [ 'parse' ],
-	requiredInput: undefined as unknown as NormalizeRequiredInput
+	printer:           NormalizePrinters,
+	dependencies:      [ 'parse' ],
+	requiredInput:     undefined as unknown as NormalizeRequiredInput
 } as const satisfies DeepReadonly<IPipelineStep<'normalize', typeof processor>>;

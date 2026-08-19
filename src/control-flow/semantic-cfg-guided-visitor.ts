@@ -4,7 +4,7 @@ import { DataflowAwareCfgGuidedVisitor, type DataflowCfgGuidedVisitorConfigurati
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SyntaxCfgGuidedVisitorConfiguration } from './syntax-cfg-guided-visitor';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type Origin } from '../dataflow/origin/dfg-get-origin';
+import type { Origin } from '../dataflow/origin/dfg-get-origin';
 import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
@@ -27,6 +27,8 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-anal
 import { RNull } from '../r-bridge/lang-4.x/convert-values';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
+import { NodeValue } from '../dataflow/eval/resolve/node-value';
+import { isValue } from '../dataflow/eval/values/r-value';
 
 export interface SemanticCfgGuidedVisitorConfiguration<
 	OtherInfo = NoInfo,
@@ -76,6 +78,19 @@ export class SemanticCfgGuidedVisitor<
 	}
 
 	/**
+	 * The logical the call's only argument resolves to, `undefined` if the call does not take exactly one
+	 * argument or if that argument does not resolve to a single logical.
+	 */
+	protected getBoolArgValue(data: { call: DataflowGraphVertexFunctionCall }): boolean | undefined {
+		if(data.call.args.length !== 1 || data.call.args[0] === EmptyArgument) {
+			return undefined;
+		}
+
+		const value = NodeValue.inGraph.soleOf(data.call.args[0].nodeId, this.config.dfg, this.config.ctx, 'logical', { idMap: this.config.normalizedAst.idMap });
+		return value !== undefined && isValue(value.value) ? Boolean(value.value) : undefined;
+	}
+
+	/**
 	 * See {@link DataflowAwareCfgGuidedVisitor#visitValue} for the base implementation.
 	 * This now dispatches the value to the appropriate event handler based on its type.
 	 */
@@ -96,7 +111,7 @@ export class SemanticCfgGuidedVisitor<
 						node:   astNode as RSymbol<OtherInfo & ParentInformation, typeof RNull>
 					});
 				} else {
-					return this.onSymbolConstant({ vertex: val, node: astNode as RSymbol<OtherInfo & ParentInformation> });
+					return this.onSymbolConstant({ vertex: val, node: astNode });
 				}
 
 		}
@@ -302,7 +317,14 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.DefaultReadAllArgs:
 			case BuiltInProcName.Function:
 			case BuiltInProcName.FunctionDefinition:
+			case BuiltInProcName.StringTemplate:
+			case BuiltInProcName.S7MakeConstructor:
+			case BuiltInProcName.ClassGenerator:
+			case BuiltInProcName.DefineArgument:
+			case BuiltInProcName.Switch:
 				return this.onDefaultFunctionCall({ call });
+			case BuiltInProcName.Load:
+				return this.onLoadCall({ call });
 			default:
 				assertUnreachable(origin);
 		}
@@ -316,7 +338,7 @@ export class SemanticCfgGuidedVisitor<
 
 
 	/**
-	 * A helper function to request the {@link getOriginInDfg|origins} of the given node.
+	 * A helper function to request the {@link Dataflow.origin|origins} of the given node.
 	 */
 	protected getOrigins(id: NodeId): Origin[] | undefined {
 		return Dataflow.origin(this.config.dfg, id);
@@ -728,4 +750,6 @@ export class SemanticCfgGuidedVisitor<
 		}
 		return { target: undefined, source: undefined };
 	}
+
+	protected onLoadCall(_param: { call: DataflowGraphVertexFunctionCall }) {}
 }

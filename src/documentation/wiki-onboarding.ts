@@ -18,14 +18,24 @@ export class WikiOnboarding extends DocMaker<'wiki/Onboarding.md'> {
 - 💖 [Contributing guidelines](${FlowrGithubBaseRef}/flowr/tree/main/.github/CONTRIBUTING.md).\\
   This page also includes information about how to set up **git-lfs** and several **git hooks**.
 
+Once you are set up, these pages explain the parts you are most likely to touch:
+- 🔬 ${ctx.linkPage('wiki/Core')} walks through the pipeline from parsing to the dataflow graph.
+- 🖥️ ${ctx.linkPage('wiki/Interface')} covers the REPL, the server, and the API.
+- 🧪 ${ctx.linkPage('wiki/Linting and Testing')} explains which tests exist and how to run them.
+
 If you have any questions, please check out the ${ctx.linkPage('wiki/FAQ')} first, but if the question
 is not answered there (or in the wiki in general), feel free to ask a question.
 The ${ctx.linkPage('wiki/FAQ')} also includes information about how you can configure your editor.
 
 ## ⌛ TL;DR
 
-The most important steps to get the *flowR* development environment set up (after installing **R** and **Node.js**) can be seen below. For convenience, they can be executed all at once using the following command:
+After installing **R** and **Node.js**, a single command sets everything up:
 ${codeBlock('shell', 'npm run setup:dev')}
+
+It installs the dependencies, checks your **node** version, tells you whether **R** and **git-lfs** are available,
+configures the git hooks, tests them, and closes with the pages and commands you will need next.
+Missing **R** or **git-lfs** are reported as notes instead of aborting the setup, so you can start with the
+${ctx.linkPage('wiki/Engines', '`tree-sitter` engine')} right away and add them later.
 
 If you want to execute the steps manually, please follow the instructions below:
 

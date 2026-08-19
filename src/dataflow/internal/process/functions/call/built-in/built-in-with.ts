@@ -1,21 +1,33 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
-import { processKnownFunctionCall } from '../known-call-handling';
+import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, NseArguments, NseKind } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../../../../../environments/identifier';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
-import { bindArgs, resolveArgToEnvir, routeWrittenToCustomEnv } from './built-in-envir-utils';
+import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
+import { resolveArgToEnvir, routeWrittenToCustomEnv, signatureParamNames } from './built-in-envir-utils';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { patchFunctionCall } from '../common';
 import { EdgeType } from '../../../../../graph/edge';
 import { linkInputs } from '../../../../linker';
 
-/** Formal parameter names for `with(data, expr, ...)` and `within(data, expr, ...)`. */
-const withParams = ['data', 'expr'] as const;
+/** Fallback formal parameter names for `with(data, expr, ...)` / `within(data, expr, ...)` when the signature database has no `base::with`. */
+const withParamsFallback = ['data', 'expr'] as const;
+
+/** Normal call analysis, marking the data-masked arguments (columns of the data) as NSE. */
+function markAsMaskedFallback<OtherInfo>(
+	name:   RSymbol<OtherInfo & ParentInformation>,
+	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
+): DataflowInformation {
+	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With });
+	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, NseArguments.AllButFirst, { kind: NseKind.DataMasked });
+	return information;
+}
 
 /**
  * Processes `with(data, expr)` and `within(data, expr)`.
@@ -27,8 +39,8 @@ const withParams = ['data', 'expr'] as const;
  * - `with`: writes in `expr` are ephemeral (R's `with` uses a temporary scope and discards them).
  * - `within`: writes in `expr` are persisted back into the tracked envState of `data`.
  *
- * Arguments are resolved using R's standard matching rules ({@link bindArgs}: pmatch for named
- * args, positional fallback), so `with(expr=x, data=e)` and `with(dat=e, x)` are handled correctly.
+ * Arguments are resolved with {@link RFunctionCall.matchArgsToParams}, so `with(expr=x, data=e)` and
+ * `with(dat=e, x)` are handled correctly.
  *
  * Falls back to a normal function-call analysis when the data argument cannot be resolved
  * to a tracked environment.
@@ -43,18 +55,21 @@ export function processWithEnv<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With }).information;
 	}
 
-	const bound = bindArgs(args, withParams);
+	// prefer R's real `base::with` signature from the database, falling back to the known formals when it is absent
+	// use the call's own name (`with` or `within`) qualified to base, so each gets its real signature
+	const bound = RFunctionCall.matchArgsToParams(args, signatureParamNames(data, Identifier.make(Identifier.getName(name.content), PkgName.Base), withParamsFallback));
 	const dataArg = bound.get('data');
 	const exprArg = bound.get('expr');
 
-	if(dataArg === undefined || dataArg === EmptyArgument || dataArg.value === undefined ||
-	   exprArg === undefined || exprArg === EmptyArgument || exprArg.value === undefined) {
-		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With }).information;
+	// when we cannot resolve the data to a tracked environment, `expr` is still data-masked: its symbols name
+	// columns of `data`, not variables in scope, so mark the non-data arguments as non-standard-evaluated
+	if(dataArg?.value === undefined || exprArg?.value === undefined) {
+		return markAsMaskedFallback(name, args, rootId, data);
 	}
 
 	const envirResolution = resolveArgToEnvir(dataArg, data);
 	if(!envirResolution) {
-		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With }).information;
+		return markAsMaskedFallback(name, args, rootId, data);
 	}
 
 	/* evaluate data arg in the caller's scope (it is just read) */

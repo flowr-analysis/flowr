@@ -1,7 +1,9 @@
 import type { BuiltInProcessorMapper, ConfigOfBuiltInMappingName } from './built-in';
+import type { BuiltInEvalName } from './built-in-eval-name';
 import { BuiltIns } from './built-in';
 import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { Identifier } from './identifier';
+import type { BuiltInFnInfo } from './built-in-props';
 
 export interface BaseBuiltInDefinition {
 	/** The type of the built-in configuration */
@@ -22,6 +24,9 @@ export interface BuiltInConstantDefinition<Value> extends BaseBuiltInDefinition 
 	readonly value: Value;
 }
 
+/** The config a processor accepts, `unknown` for the ones taking none (they still carry {@link BuiltInFnInfo}). */
+type ConfigOfProcessor<P extends keyof typeof BuiltInProcessorMapper> = ConfigOfBuiltInMappingName<P> extends undefined ? unknown : ConfigOfBuiltInMappingName<P>;
+
 /**
  * Define a built-in function (like `print` or `c`) and the processor to use.
  * @template BuiltInProcessor - The processor to use for this function
@@ -29,8 +34,9 @@ export interface BuiltInConstantDefinition<Value> extends BaseBuiltInDefinition 
 export interface BuiltInFunctionDefinition<BuiltInProcessor extends keyof typeof BuiltInProcessorMapper> extends BaseBuiltInDefinition {
 	readonly type:         'function';
 	readonly processor:    BuiltInProcessor;
-	readonly config?:      ConfigOfBuiltInMappingName<BuiltInProcessor> & { libFn?: boolean };
-	readonly evalHandler?: string
+	readonly config?:      ConfigOfProcessor<BuiltInProcessor> & BuiltInFnInfo & { libFn?: boolean };
+	/** the value solver to use when folding a call to this function to a constant, see {@link BuiltInEvalHandlerMapper} */
+	readonly evalHandler?: BuiltInEvalName
 }
 
 /**
@@ -40,10 +46,14 @@ export interface BuiltInFunctionDefinition<BuiltInProcessor extends keyof typeof
 export interface BuiltInReplacementDefinition extends BaseBuiltInDefinition {
 	readonly type:     'replacement';
 	readonly suffixes: ('<<-' | '<-')[];
-	readonly config:   { readIndices: boolean, constructName?: 's7' };
+	readonly config:   BuiltInFnInfo & { readIndices: boolean, constructName?: 's7' };
 }
 
 export type BuiltInDefinition<T extends keyof typeof BuiltInProcessorMapper = keyof typeof BuiltInProcessorMapper> = BuiltInConstantDefinition<unknown> | BuiltInFunctionDefinition<T> | BuiltInReplacementDefinition;
+
+type AnyBuiltInFunctionDefinition = { [P in keyof typeof BuiltInProcessorMapper]: BuiltInFunctionDefinition<P> }[keyof typeof BuiltInProcessorMapper];
+/** Like {@link BuiltInDefinition} but one member per processor, so a config key of a foreign processor is rejected instead of silently allowed. */
+export type AnyBuiltInDefinition = BuiltInConstantDefinition<unknown> | AnyBuiltInFunctionDefinition | BuiltInReplacementDefinition;
 /**
  * @see DefaultBuiltinConfig
  */
@@ -56,7 +66,7 @@ export type BuiltInDefinitions<Keys extends (keyof typeof BuiltInProcessorMapper
 export function getDefaultBuiltInDefinitions(): BuiltIns {
 	const builtIns = new BuiltIns();
 	for(const definition of DefaultBuiltinConfig) {
-		builtIns.registerBuiltInDefinition(definition as BuiltInDefinition);
+		builtIns.registerBuiltInDefinition(definition);
 	}
 	return builtIns;
 }

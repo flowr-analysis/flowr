@@ -1,4 +1,5 @@
-import { type DataflowProcessorInformation } from '../../../../../processor';
+import type { DataflowProcessorInformation } from '../../../../../processor';
+import { RValue } from '../../../../../eval/values/r-value';
 import type { DataflowInformation, ControlDependency } from '../../../../../info';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -14,6 +15,7 @@ import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
 import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
+import type { BrandedIdentifier, InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { Environment, EnvType, REnvironment } from '../../../../../environments/environment';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
@@ -21,15 +23,17 @@ import type { FlowrAnalyzerContext } from '../../../../../../project/context/flo
 import { EdgeType } from '../../../../../graph/edge';
 import { isNotUndefined, isUndefined } from '../../../../../../util/assert';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
-import { valueSetGuard } from '../../../../../eval/values/general';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { Package } from '../../../../../../project/plugins/package-version-plugins/package';
+import { attachedAlongside } from '../../../../../../project/attached-packages';
 import { getCallables, type NamespaceInfo } from '../../../../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { convertFnArguments } from '../common';
 import { pMatch } from '../../../../linker';
 import type { Lift, TernaryLogical } from '../../../../../eval/values/r-value';
 import { VertexType } from '../../../../../graph/vertex';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { baseRPackages } from '../../../../../../util/r-base-packages';
+import { resolveAttachPosition } from './built-in-envir-utils';
 
 /** Controls how {@link processLibrary} brings a package into scope. */
 export interface LibraryProcessorConfig {
@@ -52,6 +56,8 @@ interface AttachSpec {
 	readonly exclude?:       ReadonlySet<string>;
 	/** attach every export (`import::from` `.all`, `box::use(pkg[...])`) */
 	readonly all?:           boolean;
+	/** `library(pkg, pos = 3)`: the `search()` position to attach at, {@link DefaultAttachPosition} if unset */
+	readonly pos?:           number;
 }
 
 /**
@@ -72,15 +78,18 @@ export function processLibrary<OtherInfo>(
 		return processUse(name, args, rootId, data);
 	}
 	/* parse the import selection before the library flow rewrites `args` below */
-	const spec: AttachSpec = config.fromImports ? parseFromSpec(args) : { namespaceOnly: config.namespaceOnly };
+	const parsedSpec: AttachSpec = config.fromImports ? parseFromSpec(args) : { namespaceOnly: config.namespaceOnly };
 	const params = {
 		'package':        'pkg',
-		'character.only': 'char'
+		'character.only': 'char',
+		/* last, so the positional fallback keeps its previous order */
+		'pos':            'pos'
 	};
-	const resolveArgs = { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx };
 	const argMaps = pMatch(convertFnArguments(args), params);
 	const packageId = Array.from(new Set(argMaps.get('pkg')));
 	const charId = Array.from(new Set(argMaps.get('char')));
+	/* `import::from` has no `pos`; its extra arguments name exports */
+	const spec: AttachSpec = { ...parsedSpec, pos: config.fromImports ? undefined : resolveAttachPosition(argMaps.get('pos')?.[0], data) };
 
 	let namesToLoad = packageId.map(v => RArgument.getValue<OtherInfo & ParentInformation>(args, v)) as RNode<OtherInfo & ParentInformation>[];
 	//check if library name provided
@@ -96,7 +105,7 @@ export function processLibrary<OtherInfo>(
 	}
 	let isCharacterOnly: Lift<TernaryLogical> = config.characterOnly === true;
 	if(!config.characterOnly && charId.length >= 1){
-		const values = valueSetGuard(resolveIdToValue(charId[0], resolveArgs));
+		const values = NodeValue.setOf(charId[0], data);
 		if(values?.type === 'set' && values?.elements.length > 0) {
 			let hasTrue = 0;
 			let hasFalse = 0;
@@ -131,11 +140,12 @@ export function processLibrary<OtherInfo>(
 	//case: true or maybe
 	if(isCharacterOnly){
 		for(const nameToLoad of namesToLoad){
-			const values = valueSetGuard(resolveIdToValue(nameToLoad.info.id, resolveArgs));
+			const values = NodeValue.setOf(nameToLoad.info.id, data);
 			if(values?.type === 'set' && values.elements.length !== 0){
 				for(const elem of values.elements){
-					if(elem.type === 'string' && 'str' in elem.value){
-						packetName.push(elem.value.str);
+					const name = RValue.stringOf(elem);
+					if(name !== undefined){
+						packetName.push(name);
 					}
 				}
 			}
@@ -181,11 +191,16 @@ export function processLibrary<OtherInfo>(
 	}).information;
 
 	for(const p of packetName){
-		const dependency = data.ctx.deps.getDependency(p);
+		const dependency = data.ctx.deps.loadDependency(p);
 		if(dependency){
 			linkLibrary(dependency, info, rootId, data, spec);
 		} else {
-			info.graph.markIdForUnknownSideEffects(rootId);
+			if(!data.ctx.env.knowsPackage(p)){
+				info.graph.markIdForUnknownSideEffects(rootId);
+			}
+			if(info.environment.level >= 0){
+				info.environment = recordUnresolvedLibraryLoad(info.environment, p, rootId, spec.pos, data.cds);
+			}
 		}
 	}
 	if(packetName.length === 0){
@@ -345,6 +360,49 @@ export function attachExportVertex(graph: DataflowGraph, builtInId: NodeId, envi
 	}, ctx.env.makeCleanEnv());
 }
 
+/** Reserved marker binding recording an unresolved `library()`/`require()` load; the leading space cannot collide with a real export name. */
+const libraryLoadMarker = ' library-load' as BrandedIdentifier;
+
+/**
+ * Record a syntactically known but database-unresolved package load below the global environment: a bare
+ * {@link EnvType.LoadedNamespace} layer for `pack` carrying only the reserved {@link libraryLoadMarker} whose
+ * `definedAt` is the load call. This lets an explicit `pack::fn` link back via {@link loadNodesForNamespace}
+ * even without a signature database.
+ */
+function recordUnresolvedLibraryLoad(envInfo: REnvironmentInformation, pack: string, rootId: NodeId, pos?: number, cds?: readonly ControlDependency[]): REnvironmentInformation {
+	const layer = new Environment(envInfo.current).asLibrary(pack, EnvType.LoadedNamespace).define({
+		name:      Identifier.make(libraryLoadMarker, pack),
+		type:      ReferenceType.Function,
+		nodeId:    rootId,
+		definedAt: rootId,
+		cds:       cds?.slice()
+	});
+	return { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, layer, layer, pos) };
+}
+
+/**
+ * The load calls (`library()`/`require()`) that brought package `pack` into scope without a database, collected from
+ * the {@link libraryLoadMarker} of every matching {@link EnvType.LoadedNamespace} layer below the global environment.
+ */
+export function loadNodesForNamespace(env: REnvironmentInformation, pack: string): NodeId[] {
+	const nodes: NodeId[] = [];
+	if(env.current.builtInEnv){
+		return nodes;   // resolving straight in the built-in environment (`get(x, envir = baseenv())`): no search path above it
+	}
+	for(let e: Environment = REnvironment.findGlobal(env.current).parent; e.t !== undefined && !e.builtInEnv; e = e.parent){
+		if(e.n !== pack){
+			continue;
+		}
+		for(const def of e.memory.get(libraryLoadMarker) ?? []){
+			const definedAt = (def as Partial<InGraphIdentifierDefinition>).definedAt;
+			if(definedAt !== undefined){
+				nodes.push(definedAt);
+			}
+		}
+	}
+	return nodes;
+}
+
 function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, spec: AttachSpec = {}) {
 	if(info.environment.level < 0 || isUndefined(dependency.namespaceInfo)){
 		return;
@@ -356,9 +414,9 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 	}
 	// by default only the environment carries the exports; their built-in vertices are materialized on
 	// demand when a call resolves to one (see attachExportVertex). Eager mode registers them all upfront.
-	if(data.ctx.config.solver.pkgdb.eagerlyLoadExports){
+	if(data.ctx.config.solver.sigdb.eagerlyLoadExports){
 		for(const { exported: func } of selectExports(getCallables(dependency.namespaceInfo), spec)){
-			const builtInId = NodeId.toBuiltIn(Package.funcIdentif(pack, func));
+			const builtInId = NodeId.fromPkgFn(pack, func);
 			attachExportVertex(info.graph, builtInId, info.environment, data.ctx, data.cds);
 			info.graph.addEdge(builtInId, rootId, EdgeType.Reads | EdgeType.Calls);
 		}
@@ -386,7 +444,7 @@ function exportDefinition(pack: string, exp: AttachedExport, definedAt: NodeId =
 	return {
 		name:   Identifier.make(exp.as, pack),
 		type:   ReferenceType.Function,
-		nodeId: NodeId.toBuiltIn(Package.funcIdentif(pack, exp.exported)),
+		nodeId: NodeId.fromPkgFn(pack, exp.exported),
 		definedAt,
 	} as const;
 }
@@ -397,7 +455,8 @@ function isSubsetAttach(spec: AttachSpec): boolean {
 }
 
 /**
- * Attaches `dependency`'s exports below the global environment (see {@link attachPackageBelowGlobal}) and returns the
+ * Attaches `dependency`'s exports at `spec`'s {@link AttachSpec#pos|search position} (below the global environment by
+ * default, see {@link REnvironment.attachAt|attachPackageAt}) and returns the
  * enriched environment (the graph is untouched). Used by `library()`, `import::from`, `box::use`, `requireNamespace`,
  * and the transitive side-effect propagation.
  */
@@ -409,20 +468,21 @@ export function attachDependencyToEnvironment(dependency: Package, envInfo: REnv
 	const exports = selectExports(getCallables(dependency.namespaceInfo), spec);
 	if(spec.namespaceOnly || isSubsetAttach(spec)){
 		const layerType = spec.namespaceOnly ? EnvType.LoadedNamespace : EnvType.Namespace;
-		let layer = new Environment(envInfo.current).asLibrary(pack, layerType);
-		for(const exp of exports){
-			layer = layer.define(exportDefinition(pack, exp, definedAt));
-		}
-		return { level: envInfo.level, current: REnvironment.attachBelowGlobal(envInfo.current, layer, layer) };
+		const layer = new Environment(envInfo.current).asLibrary(pack, layerType)
+			.defineAll(exports.map(exp => exportDefinition(pack, exp, definedAt)));
+		return { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, layer, layer, spec.pos) };
 	}
 	// full attach: imports layer at the bottom, namespace (exports) layer on top
 	let importsEnv = new Environment(envInfo.current).asLibrary(pack, EnvType.Imports);
 	importsEnv = recImports(importsEnv, dependency.namespaceInfo, ctx, new Set());
-	let namespaceEnv = new Environment(importsEnv).asLibrary(pack, EnvType.Namespace);
-	for(const exp of exports){
-		namespaceEnv = namespaceEnv.define(exportDefinition(pack, exp, definedAt));
-	}
-	return { level: envInfo.level, current: REnvironment.attachBelowGlobal(envInfo.current, namespaceEnv, importsEnv) };
+	const namespaceEnv = new Environment(importsEnv).asLibrary(pack, EnvType.Namespace)
+		.defineAll(exports.map(exp => exportDefinition(pack, exp, definedAt)));
+	const attached = { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, namespaceEnv, importsEnv, spec.pos) };
+	/* whatever R puts on the search path with it, `pack` first so a dependency cycle stays finite (the guard above stops it) */
+	return attachedAlongside(pack, ctx.deps.signatureSources()).reduce((env, alongside) => {
+		const dependency = ctx.deps.getDependency(alongside);
+		return dependency === undefined ? env : attachDependencyToEnvironment(dependency, env, ctx, spec, definedAt);
+	}, attached);
 }
 
 /** A namespace-only load is subsumed by any layer for `pack`; a full attach ignores a mere {@link EnvType.LoadedNamespace}. */
@@ -443,6 +503,109 @@ function isAttached(env: Environment, pack: string, namespaceOnly?: boolean): bo
 	return false;
 }
 
+/** Immutable base-layer chains, shared across analyses (layers clone before mutating); building one is O(N^2) in exports, so cache and reparent. */
+const baseNamespaceLayerCache = new Map<string, REnvironmentInformation['current']>();
+
+function baseNamespaceCacheKey(ctx: FlowrAnalyzerContext, basePackages: readonly string[]): string {
+	return `${String(ctx.env.getCleanEnvFingerprint())}|${ctx.resolvedRVersion}|${basePackages.join(',')}|${ctx.deps.baseRSourceFingerprint()}`;
+}
+
+/**
+ * Attach the {@link baseRPackages|base-R} exports below the global so bare base calls resolve without `library()`.
+ * Names with a registered built-in are skipped, it is a no-op when no database resolves a base package, and the
+ * built layer is cached per {@link baseNamespaceCacheKey}.
+ */
+export function attachBaseRNamespaces(env: REnvironmentInformation, ctx: FlowrAnalyzerContext): REnvironmentInformation {
+	if(!ctx.config.solver.sigdb.linkBaseR || !ctx.deps.hasBaseRSource()){
+		return env;
+	}
+	const basePackages = ctx.config.project.basePackages ?? baseRPackages(ctx.resolvedRVersion);
+	const key = baseNamespaceCacheKey(ctx, basePackages);
+	const cached = baseNamespaceLayerCache.get(key);
+	if(cached !== undefined){
+		env.current.parent = cached;
+		return env;
+	}
+	let built = env;
+	let builtinNames: ReadonlySet<string> | undefined;
+	for(const pkg of basePackages){
+		const dependency = ctx.deps.getDependency(pkg);
+		if(dependency?.namespaceInfo === undefined){
+			continue;
+		}
+		builtinNames ??= new Set([...ctx.env.builtInEnvironment.memory.keys()].map(String));
+		built = attachDependencyToEnvironment(dependency, built, ctx, { exclude: builtinNames }, NodeId.toBuiltIn(pkg));
+	}
+	if(built.current.parent !== env.current.parent){
+		baseNamespaceLayerCache.set(key, built.current.parent);
+	}
+	return built;
+}
+
+/**
+ * Attach the exports of the project's declared `DESCRIPTION` dependencies (Imports/Depends, registered by the
+ * package-version plugins into {@link FlowrAnalyzerContext.deps|deps}) below the global so their bare calls resolve
+ * without an explicit `library()`, mirroring base-R auto-attach. A dependency whose {@link Package.namespaceInfo|
+ * namespaceInfo} no database resolves is skipped, and a package base-R or an earlier iteration already attached is a
+ * no-op via the {@link isAttached} guard inside {@link attachDependencyToEnvironment}.
+ */
+export function attachDeclaredDependencies(env: REnvironmentInformation, ctx: FlowrAnalyzerContext): REnvironmentInformation {
+	if(!ctx.config.solver.sigdb.linkDescriptionDependencies){
+		return env;
+	}
+	let built = env;
+	for(const declared of ctx.deps.getDependencies()){
+		// getDependency triggers lazy export resolution the raw declared record may still be missing
+		const dependency = ctx.deps.getDependency(declared.name);
+		if(dependency?.namespaceInfo === undefined){
+			continue;
+		}
+		built = attachDependencyToEnvironment(dependency, built, ctx, {}, NodeId.toBuiltIn(dependency.name));
+	}
+	return built;
+}
+
+/** attach the analyzed package's own `NAMESPACE importFrom(...)` symbols (by their bare name) below the global, so a bare imported call resolves to its source package */
+export function attachProjectImports(env: REnvironmentInformation, ctx: FlowrAnalyzerContext): REnvironmentInformation {
+	const own = ctx.deps.getDependency('current')?.namespaceInfo;
+	if(own === undefined || own.importedPackages.size === 0){
+		return env;
+	}
+	const layerNamespace = 'current';
+	const toDefine: (InGraphIdentifierDefinition & { name: Identifier })[] = [];
+	for(const [pkg, funcs] of own.importedPackages){
+		// an explicit `importFrom(pkg, a, b)` names the symbols directly; `import(pkg)` needs the package's own export list
+		let names: readonly string[];
+		if(funcs === 'all'){
+			const imported = ctx.deps.getDependency(pkg)?.namespaceInfo;
+			if(imported === undefined){
+				continue;
+			}
+			names = getCallables(imported);
+		} else {
+			names = funcs;
+		}
+		for(const fn of names){
+			toDefine.push({
+				name:      Identifier.make(fn, layerNamespace),
+				type:      ReferenceType.Function,
+				nodeId:    NodeId.fromPkgFn(pkg, fn),
+				definedAt: NodeId.toBuiltIn(pkg)
+			});
+		}
+	}
+	if(toDefine.length === 0){
+		return env;
+	}
+	const layer = new Environment(env.current).asLibrary(layerNamespace, EnvType.Imports).defineAll(toDefine);
+	return { level: env.level, current: REnvironment.attachAt(env.current, layer, layer) };
+}
+
+/** attach every project-level environment layer in order: base R namespaces, the project's own `importFrom` symbols, then its declared dependencies */
+export function attachProject(env: REnvironmentInformation, ctx: FlowrAnalyzerContext): REnvironmentInformation {
+	return attachDeclaredDependencies(attachProjectImports(attachBaseRNamespaces(env, ctx), ctx), ctx);
+}
+
 function recImports(importsEnv: Environment, namespaceInfo: NamespaceInfo, ctx: FlowrAnalyzerContext, alreadyImportedAll: Set<string>){
 	for(const imp of namespaceInfo.importedPackages){
 		const importedDependency = ctx.deps.getDependency(imp[0]);
@@ -458,16 +621,24 @@ function recImports(importsEnv: Environment, namespaceInfo: NamespaceInfo, ctx: 
 		if(alreadyImportedAll.has(importedDependency.name)){
 			continue;
 		}
+		/* collect first and define in one go, as defining one by one copies the (growing) memory every time */
+		const toDefine: (InGraphIdentifierDefinition & { name: Identifier })[] = [];
+		const queued = new Set<string>();
 		for(const func of funcToImport){
-			if(importsEnv.memory.has(Package.funcIdentif(importedDependency.name, func))){
+			const identifier = Package.functionIdentifier(importedDependency.name, func);
+			if(importsEnv.memory.has(identifier) || queued.has(identifier)){
 				continue;
 			}
-			importsEnv = importsEnv.define({
-				name:      Identifier.make(Package.funcIdentif(importedDependency.name, func), importsEnv.n),
+			queued.add(identifier);
+			toDefine.push({
+				name:      Identifier.make(identifier, importsEnv.n),
 				type:      ReferenceType.Function,
-				nodeId:    NodeId.toBuiltIn(Package.funcIdentif(importedDependency.name, func)),
+				nodeId:    NodeId.fromPkgFn(importedDependency.name, func),
 				definedAt: NodeId.toBuiltIn(importedDependency.name)
 			});
+		}
+		if(toDefine.length > 0){
+			importsEnv = importsEnv.defineAll(toDefine);
 		}
 		if(imp[1] === 'all'){
 			alreadyImportedAll.add(importedDependency.name);

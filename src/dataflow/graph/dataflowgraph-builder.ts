@@ -6,7 +6,7 @@ import {
 	DataflowGraph,
 	FunctionArgument
 } from './graph';
-import { type IEnvironment, type REnvironmentInformation } from '../environments/environment';
+import type { IEnvironment, REnvironmentInformation } from '../environments/environment';
 import { type DataflowGraphVertexFunctionDefinition,
 	type DataflowGraphVertexArgument,
 	type DataflowGraphVertexAstLink,
@@ -22,7 +22,6 @@ import { ExitPointType } from '../info';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { DefaultBuiltinConfig, getDefaultProcessor } from '../environments/default-builtin-config';
 import type { FlowrSearchLike } from '../../search/flowr-search-builder';
-import { runSearch } from '../../search/flowr-search-executor';
 import { guard } from '../../util/assert';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { contextFromInput } from '../../project/context/flowr-analyzer-context';
@@ -84,7 +83,7 @@ export class DataflowGraphBuilder<
 				in:                subflow.in.map(o => ({ ...o, nodeId: NodeId.normalize(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })) })),
 				unknownReferences: subflow.unknownReferences.map(o => ({ ...o, nodeId: NodeId.normalize(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })) })),
 				hooks:             subflow.hooks ?? [],
-			} as DataflowFunctionFlowInformation,
+			},
 			mode:       info?.mode,
 			exitPoints: exitPoints.map(e => typeof e === 'object' ? ({ ...e, nodeId: NodeId.normalize(e.nodeId), cds: e.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })) }) :
 				({ nodeId: NodeId.normalize(e), type: ExitPointType.Default, cds: undefined })
@@ -236,6 +235,13 @@ export class DataflowGraphBuilder<
 	}
 
 	private async queryHelper(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider, type: EdgeType) {
+		/*
+		 * the search executor reaches back into the dataflow graph (via the queries and the linter), so importing it
+		 * up here would make this cycle load-bearing: whoever is loaded first sees the other half-initialized, which
+		 * breaks at module-evaluation time (a subclass extending an `undefined` base). We only need it once a query
+		 * is actually run, which is long after every module is up.
+		 */
+		const { runSearch } = await import('../../search/flowr-search-executor');
 		let fromId: NodeId;
 		if('nodeId' in from) {
 			fromId = from.nodeId;

@@ -6,7 +6,7 @@ import { decorateLabelContext, dropTestLabel, modifyLabelName, type TestLabel, t
 import { printAsBuilder } from './dataflow/dataflow-builder-printer';
 import { RShell } from '../../../src/r-bridge/shell';
 import type { NoInfo, RNode } from '../../../src/r-bridge/lang-4.x/ast/model/model';
-import { type fileProtocol, type RParseRequests } from '../../../src/r-bridge/retriever';
+import type { fileProtocol, RParseRequests } from '../../../src/r-bridge/retriever';
 import {
 	type AstIdMap,
 	deterministicCountingIdGenerator,
@@ -24,7 +24,7 @@ import {
 } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type DataflowGraph } from '../../../src/dataflow/graph/graph';
+import type { DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import {
 	SlicingCriterion,
@@ -70,7 +70,7 @@ let testShell: RShell | undefined = undefined;
 
 /**
  * Produces a shell session for you, can be used within a `describe` block.
- * Please use **describe.sequential** as the RShell does not fare well with parallelization.
+ * Pass `{ concurrent: false }` to the `describe`, the RShell does not fare well with parallelization.
  * @param fn       - function to use the shell
  * @param newShell - whether to create a new shell or reuse a global shell instance for the tests
  * @see {@link withTreeSitter}
@@ -369,7 +369,7 @@ interface DataflowTestConfiguration extends TestConfigurationWithOutput {
 }
 
 function cropIfTooLong(str: string): string {
-	return str.length > 100 ? str.substring(0, 100) + '...' : str;
+	return str.length > 100 ? str.slice(0, 100) + '...' : str;
 }
 
 /**
@@ -434,7 +434,7 @@ export function assertDataflow(
 			if(userConfig?.mustNotHaveVertices) {
 				if(userConfig?.resolveIdsAsCriterion) {
 					userConfig.mustNotHaveVertices = new Set(Array.from(userConfig.mustNotHaveVertices).map(id => {
-						return SlicingCriterion.tryParse(id as SlicingCriterion, normalize.idMap) ?? id;
+						return SlicingCriterion.tryParse(id, normalize.idMap) ?? id;
 					}));
 				}
 				for(const id of userConfig.mustNotHaveVertices) {
@@ -444,8 +444,8 @@ export function assertDataflow(
 			if(userConfig?.mustNotHaveEdges) {
 				if(userConfig?.resolveIdsAsCriterion) {
 					userConfig.mustNotHaveEdges = userConfig.mustNotHaveEdges.map(([from, to]) => {
-						const resolvedFrom = SlicingCriterion.tryParse(from as SlicingCriterion, normalize.idMap) ?? from;
-						const resolvedTo = SlicingCriterion.tryParse(to as SlicingCriterion, normalize.idMap) ?? to;
+						const resolvedFrom = SlicingCriterion.tryParse(from, normalize.idMap) ?? from;
+						const resolvedTo = SlicingCriterion.tryParse(to, normalize.idMap) ?? to;
 						return [resolvedFrom, resolvedTo] as [NodeId, NodeId];
 					});
 				}
@@ -547,6 +547,8 @@ interface TestCaseParams {
 	flowrConfig:          FlowrConfig,
 	/** The direction of the slice, defaults to forward */
 	sliceDirection?:      SliceDirection
+	/** Continue backward slicing past a function-definition boundary, including the definition's binding and call sites */
+	includeCallees?:      boolean
 }
 
 /**
@@ -638,11 +640,12 @@ export function assertSliced(
 				context.addFiles(testConfig.addFiles);
 			}
 			return await createSlicePipeline(parser, {
-				getId:        getId(),
-				context:      context,
-				criterion:    criteria,
-				autoSelectIf: testConfig?.autoSelectIf,
-				direction:    testConfig?.sliceDirection
+				getId:          getId(),
+				context:        context,
+				criterion:      criteria,
+				autoSelectIf:   testConfig?.autoSelectIf,
+				direction:      testConfig?.sliceDirection,
+				includeCallees: testConfig?.includeCallees
 			}).allRemainingSteps();
 		}
 		function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, printError: boolean) {

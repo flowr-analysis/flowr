@@ -7,7 +7,7 @@ import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import { criteriaQueryCompleter, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { SourceLocation } from '../../../util/range';
 
 /**
@@ -30,11 +30,12 @@ function inspectHoLineParser(_output: ReplOutput, line: readonly string[], _conf
 			type:   'inspect-higher-order',
 			filter: criteria
 		},
-		rCode: criteria ? line[1] : line[0]
+		rCode: queryLineCode(line, criteria ? 1 : 0)
 	};
 }
 
 export const InspectHigherOrderQueryDefinition = {
+	title:           'Inspect Higher-Order Functions Query',
 	executor:        executeHigherOrderQuery,
 	asciiSummarizer: async(formatter, processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'inspect-higher-order'>['inspect-higher-order'];
@@ -48,6 +49,7 @@ export const InspectHigherOrderQueryDefinition = {
 	},
 	fromLine:  inspectHoLineParser,
 	completer: criteriaQueryCompleter,
+	syntax:    '@inspect-higher-order [(<crit>;...)] <code | file://path>',
 	schema:    Joi.object({
 		type:   Joi.string().valid('inspect-higher-order').required().description('The type of the query.'),
 		filter: Joi.array().items(Joi.string().required()).optional().description('If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered.')

@@ -7,22 +7,25 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { VisitingQueue } from '../../../slicing/static/visiting-queue';
 import { guard } from '../../../util/assert';
 import type { BuiltInIdentifierConstant } from '../../environments/built-in';
-import { type IEnvironment, type REnvironmentInformation } from '../../environments/environment';
+import type { IEnvironment, REnvironmentInformation } from '../../environments/environment';
 import { Identifier, ReferenceType } from '../../environments/identifier';
-import { resolveByName, resolveByNameAnyType } from '../../environments/resolve-by-name';
 import { DfEdge, EdgeType } from '../../graph/edge';
+import { RForLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import type { DataflowGraph } from '../../graph/graph';
 import { onReplacementOperator, type ReplacementOperatorHandlerArgs } from '../../graph/unknown-replacement';
 import { onUnknownSideEffect } from '../../graph/unknown-side-effect';
-import { isValueVertex, VertexType } from '../../graph/vertex';
-import { valueFromRNodeConstant, valueFromTsValue } from '../values/general';
-import { Bottom, isTop, type Lift, Top, type Value, type ValueSet } from '../values/r-value';
+import { ValueVertex, VertexType, FunctionDefinitionVertex, FunctionCallVertex } from '../../graph/vertex';
+import { valueFromRNodeConstant, valueFromTsValue, valueSetGuard } from '../values/general';
+import { Bottom, isTop, isValue, type Lift, Top, type Value, type ValueSet } from '../values/r-value';
 import { setFrom } from '../values/sets/set-constants';
 import { resolveNode } from './resolve';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RLoopConstructs, RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
+import { Resolve } from '../../environments/resolve-helper';
+import { NodeValue } from './node-value';
+import { NoEdges } from '../../graph/graph';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
 
@@ -53,12 +56,14 @@ export interface ResolveInfo {
 }
 
 function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
-	const identifier = recoverName(sourceId, dataflow.idMap);
+	const vertex = dataflow.getVertex(sourceId);
+	/* the lexeme of an infix call like `a %% b` is the whole expression, so we prefer the effective name of the vertex */
+	const identifier = FunctionCallVertex.is(vertex) ? vertex.name : recoverName(sourceId, dataflow.idMap);
 	if(identifier === undefined) {
 		return undefined;
 	}
 
-	const defs = resolveByName(identifier, environment, ReferenceType.Function);
+	const defs = Resolve.byNameAndType(identifier, environment, ReferenceType.Function);
 	if(defs?.length !== 1) {
 		return undefined;
 	}
@@ -75,7 +80,7 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 		return undefined;
 	}
 
-	const defs = resolveByNameAnyType(identifier, environment);
+	const defs = Resolve.byName(identifier, environment);
 	if(defs === undefined) {
 		return undefined;
 	}
@@ -118,7 +123,7 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 		const info = dataflow.getVertex(sourceId);
 		if(info === undefined) {
 			return undefined;
-		} else if(info.tag === VertexType.FunctionDefinition) {
+		} else if(FunctionDefinitionVertex.is(info)) {
 			definitions.add(sourceId);
 			continue;
 		}
@@ -152,6 +157,7 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
  * @param resolve            - Variable resolve mode
  * @param ctx                - Context used for clean environment
  * @param blocked            - If set, the ids that should not be considered during resolution (=&gt;top)
+ * @useInstead {@link Resolve.toValue}
  */
 export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true, ctx, resolve = ctx.config.solver.variables, blocked }: ResolveInfo): ResolveResult {
 	blocked ??= new Set<NodeId>();
@@ -169,16 +175,14 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 
 	switch(node.type) {
 		case RType.Argument:
-			if(node.value) {
-				return resolveIdToValue(node.value.info.id, { environment, graph, idMap, full, resolve, ctx, blocked });
-			}
-		// eslint-disable-next-line no-fallthrough
+			/* a missing argument (`f(x=)`) carries no value, and it is no symbol to resolve either */
+			return node.value ? resolveIdToValue(node.value.info.id, { environment, graph, idMap, full, resolve, ctx, blocked }) : Top;
 		case RType.Symbol:
 			if(full) {
 				if(environment) {
 					return trackAliasInEnvironments(Identifier.toString((node as RSymbol).content), environment, { idMap, resolve, ctx, graph, blocked });
 				} else if(graph && resolve === VariableResolve.Alias) {
-					return trackAliasesInGraph(node.info.id, graph, ctx, idMap);
+					return trackAliasesInGraph(node.info.id, graph, ctx, idMap, blocked);
 				}
 			}
 			return Top;
@@ -187,6 +191,7 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 		case RType.FunctionCall:
 		case RType.BinaryOp:
 		case RType.UnaryOp:
+		case RType.ExpressionList:
 			return setFrom(resolveNode({
 				resolve, node, ctx, environment, graph, idMap, blocked
 			}));
@@ -197,6 +202,25 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 		default:
 			return Top;
 	}
+}
+
+/** Resolves an id to a single constant string value, or `undefined` if it is not a unique string constant. */
+/**
+ * @useInstead {@link Resolve.toSingleString}
+ */
+export function resolveIdToSingleString(id: NodeId | RNodeWithParent | undefined, info: ResolveInfo): string | undefined {
+	const element = NodeValue.sole(valueSetGuard(resolveIdToValue(id, info)), 'string');
+	return element !== undefined && isValue(element.value) ? element.value.str : undefined;
+}
+
+/** the values one element of a sequence may take: a vector contributes its elements, a set what its members do */
+function iteratedElements(value: Value): readonly Value[] {
+	if(value.type === 'vector' && isValue(value.elements)) {
+		return value.elements.flatMap(iteratedElements);
+	} else if(value.type === 'set' && isValue(value.elements)) {
+		return value.elements.flatMap(iteratedElements);
+	}
+	return [value];
 }
 
 /**
@@ -214,7 +238,7 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, env
 		return Top;
 	}
 
-	const defs = resolveByNameAnyType(identifier, environment);
+	const defs = Resolve.byName(identifier, environment);
 
 	if(defs === undefined) {
 		return Top;
@@ -235,12 +259,25 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, env
 			for(const alias of def.value) {
 				const definitionOfAlias = idMap?.get(alias);
 				if(definitionOfAlias !== undefined) {
-					const value = resolveNode({ resolve, node: definitionOfAlias, ctx, environment, graph, idMap, blocked });
+					/* the environment attempt below marks what it visited as blocked, so the retry starts from a copy */
+					const beforeAttempt = blocked === undefined ? undefined : new Set(blocked);
+					let value = resolveNode({ resolve, node: definitionOfAlias, ctx, environment, graph, idMap, blocked });
+					if(isTop(value) && graph?.unknownSideEffects.size === 0) {
+						/* `x <- x + 1`: the environment holds only the definition we are resolving, so its own operand
+						 * finds nothing there, while the graph still knows which definition that operand reads. Only
+						 * when nothing unknown happened, as then the environment is right to give up */
+						value = resolveNode({ resolve, node: definitionOfAlias, ctx, graph, idMap, blocked: beforeAttempt });
+					}
 					if(isTop(value)) {
 						return Top;
 					}
 
-					values.add(value);
+					/* the sequence is what it runs over, so what the name holds is one of its elements */
+					if(def.iterated) {
+						iteratedElements(value).forEach(e => values.add(e));
+					} else {
+						values.add(value);
+					}
 				}
 			}
 		}
@@ -298,23 +335,59 @@ function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boole
 	return RNode.iterateParents(node, ast).some(RLoopConstructs.is);
 }
 
+/** whether the node is (or sits in) a parameter's default, which any call site may override */
+function isParameterDefault(node: RNodeWithParent | undefined, idMap: AstIdMap): boolean {
+	return node !== undefined && (node.info.role === RoleInParent.ParameterDefaultValue
+		|| RNode.iterateParents(node, idMap).some(p => p.info.role === RoleInParent.ParameterDefaultValue));
+}
+
+/**
+ * The sequence a use of a `for` loop's variable runs over, `undefined` when `id` is no such use. Every
+ * definition it reads has to be that variable: once anything else writes the name (`i <- i + 1` in the body),
+ * the sequence no longer states what the name holds.
+ */
+function iteratedSequence(id: NodeId, graph: DataflowGraph, idMap: AstIdMap): RNodeWithParent | undefined {
+	let sequence: RNodeWithParent | undefined;
+	for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
+		if(!DfEdge.includesType(edge, EdgeType.Reads)) {
+			continue;
+		}
+		const definition = idMap.get(target);
+		const loop = definition?.info.parent === undefined ? undefined : idMap.get(definition.info.parent);
+		if(!RForLoop.is(loop) || loop.variable.info.id !== definition?.info.id
+			|| (sequence !== undefined && sequence.info.id !== loop.vector.info.id)) {
+			return undefined;
+		}
+		sequence = loop.vector;
+	}
+	return sequence;
+}
+
 /**
  * Please use {@link resolveIdToValue}
  *
  * Tries to resolve the value of a node by traversing the dataflow graph
- * @param id    - node to resolve
- * @param ctx - analysis context
- * @param graph - dataflow graph
- * @param idMap - idmap of dataflow graph
+ * @param id      - node to resolve
+ * @param ctx     - analysis context
+ * @param graph   - dataflow graph
+ * @param idMap   - idmap of dataflow graph
+ * @param blocked - the ids already being resolved, so a cyclic definition stops
  * @returns Value of node or Top/Bottom
  */
-export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, idMap?: AstIdMap): ResolveResult {
+export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, idMap?: AstIdMap, blocked?: Set<NodeId>): ResolveResult {
 	if(!graph.get(id)) {
 		return Bottom;
 	}
 
 	idMap ??= graph.idMap;
 	guard(idMap !== undefined, 'The ID map is required to get the lineage of a node');
+
+	/* a loop makes the walk below give up, yet the variable of a `for` is precisely its sequence, elementwise */
+	const sequence = iteratedSequence(id, graph, idMap);
+	if(sequence !== undefined) {
+		const value = resolveIdToValue(sequence.info.id, { graph, idMap, ctx, blocked });
+		return isTop(value) ? Top : setFrom(...iteratedElements(value));
+	}
 
 	const queue = new VisitingQueue(10);
 	const clean = ctx.env.makeCleanEnv();
@@ -324,6 +397,8 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 	let forceTop = false;
 
 	const resultIds: NodeId[] = [];
+	/* what a call the walk ended in folds to, see below */
+	const folded: Value[] = [];
 	while(queue.nonEmpty()) {
 		const { id, baseEnvironment } = queue.next();
 		const vertex = graph.getVertex(id);
@@ -348,47 +423,61 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 			break;
 		}
 		const t = vertex.tag;
+		/* a replacement (`df[1] <- v`) defines its target from just a part of it, so what it is defined by is not
+		 * the value of the target */
+		if(t === VertexType.VariableDefinition && idMap.get(id)?.info.role === RoleInParent.Accessed) {
+			return Top;
+		}
 		if(t === VertexType.Value || t === VertexType.FunctionDefinition) {
 			resultIds.push(id);
 			continue;
 		}
 
 		const isFn = t === VertexType.FunctionCall;
-		const outgoingEdges = graph.outgoingEdges(id) ?? [];
+		const outgoingEdges = graph.outgoingEdges(id) ?? NoEdges;
 		let foundRetuns = false;
 		// travel all read and defined-by edges
-		for(const [targetId, { types }] of outgoingEdges) {
+		for(const [targetId, edge] of outgoingEdges) {
 			if(isFn) {
-				if(types === EdgeType.Returns || types === EdgeType.DefinedByOnCall || types ===  EdgeType.DefinedBy) {
+				if(DfEdge.isOnlyType(edge, EdgeType.Returns) || DfEdge.isOnlyType(edge, EdgeType.DefinedByOnCall) || DfEdge.isOnlyType(edge, EdgeType.DefinedBy)) {
 					queue.add(targetId, baseEnvironment, cleanFingerprint, false);
 				}
-				foundRetuns ||= DfEdge.includesType({ types }, EdgeType.Returns);
+				foundRetuns ||= DfEdge.includesType(edge, EdgeType.Returns);
 				continue;
 			}
 			// currently, they have to be exact!
-			if(types === EdgeType.Reads || types ===  EdgeType.DefinedBy || types === EdgeType.DefinedByOnCall) {
+			if(DfEdge.isOnlyType(edge, EdgeType.Reads) || DfEdge.isOnlyType(edge, EdgeType.DefinedBy) || DfEdge.isOnlyType(edge, EdgeType.DefinedByOnCall)) {
 				queue.add(targetId, baseEnvironment, cleanFingerprint, false);
 			}
 		}
 		if(isFn && !foundRetuns) {
-			return Top;
+			/* a call that hands back none of its arguments has no `Returns` edge to follow, yet the value solver may
+			 * well know what it produces (`p <- file.path("data", "x.csv")`), so we fold it instead of giving up */
+			const node = idMap.get(id);
+			const values = isParameterDefault(node, idMap) ? undefined
+				: valueSetGuard(resolveIdToValue(node, { graph, idMap, ctx, resolve: VariableResolve.Alias, blocked }));
+			if(values === undefined || values.elements.some(isTop)) {
+				return Top;
+			}
+			folded.push(...values.elements);
+			continue;
 		}
 	}
 
-	if(forceTop || resultIds.length === 0) {
+	if(forceTop || (resultIds.length === 0 && folded.length === 0)) {
 		return Top;
 	}
 
-	const values: Set<Value> = new Set<Value>();
+	const values: Set<Value> = new Set<Value>(folded);
 	for(const id of resultIds) {
 		const vertex = graph.getVertex(id);
-		if(isValueVertex(vertex) && vertex.value !== undefined) {
+		if(ValueVertex.is(vertex) && vertex.value !== undefined) {
 			values.add(vertex.value);
 			continue;
 		}
 		const node = idMap.get(id);
 		if(node !== undefined) {
-			if(node.info.role === RoleInParent.ParameterDefaultValue || RNode.iterateParents(node, idMap).some(p => p.info.role === RoleInParent.ParameterDefaultValue)) {
+			if(isParameterDefault(node, idMap)) {
 				return Top;
 			}
 			values.add(valueFromRNodeConstant(node));
@@ -404,13 +493,14 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
  * @param name               - Identifier to resolve
  * @param environment        - Environment to use
  * @returns Value of Constant or Top
+ * @useInstead {@link Resolve.toConstants}
  */
 export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): ResolveResult {
 	if(name === undefined) {
 		return Top;
 	}
 
-	const definitions = resolveByName(name, environment, ReferenceType.Constant);
+	const definitions = Resolve.byNameAndType(name, environment, ReferenceType.Constant);
 	if(definitions === undefined) {
 		return Top;
 	}

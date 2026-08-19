@@ -9,11 +9,12 @@ import { guard } from '../../../../src/util/assert';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
+import { label } from '../../_helper/label';
 
 describe('Dataflow', withTreeSitter(ts => {
-	describe('getOriginInDfg', () => {
-		function chk(code: string, expected: Record<SlicingCriterion, readonly Origin[] | undefined>): void  {
-			describe(code, () => {
+	describe('Dataflow.origin', () => {
+		function chk(code: string, expected: Record<SlicingCriterion, readonly Origin[] | undefined>, name = code): void  {
+			describe(name, () => {
 				let analysis: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
 				beforeAll(async() => {
 					analysis = await createDataflowPipeline(ts, {
@@ -109,16 +110,16 @@ describe('Dataflow', withTreeSitter(ts => {
 			'1@x':     [wo('1@x')],
 			'3@i':     [ro('2@i')],
 			'3@x':     [wo('3@x')],
-			'3:11':    [ro('1@x'), ro('3@x')],
+			'3@[2]x':  [ro('1@x'), ro('3@x')],
 			'5@x':     [ro('1@x'), ro('3@x')],
 			'5@print': [bo(BuiltInProcName.Default, 'print', '5@print')]
 		});
 
 		chk('x <- 1\nfor(i in 1:10) {\n x <- i + x\n x <- x + 1\n}\nprint(x)', {
-			'3@x':  [wo('3@x')],
-			'3:11': [ro('1@x'), ro('4@x')],
-			'4@x':  [wo('4@x')],
-			'6@x':  [ro('1@x'), ro('4@x')]
+			'3@x':    [wo('3@x')],
+			'3@[2]x': [ro('1@x'), ro('4@x')],
+			'4@x':    [wo('4@x')],
+			'6@x':    [ro('1@x'), ro('4@x')]
 		});
 
 		chk('f <- function(x) {\nfunction() x + 2\n}\ng <- f(1)\ng()', {
@@ -136,6 +137,21 @@ describe('Dataflow', withTreeSitter(ts => {
 		// call with an end!
 		chk('g <- x\ng()', {
 			'2@g': [ro('1@g')]
+		});
+
+		describe('unevaluated arguments have no origin', () => {
+			/* whether the marking comes from the quote processor or from a signature must not matter */
+			for(const [code, cap] of [
+				['quote(x)', 'built-in-quoting'],
+				['bquote(x)', 'built-in-quoting'],
+				['alist(x)', 'built-in-quoting'],
+				['evalq(x, e)', 'built-in-evaluation']
+			] as const) {
+				chk(`x <- 1\n${code}`, { '2@x': undefined }, label(code, [cap], ['dataflow']));
+			}
+			chk('x <- 1\nwhile(TRUE) print(x)', {
+				'2@x': [ro('1@x')]
+			}, label('a loop body is evaluated', ['while-loop'], ['dataflow']));
 		});
 	});
 }));

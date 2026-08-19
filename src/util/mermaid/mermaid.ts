@@ -1,3 +1,5 @@
+import { toBase64 } from '../text/url-encoding';
+
 
 /**
  * Global mermaid helper object with useful functions.
@@ -64,8 +66,8 @@ export const Mermaid = {
 	 * Escapes a string or number to be used as a mermaid node id.
 	 */
 	escapeId(this: void, text: string | number): string {
-		text = String(text).replace(/[^a-zA-Z0-9:-]/g, '_');
-		return text.replace(/(^|[:-])([a-zA-Z0-9_]+)/g, (_m, sep: string, tok: string) => sep + (Mermaid.reservedIds.has(tok) ? tok + '_' : tok));
+		text = String(text).replace(/[^a-zA-Z0-9:\-./]/g, '_');
+		return text.replace(/(^|[:\-./])([a-zA-Z0-9_]+)/g, (_m, sep: string, tok: string) => sep + (Mermaid.reservedIds.has(tok) ? tok + '_' : tok));
 	},
 	/**
 	 * Converts mermaid code (potentially produced by {@link DataflowMermaid.convert}) to an url that presents the graph in the mermaid editor.
@@ -79,6 +81,7 @@ export const Mermaid = {
 				autoSync: true
 			}
 		};
-		return `https://mermaid.live/${edit ? 'edit' : 'view'}#base64:${Buffer.from(JSON.stringify(obj)).toString('base64')}`;
+		/* `btoa` rather than a `Buffer`, so the pages flowR ships can build this url as well */
+		return `https://mermaid.live/${edit ? 'edit' : 'view'}#base64:${toBase64(new TextEncoder().encode(JSON.stringify(obj)))}`;
 	}
 } as const;

@@ -5,7 +5,7 @@ import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/dat
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { describe } from 'vitest';
 
-describe.sequential('Calls', withShell(shell => {
+describe('Calls', { concurrent: false }, withShell(shell => {
 	describe('Simple Calls', () => {
 		const code = `i <- 4
 a <- function(x) { x }
@@ -28,7 +28,7 @@ a(i)`);
 		/* nothing of the function-content is required */
 		assertSliced(label('Slice function definition', constCapabilities),
 			shell, constFunction, ['2@a'], 'a <- function(x) { }');
-		assertSliced(label('Slice within function', constCapabilities), shell, constFunction, ['2:20'], 'x <- 2');
+		assertSliced(label('Slice within function', constCapabilities), shell, constFunction, ['2@[2]x'], 'x <- 2');
 		assertSliced(label('Multiple unknown calls', ['name-normal', 'resolve-arguments', 'unnamed-arguments', 'numbers', 'call-normal', 'newlines']),
 			shell, `
 foo(x, y)
@@ -621,10 +621,11 @@ c <- (function() {
 				filter(Y > 5)`;
 			assertSliced(label('Require complete pipe', caps),
 				shell, code, ['1@x'], 'x <- fun %>% filter(X == "green") %>% dplyr::select(X, Y) %>% mutate(Z = 5) %>% distinct() %>% group_by(X) %>% summarize(Y = mean(Y)) %>% left_join(., ., by = "X") %>% ungroup() %>% mutate(Y = Y + 1) %>% filter(Y > 5)');
+			/* a name in a data mask is a column of the data handed to the verb, so the data is part of its slice */
 			assertSliced(label('Slice for variable in filter', caps),
-				shell, code, ['2@X'], 'X');
+				shell, code, ['2@X'], 'fun %>% X');
 			assertSliced(label('Slice for variable in last filter', caps),
-				shell, code, ['12@Y'], 'Y');
+				shell, code, ['12@Y'], 'fun %>% filter(X == "green") %>% dplyr::select(X, Y) %>% mutate(Z = 5) %>% distinct() %>% group_by(X) %>% summarize(Y = mean(Y)) %>% left_join(., ., by = "X") %>% ungroup() %>% mutate(Y = Y + 1) %>% Y');
 		});
 		describe('Functions in Unknown Call Contexts', () => {
 			const capabilities: SupportedFlowrCapabilityId[] = [
@@ -978,5 +979,83 @@ bar <- foo(l=x, c=y)`, ['8@bar'], `foo <- function(l, c) {
         return(tmp)
     }
 bar <- foo(l=x, c=y)`);
+	});
+	describe('Include Callees', () => {
+		const capabilities: SupportedFlowrCapabilityId[] = [
+			'function-definitions', 'formals-named', 'name-normal', 'numbers', 'call-normal', 'newlines',
+			'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities
+		];
+		const code = `f <- function(x) {
+  y <- x * 2
+  print(y)
+}
+f(21)`;
+		assertSliced(label('default stops at the function-definition boundary', capabilities),
+			shell, code, ['3@print'], `function(x) {
+    y <- x * 2
+    print(y)
+}`
+		);
+		assertSliced(label('includeCallees continues past the boundary', capabilities),
+			shell, code, ['3@print'], `f <- function(x) {
+        y <- x * 2
+        print(y)
+    }
+f(21)`, { includeCallees: true }
+		);
+		const codeMultipleCallSites = `f <- function(x) {
+  y <- x * 2
+  print(y)
+}
+f(21)
+f(99)`;
+		assertSliced(label('includeCallees includes all call sites', capabilities),
+			shell, codeMultipleCallSites, ['3@print'], `f <- function(x) {
+        y <- x * 2
+        print(y)
+    }
+f(21)
+f(99)`, { includeCallees: true }
+		);
+		const codeWithUnrelatedStatement = `g <- 3
+f <- function(x) {
+  y <- x * 2
+  print(y)
+}
+f(21)`;
+		assertSliced(label('includeCallees does not pull in unrelated code', capabilities),
+			shell, codeWithUnrelatedStatement, ['4@print'], `f <- function(x) {
+        y <- x * 2
+        print(y)
+    }
+f(21)`, { includeCallees: true }
+		);
+		// gate: a self-contained body (no parameter, no captured variable) must not pull in the callers
+		const codeSelfContained = `f <- function(x) {
+  y <- 5
+  print(y)
+}
+f(21)`;
+		assertSliced(label('includeCallees is a no-op when the body does not depend on the interface', capabilities),
+			shell, codeSelfContained, ['3@print'], 'y <- 5\nprint(y)', { includeCallees: true }
+		);
+		assertSliced(label('self-contained body slices identically without the flag', capabilities),
+			shell, codeSelfContained, ['3@print'], 'y <- 5\nprint(y)'
+		);
+		// gate: a captured variable from the enclosing scope does let the callers (and the capture) in
+		const codeCapture = `z <- 10
+f <- function(x) {
+  y <- z
+  print(y)
+}
+f(21)`;
+		assertSliced(label('includeCallees follows a captured enclosing-scope variable', capabilities),
+			shell, codeCapture, ['4@print'], `z <- 10
+f <- function(x) {
+        y <- z
+        print(y)
+    }
+f(21)`, { includeCallees: true }
+		);
 	});
 }));

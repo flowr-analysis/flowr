@@ -3,12 +3,18 @@ import { guard } from '../util/assert';
 export interface IStoppableStopwatch {
 	/** Stop the given stopwatch. */
 	stop(): void
+	/** Exclude everything that happens until the next {@link resume} from the elapsed time. */
+	pause(): void
+	/** Continue after a {@link pause}, does nothing if the stopwatch is not paused. */
+	resume(): void
 }
 
 /** unguarded start-stop wrapper */
 class Stopwatch implements IStoppableStopwatch {
-	private timeStart: bigint | undefined;
-	private timeEnd:   bigint | undefined;
+	private timeStart:  bigint | undefined;
+	private timeEnd:    bigint | undefined;
+	private pauseStart: bigint | undefined;
+	private pausedTotal  = 0n;
 	private stopped = false;
 
 	start() {
@@ -22,9 +28,20 @@ class Stopwatch implements IStoppableStopwatch {
 		this.stopped = true;
 	}
 
+	pause() {
+		this.pauseStart ??= process.hrtime.bigint();
+	}
+
+	resume() {
+		if(this.pauseStart !== undefined) {
+			this.pausedTotal += process.hrtime.bigint() - this.pauseStart;
+			this.pauseStart = undefined;
+		}
+	}
+
 	get(): bigint {
 		guard(this.timeStart !== undefined && this.timeEnd !== undefined, 'cannot get elapsed time as the stopwatch has not been started/stopped');
-		return this.timeEnd - this.timeStart;
+		return this.timeEnd - this.timeStart - this.pausedTotal;
 	}
 }
 

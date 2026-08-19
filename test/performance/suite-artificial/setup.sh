@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -eu
+
 mkdir -p files/
 ln -sf "$(pwd)/static"/* files/
 # create blown-up variants of all of them

@@ -1,4 +1,8 @@
 import { DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
+import { Quoted } from '../dataflow/internal/process/functions/call/quoted';
+import { Nse } from '../dataflow/internal/process/functions/call/nse';
+import { Deferred } from '../dataflow/internal/process/functions/call/deferred';
+import { linkToQueryOfName } from './doc-util/doc-query';
 import {
 	type DataflowGraphVertexFunctionCall,
 	type DataflowGraphVertexFunctionDefinition,
@@ -30,20 +34,14 @@ import { lastJoin, prefixLines } from './doc-util/doc-general';
 import { NodeId, recoverContent, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier, ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import {
-	resolveByName,
-	resolveByNameAnyType,
-	resolvesToBuiltInConstant,
-} from '../dataflow/environments/resolve-by-name';
 import { createDataflowPipeline } from '../core/steps/pipeline/default-pipelines';
 import { nth } from '../util/text/text';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
 import { applyKills } from '../dataflow/environments/apply-kill';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
 import { getValueOfArgument } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
-import { getAliases, resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
+import { getAliases } from '../dataflow/eval/resolve/alias-tracking';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import {
 	UnnamedFunctionCallPrefix
@@ -60,11 +58,14 @@ import type { KnownParser } from '../r-bridge/parser';
 import type { MermaidMarkdownMark } from '../util/mermaid/info';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { mermaidNodeBrackets } from '../util/mermaid/dfg';
+import { Mermaid } from '../util/mermaid/mermaid';
 import { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { SourceRange } from '../util/range';
 import { Dataflow } from '../dataflow/graph/df-helper';
+import { Resolve } from '../dataflow/environments/resolve-helper';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
+import { FunctionCallVertex, FunctionDefinitionVertex } from '../dataflow/graph/vertex';
 
 async function subExplanation(parser: KnownParser, ctx: GeneralDocContext, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(parser, code, expectedSubgraph);
@@ -237,7 +238,7 @@ ${block({
 	content: `
 	If you want to obtain the locations where a variable is defined, or read, or re-defined, refrain from tracking these details manually in the dataflow graph
 	as there are some edge-cases that require special attention.
-	In general, the ${ctx.link(getOriginInDfg)} (which is also available as ${ctx.linkO(Dataflow, 'origin')}) function explained below in ${ctx.linkPage('wiki/Dataflow Graph', 'working with the dataflow graph', 'dfg-working')} will help you to get the information you need.
+	In general, the ${ctx.link(Dataflow.origin)} (which is also available as ${ctx.linkO(Dataflow, 'origin')}) function explained below in ${ctx.linkPage('wiki/Dataflow Graph', 'working with the dataflow graph', 'dfg-working')} will help you to get the information you need.
 	`
 })}
 
@@ -251,8 +252,11 @@ ${block({
 		type:        VertexType.FunctionCall,
 		description: `
 Describes any kind of function call, including unnamed calls and those that happen implicitly!
-In general the vertex provides you with information about 
+In general the vertex provides you with information about
 the _name_ of the called function, the passed _arguments_, and the _environment_ in which the call happens (if it is of importance).
+
+Whenever flowR can determine which package a call resolves to &mdash; via a loaded \`library()\`/\`::\`, or via the always-available base-R packages taken from the ${ctx.linkPage('wiki/Signature Database', 'signature database')} &mdash; the mermaid visualization prints the **package-qualified name** in place of the bare one (e.g. \`acf\` is shown as \`stats::acf\`). To obtain this qualified identifier programmatically, prefer ${ctx.linkO(Dataflow, 'qualify')} which, given only a call's id and its graph, reconstructs the \`pkg::fn\` identifier from the origins (and, for base R, from the exporting package) &mdash; the compact form of \`Identifier.toQualified\` (see the \`origin\` property below and the ${ctx.linkPage('wiki/Signature Database', 'signature database')} for where the base-R knowledge comes from).
+The graph caches what it resolved, with and without the base-R step, and drops the cache whenever it changes, so asking twice costs a map lookup. If you want the qualified name of every call, use ${ctx.linkO(Dataflow, 'qualifyAll')}: it walks the call vertices once and pays the (expensive) origin resolution once per call instead of once per ask.
 
 However, the implementation reveals that it may hold an additional \`onlyBuiltin\` flag to indicate that the call is only calling builtin functions &mdash; however, this is only a flag to improve performance,
 and it should not be relied on as it may under-approximate the actual calling targets (e.g., being \`false\` even though all calls resolve to builtins).
@@ -276,7 +280,7 @@ ${
 		await (async() => {
 			const code = 'foo(x,3,y=3,)';
 			const [text, info] = await printDfGraphForCode(parser, code, { mark: new Set([8]), exposeResult: true, ctx });
-			const callInfo = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionCall && Identifier.getName(vertex.name) === 'foo');
+			const callInfo = info.dataflow.graph.vertices(true).find(([, vertex]) => FunctionCallVertex.is(vertex) && Identifier.getName(vertex.name) === 'foo');
 			guard(callInfo !== undefined, () => `Could not find call vertex for ${code}`);
 			const [callId, callVert] = callInfo as [NodeId, DataflowGraphVertexFunctionCall];
 			const inverseMapReferenceTypes = Object.fromEntries(Object.entries(ReferenceType).map(([k, v]) => [v, k]));
@@ -336,7 +340,7 @@ In this case, the call does not have a single ${linkEdgeName(EdgeType.Calls)} ed
 global beyond the scope of the given script. _flowR_ generally (theoretically at least) does not know if the call really refers to a built-in variable or function,
 as any code that is not part of the analysis could cause the semantics to change. 
 However, it is (in most cases) safe to assume we call a builtin if there is a builtin function with the given name and if there is no ${linkEdgeName(EdgeType.Calls)} edge attached to a call.
-If you want to check the resolve targets, refer to ${ctx.link(resolveByName)}.
+If you want to check the resolve targets, refer to ${ctx.link(Resolve.byNameAndType)}.
 `)
 }
 
@@ -349,7 +353,7 @@ ${await (async() => {
 		const [text, info] = await printDfGraphForCode(parser, code, { exposeResult: true, mark: new Set([6, '6->0', '6->1', '6->3']), ctx });
 
 		const numberOfEdges = [...info.dataflow.graph. edges()].flatMap(e => [...e[1].keys()]).length;
-		const callVertex = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionCall && Identifier.getName(vertex.name) === 'foo');
+		const callVertex = info.dataflow.graph.vertices(true).find(([, vertex]) => FunctionCallVertex.is(vertex) && Identifier.getName(vertex.name) === 'foo');
 		guard(callVertex !== undefined, () => `Could not find call vertex for ${code}`);
 		const [callId] = callVertex;
 
@@ -425,8 +429,8 @@ Great, you should see a definition of \`<-\` which is constraint by the [control
 Hence, trying to re-resolve the call using ${ctx.link(getAllFunctionCallTargets)} (defined in ${getFilePathMd('../dataflow/internal/linker.ts')}) with the id \`${id}\` of the call as starting point will present you with
 the following target ids: { \`${[...getAllFunctionCallTargets(id, info.dataflow.graph)].join('`, `')}\` }.
 This way we know that the call may refer to the built-in assignment operator or to the multiplication.
-Similarly, trying to resolve the name with ${ctx.link(resolveByName)}\` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
-{ \`${resolveByNameAnyType(Identifier.make(name), env)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
+Similarly, trying to resolve the name with ${ctx.link(Resolve.byNameAndType)}\` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
+{ \`${Resolve.byName(Identifier.make(name), env)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
 
 	`;
 })()}
@@ -590,7 +594,7 @@ ${details('Example: Parameters of a Function',
 		const [text, info] = await printDfGraphForCode(parser, code, { mark: new Set([10, 1, 3]), exposeResult: true, ctx });
 		const ast = await printNormalizedAstForCode(parser, code, { prefix: 'flowchart LR\n', showCode: false, ctx });
 
-		const functionDefinition = [...info.dataflow.graph.vertices(true)].find(([, vertex]) => vertex.tag === VertexType.FunctionDefinition);
+		const functionDefinition = info.dataflow.graph.vertices(true).find(([, vertex]) => FunctionDefinitionVertex.is(vertex));
 		guard(functionDefinition !== undefined, () => `Could not find function definition for ${code}`);
 		const [id] = functionDefinition;
 
@@ -650,8 +654,8 @@ ${
 A ${linkEdgeName(EdgeType.Reads)} edge is not a transitive closure and only links the "directly read" definition(s).
 Our abstract domains resolving transitive ${linkEdgeName(EdgeType.Reads)} edges (and for that matter, following ${linkEdgeName(EdgeType.Returns)} as well)
 are currently tailored to what we need in _flowR_. Hence, we offer a function like ${ctx.link(getAllFunctionCallTargets)},
-as well as ${ctx.link(resolvesToBuiltInConstant)} which do this for specific cases.
-Refer to ${ctx.link(getOriginInDfg)} for a more general solution, as explained in ${ctx.linkPage('wiki/Dataflow Graph', 'working with the dataflow graph', 'dfg-working')}.
+as well as ${ctx.link(Resolve.toBuiltIn)} which do this for specific cases.
+Refer to ${ctx.link(Dataflow.origin)} for a more general solution, as explained in ${ctx.linkPage('wiki/Dataflow Graph', 'working with the dataflow graph', 'dfg-working')}.
 
 ${details('Example: Multi-Level Reads', await printDfGraphForCode(parser,  'x <- 3\ny <- x\nprint(y)', { mark: new Set(['9->7', '7->3', '4->0']), ctx }))}
 
@@ -712,7 +716,7 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 		name:        'Calls Edge',
 		type:        EdgeType.Calls,
 		description: `Link the [function call](#function-call-vertex) to the [function definition](#function-definition-vertex) that is called. To find all called definitions, 
-		please use the ${ctx.link(getOriginInDfg.name)} function, as explained in ${ctx.linkPage('wiki/Dataflow Graph', 'working with the dataflow graph', 'Working-with-the-Dataflow-Graph')}.
+		please use the ${ctx.link(Dataflow.origin.name)} function, as explained in ${ctx.linkPage('wiki/Dataflow Graph', 'working with the dataflow graph', 'dfg-working')}.
 		If you are interested in the call graph, refer to ${ctx.linkM(FlowrAnalyzer, 'callGraph')} and consult the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph wiki', 'perspectives-cg')} for more information.
 		`,
 		code:             'foo <- function() {}\nfoo()',
@@ -842,6 +846,11 @@ some that may appear to be counter-intuitive. For example, a for-loop body, as i
 
 ${details('Example: For-Loop Body', await printDfGraphForCode(parser, 'for(i in v) b', { mark: new Set([2, '4->2']), ctx }))}
 ${details('Example: While-Loop Body', await printDfGraphForCode(parser, 'while(TRUE) b', { mark: new Set([1, '3->1']), ctx }))}
+
+Three helpers decide what such a mark means once the graph is complete:
+${ctx.link(Quoted.name, undefined, { type: 'variable' })} settles what a capture reaches when it is handed to \`eval\` (see ${ctx.linkO(Quoted, 'finalize')}),
+${ctx.link(Nse.name, undefined, { type: 'variable' })} models the escapes a quoting function offers (rlang's \`!!\` and \`bquote\`'s \`.(x)\`), and
+${ctx.link(Deferred.name, undefined, { type: 'variable' })} links an expression R evaluates at a moment we cannot pin down, as \`delayedAssign\` binds one.
 				`
 	})
 }
@@ -938,7 +947,7 @@ ${details('Simplified Version of the graph', await printDfGraphForCode(treeSitte
 The following vertices types exist:
 
 1. ${getAllVertices().map(
-	([k, v], index) => `[\`${k}\`](#${index + 1}-${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
+	([k, v]) => `[\`${k}\`](#${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
 ).join('\n1. ')}
 
 ${details('Class Diagram', 'All boxes should link to their respective implementation:\n' + codeBlock('mermaid', ctx.mermaid('DataflowGraphVertexInfo', { inlineTypes: ['MergeableRecord'] })))}
@@ -1009,21 +1018,26 @@ ${section('Lexeme', 3, 'vtx-lexeme')}
 
 Also in the first line, next to the [syntactic type](#vtx-synt-type), you can find the lexeme of the vertex (if it has one, e.g., for a variable definition or use).
 This usually represents the textual source string of the respective vertex, and is also linked to the ${ctx.linkPage('wiki/Normalized AST')}.
+For a clearer hierarchy, the lexeme is rendered in **bold** while the [syntactic type](#vtx-synt-type) is de-emphasized in _italics_ (mermaid markdown labels do not support a per-token font color, so a true gray tone would require styling the whole node). Only the token the source actually wrote is bold: when a call is shown with a package-qualified name that flowR *added* (e.g. the code wrote \`acf\` but it is displayed as \`stats::acf\`), the added \`stats::\` prefix stays non-bold, whereas a namespace written verbatim in the source is part of the lexeme and is bold as a whole.
 You can access the lexeme too with ${ctx.linkO(RNode, 'lexeme')}.
 
 ${section('Vertex Id', 3, 'vtx-id')}
 
-In the second line, you will usually find the id (in the form of a ${ctx.link(NodeId, undefined, { type: 'variable' })}) of the vertex,
+In the second line, you will usually find the id (in the form of a ${ctx.link(NodeId, undefined, { type: 'variable' })}) of the vertex &mdash; kept compact by sharing the line with the [location](#vtx-location), in the form \`*location* (**id: <id>**)\` with the id in **bold** &mdash;
 alongside its [control dependencies](#control-dependencies) if it has any. This id links the vertex to the respective node in the ${ctx.linkPage('wiki/Normalized AST')} (and all other perspectives created by flowR).
 To give you an example, have a look at the following graph:
 
 ${await printDfGraphForCode(treeSitter, 'if(u) a', { showCode: false, mark: new Set(['1']), ctx })}
-With the _may_ prefix you can see that \`a\` has a [control dependency](#control-dependencies)
-on the \`if\`, which only triggers when the condition is \`true\` (as indicated by the \`+\` suffix).
+The \`3+\` tells you that \`a\` has a [control dependency](#control-dependencies) on the vertex with id \`3\`, the \`if\`,
+which only triggers when the condition is \`true\`; a \`-\` suffix marks the \`false\` case.
+
+Other vertices are named by their id too: \`v: <id>\` is the value of a definition, \`links: <id>\` the AST vertices that
+contributed to the vertex. Mermaid rejects some characters in an id, so a space or a bracket shows as \`_\`
+(see ${ctx.linkO(Mermaid, 'escapeId')}); a path keeps its \`/\` and \`.\`.
 
 ${section('Location', 3, 'vtx-location')}
 
-The third line indicates the compressed ${ctx.link(SourceRange)} of the vertex in the format \`startLine.startCharacter - endLine.endCharacter\`. If the range reads \`1.7\`, 
+The second line also indicates the compressed ${ctx.link(SourceRange)} of the vertex (directly before the [id](#vtx-id)) in the format \`startLine.startCharacter - endLine.endCharacter\`. If the range reads \`1.7\`,
 this is short for \`1.7-1.7\`, likewise, \`1.7-9\` is short for \`1.7-1.9\`. So, \`1.7-9\` describes something starting
 in the first line at the seventh character and ending in the first line at the ninth character.
 
@@ -1031,7 +1045,7 @@ ${section('Arguments and Additional Information', 3, 'vtx-additional-info')}
 
 Some vertices (e.g., [function calls](#function-call-vertex)) have additional information, like the arguments of the call. 
 As you can see with the \`if\` example above alongside the [vertex id](#vtx-id),
-these vertices also have an additional line which lists the ids of the arguments in order to clear any ambiguity in case, for example,
+these vertices also have an additional line (prefixed with \`arg:\`) which lists the ids of the arguments in order to clear any ambiguity in case, for example,
 the mermaid graph layouting fumbles the order.
 
 ${section('Vertices', 2, 'vertices')}
@@ -1072,7 +1086,7 @@ ${details('Example: Nested Conditionals', await printDfGraphForCode(treeSitter, 
 
 ${section('Dataflow Information', 2, 'dataflow-information')}
 
-Using _flowR's_ code interface (see the ${ctx.linkPage('wiki/Interface', 'Interface', 'creating-flowr-analyses')} wiki page for more), you can generate the dataflow information
+Using _flowR's_ code interface (see the ${ctx.linkPage('wiki/Interface', 'Interface', 'creating-analyses-with-flowr')} wiki page for more), you can generate the dataflow information
 for a given piece of R code (in this case \`x <- 1; x + 1\`) as follows:
 
 ${codeBlock('ts', `
@@ -1145,30 +1159,10 @@ Additionally, we get the information that the node with the id 2 was responsible
 Calling \`library(pkg)\` (or \`require\`) attaches a package to the search path.
 Mirroring R's \`search()\`, _flowR_ inserts the package's namespace and imports environments *below* the global environment (\`.GlobalEnv\`), so resolution walks **current scope -> enclosing scopes -> global -> attached packages -> built-ins**.
 
-**A global binding shadows a package export** of the same name, exactly as in R:
-
-\`\`\`r
-filter <- function(x) x   # your global definition
-library(stats)            # stats also exports filter()
-filter(1)                 # -> resolves to YOUR filter, not stats::filter
-\`\`\`
-
-**Most recently attached is nearest, and re-attaching is a no-op:**
-
-\`\`\`r
-library(A)   # search path (top-down): A
-library(B)   #                         B, A
-library(A)   # no-op                   B, A   (A is not moved or duplicated)
-\`\`\`
-
-**Attaching inside a function propagates to the caller** (R attaches globally), and across branches every possibly-attached package is kept (a sound over-approximation of R's single runtime path):
-
-\`\`\`r
-f <- function() library(A)   # attaches A when called
-f()
-someExportOfA()              # -> resolves against A
-if (cond) library(B)         # B is kept (may be attached)
-\`\`\`
+A global binding shadows a package export of the same name, exactly as in R.
+The most recently attached package is the nearest one, and re-attaching neither moves nor duplicates it.
+The \`pos\` argument attaches further down the search path instead, given either as a position or as the name of an existing entry (an unknown position or name falls back to the default of 2, directly below the global environment).
+Attaching inside a function propagates to the caller (R attaches globally), and across branches every possibly-attached package is kept (a sound over-approximation of R's single runtime path).
 
 Last but not least, the information contains the single **entry point** (${
 		JSON.stringify(result.entryPoint)
@@ -1190,6 +1184,10 @@ ${await printDfGraphForCode(treeSitter, 'load("file")\nprint(x + y)', { ctx })}
 
 In general, as we cannot handle these correctly, we leave it up to other analyses (and ${ctx.linkPage('wiki/Query API', 'queries')}) to handle these cases
 as they see fit.
+
+The \`load\` call above degrades to an unknown side effect only because the file could not be found.
+When the referenced \`.rda\`/\`.rdata\` file _is_ resolvable, flowR instead parses it natively (see ${ctx.link('RDAParser')}, supporting \`gzip\`- and \`bzip2\`-compressed files) and ${ctx.link('processLoadCall')} injects the loaded variable names into the dataflow graph as definitions, so subsequent uses resolve against them.
+You can disable this and always treat \`load\` as an unknown side effect with the ${ctx.linkConfig('ignoreLoadCalls')} configuration option.
 
 #### Linked Unknown Side Effects
 
@@ -1252,16 +1250,19 @@ Generally, we recommend you check out the ${ctx.link(Dataflow, undefined, { type
 * The **${ctx.linkPage('wiki/Query API')}** provides many functions to query the dataflow graph for specific information (dependencies, calls, slices, clusters, ...)
 * The **${ctx.linkPage('wiki/Search API')}** allows you to search for specific vertices or edges in the dataflow graph or the original program
 * ${ctx.link(recoverName)} and ${ctx.link(recoverContent)} to get the name or content of a vertex in the dataflow graph
-* ${ctx.link(resolveIdToValue)} to resolve the value of a variable or id (if possible, see [below](#dfg-resolving-values))
+* ${ctx.link(Resolve.toValue)} to resolve the value of a variable or id (if possible, see [below](#dfg-resolving-values))
 * ${ctx.link(getAliases)} to get all (potentially currently) aliases of a given definition
 * ${ctx.link(getValueOfArgument)} to get the (syntactical) value of an argument in a function call 
-* ${ctx.link(getOriginInDfg)} to get information about where a read, call, ... comes from (see [below](#dfg-resolving-values))
+* ${ctx.link(Dataflow.origin)} to get information about where a read, call, ... comes from (see [below](#dfg-resolving-values))
 
 FlowR also provides various helper objects (with the same name as the corresponding type) to help you work with the dataflow graph:
 
 * ${ctx.link(DfEdge, undefined, { type: 'variable' })} to get helpful functions wrt. edges (see [below](#dfg-resolving-values))
 * ${ctx.link(Identifier, undefined, { type: 'variable' })} to get helpful functions wrt. identifiers
 * ${ctx.link(FunctionArgument, undefined, { type: 'variable' })} to get helpful functions wrt. function arguments
+* ${ctx.link(Resolve, undefined, { type: 'variable' })} (also reachable as \`Dataflow.resolve\`) to resolve a name against an environment or a node to its value.
+  The entry points differ a lot in cost, so take the narrowest one that answers your question: \`byName\` walks the environment layers once and is served from the layer cache,
+  \`byNameAndType\` additionally filters and merges the definitions of every layer it passes, and \`toValue\` as well as the \`argument\` family run the evaluator on top of a resolution.
 
 Some of these functions have been explained in their respective wiki pages. However, some are part of the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph API')} and so we explain them here.
 If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities', 'capabilities')} page.
@@ -1269,14 +1270,14 @@ If you are interested in which features we support and which features are still 
 ${section('Resolving Values', 3, 'dfg-resolving-values')}
 
 FlowR supports a ${ctx.linkPage('wiki/Interface', 'configurable', 'configuring-flowr')} level of value tracking&mdash;all with the goal of knowing the static value domain of a variable.
-These capabilities are exposed by the ${ctx.linkPage('wiki/Query API', 'resolve value Query', 'resolve-value-query')} and backed by two important functions:
+These capabilities are exposed by the ${linkToQueryOfName('resolve-value', 'resolve value Query')} and backed by two important functions:
 
-${ctx.link(resolveIdToValue)} provides an environment-sensitive (see ${ctx.link('REnvironmentInformation')})
+${ctx.link(Resolve.toValue)} provides an environment-sensitive (see ${ctx.link('REnvironmentInformation')})
 value resolution depending on if the environment is provided.
-The idea of ${ctx.link(resolveIdToValue)} is to provide a compromise between precision and performance, to
+The idea of ${ctx.link(Resolve.toValue)} is to provide a compromise between precision and performance, to
 be used _during_ and _after_ the core analysis. After the dataflow analysis completes, there are much more expensive queries possible (such as the resolution of the data frame shape, see the ${ctx.linkPage('wiki/Query API', 'Query API')}).
 
-Additionally, to ${ctx.link(resolveIdToValue)}, we offer the aforementioned ${ctx.link(getValueOfArgument)} to retrieve the value of an argument in a function call.
+Additionally, to ${ctx.link(Resolve.toValue)}, we offer the aforementioned ${ctx.link(getValueOfArgument)} to retrieve the value of an argument in a function call.
 Be aware, that this function is currently not optimized for speed, so if you frequently require the values of multiple arguments of the same function call, you may want to open [an issue](${NewIssueUrl}) to request support for resolving
 multiple arguments at once.
 
@@ -1309,7 +1310,7 @@ ${section('Handling Origins', 3, 'dfg-handling-origins')}
 
 If you are writing another analysis on top of the dataflow graph, you probably want to know all definitions that serve as the source of a read, all functions
 that are called by an invocation, and more.
-For this, the ${ctx.link(getOriginInDfg)} (this is also accessible with ${ctx.linkO(Dataflow, 'origin')}) function provides you with a collection of ${ctx.link('Origin')} objects:
+For this, the ${ctx.link(Dataflow.origin)} (this is also accessible with ${ctx.linkO(Dataflow, 'origin')}) function provides you with a collection of ${ctx.link('Origin')} objects:
 
 ${ctx.hierarchy('Origin', { openTop: true })}
 

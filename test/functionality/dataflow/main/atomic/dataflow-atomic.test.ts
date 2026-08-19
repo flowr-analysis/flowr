@@ -26,7 +26,7 @@ function getSuperAssignOrigin(op: string): { origin: BuiltInProcName[] } | objec
 	return op === '<<-' || op === '->>' ? { origin: [BuiltInProcName.SuperAssignment] } : {};
 }
 
-describe.sequential('Atomic (dataflow information)', withShell(shell => {
+describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell => {
 	describe('Uninteresting Leafs', () => {
 		for(const [input, id] of [
 			['42', 'numbers'],
@@ -192,13 +192,15 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 		for(const op of UnaryOperatorPool) {
 			const inputDifferent = `${op}x`;
 			const opData = OperatorDatabase[op];
+			const graph = emptyGraph()
+				.use(0, 'x').reads(1, 0)
+				.call(1, op, [argumentInCall(0)], { reads: [NodeId.toBuiltIn(op)] })
+				.calls(1, NodeId.toBuiltIn(op));
+			if(op === '~') {   // the formula operator evaluates its operand non-standardly
+				graph.nse(1, 0);
+			}
 			assertDataflow(label(`${op}x`, ['unary-operator', 'name-normal', ...opData.capabilities]), shell,
-				inputDifferent,
-				emptyGraph()
-					.use(0, 'x').reads(1, 0)
-					.call(1, op, [argumentInCall(0)], { reads: [NodeId.toBuiltIn(op)] })
-					.calls(1, NodeId.toBuiltIn(op))
-			);
+				inputDifferent, graph);
 		}
 	});
 
@@ -210,13 +212,14 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				const inputSame = `x ${op} x`;
 
 				const capabilities = OperatorDatabase[op].capabilities;
-				if(capabilities.includes('non-strict-logical-operators')) {
+				/* only `&&` and `||` short-circuit, the vectorized `&`/`|` evaluate both operands */
+				if(op === '&&' || op === '||') {
 					assertDataflow(label(`${inputDifferent} (different variables)`, ['name-normal', ...capabilities]),
 						shell,
 						inputDifferent,
 						emptyGraph()
 							.use(0, 'x')
-							.use(1, 'y', { cds: [{ id: 2, when: op === '&&' || op === '&' }] })
+							.use(1, 'y', { cds: [{ id: 2, when: op === '&&' }] })
 							.call(2, op, [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn(op)] })
 							.calls(2, NodeId.toBuiltIn(op))
 							.reads(2, 0)
@@ -226,30 +229,27 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 						shell, inputSame,
 						emptyGraph()
 							.use(0, 'x')
-							.use(1, 'x', { cds: [{ id: 2, when: op === '&&' || op === '&' }] })
+							.use(1, 'x', { cds: [{ id: 2, when: op === '&&' }] })
 							.call(2, op, [argumentInCall(0), argumentInCall(1)], { returns: [], reads: [NodeId.toBuiltIn(op)] })
 							.calls(2, NodeId.toBuiltIn(op))
 							.reads(2, 0)
 					);
 				} else {
-					assertDataflow(label(`${inputDifferent} (different variables)`, ['name-normal', ...capabilities]),
-						shell,
-						inputDifferent,
-						emptyGraph()
-							.call(2, op, [argumentInCall(0), argumentInCall(1)], { reads: [NodeId.toBuiltIn(op)] })
-							.calls(2, NodeId.toBuiltIn(op))
-							.use(0, 'x').use(1, 'y').reads(2, [0, 1])
-					);
-
-					assertDataflow(label(`${inputSame} (same variables)`, ['name-normal', ...capabilities]),
-						shell,
-						inputSame,
-						emptyGraph()
-							.call(2, op, [argumentInCall(0), argumentInCall(1)], { reads: [NodeId.toBuiltIn(op)] })
-							.calls(2, NodeId.toBuiltIn(op))
-							.use(0, 'x').use(1, 'x')
-							.reads(2, [0, 1])
-					);
+					const graphDifferent = emptyGraph()
+						.call(2, op, [argumentInCall(0), argumentInCall(1)], { reads: [NodeId.toBuiltIn(op)] })
+						.calls(2, NodeId.toBuiltIn(op))
+						.use(0, 'x').use(1, 'y').reads(2, [0, 1]);
+					const graphSame = emptyGraph()
+						.call(2, op, [argumentInCall(0), argumentInCall(1)], { reads: [NodeId.toBuiltIn(op)] })
+						.calls(2, NodeId.toBuiltIn(op))
+						.use(0, 'x').use(1, 'x')
+						.reads(2, [0, 1]);
+					if(op === '~') {   // the formula operator evaluates its operands non-standardly
+						graphDifferent.nse(2, 0).nse(2, 1);
+						graphSame.nse(2, 0).nse(2, 1);
+					}
+					assertDataflow(label(`${inputDifferent} (different variables)`, ['name-normal', ...capabilities]), shell, inputDifferent, graphDifferent);
+					assertDataflow(label(`${inputSame} (same variables)`, ['name-normal', ...capabilities]), shell, inputSame, graphSame);
 				}
 			});
 		}

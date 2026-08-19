@@ -298,6 +298,12 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							description: '_Support functions like `setwd` which have an impact on the subsequent program._'
 						},
 						{
+							name:        'Working Directory',
+							id:          'working-directory',
+							supported:   'partially',
+							description: '_Track the effective working directory across `setwd` (control-flow- and location-sensitive) to resolve relative file paths. Interprocedural, sourced, and loop cases are treated as unbounded rather than guessed._'
+						},
+						{
 							name:         'Index Access',
 							id:           'index-access',
 							capabilities: [
@@ -545,7 +551,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 											name:        'Promises',
 											id:          'formals-promises',
 											supported:   'partially',
-											description: '_Handle `function(x = y) { y <- 3; x }`, `function(x = { x <- 3; x}) { x * x }`, ..._ We _try_ to identify promises correctly but this is really rudimentary.'
+											description: '_Handle `function(x = y) { y <- 3; x }`, `function(x = { x <- 3; x}) { x * x }`, ..._ A default argument resolves in the function\'s own environment and an argument passed in resolves in the caller\'s, both as R does it. We do not model _when_ a promise is forced: a `delayedAssign`ed expression is linked to every binding it may be forced against, which never misses the one that feeds it but may name others as well. What forcing _does_ is not modelled either, so the writes a promise performs when it is forced (`delayedAssign("x", { x <- 99; 2 })`, where reading `x` yields `2` and leaves `x` at `99`) do not reach the reads that follow.'
 										}
 									]
 								},
@@ -623,13 +629,19 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 											name:        'Quoting',
 											id:          'built-in-quoting',
 											supported:   'partially',
-											description: '_Handle `quote`, `substitute`, `bquote`, ..._ We partially ignore some of them but most likely not all.'
+											description: '_Handle `quote`, `substitute`, `bquote`, ..._ A quoted argument is marked as [non-standard evaluation](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#non-standard-evaluation) as a whole, so nothing within it counts as read. We model the escapes back to standard evaluation that a quoting function offers: rlang\'s `!!`/`!!!` (in `expr`, `quo`, `enquo`, ... and in data-masking arguments) and `bquote`\'s `.()`. Base `quote`/`substitute` have no such escape, and `substitute` does not reach the caller\'s expression when used on a function argument.'
 										},
 										{
 											name:        'Evaluation',
 											id:          'built-in-evaluation',
 											supported:   'partially',
-											description: '_Handle `eval`, `evalq`, `eval.parent`, ..._ We do not handle them at all.'
+											description: '_Handle `eval`, `evalq`, `eval.parent`, ..._ `eval` of a string we can resolve is analyzed as if it were written in its place. A language object reaches the `eval` that forces it even across assignments, branches, loop iterations, and function calls, and its names resolve in the scope evaluating it, as R does. `eval(expr, envir)` runs elsewhere, so we mark the call as an unknown side effect instead of guessing. `evalq` quotes its first argument and we do not follow it into the given environment.'
+										},
+										{
+											name:        'String Templates',
+											id:          'string-templates',
+											supported:   'partially',
+											description: '_Handle `glue::glue("{x}")`, `cli::cli_alert_info("{.val {x}}")`, `stringr::str_glue`/`str_interp`, ..._ The `{...}` of a template carries R code that runs where the call is, so we analyze it as if it were written there: it reads, it writes, and its side effects land in the calling scope. Doubled delimiters escape, `.open`/`.close` are honored when they are literal, and cli markup (`{.cls ...}`) contributes only the interpolations nested in it. A template aimed at another scope (`.envir`, `.con`, `glue_data`) is marked as an unknown side effect instead.'
 										},
 										{
 											name:        'Parsing',
@@ -694,6 +706,12 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 			id:           'non-standard-evaluations-semantics',
 			capabilities: [
 				{
+					name:        'Data Masking',
+					id:          'data-masking',
+					supported:   'partially',
+					description: '_Handle `subset(d, col > 1)`, dplyr verbs, `ggplot2::aes`, data.table `:=`, ..._ In a masked argument, a name the caller binds is read as that variable and any other name is taken to come from the data. Which names a data frame actually offers is unknown to us, so a column shadowing a variable of the same name still resolves to the variable. rlang\'s `!!`/`!!!` and its `:=` name-value pair are recognised; `[` on a `data.table` does not mask its `j`/`by` yet.'
+				},
+				{
 					name:        'Recycling',
 					id:          'recycling',
 					supported:   'not',
@@ -709,7 +727,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 					name:        'Hooks',
 					id:          'hooks',
 					supported:   'partially',
-					description: '_Handle hooks like [`userhooks`](https://stat.ethz.ch/R-manual/R-devel/library/base/html/userhooks.html) and [`on.exit`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/on.exit)._ We do not support hooks.'
+					description: '_Handle hooks like [`userhooks`](https://stat.ethz.ch/R-manual/R-devel/library/base/html/userhooks.html) and [`on.exit`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/on.exit)._ We support `on.exit` and rlang\'s [`on_load`/`run_on_load`/`on_package_load`](https://rlang.r-lib.org/reference/on_load.html), whose expressions we analyze where they are registered. `setHook` and the other user hooks are not modelled.'
 				},
 				{
 					name:        'Precedence',
@@ -793,8 +811,8 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							url:  [
 								{ name: AdvancedR('R6'), href: 'https://adv-r.hadley.nz/r6.html' }
 							],
-							supported:   'not',
-							description: '_Handle R6 classes and methods as one unit. Including Dispatch and Inheritance, as well as its Reference Semantics, Access Control, Finalizers, and Introspection._ We do not support typing currently and do not handle objects of these classes "as units."'
+							supported:   'partially',
+							description: '_Handle R6 classes and methods as one unit. We do not support typing, inheritance, private/active bindings, or handling objects fully "as units."'
 						},
 						{
 							name: 'R7/S7',
@@ -805,6 +823,26 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							],
 							supported:   'partially',
 							description: '_Handle R7 classes and methods as one unit. Including Dispatch and Inheritance, as well as its Reference Semantics, Validators, ..._ We do not support typing currently and do not handle objects of these classes "as units."'
+						},
+						{
+							name:         'Class-Based Dependency Attribution',
+							id:           'oop-class-dependency-attribution',
+							supported:    'partially',
+							description:  '_Attribute the use of a class to the package that owns it (registers a method for it and exports a same-named constructor), so a class use implies a dependency for library detection and version guessing (backed by the signature database\'s class-ownership map)._',
+							capabilities: [
+								{
+									name:        'S3 class ownership',
+									id:          'class-owner-s3',
+									supported:   'partially',
+									description: '_The signature database records which package owns each S3 class. A class use is attributed to the owning package -- both from a project\'s NAMESPACE `S3method(generic, class)` registrations (e.g. `S3method("as.irts","zoo")` marks `zoo` used) and from class-name string literals in plain code (`inherits(x, "zoo")`, `methods::is`, `new`, `structure(..., class=)`), marking the owner used and bounding its version below by the same-named constructor\'s export history. Class names that come from a variable or a `c(...)` vector, and method-definition names like `print.zoo`, are not yet resolved._'
+								},
+								{
+									name:        'S4 class ownership',
+									id:          'class-owner-s4',
+									supported:   'partially',
+									description: '_A project\'s `importClassesFrom`/`importMethodsFrom` NAMESPACE directives are tracked, so the source package is attached and marked used like a plain `importFrom`. S4 class ownership itself (`exportClasses`, `setClass`) is not yet recorded in the signature database, so a bare S4 class use is not attributed to its owning package._'
+								}
+							]
 						}
 					]
 				}

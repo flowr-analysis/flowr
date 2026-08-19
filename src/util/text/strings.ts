@@ -9,6 +9,35 @@ export function startAndEndsWith(str: string, letter: string): boolean {
 }
 
 /**
+ * Whether every character of `needle` appears in `hay` in order (a subsequence / fuzzy match).
+ */
+export function isSubsequence(needle: string, hay: string): boolean {
+	if(needle.length === 0) {
+		return true;
+	}
+	let i = 0;
+	for(const c of hay) {
+		if(c === needle[i] && ++i === needle.length) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * The `candidates` that start with `needle`, or -- if none do -- those that contain it as a
+ * {@link isSubsequence|subsequence} (case-insensitive). `needle` itself is never returned.
+ */
+export function matchByPrefixOrSubsequence(candidates: readonly string[], needle: string): string[] {
+	const prefixed = candidates.filter(c => c.startsWith(needle) && c !== needle);
+	if(prefixed.length > 0) {
+		return prefixed;
+	}
+	const lower = needle.toLowerCase();
+	return candidates.filter(c => c !== needle && isSubsequence(lower, c.toLowerCase()));
+}
+
+/**
  * Removes all whitespace in the given string
  */
 export function withoutWhitespace(output: string): string {
@@ -80,9 +109,13 @@ export function fileUrlToPath(s: string): string | undefined {
  * Check if the given path is an absolute path.
  */
 export function isAbsolutePath(p: string, regex: RegExp | undefined): boolean {
-	return regex?.test(p) || p.startsWith('/') || p.startsWith('\\') ||
-		/[a-zA-Z]:[\\/]/.test(p) || // Windows absolute path
-		path.normalize(p + '/') === path.normalize(path.resolve(p) + '/');
+	if(regex?.test(p) || p.startsWith('/') || p.startsWith('\\') || /[a-zA-Z]:[\\/]/.test(p)) {
+		return true;   // the second is a UNC path, the third a Windows one
+	}
+	/* where there is no file system there is nothing to resolve against, and a browser is such a place:
+	   without the check the stub answers every question with itself, and every path would look absolute */
+	const normalized = path.normalize(p + '/');
+	return typeof normalized === 'string' && normalized === path.normalize(path.resolve(p) + '/');
 }
 
 

@@ -11,15 +11,14 @@ import { Q } from '../../search/flowr-search-builder';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
-import { FlowrFilter, testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
+import { FlowrFilter } from '../../search/flowr-search-filters';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
 import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { LintingRuleTag } from '../linter-tags';
 import type { BuiltInFunctionDefinition } from '../../dataflow/environments/built-in-config';
-import { resolveIdToValue } from '../../dataflow/eval/resolve/alias-tracking';
-import { valueSetGuard } from '../../dataflow/eval/values/general';
+import { NodeValue } from '../../dataflow/eval/resolve/node-value';
 import { VariableResolve } from '../../config';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { VertexType } from '../../dataflow/graph/vertex';
@@ -29,6 +28,8 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import type { ControlDependency } from '../../dataflow/info';
 import { happensInEveryBranchSet } from '../../dataflow/info';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
+import { CallProp } from '../../dataflow/environments/built-in-props';
+import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
@@ -47,6 +48,11 @@ export interface SeededRandomnessConfig extends MergeableRecord {
 	randomnessConsumers: string[]
 }
 
+const RandomnessProducers: SeededRandomnessConfig['randomnessProducers'] = [
+	{ type: 'function', name: 'set.seed' },
+	{ type: 'assignment', name: '.Random.seed' }
+];
+
 export interface SeededRandomnessMeta extends MergeableRecord {
 	consumerCalls:                 number
 	callsWithFunctionProducers:    number
@@ -57,13 +63,16 @@ export interface SeededRandomnessMeta extends MergeableRecord {
 
 export const SEEDED_RANDOMNESS = {
 	createSearch: (config) => Q.all().filter(VertexType.FunctionCall)
-		.with(Enrichment.CallTargets, { onlyBuiltin: true })
+		.with(Enrichment.CallTargets, {
+			onlyBuiltin:  true,
+			qualifyNames: false // we don't use qualified names for this rule yet
+		})
 		.filter({
 			name: FlowrFilter.MatchesEnrichment,
 			args: {
 				enrichment: Enrichment.CallTargets,
 				test:       {
-					targets: testFunctionsIgnoringPackage(config.randomnessConsumers)
+					targets: Identifier.regex(...config.randomnessConsumers)
 				}
 			}
 		})
@@ -163,14 +172,13 @@ export const SEEDED_RANDOMNESS = {
 	},
 	info: {
 		defaultConfig: {
-			randomnessProducers: [{ type: 'function', name: 'set.seed' }, { type: 'assignment', name: '.Random.seed' }],
+			randomnessProducers: RandomnessProducers,
 			randomnessConsumers: [
-				'jitter', 'sample', 'sample.int', 'arima.sim', 'kmeans', 'princomp', 'rcauchy', 'rchisq', 'rexp',
-				'rgamma', 'rgeom', 'rlnorm', 'rlogis', 'rmultinom', 'rnbinom', 'rnorm', 'rpois', 'runif', 'pointLabel',
-				'some', 'rbernoulli', 'rdunif', 'generateSeedVectors',
-				'rbeta', 'rf', 'rhyper', 'rweibull', 'rt', 'rvonmises', 'rwilcox', 'rxor', 'rhyper', 'rmvnorm',
-				'rsignrank', 'randomForest',
-				'permuted', 'permute', 'shuffle', 'shuffleSet', 'data_shuffle', 'sample_frac', 'sample_n', 'slice_sample',
+				...BuiltInIndex.default().with(CallProp.Random).map(Identifier.getName)
+					.filter(n => !RandomnessProducers.some(p => p.name === n)),
+				'princomp', 'pointLabel', 'some', 'rbernoulli', 'rdunif', 'generateSeedVectors', 'rvonmises',
+				'rxor', 'rmvnorm', 'randomForest',
+				'permuted', 'permute', 'shuffle', 'shuffleSet', 'data_shuffle', 'sample_frac', 'sample_n',
 			],
 		},
 		tags:        [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility],
@@ -186,12 +194,13 @@ export const SEEDED_RANDOMNESS = {
 } as const satisfies LintingRule<SeededRandomnessResult, SeededRandomnessMeta, SeededRandomnessConfig>;
 
 function getDefaultAssignments(): BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike>[] {
-	return DefaultBuiltinConfig.filter(b => b.type === 'function' && (b.processor === BuiltInProcName.Assignment || b.processor === BuiltInProcName.AssignmentLike)) as BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike>[];
+	return DefaultBuiltinConfig.filter((b): b is BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike> =>
+		b.type === 'function' && (b.processor === BuiltInProcName.Assignment || b.processor === BuiltInProcName.AssignmentLike));
 }
 
 function isConstantArgument(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, argIndex: number, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	const args = call.args.filter(arg => arg !== EmptyArgument && !arg.name).map(FunctionArgument.getReference);
-	const values = valueSetGuard(resolveIdToValue(args[argIndex], { graph: graph, resolve: VariableResolve.Alias, ctx }));
+	const values = NodeValue.inGraph.setOf(args[argIndex], graph, ctx, { resolve: VariableResolve.Alias });
 	return values?.elements.every(v =>
 		v.type === 'number' ||
 		v.type === 'logical' ||

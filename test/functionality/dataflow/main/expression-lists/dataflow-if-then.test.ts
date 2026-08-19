@@ -14,7 +14,7 @@ function getAssignOrigin(assign: string): { origin: BuiltInProcName[] } | object
 	return assign === '<<-' || assign === '->' ? { origin: [BuiltInProcName.SuperAssignment] } : {};
 }
 
-describe.sequential('Lists with if-then constructs', withShell(shell => {
+describe('Lists with if-then constructs', { concurrent: false }, withShell(shell => {
 	for(const assign of ['<-', '<<-', '=']) {
 		describe(`using ${assign}`, () => {
 			describe('reads within if', () => {

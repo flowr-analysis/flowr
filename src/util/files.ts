@@ -12,19 +12,34 @@ export interface Table {
 	rows:   string[][]
 }
 
+/** Rethrows if the caller asked for it, otherwise reports the directory as skipped. */
+function skipUnreadableDir(dir: string, e: unknown, throwOnError: boolean): void {
+	if(throwOnError) {
+		throw e;
+	}
+	log.warn(`Skipping '${dir}' during file discovery: ${e instanceof Error ? e.message : String(e)}`);
+}
+
 /**
  * Retrieves all files in the given directory recursively
- * @param dir    - Directory path to start the search from
- * @param suffix - Suffix of the files to be retrieved
+ * @param dir          - Directory path to start the search from
+ * @param suffix       - Suffix of the files to be retrieved
+ * @param throwOnError - If `true`, a directory that cannot be read aborts the traversal; otherwise it is logged and skipped (the default)
  * Based on {@link https://stackoverflow.com/a/45130990}
  * @see {@link getAllFilesSync} for a synchronous version.
  */
-export async function* getAllFiles(dir: string, suffix = /.*/): AsyncGenerator<string> {
-	const entries = await fsPromise.readdir(dir, { withFileTypes: true, recursive: false });
+export async function* getAllFiles(dir: string, suffix = /.*/, throwOnError = false): AsyncGenerator<string> {
+	let entries: fs.Dirent[];
+	try {
+		entries = await fsPromise.readdir(dir, { withFileTypes: true, recursive: false });
+	} catch(e) {
+		skipUnreadableDir(dir, e, throwOnError);
+		return;
+	}
 	for(const subEntries of entries) {
 		const res = path.resolve(dir, subEntries.name);
 		if(subEntries.isDirectory()) {
-			yield* getAllFiles(res, suffix);
+			yield* getAllFiles(res, suffix, throwOnError);
 		} else if(suffix.test(subEntries.name)) {
 			yield res;
 		}
@@ -33,15 +48,27 @@ export async function* getAllFiles(dir: string, suffix = /.*/): AsyncGenerator<s
 
 /**
  * Retrieves all files in the given directory recursively (synchronously)
+ * @param dir        - Directory path to start the search from
+ * @param suffix     - Suffix of the files to be retrieved, tested against the file name
+ * @param ignoreDirs - Directories to skip, tested against the posix path relative to `dir`
+ *                     (e.g. `packrat/lib`), so a pattern can address nested directories
+ * @param relativeTo - The path to which the returned paths are relative (used for `ignoreDirs`), defaults to `dir`
+ * @param throwOnError - If `true`, a directory that cannot be read aborts the traversal; otherwise it is logged and skipped (the default)
  * @see {@link getAllFiles} - for an asynchronous version.
  */
-export function* getAllFilesSync(dir: string, suffix = /.*/, ignoreDirs: RegExp | undefined = undefined): Generator<string> {
-	const entries = fs.readdirSync(dir, { withFileTypes: true, recursive: false });
+export function* getAllFilesSync(dir: string, suffix = /.*/, ignoreDirs: RegExp | undefined = undefined, relativeTo: string = dir, throwOnError = false): Generator<string> {
+	let entries: fs.Dirent[];
+	try {
+		entries = fs.readdirSync(dir, { withFileTypes: true, recursive: false });
+	} catch(e) {
+		skipUnreadableDir(dir, e, throwOnError);
+		return;
+	}
 	for(const subEntries of entries) {
 		const res = path.resolve(dir, subEntries.name);
 		if(subEntries.isDirectory()) {
-			if(!ignoreDirs?.test(subEntries.name)) {
-				yield* getAllFilesSync(res, suffix);
+			if(!ignoreDirs?.test(toPosixPath(path.relative(relativeTo, res)))) {
+				yield* getAllFilesSync(res, suffix, ignoreDirs, relativeTo, throwOnError);
 			}
 		} else if(suffix.test(subEntries.name)) {
 			yield res;
@@ -175,6 +202,43 @@ export function readLineByLineSync(filePath: string, onLine: (line: Buffer, line
 export function getParentDirectory(directory: string): string{
 	// apparently this is somehow the best way to do it in node, what
 	return directory.split(path.sep).slice(0, -1).join(path.sep);
+}
+
+/**
+ * A path with backslashes rewritten to forward slashes, i.e. POSIX form. R accepts these on every OS, so this is
+ * also how a filesystem path is made safe to interpolate into an R string literal (where a raw `\` would escape).
+ */
+export function toPosixPath(p: string): string {
+	return p.replaceAll('\\', '/');
+}
+
+/**
+ * The directory all given paths share, e.g. `/a` for `/a/b.R` and `/a/c/d.R`; `undefined` if they share none.
+ */
+export function commonDirectory(paths: readonly string[]): string | undefined {
+	if(paths.length === 0) {
+		return undefined;
+	}
+	const split = paths.map(p => path.resolve(p).split(path.sep));
+	const common: string[] = [];
+	for(let i = 0; i < split[0].length; i++) {
+		if(!split.every(s => s[i] === split[0][i])) {
+			break;
+		}
+		common.push(split[0][i]);
+	}
+	if(common.length === 0) {
+		return undefined;
+	}
+	return common.length === 1 && common[0] === '' ? path.sep : common.join(path.sep);
+}
+
+/**
+ * The path of `filePath` seen from `root` (`s.R` instead of `/tmp/s.R`), or unchanged if it lies outside of `root`.
+ */
+export function relativeTo(root: string, filePath: string): string {
+	const relative = toPosixPath(path.relative(root, filePath));
+	return relative.length > 0 && !relative.startsWith('..') ? relative : filePath;
 }
 
 /**

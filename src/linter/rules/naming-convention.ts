@@ -142,7 +142,7 @@ export function fixCasing(identifier: string, convention: CasingConvention, igno
 			return s.toUpperCase();
 		}
 
-		return `${s[0].toUpperCase()}${s.substring(1)}`;
+		return `${s[0].toUpperCase()}${s.slice(1)}`;
 	};
 
 	switch(convention) {
@@ -239,12 +239,14 @@ export const NAMING_CONVENTION = {
 		[LintingPrettyPrintContext.Full]:  result => `Identifier '${result.name}' at ${SourceLocation.format(result.loc)} follows wrong convention: ${result.detectedCasing}`
 	},
 	info: {
-		name:          'Naming Convention',
+		name:            'Naming Convention',
 		// detects casing heuristically so correctness is not ensured using default config, but checks all identifiers in the code for naming convention match
-		certainty:     LintingRuleCertainty.OverApproximative,
-		description:   'Checks whether the symbols conform to a certain naming convention',
-		tags:          [LintingRuleTag.Style, LintingRuleTag.QuickFix],
-		defaultConfig: {
+		certainty:       LintingRuleCertainty.OverApproximative,
+		description:     'Checks whether the symbols conform to a certain naming convention',
+		tags:            [LintingRuleTag.Style, LintingRuleTag.QuickFix],
+		// heuristic and noisy on real package code, so only run when requested explicitly
+		activeByDefault: false,
+		defaultConfig:   {
 			caseing:        'auto',
 			ignoreNonAlpha: true
 		}

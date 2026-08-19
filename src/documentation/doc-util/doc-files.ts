@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { toPosixPath } from '../../util/files';
 
 export const FlowrGithubGroupName = 'flowr-analysis';
 export const FlowrGithubBaseRef = `https://github.com/${FlowrGithubGroupName}`;
@@ -15,10 +16,7 @@ export const FlowrPositron = 'https://open-vsx.org/extension/code-inspect/vscode
 export const FlowrRStudioAddin = `${FlowrGithubBaseRef}/rstudio-addin-flowr`;
 export const FlowrRAdapter = `${FlowrGithubBaseRef}/flowr-r-adapter`;
 
-/** Converts backslashes to forward slashes (Windows paths). */
-export function toPosixPath(p: string): string {
-	return p.replaceAll('\\', '/');
-}
+export { toPosixPath };
 
 /**
  * Returns a markdown link to the given file path relative to the project root.
@@ -26,8 +24,8 @@ export function toPosixPath(p: string): string {
 export function getFilePathMd(filePath: string): string {
 	// we go one up as we are in doc-util now :D #convenience
 	const fullpath = require.resolve('../' + filePath);
-	const relative = './' + toPosixPath(path.relative(process.cwd(), fullpath));
-	return `[\`${relative}\`](${RemoteFlowrFilePathBaseRef}${relative})`;
+	const relative = toPosixPath(path.relative(process.cwd(), fullpath));
+	return `[\`./${relative}\`](${flowrSourceFileUrl(relative)})`;
 }
 
 /**
@@ -43,5 +41,15 @@ export function getFileContentFromRoot(path: string): string {
  * Returns a markdown link to the given flowr source file path.
  */
 export function linkFlowRSourceFile(path: string): string {
-	return `[${path}](${RemoteFlowrFilePathBaseRef}/${path})`;
+	return `[${path}](${flowrSourceFileUrl(path)})`;
+}
+
+/**
+ * Returns the remote url for the given flowr source file path,
+ * ensuring exactly one slash between the base ref and the path.
+ */
+export function flowrSourceFileUrl(path: string): string {
+	const base = RemoteFlowrFilePathBaseRef.replace(/\/+$/, '');
+	const suffix = path.startsWith('/') ? path : '/' + path;
+	return base + suffix;
 }

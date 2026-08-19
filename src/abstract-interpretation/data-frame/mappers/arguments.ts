@@ -1,6 +1,6 @@
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import { FunctionArgument, type DataflowGraph } from '../../../dataflow/graph/graph';
-import { isFunctionCallVertex, isUseVertex } from '../../../dataflow/graph/vertex';
+import { FunctionCallVertex, UseVertex } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -15,9 +15,11 @@ import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import type { RParseRequest } from '../../../r-bridge/retriever';
 import { assertUnreachable } from '../../../util/assert';
 import { readLineByLineSync } from '../../../util/files';
-import { resolveIdToArgName, resolveIdToArgValue, unescapeSpecialChars, unquoteArgument } from '../resolve-args';
+import { unescapeSpecialChars, unquoteArgument } from '../resolve-args';
 import type { DataFrameShapeInferenceVisitor } from '../shape-inference';
 import { Identifier } from '../../../dataflow/environments/identifier';
+import { Resolve } from '../../../dataflow/environments/resolve-helper';
+import { Nse } from '../../../dataflow/internal/process/functions/call/nse';
 
 /** Regular expression representing valid columns names, e.g. for `data.frame` */
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
@@ -71,7 +73,13 @@ export function filterValidNames(
 		colnames = colnames?.map(entry => isValidColName(entry) ? entry : undefined);
 	}
 	if(noDupNames) {  // map all duplicate column names to top
-		colnames = colnames?.map((entry, _, list) => entry !== undefined && list.filter(other => other === entry).length === 1 ? entry : undefined);
+		const counts = new Map<string, number>();
+		for(const entry of colnames ?? []) {
+			if(entry !== undefined) {
+				counts.set(entry, (counts.get(entry) ?? 0) + 1);
+			}
+		}
+		colnames = colnames?.map(entry => entry !== undefined && counts.get(entry) === 1 ? entry : undefined);
 	}
 	if(noEmptyNames) {  // map all empty column names to top
 		colnames = colnames?.map(entry => entry?.length === 0 ? undefined : entry);
@@ -97,7 +105,7 @@ export function getArgumentValue<T>(
 	const arg = getFunctionArgument(args, argument, info);
 	const defaultValue = typeof argument !== 'string' ? argument.default : undefined;
 
-	return arg !== undefined ? resolveIdToArgValue(arg, info) : defaultValue;
+	return arg !== undefined ? Resolve.argument.value(arg, info) : defaultValue;
 }
 
 /**
@@ -130,7 +138,7 @@ export function getFunctionArgument(
 	let arg = undefined;
 
 	if(name !== undefined) {
-		arg = args.find(arg => resolveIdToArgName(arg, info) === name);
+		arg = args.find(arg => Resolve.argument.toName(arg, info) === name);
 	}
 	const hasArgPos = arg === undefined && pos >= 0 && pos < args.length && args[pos] !== EmptyArgument && args[pos].name === undefined;
 
@@ -152,7 +160,7 @@ export function getFunctionArguments(
 ): readonly PotentiallyEmptyRArgument<ParentInformation>[] {
 	const vertex = dfg.getVertex(node.info.id);
 
-	if(isFunctionCallVertex(vertex) && dfg.idMap !== undefined) {
+	if(FunctionCallVertex.is(vertex) && dfg.idMap !== undefined) {
 		const idMap = dfg.idMap;
 
 		return vertex.args
@@ -183,7 +191,8 @@ export function getUnresolvedSymbolsInExpression(
 			const symbolName = Identifier.mapName(node.content, unquoteArgument);
 
 			// ignore symbols named ".", as they are used as argument placeholder in magrittr pipe operations
-			if(isUseVertex(vertex?.[0]) && vertex[1].size === 0 && symbolName !== '.') {
+			/* the mask read the dataflow adds to a column keeps the name a column, so ask the mark rather than the edges */
+			if(UseVertex.is(vertex?.[0]) && symbolName !== '.' && (vertex[1].size === 0 || Nse.maskedName(dfg, node.info.id))) {
 				unresolvedSymbols.push(symbolName);
 			}
 		}
@@ -209,7 +218,7 @@ export function hasCriticalArgument(
 		if(arg === undefined) {
 			continue;
 		} else if(typeof param !== 'string' && param.default !== undefined) {
-			const value = resolveIdToArgValue(arg, info);
+			const value = Resolve.argument.value(arg, info);
 
 			if(value !== undefined && value === param.default) {
 				continue;

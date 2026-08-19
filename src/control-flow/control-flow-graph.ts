@@ -75,6 +75,7 @@ export type CfgVertex = CfgStatementVertex | CfgExpressionVertex | CfgBasicBlock
  * Helper object for {@link CfgVertex} - a vertex in the {@link ControlFlowGraph} that may have markers attached to it (e.g., for function calls).
  */
 export const CfgVertex = {
+	name: 'CfgVertex',
 	/**
 	 * Create a new expression vertex with the given id, children, call targets, and markers.
 	 * @param id          - the id of the vertex, which should directly relate to the AST node
@@ -259,7 +260,8 @@ export const CfgVertex = {
 	 * @see {@link CfgVertex#getRootId|getRootId()} - for a way to get the root id of a vertex
 	 */
 	getId<T extends CfgVertex | undefined>(this: void, vertex: T): T extends undefined ? NodeId | undefined : NodeId {
-		return vertex === undefined ? undefined as never : (Array.isArray(vertex) ? vertex[1] : vertex as never);
+		const id = vertex === undefined ? undefined : (Array.isArray(vertex) ? vertex[1] : vertex);
+		return id as T extends undefined ? NodeId | undefined : NodeId;
 	},
 	/**
 	 * Check whether two vertices are equal, i.e., they have the same type, id, and if they are basic block vertices, they also have the same elements in the same order.
@@ -440,6 +442,7 @@ export type CfgEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge;
  * Helper object for {@link CfgEdge} - an edge in the {@link ControlFlowGraph}.
  */
 export const CfgEdge = {
+	name: 'CfgEdge',
 	/**
 	 * Check whether the given edge is a flow dependency edge.
 	 */
@@ -654,15 +657,15 @@ export interface ReadOnlyControlFlowGraph {
  * If you want to prohibit modification, please refer to the {@link ReadOnlyControlFlowGraph} interface.
  */
 export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements ReadOnlyControlFlowGraph {
-	private readonly roots:        Set<NodeId> = new Set<NodeId>();
+	private readonly roots:      Set<NodeId> = new Set<NodeId>();
 	/** Nesting-Independent vertex information, mapping the id to the vertex */
-	private readonly vtxInfos:     Map<NodeId, Vertex> = new Map<NodeId, Vertex>();
+	private readonly vtxInfos:   Map<NodeId, Vertex> = new Map<NodeId, Vertex>();
 	/** the basic block children map contains a mapping of ids to all vertices that are nested in basic blocks, mapping them to the Id of the block they appear in */
-	private readonly bbChildren:   Map<NodeId, NodeId> = new Map<NodeId, NodeId>();
+	private readonly bbChildren: Map<NodeId, NodeId> = new Map<NodeId, NodeId>();
 	/** basic block agnostic edges */
-	private readonly edgeInfos:    Map<NodeId, Map<NodeId, CfgEdge>> = new Map<NodeId, Map<NodeId, CfgEdge>>();
-	/** reverse edges for bidirectional mapping */
-	private readonly revEdgeInfos: Map<NodeId, Map<NodeId, CfgEdge>> = new Map<NodeId, Map<NodeId, CfgEdge>>();
+	private readonly edgeInfos:  Map<NodeId, Map<NodeId, CfgEdge>> = new Map<NodeId, Map<NodeId, CfgEdge>>();
+	/** reverse edges for bidirectional mapping, derived from `edgeInfos` on the first ingoing lookup */
+	private revEdgeInfos:        Map<NodeId, Map<NodeId, CfgEdge>> | undefined;
 	/** used as an optimization to avoid unnecessary lookups */
 	private _mayBB = false;
 
@@ -709,13 +712,32 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 			edgesFrom.set(to, edge);
 		}
 
-		const edgesTo = this.revEdgeInfos.get(to);
-		if(!edgesTo) {
-			this.revEdgeInfos.set(to, new Map<NodeId, CfgEdge>([[from, edge]]));
-		} else {
-			edgesTo.set(from, edge);
+		if(this.revEdgeInfos) {
+			const edgesTo = this.revEdgeInfos.get(to);
+			if(!edgesTo) {
+				this.revEdgeInfos.set(to, new Map<NodeId, CfgEdge>([[from, edge]]));
+			} else {
+				edgesTo.set(from, edge);
+			}
 		}
 		return this;
+	}
+
+	private reverse(): Map<NodeId, Map<NodeId, CfgEdge>> {
+		if(this.revEdgeInfos === undefined) {
+			this.revEdgeInfos = new Map<NodeId, Map<NodeId, CfgEdge>>();
+			for(const [from, edges] of this.edgeInfos) {
+				for(const [to, edge] of edges) {
+					const edgesTo = this.revEdgeInfos.get(to);
+					if(!edgesTo) {
+						this.revEdgeInfos.set(to, new Map<NodeId, CfgEdge>([[from, edge]]));
+					} else {
+						edgesTo.set(from, edge);
+					}
+				}
+			}
+		}
+		return this.revEdgeInfos;
 	}
 
 	/**
@@ -733,7 +755,7 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 	}
 
 	ingoingEdges(node: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
-		return this.revEdgeInfos.get(node);
+		return this.reverse().get(node);
 	}
 
 	rootIds(): ReadonlySet<NodeId> {
@@ -811,21 +833,22 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 	 * @see {@link ControlFlowGraph#removeEdge|removeEdge()} - to remove a specific edge
 	 */
 	removeVertex(id: NodeId): this {
+		const rev = this.reverse();
+		for(const to of this.edgeInfos.get(id)?.keys() ?? []) {
+			rev.get(to)?.delete(id);
+		}
+		for(const from of rev.get(id)?.keys() ?? []) {
+			this.edgeInfos.get(from)?.delete(id);
+		}
 		this.vtxInfos.delete(id);
 		this.edgeInfos.delete(id);
-		this.revEdgeInfos.delete(id);
+		rev.delete(id);
 		this.bbChildren.delete(id);
 		// remove all bbChildren with id as target
 		for(const [a, b] of this.bbChildren.entries()) {
 			if(b === id) {
 				this.bbChildren.delete(a);
 			}
-		}
-		for(const edges of this.edgeInfos.values()) {
-			edges.delete(id);
-		}
-		for(const edges of this.revEdgeInfos.values()) {
-			edges.delete(id);
 		}
 		this.roots.delete(id);
 		return this;
@@ -844,11 +867,11 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 				this.edgeInfos.delete(from);
 			}
 		}
-		const edgesTo = this.revEdgeInfos.get(to);
+		const edgesTo = this.revEdgeInfos?.get(to);
 		if(edgesTo) {
 			edgesTo.delete(from);
 			if(edgesTo.size === 0) {
-				this.revEdgeInfos.delete(to);
+				this.revEdgeInfos?.delete(to);
 			}
 		}
 		return this;

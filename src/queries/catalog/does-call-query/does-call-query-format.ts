@@ -3,13 +3,14 @@ import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeDoesCallQuery } from './does-call-query-executor';
-import { type NodeId  } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { startAndEndsWith } from '../../../util/text/strings';
 import { SourceRange } from '../../../util/range';
+import { queryLineCode } from '../../../cli/repl/parser/slice-query-parser';
 
 interface CallsIdConstraint {
 	readonly type: 'calls-id';
@@ -37,11 +38,17 @@ export type CallsConstraint = CallsIdConstraint | CallsWithNameConstraint | Call
  * or returns all functions that call any function matching the given constraints.
  */
 export interface DoesCallQuery extends BaseQueryFormat {
-	readonly type:     'does-call';
+	readonly type:                    'does-call';
 	// this should be a unique id if you give multiple queries of this type, to identify them in the output
-	readonly queryId?: string;
-	readonly call:     SlicingCriterion;
-	readonly calls:    CallsConstraint;
+	readonly queryId?:                string;
+	readonly call:                    SlicingCriterion;
+	readonly calls:                   CallsConstraint;
+	/**
+	 * If set, when the walk reaches a library/built-in leaf call, expand it into its internal callees using the
+	 * signature database's `transitiveCallees` and match the constraints against those as well (a no-op if no
+	 * signature database is loaded). Default false.
+	 */
+	readonly expandLibraryInternals?: boolean;
 }
 
 export interface FindAllCallsResult {
@@ -108,12 +115,13 @@ function doesCallQueryLineParser(output: ReplOutput, line: readonly string[], _c
 				call:    constraint.call,
 				calls:   constraint.constraint,
 			}],
-		rCode: line[1]
+		rCode: queryLineCode(line)
 	} ;
 }
 
 
 export const DoesCallQueryDefinition = {
+	title:           'Does-Call Query',
 	executor:        executeDoesCallQuery,
 	asciiSummarizer: async(formatter, processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'does-call'>['does-call'];
@@ -131,11 +139,13 @@ export const DoesCallQueryDefinition = {
 		return true;
 	},
 	fromLine: doesCallQueryLineParser,
+	syntax:   '@does-call (<criterion>:$<id>|"<name>") <code | file://path>',
 	schema:   Joi.object({
-		type:    Joi.string().valid('does-call').required().description('The type of the query.'),
-		queryId: Joi.string().optional().description('An optional unique identifier for this query, to identify it in the output.'),
-		call:    Joi.string().description('The function from which calls are being made. This is a slicing criterion that resolves to a function definition node.'),
-		calls:   Joi.object().required().description('The constraints on which functions are being called. This can be a combination of name-based or id-based constraints, combined with logical operators (and, or, one-of).')
+		type:                   Joi.string().valid('does-call').required().description('The type of the query.'),
+		queryId:                Joi.string().optional().description('An optional unique identifier for this query, to identify it in the output.'),
+		call:                   Joi.string().description('The function from which calls are being made. This is a slicing criterion that resolves to a function definition node.'),
+		calls:                  Joi.object().required().description('The constraints on which functions are being called. This can be a combination of name-based or id-based constraints, combined with logical operators (and, or, one-of).'),
+		expandLibraryInternals: Joi.boolean().optional().description('Expand a reached library/built-in leaf call into its internal callees via the signature database and match constraints against those too (default false).')
 	}).description('Either returns all function definitions alongside whether they are recursive, or just those matching the filters.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
 		const out = queryResults as QueryResults<'does-call'>['does-call'];

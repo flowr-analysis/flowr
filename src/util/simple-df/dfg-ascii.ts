@@ -1,8 +1,19 @@
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { graphlib, layout } from 'dagre';
+import type { graphlib } from 'dagre';
 import { NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { DfEdge } from '../../dataflow/graph/edge';
+
+let dagreModule: typeof import('dagre') | undefined;
+/* type-only import above, `dagre` is optional: the ascii layout is a side feature, so the package is resolved at call time */
+function dagre(): typeof import('dagre') {
+	try {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports -- loaded on demand, see above
+		return dagreModule ??= require('dagre') as typeof import('dagre');
+	} catch{
+		throw new Error('the optional dependency `dagre` is required to render a dataflow graph as ascii, install it with `npm i dagre`');
+	}
+}
 
 function combineAscii(has: string, add: string): string {
 	if(has === ' ' || has === add) {
@@ -72,7 +83,8 @@ class AsciiCanvas {
  * Converts the given dataflow graph to an ASCII representation.
  */
 export function dfgToAscii(dfg: DataflowGraph): string {
-	const g = new graphlib.Graph();
+	const { graphlib: dagreGraphlib, layout } = dagre();
+	const g = new dagreGraphlib.Graph();
 	const verts = Array.from(dfg.vertices(true));
 	g.setGraph({
 		nodesep: 1,
@@ -165,7 +177,7 @@ function renderVertices(dfg: DataflowGraph, g: graphlib.Graph, canvas: AsciiCanv
 		const tag = dfg.getVertex(NodeId.normalize(nodeId))?.tag;
 		let e = '+';
 		if(tag && tag in type2Edge) {
-			e = type2Edge[tag as VertexType];
+			e = type2Edge[tag];
 		}
 		canvas.drawText(x - 1, y - 1, `${e}${'-'.repeat(label.length)}${e}`);
 		canvas.drawText(x - 1 + Math.round(label.length / 2 - nodeId.length / 2), y - 1, `<${nodeId}>`);

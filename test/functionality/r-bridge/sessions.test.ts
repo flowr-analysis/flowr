@@ -4,7 +4,7 @@ import { guard } from '../../../src/util/assert';
 import { describe, assert, test, expect } from 'vitest';
 import { RShell } from '../../../src/r-bridge/shell';
 
-describe.sequential('RShell spawns R lazily', () => {
+describe('RShell spawns R lazily', { concurrent: false }, () => {
 	test('constructing an RShell does not spawn R', () => {
 		const shell = new RShell();
 		try {
@@ -28,7 +28,7 @@ describe.sequential('RShell spawns R lazily', () => {
 });
 
 /** here we use testWithShell to get a fresh shell within each call */
-describe.sequential('RShell sessions', withShell(shell => {
+describe('RShell sessions', { concurrent: false }, withShell(shell => {
 	test('test that we can create a connection to R', () => {
 		assert.doesNotThrow(() => {
 			shell.clearEnvironment();

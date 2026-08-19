@@ -3,7 +3,7 @@ import { Package } from '../../../src/project/plugins/package-version-plugins/pa
 import { Range } from 'semver';
 
 describe('DESCRIPTION-file', function() {
-	describe.sequential('Parsing', function() {
+	describe('Parsing', { concurrent: false }, function() {
 		test('Library-Versions-Plugin', () => {
 			const p1 = new Package({ name: 'Test Package' });
 			p1.addInfo({ type: 'package', versionConstraints: [new Range('>=1.3')] });
@@ -11,7 +11,7 @@ describe('DESCRIPTION-file', function() {
 			p1.addInfo({ versionConstraints: [new Range('>=1.5')] });
 			p1.addInfo({ versionConstraints: [new Range('<=2.2.5')] });
 
-			assert.isTrue(p1.derivedVersion?.test('1.7.0'));
+			assert.isTrue(p1.derivedRange?.test('1.7.0'));
 		});
 	});
 });

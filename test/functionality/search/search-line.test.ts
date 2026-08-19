@@ -10,6 +10,8 @@ import { CallTargets } from '../../../src/queries/catalog/call-context-query/ide
 import { DefaultCfgSimplificationOrder } from '../../../src/control-flow/cfg-simplification';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { BuiltInProcName } from '../../../src/dataflow/environments/built-in-proc-name';
+import type { CallProps } from '../../../src/dataflow/environments/built-in-props';
+import { CallProp } from '../../../src/dataflow/environments/built-in-props';
 
 describe('flowR search', withTreeSitter(parser => {
 	assertSearch('simple search for first', parser, 'x <- 1\nprint(x)', ['1@x'],
@@ -19,7 +21,7 @@ describe('flowR search', withTreeSitter(parser => {
 		Q.varInLine('x', 1).first().first(),
 		Q.varInLine('x', 1).last()
 	);
-	assertSearch('simple search for second hit', parser, 'x <- x * x\nprint(x)', ['1:6'],
+	assertSearch('simple search for second hit', parser, 'x <- x * x\nprint(x)', ['1@[2]x'],
 		Q.varInLine('x', 1).select(1),
 		Q.var('x').select(1),
 		Q.var('x').index(1),
@@ -27,7 +29,7 @@ describe('flowR search', withTreeSitter(parser => {
 		Q.var('x').take(2).last(),
 		Q.var('x').take(2).tail()
 	);
-	assertSearch('multiple hits', parser, 'x <- x * x\nprint(x)', ['1:6', '2@x'],
+	assertSearch('multiple hits', parser, 'x <- x * x\nprint(x)', ['1@[2]x', '2@x'],
 		Q.var('x').select(1).merge(Q.varInLine('x', 2).filter(FlowrFilter.DropEmptyArguments).first()),
 		Q.var('x').filter(FlowrFilter.DropEmptyArguments).select(1, 3),
 		Q.var('x').take(2).last().merge(Q.var('x').filter(FlowrFilter.DropEmptyArguments).last()),
@@ -45,7 +47,7 @@ describe('flowR search', withTreeSitter(parser => {
 				Q.all().filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
 					test:       {
-						targets: /print/
+						targets: /^print$/
 					}
 				} })
 			);
@@ -53,7 +55,7 @@ describe('flowR search', withTreeSitter(parser => {
 				Q.all().with(Enrichment.CallTargets).filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
 					test:       {
-						targets: /library/
+						targets: /^library$/
 					}
 				} })
 			);
@@ -85,6 +87,25 @@ describe('flowR search', withTreeSitter(parser => {
 			assertSearch('for loop (overridden)', parser, "for <- function() {}; for (i in 1:10) { cat('hi') }", [],
 				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: BuiltInProcName.ForLoop } })
 			);
+		});
+		/* what a call is, rather than what it is called, so that no consumer has to keep a list of names */
+		describe('call properties', () => {
+			const carrying = (props: CallProps, matchType?: 'some' | 'every') =>
+				Q.all().filter({ name: FlowrFilter.CallProps, args: { props, matchType } });
+			const code = 'pdf("a.pdf")\nplot(1)\ndev.off()\nsetwd("/tmp")\nx <- readline("give: ")\nprint(1)';
+
+			assertSearch('asks the user', parser, code, ['5@readline'], carrying(CallProp.User));
+			assertSearch('closes a device', parser, code, ['3@dev.off'], carrying(CallProp.Closes));
+			assertSearch('sets ambient state', parser, code, ['4@setwd'], carrying(CallProp.Configures));
+			assertSearch('any of several properties', parser, code, ['3@dev.off', '4@setwd'], carrying(CallProp.Closes | CallProp.Configures));
+			assertSearch('every one of them', parser, code, ['3@dev.off'], carrying(CallProp.Closes | CallProp.Graphics, 'every'));
+			/* a definition in the analyzed code shadows the built-in, so the call is no longer the one we labelled */
+			assertSearch('a shadowed built-in states nothing', parser, 'readline <- function(...) "x"\nreadline("give: ")', [], carrying(CallProp.User));
+			/* the call happens before that definition, so it is still the built-in that runs */
+			assertSearch('a redefinition afterwards does not speak for it', parser, 'readline("give: ")\nreadline <- function(...) "x"', ['1@readline'], carrying(CallProp.User));
+			/* attaching a package binds its exports itself, which must not hide what flowR states about them */
+			assertSearch('a call of an attached package', parser, 'library(svDialogs)\nx <- dlgInput("give: ")', ['2@dlgInput'], carrying(CallProp.User));
+			assertSearch('the same call namespaced', parser, 'x <- svDialogs::dlgInput("give: ")', ['1@svDialogs::dlgInput'], carrying(CallProp.User));
 		});
 		describe('file path', () => {
 			assertSearch('filter by file path with RegExp', parser,
@@ -224,8 +245,12 @@ describe('flowR search', withTreeSitter(parser => {
 					}
 				} }).map(Mapper.Enrichment, Enrichment.CallTargets)
 			);
-			assertSearchEnrichment('global', parser, 'cat("hello")', [{ [Enrichment.CallTargets]: { targets: ['cat'] } }], 'some', Q.all().with(Enrichment.CallTargets));
-			assertSearchEnrichment('global specific', parser, 'cat("hello")', [{ [Enrichment.CallTargets]: { targets: ['cat'] } }], 'every', Q.all().with(Enrichment.CallTargets).select(1));
+			assertSearchEnrichment('global', parser, 'cat("hello")',
+				[{ [Enrichment.CallTargets]: { targets: ['base::cat'] } }], 'some',
+				Q.all().with(Enrichment.CallTargets));
+			assertSearchEnrichment('global specific', parser, 'cat("hello")',
+				[{ [Enrichment.CallTargets]: { targets: ['base::cat'] } }], 'every',
+				Q.all().with(Enrichment.CallTargets).select(1));
 			// as built-in call target enrichments are not nodes, we don't return them as part of the mapper!
 			assertSearch('global mapper', parser, 'cat("hello")', [],
 				Q.all().with(Enrichment.CallTargets).map(Mapper.Enrichment, Enrichment.CallTargets),

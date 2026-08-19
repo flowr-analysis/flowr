@@ -9,8 +9,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { DefaultMap } from '../../../../../../util/collections/defaultmap';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
-import { valueSetGuard } from '../../../../../eval/values/general';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isNotUndefined } from '../../../../../../util/assert';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { Identifier } from '../../../../../environments/identifier';
@@ -55,13 +54,12 @@ export function processStopIfNot<OtherInfo>(
 	}
 	const localArgs = argMap.get('local');
 	const localArg = localArgs.length > 0 ? localArgs.at(-1) : undefined;
-	const resolveArgs = { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx };
 
 	// we collect all control dependencies from: all '...', all expressions in 'exprs', and 'exprObject'
 	const ids = collectIdsForControl(argMap, data);
 	if(localArg !== undefined && localArg !== EmptyArgument) {
-		const localVal = resolveIdToValue(localArg?.value?.info.id, resolveArgs);
-		const alwaysTrue = valueSetGuard(localVal)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
+		const localVal = NodeValue.setOf(localArg?.value?.info.id, data);
+		const alwaysTrue = localVal?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 		if(!alwaysTrue) {
 			dataflowLogger.warn(`stopifnot (${Identifier.toString(name.content)}) with non-true 'local' argument is not yet supported, over-approximate`);
 			const cds = (data.cds ?? []).concat(Array.from(ids).map(r => ({
@@ -79,8 +77,8 @@ export function processStopIfNot<OtherInfo>(
 
 	const cds: ControlDependency[] = [];
 	for(const id of ids) {
-		const val = resolveIdToValue(id, resolveArgs);
-		const alwaysFalse = valueSetGuard(val)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
+		const val = NodeValue.setOf(id, data);
+		const alwaysFalse = val?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
 		if(alwaysFalse) {
 			// we know that this fails *always*
 			(res.exitPoints as ExitPoint[]).push(data.cds ? {
@@ -93,7 +91,7 @@ export function processStopIfNot<OtherInfo>(
 			});
 			return res;
 		}
-		const alwaysTrue = valueSetGuard(val)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
+		const alwaysTrue = val?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 		if(!alwaysTrue) {
 			cds.push({
 				id:   id,

@@ -3,6 +3,7 @@ import { RNode } from '../model';
 import { RType } from '../type';
 import type { RSymbol } from './r-symbol';
 import type { RArgument } from './r-argument';
+import { matchArgumentsToParameters } from '../../../../../util/arg-matching';
 
 export const EmptyArgument = '<>';
 
@@ -60,5 +61,26 @@ export const RFunctionCall = {
 	 */
 	isUnnamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RUnnamedFunctionCall<Info> {
 		return RFunctionCall.is(node) && !node.named;
+	},
+	/**
+	 * Bind a call's `arguments` to the formal `paramNames` with {@link matchArgumentsToParameters}, R's argument
+	 * matching. Returns a map from parameter name to the argument bound to it, so
+	 * `matchArgsToParams(call.arguments, names).get('X')` answers "which argument is mapped to parameter `X`".
+	 * An empty argument (`f(1, ,3)`) takes its formal but never appears in the map, as there is nothing to bind.
+	 */
+	matchArgsToParams<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], paramNames: readonly string[]): ReadonlyMap<string, RArgument<Info>> {
+		const matched = matchArgumentsToParameters(args.map(a => a === EmptyArgument ? undefined : a.name?.content), paramNames);
+		const bound = new Map<string, RArgument<Info>>();
+		for(let i = 0; i < args.length; i++) {
+			const arg = args[i], param = matched[i];
+			if(arg !== EmptyArgument && param !== undefined) {
+				bound.set(paramNames[param], arg);
+			}
+		}
+		return bound;
+	},
+	/** The one argument a call was given, `undefined` unless there is exactly one and it is not empty. */
+	soleArgument<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[]): RArgument<Info> | undefined {
+		return args.length === 1 && args[0] !== EmptyArgument ? args[0] : undefined;
 	}
 } as const;

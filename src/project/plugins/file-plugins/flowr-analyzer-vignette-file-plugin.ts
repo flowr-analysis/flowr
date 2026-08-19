@@ -16,7 +16,7 @@ const VignettePathPattern = /vignettes?/i;
  */
 export class FlowrAnalyzerMetaVignetteFilesPlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name = 'flowr-analyzer-vignette-files-plugin';
-	public readonly description = 'This plugin provides support for loading vignette files.';
+	public readonly description = 'Loads vignette files.';
 	public readonly version = new SemVer('0.1.0');
 	private readonly pathPattern: RegExp;
 

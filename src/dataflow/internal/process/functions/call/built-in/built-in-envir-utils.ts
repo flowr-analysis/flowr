@@ -1,19 +1,26 @@
 /** Shared utilities for built-in functions that interact with tracked R environments. */
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { RValue } from '../../../../../eval/values/r-value';
 import type { DataflowInformation } from '../../../../../info';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { unpackArg } from '../argument/unpack-argument';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
-import type { Identifier, IdentifierDefinition, InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { ReferenceType } from '../../../../../environments/identifier';
+import { signatureParameterNames } from '../../../../../../project/sigdb/decode';
+import type { IdentifierDefinition, InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import { Identifier, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { define } from '../../../../../environments/define';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
+import { DefaultAttachPosition, REnvironment } from '../../../../../environments/environment';
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
 import { resolveNodeToStackEnv } from './built-in-stack-env';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
+import { foldStringCall, PasteLikeCalls } from '../../../../../eval/resolve/resolve-strings';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { dataflowLogger } from '../../../../../logger';
+import { Resolve } from '../../../../../environments/resolve-helper';
 
 /** A tracked env is a real stack environment (not a private custom env) when its current layer is the global or the built-in/base env. */
 function isStackEnvState(envState: REnvironmentInformation): boolean {
@@ -32,7 +39,7 @@ export interface EnvirResolution<OtherInfo> {
 	readonly isStackEnv?: boolean;
 }
 
-/** Maps a list of identifier definitions (from {@link resolveByName}) to an {@link EnvirResolution}, merging the envStates of multiple reaching definitions. */
+/** Maps a list of identifier definitions (from {@link Resolve.byNameAndType}) to an {@link EnvirResolution}, merging the envStates of multiple reaching definitions. */
 function resolveDefsToEnvirResolution<OtherInfo>(
 	defs:   readonly IdentifierDefinition[] | undefined,
 	nodeId: NodeId,
@@ -72,66 +79,54 @@ function resolveDefsToEnvirResolution<OtherInfo>(
 }
 
 /**
- * Binds call arguments to formal parameter names using R's matching rules: exact name, then partial (pmatch) name, then remaining unnamed args left-to-right.
- * Pass `paramNames` as the full formal parameter list (excluding `...`) so ambiguous prefixes are rejected.
+ * The formal parameter names of the qualified call `id` (a `pkg::fn` {@link Identifier}) from the signature
+ * database (excluding `...`), or `fallback` when the database is disabled or does not carry the function. Lets a
+ * built-in argument matcher use R's real signature (via {@link ReadOnlyFlowrAnalyzerDependenciesContext#signatureOf})
+ * instead of a hardcoded formal list, while staying correct -- and graph-invariant -- when no signature is available.
  */
-export function bindArgs<OtherInfo>(
-	args:       readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
-	paramNames: readonly string[]
-): ReadonlyMap<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>> {
-	const bound = new Map<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>>();
-	const used = new Set<number>();
-
-	/* pass 1: exact name matches */
-	for(let i = 0; i < args.length; i++) {
-		const arg = args[i];
-		if(arg === EmptyArgument || arg.name === undefined) {
-			continue;
-		}
-		const n = arg.name.content as string;
-		if(paramNames.includes(n) && !bound.has(n)) {
-			bound.set(n, arg);
-			used.add(i);
-		}
-	}
-	/* pass 2: partial (pmatch) name matches */
-	for(let i = 0; i < args.length; i++) {
-		if(used.has(i)) {
-			continue;
-		}
-		const arg = args[i];
-		if(arg === EmptyArgument || arg.name === undefined) {
-			continue;
-		}
-		const matched = findByPrefixIfUnique(arg.name.content as string, paramNames);
-		if(matched !== undefined && !bound.has(matched)) {
-			bound.set(matched, arg);
-			used.add(i);
-		}
-	}
-	/* pass 3: remaining unnamed args fill remaining formal params left-to-right */
-	let formalIdx = 0;
-	for(let i = 0; i < args.length; i++) {
-		if(used.has(i)) {
-			continue;
-		}
-		const arg = args[i];
-		if(arg === EmptyArgument || arg.name !== undefined) {
-			continue;
-		}
-		while(formalIdx < paramNames.length && bound.has(paramNames[formalIdx])) {
-			formalIdx++;
-		}
-		if(formalIdx < paramNames.length) {
-			bound.set(paramNames[formalIdx], arg);
-			used.add(i);
-			formalIdx++;
-		}
-	}
-	return bound;
+export function signatureParamNames<OtherInfo>(
+	data:     DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	id:       Identifier,
+	fallback: readonly string[]
+): readonly string[] {
+	const sig = data.ctx.deps.signatureOf(id)?.signature;
+	const names = sig ? signatureParameterNames(sig) : [];
+	return names.length > 0 ? names : fallback;
 }
 
-/** Resolves a single already-found argument (e.g. from {@link bindArgs}) to an {@link EnvirResolution} when it is a symbol holding a tracked envState. */
+/** The constant string a name-position node denotes at construction time (string literal, aliased variable, or a paste-like join of such); `undefined` if any part is dynamic or the paste builtin is user-shadowed. */
+export function resolveConstantString<OtherInfo>(
+	node: RNode<OtherInfo & ParentInformation>,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+): string | undefined {
+	const info = NodeValue.infoOf(data);
+	const unshadowed = new Map<string, boolean>();
+	const fold = (n: RNode<OtherInfo & ParentInformation>): string | undefined => {
+		if(!RFunctionCall.isNamed(n)) {
+			return Resolve.toSingleString(n.info.id, info);
+		}
+		const fnName = Identifier.getName(n.functionName.content);
+		if(!PasteLikeCalls.has(fnName)) {
+			return undefined;
+		}
+		let ok = unshadowed.get(fnName);
+		if(ok === undefined) {
+			const defs = Resolve.byNameAndType(n.functionName.content, data.environment, ReferenceType.Function);
+			ok = defs === undefined || defs.every(d => isReferenceType(d.type, ReferenceType.BuiltInFunction));
+			unshadowed.set(fnName, ok);
+		}
+		const folded = ok ? foldStringCall(n, fold) : undefined;
+		return typeof folded === 'string' ? folded : undefined;
+	};
+	return fold(node);
+}
+
+/** The `returnsEnvState` of the first reaching definition that carries one, else `undefined`. */
+export function findReturnsEnvState(defs: readonly IdentifierDefinition[] | undefined): REnvironmentInformation | undefined {
+	return defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).returnsEnvState !== undefined)?.returnsEnvState;
+}
+
+/** Resolves a single already-found argument (e.g. from {@link RFunctionCall.matchArgsToParams}) to an {@link EnvirResolution} when it is a symbol holding a tracked envState. */
 export function resolveArgToEnvir<OtherInfo>(
 	arg:  PotentiallyEmptyRArgument<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
@@ -148,7 +143,7 @@ export function resolveArgToEnvir<OtherInfo>(
 	if(node?.type !== RType.Symbol) {
 		return undefined;
 	}
-	return resolveDefsToEnvirResolution(resolveByName(node.content, data.environment, ReferenceType.Variable), node.info.id, data);
+	return resolveDefsToEnvirResolution(Resolve.byNameAndType(node.content, data.environment, ReferenceType.Variable), node.info.id, data);
 }
 
 /** Builds an {@link EnvirResolution} for an environment obtained directly (not via a holder variable), e.g. `globalenv()` / `.GlobalEnv`. */
@@ -160,7 +155,7 @@ function stackEnvirResolution<OtherInfo>(
 ): EnvirResolution<OtherInfo> {
 	// no holder variable: envDef is only a carrier for envState/nodeId
 	const envDef = {
-		name:      lexeme as Identifier,
+		name:      lexeme,
 		nodeId,
 		type:      ReferenceType.Variable,
 		definedAt: nodeId,
@@ -169,34 +164,15 @@ function stackEnvirResolution<OtherInfo>(
 	return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, isStackEnv: true };
 }
 
-/** Resolves the `argName` argument (default `'envir'`, pmatch against `allParamNames`), falling back to `positionalFallbackIndex`, to an {@link EnvirResolution}. */
+/** Resolves the `argName` argument (default `'envir'`), named with pmatch, to an {@link EnvirResolution}. */
 export function resolveEnvirArg<OtherInfo>(
-	args:                   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
-	data:                   DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	argName                 = 'envir',
-	positionalFallbackIndex?: number,
-	allParamNames:          readonly string[] = [argName]
+	args:    readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	data:    DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	argName  = 'envir'
 ): EnvirResolution<OtherInfo> | undefined {
-	/* named pass: pmatch against the full parameter list */
 	for(const arg of args) {
-		if(arg === EmptyArgument || arg.name === undefined) {
-			continue;
-		}
-		if(findByPrefixIfUnique(arg.name.content as string, allParamNames) === argName) {
+		if(arg !== EmptyArgument && arg.name !== undefined && findByPrefixIfUnique(arg.name.content, [argName]) === argName) {
 			return resolveArgToEnvir(arg, data);
-		}
-	}
-	/* positional fallback (only when no named match existed) */
-	if(positionalFallbackIndex !== undefined) {
-		let pos = 0;
-		for(const arg of args) {
-			if(arg === EmptyArgument || arg.name !== undefined) {
-				continue;
-			}
-			if(pos === positionalFallbackIndex) {
-				return resolveArgToEnvir(arg, data);
-			}
-			pos++;
 		}
 	}
 	return undefined;
@@ -208,7 +184,7 @@ export function resolveSymbolToEnvir<OtherInfo>(
 	nodeId:     NodeId,
 	data:       DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): EnvirResolution<OtherInfo> | undefined {
-	return resolveDefsToEnvirResolution(resolveByName(symbolName, data.environment, ReferenceType.Variable), nodeId, data);
+	return resolveDefsToEnvirResolution(Resolve.byNameAndType(symbolName, data.environment, ReferenceType.Variable), nodeId, data);
 }
 
 /** Moves definitions written into a custom environment from the caller's scope into `envDef`'s tracked `envState`, re-defining the holder variable. */
@@ -236,4 +212,42 @@ export function routeWrittenToCustomEnv(
 		{ current: result.environment.current.removeAll(namesToRemove), level: result.environment.level }
 	);
 	return { ...result, environment: newEnvironment };
+}
+
+/** A `search()` position must be an integer and may never displace the global environment (R rejects `pos = 1`). */
+function clampAttachPosition(pos: number): number | undefined {
+	return Number.isFinite(pos) ? Math.max(DefaultAttachPosition, Math.trunc(pos)) : undefined;
+}
+
+/**
+ * The `search()` position the `pos` argument of a `library()` call requests, either given as a number or as the name of
+ * an existing entry (`pos = "package:base"`). Returns `undefined` when there is no such argument, its value is unknown
+ * or ambiguous, or it names an entry that is not on the search path; callers then attach at {@link DefaultAttachPosition}
+ * (as R does, which warns in the last case).
+ */
+export function resolveAttachPosition<OtherInfo>(
+	posId: NodeId | undefined,
+	data:  DataflowProcessorInformation<OtherInfo & ParentInformation>
+): number | undefined {
+	if(posId === undefined) {
+		return undefined;
+	}
+	const element = NodeValue.soleOf(posId, data);
+	if(element === undefined) {
+		return undefined;
+	}
+	const asNumber = RValue.numberOf(element);
+	if(asNumber !== undefined) {
+		return clampAttachPosition(asNumber);
+	}
+	const asString = RValue.stringOf(element);
+	if(asString !== undefined) {
+		const found = REnvironment.searchPosition(data.environment.current, asString);
+		if(found === undefined) {
+			dataflowLogger.warn(`search-path entry '${asString}' does not exist, attaching at the default position`);
+			return undefined;
+		}
+		return clampAttachPosition(found);
+	}
+	return undefined;
 }

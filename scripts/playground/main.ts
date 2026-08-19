@@ -22,6 +22,7 @@ import { DefaultBuiltinConfig, statedSignatureOf, statedSignatures } from '../..
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { memorySourceOfPackages } from '../../src/project/sigdb/memory-source';
 import { Identifier } from '../../src/dataflow/environments/identifier';
+import { DefaultDependencyCategories } from '../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import { SliceDirection } from '../../src/util/slice-direction';
 import { rankName } from '../../src/util/text/name-rank';
 import { stripAnsi, voidFormatter } from '../../src/util/text/ansi';
@@ -976,6 +977,10 @@ function showMarks(): void {
 		const mark = row.dataset.mark ?? '';
 		/* `lint:<rule>` stands for every finding of that rule, so it lights the rows of each of them */
 		const wanted = marks.some(m => m === mark || mark.startsWith(`${m}@`));
+		/* a highlight one cannot see is no highlight, so what it points at is unfolded first */
+		if(wanted && row.hidden && row.dataset.kindGroup !== undefined) {
+			toggleKind(row.dataset.kindGroup, true);
+		}
 		row.classList.toggle('shown', wanted);
 		row.classList.toggle('fresh', wanted && fresh);
 		marked ||= wanted;
@@ -1008,7 +1013,9 @@ function showMarks(): void {
 	}
 	const clear = document.getElementById('clearmarks');
 	if(clear !== null) {
-		clear.hidden = marks.length === 0;
+		/* what it clears is what is lit, not what the link asks for: a mark the page cannot place (its code was
+		   edited away, its row is not in the current answer) lights nothing, and nothing is what it clears */
+		clear.hidden = !marked;
 	}
 }
 
@@ -1185,6 +1192,39 @@ function tag(text: string, cls = 'kind'): HTMLElement {
 	return el;
 }
 
+/** how many dependencies of one category the panel shows before the rest are folded away */
+const DepsPerKind = 3;
+/** the categories unfolded by hand, kept so a re-analysis does not fold them up again */
+const expandedKinds = new Set<string>();
+
+/** the row that stands for the dependencies of a category the panel folded away */
+function expander(kind: string, rest: number, open: boolean): HTMLElement {
+	const more = document.createElement('button');
+	more.type = 'button';
+	more.className = 'more';
+	more.dataset.expand = kind;
+	more.textContent = open ? `show fewer ${kind} dependencies` : `${rest} more ${kind} ${rest === 1 ? 'dependency' : 'dependencies'}`;
+	more.addEventListener('click', () => toggleKind(kind));
+	return more;
+}
+
+/** unfolds (or folds up again) what a category holds beyond the first {@link DepsPerKind} rows */
+function toggleKind(kind: string, open = !expandedKinds.has(kind)): void {
+	if(open) {
+		expandedKinds.add(kind);
+	} else {
+		expandedKinds.delete(kind);
+	}
+	for(const row of document.querySelectorAll<HTMLElement>(`.deps .rest[data-kind-group="${kind}"]`)) {
+		row.hidden = !open;
+	}
+	const more = document.querySelector<HTMLElement>(`.deps .more[data-expand="${kind}"]`);
+	if(more !== null) {
+		const rest = document.querySelectorAll(`.deps .rest[data-kind-group="${kind}"]`).length;
+		more.textContent = open ? `show fewer ${kind} dependencies` : `${rest} more ${kind} ${rest === 1 ? 'dependency' : 'dependencies'}`;
+	}
+}
+
 function nothing(text: string): HTMLElement {
 	const el = document.createElement('p');
 	el.className = 'empty';
@@ -1221,17 +1261,19 @@ async function analyzer() {
 	return built;
 }
 
-interface Dependency { value?: string, nodeId?: string | number, functionName?: string, linkedIds?: readonly (string | number)[] }
+interface Dependency { value?: string, nodeId?: string | number, functionName?: string, linkedIds?: readonly (string | number)[], implicit?: boolean }
 /** one dependency as the panel shows it, with whatever else was drawn onto it hanging below */
 interface DepRow {
-	kind:   string,
-	call?:  string,
-	value?: string,
-	line?:  number,
-	from?:  readonly number[],
-	id?:    string | number,
-	onto:   readonly (string | number)[],
-	parts:  DepRow[]
+	kind:      string,
+	/** R echoes this one at the top level, nothing in the code asks it to */
+	implicit?: boolean,
+	call?:     string,
+	value?:    string,
+	line?:     number,
+	from?:     readonly number[],
+	id?:       string | number,
+	onto:      readonly (string | number)[],
+	parts:     DepRow[]
 }
 interface Finding { loc?: number[], quickFix?: LintQuickFix[] }
 
@@ -1548,12 +1590,13 @@ async function analyze(): Promise<number> {
 	});
 	sliceBody.append(slice);
 
-	const kinds = ['library', 'source', 'read', 'write', 'visualize'] as const;
+	/* whatever the dependencies query answers with, so a new category shows up here without a second list */
+	const kinds = Object.keys(DefaultDependencyCategories);
 	const deps: DepRow[] = kinds.flatMap(kind => (answers.dependencies?.[kind] ?? []).map(entry => {
 		const at = idMap?.get(entry.nodeId as never)?.location;
 		const call = entry.functionName === undefined ? undefined : String(Identifier.getName(entry.functionName));
 		const value = entry.value === undefined || entry.value === 'unknown' ? undefined : entry.value;
-		return { kind, call, value, line: at?.[0], from: at, id: entry.nodeId, onto: entry.linkedIds ?? [], parts: [] };
+		return { kind, call, value, implicit: entry.implicit, line: at?.[0], from: at, id: entry.nodeId, onto: entry.linkedIds ?? [], parts: [] };
 	}));
 	/* `points()` draws onto the `plot()` above it, and the query says so: such an entry belongs to that
 	   plot rather than next to it */
@@ -1574,16 +1617,26 @@ async function analyze(): Promise<number> {
 		return [{ kind: d.kind, line: startLine, from: at.from + startCol - 1, to: Math.min(at.to, at.from + endCol) }];
 	});
 	const depBody = section(`Dependencies: ${deps.length}`, PlaygroundBox.Deps, '(click to slice)');
-	const shownDep = (d: DepRow, part: boolean): HTMLElement => {
+	const shownDep = (d: DepRow, part: boolean, repeat = false): HTMLElement => {
 		const what = document.createElement('span');
 		what.className = 'what';
 		if(d.value !== undefined) {
-			what.append(d.value);
+			/* an implicit echo says the same `stdout` as a `print()` call, and it is worth telling the two apart */
+			if(d.implicit) {
+				const echo = document.createElement('span');
+				echo.className = 'echo';
+				echo.title = 'auto-printed: this result reaches stdout on its own';
+				echo.append(d.value);
+				what.append(echo);
+			} else {
+				what.append(d.value);
+			}
 		}
 		if(d.call !== undefined) {
 			what.append(tag(`${d.call}()`, d.value === undefined ? 'call only' : 'call'));
 		}
-		const kind = tag(part ? 'draws onto' : d.kind, part ? 'kind part' : 'kind');
+		/* a category says its name once: every further row of it lines up under that one word */
+		const kind = part ? tag('draws onto', 'kind part') : repeat ? tag('', 'kind ditto') : tag(d.kind, 'kind');
 		const line = row(kind, what, tag(d.line ? `L${d.line}` : '', 'at'));
 		/* alt-click highlights this one dependency, the way it does a finding */
 		line.dataset.mark = d.line === undefined ? `dep:${d.kind}` : `dep:${d.kind}@${d.line}`;
@@ -1609,7 +1662,24 @@ async function analyze(): Promise<number> {
 		const rows = document.createElement('div');
 		rows.className = 'deps';
 		rows.dataset.mark = PlaygroundBox.Deps;
-		rows.append(...top.flatMap(d => [shownDep(d, false), ...d.parts.map(p => shownDep(p, true))]));
+		/* the query answers by category, so the rows are already in that order: this only cuts each of them
+		   down to what one can take in at a glance, and keeps the rest a click away */
+		for(const kind of new Set(top.map(d => d.kind))) {
+			const ofKind = top.filter(d => d.kind === kind);
+			const open = expandedKinds.has(kind);
+			ofKind.forEach((d, at) => {
+				const line = shownDep(d, false, at > 0);
+				line.dataset.kindGroup = kind;
+				if(at >= DepsPerKind) {
+					line.classList.add('rest');
+					line.hidden = !open;
+				}
+				rows.append(line, ...d.parts.map(p => shownDep(p, true)));
+			});
+			if(ofKind.length > DepsPerKind) {
+				rows.append(expander(kind, ofKind.length - DepsPerKind, open));
+			}
+		}
 		depBody.append(rows);
 	} else {
 		depBody.append(nothing('nothing outside this script'));

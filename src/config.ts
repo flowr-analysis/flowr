@@ -181,6 +181,12 @@ export interface FlowrConfig extends MergeableRecord {
 		/** Overwrite the {@link ProjectKind} flowR would otherwise infer from the analyzed files, e.g. when auto-detection guesses wrong. */
 		useProjectType?:           ProjectKind
 		/**
+		 * Whether the top level of the analyzed code is echoed, so that every visible result printed there counts as an
+		 * output (the `print` category of the dependencies query). Defaults to `true` and is set to `false` for a
+		 * {@link ProjectKind.Package}, whose top-level code runs at install time.
+		 */
+		assumeImplicitEcho?:       boolean
+		/**
 		 * The packages considered part of R itself, used e.g. by the project query to classify dependencies. If
 		 * unset, flowR derives them (for the assumed R version) from the signature database via `baseRPackages`.
 		 */
@@ -645,13 +651,15 @@ export const FlowrConfig = {
 			},
 			project: {
 				resolveUnknownPathsOnDisk: true,
-				failOnInaccessiblePath:    false
+				failOnInaccessiblePath:    false,
+				assumeImplicitEcho:        true
 			},
 			linter: {
 				disabledRules: []
 			},
 			specializeConfig: {
-				[ProjectKind.Package]:  { solver: { resolveSource: { assumeFilesExist: true } } },
+				/* a package's top-level code runs at install time, its results are not echoed to anyone */
+				[ProjectKind.Package]:  { project: { assumeImplicitEcho: false }, solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.Project]:  { solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.ShinyApp]: {
 					/* shiny evaluates global.R before the supporting files in R/, and the app itself last */
@@ -750,6 +758,7 @@ export const FlowrConfig = {
 			basePackages:              Joi.array().items(Joi.string()).optional().description('The packages considered part of R itself (base and recommended); if unset, flowR uses its built-in list.'),
 			implicitSources:           Joi.array().items(Joi.string()).optional().description('Files a framework loads on its own, without any source() call (e.g. global.R in a shiny app), in the order they are loaded; flowR orders the matching project files accordingly and analyzes them as one program. Entries are case-insensitive globs matched against the file path, a plain name matches any file with that name, and entries matching no project file are warned about. Usually set per project kind via specializeConfig.'),
 			useProjectType:            Joi.string().valid(...Object.values(ProjectKind)).optional().description('Overwrite the project kind flowR would otherwise infer from the analyzed files, e.g. when auto-detection guesses wrong.'),
+			assumeImplicitEcho:        Joi.boolean().optional().description('Whether the top level of the analyzed code is echoed, so that every visible result printed there is collected as an output by the dependencies query (default true, false for a package).'),
 			discovery:                 Joi.object({
 				full:    Joi.boolean().optional().description('Collect every file below the project root (greedy) instead of only the files the detected project kind needs (default false).'),
 				perKind: Joi.object().pattern(Joi.string().valid(...Object.values(ProjectKind)), Joi.object({

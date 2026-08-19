@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[src/documentation/wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts)' on 2026-08-16, 06:15:25 UTC (v2.13.16), so please do not edit it directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-19, 23:28:30 UTC (v2.14.1), please do not edit directly._
 <h2 id="Dependencies Query">Dependencies Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns all direct dependencies (in- and outputs) of a given R script\
@@ -24,14 +24,14 @@ In other words, if you have a script simply reading: `library(x)`, the following
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (2 ms)\
+Query: **dependencies** (3 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**x** _via library (node 3)_\
-_All queries together required ≈5 ms (1ms accuracy, total 6 ms)_
+_All queries together required ≈5 ms (1ms accuracy, total 5 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _5.6 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _5.3 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -43,7 +43,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "dependencies": {
     ".meta": {
-      "timing": 2
+      "timing": 3
     },
     "library": [
       {
@@ -58,7 +58,8 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     "write": [],
     "print": [],
     "visualize": [],
-    "test": []
+    "test": [],
+    "statistics": []
   },
   ".meta": {
     "timing": 5
@@ -108,7 +109,7 @@ The following query returns the dependencies of the script.
 
 _Results (prettified and summarized):_
 
-Query: **dependencies** (3 ms)\
+Query: **dependencies** (5 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**bar** _via loadNamespace (node 8)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**better** _via :: (node 32)_\
@@ -118,14 +119,16 @@ Query: **dependencies** (3 ms)\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**data.csv** _via read.csv (node 14)_\
 &nbsp;&nbsp;&nbsp;**Written Data** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**stdout** _via print (node 41)_\
+&nbsp;&nbsp;&nbsp;**Auto-printed Results** _(1)_\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**stdout** _via + (node 31)_\
 &nbsp;&nbsp;&nbsp;**Visualizations** _(2)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via ggplot (node 28)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<unresolved>_ _via geom_point (node 30, linked 28)_\
-_All queries together required ≈9 ms (1ms accuracy, total 10 ms)_
+_All queries together required ≈9 ms (1ms accuracy, total 9 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _9.6 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _8.8 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -137,7 +140,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "dependencies": {
     ".meta": {
-      "timing": 3
+      "timing": 5
     },
     "library": [
       {
@@ -173,7 +176,13 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         "value": "stdout"
       }
     ],
-    "print": [],
+    "print": [
+      {
+        "nodeId": 31,
+        "functionName": "+",
+        "value": "stdout"
+      }
+    ],
     "visualize": [
       {
         "nodeId": 28,
@@ -190,7 +199,8 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ]
       }
     ],
-    "test": []
+    "test": [],
+    "statistics": []
   },
   ".meta": {
     "timing": 9
@@ -247,11 +257,11 @@ _Results (prettified and summarized):_
 Query: **dependencies** (0 ms)\
 &nbsp;&nbsp;&nbsp;**Libraries** _(1)_\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;**hello world!** _via print (node 41)_\
-_All queries together required ≈5 ms (1ms accuracy, total 6 ms)_
+_All queries together required ≈6 ms (1ms accuracy, total 7 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _5.9 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _7.3 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -278,10 +288,11 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     "write": [],
     "print": [],
     "visualize": [],
-    "test": []
+    "test": [],
+    "statistics": []
   },
   ".meta": {
-    "timing": 5
+    "timing": 6
   }
 }
 ```

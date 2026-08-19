@@ -301,6 +301,7 @@ export const enum PkgName {
 	/* CRAN / third-party */
 	AssertThat   = 'assertthat',
 	Box          = 'box',
+	Car          = 'car',
 	Cli          = 'cli',
 	CohortBuilder = 'cohortBuilder',
 	DataTable    = 'data.table',
@@ -316,9 +317,12 @@ export const enum PkgName {
 	Inferference = 'inferference',
 	Janitor      = 'janitor',
 	Lattice      = 'lattice',
+	LmTest       = 'lmtest',
 	Magick       = 'magick',
 	Magrittr     = 'magrittr',
 	Msgr         = 'msgr',
+	Multcomp     = 'multcomp',
+	NorTest      = 'nortest',
 	PkgLoad      = 'pkgload',
 	Plyr         = 'plyr',
 	Purrr        = 'purrr',
@@ -330,6 +334,7 @@ export const enum PkgName {
 	Rlang        = 'rlang',
 	RmethodsS3   = 'R.methodsS3',
 	Roo          = 'R.oo',
+	Rstatix      = 'rstatix',
 	RstudioApi   = 'rstudioapi',
 	Rutils       = 'R.utils',
 	S7           = 'S7',
@@ -347,6 +352,7 @@ export const enum PkgName {
 	Stringr      = 'stringr',
 	TinyPlot     = 'tinyplot',
 	TryCatchLog  = 'tryCatchLog',
+	Tseries      = 'tseries',
 	Withr        = 'withr',
 }
 

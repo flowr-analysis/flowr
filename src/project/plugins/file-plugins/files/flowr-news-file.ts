@@ -44,7 +44,7 @@ export class FlowrNewsFile extends FlowrFile<NewsChunk[]> {
 	}
 
 	/**
-	 * Creates a FlowrNewsFile from given news chunks, path and optional roles. This is useful if you already have the news content parsed and want to create a news file instance without re-parsing.
+	 * Creates a FlowrNewsFile from given news chunks, path, and optional roles. This is useful if you already have the news content parsed and want to create a news file instance without re-parsing.
 	 */
 	public static fromNewsChunks(chunks: NewsChunk[], path: string, roles?: FileRole[]): FlowrNewsFile {
 		const file = new FlowrNewsFile(new FlowrTextFile(path, roles));

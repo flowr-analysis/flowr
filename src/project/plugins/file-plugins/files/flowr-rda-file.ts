@@ -1,6 +1,6 @@
 import type { FileRole, FlowrFileProvider } from '../../../context/flowr-file';
 import { FlowrFile } from '../../../context/flowr-file';
-import fs from 'node:fs';
+import fs from 'fs';
 import { RFunTabOffsets } from './r-fun-tab';
 import { RShellExecutor } from '../../../../r-bridge/shell-executor';
 
@@ -241,7 +241,7 @@ export class RDAParser{
 	/**
 	 * Parses an RDA file.
 	 *
-	 * The file is decompressed, deserialized and converted into a flattened
+	 * The file is decompressed, deserialized, and converted into a flattened
 	 * object representation.
 	 * @param file - RDA file provider.
 	 * @param shortcut - When `true`, only names and types are collected.
@@ -320,7 +320,7 @@ export class RDAParser{
 		switch(compressionType) {
 			case CompressionType.CompGz: {
 				// eslint-disable-next-line @typescript-eslint/no-require-imports,@typescript-eslint/no-unsafe-assignment
-				const zlib = require('node:zlib');
+				const zlib = require('zlib');
 				try {
 					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
 					buffer = zlib.gunzipSync(fileContent);

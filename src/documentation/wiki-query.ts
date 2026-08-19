@@ -46,6 +46,7 @@ import type { GeneralDocContext } from './wiki-mk/doc-context';
 import { executeFileQuery } from '../queries/catalog/files-query/files-query-executor';
 import { executeCallGraphQuery } from '../queries/catalog/call-graph-query/call-graph-query-executor';
 import { executeRecursionQuery } from '../queries/catalog/inspect-recursion-query/inspect-recursion-query-executor';
+import { executeStrictnessQuery } from '../queries/catalog/inspect-strictness-query/inspect-strictness-query-executor';
 import { executeDoesCallQuery } from '../queries/catalog/does-call-query/does-call-query-executor';
 import { executeExceptionQuery } from '../queries/catalog/inspect-exceptions-query/inspect-exception-query-executor';
 import { SliceDirection } from '../util/slice-direction';
@@ -56,6 +57,7 @@ import type { AbsintQueryType } from '../queries/catalog/absint-query/absint-que
 import { executeDiceQuery } from '../queries/catalog/dice-query/dice-query-executor';
 import { executeDataflowLensQuery } from '../queries/catalog/dataflow-lens-query/dataflow-lens-query-executor';
 import { executeSignatureQuery } from '../queries/catalog/signature-query/signature-query-executor';
+import { warnMissingSigDb } from './doc-util/doc-sigdb';
 import {
 	executeGuessDepVersionsQuery
 } from '../queries/catalog/guess-dep-versions-query/guess-dep-versions-query-executor';
@@ -365,6 +367,65 @@ This query also supports a slicing criterion based query mode that only returns 
 ${
 	await showQuery(shell, exampleCode, [{
 		type:   'inspect-recursion',
+		filter: ['1@function']
+	}], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
+}
+		`;
+	}
+});
+
+registerQueryDocumentation('inspect-strictness', {
+	type:             'active',
+	shortDescription: 'Determine whether functions force their arguments',
+	functionName:     executeStrictnessQuery.name,
+	functionFile:     '../queries/catalog/inspect-strictness-query/inspect-strictness-query-executor.ts',
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
+		const exampleCode = 'f <- function(a, b, c) { print(a); if(runif(1) > .5) print(b); 42 }';
+		return `
+R hands arguments over as promises, so a parameter is only evaluated once something reads it.
+With this query you can find out which functions rely on that: a function is \`always\` strict if every call
+forces every one of its parameters, \`never\` strict if no call forces all of them, and \`conditionally\`
+strict if it depends on the path taken, on the caller, or on a function flowR could not resolve.
+The result carries the same verdict per parameter, keyed by the id of the parameter's name.
+
+Please note that a read that only hands the parameter to another function does not force it by itself.
+Whether it is forced then depends on the function receiving it, which is resolved through the call graph.
+A read within a nested function definition, within a loop, or under a condition leaves the parameter
+\`conditionally\` strict, as does a call whose target flowR does not know.
+
+What a built-in does with an argument is taken from what flowR states about it rather than from its name: an
+argument declared as quoted or as one whose presence alone matters (\`quote(expr)\`, \`missing(x)\`) is never
+evaluated, one declared as forced (\`force(x)\`) always is, and the calls that reach an argument only on the
+way the run happens to take are the ones flowR hands to the processor saying so (\`switch\` picking a branch,
+\`tryCatch\` reaching a handler, \`on.exit\` running at exit, and the short-circuiting \`&&\`/\`||\`).
+A definition of your own shadowing such a name is judged by its own body instead, as R would.
+A parameter read only in the default of another parameter is \`conditionally\` strict, as that default is
+evaluated only when the argument is left out.
+
+A generic mentions none of its arguments, so its verdict comes from the methods that S3 dispatch reaches: if
+they agree the answer is theirs, otherwise the parameter is \`conditionally\` strict. The object the dispatch
+is on is forced by the dispatch itself, which also covers \`standardGeneric\`. A \`NextMethod\` carries the
+question on to the methods it reaches, matched by the position the parameter is written in, and an argument
+travelling in \`...\` is followed to the parameter it binds to. The method of an object flowR cannot resolve,
+such as \`obj$m(x)\`, leaves the parameter \`conditionally\` strict:
+${
+	await showQuery(shell, 'f <- function(x, y) UseMethod("f")\nf.default <- function(x, y) x\nf.numeric <- function(x, y) y', [{
+		type: 'inspect-strictness',
+	}], { showCode: true, collapseQuery: true, ctx })
+}
+
+Using the example code \`${exampleCode}\` the following query returns the information for all identified
+function definitions whether they are strict:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'inspect-strictness',
+	}], { showCode: true, collapseQuery: true, ctx })
+}
+
+This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
+${
+	await showQuery(shell, exampleCode, [{
+		type:   'inspect-strictness',
 		filter: ['1@function']
 	}], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
 }
@@ -1203,6 +1264,8 @@ export class WikiQuery extends DocMaker<'wiki/Query API.md'> {
 
 	protected async text({ ctx, shell }: DocMakerArgs): Promise<string> {
 		assertAllQueriesDocumented();
+		/* the signature query documented here answers from the database, so its examples need one */
+		warnMissingSigDb(this.getTarget());
 		for(const [file, content] of Object.entries({
 			...await queryPages(shell, ctx, 'active'),
 			...await queryPages(shell, ctx, 'virtual')
@@ -1219,7 +1282,7 @@ ${
 		content: `
 There are many ways to query a dataflow graph created by flowR.
 For example, you can use the ${ctx.linkPage('wiki/Interface', '`request-query`', 'message-request-query')} message
-with a running flowR server, or the ${getReplCommand('query')} command in the flowR ${ctx.linkPage('wiki/Interface', 'REPL', 'repl')}.
+with a running flowR server, or the ${getReplCommand('query')} command in the flowR ${ctx.linkPage('wiki/Interface', 'REPL', '-using-the-repl')}.
 
 Also, check out the [${FlowrGithubGroupName}/sample-analyzer-project-query](${FlowrGithubBaseRef}/sample-analyzer-project-query) repository for a complete example project using the query API.
 			`.trim()

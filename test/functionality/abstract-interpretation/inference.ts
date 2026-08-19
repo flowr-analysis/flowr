@@ -236,9 +236,10 @@ export async function validateInferredValues<Domains extends AbstractProduct, Ke
 	for(const { criterion, inferred } of testEntries) {
 		const marker = createMarker(criterion);
 
-		for(const line of output.filter(line => line.includes(marker))) {
-			guard(isNotUndefined(line), `Cannot parse output of instrumented code for ${criterion}`);
+		const marked = output.filter(line => line.includes(marker));
+		guard(marked.length > 0, `Cannot parse output of instrumented code for ${criterion}`);
 
+		for(const line of marked) {
 			const expected = parseOutput(line);
 			assertInferredValue(criterion, inferred, expected, options?.matchingType ?? DomainMatchingType.Overapproximation);
 		}

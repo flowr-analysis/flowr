@@ -77,7 +77,7 @@ describe('Dataflow Linker - Argument Matching', () => {
 				if(exp === ' ') {
 					continue; // no link1
 				}
-				const paramIdx = params.findIndex(p => p === exp);
+				const paramIdx = params.indexOf(exp);
 				if(paramIdx === -1) {
 					throw new Error(`Test setup error: expected parameter ${exp} not found in params ${params.join(', ')}`);
 				}

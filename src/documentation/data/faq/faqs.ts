@@ -52,7 +52,7 @@ ${codeBlock('shell', 'npm run wiki:watch')}
 `)
 		.addFaq('Why can\'t I pass *arguments* when running flowR *with npm*?', `
 With \`npm\` you have to pass arguments in a specific way. The \`--\` operator is used to separate the \`npm\` arguments from the script arguments. For example, if you want to run \`flowR\` with the \`--help\` argument, you can use the following command:
-${codeBlock('shell', 'npm run flowR -- --help')}
+${codeBlock('shell', 'npm run flowr -- --help')}
 `)
 		.addFaq('How to do *logging* in flowR?', `
 Check out the ${ctx.linkPage('wiki/Linting and Testing', 'Logging Section in the Linting and Testing wiki page', 'logging')} for more information on how to do logging in *flowR*.

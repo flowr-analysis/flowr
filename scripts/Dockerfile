@@ -53,7 +53,8 @@ COPY --from=builder /app/dist /app
 COPY ./package.json ./package-lock.json /app/
 
 # install deps, make new user and clean up the test files
-RUN npm ci --omit=dev --omit=optional && npm cache clean --force && \
+# the optional deps ship in the image on purpose (quad export needs `n3`), only the dev ones are dropped
+RUN npm ci --omit=dev && npm cache clean --force && \
     echo "http://dl-cdn.alpinelinux.org/alpine/edge/community\nhttp://dl-cdn.alpinelinux.org/alpine/edge/main"  \
           >> /etc/apk/repositories; apk add --no-cache icu-libs=76.1-r1 R=4.5.2-r0 && \
     rm -rf /app/package.json /app/node_modules/**/*.md /app/node_modules/.bin  \

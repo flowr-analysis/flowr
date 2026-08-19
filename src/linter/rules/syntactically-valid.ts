@@ -33,10 +33,22 @@ export interface SyntacticallyValidMetadata extends MergeableRecord {
 	readonly parser:  string
 }
 
+/** One pass over an error region, blind to strings and comments. */
+export interface RegionScan {
+	/** The closing delimiters the region leaves open, innermost first. */
+	readonly closers:   readonly string[]
+	/** Offset of every `%` outside a string or comment; an odd count means an unclosed `%...%` operator. */
+	readonly percentAt: readonly number[]
+}
+
 /** A `missing` (parser-inserted, zero-width) or `error` (un-parseable) tree-sitter node. */
 export interface SyntaxErrorFinding {
 	readonly kind: 'missing' | 'error'
 	readonly node: SyntaxNode
+	/** The source line the node starts on, for patterns judging a pasted line rather than a token. */
+	readonly line: string
+	/** The region, scanned on first use. */
+	readonly scan: RegionScan
 }
 
 /** An extensible auto-fix pattern; append to {@link SyntaxErrorFixPatterns} to teach the rule new repairs. */
@@ -52,15 +64,22 @@ const DelimiterInsert = new Map([[')', ')'], ['}', '}'], [']', ']'], [']]', ']]'
 const KeywordInsert = new Map([['in', ' in '], ['else', ' else ']]);
 const OperatorToken = /^([-+*/^:~!<>=&|@$]+|<-|<<-|->|->>|\|>|%[^%]*%)$/;
 const KnownOperators = ['%%', '%/%', '%*%', '%o%', '%x%', '%in%', '%>%', '%<>%', '%+%', '%||%'];
+/** Typographic quotes, as a word processor or a PDF leaves behind. */
+const SmartQuote = new Map([['\u201C', '"'], ['\u201D', '"'], ['\u201E', '"'], ['\u2018', '\''], ['\u2019', '\'']]);
+/** Closing brackets and whitespace only, so nothing there is worth keeping. */
+const OnlyClosers = /^[)\]}\s]+$/;
+/** How R prefixes printed values, never how a statement begins. */
+const ConsoleOutput = /^\s*\[{1,2}\d+\]{1,2}(\s|$)/;
 
 // tree-sitter is 0-based with an exclusive end column (matching flowR), so only the 1-based start shifts
 const point = (p: { readonly row: number, readonly column: number }): SourceRange => [p.row + 1, p.column + 1, p.row + 1, p.column];
 const span = (n: SyntaxNode): SourceRange => [n.startPosition.row + 1, n.startPosition.column + 1, n.endPosition.row + 1, n.endPosition.column];
 const isDanglingOperator = (n: SyntaxNode | null): n is SyntaxNode => !!n && !n.isNamed && OperatorToken.test(n.type);
 
-/** The closing delimiters an unbalanced error region is missing, innermost first (skips strings/comments; `({` needs `})`). */
-function bracketDeficit(text: string): string[] {
+/** Read an error region: what it leaves open, and where its operators sit. */
+function scanRegion(text: string): RegionScan {
 	const stack: string[] = [];
+	const percentAt: number[] = [];
 	let quote: string | undefined;
 	for(let i = 0; i < text.length; i++) {
 		const c = text[i];
@@ -76,6 +95,8 @@ function bracketDeficit(text: string): string[] {
 			while(i < text.length && text[i] !== '\n') {
 				i++;
 			}
+		} else if(c === '%') {
+			percentAt.push(i);
 		} else if(c === '(') {
 			stack.push(')');
 		} else if(c === '[') {
@@ -92,13 +113,13 @@ function bracketDeficit(text: string): string[] {
 			}
 		}
 	}
-	return stack.reverse();
+	return { closers: stack.reverse(), percentAt };
 }
 
-/** Fuzzy-complete the unfinished `%...` operator in an error region to the nearest known operator (else just close it). */
-function operatorCompletion(node: SyntaxNode): { range: SourceRange, full: string } {
-	const at = node.text.lastIndexOf('%');
-	const fragment = /^%[A-Za-z0-9]*/.exec(node.text.slice(at))?.[0] ?? '%';
+/** Fuzzy-complete the `%...` operator at `at` to the nearest known one (else just close it). */
+function operatorCompletion(node: SyntaxNode, at: number): { range: SourceRange, full: string } {
+	// R allows anything between the percents; matching letters alone read `%>` as `%` and completed it to `%%`
+	const fragment = /^%[^%\s()[\]{},]*/.exec(node.text.slice(at))?.[0] ?? '%';
 	const full = KnownOperators.find(op => op !== fragment && op.startsWith(fragment)) ?? fragment + '%';
 	const column = node.startPosition.column + at;
 	return { range: [node.startPosition.row + 1, column + 1, node.startPosition.row + 1, column + fragment.length], full };
@@ -109,6 +130,20 @@ const isMissingExpression = (f: SyntaxErrorFinding): boolean =>
 
 /** The built-in auto-fix patterns; append a {@link SyntaxErrorFixPattern} to add repairs. */
 export const SyntaxErrorFixPatterns: SyntaxErrorFixPattern[] = [
+	// first, because it judges the whole line: `[1] 1 2 3` errors on both `[` and `]`, and repairing those as
+	// brackets balances output text into the program instead of dropping it
+	{
+		name:        'comment-out-console-output',
+		description: 'Comment out a line of pasted R console output, which is missing its `#`.',
+		direction:   'comment',
+		appliesTo:   f => f.kind === 'error' && ConsoleOutput.test(f.line),
+		quickFix:    (f, file) => ({
+			type:        'replace',
+			loc:         SourceLocation.from(point({ row: f.node.startPosition.row, column: 0 }), file),
+			description: 'Comment out the pasted console output',
+			replacement: '# '
+		})
+	},
 	{
 		name:        'insert-missing-token',
 		description: 'Insert a delimiter, quote, or keyword the parser expected but did not find.',
@@ -139,9 +174,9 @@ export const SyntaxErrorFixPatterns: SyntaxErrorFixPattern[] = [
 		name:        'balance-brackets',
 		description: 'Close an unbalanced region by appending the brackets that were left open.',
 		direction:   'add',
-		appliesTo:   f => f.kind === 'error' && bracketDeficit(f.node.text).length > 0,
+		appliesTo:   f => f.kind === 'error' && f.scan.closers.length > 0,
 		quickFix:    (f, file) => {
-			const closers = bracketDeficit(f.node.text).join('');
+			const closers = f.scan.closers.join('');
 			return { type: 'replace', loc: SourceLocation.from(point(f.node.endPosition), file), description: `Add missing closing \`${closers}\``, replacement: closers };
 		}
 	},
@@ -149,11 +184,41 @@ export const SyntaxErrorFixPatterns: SyntaxErrorFixPattern[] = [
 		name:        'complete-operator',
 		description: 'Complete an unfinished `%...%` operator to the nearest known one.',
 		direction:   'add',
-		appliesTo:   f => f.kind === 'error' && !f.node.text.includes('\n') && (f.node.text.match(/%/g)?.length ?? 0) % 2 === 1,
+		// single-line only: the completion derives its column from the offset within the region
+		appliesTo:   f => f.kind === 'error' && !f.node.text.includes('\n') && f.scan.percentAt.length % 2 === 1,
 		quickFix:    (f, file) => {
-			const { range, full } = operatorCompletion(f.node);
+			const { range, full } = operatorCompletion(f.node, f.scan.percentAt.at(-1) as number);
 			return { type: 'replace', loc: SourceLocation.from(range, file), description: `Complete operator to \`${full}\``, replacement: full };
 		}
+	},
+	{
+		name:        'replace-smart-quote',
+		description: 'Turn a typographic quote back into the straight quote R can read.',
+		direction:   'add',
+		appliesTo:   f => f.kind === 'error' && SmartQuote.has(f.node.text),
+		quickFix:    (f, file) => ({
+			type:        'replace',
+			loc:         SourceLocation.from(span(f.node), file),
+			description: 'Replace the typographic quote with a straight one',
+			replacement: SmartQuote.get(f.node.text) as string
+		})
+	},
+	{
+		name:        'remove-repl-prompt',
+		description: 'Drop a `>` prompt copied in front of a line taken from the R console.',
+		direction:   'remove',
+		// must open the line: `a > b` parses, and a leading `>=` is a different token
+		appliesTo:   f => f.kind === 'error' && f.node.text === '>'
+			&& f.line.slice(0, f.node.startPosition.column).trim() === '',
+		quickFix: (f, file) => ({ type: 'remove', loc: SourceLocation.from(span(f.node), file), description: 'Remove the copied `>` prompt' })
+	},
+	{
+		name:        'remove-stray-closer',
+		description: 'Drop closing brackets that close nothing, as a partial copy leaves behind.',
+		direction:   'remove',
+		// the `]` of `[1]` is a closer too, but there the line goes, not the bracket
+		appliesTo:   f => f.kind === 'error' && OnlyClosers.test(f.node.text) && !ConsoleOutput.test(f.line),
+		quickFix:    (f, file) => ({ type: 'remove', loc: SourceLocation.from(span(f.node), file), description: `Remove the stray \`${f.node.text.replace(/\s+/g, '')}\`` })
 	},
 	{
 		name:        'comment-out',
@@ -165,14 +230,26 @@ export const SyntaxErrorFixPatterns: SyntaxErrorFixPattern[] = [
 ];
 
 /** Collect the outermost `missing`/`error` nodes, pruning subtrees the parser reports as clean. */
-function collectFindings(node: SyntaxNode, out: SyntaxErrorFinding[] = []): SyntaxErrorFinding[] {
+function finding(kind: 'missing' | 'error', node: SyntaxNode, lines: readonly string[]): SyntaxErrorFinding {
+	let scan: RegionScan | undefined;
+	return {
+		kind, node,
+		line: lines[node.startPosition.row] ?? '',
+		// on demand and once: a `missing` node has no text, and two patterns want the same scan
+		get scan() {
+			return scan ??= scanRegion(node.text);
+		}
+	};
+}
+
+function collectFindings(node: SyntaxNode, lines: readonly string[], out: SyntaxErrorFinding[] = []): SyntaxErrorFinding[] {
 	if(node.isMissing) {
-		out.push({ kind: 'missing', node });
+		out.push(finding('missing', node, lines));
 	} else if(node.isError) {
-		out.push({ kind: 'error', node });
+		out.push(finding('error', node, lines));
 	} else if(node.hasError) {
 		for(const child of node.children) {
-			collectFindings(child, out);
+			collectFindings(child, lines, out);
 		}
 	}
 	return out;
@@ -187,7 +264,8 @@ function describe(finding: SyntaxErrorFinding): string {
 }
 
 export const SYNTACTICALLY_VALID = {
-	createSearch:        () => Q.all(),
+	// reads the parse tree, not the normalized AST, so `Q.all()` would enumerate every node for nothing
+	createSearch:        () => Q.from([]),
 	processSearchResult: async(_elements, config, data): Promise<{ results: SyntacticallyValidResult[], '.meta': SyntacticallyValidMetadata }> => {
 		const parser = data.parserInformation().name;
 		const results: SyntacticallyValidResult[] = [];
@@ -199,7 +277,9 @@ export const SYNTACTICALLY_VALID = {
 				if(!root.hasError) {
 					continue;
 				}
-				for(const finding of collectFindings(root)) {
+				// the root spans the file verbatim, so its rows index these lines
+				const lines = root.text.split('\n');
+				for(const finding of collectFindings(root, lines)) {
 					// a single fix per error, favouring the preferred direction (alternatives are never emitted together)
 					let fix: LintQuickFix | undefined;
 					let best = 2;
@@ -208,6 +288,9 @@ export const SYNTACTICALLY_VALID = {
 						if(rank < best && p.appliesTo(finding)) {
 							fix = p.quickFix(finding, file.filePath);
 							best = rank;
+							if(best === 0) {
+								break;
+							}
 						}
 					}
 					results.push({

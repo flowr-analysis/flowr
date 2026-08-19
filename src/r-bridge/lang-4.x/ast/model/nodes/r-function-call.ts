@@ -3,7 +3,7 @@ import { RNode } from '../model';
 import { RType } from '../type';
 import type { RSymbol } from './r-symbol';
 import type { RArgument } from './r-argument';
-import { findByPrefixIfUnique } from '../../../../../util/prefix';
+import { matchArgumentsToParameters } from '../../../../../util/arg-matching';
 
 export const EmptyArgument = '<>';
 
@@ -63,57 +63,24 @@ export const RFunctionCall = {
 		return RFunctionCall.is(node) && !node.named;
 	},
 	/**
-	 * Bind a call's `arguments` to the formal `paramNames` using R's argument matching rules
-	 * (see https://cran.r-project.org/doc/manuals/R-lang.html#Argument-matching): exact name, then partial
-	 * (`pmatch`, unique-prefix) name, then the remaining unnamed arguments filling the remaining formals
-	 * left-to-right. Returns a map from parameter name to the argument bound to it, so
-	 * `matchArgumentsToParameters(call.arguments, names).get('X')` answers "which argument is mapped to
-	 * parameter `X`". Pass `paramNames` as the full formal list **excluding `...`** so ambiguous prefixes are
-	 * rejected; this makes it exact when the signature is known (e.g. from the signature database).
+	 * Bind a call's `arguments` to the formal `paramNames` with {@link matchArgumentsToParameters}, R's argument
+	 * matching. Returns a map from parameter name to the argument bound to it, so
+	 * `matchArgsToParams(call.arguments, names).get('X')` answers "which argument is mapped to parameter `X`".
+	 * An empty argument (`f(1, ,3)`) takes its formal but never appears in the map, as there is nothing to bind.
 	 */
-	matchArgsToParams<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], paramNames: readonly string[]): ReadonlyMap<string, PotentiallyEmptyRArgument<Info>> {
-		const bound = new Map<string, PotentiallyEmptyRArgument<Info>>();
-		const used = new Set<number>();
-		// pass 1: exact name matches
+	matchArgsToParams<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], paramNames: readonly string[]): ReadonlyMap<string, RArgument<Info>> {
+		const matched = matchArgumentsToParameters(args.map(a => a === EmptyArgument ? undefined : a.name?.content), paramNames);
+		const bound = new Map<string, RArgument<Info>>();
 		for(let i = 0; i < args.length; i++) {
-			const arg = args[i];
-			if(arg === EmptyArgument || arg.name === undefined) {
-				continue;
-			}
-			const n = arg.name.content as string;
-			if(paramNames.includes(n) && !bound.has(n)) {
-				bound.set(n, arg);
-				used.add(i);
-			}
-		}
-		// pass 2: partial (pmatch) name matches on the still-unbound named arguments
-		for(let i = 0; i < args.length; i++) {
-			const arg = args[i];
-			if(used.has(i) || arg === EmptyArgument || arg.name === undefined) {
-				continue;
-			}
-			const matched = findByPrefixIfUnique(arg.name.content, paramNames);
-			if(matched !== undefined && !bound.has(matched)) {
-				bound.set(matched, arg);
-				used.add(i);
-			}
-		}
-		// pass 3: remaining unnamed args fill the remaining formals left-to-right
-		let formalIdx = 0;
-		for(let i = 0; i < args.length; i++) {
-			const arg = args[i];
-			if(used.has(i) || arg === EmptyArgument || arg.name !== undefined) {
-				continue;
-			}
-			while(formalIdx < paramNames.length && bound.has(paramNames[formalIdx])) {
-				formalIdx++;
-			}
-			if(formalIdx < paramNames.length) {
-				bound.set(paramNames[formalIdx], arg);
-				used.add(i);
-				formalIdx++;
+			const arg = args[i], param = matched[i];
+			if(arg !== EmptyArgument && param !== undefined) {
+				bound.set(paramNames[param], arg);
 			}
 		}
 		return bound;
+	},
+	/** The one argument a call was given, `undefined` unless there is exactly one and it is not empty. */
+	soleArgument<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[]): RArgument<Info> | undefined {
+		return args.length === 1 && args[0] !== EmptyArgument ? args[0] : undefined;
 	}
 } as const;

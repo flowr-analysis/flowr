@@ -42,6 +42,9 @@ print(x)`,
 				'f <- function(x, ...) { x }\nprint(f(1))',
 				/* S3 method for a known base generic - dispatched indirectly, so not unused */
 				'print.foo <- function(x, ...) { cat(x) }\ny <- structure(list(), class = "foo")\nprint(y)',
+				'`[.foo` <- function(x, i) { x[i] }',
+				'as.character.foo <- function(x, ...) { x }',
+				'Ops.foo <- function(e1, e2) { e1 + e2 }\nx <- structure(1, class = "foo")\nprint(x + 1)',
 				/* S3 method for a project-local generic that is dispatched somewhere - not unused */
 				'myg <- function(x) UseMethod("myg")\nmyg.foo <- function(x) x\nz <- structure(1, class = "foo")\nmyg(z)',
 				/* R package lifecycle hook called by package machinery - not unused */

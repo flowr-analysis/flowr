@@ -10,7 +10,7 @@ import type {
 	SubCallContextQueryFormat
 } from './call-context-query-format';
 import { type NodeId, recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { VertexType } from '../../../dataflow/graph/vertex';
+import { FunctionCallVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
@@ -26,15 +26,6 @@ import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { ArrayQueue } from '../../../util/collections/queue';
 import { baseRExportOwner } from '../../../util/r-base-packages';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
-
-/* if the node is effected by nse, we have an ingoing nse edge */
-function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
-	const vertex = graph.ingoingEdges(node);
-	if(vertex === undefined) {
-		return false;
-	}
-	return vertex.values().some(e => DfEdge.includesType(e, EdgeType.NonStandardEvaluation));
-}
 
 function makeReport(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>): CallContextQueryKindResult {
 	const result: CallContextQueryKindResult = {};
@@ -176,7 +167,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 		}
 		const [info, outgoing] = vertex;
 
-		if(info.tag !== VertexType.FunctionCall) {
+		if(!FunctionCallVertex.is(info)) {
 			const wantedTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 			const x = outgoing.entries()
 				.filter(([,e]) => DfEdge.includesType(e, wantedTypes))
@@ -368,7 +359,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 					continue;
 				}
 			}
-			if(isQuoted(nodeId, dataflow.graph)) {
+			if(Dataflow.isQuoted(nodeId, dataflow.graph)) {
 				/* if the call is quoted, we do not want to link to it */
 				continue;
 			} else if(query.ignoreParameterValues && isParameterDefaultValue(nodeId, ast)) {

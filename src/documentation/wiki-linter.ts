@@ -195,6 +195,10 @@ function(x) {
 		'syntactically-valid', 'SyntacticallyValidConfig', 'SYNTACTICALLY_VALID', 'lint-syntactically-valid',
 		'x <- c(1, 2', tagTypes);
 
+	rule(knownParser,
+		'unclosed-connection', 'UnclosedConnectionConfig', 'UNCLOSED_CONNECTION', 'lint-unclosed-connection',
+		'con <- file("data.csv")\nreadLines(con)', tagTypes);
+
 	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 

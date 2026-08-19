@@ -4,7 +4,7 @@ import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { Identifier } from '../dataflow/environments/identifier';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import { type DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
-import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexUse, type DataflowGraphVertexValue, type DataflowGraphVertexVariableDefinition, FunctionCallVertex, VertexType } from '../dataflow/graph/vertex';
+import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexUse, type DataflowGraphVertexValue, type DataflowGraphVertexVariableDefinition, FunctionCallVertex } from '../dataflow/graph/vertex';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
 import { type NoInfo, RLoopConstructs, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
@@ -679,7 +679,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		}
 		const dataflowVertex = this.getDataflowGraph(nodeId);
 
-		if(dataflowVertex?.tag !== VertexType.FunctionCall || !Array.isArray(dataflowVertex.origin)) {
+		if(!FunctionCallVertex.is(dataflowVertex) || !Array.isArray(dataflowVertex.origin)) {
 			return false;
 		}
 		const origin = dataflowVertex.origin;

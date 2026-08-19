@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>flowR &middot; playground</title>
+<meta name="description" content="Run flowR on your own R code, in your browser: what a script touches, what the linter says, and the part that computes one value.">
+<link rel="icon" href="../img/flowR-mark-red.svg" type="image/svg+xml">
+<script>
+	try {
+		const theme = localStorage.getItem('flowr-theme');
+		if(theme) { document.documentElement.dataset.theme = theme; }
+	} catch(e) { /* private mode keeps the system theme */ }
+	/* every flowR page reads the same key, so a change here follows you to the others */
+	addEventListener('storage', e => {
+		if(e.key === 'flowr-theme') {
+			if(e.newValue) { document.documentElement.dataset.theme = e.newValue; }
+			else { delete document.documentElement.dataset.theme; }
+		}
+	});
+</script>
+<style>
+:root {
+	--bg: #fbfbfc; --panel: #fff; --sunk: #f1f3f6; --fg: #1b1d21; --muted: #5c6270;
+	--border: #d6dae1; --accent: #a63446; --accent-fg: #fff; color-scheme: light;
+}
+:root[data-theme="dark"] {
+	--bg: #0f1216; --panel: #161a20; --sunk: #1c2129; --fg: #e7e9ed; --muted: #98a1b0;
+	--border: #262c35; --accent: #56b4e9; --accent-fg: #0f1216; color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--bg: #0f1216; --panel: #161a20; --sunk: #1c2129; --fg: #e7e9ed; --muted: #98a1b0;
+		--border: #262c35; --accent: #56b4e9; --accent-fg: #0f1216; color-scheme: dark;
+	}
+}
+* { box-sizing: border-box; }
+body {
+	margin: 0; height: 100vh; display: flex; flex-direction: column;
+	color: var(--fg); background: var(--bg);
+	font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+a { color: var(--accent); }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+.top {
+	display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .8rem; padding: .5rem 1rem; flex: none;
+	border-bottom: 1px solid var(--border); background: var(--panel);
+}
+/* the brand box takes its baseline from the mark, not from its text, so the row centres instead */
+.top .ident { display: inline-flex; align-items: center; flex: none; }
+.top .brand { display: inline-flex; align-items: center; gap: .45rem; font-weight: 700; font-size: 1.15rem; text-decoration: none; color: var(--fg); }
+.mark { flex: none; }
+/* the slash owns the space on both of its sides, so the two names sit evenly around it */
+.top .where { color: var(--muted); font-size: 1.05rem; white-space: nowrap; }
+.top .where::before { content: "/"; margin: 0 .5rem; opacity: .55; }
+.top .version { margin-left: .55rem; font-size: .82rem; color: var(--muted); text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.top .version:hover { color: var(--fg); }
+.top .note { color: var(--muted); font-size: .8rem; line-height: 1.35; flex: 1 1 22rem; min-width: 14rem; max-width: 54rem; }
+/* a narrow window has no room for the aside, and the links matter more */
+@media (max-width: 68rem) { .top .note { display: none; } }
+@media (max-width: 42rem) { .top .version, .top .where { display: none; } }
+.top .grow { margin-left: auto; }
+.top a.link { color: var(--muted); text-decoration: none; font-size: .85rem; padding: .25rem .5rem; border-radius: .4rem; }
+.top a.link { white-space: nowrap; }
+.top a.link:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 7%, transparent); }
+/* GitHub asks that its mark stay solid black or white and unmodified, so it does not take the
+   page colours; only the backdrop reacts to the pointer */
+.top a.gh, .top a.gh:hover { color: #181717; }
+.top a.gh { display: inline-flex; align-items: center; padding: .25rem .4rem; margin-right: -.45rem; }
+:root[data-theme="dark"] .top a.gh, :root[data-theme="dark"] .top a.gh:hover { color: #fff; }
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) .top a.gh, :root:not([data-theme="light"]) .top a.gh:hover { color: #fff; }
+}
+.top a.gh svg { display: block; }
+#theme {
+	display: grid; place-items: center; width: 1.9rem; height: 1.9rem; padding: 0; cursor: pointer;
+	border-radius: .45rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg);
+}
+#theme:hover { border-color: var(--accent); color: var(--accent); }
+#theme .sun { display: none; }
+:root[data-theme="dark"] #theme .sun { display: block; }
+:root[data-theme="dark"] #theme .moon { display: none; }
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) #theme .sun { display: block; }
+	:root:not([data-theme="light"]) #theme .moon { display: none; }
+}
+
+.tools {
+	display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; padding: .5rem 1rem; flex: none;
+	border-bottom: 1px solid var(--border);
+}
+.tools button {
+	font: inherit; font-size: .82rem; font-weight: 600; padding: .3rem .8rem; cursor: pointer;
+	border-radius: 1rem; border: 1px solid var(--border); background: var(--panel); color: var(--fg);
+}
+.tools button:hover { border-color: var(--accent); color: var(--accent); }
+.tools .hint { margin-left: auto; color: var(--muted); font-size: .8rem; }
+.tools .sharenote { color: var(--muted); font-size: .78rem; }
+/* the graphs flowR builds are handed to mermaid.live rather than drawn in here */
+#views {
+	flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .4rem;
+	padding: .6rem 1rem; border-top: 1px solid var(--border); background: var(--panel);
+}
+#views .label { color: var(--muted); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; width: 100%; }
+#views button {
+	font: inherit; font-size: .76rem; padding: .15rem .6rem; cursor: pointer; color: var(--muted);
+	border-radius: 1rem; border: 1px solid var(--border); background: var(--sunk);
+}
+#views button:hover { color: var(--accent); border-color: var(--accent); }
+.tools .preview { font-size: .8rem; font-weight: 700; color: var(--fg); }
+.top .version { color: var(--muted); font-size: .78rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+.split { flex: 1; display: grid; grid-template-columns: var(--split, 1.15fr) .35rem minmax(14rem, 1fr); min-height: 0; }
+/* the bar between the panes, dragged to give one of them more room */
+.divider { cursor: ew-resize; background: var(--border); }
+.divider:hover { background: var(--accent); }
+.pane { min-height: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+/* the code and the configuration flowR reads it with, one at a time */
+.tabs { display: flex; align-items: center; gap: .2rem; flex: none; padding: .3rem .6rem 0; border-bottom: 1px solid var(--border); }
+.tabs .tab {
+	font: inherit; font-size: .8rem; padding: .3rem .7rem; cursor: pointer; color: var(--muted);
+	border: 1px solid transparent; border-bottom: 0; border-radius: .4rem .4rem 0 0; background: none;
+}
+.tabs .tab:hover { color: var(--fg); }
+.tabs .tab[aria-selected="true"] { color: var(--fg); background: var(--panel); border-color: var(--border); margin-bottom: -1px; }
+.tabnote { margin-left: auto; font-size: .76rem; color: var(--muted); padding-right: .2rem; }
+.tabnote.bad { color: #d55e00; }
+.tabhelp { font-size: .76rem; padding-right: .2rem; }
+.tabreset {
+	font: inherit; font-size: .74rem; cursor: pointer; padding: .05rem .55rem; margin-right: .4rem;
+	border-radius: 1rem; border: 1px solid var(--border); background: var(--panel); color: var(--muted);
+}
+.tabreset:hover { color: var(--accent); border-color: var(--accent); }
+#editor, #config { min-height: 0; flex: 1; overflow: auto; }
+/* flowR's own repl, folded away under the panes until someone opens it */
+.drawer { flex: none; border-top: 1px solid var(--border); background: var(--panel); }
+.drawer > summary {
+	cursor: pointer; padding: .4rem 1rem; font-size: .82rem; font-weight: 600; list-style: none;
+	display: flex; align-items: baseline; gap: .6rem;
+}
+.drawer > summary::-webkit-details-marker { display: none; }
+.drawer > summary::before { content: "▸"; color: var(--muted); font-weight: 400; flex: none; }
+.drawer[open] > summary::before { content: "▾"; }
+.drawer > summary:hover { color: var(--accent); }
+.drawer > summary .label { flex: none; white-space: nowrap; }
+.drawer > summary .what {
+	color: var(--muted); font-weight: 400; font-size: .78rem;
+	min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.drawer > summary .what code { font-size: .95em; }
+.drawer .body { display: flex; flex-direction: column; height: var(--repl-height, 14rem); border-top: 1px solid var(--border); }
+/* the bar one drags to give the repl more or less room */
+.drawer .grip { flex: none; height: .4rem; cursor: ns-resize; background: var(--sunk); }
+.drawer .grip:hover { background: color-mix(in srgb, var(--accent) 35%, var(--sunk)); }
+#repl .out {
+	flex: 1; min-height: 0; overflow: auto; margin: 0; padding: .6rem .8rem; white-space: pre-wrap;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .8rem;
+}
+#repl .said { color: var(--accent); }
+#repl .out a { color: var(--accent); }
+#repl .bad { color: #d55e00; }
+#repl .ask { display: flex; align-items: center; gap: .4rem; padding: .4rem .8rem; border-top: 1px solid var(--border); }
+#repl .ask span { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+#repl input {
+	flex: 1; font: inherit; font-size: .82rem; padding: .2rem .4rem; color: var(--fg);
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	border: 1px solid var(--border); border-radius: .3rem; background: var(--bg);
+}
+#repl input:focus { outline: none; border-color: var(--accent); }
+/* a call by name, which the R mode leaves plain: weight rather than colour */
+.cm-call { color: var(--fg); font-weight: 600; }
+/* what the linter marks, and what flowR can say about a name */
+.cm-lint { text-decoration: underline wavy #d55e00; text-underline-offset: .22em; }
+/* what the current slice leaves out, still readable but clearly not part of the answer */
+.cm-outside { opacity: .4; }
+/* the lines the panel row under the pointer stands for */
+.cm-linked { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+/* the completion list, in the page's own colours rather than CodeMirror's */
+.cm-tooltip-autocomplete > ul > li { padding: .1rem .5rem; }
+.cm-tooltip-autocomplete > ul > li[aria-selected] { background: var(--accent); color: var(--accent-fg); }
+.cm-completionLabel { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.cm-completionDetail { color: var(--muted); font-style: normal; font-size: .78rem; margin-left: .6rem; }
+.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionDetail { color: var(--accent-fg); opacity: .85; }
+.cm-completionMatchedText { text-decoration: none; font-weight: 700; color: var(--accent); }
+.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionMatchedText { color: var(--accent-fg); }
+:root[data-theme="dark"] .cm-lint { text-decoration-color: #e69f00; }
+.cm-tooltip { border: 1px solid var(--border); border-radius: .4rem; background: var(--panel); }
+.cm-valuetip { padding: .35rem .55rem; color: var(--fg); font-size: .8rem; max-width: 34rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.cm-valuetip .tcall { font-weight: 600; }
+.cm-valuetip .tabout, .cm-valuetip .tsaid { color: var(--muted); font-size: .76rem; margin-top: .15rem; }
+.cm-editor { height: 100%; }
+.cm-editor.cm-focused { outline: none; }
+.right { min-height: 0; display: flex; flex-direction: column; background: var(--sunk); }
+#pointed {
+	display: flex; align-items: baseline; gap: .6rem; flex: none;
+	padding: .5rem 1rem; border-top: 1px solid var(--border); background: var(--panel); min-height: 2.2rem;
+}
+#pinfo { display: flex; align-items: baseline; gap: .6rem; min-width: 0; overflow: hidden; }
+#pinfo .pvalue { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#took { margin-left: auto; flex: none; color: var(--muted); font-size: .78rem; }
+.pname { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; font-size: .85rem; color: var(--fg); text-decoration: none; }
+.pname:hover { color: var(--accent); text-decoration: underline; }
+.pvalue { color: var(--muted); font-size: .82rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+#panel { min-height: 0; flex: 1; overflow: auto; padding: 1rem; container: panel / inline-size; }
+/* what the signature database says about the name under the pointer, under everything else */
+#signature { flex: none; padding: .7rem 1rem .9rem; border-top: 1px solid var(--border); background: var(--panel); }
+#signature h3 { margin-top: 0; }
+#signature h3 {
+	margin: 0 0 .35rem; font-size: .72rem; font-weight: 700; letter-spacing: .08em;
+	text-transform: uppercase; color: var(--muted);
+}
+.scall { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .82rem; overflow-wrap: anywhere; }
+.sabout { display: flex; flex-wrap: wrap; gap: .3rem; align-items: baseline; margin-top: .4rem; }
+.sabout .prop {
+	padding: 0 .45rem; border-radius: 1rem; font-size: .7rem; color: var(--muted);
+	border: 1px solid var(--border); background: var(--sunk);
+}
+.sabout .at { color: var(--muted); font-size: .76rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+#panel h3 {
+	display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .6rem;
+	margin: 1.2rem 0 .4rem; font-size: .72rem; font-weight: 700; letter-spacing: .08em;
+	text-transform: uppercase; color: var(--muted);
+}
+/* which way the slice runs, the pair the landing page offers */
+#panel .ways { margin-left: auto; display: inline-flex; border: 1px solid var(--border); border-radius: 1rem; overflow: hidden; }
+#panel .way {
+	font: inherit; font-size: .72rem; text-transform: none; letter-spacing: 0; cursor: pointer;
+	padding: .1rem .6rem; border: 0; background: var(--panel); color: var(--muted);
+}
+#panel .way + .way { border-left: 1px solid var(--border); }
+#panel .way:hover { color: var(--fg); }
+#panel .way[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+/* the way to ask for a new linting rule, at the end of the lint heading */
+#panel h3 .suggest {
+	margin-left: auto; font-weight: 400; text-transform: none; letter-spacing: 0;
+	padding: .1rem .6rem; border: 1px solid var(--border); border-radius: 1rem;
+	color: var(--muted); text-decoration: none;
+}
+#panel h3 .suggest:hover { color: var(--fg); }
+/* the aside on a heading, which says what one can do with what is under it */
+#panel h3 .aside { font-weight: 400; letter-spacing: .04em; opacity: .65; }
+#panel .toggle { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; text-transform: none; letter-spacing: 0; font-weight: 400; cursor: pointer; }
+#panel .toggle input { accent-color: var(--accent); margin: 0; }
+#panel h3:first-child { margin-top: 0; }
+#panel .card { padding: .6rem .8rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--panel); }
+#panel .card.folded pre { max-height: 11rem; overflow: hidden; mask-image: linear-gradient(to bottom, #000 70%, transparent); }
+#panel .unfold {
+	margin-top: .4rem; font: inherit; font-size: .78rem; cursor: pointer; padding: .15rem .6rem;
+	border-radius: 1rem; border: 1px solid var(--border); background: var(--sunk); color: var(--muted);
+}
+#panel .unfold:hover { color: var(--accent); border-color: var(--accent); }
+#panel .copy {
+	font: inherit; font-size: .72rem; text-transform: none; letter-spacing: 0; cursor: pointer;
+	padding: .05rem .5rem; border-radius: 1rem; border: 1px solid var(--border); background: var(--panel); color: var(--muted);
+}
+#panel .copy:hover { color: var(--accent); border-color: var(--accent); }
+#panel pre { margin: 0; overflow-x: auto; font-size: .82rem; }
+/* one grid for all dependency rows, so the chip, the name and the line number line up across them */
+#panel .deps { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: .6rem; }
+#panel .row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline; padding: .2rem 0; font-size: .86rem; }
+#panel .kind {
+	justify-self: start; white-space: nowrap; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; padding: 0 .45rem; border-radius: 1rem; font-size: .68rem; font-weight: 600;
+	color: var(--muted); border: 1px solid var(--border); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+#panel .at { color: var(--muted); font-size: .78rem; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-align: left; }
+#panel .empty { color: var(--muted); font-size: .86rem; }
+#panel .what { display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem; min-width: 0; overflow-wrap: anywhere; }
+#panel .call {
+	color: var(--muted); border: 0; padding: 0; font-size: .74rem;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+/* a row that stands for a place in the code lights that place up while the pointer is on it */
+#panel .linked { cursor: pointer; border-radius: .3rem; }
+#panel .linked.hot { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+/* what a plot is drawn onto belongs to that plot, so it sits under it */
+#panel .row.part { padding-left: 1.2rem; }
+#panel .kind.part { color: var(--muted); border-style: dashed; opacity: .8; }
+/* the dependencies and the findings share one column layout, so their line numbers line up down the panel */
+#panel .lints { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: .6rem; row-gap: .2rem; }
+#panel .lints .lint {
+	display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
+	align-items: baseline; padding: .15rem 0;
+}
+
+#panel .says { font-size: .84rem; }
+#panel .rule {
+	--hue: #d55e00;
+	padding: 0 .45rem; border-radius: 1rem; font-size: .72rem; font-weight: 600; white-space: nowrap;
+	justify-self: start; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	color: var(--hue); border: 1px solid color-mix(in srgb, var(--hue) 40%, transparent);
+	background: color-mix(in srgb, var(--hue) 12%, transparent);
+}
+#panel .rule[data-category="bug"] { --hue: #d55e00; }
+#panel .rule[data-category="security"] { --hue: #cc0000; }
+#panel .rule[data-category="reproducibility"] { --hue: #7b3294; }
+#panel .rule[data-category="robustness"] { --hue: #0072b2; }
+#panel .rule[data-category="deprecated"] { --hue: #b07d00; }
+#panel .rule[data-category="style"], #panel .rule[data-category="smell"] { --hue: #0f766e; }
+#panel .rule[data-category="other"] { --hue: var(--muted); }
+
+/* a narrow panel has no room for the chip, the text and the line number side by side, so the text
+   moves under the two of them instead of being squeezed into a word per line */
+@container panel (max-width: 22rem) {
+	#panel .deps, #panel .lints { grid-template-columns: minmax(0, 1fr) auto; }
+	#panel .row, #panel .lints .lint { grid-template-rows: auto auto; row-gap: .1rem; }
+	#panel .kind, #panel .rule { grid-column: 1; grid-row: 1; }
+	#panel .at { grid-column: 2; grid-row: 1; }
+	#panel .what, #panel .says { grid-column: 1 / -1; grid-row: 2; }
+	/* the headings keep their controls, but only the words they need for them */
+	#panel .wide, #panel h3 .aside { display: none; }
+	#panel .way, #panel h3 .suggest { padding: .1rem .4rem; }
+}
+
+@media (max-width: 52rem) {
+	body { height: auto; }
+	.split { grid-template-columns: 1fr; }
+	.divider { display: none; }
+	.pane { border-right: 0; border-bottom: 1px solid var(--border); }
+	#editor, #config { min-height: 18rem; }
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+	<span class="ident">
+		<a class="brand" href="../../"><img class="mark" src="../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a>
+		<span class="where">Playground</span>
+		<a class="version" id="version" href="https://github.com/flowr-analysis/flowr/releases/tag/<!--VERSION-->" target="_blank" rel="noopener" title="the release notes of flowR <!--VERSION-->"><!--VERSION--></a>
+	</span>
+	<span class="grow"></span>
+	<span class="note">Fully local, selected features, use the
+		<a href="https://github.com/flowr-analysis/flowr/wiki/Interface" target="_blank" rel="noopener">editor extensions</a> for more.</span>
+	<a class="link" href="../../" target="_blank" rel="noopener">Landing Page</a>
+	<a class="link" href="../sigdb/" target="_blank" rel="noopener">Signature DB</a>
+	<a class="link" href="../stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
+	<a class="link" href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
+	<a class="link gh" href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener" title="flowR on GitHub" aria-label="flowR on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg></a>
+	<button id="theme" type="button" aria-label="Switch between the light and the dark theme" title="Light or dark">
+		<svg class="moon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>
+		<svg class="sun" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="12" r="4.6" fill="currentColor"/><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></g></svg>
+	</button>
+</div>
+
+<div class="tools">
+	<button type="button" data-sample="survey">Reset the example</button>
+	<button type="button" id="share" title="The address bar already holds this script; this copies it">Copy link</button>
+	<span class="sharenote" id="sharenote"></span>
+	<span class="preview">This is a feature preview</span>
+	<span class="hint">hover a name for its value, ctrl-click it to jump to its definition, click a dependency to slice for it</span>
+</div>
+
+<div class="split">
+	<div class="pane">
+		<div class="tabs" role="tablist">
+			<button type="button" class="tab" data-tab="editor" aria-selected="true">R code</button>
+			<button type="button" class="tab" data-tab="config" aria-selected="false">Configuration</button>
+			<span class="tabnote" id="confignote"></span>
+			<button type="button" class="tabreset" id="configreset" hidden>reset</button>
+			<a class="tabhelp" id="confighelp" href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" target="_blank" rel="noopener" hidden>what these options do</a>
+		</div>
+		<div id="editor"></div>
+		<div id="config" hidden></div>
+		<details class="drawer" id="repl">
+	<summary><span class="label">flowR repl</span><span class="what" title="every command the repl carries, over the script above; :help lists them">every command the repl carries, over the script above; <code>:help</code> lists them</span></summary>
+	<div class="body">
+		<div class="grip" id="replgrip" role="separator" aria-label="Drag to resize the repl" title="drag to resize"></div>
+		<pre class="out" id="replout"></pre>
+		<div class="ask"><span>R&gt;</span><input id="replin" type="text" spellcheck="false" autocomplete="off" aria-label="a flowR repl command, :help lists them"></div>
+	</div>
+</details>
+	</div>
+	<div class="divider" id="divider" role="separator" aria-label="Drag to resize the code pane" title="drag to resize"></div>
+	<div class="right">
+		<div id="panel"></div>
+		<div id="pointed"><span id="pinfo"><span class="pvalue">hover a name for what flowR knows about it, ctrl-click it to jump to its definition</span></span><span id="took"></span></div>
+		<div id="signature" hidden></div>
+
+<div id="views">
+			<span class="label">Open in mermaid.live</span>
+			<button type="button" data-view="dataflow">dataflow graph</button>
+			<button type="button" data-view="cfg">control flow</button>
+			<button type="button" data-view="call">call graph</button>
+			<button type="button" data-view="ast">normalized AST</button>
+		</div>
+	</div>
+</div>
+
+<script type="text/plain" id="sigs"><!--SIGS--></script>
+<script type="application/json" id="pkgs"><!--PKGS--></script>
+<script type="application/json" id="cfgdocs"><!--CFGDOCS--></script>
+<script src="bundle.js"></script>
+<script>
+	/* the tag says the number, the name that release carries only lives on GitHub, so it is fetched once someone asks for it */
+	(function() {
+		const tag = document.getElementById('version');
+		if(!tag) { return; }
+		let asked = false;
+		const name = () => {
+			if(asked || !tag.textContent) { return; }
+			asked = true;
+			fetch('https://api.github.com/repos/flowr-analysis/flowr/releases/tags/' + tag.textContent)
+				.then(r => r.ok ? r.json() : Promise.reject(r.status))
+				.then(release => {
+				if(release.name) {
+					const when = release.published_at
+						? new Date(release.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+						: '';
+					tag.title = when ? release.name + ', released ' + when : release.name;
+				}
+			})
+				.catch(() => { /* the title it already carries says enough */ });
+		};
+		tag.addEventListener('pointerenter', name);
+		tag.addEventListener('focus', name);
+	})();
+</script>
+</body>
+</html>

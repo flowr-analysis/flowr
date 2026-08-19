@@ -36,8 +36,8 @@ export function stdioCaptureProcessor(stdio: Stdio, onStdOutLine: (msg: string) 
  *                      It is probably best to use {@link __dirname} so you can specify the module relative to your
  *                      current one.
  * @param args        - The arguments you want to start your process with.
- * @param io          - If you omit this argument, the in-, out- and error-channels of the script execution
- *                      will be automatically forwarded to the respective in-, out- and error-channels of your process.
+ * @param io          - If you omit this argument, the in-, out-, and error-channels of the script execution
+ *                      will be automatically forwarded to the respective in-, out-, and error-channels of your process.
  *                      However, by defining `io` you essentially gain full control on what should happen
  *                      with these streams. For a simple capturing processor, for example if you want to collect
  *                      the output of the script, see {@link stdioCaptureProcessor}.

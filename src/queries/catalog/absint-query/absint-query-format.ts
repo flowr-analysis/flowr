@@ -8,7 +8,7 @@ import type { AbstractProduct } from '../../../abstract-interpretation/domains/p
 import type { StateDomain } from '../../../abstract-interpretation/domains/state-domain';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/core';
-import { lastCriterionFragment, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { lastCriterionFragment, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import type { FlowrConfig } from '../../../config';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { fileProtocol } from '../../../r-bridge/retriever';
@@ -72,7 +72,7 @@ function absintQueryCompleter(line: readonly string[], startingNewArg: boolean, 
 		}
 		const fragment = lastCriterionFragment(line[1]);
 
-		if(fragment.match(/^\d+$/)) {
+		if(/^\d+$/.test(fragment)) {
 			return { completions: [`${fragment}@`, `${fragment}:`, `${fragment}~`], argumentPart: fragment };
 		}
 	} else if((line.length === 2 && startingNewArg) || (line.length === 3 && line[2].length === 0)) {
@@ -96,7 +96,7 @@ function absintQueryLineParser(output: ReplOutput, line: readonly string[], _con
 		output.stderr(output.formatter.format(`Invalid slicing criteria "${line[1]}"`, { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
 		return { query: [] };
 	}
-	const code = criteria ? line[2] : line[1];
+	const code = queryLineCode(line, criteria ? 2 : 1);
 
 	return {
 		query: {

@@ -3,6 +3,19 @@ import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import { reduceDfg } from '../../../util/simple-df/dfg-view';
 import { VertexType } from '../../../dataflow/graph/vertex';
+import { escapeRegExp } from '../../../abstract-interpretation/data-frame/arguments';
+import { OperatorDatabase } from '../../../r-bridge/lang-4.x/ast/model/operators';
+
+/**
+ * The lens hides syntax: every operator R has, the native pipe (which {@link OperatorDatabase} does not list), and the
+ * control-flow keywords. None of them names anything, unlike the built-in *functions* (`print`, `ifelse`) it keeps.
+ * Anchored and escaped, as most of these are regex syntax themselves and an unanchored alternative would also drop
+ * every lexeme merely *containing* one (`if` in `identifier`).
+ */
+const HiddenLexemes = `^(${
+	[...Object.keys(OperatorDatabase), '|>', 'function', 'repeat', 'if', 'next', 'break']
+		.map(name => escapeRegExp(name)).join('|')
+})$`;
 
 /**
  * Executes the given dataflow lens queries using the provided analyzer.
@@ -18,7 +31,7 @@ export async function executeDataflowLensQuery({ analyzer }: BasicQueryData, que
 			keepEnv:           false,
 			keepCd:            true,
 			tags:              [VertexType.Use, VertexType.VariableDefinition, VertexType.FunctionDefinition, VertexType.FunctionCall],
-			nameRegex:         '<-|<<-|->|->>|=|+|-|*|/|\\|>|function|repeat|if|next|break',
+			nameRegex:         HiddenLexemes,
 			blacklistWithName: true
 		}
 	}, analyzer.inspectContext().env.makeCleanEnv());

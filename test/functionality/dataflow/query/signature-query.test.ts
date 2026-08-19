@@ -50,7 +50,7 @@ async function buildDb(dir: string): Promise<SigDatabase> {
 	return SigDatabase.open(path.join(dir, `db${SigDbExt}`));
 }
 
-describe.sequential('SigDb Query', withTreeSitter(parser => {
+describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 	let tmp: string;
 	let db: SigDatabase;
 	let prevSigDb: string | undefined;
@@ -487,7 +487,7 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 	});
 }));
 
-describe.sequential('SigDb additionalPaths config', withTreeSitter(parser => {
+describe('SigDb additionalPaths config', { concurrent: false }, withTreeSitter(parser => {
 	test(label('a database in solver.sigdb.additionalPaths is discovered and queryable', [], ['other']), async() => {
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-sig-addpath-'));
 		const b = new SigDbBuilder();

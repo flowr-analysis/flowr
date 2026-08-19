@@ -11,8 +11,8 @@ import type { REnvironmentInformation } from '../../../../../environments/enviro
 import { resolveListToEnvState } from './built-in-list';
 import { findReturnsEnvState } from './built-in-envir-utils';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { ReferenceType } from '../../../../../environments/identifier';
+import { Resolve } from '../../../../../environments/resolve-helper';
 
 /** R6's `public` / Reference Class's `methods` argument carrying the class generator's methods. */
 const MethodListArguments = ['public', 'methods'];
@@ -58,5 +58,5 @@ export function resolveConstructorInstanceEnvState<OtherInfo>(
 	if(fieldName !== ConstructorField) {
 		return undefined;
 	}
-	return findReturnsEnvState(resolveByName(callee.accessed.content, data.environment, ReferenceType.Variable));
+	return findReturnsEnvState(Resolve.byNameAndType(callee.accessed.content, data.environment, ReferenceType.Variable));
 }

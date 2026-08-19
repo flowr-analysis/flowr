@@ -1,10 +1,7 @@
-import {
-	descriptionFileLog
-} from '../file-plugins/flowr-analyzer-description-file-plugin';
+import { DescriptionFile, descriptionFileLog } from '../file-plugins/flowr-analyzer-description-file-plugin';
 import { SemVer } from 'semver';
 import { FlowrAnalyzerLoadingOrderPlugin } from './flowr-analyzer-loading-order-plugin';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
-import { FileRole } from '../../context/flowr-file';
 
 /**
  * This plugin extracts loading order information from R `DESCRIPTION` files.
@@ -17,16 +14,11 @@ export class FlowrAnalyzerLoadingOrderDescriptionFilePlugin extends FlowrAnalyze
 	public readonly version = new SemVer('0.1.0');
 
 	process(ctx: FlowrAnalyzerContext): void {
-		const descFiles = ctx.files.getFilesByRole(FileRole.Description);
-		if(descFiles.length === 0) {
-			descriptionFileLog.debug('No description file found, cannot determine loading order from Collate field.');
+		const deps = DescriptionFile.single(ctx, 'No description file found, cannot determine loading order from Collate field.');
+		if(deps === undefined) {
 			return;
-		} else if(descFiles.length > 1) {
-			descriptionFileLog.warn(`Found ${descFiles.length} description files, expected exactly one.`);
 		}
-
-		/** this will do the caching etc. for me */
-		const collate = descFiles[0].collate();
+		const collate = deps.collate();
 		if(collate) {
 			/* we probably have to do some more guesswork here */
 			const unordered = ctx.files.loadingOrder.getUnorderedRequests();
@@ -48,7 +40,7 @@ export class FlowrAnalyzerLoadingOrderDescriptionFilePlugin extends FlowrAnalyze
 			});
 			ctx.files.loadingOrder.addGuess(sorted, true);
 		} else {
-			descriptionFileLog.info(`No Collate field in DESCRIPTION file ${descFiles[0].path().toString()}`);
+			descriptionFileLog.info(`No Collate field in DESCRIPTION file ${deps.path().toString()}`);
 		}
 	}
 }

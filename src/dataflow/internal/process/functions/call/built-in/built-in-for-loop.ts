@@ -69,7 +69,8 @@ export function processForLoop<OtherInfo>(
 	const writtenIds = new Set<NodeId>();
 	for(const write of writtenVariable) {
 		writtenIds.add(write.nodeId);
-		headEnvironments = define({ ...write, definedAt: name.info.id, type: ReferenceType.Variable } as (IdentifierDefinition & { name: string }), false, headEnvironments);
+		headEnvironments = define({ ...write, definedAt: name.info.id, type:      ReferenceType.Variable,
+			value:     [vectorArg.info.id], iterated:  true } as (IdentifierDefinition & { name: string }), false, headEnvironments);
 	}
 
 	(data as { environment: REnvironmentInformation }).environment = headEnvironments;
@@ -98,6 +99,10 @@ export function processForLoop<OtherInfo>(
 
 	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out, body.environment);
 
+	/* the loop variable is bound by the head whenever the body runs, so reads of it are not ingoing */
+	const loopVariables = new Set(writtenVariable.map(w => w.name));
+	const bodyReadsOfOthers = [...nameIdShares.entries()].filter(([n]) => !loopVariables.has(n)).flatMap(([, refs]) => refs);
+
 	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), nextGraph);
 
 	patchFunctionCall({
@@ -120,7 +125,7 @@ export function processForLoop<OtherInfo>(
 	return {
 		unknownReferences: [],
 		// we only want those not bound by a local variable
-		in:                [{ nodeId: rootId, name: name.content, cds: originalDependency, type: ReferenceType.Function }, ...vector.unknownReferences, ...[...nameIdShares.values()].flat()],
+		in:                [{ nodeId: rootId, name: name.content, cds: originalDependency, type: ReferenceType.Function }, ...vector.unknownReferences, ...bodyReadsOfOthers],
 		out:               outgoing,
 		graph:             nextGraph,
 		entryPoint:        name.info.id,

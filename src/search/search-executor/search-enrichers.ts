@@ -1,10 +1,12 @@
 import type { FlowrSearchElement, FlowrSearchElements } from '../flowr-search';
 import type {
+	NormalizedAst,
 	ParentInformation,
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { DataflowInformation } from '../../dataflow/info';
 import { type MergeableRecord, deepMergeObject } from '../../util/objects';
-import { VertexType } from '../../dataflow/graph/vertex';
+import { FunctionCallVertex } from '../../dataflow/graph/vertex';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { guard, isNotUndefined } from '../../util/assert';
 import { type Origin, OriginType } from '../../dataflow/origin/dfg-get-origin';
@@ -22,8 +24,8 @@ import {
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import type { KnownRoxygenTags, RoxygenTag } from '../../r-bridge/roxygen2/roxygen-ast';
-import { getDocumentationOf } from '../../r-bridge/roxygen2/documentation-provider';
 import { FlowrSearchBuilder } from '../flowr-search-builder';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
@@ -63,8 +65,19 @@ export interface CallTargetsContent extends MergeableRecord {
 	targets: (FlowrSearchElement<ParentInformation> | string)[];
 }
 
+/** Analysis artifacts resolved once for the whole search rather than once per element. */
+export interface CallTargetsSearchContent extends MergeableRecord {
+	dfg: DataflowInformation
+	ast: NormalizedAst
+}
+
 export interface LastCallContent extends MergeableRecord {
 	linkedIds: FlowrSearchElement<ParentInformation>[]
+}
+
+/** @see {@link CallTargetsSearchContent} */
+export interface LastCallSearchContent extends CallTargetsSearchContent {
+	cfg: ControlFlowInformation
 }
 
 export interface CfgInformationElementContent extends MergeableRecord {
@@ -103,6 +116,11 @@ export interface RoxygenElementContent extends MergeableRecord {
 	tags:          { [T in KnownRoxygenTags]?: readonly (RoxygenTag & { type: T })[] }
 }
 
+/** @see {@link CallTargetsSearchContent} */
+export interface RoxygenSearchContent extends MergeableRecord {
+	ast: NormalizedAst
+}
+
 export interface QueryDataElementContent extends MergeableRecord {
 	/** The name of the query that this element originated from. To get each query's data, see {@link QueryDataSearchContent}. */
 	query: Query['type']
@@ -117,13 +135,18 @@ export interface QueryDataSearchContent extends MergeableRecord {
  */
 export const Enrichments = {
 	[Enrichment.CallTargets]: {
-		enrichElement: async(e, _s, analyzer, args, prev) => {
+		enrichSearch: async(_search, data, _args, prev) => prev ?? {
+			dfg: await data.dataflow(),
+			ast: await data.normalize()
+		},
+		enrichElement: async(e, s, analyzer, args, prev) => {
 			// we don't resolve aliases here yet!
 			const content: CallTargetsContent = { targets: [] };
-			const df = await analyzer.dataflow();
-			const n = await analyzer.normalize();
+			const shared = s.enrichmentContent(Enrichment.CallTargets) as CallTargetsSearchContent | undefined;
+			const df = shared?.dfg ?? await analyzer.dataflow();
+			const n = shared?.ast ?? await analyzer.normalize();
 			const callVertex = df.graph.getVertex(e.node.info.id);
-			if(callVertex?.tag === VertexType.FunctionCall) {
+			if(FunctionCallVertex.is(callVertex)) {
 				const origins = Dataflow.origin(df.graph, callVertex.id);
 				if(!origins || origins.length === 0) {
 					const name = recoverName(callVertex.id, n.idMap);
@@ -179,16 +202,22 @@ export const Enrichments = {
 		},
 		// as built-in call target enrichments are not nodes, we don't return them as part of the mapper!
 		mapper: ({ targets }) => targets.map(t => t as FlowrSearchElement<ParentInformation>).filter(t => t.node !== undefined)
-	} satisfies EnrichmentData<CallTargetsContent, { onlyBuiltin?: boolean, qualifyNames?: boolean }>,
+	} satisfies EnrichmentData<CallTargetsContent, { onlyBuiltin?: boolean, qualifyNames?: boolean }, CallTargetsSearchContent>,
 	[Enrichment.LastCall]: {
-		enrichElement: async(e, _s, analyzer, args, prev) => {
+		enrichSearch: async(_search, data, _args, prev) => prev ?? {
+			dfg: await data.dataflow(),
+			ast: await data.normalize(),
+			cfg: await data.controlflow(undefined, CfgKind.Quick)
+		},
+		enrichElement: async(e, s, analyzer, args, prev) => {
 			guard(args && args.length, `${Enrichment.LastCall} enrichment requires at least one argument`);
 			const content = prev ?? { linkedIds: [] };
-			const df = (await analyzer.dataflow()).graph;
+			const shared = s.enrichmentContent(Enrichment.LastCall) as LastCallSearchContent | undefined;
+			const df = (shared?.dfg ?? await analyzer.dataflow()).graph;
 			const vertex = df.getVertex(e.node.info.id);
-			if(vertex?.tag === VertexType.FunctionCall) {
-				const n = await analyzer.normalize();
-				const cfg = (await analyzer.controlflow(undefined, CfgKind.Quick)).graph;
+			if(FunctionCallVertex.is(vertex)) {
+				const n = shared?.ast ?? await analyzer.normalize();
+				const cfg = (shared?.cfg ?? await analyzer.controlflow(undefined, CfgKind.Quick)).graph;
 				for(const arg of args) {
 					const lastCalls = identifyLinkToLastCallRelationSync(vertex.id, cfg, df, {
 						...arg,
@@ -203,7 +232,7 @@ export const Enrichments = {
 			return content;
 		},
 		mapper: ({ linkedIds }) => linkedIds
-	} satisfies EnrichmentData<LastCallContent, Omit<LinkToLastCall, 'type'>[]>,
+	} satisfies EnrichmentData<LastCallContent, Omit<LinkToLastCall, 'type'>[], LastCallSearchContent>,
 	[Enrichment.CfgInformation]: {
 		enrichElement: (e, search, _data, _args, prev) => {
 			const searchContent: CfgInformationSearchContent = search.enrichmentContent(Enrichment.CfgInformation);
@@ -237,14 +266,16 @@ export const Enrichments = {
 		}
 	} satisfies EnrichmentData<CfgInformationElementContent, CfgInformationArguments, CfgInformationSearchContent>,
 	[Enrichment.Roxygen]: {
-		enrichElement: async(e, _search, analyzer, _args, prev) => {
+		enrichSearch:  async(_search, data, _args, prev) => prev ?? { ast: await data.normalize() },
+		enrichElement: async(e, search, analyzer, _args, prev) => {
 			const content = (prev ?? {
 				documentation: [],
 				tags:          {}
 			}) as DeepWritable<RoxygenElementContent>;
 
-			const normalize = await analyzer.normalize();
-			const roxygen = getDocumentationOf(e.node.info.id, normalize.idMap);
+			const shared = search.enrichmentContent(Enrichment.Roxygen) as RoxygenSearchContent | undefined;
+			const normalize = shared?.ast ?? await analyzer.normalize();
+			const roxygen = RNode.documentation(e.node.info.id, normalize.idMap);
 			if(roxygen !== undefined) {
 				const comments = (Array.isArray(roxygen) ? roxygen : [roxygen]) as RoxygenTag[];
 				content.documentation.push(...comments);
@@ -256,7 +287,7 @@ export const Enrichments = {
 
 			return content;
 		}
-	} satisfies EnrichmentData<RoxygenElementContent>,
+	} satisfies EnrichmentData<RoxygenElementContent, undefined, RoxygenSearchContent>,
 	[Enrichment.QueryData]: {
 		// the query data enrichment is just a "pass-through" that passes the query data to the underlying search
 		enrichElement: (_e, _search, _data, args, prev) => (args ?? prev) as QueryDataElementContent,

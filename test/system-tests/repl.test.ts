@@ -19,7 +19,7 @@ describe('repl', () => {
 			context: contextFromInput(code)
 		}).allRemainingSteps();
 	}
-	describe.sequential('inspection', withShell(shell => {
+	describe('inspection', { concurrent: false }, withShell(shell => {
 		for(const [code, str] of [
 			['test', false],
 			['x <- 3', false],

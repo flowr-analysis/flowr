@@ -9,7 +9,7 @@ import { stringifyValue } from '../../../dataflow/eval/values/r-value';
 import type { ResolveResult } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import { criteriaQueryCompleter, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 
 
 export interface ResolveValueQuery extends BaseQueryFormat {
@@ -36,7 +36,7 @@ function resolveValueLineParser(output: ReplOutput, line: readonly string[], _co
 				type:     'resolve-value',
 				criteria: criteria,
 			}],
-		rCode: line[1]
+		rCode: queryLineCode(line)
 	} ;
 }
 

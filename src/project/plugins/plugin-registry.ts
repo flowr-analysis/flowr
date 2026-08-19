@@ -59,6 +59,12 @@ import { FlowrAnalyzerRprofileFilePlugin } from './file-plugins/flowr-analyzer-r
 import {
 	FlowrAnalyzerLoadingOrderRprofilePlugin
 } from './loading-order-plugins/flowr-analyzer-loading-order-rprofile-plugin';
+import {
+	FlowrAnalyzerPackageVersionsLibraryPlugin
+} from './package-version-plugins/flowr-analyzer-package-versions-library-plugin';
+import {
+	FlowrAnalyzerLoadingOrderIncludedFilesPlugin
+} from './loading-order-plugins/flowr-analyzer-loading-order-included-files-plugin';
 
 /**
  * The built-in Flowr Analyzer plugins that are always available.
@@ -67,6 +73,7 @@ export const BuiltInPlugins = [
 	['file:description', FlowrAnalyzerDescriptionFilePlugin],
 	['versions:description', FlowrAnalyzerPackageVersionsDescriptionFilePlugin],
 	['versions:sigdb', FlowrAnalyzerPackageVersionsSigDbPlugin],
+	['versions:library', FlowrAnalyzerPackageVersionsLibraryPlugin],
 	['versions:renv', FlowrAnalyzerPackageVersionsRenvPlugin],
 	['versions:rv', FlowrAnalyzerPackageVersionsRvPlugin],
 	['versions:uvr', FlowrAnalyzerPackageVersionsUvrPlugin],
@@ -75,6 +82,7 @@ export const BuiltInPlugins = [
 	['loading-order:description', FlowrAnalyzerLoadingOrderDescriptionFilePlugin],
 	['loading-order:implicit-sources', FlowrAnalyzerLoadingOrderImplicitSourcesPlugin],
 	['loading-order:rprofile', FlowrAnalyzerLoadingOrderRprofilePlugin],
+	['loading-order:included-files', FlowrAnalyzerLoadingOrderIncludedFilesPlugin],
 	['meta:description', FlowrAnalyzerMetaDescriptionFilePlugin],
 	['meta:rproject', FlowrAnalyzerMetaRProjectFilePlugin],
 	['meta:uvr', FlowrAnalyzerMetaUvrManifestFilePlugin],

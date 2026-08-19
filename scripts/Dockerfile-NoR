@@ -55,7 +55,8 @@ COPY --from=builder /app/dist /app
 COPY ./package.json ./package-lock.json /app/
 
 # install deps, make new user and clean up the test files; but no R!
-RUN npm ci --omit=dev --omit=optional && npm cache clean --force && \
+# the optional deps ship in the image on purpose (quad export needs `n3`), only the dev ones are dropped
+RUN npm ci --omit=dev && npm cache clean --force && \
     rm -rf /app/package.json /app/node_modules/**/*.md /app/node_modules/.bin  \
            /app/node_modules/**/LICENSE /app/package-lock.json \
            /app/**/tsconfig.tsbuildinfo /app/**/*.d.ts /app/test/* && \

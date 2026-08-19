@@ -1,6 +1,6 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation, KillReference, ControlDependency } from '../../../../../info';
-import { processKnownFunctionCall } from '../known-call-handling';
+import { markArgumentsAsNonStandardEvaluation, processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -12,14 +12,13 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { Identifier, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
-import { valueSetGuard } from '../../../../../eval/values/general';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { applyKills } from '../../../../../environments/apply-kill';
 import { define } from '../../../../../environments/define';
 import type { EnvirResolution } from './built-in-envir-utils';
 import { resolveEnvirArg } from './built-in-envir-utils';
+import { Resolve } from '../../../../../environments/resolve-helper';
 
 /** The variables an `rm` call targets for removal. */
 interface RmTargets {
@@ -49,7 +48,7 @@ function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>,
 	if(ns === 'base') {
 		return true;
 	}
-	const resolved = resolveByName(fn, data.environment, ReferenceType.Function);
+	const resolved = Resolve.byNameAndType(fn, data.environment, ReferenceType.Function);
 	return resolved === undefined || resolved.every(d => isReferenceType(d.type, ReferenceType.BuiltInFunction));
 }
 
@@ -78,12 +77,7 @@ function collectListArg<OtherInfo>(targets: RmTargets, value: RNode<OtherInfo & 
 	} else if(isBuiltInLsCall(value, data)) {
 		targets.all = true;
 	} else {
-		const elements = valueSetGuard(resolveIdToValue(value.info.id, {
-			environment: data.environment,
-			idMap:       data.completeAst.idMap,
-			resolve:     data.ctx.config.solver.variables,
-			ctx:         data.ctx
-		}))?.elements;
+		const elements = NodeValue.setOf(value.info.id, data)?.elements;
 		if(!elements || elements.length === 0) {
 			targets.unknown = true;
 		} else {
@@ -148,9 +142,21 @@ function removeFromCustomEnv<OtherInfo>(res: DataflowInformation, envir: EnvirRe
 	return { ...res, environment };
 }
 
+/** The arguments `rm` swallows with its `...`: they name what to remove instead of being evaluated. */
+function nonStandardArguments<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]): Set<number> {
+	const indices = new Set<number>();
+	for(const [i, arg] of args.entries()) {
+		if(arg !== EmptyArgument && (arg.name === undefined || findByPrefixIfUnique(arg.name.content, RmNamedFormals) === undefined)) {
+			indices.add(i);
+		}
+	}
+	return indices;
+}
+
 /**
  * Process an `rm` call, marking the removed variables as {@link KillReference|killed} so the removal is
  * carried to the enclosing scope even when it happens nested within a branch or block.
+ * As in R, the names to remove are not evaluated, so `rm(x)` does not read `x`.
  */
 export function processRm<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -162,7 +168,23 @@ export function processRm<OtherInfo>(
 		dataflowLogger.warn('empty rm, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const res = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Rm }).information;
+	const nse = nonStandardArguments(args);
+	const { information, processedArguments, fnRef } = processKnownFunctionCall({
+		name, args, rootId, data,
+		origin:    BuiltInProcName.Rm,
+		/* an unevaluated name must not resolve against the environment */
+		patchData: (d, i) => nse.has(i) ? { ...d, environment: d.ctx.env.makeCleanEnv() } : d
+	});
+	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, [...nse]);
+
+	/* the enclosing scope would link the unevaluated names, so they must not escape this call */
+	const evaluated = processedArguments.filter((p, i) => p !== undefined && !nse.has(i)) as DataflowInformation[];
+	const res: DataflowInformation = {
+		...information,
+		in:                [fnRef, ...evaluated.flatMap(p => p.in)],
+		out:               evaluated.flatMap(p => p.out),
+		unknownReferences: evaluated.flatMap(p => p.unknownReferences)
+	};
 
 	const targets = collectRmTargets(args, data);
 

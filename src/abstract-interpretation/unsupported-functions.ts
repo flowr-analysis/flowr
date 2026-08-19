@@ -50,6 +50,7 @@ const UnsupportedFunctionsList = unsupportedFunctions({
  * Helper for unsupported functions that may change the environment.
  */
 export const UnsupportedFunctions = {
+	name: 'UnsupportedFunctions',
 	/**
 	 * Checks whether a data flow graph vertex represents an unsupported (environment-changing) function call (e.g. `eval`, `load`, `attach`, `rm`, ...)
 	 */

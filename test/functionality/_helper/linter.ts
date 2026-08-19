@@ -48,6 +48,7 @@ export function controlledSigDb(pkgOrPkgs: string | Record<string, readonly stri
 		isCranVersion:     () => true,
 		lookup:            pkg => view(pkg),
 		classOwner:        () => undefined,
+		packagesExporting: name => Object.keys(pkgs).filter(pkg => pkgs[pkg].includes(name)),
 		functions:         () => undefined,
 		functionByName:    () => undefined,
 		transitiveCallees: () => undefined,

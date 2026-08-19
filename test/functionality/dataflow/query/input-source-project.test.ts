@@ -35,7 +35,7 @@ async function inputTypesOf(parser: TreeSitterExecutor, dir: string, config?: Fl
 	return uniqueArray(results.flatMap(r => r.sources.flatMap(s => s.types)));
 }
 
-describe.sequential('Input Sources across Files (issue #2625)', withTreeSitter(parser => {
+describe('Input Sources across Files (issue #2625)', { concurrent: false }, withTreeSitter(parser => {
 	let tmp: string;
 	beforeAll(() => {
 		tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-input-source-project-'));

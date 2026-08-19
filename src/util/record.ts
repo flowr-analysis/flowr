@@ -2,6 +2,7 @@
  * Helper for transforming records.
  */
 export const Record = {
+	name: 'Record',
 	/**
 	 * Checks whether a key is a property of a record.
 	 * @param object - The record to check the key for.

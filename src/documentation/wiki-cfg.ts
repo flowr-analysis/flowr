@@ -22,7 +22,6 @@ import { BasicCfgGuidedVisitor } from '../control-flow/basic-cfg-guided-visitor'
 import { SyntaxAwareCfgGuidedVisitor } from '../control-flow/syntax-cfg-guided-visitor';
 import { diffOfControlFlowGraphs } from '../control-flow/diff-cfg';
 import { type NodeId, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
 import { DataflowAwareCfgGuidedVisitor } from '../control-flow/dfg-cfg-guided-visitor';
 import type { DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import { type SemanticCfgGuidedVisitorConfiguration, SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
@@ -36,6 +35,7 @@ import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { prefixLines } from './doc-util/doc-general';
 import { codeBlock } from './doc-util/doc-code';
+import { Dataflow } from '../dataflow/graph/df-helper';
 
 const CfgLongExample = `f <- function(a, b = 3) {
  if(a > b) {
@@ -499,7 +499,7 @@ ${section('Dataflow-Aware CFG Visitor', 4, 'cfg-traversal-dfg')}
 
 There is a lot of benefit in incorporating the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow information')} into the CFG traversal, as it contains
 information about overwritten function calls, definition targets, and so on.
-Our best friend is the ${ctx.link(getOriginInDfg)} function which provides the important information about the origin of a vertex in the dataflow graph.
+Our best friend is the ${ctx.link(Dataflow.origin)} function which provides the important information about the origin of a vertex in the dataflow graph.
 The ${ctx.link(DataflowAwareCfgGuidedVisitor)} class does some of the basic lifting for us.
 While it is not ideal for our goal of collecting all numbers, it shines in other areas such as collecting all used variables,&nbsp;...
 

@@ -10,12 +10,13 @@ import { getArgumentStringValue } from './resolve-argument';
 import { Unknown } from '../../../queries/catalog/dependencies-query/dependencies-query-format';
 import { isAbsolutePath } from '../../../util/text/strings';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
-import { negateControlDependency, type ControlDependency } from '../../info';
+import { ControlDependency, negateControlDependency } from '../../info';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { DfEdge, EdgeType } from '../../graph/edge';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { toPosixPath } from '../../../util/files';
 import { platformDirname } from '../../internal/process/functions/call/built-in/built-in-source';
+import { NoEdges } from '../../graph/graph';
 
 /** a resolved `setwd`-style call: its `dir` is `undefined` when it cannot be determined statically */
 export interface WorkingDirectoryChange {
@@ -44,7 +45,6 @@ const ChangeFunctions: readonly WdChangeSpec[] = [
 	{ name: 'setwd', namespace: 'base', argIdx: 0, argName: 'dir' }
 ];
 
-const LoopTypes: ReadonlySet<RType> = new Set([RType.ForLoop, RType.WhileLoop, RType.RepeatLoop]);
 const CandidateCap = 64;
 
 type Guards = readonly ControlDependency[];
@@ -111,7 +111,7 @@ function enclosingFunction(idMap: DataflowGraph['idMap'], id: NodeId): NodeId | 
 }
 
 function isIterated(cds: Guards, idMap: DataflowGraph['idMap']): boolean {
-	return cds.some(cd => cd.byIteration || LoopTypes.has(idMap?.get(cd.id)?.type as RType));
+	return cds.some(cd => ControlDependency.isIterated(cd, idMap));
 }
 
 function resolveAt(target: NodeId, targetCds: Guards, baseWd: string, changes: readonly WorkingDirectoryChange[], cfg: ControlFlowGraph): WorkingDirectoryResolution {
@@ -176,7 +176,7 @@ function collect(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): Worki
 	// a function's setwd is propagated to its call sites; only a lone unconditional setwd has a site-independent effect
 	for(const [fn, setwds] of byFn.entries()) {
 		const net = setwds.length === 1 && setwds[0].cds.length === 0 && !setwds[0].iterated ? setwds[0].dir : undefined;
-		for(const [site, edge] of graph.ingoingEdges(fn) ?? []) {
+		for(const [site, edge] of graph.ingoingEdges(fn) ?? NoEdges) {
 			if(!DfEdge.includesType(edge, EdgeType.Calls)) {
 				continue;
 			}

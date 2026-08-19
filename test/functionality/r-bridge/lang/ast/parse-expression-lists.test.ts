@@ -5,7 +5,7 @@ import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { describe } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
 
-describe.sequential('Parse expression lists', withShell(shell => {
+describe('Parse expression lists', { concurrent: false }, withShell(shell => {
 	describe('Expression lists with newlines and braces', () => {
 		// this is already covered by other tests, yet it is good to state it here explicitly (expr list is the default top-level token for R)
 		assertAst(label('single element', ['numbers']),

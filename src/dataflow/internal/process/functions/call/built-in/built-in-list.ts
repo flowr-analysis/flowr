@@ -13,10 +13,10 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { ReferenceType } from '../../../../../environments/identifier';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { define } from '../../../../../environments/define';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { pushLocalEnvironment } from '../../../../../environments/scoping';
+import { Resolve } from '../../../../../environments/resolve-helper';
 
 /**
  * Process a list call.
@@ -51,7 +51,7 @@ export function resolveListToEnvState<OtherInfo>(
 		}
 		const value = arg.value;
 		const isFn = value.type === RType.FunctionDefinition
-			|| (value.type === RType.Symbol && (resolveByName(value.content, data.environment, ReferenceType.Function)?.length ?? 0) > 0);
+			|| (value.type === RType.Symbol && (Resolve.byNameAndType(value.content, data.environment, ReferenceType.Function)?.length ?? 0) > 0);
 		if(!isFn) {
 			continue;
 		}

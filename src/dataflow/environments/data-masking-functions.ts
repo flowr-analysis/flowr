@@ -1,10 +1,9 @@
 import { Identifier, PkgName } from './identifier';
 
 /**
- * Functions that data-mask their non-first argument: the symbols passed there name columns of the first
- * (data) argument, not variables in scope. The {@link DefaultBuiltinConfig} marks those arguments
- * {@link EdgeType.NonStandardEvaluation|NSE}; the pipe processor ({@link processPipe}) re-applies the same
- * treatment when the data is supplied through `%>%`/`|>` (then every explicit argument is a column).
+ * Functions that data-mask (or tidy-select) their non-first argument: symbols there name columns of the first
+ * (data) argument. Functions without a data argument (`aes`, `vars`, `join_by`) mask every argument and are
+ * configured separately.
  */
 export const DataMaskingFunctions: readonly (readonly [string, PkgName])[] = [
 	['subset', PkgName.Base],                    ['transform', PkgName.Base],
@@ -20,7 +19,8 @@ export const DataMaskingFunctions: readonly (readonly [string, PkgName])[] = [
 	['pull', PkgName.Dplyr],                     ['rename', PkgName.Dplyr],
 	['relocate', PkgName.Dplyr],                 ['select', PkgName.Dplyr],
 	['group_split', PkgName.Dplyr],              ['add_count', PkgName.Dplyr],
-	['add_tally', PkgName.Dplyr],                ['nest_by', PkgName.Dplyr],
+	['add_tally', PkgName.Dplyr],                ['nest_by', PkgName.Dplyr],                   ['rowwise', PkgName.Dplyr],
+	['with_groups', PkgName.Dplyr],
 	['pivot_longer', PkgName.TidyR],             ['pivot_wider', PkgName.TidyR],
 	['gather', PkgName.TidyR],                   ['spread', PkgName.TidyR],
 	['separate', PkgName.TidyR],                 ['separate_rows', PkgName.TidyR],
@@ -33,9 +33,8 @@ export const DataMaskingFunctions: readonly (readonly [string, PkgName])[] = [
 	['pack', PkgName.TidyR],                     ['unpack', PkgName.TidyR],
 	['drop_na', PkgName.TidyR],                  ['fill', PkgName.TidyR],
 	['replace_na', PkgName.TidyR],               ['complete', PkgName.TidyR],
-	['expand', PkgName.TidyR],                   ['crossing', PkgName.TidyR],
-	['nesting', PkgName.TidyR],                  ['expand_grid', PkgName.TidyR],
-	['uncount', PkgName.TidyR]
+	['expand', PkgName.TidyR],                   ['uncount', PkgName.TidyR],
+	['separate_longer_delim', PkgName.TidyR],    ['separate_longer_position', PkgName.TidyR]
 ];
 
 /** The {@link DataMaskingFunctions} as {@link Identifier}s, for the built-in configuration. */

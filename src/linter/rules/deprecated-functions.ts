@@ -30,6 +30,7 @@ export const DEPRECATED_FUNCTIONS = {
 		// even when it is not part of the hardcoded `fns` list above
 		const graph = (await data.dataflow()).graph;
 		const alreadyFlagged = new Set(hardcoded.results.map(r => r.involvedId));
+		const deprecatedByName = new Map<string, boolean>();
 		const sigdbFlagged: FunctionsResult[] = [];
 		for(const element of elements.getElements()) {
 			const id = element.node.info.id;
@@ -40,8 +41,13 @@ export const DEPRECATED_FUNCTIONS = {
 			if(qualified === undefined) {
 				continue;
 			}
-			const fn = deps.signatureOf(qualified);
-			if(fn === undefined || !fn.props.includes('deprecated')) {
+			const name = Identifier.toString(qualified);
+			let deprecated = deprecatedByName.get(name);
+			if(deprecated === undefined) {
+				deprecated = deps.signatureOf(qualified)?.props.includes('deprecated') === true;
+				deprecatedByName.set(name, deprecated);
+			}
+			if(!deprecated) {
 				continue;
 			}
 			const loc = SourceLocation.fromNode(element.node);
@@ -52,7 +58,7 @@ export const DEPRECATED_FUNCTIONS = {
 			sigdbFlagged.push({
 				certainty:  LintingResultCertainty.Certain,
 				involvedId: id,
-				function:   Identifier.toString(qualified),
+				function:   name,
 				loc
 			});
 		}

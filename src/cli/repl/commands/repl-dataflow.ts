@@ -2,6 +2,7 @@ import type { ReplCodeCommand, ReplOutput } from './repl-main';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 import { handleString } from '../core';
+import { ReplClipboard } from './repl-clipboard';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { dfgToAscii } from '../../../util/simple-df/dfg-ascii';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
@@ -64,15 +65,7 @@ export const dataflowCommand: ReplCodeCommand = {
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
 		const mermaid = Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false, qualifyBaseR: isSigDbEnabled(analyzer.flowrConfig) }).string;
-		output.stdout(mermaid);
-		if(output.allowClipboard !== false) {
-			try {
-				const clipboard = await import('clipboardy');
-				clipboard.default.writeSync(mermaid);
-				output.stdout(formatInfo(output, 'mermaid code', result));
-			} catch{ /* do nothing this is a service thing */
-			}
-		}
+		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid code', result));
 	}
 };
 
@@ -86,14 +79,7 @@ export const dataflowStarCommand: ReplCodeCommand = {
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
 		const mermaid = Dataflow.visualize.mermaid.url(result.graph, false, undefined, false, isSigDbEnabled(analyzer.flowrConfig));
-		output.stdout(mermaid);
-		if(output.allowClipboard !== false) {
-			try {
-				const clipboard = await import('clipboardy');
-				clipboard.default.writeSync(mermaid);
-				output.stdout(formatInfo(output, 'mermaid url', result));
-			} catch{ /* do nothing this is a service thing */ }
-		}
+		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid url', result));
 	}
 };
 
@@ -158,14 +144,7 @@ export const dataflowSimplifiedCommand: ReplCodeCommand = {
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
 		const mermaid = Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false, simplified: true, qualifyBaseR: isSigDbEnabled(analyzer.flowrConfig) }).string;
-		output.stdout(mermaid);
-		if(output.allowClipboard !== false) {
-			try {
-				const clipboard = await import('clipboardy');
-				clipboard.default.writeSync(mermaid);
-				output.stdout(formatInfo(output, 'mermaid code', result));
-			} catch{ /* do nothing this is a service thing */ }
-		}
+		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid code', result));
 	}
 };
 
@@ -179,13 +158,6 @@ export const dataflowSimpleStarCommand: ReplCodeCommand = {
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
 		const mermaid = Dataflow.visualize.mermaid.url(result.graph, false, undefined, true, isSigDbEnabled(analyzer.flowrConfig));
-		output.stdout(mermaid);
-		if(output.allowClipboard !== false) {
-			try {
-				const clipboard = await import('clipboardy');
-				clipboard.default.writeSync(mermaid);
-				output.stdout(formatInfo(output, 'mermaid url', result));
-			} catch{ /* do nothing this is a service thing */ }
-		}
+		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid url', result));
 	}
 };

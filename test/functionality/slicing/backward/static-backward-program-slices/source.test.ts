@@ -4,7 +4,7 @@ import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model
 import { describe } from 'vitest';
 import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
 
-describe.sequential('source', withShell(shell => {
+describe('source', { concurrent: false }, withShell(shell => {
 	const addFiles = [
 		new FlowrInlineTextFile('simple', 'N <- 9'),
 		new FlowrInlineTextFile('closure1', 'f <- function() { function() 3 }'),

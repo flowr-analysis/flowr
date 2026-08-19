@@ -53,7 +53,7 @@ async function runViaPipeline(input: string, files: FlowrInlineTextFile[], crite
 	return res.reconstruct;
 }
 
-describe.sequential('inline source()', () => {
+describe('inline source()', { concurrent: false }, () => {
 	beforeAll(async() => {
 		await TreeSitterExecutor.initTreeSitter();
 	});

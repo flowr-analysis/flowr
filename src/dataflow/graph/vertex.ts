@@ -190,44 +190,85 @@ export type DataflowGraphVertexInfo = Required<DataflowGraphVertexArgument>;
 export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo> = Map<NodeId, Vertex>;
 
 
-/** Helpers for {@link DataflowGraphVertexValue} vertices. */
+/**
+ * Helpers for {@link DataflowGraphVertexValue} vertices.
+ * @example
+ * ```ts
+ * ValueVertex.is(graph.getVertex(id)) // true for a constant like `42`
+ * ```
+ */
 export const ValueVertex = {
+	name: 'ValueVertex',
 	/** Whether the given vertex is a value vertex. */
 	is(this: void, vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexValue {
 		return vertex?.tag === VertexType.Value;
 	}
 };
 
-/** Helpers for {@link DataflowGraphVertexUse} vertices. */
+/**
+ * Helpers for {@link DataflowGraphVertexUse} vertices.
+ * @example
+ * ```ts
+ * UseVertex.is(graph.getVertex(id)) // true for a read of `x`
+ * ```
+ */
 export const UseVertex = {
+	name: 'UseVertex',
 	/** Whether the given vertex is a use vertex. */
 	is(this: void, vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexUse {
 		return vertex?.tag === VertexType.Use;
 	}
 };
 
-/** Helpers for {@link DataflowGraphVertexFunctionCall} vertices. */
+/**
+ * Helpers for {@link DataflowGraphVertexFunctionCall} vertices.
+ * @example
+ * ```ts
+ * const vertex = graph.getVertex(id);
+ * FunctionCallVertex.is(vertex) && vertex.name         // the call's effective name
+ * FunctionCallVertex.hasOrigin(vertex, 'builtin:eval') // the call is an eval
+ * ```
+ */
 export const FunctionCallVertex = {
+	name: 'FunctionCallVertex',
 	/** Whether the given vertex is a function call vertex. */
 	is(this: void, vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexFunctionCall {
 		return vertex?.tag === VertexType.FunctionCall;
 	},
-	/** Whether the given vertex is a function call carrying the given origin. */
+	/**
+	 * Whether the given vertex is a function call carrying the given origin.
+	 * Deliberately not a type predicate: a `false` says nothing about the tag, the call may simply carry another origin.
+	 */
 	hasOrigin(this: void, vertex: DataflowGraphVertexBase | undefined, origin: BuiltInProcName): boolean {
 		return FunctionCallVertex.is(vertex) && vertex.origin.includes(origin);
 	}
 };
 
-/** Helpers for {@link DataflowGraphVertexVariableDefinition} vertices. */
+/**
+ * Helpers for {@link DataflowGraphVertexVariableDefinition} vertices.
+ * @example
+ * ```ts
+ * VariableDefinitionVertex.is(graph.getVertex(id)) // true for the `x` of `x <- 1`
+ * ```
+ */
 export const VariableDefinitionVertex = {
+	name: 'VariableDefinitionVertex',
 	/** Whether the given vertex is a variable definition vertex. */
 	is(this: void, vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexVariableDefinition {
 		return vertex?.tag === VertexType.VariableDefinition;
 	}
 };
 
-/** Helpers for {@link DataflowGraphVertexFunctionDefinition} vertices. */
+/**
+ * Helpers for {@link DataflowGraphVertexFunctionDefinition} vertices.
+ * @example
+ * ```ts
+ * const vertex = graph.getVertex(id);
+ * FunctionDefinitionVertex.is(vertex) && vertex.exitPoints // where the body returns
+ * ```
+ */
 export const FunctionDefinitionVertex = {
+	name: 'FunctionDefinitionVertex',
 	/** Whether the given vertex is a function definition vertex. */
 	is(this: void, vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexFunctionDefinition {
 		return vertex?.tag === VertexType.FunctionDefinition;

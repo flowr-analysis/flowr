@@ -34,7 +34,7 @@ describe('The default classifier configuration follows the built-in labels', () 
 	});
 });
 
-describe.sequential('Input Source Test', withTreeSitter(parser => {
+describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 	function testQuery(name: string, code: string, query: readonly InputSourcesQuery[], expectedOutput: InputSourcesQueryResult['results']) {
 		assertQuery(label(name), parser, code, query, d => {
 			const nast = d.normalize.idMap;
@@ -247,6 +247,30 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 				{ id: '3@x', types: [InputType.TempFile], trace: InputTraceType.Alias },
 				{ id: '3@y', types: [InputType.File, InputType.Network], trace: InputTraceType.Alias }
 			]
+		});
+	});
+
+	/* what a glob finds is decided when the program runs, so an empty answer is not a missing file */
+	describe('Globs', () => {
+		testQuery('list.files()', 'x <- list.files(pattern = "x_")\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.File, InputType.Glob], trace: InputTraceType.Alias }]
+		});
+		testQuery('Sys.glob()', 'x <- Sys.glob("*.csv")\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.File, InputType.Glob], trace: InputTraceType.Alias }]
+		});
+		/* what the read hands back is file data; that the path it took came from a glob shows on the argument */
+		testQuery('the path a read is given', 'f <- list.files()\nread.csv(f)', [{ type: 'input-sources', criterion: '2@read.csv' }], {
+			'2@read.csv': [{ id: '2@f', types: [InputType.File, InputType.Glob], trace: InputTraceType.Alias }]
+		});
+	});
+
+	/* the command line is chosen when the program is invoked, so it is neither missing nor resolvable */
+	describe('Command line', () => {
+		testQuery('commandArgs()', 'x <- commandArgs(TRUE)\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.Options, InputType.CommandLine], trace: InputTraceType.Alias }]
+		});
+		testQuery('a read of what it named', 'x <- read.csv(commandArgs(TRUE)[1])\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.File], trace: InputTraceType.Alias }]
 		});
 	});
 

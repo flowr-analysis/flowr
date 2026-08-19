@@ -3,7 +3,7 @@
  * package routing/metadata, and its compact on-disk (wire) form. Split out of `../sigdb` so the reader/writer
  * there does not carry the index encoding.
  */
-import fs from 'node:fs';
+import fs from 'fs';
 import type { SigDbPkgMeta } from './schema';
 
 /** a byte range `[startByte, bytes]` in the plain `.ndjson` */

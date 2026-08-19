@@ -29,7 +29,14 @@ export enum ArgProp {
 	 * the result is one of this argument's values, like `choices` in `match.arg(arg, choices)`. The bounding
 	 * argument of a {@link CallProp.Narrows} call; without one such a call yields a value of its own making.
 	 */
-	Bounds   = 1 << 10
+	Bounds   = 1 << 10,
+	/**
+	 * only atomic data works here, never a closure, as with `e1` in `e1 > e2`. A bare symbol in such an
+	 * argument therefore names a variable even when a function of that name is in scope.
+	 */
+	Atomic   = 1 << 11,
+	/** the open handle the call acts on, like `con` in `close(con)` */
+	Handle   = 1 << 12
 }
 
 /**
@@ -49,7 +56,7 @@ export enum CallProp {
 	Throws    = 1 << 2,
 	/** returns invisibly, so the result is not auto-printed */
 	Invisible = 1 << 3,
-	/** dispatches on the class of its first argument (S3, S4, or S7) */
+	/** dispatches on the class of an argument (S3, S4, or S7), a group generic like `+` on either operand */
 	Generic   = 1 << 4,
 	/** a method that is reached by dispatch, like `print.foo` (see {@link SigDbInferable}) */
 	Method    = 1 << 5,
@@ -93,7 +100,20 @@ export enum CallProp {
 	 * argument marked {@link ArgProp.Bounds}. So nothing an argument carries reaches the result, which is what
 	 * lets the input-sources query stop tracing at `length(x)` or `match.arg(arg, choices)`.
 	 */
-	Narrows   = 1 << 22
+	Narrows   = 1 << 22,
+	/**
+	 * sets ambient state later calls read back: the working directory, environment variables, options, the
+	 * locale, the RNG seed. The counterpart of {@link CallProp.Ambient}; a call doing both states both.
+	 */
+	Configures = 1 << 23,
+	/** ends what an opener started: a graphics device, a connection, a sink. Narrower than {@link CallProp.Graphics}. */
+	Closes     = 1 << 24,
+	/** yields the paths it matches at run time rather than one it was handed (`list.files`, `Sys.glob`); empty is an answer */
+	Glob       = 1 << 25,
+	/** hands back what the program was invoked with, as `commandArgs` and the option parsers built on it do */
+	CommandLine = 1 << 26,
+	/** hands back a handle the program is expected to close again, like `file` or `DBI::dbConnect` */
+	Opens       = 1 << 27
 }
 
 /**
@@ -102,7 +122,8 @@ export enum CallProp {
  */
 export const ImpureProps = CallProp.MayPure | CallProp.Scope | CallProp.NonDet | CallProp.Random | CallProp.Ambient
 	| CallProp.File | CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang
-	| CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes | CallProp.Prints;
+	| CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes | CallProp.Prints
+	| CallProp.Configures | CallProp.Closes | CallProp.Opens | CallProp.CommandLine;
 
 /**
  * Which {@link CallProp} bits rule each other out, as `[bit, everything stating it forbids]`. A definition
@@ -121,7 +142,8 @@ export const ExclusiveCallProps: readonly (readonly [bit: CallProp, forbidden: C
  * looks for.
  */
 export const InputProps = CallProp.NonDet | CallProp.Random | CallProp.Ambient | CallProp.File
-	| CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang | CallProp.User;
+	| CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang | CallProp.User
+	| CallProp.CommandLine;
 
 /**
  * The {@link CallProp} bits the signature database states itself, so {@link fnInfoFromSignature} can read them
@@ -141,7 +163,8 @@ export const FileInputProps = CallProp.File | CallProp.Reads;
  */
 export const PropagatedProps = CallProp.Throws | CallProp.Scope | CallProp.NonDet | CallProp.Prints
 	| CallProp.Random | CallProp.Ambient | CallProp.File | CallProp.TempFile | CallProp.Network | CallProp.Process
-	| CallProp.Ffi | CallProp.Lang | CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes;
+	| CallProp.Ffi | CallProp.Lang | CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes
+	| CallProp.Configures | CallProp.CommandLine;
 
 /** a bitfield of {@link ArgProp} */
 export type ArgProps = number;
@@ -156,15 +179,44 @@ export type CallProps = number;
 export type FnSig = [name: string, props: ArgProps][];
 
 /**
+ * Utility functions for {@link FnSig|function signatures}.
+ */
+export const FnSig = {
+	name:    'FnSig',
+	/** The positional view of a signature; see {@link sigLayout}. */
+	layout:  sigLayout,
+	/** The roles of the argument at a position; see {@link argProp}. */
+	propAt:  argProp,
+	/** The positions carrying any of the given roles; see {@link argsWith}. */
+	posWith: argsWith
+} as const;
+
+/** the {@link CallProp} bits as the words a reader wants, in the order they are declared */
+const CallPropNames: readonly (readonly [CallProp, string])[] = [
+	[CallProp.Pure, 'pure'], [CallProp.Throws, 'can throw'], [CallProp.Invisible, 'invisible'],
+	[CallProp.Generic, 'generic'], [CallProp.Method, 's3 method'], [CallProp.Scope, 'changes scope'],
+	[CallProp.NonDet, 'non deterministic'], [CallProp.Random, 'random'], [CallProp.Ambient, 'ambient state'],
+	[CallProp.File, 'file system'], [CallProp.Reads, 'reads'], [CallProp.Writes, 'writes'],
+	[CallProp.Network, 'network'], [CallProp.Prints, 'prints']
+];
+
+/** What a call states about itself, as words rather than as a bit mask, for anything showing it to a reader. */
+export function callPropWords(props: CallProps | undefined): string[] {
+	return props === undefined ? [] : CallPropNames.filter(([bit]) => (props & bit) !== 0).map(([, word]) => word);
+}
+
+/**
  * Semantics of a built-in that hold no matter which processor handles the call. The remaining facts already
  * have a home: the exit behavior in `cfg`, whether flowR can fold the call in the `evalHandler` of the
  * definition, and the fallback for everything unmodelled in `hasUnknownSideEffects`.
  */
 export interface BuiltInFnInfo {
 	/** the parameters and what each of their arguments is used for */
-	readonly sig?:   FnSig
+	readonly sig?:             FnSig
 	/** bitfield of {@link CallProp} */
-	readonly props?: CallProps
+	readonly props?:           CallProps
+	/** keep the environment on the call vertex, for a later pass to look names up in */
+	readonly keepEnvironment?: boolean
 }
 
 /** A {@link FnSig} in the form the call processors use it, see {@link sigLayout}. */
@@ -185,7 +237,7 @@ const layouts = new WeakMap<FnSig, SigLayout>();
  * The positional view of a {@link FnSig}, computed on first use and cached per signature object,
  * so declaring a signature costs nothing until a call actually needs it.
  */
-export function sigLayout(sig: FnSig): SigLayout {
+function sigLayout(this: void, sig: FnSig): SigLayout {
 	let layout = layouts.get(sig);
 	if(layout === undefined) {
 		const props = sig.map(p => p[1]);
@@ -201,15 +253,15 @@ export function sigLayout(sig: FnSig): SigLayout {
 }
 
 /** The {@link ArgProp} bits of the argument at `index`, with `...` covering every position from where it appears. */
-export function argProp({ props, rest }: SigLayout, index: number): ArgProps {
+function argProp(this: void, { props, rest }: SigLayout, index: number): ArgProps {
 	return (rest >= 0 && index >= rest ? props[rest] : props[index]) ?? 0;
 }
 
 /** The positions of the first `count` arguments that carry any of `prop`. */
-export function argsWith(layout: SigLayout, count: number, prop: ArgProps): number[] {
+function argsWith(this: void, layout: SigLayout, count: number, prop: ArgProps): number[] {
 	const found: number[] = [];
 	for(let i = 0; i < count; i++) {
-		if((argProp(layout, i) & prop) !== 0) {
+		if((FnSig.propAt(layout, i) & prop) !== 0) {
 			found.push(i);
 		}
 	}
@@ -224,7 +276,7 @@ const SigDbProps: Readonly<Record<string, CallProp>> = {
 };
 
 /** the callees that make the calling function itself a generic ({@link CallProp.Generic}) */
-const DispatchCallees: ReadonlySet<string> = new Set(['UseMethod', 'standardGeneric', 'S7_dispatch']);
+export const DispatchCallees: ReadonlySet<string> = new Set(['UseMethod', 'standardGeneric', 'S7_dispatch']);
 
 /**
  * The part of a {@link BuiltInFnInfo} that the signature database already knows: the parameter names in order

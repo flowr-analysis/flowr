@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-08-19, 14:18:37 UTC (v2.14.1, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-08-19, 21:38:39 UTC (v2.14.1, R v4.6.1), please do not edit directly._
 
 
 - [Overview](#Overview)
@@ -122,14 +122,14 @@ The following sections highlight some of the most important configuration option
 <h3 id="Configuring_flowR">Configuring flowR</h3>
 
 You can fundamentally change the behavior of flowR using the [config file](https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr),
-embedded in the interface <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L133"><code><span title="The configuration file format for flowR.">FlowrConfig</span></code></a>.
+embedded in the interface <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L134"><code><span title="The configuration file format for flowR.">FlowrConfig</span></code></a>.
 With the builder you can either provide a complete configuration or amend the default configuration using:
 
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L79"><code><span title="Overwrite the configuration used by the resulting analyzer. This also unloads all default plugins and reloads them as set in the new config if the withDefaultPlugins flag was set in the constructor">FlowrAnalyzerBuilder::<b>setConfig</b></span></code></a> to set a complete configuration
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L93"><code><span title="Set a specific value in the configuration used by the resulting analyzer.">FlowrAnalyzerBuilder::<b>configure</b></span></code></a> to set the value of a specific key in the config
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L68"><code><span title="Apply an amendment to the configuration the builder currently holds. This is mostly intended for more complex logic to transform the config. Please consider using FlowrAnalyzerBuilder.configure to set/amend individual values Per default, the value returned by FlowrConfig.default is used.">FlowrAnalyzerBuilder::<b>amendConfig</b></span></code></a> to amend the default configuration
 
-By default, the builder uses flowR's standard configuration obtained with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L623"><code><span title="The default configuration for flowR, used when no config file is found or when a config file is missing some options. You can use this as a base for your own config and only specify the options you want to change.">FlowrConfig::<b>default</b></span></code></a>.
+By default, the builder uses flowR's standard configuration obtained with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L624"><code><span title="The default configuration for flowR, used when no config file is found or when a config file is missing some options. You can use this as a base for your own config and only specify the options you want to change.">FlowrConfig::<b>default</b></span></code></a>.
 
 
 > [!NOTE]
@@ -178,7 +178,7 @@ This indicates three ways to add a new plugin:
 3. By providing a tuple of the plugin name and its constructor arguments (e.g., `['file:rmd', [/.*.rmd/i]]` for the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/file-plugins/notebooks/flowr-analyzer-rmd-file-plugin.ts#L9"><code><span title="The plugin provides support for R Markdown (.rmd) files">FlowrAnalyzerRmdFilePlugin</span></code></a>).\
    This will also use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/plugin-registry.ts#L157"><code><span title="Create a Flowr Analyzer plugin from a PluginToRegister specification.">makePlugin</span></code></a> function under the hood to create the plugin instance.
 
-Please note, that by passing `false` to the builder constructor, no default plugins (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L487"><code>FlowrDefaultPlugins</code></a>) are registered (otherwise, all of the plugins in the example above would be registered by default).
+Please note, that by passing `false` to the builder constructor, no default plugins (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/config.ts#L488"><code>FlowrDefaultPlugins</code></a>) are registered (otherwise, all of the plugins in the example above would be registered by default).
 If you want to unregister specific plugins, you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L154"><code><span title="Remove one or multiple plugins.">FlowrAnalyzerBuilder::<b>unregisterPlugins</b></span></code></a> method.
 
 
@@ -299,7 +299,7 @@ Currently, flowR supports the following plugin types built-in:
 | <code>project-discovery:ignore-files</code> | <code>project-discovery</code> | Wraps a project discovery plugin and filters results by .gitignore and .Rbuildignore rules. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/project-discovery/flowr-analyzer-ignore-file-project-discovery-plugin.ts#L52"><code><span title="Decorator around any FlowrAnalyzerProjectDiscoveryPlugin that filters the discovered files by the ignore files found at the project root. Ignore files that do not exist are skipped, so with none of them present the inner plugin's results are returned unchanged. Use FlowrAnalyzerGitignoreProjectDiscoveryPlugin ('project-discovery:gitignore'), FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin ('projec...">FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin</span></code></a> |
 | <code>project-discovery:rbuildignore</code> | <code>project-discovery</code> | Wraps a project discovery plugin and filters results by .Rbuildignore rules. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/project-discovery/flowr-analyzer-ignore-file-project-discovery-plugin.ts#L100"><code><span title="Filters the discovered files by the .Rbuildignore at the package root, see FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin .">FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin</span></code></a> |
 | <code>versions:description</code> | <code>package-versions</code> | Extracts package versions from DESCRIPTION files. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-description-file-plugin.ts#L12"><code><span title="This plugin extracts package versions from R DESCRIPTION files. It looks at the Depends and Imports fields to find package names and their version constraints.">FlowrAnalyzerPackageVersionsDescriptionFilePlugin</span></code></a> |
-| <code>versions:library</code> | <code>package-versions</code> | Recovers the exports of packages no database knows from their installed copy. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-library-plugin.ts#L76"><code><span title="Fills in packages no signature database knows from the copy installed on this machine: a package that CRAN archived (maptools, rgdal, ...) is in no database, but if it is installed, its NAMESPACE states its exports just as well. Off unless solver.sigdb.installedLibrary.enabled says otherwise, and consulted only for a package nothing else could resolve, so it never overrides a database entry.">FlowrAnalyzerPackageVersionsLibraryPlugin</span></code></a> |
+| <code>versions:library</code> | <code>package-versions</code> | Recovers the exports of packages no database knows from their installed copy. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-library-plugin.ts#L77"><code><span title="Fills in packages no signature database knows from the copy installed on this machine: a package that CRAN archived (maptools, rgdal, ...) is in no database, but if it is installed, its NAMESPACE states its exports just as well. Off unless solver.sigdb.installedLibrary.enabled says otherwise, and consulted only for a package nothing else could resolve, so it never overrides a database entry.">FlowrAnalyzerPackageVersionsLibraryPlugin</span></code></a> |
 | <code>versions:namespace</code> | <code>package-versions</code> | Extracts package versions from NAMESPACE files. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin.ts#L10"><code>FlowrAnalyzerPackageVersionsNamespaceFilePlugin</code></a> |
 | <code>versions:packrat</code> | <code>package-versions</code> | Extracts package versions from a packrat.lock lockfile. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin.ts#L77"><code><span title="Reads package versions from a packrat.lock (multi-record DCF, metadata first). packrat pins are exact.">FlowrAnalyzerPackageVersionsPackratPlugin</span></code></a> |
 | <code>versions:renv</code> | <code>package-versions</code> | Extracts package versions from an renv.lock lockfile. | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin.ts#L24"><code><span title="Reads package versions from an renv.lock (JSON). renv pins are exact.">FlowrAnalyzerPackageVersionsRenvPlugin</span></code></a> |
@@ -520,14 +520,14 @@ you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/proje
 
 <h3 id="Dependencies_Context">Dependencies Context</h3>
 
-Here is the structure of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L106"><code><span title="Manages the project's dependencies, their versions, and their interplay with FlowrAnalyzerPackageVersionsPlugin s.">FlowrAnalyzerDependenciesContext</span></code></a> that provides access to the identified dependencies and their versions,
+Here is the structure of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L107"><code><span title="Manages the project's dependencies, their versions, and their interplay with FlowrAnalyzerPackageVersionsPlugin s.">FlowrAnalyzerDependenciesContext</span></code></a> that provides access to the identified dependencies and their versions,
 including the version of R:
 
- * [FlowrAnalyzerDependenciesContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L106)   
+ * [FlowrAnalyzerDependenciesContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L107)   
    Manages the project's dependencies, their versions, and their interplay with
    <code>FlowrAnalyzerPackageVersionsPlugin</code>
    s.
-   <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L106">src/project/context/flowr-analyzer-dependencies-context.ts#L106</a>)</i>
+   <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L107">src/project/context/flowr-analyzer-dependencies-context.ts#L107</a>)</i>
    
     <details><summary>View more (AbstractFlowrAnalyzerContext, ReadOnlyFlowrAnalyzerDependenciesContext, InvalidationEventReceiver)</summary>
 
@@ -545,11 +545,11 @@ including the version of R:
      to access the full project context.
      <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/abstract-flowr-analyzer-context.ts#L12">src/project/context/abstract-flowr-analyzer-context.ts#L12</a>)</i>
      
-   * **[ReadOnlyFlowrAnalyzerDependenciesContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L21)**   
+   * **[ReadOnlyFlowrAnalyzerDependenciesContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L22)**   
      Read-only interface to the
      <code>FlowrAnalyzerDependenciesContext</code>
      for inspecting dependencies without modifying them.
-     <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L21">src/project/context/flowr-analyzer-dependencies-context.ts#L21</a>)</i>
+     <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L22">src/project/context/flowr-analyzer-dependencies-context.ts#L22</a>)</i>
      
    * **[InvalidationEventReceiver](https://github.com/flowr-analysis/flowr/tree/main/src/project/cache/flowr-cache.ts#L41)**   
    
@@ -559,12 +559,12 @@ including the version of R:
     </details>
 
 Probably the most important method is
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L264"><code>FlowrAnalyzerDependenciesContext::<i>getDependency</i></code></a>
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L265"><code>FlowrAnalyzerDependenciesContext::<i>getDependency</i></code></a>
 that allows you to query for a specific dependency by name.
 
 <h3 id="Functions_Context">Functions Context</h3>
 
-The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L106"><code><span title="Manages the project's dependencies, their versions, and their interplay with FlowrAnalyzerPackageVersionsPlugin s.">FlowrAnalyzerDependenciesContext</span></code></a> also provides access to the associated
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L107"><code><span title="Manages the project's dependencies, their versions, and their interplay with FlowrAnalyzerPackageVersionsPlugin s.">FlowrAnalyzerDependenciesContext</span></code></a> also provides access to the associated
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L47"><code><span title="This context is responsible for managing the functions identified in the project, including their origins, types, and other metadata. It works in conjunction with FlowrAnalyzerPackageVersionsPlugin s to gather and maintain this information. If you are interested in inspecting these functions, refer to ReadOnlyFlowrAnalyzerFunctionsContext .">FlowrAnalyzerFunctionsContext</span></code></a> via its `functionsContext` attribute.
 
  * [FlowrAnalyzerFunctionsContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-functions-context.ts#L47)   

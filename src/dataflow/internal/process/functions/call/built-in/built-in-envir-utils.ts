@@ -4,9 +4,8 @@ import { RValue } from '../../../../../eval/values/r-value';
 import type { DataflowInformation } from '../../../../../info';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument  } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { unpackArg } from '../argument/unpack-argument';
 import { signatureParameterNames } from '../../../../../../project/sigdb/decode';
 import type { IdentifierDefinition, InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
@@ -21,6 +20,8 @@ import { foldStringCall, PasteLikeCalls } from '../../../../../eval/resolve/reso
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { dataflowLogger } from '../../../../../logger';
 import { Resolve } from '../../../../../environments/resolve-helper';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 /** A tracked env is a real stack environment (not a private custom env) when its current layer is the global or the built-in/base env. */
 function isStackEnvState(envState: REnvironmentInformation): boolean {
@@ -130,7 +131,7 @@ export function resolveArgToEnvir<OtherInfo>(
 	arg:  PotentiallyEmptyRArgument<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): EnvirResolution<OtherInfo> | undefined {
-	if(arg === EmptyArgument) {
+	if(RArgument.isEmpty(arg)) {
 		return undefined;
 	}
 	const node = unpackArg(arg);
@@ -139,7 +140,7 @@ export function resolveArgToEnvir<OtherInfo>(
 	if(stackEnv !== undefined && node !== undefined) {
 		return stackEnvirResolution(stackEnv, node.info.id, node.lexeme ?? '', data);
 	}
-	if(node?.type !== RType.Symbol) {
+	if(!RSymbol.is(node)) {
 		return undefined;
 	}
 	return resolveDefsToEnvirResolution(Resolve.byNameAndType(node.content, data.environment, ReferenceType.Variable), node.info.id, data);

@@ -5,12 +5,11 @@ import { FunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import type { RAccess, RIndexAccess, RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { RAccess, type RIndexAccess, type RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { ConstraintType } from '../semantics';
 import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../shape-inference';
 import { isStringBasedAccess } from './access-mapper';
@@ -64,15 +63,15 @@ export function mapDataFrameReplacementFunction(
 	const parent = hasParentReplacement(node, dfg) ? dfg.idMap?.get(node.info.parent) : undefined;
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx };
 
-	if(node.type === RType.Access) {
-		if(node.access.every(arg => arg === EmptyArgument)) {
+	if(RAccess.is(node)) {
+		if(node.access.every(arg => RArgument.isEmpty(arg))) {
 			return mapDataFrameContentAssignment(node, expression, inference);
 		} else if(isStringBasedAccess(node)) {
 			return mapDataFrameNamedColumnAssignment(node, expression, inference, resolveInfo);
 		} else {
 			return mapDataFrameIndexColRowAssignment(node, expression, inference, resolveInfo);
 		}
-	} else if(node.type === RType.FunctionCall && node.named && node.arguments.length === 1 && node.arguments[0] !== EmptyArgument) {
+	} else if(RFunctionCall.isNamed(node) && node.arguments.length === 1 && node.arguments[0] !== EmptyArgument) {
 		const n = Identifier.getName(node.functionName.content);
 		if(isDataFrameReplacement(n)) {
 			const mapper = DataFrameReplacementFunctionMapper[n];
@@ -160,7 +159,7 @@ function mapDataFrameIndexColRowAssignment(
 	const dataFrame = access.accessed;
 	const args = access.access.filter(arg => RArgument.isEmpty(arg) || RArgument.isUnnamed(arg));
 
-	if(!isDataFrameArgument(dataFrame, inference) || args.every(arg => arg === EmptyArgument)) {
+	if(!isDataFrameArgument(dataFrame, inference) || args.every(arg => RArgument.isEmpty(arg))) {
 		return;
 	}
 	const result: DataFrameOperations = [];

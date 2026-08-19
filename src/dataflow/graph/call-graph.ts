@@ -15,8 +15,8 @@ import { GraphHelper } from './graph-helper';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { Identifier } from '../environments/identifier';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 /**
  * A call graph is a dataflow graph where all vertices are function calls.
@@ -253,7 +253,7 @@ function mayRunAnyway(graph: CallGraph, reached: ReadonlySet<NodeId>): NodeId[] 
 			continue;
 		}
 		const parent = RNode.directParent(node, idMap);
-		if(parent?.type === RType.Argument) {
+		if(RArgument.is(parent)) {
 			seeds.push(id);
 			continue;
 		}

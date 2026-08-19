@@ -15,8 +15,7 @@ import type {
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
-import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
-import { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import type { RForLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
 import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
@@ -24,13 +23,14 @@ import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-lo
 import type { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { type RFunctionCall, EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
-import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { type StatefulFoldFunctions, foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type AutoSelectPredicate, doNotAutoSelect } from './auto-select/auto-select-defaults';
 import { Identifier } from '../dataflow/environments/identifier';
 import type { InlineWarning } from './inline/source-inline-map';
+import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 /**
  * Whether to inline every file into a single self-contained text: `true` inlines them, `'banner'` additionally
@@ -94,7 +94,7 @@ function codeToText(code: Code): string {
 
 /** the arguments synthesized for infix operands have no `fullLexeme`, so resolve through the value */
 function getArgumentLexeme(n: RArgument<ParentInformation> | typeof EmptyArgument | undefined): string {
-	if(n === undefined || n === EmptyArgument) {
+	if(n === undefined || RArgument.isEmpty(n)) {
 		return '';
 	}
 	return n.info.fullLexeme ?? (n.value !== undefined ? getLexeme(n.value) : getLexeme(n));
@@ -182,7 +182,7 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 		}
 	}
 
-	return reconstructRawBinaryOperator(lhs, n.type === RType.Pipe ? '|>' : n.operator, rhs);
+	return reconstructRawBinaryOperator(lhs, RPipe.is(n) ? '|>' : n.operator, rhs);
 }
 
 function reconstructForLoop(loop: RForLoop<ParentInformation>, variable: Code, vector: Code, body: Code, config: ReconstructionConfiguration): Code {
@@ -447,7 +447,7 @@ function tryInlineSourceCall(call: RFunctionCall<ParentInformation>, config: Rec
 	// a selected source() that we could not link to a file (dynamic/missing path): keep it verbatim
 	if(call.named && call.functionName.lexeme === 'source') {
 		const arg = call.arguments[0];
-		const path = arg !== undefined && arg !== EmptyArgument && arg.value?.type === RType.String ? arg.value.content.str : undefined;
+		const path = arg !== undefined && arg !== EmptyArgument && RString.is(arg.value) ? arg.value.content.str : undefined;
 		config.warnings?.push({ kind: 'unresolved', callId: id, path });
 		reconstructLogger.warn(`unresolved source() not inlined at node ${JSON.stringify(id)}: ${JSON.stringify(path)}`);
 	}

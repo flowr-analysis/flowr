@@ -4,7 +4,6 @@ import type { DataflowGraphVertexFunctionCall } from '../../graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isNotUndefined } from '../../../util/assert';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { Constant, Unknown } from '../../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -16,6 +15,8 @@ import { collectStrings } from '../values/string/string-constants';
 import type { VariableResolve } from '../../../config';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { Resolve } from '../../environments/resolve-helper';
+import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 /**
  * Get the values of all arguments matching the criteria.
@@ -46,7 +47,7 @@ export function getArgumentStringValue(
 		const map = new Map<NodeId, Set<string | undefined>>();
 		for(const ref of references) {
 			let valueNode = graph.idMap?.get(ref);
-			if(valueNode?.type === RType.Argument) {
+			if(RArgument.is(valueNode)) {
 				valueNode = valueNode.value;
 			}
 			if(valueNode) {
@@ -63,7 +64,7 @@ export function getArgumentStringValue(
 			return undefined;
 		}
 		let valueNode = graph.idMap?.get(arg);
-		if(valueNode?.type === RType.Argument) {
+		if(RArgument.is(valueNode)) {
 			valueNode = valueNode.value;
 		}
 
@@ -102,7 +103,7 @@ function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowG
 	if(resolveValue === 'library') {
 		const hasChar = hasCharacterOnly(variableResolve, graph, vertex, idMap, ctx);
 		if(hasChar === false) {
-			if(argument.type === RType.Symbol) {
+			if(RSymbol.is(argument)) {
 				return [argument.lexeme];
 			}
 			full = false;

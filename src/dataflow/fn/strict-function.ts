@@ -1,6 +1,5 @@
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { EmptyArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ControlDependency } from '../info';
 import type { DataflowGraph } from '../graph/graph';
@@ -15,6 +14,9 @@ import { BuiltInIndex, queryFnProps } from '../environments/query-fn-props';
 import { Identifier } from '../environments/identifier';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { Ternary, TernaryLogic } from '../../util/logic';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 
 /**
  * How a function treats its parameters: R hands arguments over as promises, so a parameter is strict when
@@ -123,7 +125,7 @@ function makeState(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | und
 			}
 			const node = idMap.get(id);
 			const known = dispatch.get(within);
-			const named = (node?.type === RType.FunctionCall && (node.arguments?.length ?? 0) > 1) || (known?.named ?? false);
+			const named = (RFunctionCall.is(node) && (node.arguments?.length ?? 0) > 1) || (known?.named ?? false);
 			const certain = !underCondition(vertex.cds, graph.getVertex(within)?.cds) || (known?.certain ?? false);
 			const next = [...known?.next ?? []];
 			for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
@@ -173,7 +175,7 @@ function isBuiltInCall(vertex: DataflowGraphVertexFunctionCall): boolean {
 /** The node whose value an argument stands for, carrying the link to the parameter it binds to. */
 function argumentValue(id: NodeId, idMap: AstIdMap): NodeId {
 	const node = idMap.get(id);
-	return node?.type === RType.Argument ? node.value?.info.id ?? id : id;
+	return RArgument.is(node) ? node.value?.info.id ?? id : id;
 }
 
 /**
@@ -258,7 +260,7 @@ function forces(read: NodeId, definition: DataflowGraphVertexFunctionDefinition,
 			if(FunctionDefinitionVertex.is(vertex)) {
 				/* nothing says the nested definition is ever called */
 				certain = false;
-			} else if(node.type === RType.Parameter) {
+			} else if(RParameter.is(node)) {
 				/* a default is evaluated only when the argument is left out */
 				certain = false;
 			} else if(FunctionCallVertex.is(vertex) && !isDispatch(vertex) && !isCallee(node.info.id, child, idMap)) {
@@ -316,7 +318,7 @@ function strictnessOfParameter(param: NodeId, definition: DataflowGraphVertexFun
 /** The parameters of a definition in the order they are written. */
 function parameterIds(definition: NodeId, idMap: AstIdMap | undefined): readonly NodeId[] {
 	const node = idMap?.get(definition);
-	return node?.type === RType.FunctionDefinition ? node.parameters.map(p => p.name.info.id) : [];
+	return RFunctionDefinition.is(node) ? node.parameters.map(p => p.name.info.id) : [];
 }
 
 function strictnessOf(id: NodeId, state: StrictnessState): FunctionStrictness {

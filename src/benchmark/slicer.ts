@@ -46,7 +46,7 @@ import { RShell } from '../r-bridge/shell';
 import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { FunctionCallVertex, FunctionDefinitionVertex } from '../dataflow/graph/vertex';
-import { equidistantSampling } from '../util/collections/arrays';
+import { equidistantSampling, arraySum } from '../util/collections/arrays';
 import { FlowrConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { extractCfg } from '../control-flow/extract-cfg';
@@ -199,8 +199,8 @@ export class BenchmarkSlicer {
 				return ret;
 			};
 			const root = (this.loadedXml as Tree[]).map(t => t.rootNode);
-			numberOfRTokens = root.map(r => countChildren(r)).reduce((a, b) => a + b, 0);
-			numberOfRTokensNoComments = root.map(r => countChildren(r, true)).reduce((a, b) => a + b, 0);
+			numberOfRTokens = arraySum(root.map(r => countChildren(r)));
+			numberOfRTokensNoComments = arraySum(root.map(r => countChildren(r, true)));
 		}
 
 		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined after initialization');

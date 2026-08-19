@@ -19,13 +19,8 @@ import { foldAstStateful } from './stateful-fold';
 import type { NodeId } from './node-id';
 import type { RDelimiter } from '../nodes/info/r-delimiter';
 import type { RBinaryOp } from '../nodes/r-binary-op';
-import type { RPipe } from '../nodes/r-pipe';
-import {
-	EmptyArgument,
-	type RFunctionCall,
-	type RNamedFunctionCall,
-	type RUnnamedFunctionCall
-} from '../nodes/r-function-call';
+import { RPipe } from '../nodes/r-pipe';
+import { EmptyArgument, type RFunctionCall, type RNamedFunctionCall, type RUnnamedFunctionCall } from '../nodes/r-function-call';
 import type { RExpressionList } from '../nodes/r-expression-list';
 import type { RParameter } from '../nodes/r-parameter';
 import type { RArgument } from '../nodes/r-argument';
@@ -263,7 +258,7 @@ function createFoldForBinaryOp<OtherInfo>(info: FoldInfo<OtherInfo>) {
 		const rhsInfo = rhs.info;
 		rhsInfo.parent = id;
 		rhsInfo.index = 1;
-		if(data.type === RType.Pipe) {
+		if(RPipe.is(data)) {
 			lhsInfo.role = RoleInParent.PipeLhs;
 			rhsInfo.role = RoleInParent.PipeRhs;
 		} else {

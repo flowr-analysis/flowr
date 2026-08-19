@@ -14,7 +14,8 @@ import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-c
 import { isValue } from '../dataflow/eval/values/r-value';
 import { visitCfgInOrder } from './simple-visitor';
 import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
-import { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 
 type CachedValues<Val> = Map<NodeId, Val>;
 
@@ -51,9 +52,9 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	/** a parameter default is forced on access if at all, so a jump within it must not cut the function body */
 	private inParameterDefault(id: NodeId): boolean {
 		for(let node = this.getNormalizedAst(id); node !== undefined; node = this.getNormalizedAst(node.info.parent)) {
-			if(node.type === RType.Parameter) {
+			if(RParameter.is(node)) {
 				return true;
-			} else if(node.type === RType.FunctionDefinition) {
+			} else if(RFunctionDefinition.is(node)) {
 				return false;
 			}
 		}

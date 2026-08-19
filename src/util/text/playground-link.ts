@@ -1,4 +1,5 @@
 import { packForUrl } from './url-encoding';
+import { uniqueArray } from '../collections/arrays';
 
 /** the parts of the page a mark can point at, rather than a place in the script */
 export enum PlaygroundBox {
@@ -57,7 +58,7 @@ export const PlaygroundMark = {
 	 * so this shortens rather than packs.
 	 */
 	compress(this: void, marks: readonly PlaygroundMark[]): PlaygroundMark[] {
-		const kept = [...new Set(marks.filter(PlaygroundMark.isValid))];
+		const kept = uniqueArray(marks.filter(PlaygroundMark.isValid));
 		/* `lint:<rule>` stands for each of its findings, so the single ones beside it say nothing more */
 		const whole = kept.filter(mark => FoundMarkPattern.test(mark) && !mark.includes('@'));
 		const left = kept.filter(mark => !whole.some(all => mark.startsWith(`${all}@`)));
@@ -149,7 +150,7 @@ export const Playground = {
 		if(kept.length > 0) {
 			fields.push(['h', kept.join(',')]);
 		}
-		const folded = [...new Set(collapsed)].filter(box => (Object.values(PlaygroundBox) as string[]).includes(box));
+		const folded = uniqueArray(collapsed).filter(box => (Object.values(PlaygroundBox) as string[]).includes(box));
 		if(folded.length > 0) {
 			fields.push(['f', folded.join(',')]);
 		}

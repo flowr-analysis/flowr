@@ -20,6 +20,7 @@ import { baseRPackages, baseRExportOwner } from '../../../util/r-base-packages';
 import { Mermaid } from '../../../util/mermaid/mermaid';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
+import { uniqueArray } from '../../../util/collections/arrays';
 
 /** the CRAN package landing page (only meaningful for CRAN packages, not base R) */
 export function cranPageUrl(pkg: string): string {
@@ -609,7 +610,7 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 	const owningOf = (pkg: string) => sources.filter(s => s.has(pkg));
 	// the versions of `pkg` matching the spec, unioned across all owning sources (so a `3.*`/date filter reaches history)
 	const matchingVersions = (owners: readonly PackageSignatureSource[], pkg: string, m: (e: AvailableVersion) => boolean) =>
-		[...new Set(owners.flatMap(s => availableVersionEntries(s, pkg).filter(m).map(e => e.version)))];
+		uniqueArray(owners.flatMap(s => availableVersionEntries(s, pkg).filter(m).map(e => e.version)));
 
 	const paramPred = parameterFilter(q);
 	// a parameter filter (with no function name) still means "search functions", not "list packages"
@@ -755,10 +756,10 @@ export function signatureQueryCompleter(line: readonly string[], startingNewArg:
 		const stride = all.length / MaxCompletions;
 		return Array.from({ length: MaxCompletions }, (_, i) => all[Math.floor(i * stride)]);
 	};
-	const packageNames = (): string[] => [...new Set(sources.flatMap(s => s.packageNames()))].sort();
+	const packageNames = (): string[] => uniqueArray(sources.flatMap(s => s.packageNames())).sort();
 	const functionsOf = (pkg: string): string[] => {
 		const src = sources.find(s => s.has(pkg));
-		return src ? [...new Set((src.functions(pkg) ?? []).map(f => f.name))].sort() : [];
+		return src ? uniqueArray((src.functions(pkg) ?? []).map(f => f.name)).sort() : [];
 	};
 
 	// first token: a package spec (`pkg`, `pkg::fn`, `pkg@ver`)

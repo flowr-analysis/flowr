@@ -4,11 +4,7 @@ import { FunctionCallVertex, UseVertex } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import {
-	type PotentiallyEmptyRArgument,
-	type RFunctionCall,
-	EmptyArgument
-} from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument, type RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
@@ -180,7 +176,7 @@ export function getUnresolvedSymbolsInExpression(
 	expression: RNode<ParentInformation> | typeof EmptyArgument | undefined,
 	dfg?: DataflowGraph
 ): Identifier[] {
-	if(expression === undefined || expression === EmptyArgument || dfg === undefined) {
+	if(expression === undefined || RArgument.isEmpty(expression) || dfg === undefined) {
 		return [];
 	}
 	const unresolvedSymbols: Identifier[] = [];

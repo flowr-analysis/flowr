@@ -2,7 +2,6 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { FunctionArgument, NoEdges } from '../../dataflow/graph/graph';
 import type { EdgeTypeBits } from '../../dataflow/graph/edge';
@@ -23,6 +22,7 @@ import type { LintingResult, LintingRule, LintQuickFix } from '../linter-format'
 import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import type { FlowrSearchElement } from '../../search/flowr-search';
+import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
 export type UnclosedConnectionResult = LintingResult;
 
@@ -87,7 +87,7 @@ function enclosingStatement(idMap: AstIdMap, id: NodeId): RNode<ParentInformatio
 	let node = idMap.get(id);
 	while(node !== undefined) {
 		const parent = node.info.parent === undefined ? undefined : idMap.get(node.info.parent);
-		if(parent === undefined || parent.type === RType.ExpressionList) {
+		if(parent === undefined || RExpressionList.is(parent)) {
 			return node;
 		}
 		node = parent;

@@ -14,6 +14,7 @@ import { InvalidationEventType } from '../cache/flowr-cache';
 import { assertUnreachable } from '../../util/assert';
 import { isSigDbEnabled } from '../../config';
 import { RRange } from '../../util/r-version';
+import { uniqueArray } from '../../util/collections/arrays';
 
 /**
  * Read-only interface to the {@link FlowrAnalyzerDependenciesContext} for inspecting dependencies without modifying them.
@@ -137,7 +138,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	}
 
 	public availableSignatureDatabases(): readonly string[] {
-		return [...new Set(this.loadedSignatureDatabases().map(d => d.scope))];
+		return uniqueArray(this.loadedSignatureDatabases().map(d => d.scope));
 	}
 
 	public hasSignatureDatabase(): boolean {
@@ -326,7 +327,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	public declaredPackageNames(): string[] {
 		this.ensureStaticsLoaded();
 		const declared: readonly (readonly Package[] | undefined)[] = Object.values(this.ctx.meta.getDeclaredPackages());
-		return [...new Set(declared.flatMap(group => group?.map(p => p.name) ?? []))];
+		return uniqueArray(declared.flatMap(group => group?.map(p => p.name) ?? []));
 	}
 }
 

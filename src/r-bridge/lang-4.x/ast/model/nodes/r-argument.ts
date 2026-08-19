@@ -36,6 +36,7 @@ export const RArgument = {
 	/**
 	 * Type guard for {@link RArgument} nodes.
 	 * @see {@link RArgument.isUnnamed} - to check whether an argument is unnamed
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RArgument<Info> {
 		return node?.type === RType.Argument;
@@ -75,7 +76,7 @@ export const RArgument = {
 			return undefined;
 		}
 		for(const arg of args) {
-			if(arg === EmptyArgument) {
+			if(RArgument.isEmpty(arg)) {
 				continue;
 			}
 			if(arg.info.id === id) {

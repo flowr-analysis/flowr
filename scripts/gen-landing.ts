@@ -15,6 +15,7 @@ import { stringifyValue } from '../src/dataflow/eval/values/r-value';
 import { SliceDirection } from '../src/util/slice-direction';
 import { LintingRules } from '../src/linter/linter-rules';
 import { LintingPrettyPrintContext } from '../src/linter/linter-format';
+import { arraySum } from '../src/util/collections/arrays';
 
 /**
  * The samples every tab runs on. Each one is written next to the page as a real `.R` file, so the
@@ -286,7 +287,7 @@ function timings(): { rows: string[][], files: string, lines: string, when: stri
 	const of = (benches: Benchmark[], name: string): number | undefined => benches.find(b => b.name === name)?.value;
 	const sum = (benches: Benchmark[], names: string[]): number | undefined => {
 		const parts = names.map(n => of(benches, n));
-		return parts.every(v => v !== undefined) ? parts.reduce((a, b) => (a) + (b), 0) : undefined;
+		return parts.every(v => v !== undefined) ? arraySum(parts) : undefined;
 	};
 	const Analysis = ['Retrieve AST from R code', 'Normalize R AST', 'Produce dataflow information'];
 	const wanted: [string, (b: Benchmark[]) => number | undefined][] = [

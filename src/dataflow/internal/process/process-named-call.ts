@@ -6,11 +6,11 @@ import { processFunctionArgument } from './functions/process-argument';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RAstNodeBase, RNode, Location } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type RNamedFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type RNamedFunctionCall, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { Identifier } from '../../environments/identifier';
-import type { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
-import type { RPipe } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
+import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RPipe } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import { guard } from '../../../util/assert';
 
 /**
@@ -38,11 +38,11 @@ type RInfixSpecialCall<OtherInfo> = RNamedFunctionCall<OtherInfo & ParentInforma
 type ChainNode<OtherInfo> = RBinaryOpOrPipe<OtherInfo> | RInfixSpecialCall<OtherInfo>;
 
 function isBinaryOpOrPipe<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): node is RBinaryOpOrPipe<OtherInfo> {
-	return node.type === RType.BinaryOp || node.type === RType.Pipe;
+	return RBinaryOp.is(node) || RPipe.is(node);
 }
 
 function isInfixSpecialCall<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): node is RInfixSpecialCall<OtherInfo> {
-	return node.type === RType.FunctionCall && node.named === true && node.infixSpecial === true && node.arguments.length === 2;
+	return RFunctionCall.isNamed(node) && node.infixSpecial === true && node.arguments.length === 2;
 }
 
 function isChainNode<OtherInfo>(node: RNode<OtherInfo & ParentInformation> | undefined): node is ChainNode<OtherInfo> {
@@ -57,16 +57,16 @@ function isChainNode<OtherInfo>(node: RNode<OtherInfo & ParentInformation> | und
  * {@link RArgument}, so those need unwrapping via `.value` first.
  */
 function chainLhsRaw<OtherInfo>(node: ChainNode<OtherInfo>): RNode<OtherInfo & ParentInformation> | undefined {
-	if(node.type === RType.FunctionCall) {
+	if(RFunctionCall.is(node)) {
 		const arg = node.arguments[0];
-		return arg === EmptyArgument ? undefined : arg.value;
+		return RArgument.isEmpty(arg) ? undefined : arg.value;
 	}
 	return RArgument.is(node.lhs) ? node.lhs.value : node.lhs;
 }
 
 /** The left operand of a chain node, wrapped as the {@link RArgument} that {@link processAllArguments} would process it as. */
 function chainLhsArgument<OtherInfo>(node: ChainNode<OtherInfo>, idMap: DataflowProcessorInformation<OtherInfo & ParentInformation>['completeAst']['idMap']) {
-	if(node.type === RType.FunctionCall) {
+	if(RFunctionCall.is(node)) {
 		const arg = node.arguments[0];
 		guard(arg !== EmptyArgument, 'an infix-special call always has a non-empty first argument');
 		return arg;
@@ -88,14 +88,14 @@ function processSingleChainNode<OtherInfo>(
 	node: ChainNode<OtherInfo>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	if(node.type === RType.FunctionCall) {
+	if(RFunctionCall.is(node)) {
 		return processNamedCall(node.functionName, node.arguments, node.info.id, data);
 	}
 	const { info, lexeme, location, lhs, rhs } = node;
 	return processNamedCall({
 		type:    RType.Symbol,
 		info,
-		content: node.type === RType.Pipe ? lexeme : node.operator,
+		content: RPipe.is(node) ? lexeme : node.operator,
 		lexeme,
 		location,
 	}, wrapArgumentsUnnamed([lhs, rhs], data.completeAst.idMap), info.id, data);

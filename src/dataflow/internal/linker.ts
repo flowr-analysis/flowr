@@ -17,7 +17,6 @@ import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-param
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowLogger } from '../logger';
 import { DfEdge, EdgeType } from '../graph/edge';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import {
 	type DataflowGraphVertexFunctionCall,
 	type DataflowGraphVertexFunctionDefinition,
@@ -32,6 +31,8 @@ import { UnnamedFunctionCallPrefix } from './process/functions/call/unnamed-call
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { VariableDefinitionVertex, FunctionCallVertex, FunctionDefinitionVertex } from '../graph/vertex';
 import { Resolve } from '../environments/resolve-helper';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
 
@@ -171,7 +172,7 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCa
 		return;
 	}
 
-	if(linkedFunction.type !== RType.FunctionDefinition) {
+	if(!RFunctionDefinition.is(linkedFunction)) {
 		dataflowLogger.trace(`function call definition base ${functionCallName} does not lead to a function definition (${functionRootId}) but got ${linkedFunction.type}`);
 		return;
 	}
@@ -463,7 +464,7 @@ export function linkExpressionIn<Info>(this: void, graph: DataflowGraph, expr: N
 		if(RFunctionCall.isNamed(inner)) {
 			callees.add(inner.functionName.info.id);
 			references.push({ nodeId: inner.functionName.info.id, name: inner.functionName.content, cds: undefined, type: ReferenceType.Function });
-		} else if(inner.type === RType.Symbol && !callees.has(inner.info.id)) {
+		} else if(RSymbol.is(inner) && !callees.has(inner.info.id)) {
 			references.push({ nodeId: inner.info.id, name: inner.content, cds: undefined, type: ReferenceType.Variable });
 		}
 		return false;

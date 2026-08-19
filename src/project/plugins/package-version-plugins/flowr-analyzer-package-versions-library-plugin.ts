@@ -7,6 +7,7 @@ import { FlowrTextFile } from '../../context/flowr-file';
 import { FlowrDescriptionFile } from '../file-plugins/files/flowr-description-file';
 import { FlowrNamespaceFile } from '../file-plugins/files/flowr-namespace-file';
 import { log } from '../../../util/log';
+import { uniqueArray } from '../../../util/collections/arrays';
 import fs from 'fs';
 import path from 'path';
 
@@ -40,7 +41,7 @@ function libraryRoots(opts: InstalledLibraryOptions, projectRoot?: string): stri
 	const local = opts.useProjectLibrary === false || projectRoot === undefined ? [] :
 		['renv/library', 'renv/staging', 'packrat/lib'].map(d => path.join(projectRoot, d))
 			.flatMap(d => [d, ...libraryDirs(d, opts.maxDepth ?? 3)]);
-	return [...new Set([...fromEnv, ...local])].filter(d => d.length > 0);
+	return uniqueArray([...fromEnv, ...local]).filter(d => d.length > 0);
 }
 
 /**

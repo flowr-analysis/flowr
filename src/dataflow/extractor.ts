@@ -37,6 +37,7 @@ import { SourceRange } from '../util/range';
 import { dataflowLogger } from './logger';
 import { GasFeatureKey, GasLevel, GasWikiRef } from '../gas';
 import { Dataflow } from './graph/df-helper';
+import { uniqueArray } from '../util/collections/arrays';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -99,7 +100,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph, ctx:
 			if(graph.unknownSideEffects.size > 20) {
 				knownCalls = getCallsInCfg(cf, graph);
 
-				allCallNames = Array.from(new Set(knownCalls.values().map(c => Identifier.toString(c.name))));
+				allCallNames = uniqueArray(knownCalls.values().map(c => Identifier.toString(c.name)));
 			}
 		} else if(handled.has(s.id)) {
 			continue;

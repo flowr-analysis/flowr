@@ -11,12 +11,12 @@ import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import { DfEdge, type EdgeType } from '../../dataflow/graph/edge';
 import { VariableDefinitionVertex, FunctionDefinitionVertex, type DataflowGraphVertexInfo, VertexType, FunctionCallVertex } from '../../dataflow/graph/vertex';
 import type { IEnvironment } from '../../dataflow/environments/environment';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { MermaidDefaultMarkStyle, type MermaidMarkdownMark, type MermaidMarkStyle } from './info';
 import { SourceRange } from '../range';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { DataflowInformation } from '../../dataflow/info';
 import { Dataflow } from '../../dataflow/graph/df-helper';
+import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
 /**
  * Internal representation of a mermaid graph in flowR
@@ -209,7 +209,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	}
 
 	const node = mermaid.rootGraph.idMap?.get(info.id);
-	const lexeme = node?.lexeme ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0]?.lexeme : '') ?? '??';
+	const lexeme = node?.lexeme ?? (RExpressionList.is(node) ? node?.grouping?.[0]?.lexeme : '') ?? '??';
 
 	let display = lexeme;
 	if(fCall && FunctionCallVertex.is(info)) {
@@ -230,7 +230,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		const lnks = info.link?.origin ? ', links: ' + info.link.origin.map(o => Mermaid.escapeId(o)).join(', ') : '';
 		const source = VariableDefinitionVertex.is(info) ? info.source : undefined;
 		const sources = source ? ', v: ' + source.map(s => Mermaid.escapeId(s)).join(', ') : '';
-		const n = node?.info.fullRange ?? node?.location ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0].location : undefined);
+		const n = node?.info.fullRange ?? node?.location ?? (RExpressionList.is(node) ? node?.grouping?.[0].location : undefined);
 		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\n      *${SourceRange.format(n)}* (**id: ${id}**${deps}${lnks}${sources})${
 			fCall ? displayFunctionArgMapping(info.args) : '' + (FunctionDefinitionVertex.is(info) && info.mode && info.mode.length > 0 ? Mermaid.escape(JSON.stringify(info.mode)) : '')
 		}\`"${close}`);

@@ -16,6 +16,7 @@ import { isCompressed, isUnpacked, parseHeader, sigDbStream, resolveSource, ensu
 import { stripCompressedExt } from './codec';
 import { contentHash, dictionaryHash, shardHash } from './hash';
 import { readManifestFile, SigDbManifestMagic, type SigDbManifest, type SigDbShardRef } from './manifest';
+import { uniqueArray } from '../../util/collections/arrays';
 
 /** apply one `d` line (`["d", start, payload]`, new newline-blob or legacy `string[]` form) to the dictionary in place */
 function applyDictLine(json: string, strings: string[]): void {
@@ -276,7 +277,7 @@ export class MergedSignatureSource implements PackageSignatureSource {
 		return this.pick(pkg, version)?.dependencies(pkg, version);
 	}
 	public packageNames(): string[] {
-		return [...new Set(this.sources.flatMap(s => s.packageNames()))];
+		return uniqueArray(this.sources.flatMap(s => s.packageNames()));
 	}
 	public isBaseR(pkg: string): boolean {
 		return this.sources.some(s => s.has(pkg) && s.isBaseR(pkg));

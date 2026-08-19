@@ -5,7 +5,7 @@ import { type DataflowGraphVertexFunctionCall, FunctionCallVertex } from '../../
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { assertUnreachable } from '../../../util/assert';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import type { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { LinkToLastCall } from './call-context-query-format';
 import { CascadeAction } from './cascade-action';
@@ -14,6 +14,7 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analy
 import { CfgKind } from '../../../project/cfg-kind';
 import type { ControlFlowGraph } from '../../../control-flow/control-flow-graph';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
+import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 type KnownCalls = Map<NodeId, Required<DataflowGraphVertexFunctionCall>>;
 
@@ -117,7 +118,7 @@ export function getValueOfArgument<Types extends readonly RType[] = readonly RTy
 		return undefined;
 	}
 	let valueNode = graph.idMap?.get(refAtIndex);
-	if(valueNode?.type === RType.Argument) {
+	if(RArgument.is(valueNode)) {
 		valueNode = valueNode.value;
 	}
 	if(valueNode) {

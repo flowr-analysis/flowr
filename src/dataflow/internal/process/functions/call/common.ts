@@ -20,7 +20,6 @@ import {
 } from '../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
-import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import { processFunctionArgument } from '../process-argument';
 import {
 	type DataflowGraphVertexAstLink,
@@ -106,9 +105,9 @@ export function convertFnArguments<OtherInfo>(args: readonly (typeof EmptyArgume
  * Please be aware, that the ids here are those inferred from the AST, not from the dataflow graph!
  */
 export function convertFnArgument<OtherInfo>(this: void, arg: typeof EmptyArgument | RNode<OtherInfo & ParentInformation>): FunctionArgument {
-	if(arg === EmptyArgument) {
+	if(RArgument.isEmpty(arg)) {
 		return EmptyArgument;
-	} else if(!arg.name || arg.type !== RType.Argument) {
+	} else if(!arg.name || !RArgument.is(arg)) {
 		return { nodeId: arg.info.id, cds: undefined, type: ReferenceType.Argument };
 	} else {
 		return {
@@ -138,7 +137,7 @@ export function processAllArguments<OtherInfo>(
 		i++;
 		data = { ...data, environment: argEnv };
 		data = patchData?.(data, i) ?? data;
-		if(arg === EmptyArgument) {
+		if(RArgument.isEmpty(arg)) {
 			callArgs.push(EmptyArgument);
 			processedArguments.push(undefined);
 			continue;
@@ -148,7 +147,7 @@ export function processAllArguments<OtherInfo>(
 		if(i === 0 && data.precomputedFirstArg?.rootId === functionRootId) {
 			processed = data.precomputedFirstArg.info;
 		} else {
-			processed = arg.type === RType.Argument ? processFunctionArgument(arg, data) : processDataflowFor(arg, data);
+			processed = RArgument.is(arg) ? processFunctionArgument(arg, data) : processDataflowFor(arg, data);
 		}
 		if(RArgument.isWithValue(arg) && (forceArgs === 'all' || forceArgs[i]) && !RConstant.is(arg.value)) {
 			forceVertexArgumentValueReferences(functionRootId, processed, processed.graph, data.environment);
@@ -192,7 +191,7 @@ export function processAllArguments<OtherInfo>(
 		argEnv = overwriteEnvironment(argEnv, processed.environment);
 
 
-		if(arg.type !== RType.Argument || !arg.name) {
+		if(!RArgument.is(arg) || !arg.name) {
 			callArgs.push({ nodeId: processed.entryPoint, cds: undefined, type: ReferenceType.Argument });
 		} else {
 			callArgs.push({ nodeId: processed.entryPoint, valueId: arg.value?.info.id, name: arg.name.content, cds: undefined, type: ReferenceType.Argument });

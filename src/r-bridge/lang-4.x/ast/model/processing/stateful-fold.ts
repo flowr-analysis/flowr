@@ -20,7 +20,7 @@ import type { RLineDirective } from '../nodes/r-line-directive';
 import type { RIfThenElse } from '../nodes/r-if-then-else';
 import type { RExpressionList } from '../nodes/r-expression-list';
 import type { RFunctionDefinition } from '../nodes/r-function-definition';
-import type { RArgument } from '../nodes/r-argument';
+import { RArgument } from '../nodes/r-argument';
 import type { RParameter } from '../nodes/r-parameter';
 import { assertUnreachable } from '../../../../../util/assert';
 
@@ -97,7 +97,7 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
 		case RType.UnaryOp:
 			return folds.foldUnaryOp(ast, foldAstStateful(ast.operand, down, folds), down);
 		case RType.Access:
-			return folds.foldAccess(ast, foldAstStateful(ast.accessed, down, folds), ast.access.map(access => access === EmptyArgument ? EmptyArgument : foldAstStateful(access, down, folds)), down);
+			return folds.foldAccess(ast, foldAstStateful(ast.accessed, down, folds), ast.access.map(access => RArgument.isEmpty(access) ? EmptyArgument : foldAstStateful(access, down, folds)), down);
 		case RType.ForLoop:
 			return folds.loop.foldFor(ast, foldAstStateful(ast.variable, down, folds), foldAstStateful(ast.vector, down, folds), foldAstStateful(ast.body, down, folds), down);
 		case RType.WhileLoop:
@@ -105,7 +105,7 @@ export function foldAstStateful<Info, Down, Up>(ast: RNode<Info>, down: Down, fo
 		case RType.RepeatLoop:
 			return folds.loop.foldRepeat(ast, foldAstStateful(ast.body, down, folds), down);
 		case RType.FunctionCall:
-			return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.named ? ast.functionName : ast.calledFunction, down, folds), ast.arguments.map(param => param === EmptyArgument ? param : foldAstStateful(param, down, folds)), down);
+			return folds.functions.foldFunctionCall(ast, foldAstStateful(ast.named ? ast.functionName : ast.calledFunction, down, folds), ast.arguments.map(param => RArgument.isEmpty(param) ? param : foldAstStateful(param, down, folds)), down);
 		case RType.FunctionDefinition:
 			return folds.functions.foldFunctionDefinition(ast, ast.parameters.map(param => foldAstStateful(param, down, folds)), foldAstStateful(ast.body, down, folds), down);
 		case RType.Parameter:

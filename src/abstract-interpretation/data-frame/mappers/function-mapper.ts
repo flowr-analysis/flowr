@@ -5,9 +5,8 @@ import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/
 import { findSource } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { requestFromInput, type RParseRequest } from '../../../r-bridge/retriever';
 import { assertUnreachable, isNotUndefined, isUndefined } from '../../../util/assert';
 import { DataFrameDomain } from '../dataframe-domain';
@@ -18,6 +17,12 @@ import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, get
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
+import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RNumber } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RUnaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
+import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /**
  * Represents the different types of data frames in R
@@ -632,7 +637,7 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 	dfg: DataflowGraph,
 	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameOperations {
-	if(node.type !== RType.FunctionCall || !node.named) {
+	if(!RFunctionCall.is(node) || !node.named) {
 		return;
 	}
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx };
@@ -720,7 +725,7 @@ function mapDataFrameConvert(
 ): DataFrameOperations {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(dataFrame === EmptyArgument || dataFrame?.value === undefined) {
+	if(RArgument.isEmpty(dataFrame) || dataFrame?.value === undefined) {
 		return [{ operation: 'unknown', operand: undefined }];
 	}
 	return [{
@@ -1465,19 +1470,19 @@ function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInfo
 
 	for(const arg of args) {
 		if(arg !== undefined && arg !== EmptyArgument) {
-			if(arg.value?.type === RType.FunctionCall && arg.value.named && arg.value.functionName.content === 'c') {
+			if(RFunctionCall.isNamed(arg.value) && Identifier.getName(arg.value.functionName.content) === 'c') {
 				const result = getSelectedColumns(arg.value.arguments, info);
 				selectedCols = joinColumns(selectedCols, result.selectedCols);
 				unselectedCols = joinColumns(unselectedCols, result.unselectedCols);
-			} else if(arg.value?.type === RType.UnaryOp && arg.value.operator === '+' && info.idMap !== undefined) {
+			} else if(RUnaryOp.is(arg.value) && arg.value.operator === '+' && info.idMap !== undefined) {
 				const result = getSelectedColumns([toUnnamedArgument(arg.value.operand, info.idMap)], info);
 				selectedCols = joinColumns(selectedCols, result.selectedCols);
 				unselectedCols = joinColumns(unselectedCols, result.unselectedCols);
-			} else if(arg.value?.type === RType.UnaryOp && arg.value.operator === '-' && info.idMap !== undefined) {
+			} else if(RUnaryOp.is(arg.value) && arg.value.operator === '-' && info.idMap !== undefined) {
 				const result = getSelectedColumns([toUnnamedArgument(arg.value.operand, info.idMap)], info);
 				selectedCols = joinColumns(selectedCols, result.unselectedCols);
 				unselectedCols = joinColumns(unselectedCols, result.selectedCols);
-			} else if(arg.value?.type === RType.BinaryOp && arg.value.operator === ':' && info.idMap !== undefined) {
+			} else if(RBinaryOp.is(arg.value) && arg.value.operator === ':' && info.idMap !== undefined) {
 				const values = Resolve.argument.value(toUnnamedArgument(arg.value, info.idMap), { ...info, resolve: VariableResolve.Disabled });
 
 				if(Array.isArray(values) && values.every(value => typeof value === 'number')) {
@@ -1486,9 +1491,9 @@ function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInfo
 				} else {
 					selectedCols = undefined;
 				}
-			} else if(arg.value?.type === RType.Symbol || arg.value?.type === RType.String) {
+			} else if(RSymbol.is(arg.value) || RString.is(arg.value)) {
 				selectedCols?.push(Resolve.argument.symbolName(arg, info));
-			} else if(arg.value?.type === RType.Number) {
+			} else if(RNumber.is(arg.value)) {
 				selectedCols?.push(arg.value.content.num);
 			} else {
 				selectedCols = undefined;

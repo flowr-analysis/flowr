@@ -22,6 +22,7 @@ import type { BuiltInFlowrPluginArgs, BuiltInFlowrPluginName } from './project/p
 import { type FlowrGasConfig, GasWikiRef } from './gas';
 import type { InputClassifierConfig } from './queries/catalog/input-sources-query/simple-input-classifier';
 import { InputType } from './queries/catalog/input-sources-query/input-types';
+import { uniqueArray } from './util/collections/arrays';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -976,7 +977,7 @@ export const FlowrConfig = {
 		const walk = (current: unknown, base: unknown, path: string[], siblings: readonly string[][]): void => {
 			if(current !== null && base !== null && typeof current === 'object' && typeof base === 'object'
 				&& !Array.isArray(current) && !Array.isArray(base)) {
-				const keys = [...new Set([...Object.keys(current), ...Object.keys(base)])];
+				const keys = uniqueArray([...Object.keys(current), ...Object.keys(base)]);
 				for(const key of keys) {
 					walk((current as Record<string, unknown>)[key], (base as Record<string, unknown>)[key],
 						[...path, key], [...siblings, keys]);
@@ -1054,7 +1055,7 @@ export function persistSigDbPathToGlobalConfig(dbPath: string): string {
 	}
 	const current: unknown = getOnPath(raw, 'solver.sigdb.additionalPaths');
 	const paths = Array.isArray(current) ? current as string[] : [];
-	setOnPath(raw, 'solver.sigdb.additionalPaths', [...new Set([...paths, dbPath])]);
+	setOnPath(raw, 'solver.sigdb.additionalPaths', uniqueArray([...paths, dbPath]));
 	fs.mkdirSync(path.dirname(file), { recursive: true });
 	fs.writeFileSync(file, JSON.stringify(raw, null, '\t') + '\n');
 	return file;

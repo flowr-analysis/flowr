@@ -18,6 +18,7 @@ import { Identifier, PkgName } from '../../../../src/dataflow/environments/ident
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
 import { defaultEnv } from '../../_helper/dataflow/environment-builder';
 import { label } from '../../_helper/label';
+import { uniqueArray } from '../../../../src/util/collections/arrays';
 
 /** a handful of definitions to query, so the assertions do not depend on the default configuration */
 const TestDefinitions = [
@@ -226,7 +227,7 @@ describe('Built-in properties', () => {
 		test(label('a signature names each parameter once, with at most one `...`', ['name-normal'], ['other']), () => {
 			for(const [names, { sig = [] }] of withInfo) {
 				const declared = sig.map(([n]) => n);
-				assert.deepStrictEqual(declared, Array.from(new Set(declared)), `${names.map(Identifier.toString).join(', ')} repeats a parameter`);
+				assert.deepStrictEqual(declared, uniqueArray(declared), `${names.map(Identifier.toString).join(', ')} repeats a parameter`);
 				assert.isAtMost(declared.filter(n => n === '...').length, 1, `${names.map(Identifier.toString).join(', ')} has two dots`);
 			}
 		});

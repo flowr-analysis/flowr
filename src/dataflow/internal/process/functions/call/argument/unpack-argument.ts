@@ -1,12 +1,13 @@
-import { type PotentiallyEmptyRArgument, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 /**
  * Retrieve the value from an argument, if it is not empty.
  * @see {@link unpackArg} - to specifically retrieve non-named arguments
  */
 export function unpackNonameArg<OtherInfo>(arg: PotentiallyEmptyRArgument<OtherInfo> | undefined): RNode<OtherInfo> | undefined {
-	return arg === EmptyArgument || arg?.name !== undefined ? undefined : arg?.value;
+	return RArgument.isEmpty(arg) || arg?.name !== undefined ? undefined : arg?.value;
 }
 
 /**
@@ -14,7 +15,7 @@ export function unpackNonameArg<OtherInfo>(arg: PotentiallyEmptyRArgument<OtherI
  * @see {@link unpackNonameArg} - to specifically retrieve non-named arguments
  */
 export function unpackArg<OtherInfo>(arg: PotentiallyEmptyRArgument<OtherInfo> | undefined): RNode<OtherInfo> | undefined {
-	return arg === EmptyArgument ? undefined : arg?.value;
+	return RArgument.isEmpty(arg) ? undefined : arg?.value;
 }
 
 /**

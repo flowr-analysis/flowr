@@ -24,7 +24,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { expensiveTrace } from '../../../../../../util/log';
 import type { Writable } from 'ts-essentials';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
-import { cancelRevivedKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
+import { cancelRevivedKills, dropKilledWrites, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { valueFromTsValue } from '../../../../../eval/values/general';
 import { FunctionDefinitionVertex, FunctionCallVertex } from '../../../../../graph/vertex';
@@ -352,7 +352,8 @@ export function processExpressionList<OtherInfo>(
 		/* no active nodes remain, they are consumed within the remaining read collection */
 		unknownReferences: [],
 		in:                ingoing,
-		out,
+		/* a definition that a still-effective removal undid is no longer visible to the outside */
+		out:               dropKilledWrites(out, killed),
 		environment:       environment,
 		graph:             nextGraph,
 		/* if we have no group, we take the last evaluated expr */

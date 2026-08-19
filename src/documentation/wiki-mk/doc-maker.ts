@@ -45,7 +45,12 @@ export interface DocMakerLike<Target extends string = string> {
 }
 
 
+/** url-encoded home paths like `%2Fhome%2Fuser%2Fgit%2F` or `C%3A%5CUsers%5Cuser%5C` */
+const UrlEncodedHomePath = /(?:[a-z]%3A)?(%2F|%5C)(?:home|users)\1(?:[\w.%-]+\1)*/gi;
+
 const DefaultReplacementPatterns: Array<[RegExp, string]> = [
+	// mute signature database load time variance in wiki table (before the `ms` rule, which would eat half of it)
+	[/≈\s*<?[\d.]+\s*[µm]s/g, ''],
 	// eslint-disable-next-line no-irregular-whitespace -- we may produce it in output
 	[/\d+(\.\d+)?( |\s*)?ms/g, ''],
 	[/tmp[%A-Za-z0-9-]+/g, ''],
@@ -56,12 +61,10 @@ const DefaultReplacementPatterns: Array<[RegExp, string]> = [
 	[/R\s*\d+\.\d+\.\d+/g, ''],
 	[/v\d+\.\d+\.\d+/g, ''],
 	// clean paths
-	[/%2Fhome%2F([a-zA-Z0-9._-]+%2F)*/g, ''],
+	[UrlEncodedHomePath, ''],
 	// async wrapper depends on whether the promise got fulfilled already
 	[/async|%20/g, ''],
-	[/\s*Copied mermaid url to clipboard\s*\([^)]+\)/gmi, ''],
-	// mute signature database load time variance in wiki table
-	[/≈\s*<?[\d.]+\s*[µm]s/g, '']
+	[/\s*Copied mermaid url to clipboard\s*\([^)]+\)/gmi, '']
 ];
 
 /**

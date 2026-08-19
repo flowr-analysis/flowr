@@ -73,6 +73,7 @@ export function processFunctionArgument<OtherInfo>(
 		environment:       value?.environment ?? data.environment,
 		entryPoint:        entryPoint ?? argument.info.id,
 		exitPoints:        value?.exitPoints ?? name?.exitPoints ?? [{ nodeId: argument.info.id, type: ExitPointType.Default, cds: data.cds }],
-		hooks:             []
+		hooks:             [],
+		kill:              value?.kill
 	};
 }

@@ -41,6 +41,7 @@ import { expensiveTrace } from '../../../../../../util/log';
 import type { ReadOnlyFlowrAnalyzerContext, FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { attachExportVertex } from './built-in-library';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { compactHookStates, getHookInformation, KnownHooks } from '../../../../../hooks';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { Resolve } from '../../../../../environments/resolve-helper';
@@ -511,14 +512,7 @@ function parseSysFrameOffset(node: RNode<ParentInformation> | undefined): number
 	if(arg === EmptyArgument || !arg.value) {
 		return undefined;
 	}
-	const v = arg.value;
-	if(v.type === RType.Number) {
-		return v.content.num;
-	}
-	if(v.type === RType.UnaryOp && v.operator === '-' && v.operand.type === RType.Number) {
-		return -v.operand.content.num;
-	}
-	return undefined;
+	return RNumber.literalValueOf(arg.value);
 }
 
 function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>, rootId: NodeId) {

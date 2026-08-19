@@ -40,6 +40,8 @@ import {
 } from '../queries/catalog/inspect-higher-order-query/inspect-higher-order-query-executor';
 import type { SlicingCriterion, SlicingCriteria } from '../slicing/criterion/parse';
 import { escapeNewline } from './doc-util/doc-escape';
+import type { ShowQueryOptions } from './doc-util/doc-query';
+import { DefaultAssumedRVersion } from '../config';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
@@ -1189,6 +1191,16 @@ To find out what a script _uses_, reach for the ${linkToQueryOfName('dependencie
 	}
 });
 
+/** Pins the R version so this page reports the same bounds, whatever R the machine regenerating it has. */
+function guessDepVersionsExampleOptions(ctx: GeneralDocContext): ShowQueryOptions {
+	return {
+		showCode:       false,
+		collapseResult: true,
+		ctx,
+		prepare:        b => b.configure('solver.sigdb.assumedRVersion', DefaultAssumedRVersion)
+	};
+}
+
 registerQueryDocumentation('guess-dep-versions', {
 	type:             'active',
 	shortDescription: 'Guesses the version range each dependency must have, from declared constraints and actual code usage.',
@@ -1215,7 +1227,7 @@ ${codeBlock('r', exampleCode)}
 \`across\` was only introduced in dplyr 1.0.0, so the script cannot run on anything older. The result names the function
 that produced the bound:
 
-${await showQuery(shell, exampleCode, [{ type: 'guess-dep-versions' }], { showCode: false, collapseResult: true, ctx })}
+${await showQuery(shell, exampleCode, [{ type: 'guess-dep-versions' }], guessDepVersionsExampleOptions(ctx))}
 
 The guess can be narrowed further:
 

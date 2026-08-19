@@ -1,4 +1,4 @@
-import { resolveByName, resolveByNameAnyType, resolvesToBuiltInConstant } from './resolve-by-name';
+import { resolveByName, resolveByNameAnyType, resolvesToBuiltIn, resolvesToBuiltInConstant } from './resolve-by-name';
 import { resolveIdToValue, resolveIdToSingleString, resolveToConstants } from '../eval/resolve/alias-tracking';
 import {
 	resolveIdToArgName,
@@ -34,6 +34,8 @@ export const Resolve = {
 	byNameAndType:  resolveByName,
 	/** Whether the name always, never, or maybe refers to a built-in constant of the given value. */
 	toBuiltIn:      resolvesToBuiltInConstant,
+	/** Whether the name is not shadowed by a user definition, so it still refers to the built-in. */
+	isBuiltIn:      resolvesToBuiltIn,
 	/** The constant values the name resolves to. */
 	toConstants:    resolveToConstants,
 	/** The value(s) the node may hold, tracking aliases as the configuration allows. */

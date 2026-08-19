@@ -10,7 +10,7 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { unpackArg } from '../argument/unpack-argument';
 import { signatureParameterNames } from '../../../../../../project/sigdb/decode';
 import type { IdentifierDefinition, InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { Identifier, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { define } from '../../../../../environments/define';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { DefaultAttachPosition, REnvironment } from '../../../../../environments/environment';
@@ -111,8 +111,7 @@ export function resolveConstantString<OtherInfo>(
 		}
 		let ok = unshadowed.get(fnName);
 		if(ok === undefined) {
-			const defs = Resolve.byNameAndType(n.functionName.content, data.environment, ReferenceType.Function);
-			ok = defs === undefined || defs.every(d => isReferenceType(d.type, ReferenceType.BuiltInFunction));
+			ok = Resolve.isBuiltIn(n.functionName.content, data.environment, ReferenceType.Function);
 			unshadowed.set(fnName, ok);
 		}
 		const folded = ok ? foldStringCall(n, fold) : undefined;

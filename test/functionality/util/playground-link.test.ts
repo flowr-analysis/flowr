@@ -62,6 +62,15 @@ describe('Playground links', () => {
 		const hash = url.split('#')[1];
 		assert.notInclude(hash.slice(hash.indexOf('=')), '+', 'a plus would read back as a space');
 		assert.isFalse(/[.,:;"')\]]$/.test(hash), 'a link may not end on what ends a sentence');
+		assert.notInclude(hash, '<', 'an angle bracket ends the autolink a reader made of the address');
+		assert.notInclude(hash, '>', 'an angle bracket ends the autolink a reader made of the address');
+	});
+
+	test(label('the forward flag rides along escaped, and still reads back', ['name-normal'], ['other']), () => {
+		const url = Playground.link({ code, forward: true });
+		assert.notInclude(url, '>', 'a bare angle bracket is not a character a URI may carry');
+		assert.include(url, '%3E');
+		assert.strictEqual(fields(url).v, ',,>');
 	});
 
 	test(label('what is nobody\'s business never enters a report', ['name-normal'], ['other']), () => {

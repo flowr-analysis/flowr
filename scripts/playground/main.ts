@@ -16,6 +16,8 @@ import { FlowrAnalyzerBuilder } from '../../src/project/flowr-analyzer-builder';
 import { stringifyValue } from '../../src/dataflow/eval/values/r-value';
 import { LintingRules } from '../../src/linter/linter-rules';
 import { LintingPrettyPrintContext } from '../../src/linter/linter-format';
+import type { LintQuickFix } from '../../src/linter/linter-format';
+import { LintQuickFixes } from '../../src/linter/linter-fix';
 import { DefaultBuiltinConfig, statedSignatureOf, statedSignatures } from '../../src/dataflow/environments/default-builtin-config';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { memorySourceOfPackages } from '../../src/project/sigdb/memory-source';
@@ -1231,7 +1233,7 @@ interface DepRow {
 	onto:   readonly (string | number)[],
 	parts:  DepRow[]
 }
-interface Finding { loc?: number[] }
+interface Finding { loc?: number[], quickFix?: LintQuickFix[] }
 
 /** the first tag of a rule that says what kind of problem it is, which is what colours the chip */
 function category(rule: string): string {
@@ -1241,6 +1243,33 @@ function category(rule: string): string {
 	const known = ['security', 'bug', 'reproducibility', 'robustness', 'deprecated', 'performance',
 		'style', 'smell', 'readability', 'usability', 'documentation'];
 	return tags.find(t => known.includes(t)) ?? 'other';
+}
+
+/**
+ * Carry the given quick fixes out on the script, which {@link LintQuickFixes.apply} does the same way every other
+ * consumer of flowR gets them done. The edit is a document change like any other, so the analysis reruns on its own.
+ */
+function applyFixes(fixes: readonly LintQuickFix[]): void {
+	const code = editor.state.doc.toString();
+	const fixed = LintQuickFixes.apply(code, fixes);
+	if(fixed !== code) {
+		editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: fixed } });
+	}
+}
+
+/** the button on the lint heading, which carries out every fix the findings below offer */
+function fixButton(fixes: readonly LintQuickFix[], label: string, title: string): HTMLElement {
+	const button = document.createElement('button');
+	button.className = 'fix';
+	button.type = 'button';
+	button.textContent = label;
+	button.title = title;
+	/* the row itself links to the finding, so the click must not travel up to it */
+	button.addEventListener('click', event => {
+		event.stopPropagation();
+		applyFixes(fixes);
+	});
+	return button;
 }
 
 /** the finding in the linter's own words, the same text the REPL and the extension show */
@@ -1587,7 +1616,9 @@ async function analyze(): Promise<number> {
 	}
 
 	const found = Object.entries(answers.linter?.results ?? {}).flatMap(([rule, per]) =>
-		(per?.results ?? []).map(f => ({ rule, line: f.loc?.[0], loc: f.loc, message: explain(rule, f, per?.['.meta']) })));
+		(per?.results ?? []).map(f => ({
+			rule, line: f.loc?.[0], loc: f.loc, quickFix: f.quickFix ?? [], message: explain(rule, f, per?.['.meta'])
+		})));
 	const marked = found.flatMap(f => {
 		const [startLine, startCol, endLine, endCol] = f.loc ?? [];
 		if(startLine === undefined || startLine !== endLine || startCol === undefined || endCol === undefined) {
@@ -1605,7 +1636,15 @@ async function analyze(): Promise<number> {
 	});
 	editor.dispatch({ effects: setLints.of(marked) });
 	shownLints = marked;
-	const lintBody = section(`Lints: ${found.length}`, PlaygroundBox.Lints, undefined, suggestRule());
+	const fixable = found.flatMap(f => f.quickFix);
+	const acts = document.createElement('span');
+	acts.className = 'acts';
+	if(fixable.length > 0) {
+		acts.append(fixButton(fixable, `fix ${fixable.length}`,
+			[...new Set(fixable.map(fix => fix.description))].join('\n')));
+	}
+	acts.append(suggestRule());
+	const lintBody = section(`Lints: ${found.length}`, PlaygroundBox.Lints, undefined, acts);
 	if(found.length === 0) {
 		lintBody.append(nothing('no findings'));
 		panel.append(sliceBlock);
@@ -1620,10 +1659,24 @@ async function analyze(): Promise<number> {
 		const said = document.createElement('span');
 		said.className = 'says';
 		said.textContent = f.message;
-		const chip = tag(f.rule, 'rule');
+		const chip = document.createElement('span');
+		chip.className = 'rule';
 		chip.dataset.category = category(f.rule);
+		chip.append(tag(f.rule, 'rulename'));
 		/* a narrow panel cuts the name short, so the whole of it waits under the pointer */
 		chip.title = f.rule;
+		if(f.quickFix.length > 0) {
+			/* the name gives way to the offer under the pointer, which is where the fix is carried out */
+			chip.classList.add('fixable');
+			/* the fix says what it will do to the script, which is what one wants to know before clicking */
+			chip.title = `${f.rule}: ${f.quickFix.map(fix => fix.description).join('; ')}`;
+			chip.append(tag('fix', 'offer'));
+			chip.addEventListener('click', event => {
+				/* the row itself links to the finding, so the click must not travel up to it */
+				event.stopPropagation();
+				applyFixes(f.quickFix);
+			});
+		}
 		/* one element per finding, so the hover lights the whole row; the columns still line up
 		   because the row borrows the surrounding grid */
 		const line = document.createElement('div');
@@ -1690,6 +1743,19 @@ document.getElementById('clearmarks')?.addEventListener('click', () => {
 document.querySelector('[data-sample]')?.addEventListener('click', () => {
 	editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: Sample } });
 	config.dispatch({ changes: { from: 0, to: config.state.doc.length, insert: Defaults } });
+	/* an example is the script together with everything a link says about it, so what was folded away,
+	   highlighted, or sliced the other way comes back as well. The pane sizes and the repl stay as they
+	   are: those are how one works, not what one is looking at */
+	marks.length = 0;
+	folded = [];
+	direction = SliceDirection.Backward;
+	dimOutside = false;
+	wholeSlice = false;
+	editor.dispatch({ effects: setSlice.of(undefined) });
+	showMarks();
+	showFolds();
+	remember();
+	showShared('the example is back');
 });
 
 /* the url already carries the example, so sharing is a matter of handing the link over; the cursor is

@@ -54,7 +54,7 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    Query: linter (3 ms)
+    Query: linter (6 ms)
        ╰ Deprecated Functions (deprecated-functions): no findings
        ╰ File Path Validity (file-path-validity): no findings
        ╰ Seeded Randomness (seeded-randomness): no findings
@@ -71,7 +71,7 @@ It offers a wide variety of features, for example:
        ╰ Undefined Symbol (undefined-symbol): no findings
        ╰ Unused Import (unused-import): no findings
        ╰ Unclosed Connection (unclosed-connection): no findings
-    All queries together required ≈3 ms (1ms accuracy, total 3 ms)
+    All queries together required ≈6 ms (1ms accuracy, total 7 ms)
     ```
     
     
@@ -93,7 +93,7 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (5 ms)\
+    Query: **linter** (8 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -116,11 +116,11 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Unused Import** (unused-import): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
-    _All queries together required ≈5 ms (1ms accuracy, total 6 ms)_
+    _All queries together required ≈8 ms (1ms accuracy, total 9 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _6.4 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis required _8.6 ms_ (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -137,8 +137,8 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalCalls": 0,
               "totalFunctionDefinitions": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 1
+              "searchTimeMs": 2,
+              "processTimeMs": 0
             }
           },
           "file-path-validity": {
@@ -209,7 +209,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalCalls": 0,
               "totalFunctionDefinitions": 0,
-              "searchTimeMs": 1,
+              "searchTimeMs": 0,
               "processTimeMs": 0
             }
           },
@@ -234,7 +234,7 @@ It offers a wide variety of features, for example:
             "results": [],
             ".meta": {
               "numOfUselessLoops": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -281,13 +281,17 @@ It offers a wide variety of features, for example:
                 "subscript": 0
               },
               "searchTimeMs": 0,
-              "processTimeMs": 2
+              "processTimeMs": 1
             }
           },
           "unused-import": {
             "results": [],
             ".meta": {
-              "searchTimeMs": 0,
+              "totalConsidered": 0,
+              "totalUnresolved": 0,
+              "totalMultiPackage": 0,
+              "totalUnused": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -302,11 +306,11 @@ It offers a wide variety of features, for example:
           }
         },
         ".meta": {
-          "timing": 5
+          "timing": 8
         }
       },
       ".meta": {
-        "timing": 5
+        "timing": 8
       }
     }
     ```
@@ -385,7 +389,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈2 ms (1ms accuracy, total 2 ms)
+    All queries together required ≈4 ms (1ms accuracy, total 4 ms)
     ```
     
     
@@ -710,7 +714,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _1.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+    (The analysis required _2.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
     
     
     

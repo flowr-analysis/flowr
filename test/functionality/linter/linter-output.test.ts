@@ -13,6 +13,10 @@ interface Sarif {
 			level:     string
 			message:   { text: string }
 			locations: { physicalLocation: { artifactLocation: { uri: string }, region: object } }[]
+			fixes?:    {
+				description:     { text: string }
+				artifactChanges: { artifactLocation: { uri: string }, replacements: { deletedRegion: object, insertedContent: { text: string } }[] }[]
+			}[]
 		}[]
 	}]
 }
@@ -23,6 +27,24 @@ function sarifOf(results: LinterQueryResult['results'], version = '1.2.3'): Sari
 
 function githubOf(results: LinterQueryResult['results']): string {
 	return formatLints(results, LinterOutputFormat.Github, '1.2.3') as string;
+}
+
+/** a result of the `unused-import` rule, which is one of the rules offering a quick fix */
+function unusedImport(file?: string, withFix = true): LinterQueryResult['results'] {
+	const loc = [2, 1, 2, 10, ...(file ? [file] : [])];
+	return {
+		'unused-import': {
+			results: [{
+				certainty:  LintingResultCertainty.Uncertain,
+				involvedId: 0,
+				loc,
+				package:    'ggplot2',
+				version:    '3.5.1',
+				quickFix:   withFix ? [{ type: 'remove', description: 'Remove the unused import of ggplot2', loc }] : undefined
+			}],
+			'.meta': { searchTimeMs: 0, processTimeMs: 0, totalConsidered: 1, totalUnresolved: 0, totalMultiPackage: 0, totalUnused: 1 }
+		}
+	} as unknown as LinterQueryResult['results'];
 }
 
 /** a result of the `undefined-symbol` rule, whose pretty print only needs the location and the name */
@@ -74,6 +96,26 @@ describe('Linter output', () => {
 			assert.strictEqual(result.level, 'error');
 			assert.include(result.message.text, 'boom');
 		});
+
+		test('a quick fix becomes a sarif fix naming the region it changes', () => {
+			const [result] = sarifOf(unusedImport('/p/a.R')).runs[0].results;
+			assert.lengthOf(result.fixes ?? [], 1);
+			const [fix] = result.fixes as NonNullable<typeof result.fixes>;
+			assert.strictEqual(fix.description.text, 'Remove the unused import of ggplot2');
+			const [change] = fix.artifactChanges;
+			assert.strictEqual(change.artifactLocation.uri, '/p/a.R');
+			assert.deepStrictEqual(change.replacements[0].deletedRegion,
+				{ startLine: 2, startColumn: 1, endLine: 2, endColumn: 10 });
+			assert.strictEqual(change.replacements[0].insertedContent.text, '');
+		});
+
+		test('a finding without a quick fix carries no fixes at all', () => {
+			assert.isUndefined(sarifOf(unusedImport('/p/a.R', false)).runs[0].results[0].fixes);
+		});
+
+		test('a fix flowR cannot locate is left out', () => {
+			assert.isUndefined(sarifOf(unusedImport()).runs[0].results[0].fixes);
+		});
 	});
 
 	describe('github', () => {
@@ -82,6 +124,10 @@ describe('Linter output', () => {
 			assert.include(out, '::warning ');
 			assert.include(out, 'file=/p/a.R,line=3,col=7,endLine=3,endColumn=9');
 			assert.include(out, 'title=undefined-symbol::');
+		});
+
+		test('a quick fix is offered in the message, as an annotation carries none of its own', () => {
+			assert.include(githubOf(unusedImport('/p/a.R')), '[quick fix: Remove the unused import of ggplot2]');
 		});
 
 		test('a file of the workspace is named relative to it, as github annotates nothing else', () => {

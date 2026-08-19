@@ -175,13 +175,15 @@ export const Playground = {
 	},
 	/**
 	 * A fragment is not a query, so `,`, `:`, and the braces a configuration carries stand in it as they
-	 * are and only what would end it, split it, or read back as something else has to be escaped. A link
-	 * is also made not to end on punctuation, because that is where a chat client stops reading it.
+	 * are and only what would end it, split it, or read back as something else has to be escaped. `<` and
+	 * `>` go together: both are excluded from a URI, and a bare one of either ends the autolink a chat
+	 * client or a markdown reader made of the address. A link is also made not to end on punctuation,
+	 * because that is where a chat client stops reading it.
 	 */
 	hash(this: void, fields: readonly (readonly [string, string])[]): string {
 		const hash = fields
 			.filter(([, value]) => value.length > 0)
-			.map(([key, value]) => `${key}=${value.replace(/[%&#+<\s]/g, character => encodeURIComponent(character))}`)
+			.map(([key, value]) => `${key}=${value.replace(/[%&#+<>\s]/g, character => encodeURIComponent(character))}`)
 			.join('&');
 		return hash.replace(/[.,:;"')\]]$/, character => encodeURIComponent(character));
 	},

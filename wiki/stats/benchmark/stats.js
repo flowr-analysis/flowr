@@ -175,7 +175,14 @@
 	}
 
 	const CALIBRATION_BREAK = 3;
-	const CALIBRATION_MIN_SEGMENT = 2;
+	/*
+	 * How far a single run may be scaled. The break above says "this is a different workload"; this says
+	 * "this is the same workload on a machine that was this much faster or slower". A calibration is one
+	 * noisy sample of a shared runner, so a wide bound lets its noise, rather than the machine, decide
+	 * where a measurement is drawn.
+	 */
+	const CALIBRATION_MAX_FACTOR = 1.5;
+	const CALIBRATION_MIN_SEGMENT = 4;
 
 	/** splits the calibration series wherever its scale breaks, holes stay with the scale around them */
 	function calibrationScales(calibration) {
@@ -198,17 +205,25 @@
 		return scales;
 	}
 
-	/** machine speed factor per run, relative to the median run measured on the same calibration scale */
+	/**
+	 * Machine speed factor per run, relative to the *fastest* run measured on the same calibration scale.
+	 * Whatever else a shared runner is doing can only ever add time, never take it away, so the fastest
+	 * run is the one that saw the machine and every other one carries interference on top. Against the
+	 * median instead, half the runs come out below the reference, and dividing by a factor under one
+	 * inflates a clean run into a regression that never happened. Every factor here is at least one, so
+	 * normalizing only ever takes added time back off.
+	 */
 	function calibrationFactors(calibration) {
 		const factors = new Array((calibration || []).length).fill(1);
 		let at = 0;
 		for(const scale of calibrationScales(calibration)) {
-			const med = median(scale);
-			const usable = scale.filter(v => v !== null).length >= CALIBRATION_MIN_SEGMENT && isFinite(med) && med > 0;
+			const seen = scale.filter(v => v !== null);
+			const ref = Math.min.apply(null, seen);
+			const usable = seen.length >= CALIBRATION_MIN_SEGMENT && isFinite(ref) && ref > 0;
 			for(let i = 0; i < scale.length; i++) {
 				const v = scale[i];
 				if(usable && v !== null) {
-					factors[at + i] = Math.min(CALIBRATION_BREAK, Math.max(1 / CALIBRATION_BREAK, v / med));
+					factors[at + i] = Math.min(CALIBRATION_MAX_FACTOR, v / ref);
 				}
 			}
 			at += scale.length;

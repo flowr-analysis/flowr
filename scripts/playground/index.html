@@ -304,6 +304,35 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	color: var(--muted); text-decoration: none;
 }
 #panel h3 .suggest:hover { color: var(--fg); }
+/* the actions at the end of the lint heading, which the suggest link used to hold on its own */
+#panel h3 .acts { margin-left: auto; display: inline-flex; align-items: center; gap: .35rem; }
+#panel h3 .acts .suggest { margin-left: 0; }
+/* carrying out every quick fix at once, at the end of the lint heading */
+#panel .fix {
+	font: inherit; font-size: .72rem; font-weight: 600; text-transform: none; letter-spacing: 0;
+	padding: .1rem .55rem; border: 1px solid var(--border); border-radius: 1rem;
+	background: none; color: var(--muted); cursor: pointer; white-space: nowrap;
+}
+#panel .fix:hover { color: var(--accent-fg); background: var(--accent); border-color: var(--accent); }
+/* a finding that can be fixed offers it in place of its rule name, so the panel gains no column for it.
+   The offer lies over the name rather than replacing it, which keeps the chip the width it had. The two
+   cross-fade rather than swap: the name leaves a little ahead of the offer arriving, so the chip never
+   reads as both at once, and the colours travel with them instead of snapping */
+#panel .rule .rulename, #panel .rule .offer {
+	transition: opacity .34s cubic-bezier(.33, 0, .2, 1);
+}
+#panel .rule .rulename { display: block; overflow: hidden; text-overflow: ellipsis; }
+#panel .rule.fixable { cursor: pointer; transition: color .34s ease, background-color .34s ease, border-color .34s ease; }
+#panel .rule .offer {
+	position: absolute; inset: 0; display: grid; place-items: center;
+	opacity: 0; border-radius: inherit; transition-delay: .06s;
+}
+#panel .rule.fixable:hover .rulename { opacity: 0; transition-duration: .2s; transition-delay: 0s; }
+#panel .rule.fixable:hover .offer { opacity: 1; }
+#panel .rule.fixable:hover { color: var(--accent-fg); background: var(--accent); border-color: var(--accent); }
+@media (prefers-reduced-motion: reduce) {
+	#panel .rule .rulename, #panel .rule .offer, #panel .rule.fixable { transition: none; }
+}
 /* the aside on a heading, which says what one can do with what is under it */
 #panel h3 .aside { font-weight: 400; letter-spacing: .04em; opacity: .65; }
 #panel .toggle { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; text-transform: none; letter-spacing: 0; font-weight: 400; cursor: pointer; }
@@ -405,6 +434,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #panel .says { font-size: .84rem; }
 #panel .rule {
 	--hue: #d55e00;
+	position: relative;
 	padding: 0 .45rem; border-radius: 1rem; font-size: .72rem; font-weight: 600; white-space: nowrap;
 	justify-self: start; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
 	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

@@ -223,7 +223,7 @@ export class WikiSignatureDatabase extends DocMaker<'wiki/Signature Database.md'
 flowR ships a database of the complete history of all exports in every version of all CRAN packages so it can resolve calls into the packages you load.
 After \`library(ggplot2)\`, a call to \`ggplot()\` resolves to \`ggplot2::ggplot\`. The same database
 qualifies bare names and backs various components like the ${ctx.linkPage('wiki/Query API', 'dependencies and call-context queries')} 
-as well as the ${ctx.linkPage('wiki/Linter', 'undefined symbol')} rule.
+as well as the ${ctx.linkPage('wiki/Linter', 'undefined symbol')} and ${ctx.linkPage('wiki/Linter', 'unused import')} rules.
 
 You can search what it knows at [flowr-analysis.github.io/flowr/wiki/sigdb](https://flowr-analysis.github.io/flowr/wiki/sigdb/),
 a static page listing every exported name, generated from this database by \`npm run gen:landing\`.

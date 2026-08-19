@@ -7,11 +7,13 @@ import {
 	LintingPrettyPrintContext,
 	LintingResultCertainty,
 	LintingResults,
-	type LintingResult
+	type LintingResult,
+	LintQuickFix
 } from './linter-format';
-import type { SourceLocation } from '../util/range';
+import { SourceLocation } from '../util/range';
 import { relativeTo } from '../util/files';
 import { FlowrGithubRef } from '../documentation/doc-util/doc-files';
+import { assertUnreachable } from '../util/assert';
 
 /** The linting results of every rule that ran, i.e. what a linter query returns. */
 export type LintResultsByRule = { [L in LintingRuleNames]?: LintingResults<L> };
@@ -30,10 +32,11 @@ export enum LinterOutputFormat {
 type Level = 'error' | 'warning' | 'note';
 
 interface Finding {
-	readonly rule:    LintingRuleNames
-	readonly message: string
-	readonly level:   Level
-	readonly loc:     SourceLocation | undefined
+	readonly rule:     LintingRuleNames
+	readonly message:  string
+	readonly level:    Level
+	readonly loc:      SourceLocation | undefined
+	readonly quickFix: readonly LintQuickFix[]
 }
 
 /** flattened, as neither format groups by rule */
@@ -43,13 +46,14 @@ function findings(results: LintResultsByRule): Finding[] {
 		const perRule = perRuleResults as LintingResults<LintingRuleNames>;
 		/* staying silent about a rule that threw would claim it passed */
 		if(LintingResults.isError(perRule)) {
-			return [{ rule, message: `the linting rule failed: ${LintingResults.stringifyError(perRule)}`, level: 'error', loc: undefined }];
+			return [{ rule, message: `the linting rule failed: ${LintingResults.stringifyError(perRule)}`, level: 'error', loc: undefined, quickFix: [] }];
 		}
 		return (perRule.results as readonly LintingResult[]).map(result => ({
 			rule,
-			message: LintingRules[rule].prettyPrint[LintingPrettyPrintContext.Query](result as never, perRule['.meta']),
-			level:   (result.certainty === LintingResultCertainty.Certain ? 'warning' : 'note'),
-			loc:     result.loc
+			message:  LintingRules[rule].prettyPrint[LintingPrettyPrintContext.Query](result as never, perRule['.meta']),
+			level:    (result.certainty === LintingResultCertainty.Certain ? 'warning' : 'note'),
+			loc:      result.loc,
+			quickFix: result.quickFix ?? []
 		}));
 	});
 }
@@ -70,6 +74,30 @@ function sarifLocation(loc: SourceLocation | undefined): object[] {
 			region:           { startLine: loc[0], startColumn: loc[1], endLine: loc[2], endColumn: loc[3] }
 		}
 	}];
+}
+
+/**
+ * The quick fixes of one finding as SARIF `fixes`. A fix needs a file and a span to change, so the ones flowR cannot
+ * place are left out rather than reported against no artifact or an invalid region.
+ */
+function sarifFixes(fixes: readonly LintQuickFix[]): object[] {
+	return fixes.flatMap(fix => {
+		const file = SourceLocation.getFile(fix.loc);
+		if(file === undefined || !LintQuickFix.isPlaced(fix)) {
+			return [];
+		}
+		const [startLine, startColumn, endLine, endColumn] = SourceLocation.getRange(fix.loc);
+		return [{
+			description:     { text: fix.description },
+			artifactChanges: [{
+				artifactLocation: { uri: reportedPath(file) },
+				replacements:     [{
+					deletedRegion:   { startLine, startColumn, endLine, endColumn },
+					insertedContent: { text: LintQuickFix.inserted(fix) }
+				}]
+			}]
+		}];
+	});
 }
 
 /**
@@ -96,12 +124,16 @@ function lintsToSarif(results: LintResultsByRule, flowrVersion: string): string 
 					}))
 				}
 			},
-			results: flat.map(f => ({
-				ruleId:    f.rule,
-				level:     f.level,
-				message:   { text: f.message },
-				locations: sarifLocation(f.loc)
-			}))
+			results: flat.map(f => {
+				const fixes = sarifFixes(f.quickFix);
+				return {
+					ruleId:    f.rule,
+					level:     f.level,
+					message:   { text: f.message },
+					locations: sarifLocation(f.loc),
+					...(fixes.length > 0 ? { fixes } : {})
+				};
+			})
 		}]
 	});
 }
@@ -119,7 +151,9 @@ function lintsToGithub(results: LintResultsByRule): string {
 	return findings(results).map(f => {
 		const loc = f.loc !== undefined && f.loc[4] !== undefined ? f.loc : undefined;
 		const where = loc === undefined ? '' : ` file=${escapeGithubData(reportedPath(loc[4] as string))},line=${loc[0]},col=${loc[1]},endLine=${loc[2]},endColumn=${loc[3]},`;
-		return `::${githubCommand[f.level]}${where}${loc === undefined ? ' ' : ''}title=${escapeGithubData(f.rule)}::${escapeGithubData(f.message)}`;
+		// github annotations carry no fix of their own, so the offer goes into the message
+		const fixes = f.quickFix.length === 0 ? '' : ` [quick fix: ${f.quickFix.map(fix => fix.description).join('; ')}]`;
+		return `::${githubCommand[f.level]}${where}${loc === undefined ? ' ' : ''}title=${escapeGithubData(f.rule)}::${escapeGithubData(f.message + fixes)}`;
 	}).join('\n');
 }
 
@@ -135,5 +169,8 @@ export function formatLints(results: LintResultsByRule, format: LinterOutputForm
 			return lintsToGithub(results);
 		case LinterOutputFormat.Text:
 			return undefined;
+		default:
+			/* a format nobody taught this about would otherwise read as Text, i.e. as no output at all */
+			assertUnreachable(format);
 	}
 }

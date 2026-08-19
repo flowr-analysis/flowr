@@ -1,11 +1,11 @@
-_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-08-18, 23:26:40 UTC (v2.14.0, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-08-19, 17:41:35 UTC (v2.14.1, R v4.6.1), please do not edit directly._
 
 # Signature Database
 
 flowR ships a database of the complete history of all exports in every version of all CRAN packages so it can resolve calls into the packages you load.
 After `library(ggplot2)`, a call to `ggplot()` resolves to `ggplot2::ggplot`. The same database
 qualifies bare names and backs various components like the [dependencies and call-context queries](https://github.com/flowr-analysis/flowr/wiki/Query-API) 
-as well as the [undefined symbol](https://github.com/flowr-analysis/flowr/wiki/Linter) rule.
+as well as the [undefined symbol](https://github.com/flowr-analysis/flowr/wiki/Linter) and [unused import](https://github.com/flowr-analysis/flowr/wiki/Linter) rules.
 
 You can search what it knows at [flowr-analysis.github.io/flowr/wiki/sigdb](https://flowr-analysis.github.io/flowr/wiki/sigdb/),
 a static page listing every exported name, generated from this database by `npm run gen:landing`.
@@ -113,11 +113,11 @@ build; the load column is the decompression time measured at generation time.
 
 | Shard | Contents | Versions kept | Packages | Versions | Size (`.br`) | Load (first touch) |
 |-------|----------|---------------|---------:|---------:|-------------:|-------------------:|
-| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | ≈ 470 µs |
-| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | ≈ 2.6 ms |
-| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | ≈ 13 ms |
-| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | ≈ 200 ms |
-| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | ≈ 310 ms |
+| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | ≈ 450 µs |
+| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | ≈ 3.4 ms |
+| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | ≈ 7.6 ms |
+| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | ≈ 75 ms |
+| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | ≈ 180 ms |
 
 Which shard answers a lookup follows from the package and the version asked for. A base-R package comes from
 `base-current`, one of the 1,000 most-downloaded CRAN packages from `current-top`, and anything else from

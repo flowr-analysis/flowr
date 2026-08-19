@@ -41,6 +41,7 @@ body:
         - Unclosed Connection
         - Undefined Symbol
         - Unused Definitions
+        - Unused Import
         - Useless Loops
       default: 0
   - type: checkboxes

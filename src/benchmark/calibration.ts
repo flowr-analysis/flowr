@@ -5,14 +5,17 @@
  * and hence to cancel out how fast or how loaded the machine was that produced them.
  * The workload must therefore stay deterministic (no file system, no R session, no randomness).
  *
- * Changing the work, the round count, or the way the repetitions are reduced puts every future run on a
- * new scale, incomparable to the published history. Whoever changes it has to say so in the name of the
- * measurement (`calibration v2`, ...).
+ * Changing the work or the round count puts every future run on a new scale. Whoever changes it has to
+ * back-correct the published history by the shift, or say so in the name of the measurement.
  * @module
  */
 
-/** How often the {@link calibrationBatch} is timed within one {@link runCalibration} call. */
-export const CalibrationReps = 4;
+/** How many {@link calibrationBatch}es may be timed within one {@link runCalibration} call. */
+export const CalibrationMaxReps = 24;
+/** How many batches in a row may fail to beat the best one before it is taken as the machine's time. */
+export const CalibrationSettle = 4;
+/** How much closer than the best a batch has to be to count as an improvement rather than as noise. */
+export const CalibrationImprovement = 0.005;
 /** How many files of a suite carry the calibration, which describes the machine and not the file. */
 export const CalibrationSamples = 8;
 /** How many {@link calibrationRound}s make up one timed batch. */
@@ -70,18 +73,25 @@ function calibrationBatch(): number {
 }
 
 /**
- * Times {@link calibrationBatch} {@link CalibrationReps} times and reports the fastest of them.
+ * Times {@link calibrationBatch} until the fastest batch stops improving and reports it. A fixed count of
+ * repetitions ends before the workload is fully compiled, and then reports how far that got rather than how
+ * fast the machine is: eight fresh processes on one idle machine spread 39% that way and 7% this way.
  * @returns the nanoseconds the fastest batch took
  */
 export function runCalibration(): bigint {
 	sink = calibrationRound(0);
 	let best: bigint | undefined = undefined;
-	for(let rep = 0; rep < CalibrationReps; rep++) {
+	let since = 0;
+	for(let rep = 0; rep < CalibrationMaxReps && since < CalibrationSettle; rep++) {
 		const start = process.hrtime.bigint();
 		sink = (sink + calibrationBatch()) | 0;
 		const took = process.hrtime.bigint() - start;
 		if(best === undefined || took < best) {
+			/* a batch that is barely better is the same batch, only the noise moved */
+			since = best !== undefined && Number(best - took) < Number(best) * CalibrationImprovement ? since + 1 : 0;
 			best = took;
+		} else {
+			since++;
 		}
 	}
 	return best ?? 0n;

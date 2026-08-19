@@ -6,7 +6,6 @@ import type {
 	PotentiallyEmptyRArgument,
 	RFunctionCall
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { resolveFunctionArgument } from './built-in-apply';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -27,6 +26,7 @@ import { isValue } from '../../../../../eval/values/r-value';
 import { VertexType, UseVertex, FunctionDefinitionVertex } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /** e.g. new_generic(name, dispatch_args, fun=NULL) */
 interface S7GenericDispatchConfig {
@@ -142,7 +142,7 @@ function linkWrappedFunction<OtherInfo>(
 	if(wrapped === undefined) {
 		let pos = 0;
 		for(const a of args) {
-			if(a === EmptyArgument || a.name) {
+			if(RArgument.isEmpty(a) || a.name) {
 				continue;
 			}
 			if(pos === wrapIndex) {
@@ -152,7 +152,7 @@ function linkWrappedFunction<OtherInfo>(
 			pos++;
 		}
 	}
-	if(wrapped === undefined || wrapped === EmptyArgument || !wrapped.value) {
+	if(wrapped === undefined || RArgument.isEmpty(wrapped) || !wrapped.value) {
 		return;
 	}
 	const resolved = resolveFunctionArgument(wrapped.value, data, {});

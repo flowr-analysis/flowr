@@ -8,11 +8,12 @@ import { DfEdge, EdgeType } from '../../../../graph/edge';
 import { DataflowGraph } from '../../../../graph/graph';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
 import { VertexType } from '../../../../graph/vertex';
-import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import { dataflowLogger } from '../../../../logger';
 import { ReferenceType } from '../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { RAccess } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { RFunctionDefinition } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 export const UnnamedFunctionCallPrefix = 'unnamed-fc-';
 
@@ -81,9 +82,9 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	inIds.push({ nodeId: functionRootId, name: functionCallName, cds: data.cds, type: ReferenceType.Function });
 
 	// if we just call a nested fdef
-	if(functionCall.calledFunction.type === RType.FunctionDefinition) {
+	if(RFunctionDefinition.is(functionCall.calledFunction)) {
 		linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph);
-	} else if(functionCall.calledFunction.type === RType.Access && !accessResolvesToField(finalGraph, calledRootId, functionCall.calledFunction.accessed.info.id)) {
+	} else if(RAccess.is(functionCall.calledFunction) && !accessResolvesToField(finalGraph, calledRootId, functionCall.calledFunction.accessed.info.id)) {
 		// `obj$method()` whose callee did not resolve to a stored function: reached-but-unknown rather than dropped
 		handleUnknownSideEffect(finalGraph, data.environment, functionRootId);
 	}

@@ -10,14 +10,12 @@ import {
 	type ParentInformation,
 	sourcedDeterministicCountingIdGenerator
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
-	EmptyArgument,
-	type PotentiallyEmptyRArgument
+import type {
+	PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { NoInfo } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { expensiveTrace, log, LogLevel } from '../../../../../../util/log';
@@ -33,6 +31,8 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/con
 import type { RProjectFile } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { EdgeType } from '../../../../../graph/edge';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /**
  * Infers working directories based on the given option and reference chain
@@ -181,7 +181,7 @@ export function processSourceCall<OtherInfo>(
 
 	let sourceFile: string[] | undefined;
 
-	if(sourceFileArgument !== EmptyArgument && sourceFileArgument?.value?.type === RType.String) {
+	if(sourceFileArgument !== EmptyArgument && RString.is(sourceFileArgument?.value)) {
 		sourceFile = [removeRQuotes(sourceFileArgument.lexeme)];
 	} else if(sourceFileArgument !== EmptyArgument) {
 		const resolved = NodeValue.setOf(sourceFileArgument.info.id, data);

@@ -6,7 +6,6 @@ import { Identifier } from '../../dataflow/environments/identifier';
 import { CfgKind } from '../../project/cfg-kind';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { FlowrSearchElements } from '../../search/flowr-search';
 import { Q } from '../../search/flowr-search-builder';
 import { Ternary } from '../../util/logic';
@@ -14,6 +13,8 @@ import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty, type LintingResult, type LintingRule } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { arraySum } from '../../util/collections/arrays';
 
 interface DataFrameAccessOperation {
 	nodeId:        NodeId
@@ -98,9 +99,8 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 		const metadata: DataFrameAccessValidationMetadata = {
 			numOperations: accessOperations.size,
 			numAccesses:   operations.length,
-			totalAccessed: operations
-				.map(operation => operation.operation === 'accessCols' ? operation.columns?.length ?? 0 : operation.rows?.length ?? 0)
-				.reduce((a, b) => a + b, 0)
+			totalAccessed: arraySum(operations
+				.map(operation => operation.operation === 'accessCols' ? operation.columns?.length ?? 0 : operation.rows?.length ?? 0))
 		};
 
 		const results: DataFrameAccessValidationResult[] = accesses
@@ -116,7 +116,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 				...accessed,
 				involvedId: node?.info.id,
 				access:     node?.lexeme ?? '???',
-				...(operand?.type === RType.Symbol ? { operand: Identifier.getName(operand.content) } : {}),
+				...(RSymbol.is(operand) ? { operand: Identifier.getName(operand.content) } : {}),
 				loc:        SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
 				certainty:  LintingResultCertainty.Certain
 			}));

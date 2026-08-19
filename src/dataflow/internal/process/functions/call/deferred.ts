@@ -1,6 +1,5 @@
 import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { recoverName } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -13,6 +12,7 @@ import type { ControlFlowGraph } from '../../../../../control-flow/control-flow-
 import { happensBefore } from '../../../../../control-flow/happens-before';
 import { Ternary } from '../../../../../util/logic';
 import { NoEdges } from '../../../../graph/graph';
+import { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 /** The reads that may force the expression, and the control flow deciding what they can see. */
 export interface ForceSites {
@@ -54,7 +54,7 @@ function namesWithin<Info>(expr: NodeId, graph: DataflowGraph, idMap: AstIdMap<I
 		if(RFunctionCall.isNamed(inner)) {
 			callees.add(inner.functionName.info.id);
 			return false;
-		} else if(inner.type !== RType.Symbol || callees.has(inner.info.id)) {
+		} else if(!RSymbol.is(inner) || callees.has(inner.info.id)) {
 			return false;
 		}
 		const vertex = graph.getVertex(inner.info.id);

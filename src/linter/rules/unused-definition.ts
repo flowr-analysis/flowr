@@ -15,7 +15,6 @@ import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role'
 import { FileRole } from '../../project/context/flowr-file';
 import { getExportedNames } from '../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { Identifier } from '../../dataflow/environments/identifier';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { removeRQuotes } from '../../r-bridge/retriever';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
@@ -24,6 +23,7 @@ import { RGroupGenerics } from '../../dataflow/environments/default-builtin-conf
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { NoEdges } from '../../dataflow/graph/graph';
+import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 
 export interface UnusedDefinitionResult extends LintingResult {
 	variableName?: string
@@ -258,10 +258,10 @@ function isWithinPromise(node: RNode<ParentInformation>, idMap: AstIdMap): boole
 		if(parent === undefined) {
 			return false;
 		}
-		if(parent.type === RType.Parameter && parent.defaultValue?.info.id === child.info.id) {
+		if(RParameter.is(parent) && parent.defaultValue?.info.id === child.info.id) {
 			return true;
 		}
-		if(parent.type === RType.FunctionCall && parent.named && Identifier.getName(parent.functionName.content) === 'delayedAssign') {
+		if(RFunctionCall.isNamed(parent) && Identifier.getName(parent.functionName.content) === 'delayedAssign') {
 			return true;
 		}
 		child = parent;

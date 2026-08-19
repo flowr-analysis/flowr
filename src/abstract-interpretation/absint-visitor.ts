@@ -9,11 +9,16 @@ import { type NoInfo, RLoopConstructs, RNode } from '../r-bridge/lang-4.x/ast/mo
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { guard, isNotUndefined } from '../util/assert';
 import { AbstractDomain } from './domains/abstract-domain';
 import type { AnyStateDomain, ValueDomain } from './domains/state-domain-like';
 import { UnsupportedFunctions } from './unsupported-functions';
+import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
+import { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
+import { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 export type DomainOfVisitor<AbsintVisitor extends AbstractInterpretationVisitor<AnyStateDomain>> =
 	AbsintVisitor extends AbstractInterpretationVisitor<infer StateDomain> ? StateDomain : never;
@@ -80,19 +85,19 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 		const call = FunctionCallVertex.is(vertex) ? vertex : undefined;
 		const origins = Array.isArray(call?.origin) ? call.origin : [];
 
-		if(node.type === RType.Symbol) {
+		if(RSymbol.is(node)) {
 			const values = this.getVariableOrigins(node.info.id)
 				.map(origin => (this.getAbstractState(origin)?.isBottom() ? this.currentState.domain.bottom() : state?.get(origin)) as ValueDomain<StateDomain>);
 
 			if(values.length > 0 && values.every(isNotUndefined)) {
 				return AbstractDomain.joinAll(values);
 			}
-		} else if(node.type === RType.Argument && node.value !== undefined) {
+		} else if(RArgument.isWithValue(node)) {
 			return this.getAbstractValue(node.value, state);
-		} else if(node.type === RType.ExpressionList && node.children.length > 0) {
+		} else if(RExpressionList.is(node) && node.children.length > 0) {
 			return this.getAbstractValue(node.children.at(-1), state);
 		} else if(origins.includes(BuiltInProcName.Pipe)) {
-			if(node.type === RType.Pipe || node.type === RType.BinaryOp) {
+			if(RPipe.is(node) || RBinaryOp.is(node)) {
 				return this.getAbstractValue(node.rhs, state);
 			} else if(call?.args.length === 2 && call?.args[1] !== EmptyArgument) {
 				return this.getAbstractValue(call.args[1].nodeId, state);
@@ -100,7 +105,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 		} else if(origins.includes(BuiltInProcName.IfThenElse)) {
 			let values: (ValueDomain<StateDomain> | undefined)[] = [];
 
-			if(node.type === RType.IfThenElse && node.otherwise !== undefined) {
+			if(RIfThenElse.is(node) && node.otherwise !== undefined) {
 				values = [node.then, node.otherwise].map(entry => this.getAbstractValue(entry, state));
 			} else if(call?.args.every(arg => arg !== EmptyArgument) && call.args.length === 3) {
 				values = call.args.slice(1, 3).map(entry => this.getAbstractValue(entry.nodeId, state));

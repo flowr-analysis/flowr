@@ -3,14 +3,13 @@ import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking'
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import type { RAccess, RIndexAccess, RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { RAccess, type RIndexAccess, type RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../shape-inference';
 import { getArgumentValue, isDataFrameArgument } from './arguments';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
+import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /**
  * Maps a concrete data frame access operation to abstract data frame operations.
@@ -26,7 +25,7 @@ export function mapDataFrameAccess(
 	dfg: DataflowGraph,
 	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameOperations {
-	if(node.type !== RType.Access) {
+	if(!RAccess.is(node)) {
 		return;
 	}
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx };
@@ -69,7 +68,7 @@ function mapDataFrameIndexColRowAccess(
 
 	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
-	} else if(args.every(arg => arg === EmptyArgument)) {
+	} else if(args.every(arg => RArgument.isEmpty(arg))) {
 		return [{ operation: 'identity', operand: dataFrame.info.id }];
 	}
 	const result: DataFrameOperations = [];

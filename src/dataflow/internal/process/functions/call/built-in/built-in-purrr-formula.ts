@@ -3,7 +3,7 @@ import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { getAllFunctionCallTargets, linkArgumentsOnCall, pMatch } from '../../../../linker';
 import { Dataflow } from '../../../../../graph/df-helper';
@@ -13,8 +13,7 @@ import { convertFnArguments } from '../common';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import type { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { EdgeType } from '../../../../../graph/edge';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import { dataflowLogger } from '../../../../../logger';
@@ -59,11 +58,11 @@ function linkOnSymbol<OtherInfo>(rootId: NodeId, filteredArgs: readonly Function
 
 			// If the target directly maps to a function definition AST, try to link arguments to parameters
 			let linked = data.completeAst.idMap.get(def.nodeId) as RFunctionDefinition<ParentInformation> | undefined;
-			if(linked?.type !== RType.FunctionDefinition) {
+			if(!RFunctionDefinition.is(linked)) {
 				const values = (def as InGraphIdentifierDefinition).value;
 				for(const vid of Array.isArray(values) ? values : []) {
 					const candidate = data.completeAst.idMap.get(vid) as RFunctionDefinition<ParentInformation> | undefined;
-					if(candidate && candidate.type === RType.FunctionDefinition) {
+					if(candidate && RFunctionDefinition.is(candidate)) {
 						linked = candidate;
 						// also mark that we call the resolved function-definition node
 						graph.addEdge(rootId, vid, EdgeType.Calls);
@@ -72,7 +71,7 @@ function linkOnSymbol<OtherInfo>(rootId: NodeId, filteredArgs: readonly Function
 				}
 			}
 			// we may find a candidate in the first check
-			if(linked?.type === RType.FunctionDefinition) {
+			if(RFunctionDefinition.is(linked)) {
 				try {
 					return linkArgumentsOnCall(filteredArgs, linked.parameters, graph);
 				} catch(e) {
@@ -129,7 +128,7 @@ export function processPurrrFormula<OtherInfo>(
 		filteredCallArgs.push(arg);
 	}
 
-	if(formulaNode.type === RType.FunctionDefinition) {
+	if(RFunctionDefinition.is(formulaNode)) {
 		const fdef = formulaNode as RFunctionDefinition<ParentInformation & OtherInfo>;
 		information.graph.addEdge(rootId, fdef.info.id, EdgeType.Calls);
 		try {
@@ -137,7 +136,7 @@ export function processPurrrFormula<OtherInfo>(
 		} catch(e){
 			dataflowLogger.warn('Failed to link arguments to parameters for purr formula, some bindings may be missing', { error: e });
 		}
-	} else if(formulaNode.type === RType.Symbol) {
+	} else if(RSymbol.is(formulaNode)) {
 		linkOnSymbol(rootId, filteredCallArgs, formulaNode, information.graph, data);
 	} else {
 		try {
@@ -149,7 +148,7 @@ export function processPurrrFormula<OtherInfo>(
 					for(const t of targets) {
 						information.graph.addEdge(rootId, t, EdgeType.Calls);
 						const linked = data.completeAst.idMap.get(t) as RFunctionDefinition<ParentInformation> | undefined;
-						if(linked && linked.type === RType.FunctionDefinition) {
+						if(linked && RFunctionDefinition.is(linked)) {
 							try {
 								const map = linkArgumentsOnCall(filteredCallArgs, linked.parameters, information.graph);
 								for(const [argId, paramId] of map.entries()) {
@@ -165,7 +164,7 @@ export function processPurrrFormula<OtherInfo>(
 					return !vtx.origin.includes(BuiltInProcName.List);
 				} else if(UseVertex.is(vtx)) {
 					const node = data.completeAst.idMap.get(vtx.id);
-					if(node?.type === RType.Symbol) {
+					if(RSymbol.is(node)) {
 						linkOnSymbol(rootId, filteredCallArgs, node, information.graph, data);
 					}
 				}
@@ -178,7 +177,7 @@ export function processPurrrFormula<OtherInfo>(
 
 	const ignore = new Set(config.ignore ?? []);
 	RNode.visitAst<ParentInformation & OtherInfo>(formulaNode, (node) => {
-		if(node.type === RType.Symbol) {
+		if(RSymbol.is(node)) {
 			const sym = node;
 			const name = sym.content as unknown as string;
 			if(ignore.has(name)) {

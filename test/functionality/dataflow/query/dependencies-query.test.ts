@@ -14,7 +14,6 @@ import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/process
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { DefaultBuiltinConfig } from '../../../../src/dataflow/environments/default-builtin-config';
 import { builtInNames } from '../../../../src/dataflow/environments/query-fn-props';
@@ -23,6 +22,7 @@ import { ArgProp } from '../../../../src/dataflow/environments/built-in-props';
 import { ReadFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/read-functions';
 import { WriteFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/write-functions';
 import { OtherPathFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/other-path-functions';
+import { RFunctionCall } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], remote: [], source: [], read: [], write: [], visualize: [], test: [], print: [] };
 
@@ -661,7 +661,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 					additionalAnalysis: async(data, _id, _f, _qr, results) => {
 						const ns = (await data.analyzer.normalize()).idMap;
 						for(const n of ns.values()) {
-							if(n.type === RType.FunctionCall && n.lexeme === 'cat' && n.arguments.length > 0) {
+							if(RFunctionCall.is(n) && n.lexeme === 'cat' && n.arguments.length > 0) {
 								results.push({
 									nodeId:       n.info.id,
 									functionName: 'cat',

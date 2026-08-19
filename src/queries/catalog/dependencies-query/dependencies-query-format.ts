@@ -12,7 +12,6 @@ import { RemoteFunctions, remoteTarget } from './function-info/remote-functions'
 import { ReadFunctions } from './function-info/read-functions';
 import { WriteFunctions } from './function-info/write-functions';
 import { VisualizeFunctions } from './function-info/visualize-functions';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { Range } from 'semver';
 import type { AsyncOrSync, MarkOptional } from 'ts-essentials';
@@ -27,6 +26,8 @@ import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
 import { CallProp } from '../../../dataflow/environments/built-in-props';
 import { FunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
+import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 /** The value could not be resolved, e.g. a path assembled at runtime. Such a dependency may be missing or fetchable. */
 export const Unknown = 'unknown';
@@ -60,7 +61,7 @@ export const DefaultDependencyCategories = {
 			if(!ignoreDefault) {
 				RProject.visitAst((await data.analyzer.normalize()).ast, node => {
 					let ns: BrandedNamespace | undefined;
-					if(node.type === RType.Symbol && (ns = Identifier.getNamespace(node.content)) !== undefined) {
+					if(RSymbol.is(node) && (ns = Identifier.getNamespace(node.content)) !== undefined) {
 						const dep = data.analyzer.inspectContext().deps.getDependency(ns);
 						/* we should improve the identification of ':::' */
 						result.push({
@@ -118,7 +119,7 @@ export const DefaultDependencyCategories = {
 				.flatMap(k => Object.values(k.subkinds).flat()).map(r => r.id));
 			for(const file of ast.files) {
 				for(const statement of file.root.children) {
-					if(statement.type !== RType.FunctionCall || accountedFor.has(statement.info.id)) {
+					if(!RFunctionCall.is(statement) || accountedFor.has(statement.info.id)) {
 						continue;
 					}
 					const vertex = dataflow.graph.getVertex(statement.info.id);

@@ -155,8 +155,8 @@ export function *getUniqueCombinationsOfSize<T>(array: T[], minSize = 0, maxSize
  */
 export function arraySum(arr: readonly number[]): number {
 	let sum = 0;
-	for(const elem of arr) {
-		sum += elem;
+	for(let i = 0, n = arr.length; i < n; i++) {
+		sum += arr[i];
 	}
 	return sum;
 }

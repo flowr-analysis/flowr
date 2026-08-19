@@ -5,6 +5,7 @@ import type { FlowrConfig } from '../../../config';
 import type { SliceQueryOptions } from '../../../queries/catalog/slice-query-options';
 import type { ReplOutput } from '../commands/repl-main';
 import { ColorEffect, Colors } from '../../../util/text/ansi';
+import { uniqueArray } from '../../../util/collections/arrays';
 
 /**
  * Splits `(criteria)flags` into its two parts, matching the closing bracket by depth: a criterion may well
@@ -86,7 +87,7 @@ function warn(output: ReplOutput, message: string): void {
  * {@link SliceFlag#conflicts|conflict} with each other, as they are applied silently otherwise.
  */
 export function warnAboutSliceFlags(output: ReplOutput, argument: string, flags: readonly SliceFlag[]): void {
-	const given = [...new Set(sliceFlagSuffix(argument))];
+	const given = uniqueArray(sliceFlagSuffix(argument));
 	const known = new Map(flags.map(f => [f.flag, f]));
 	const unknown = given.filter(f => !known.has(f));
 	if(unknown.length > 0) {

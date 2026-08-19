@@ -1,4 +1,4 @@
-import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument  } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RNumberValue } from '../../../r-bridge/lang-4.x/convert-values';
 import { isRNumberValue, unliftRValue } from '../../../util/r-value';
@@ -16,6 +16,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flow
 import { Dataflow } from '../../graph/df-helper';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Resolve } from '../../environments/resolve-helper';
+import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 
 /**
  * The {@link BuiltInEvalHandler} the given name resolves to in the current environment, just like the
@@ -96,7 +97,7 @@ export function resolveNode(args: BuiltInEvalHandlerArgs): Value {
  */
 export function resolveAsVector(args: BuiltInEvalHandlerArgs): ValueVector | typeof Top {
 	const node = args.node;
-	if(node.type !== RType.FunctionCall) {
+	if(!RFunctionCall.is(node)) {
 		return Top;
 	}
 	return vectorFrom(flattenVectorElements(node.arguments.map(arg => arg !== EmptyArgument ? Resolve.toValue(arg.value, args) : Top)));
@@ -112,7 +113,7 @@ export function resolveAsVector(args: BuiltInEvalHandlerArgs): ValueVector | typ
  */
 export function resolveAsSeq(args: BuiltInEvalHandlerArgs): ValueVector<Lift<ValueNumber[]>> | typeof Top {
 	const operator = args.node;
-	if(operator.type !== RType.BinaryOp) {
+	if(!RBinaryOp.is(operator)) {
 		return Top;
 	}
 	const leftValue = unliftRValue(Resolve.toValue(operator.lhs, args));

@@ -31,6 +31,7 @@ import type {
 import { RFunctionCall
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { resolveArgToEnvir, signatureParamNames } from './built-in-envir-utils';
+import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 /**
  * Processes a built-in 'load' function call by retrieving the names of the variables loaded by the given file.
@@ -67,7 +68,7 @@ export function processLoadCall<OtherInfo>(
 
 	let sourceFile: string[] | undefined;
 
-	if(fileArg.type === RType.String) {
+	if(RString.is(fileArg)) {
 		sourceFile = [removeRQuotes(fileArg.lexeme)];
 	} else {
 		const resolved = NodeValue.setOf(fileArg.info.id, data, { environment: envirResolution?.envirData.environment ?? data.environment });

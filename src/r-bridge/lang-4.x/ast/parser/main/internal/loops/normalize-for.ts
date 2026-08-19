@@ -9,9 +9,10 @@ import { normalizeExpressions, splitComments } from '../structure/normalize-expr
 import { tryNormalizeSymbol } from '../values/normalize-symbol';
 import { normalizeComment } from '../other/normalize-comment';
 import type { RNode } from '../../../../model/model';
-import type { RSymbol } from '../../../../model/nodes/r-symbol';
+import { RSymbol } from '../../../../model/nodes/r-symbol';
 import type { RComment } from '../../../../model/nodes/r-comment';
 import type { JsonEntry, NamedJsonEntry } from '../../../json/format';
+import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 
 
 
@@ -41,7 +42,7 @@ export function tryNormalizeFor(
 	if(
 		parsedVariable === undefined ||
     parsedVector === undefined ||
-    parseBody.type === RType.Delimiter
+    RDelimiter.is(parseBody)
 	) {
 		throw new ParseError(
 			`unexpected under-sided for-loop, received ${JSON.stringify([
@@ -78,10 +79,10 @@ function normalizeForHead(data: NormalizerData, forCondition: JsonEntry): { vari
 	guard(inPosition > 0 && inPosition < others.length - 1, () => `for loop searched in and found at ${inPosition}, but this is not in legal bounds for ${JSON.stringify(children)}`);
 	const variable = tryNormalizeSymbol(data, [others[inPosition - 1]]);
 	guard(variable !== undefined, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`);
-	guard((variable as RNode).type === RType.Symbol, () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`);
+	guard(RSymbol.is(variable), () => `for loop variable should have been parsed to a symbol but was ${JSON.stringify(variable)}`);
 
 	const vector = normalizeExpressions(data, [others[inPosition + 1]]);
-	guard(vector.length === 1 && vector[0].type !== RType.Delimiter, () => `for loop vector should have been parsed to a single element but was ${JSON.stringify(vector)}`);
+	guard(vector.length === 1 && !RDelimiter.is(vector[0]), () => `for loop vector should have been parsed to a single element but was ${JSON.stringify(vector)}`);
 	const parsedComments = comments.map(c => normalizeComment(data, c.content));
 
 	return { variable, vector: vector[0], comments: parsedComments };

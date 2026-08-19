@@ -3,11 +3,10 @@ import type { ControlDependency, DataflowInformation, ExitPoint, KillReference }
 import { ExitPointType, happensInEveryBranch } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
-	EmptyArgument,
-	type PotentiallyEmptyRArgument
+import type {
+	PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { ClosureRefs, pMatch } from '../../../../linker';
@@ -15,13 +14,14 @@ import type { DataflowGraphVertexInfo } from '../../../../../graph/vertex';
 import { VertexType, FunctionDefinitionVertex } from '../../../../../graph/vertex';
 import { tryUnpackNoNameArg, unpackArg } from '../argument/unpack-argument';
 import type { DataflowGraph } from '../../../../../graph/graph';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { isUndefined } from '../../../../../../util/assert';
 import { EdgeType } from '../../../../../graph/edge';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import { Identifier, type IdentifierReference } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { applyKills } from '../../../../../environments/apply-kill';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 /**
  * Process a built-in try-catch or similar handler.
@@ -40,7 +40,7 @@ export function processTryCatch<OtherInfo>(
 	}
 ): DataflowInformation {
 	const res = processKnownFunctionCall({ name, args: args.map(tryUnpackNoNameArg), rootId, data, origin: BuiltInProcName.Try, forceArgs: 'all' });
-	if(args.length < 1 || args[0] === EmptyArgument) {
+	if(args.length < 1 || RArgument.isEmpty(args[0])) {
 		dataflowLogger.warn(`TryCatch Handler ${Identifier.toString(name.content)} does not have 1 argument, skipping`);
 		return res.information;
 	}
@@ -136,14 +136,14 @@ function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: Dataf
 	if(!argNode) {
 		return undefined;
 	}
-	const val = argNode.type === RType.Argument ? unpackArg(argNode) : argNode;
+	const val = RArgument.is(argNode) ? unpackArg(argNode) : argNode;
 	if(!val) {
 		return undefined;
 	}
-	if(val.type === RType.Symbol) {
+	if(RSymbol.is(val)) {
 		functionId = val.info.id;
 		functionName = val.content;
-	} else if(val.type === RType.FunctionDefinition) {
+	} else if(RFunctionDefinition.is(val)) {
 		anonymous = true;
 		functionId = val.info.id;
 		functionName = `${UnnamedFunctionCallPrefix}${functionId}`;
@@ -187,7 +187,7 @@ function getExitPoints(vertex: DataflowGraphVertexInfo | undefined, graph: Dataf
 	if(!n) {
 		return undefined;
 	}
-	if(n.type === RType.Argument && n.value?.type === RType.FunctionDefinition) {
+	if(RArgument.is(n) && RFunctionDefinition.is(n.value)) {
 		const fdefV = graph.getVertex(n.value.info.id);
 		if(FunctionDefinitionVertex.is(fdefV)) {
 			return fdefV.exitPoints;

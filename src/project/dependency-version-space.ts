@@ -21,11 +21,12 @@ import { Dataflow } from '../dataflow/graph/df-helper';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
 import { AttachedBasePackages, baseRExportOwner } from '../util/r-base-packages';
 import { collectScopeDefinedNames, isDefinedInEnclosingScope, isNonStandardEvaluated } from '../linter/rules/undefined-symbol-util';
-import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { S7SyntheticFunArgSuffix } from '../dataflow/internal/process/functions/call/built-in/built-in-s-seven-new-generic';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from './context/flowr-analyzer-dependencies-context';
 import type { ReadonlyFlowrAnalysisProvider } from './flowr-analyzer';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { arraySum, uniqueArray } from '../util/collections/arrays';
 
 /** the pseudo-package standing for the analyzed project itself, never one of its own dependencies */
 export const ProjectPackage = 'current';
@@ -212,7 +213,7 @@ function argStringLiteral(graph: DataflowGraph, arg: FunctionArgument): string |
 		return undefined;
 	}
 	const node = graph.idMap?.get(id);
-	return node?.type === RType.String ? node.content.str : undefined;
+	return RString.is(node) ? node.content.str : undefined;
 }
 
 /** class names used as a string literal in the code (`inherits(x, "zoo")`, `new("Foo")`, ...); only direct literals, not variables or `c(...)` */
@@ -467,7 +468,7 @@ export function collectOrphanUsage(graph: DataflowGraph, deps: ReadOnlyFlowrAnal
 		}
 		// the exporters that lost, with the same calls recorded, so the guess can report what each of them would fit
 		const losers = providers.filter(p => p !== pkg);
-		alternatives.set(pkg, [...new Set([...alternatives.get(pkg) ?? [], ...losers])]);
+		alternatives.set(pkg, uniqueArray([...alternatives.get(pkg) ?? [], ...losers]));
 		for(const alt of losers) {
 			recordCallUsage(atKey(alternativeUsage, alt, (): PackageUsage => new Map()), name, vertex.args, id);
 		}
@@ -976,7 +977,7 @@ function countOverForest(factors: readonly CountFactor[], tree: readonly (Factor
 	let total = 1;
 	for(let i = 0; i < factors.length; i++) {
 		if(!visited[i]) {
-			total *= subtree(i, -1).reduce((a, b) => a + b, 0);
+			total *= arraySum(subtree(i, -1));
 		}
 	}
 	return total;
@@ -1135,7 +1136,7 @@ export function orderedCandidatesOf(src: PackageSignatureSource | undefined, nam
 
 /** the default explosion targets: every declared and used dependency (excluding `current`, the analyzed package's own namespace) */
 export function defaultTargets(deps: ReadOnlyFlowrAnalyzerDependenciesContext, usage: ReadonlyMap<string, PackageUsage>): string[] {
-	return [...new Set([...deps.getDependencies().map(d => d.name), ...usage.keys()])].filter(name => name !== ProjectPackage);
+	return uniqueArray([...deps.getDependencies().map(d => d.name), ...usage.keys()]).filter(name => name !== ProjectPackage);
 }
 
 /** the requirements one concrete version declares, as {@link coInstallability} reads them */

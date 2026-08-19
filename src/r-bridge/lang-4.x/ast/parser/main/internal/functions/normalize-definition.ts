@@ -9,6 +9,7 @@ import { RawRType, RType } from '../../../../model/type';
 import type { RParameter } from '../../../../model/nodes/r-parameter';
 import { normalizeExpressions } from '../structure/normalize-expressions';
 import type { NamedJsonEntry } from '../../../json/format';
+import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 
 /**
  * Tries to parse the given data as a function definition.
@@ -44,7 +45,7 @@ export function tryNormalizeFunctionDefinition(data: NormalizerData, mappedWithN
 	guard(bodyStructure.length === 1, () => `expected function body to be unique, yet received ${bodyStructure.length}`);
 
 	const body = normalizeExpressions(data, bodyStructure);
-	guard(body.length === 1 && body[0].type !== RType.Delimiter, () => `expected function body to yield one normalized expression, but ${body.length}`);
+	guard(body.length === 1 && !RDelimiter.is(body[0]), () => `expected function body to yield one normalized expression, but ${body.length}`);
 
 
 	return {

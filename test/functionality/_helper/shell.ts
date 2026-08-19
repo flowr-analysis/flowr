@@ -128,6 +128,7 @@ function removeInformation<T extends RProject<unknown> | Record<string, unknown>
 
 function assertAstEqual<Info>(ast: RProject<Info> | RNode<Info>, expected: RProject<Info> | RNode<Info>, includeTokens: boolean, ignoreColumns: boolean, message?: () => string, ignoreMiscSourceInfo = true): void {
 	ast = removeInformation(ast, includeTokens, ignoreColumns, ignoreMiscSourceInfo);
+	// eslint-disable-next-line flowr/replacement-pattern
 	if(expected.type === RType.ExpressionList) {
 		expected = {
 			type: RType.Project,

@@ -21,7 +21,7 @@ import { DfEdge, EdgeType } from '../dataflow/graph/edge';
 import { assertUnreachable, guard } from '../util/assert';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { RNull } from '../r-bridge/lang-4.x/convert-values';
@@ -29,6 +29,8 @@ import { Dataflow } from '../dataflow/graph/df-helper';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { NodeValue } from '../dataflow/eval/resolve/node-value';
 import { isValue } from '../dataflow/eval/values/r-value';
+import { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 
 export interface SemanticCfgGuidedVisitorConfiguration<
 	OtherInfo = NoInfo,
@@ -152,7 +154,7 @@ export class SemanticCfgGuidedVisitor<
 	protected override visitFunctionDefinition(vertex: DataflowGraphVertexFunctionDefinition): void {
 		super.visitFunctionDefinition(vertex);
 		const ast = this.getNormalizedAst(vertex.id);
-		if(ast?.type === RType.FunctionDefinition) {
+		if(RFunctionDefinition.is(ast)) {
 			this.onFunctionDefinition({ vertex, parameters: ast.parameters.map(p => p.info.id) });
 		} else {
 			this.onFunctionDefinition({ vertex });
@@ -188,7 +190,7 @@ export class SemanticCfgGuidedVisitor<
 	protected override visitUnknown(vertex: CfgStatementVertex | CfgExpressionVertex) {
 		super.visitUnknown(vertex);
 		const ast = this.getNormalizedAst(CfgVertex.getId(vertex));
-		if(ast && ast.type === RType.ExpressionList && ast.info.parent === undefined) {
+		if(ast && RExpressionList.is(ast) && ast.info.parent === undefined) {
 			this.onProgram(ast);
 		}
 	}
@@ -229,7 +231,7 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.IfThenElse: {
 				// recover dead arguments from ast
 				const ast = this.getNormalizedAst(call.id);
-				if(!ast || ast.type !== RType.IfThenElse) {
+				if(!ast || !RIfThenElse.is(ast)) {
 					return this.onIfThenElseCall({
 						call,
 						condition: call.args[0] === EmptyArgument ? undefined : call.args[0].nodeId,

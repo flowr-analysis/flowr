@@ -1,7 +1,6 @@
 import type { RNamedFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { BuiltInEvalHandlerArgs } from '../../environments/built-in';
 import { Identifier, PkgName } from '../../environments/identifier';
 import { Top, type Value } from '../values/r-value';
@@ -9,6 +8,7 @@ import { stringFrom } from '../values/string/string-constants';
 import { intervalFrom } from '../values/intervals/interval-constants';
 import { matchCallArguments } from './match-arguments';
 import { Resolve } from '../../environments/resolve-helper';
+import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /** everything after the last separator, with trailing separators dropped first (`a/b/` is `b`, `/` is the empty string) */
 function basename(path: string): string {
@@ -138,7 +138,7 @@ export function foldStringCall<Info>(node: RNamedFunctionCall<Info>, resolveArg:
  */
 export function resolveAsStringFn(args: BuiltInEvalHandlerArgs): Value {
 	const node = args.node;
-	if(node.type !== RType.FunctionCall || !node.named) {
+	if(!RFunctionCall.is(node) || !node.named) {
 		return Top;
 	}
 	const folded = foldStringCall(node, arg => Resolve.toSingleString(arg.info.id, args));

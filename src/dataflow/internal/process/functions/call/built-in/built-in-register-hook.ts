@@ -12,7 +12,7 @@ import { pMatch } from '../../../../linker';
 import { convertFnArguments } from '../common';
 import type { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { HookInformation, KnownHooks } from '../../../../../hooks';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { valueSetGuard } from '../../../../../eval/values/general';
@@ -63,7 +63,7 @@ export function processRegisterHook<OtherInfo>(
 	const wrappedFunctions = new Set<NodeId>();
 	// we automatically transform the expr to a function definition that takes no arguments
 	const transformed = args.map(arg => {
-		if(arg === EmptyArgument)  {
+		if(RArgument.isEmpty(arg))  {
 			return EmptyArgument;
 		} else if(exprIds.has(arg.info.id) && arg.value) {
 			const val = arg.value;

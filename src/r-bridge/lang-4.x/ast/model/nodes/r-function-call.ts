@@ -46,6 +46,7 @@ export const RFunctionCall = {
 	name: 'RFunctionCall',
 	/**
 	 * Type guard for {@link RFunctionCall} nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RFunctionCall<Info> {
 		return node?.type === RType.FunctionCall;

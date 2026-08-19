@@ -6,6 +6,7 @@ import { RawRType, RType } from '../../../../model/type';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
 import type { RRepeatLoop } from '../../../../model/nodes/r-repeat-loop';
 import type { NamedJsonEntry } from '../../../json/format';
+import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 
 /**
  * Try to parse the construct as a {@link RRepeatLoop}.
@@ -23,7 +24,7 @@ export function tryNormalizeRepeat(data: NormalizerData, [repeatToken, bodyToken
 	parseLog.debug('trying to parse repeat-loop');
 
 	const parseBody = normalizeSingleNode(data, bodyToken);
-	guard(parseBody.type !== RType.Delimiter, () => `no body for repeat-loop ${JSON.stringify(repeatToken)} (${JSON.stringify(bodyToken)})`);
+	guard(!RDelimiter.is(parseBody), () => `no body for repeat-loop ${JSON.stringify(repeatToken)} (${JSON.stringify(bodyToken)})`);
 
 	const { location, content } = retrieveMetaStructure(repeatToken.content);
 

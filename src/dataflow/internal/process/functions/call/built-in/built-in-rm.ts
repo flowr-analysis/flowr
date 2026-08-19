@@ -2,14 +2,13 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation, KillReference, ControlDependency } from '../../../../../info';
 import { markArgumentsAsNonStandardEvaluation, processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { type PotentiallyEmptyRArgument, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
@@ -21,6 +20,7 @@ import type { EnvirResolution } from './built-in-envir-utils';
 import { resolveArgToEnvir } from './built-in-envir-utils';
 import { resolveNodeToStackEnv } from './built-in-stack-env';
 import { Resolve } from '../../../../../environments/resolve-helper';
+import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 /** The variables an `rm` call targets for removal, and the frame it removes them from. */
 interface RmTargets<OtherInfo> {
@@ -42,7 +42,7 @@ interface RmFrameArg<OtherInfo> {
 
 /** whether `value` is a call to the *built-in* `ls`/`objects` that lists (and thus clears) the whole scope */
 function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
-	if(value.type !== RType.FunctionCall || !value.named) {
+	if(!RFunctionCall.is(value) || !value.named) {
 		return false;
 	}
 	const [fn, ns] = Identifier.toArray(value.functionName.content);
@@ -50,7 +50,7 @@ function isBuiltInLsCall<OtherInfo>(value: RNode<OtherInfo & ParentInformation>,
 		return false;
 	}
 	// a `pattern`/`envir` argument restricts the listing, so only a plain listing clears everything
-	const listsEverything = value.arguments.every(a => a !== EmptyArgument && a.name !== undefined && (a.name.content === 'all.names' || a.name.content === 'sorted'));
+	const listsEverything = value.arguments.every(a => a !== EmptyArgument && a.name !== undefined && (Identifier.getName(a.name.content) === 'all.names' || Identifier.getName(a.name.content) === 'sorted'));
 	if(!listsEverything) {
 		return false;
 	}
@@ -96,9 +96,9 @@ function roleOf<OtherInfo>(arg: Exclude<PotentiallyEmptyRArgument<OtherInfo & Pa
 
 /** Adds the name a single `...` argument (an unquoted symbol or quoted string) refers to. */
 function collectDotArg<OtherInfo>(targets: RmTargets<OtherInfo>, value: RNode<OtherInfo & ParentInformation> | undefined): void {
-	if(value?.type === RType.Symbol) {
+	if(RSymbol.is(value)) {
 		targets.names.push({ name: value.content, nodeId: value.info.id });
-	} else if(value?.type === RType.String) {
+	} else if(RString.is(value)) {
 		targets.names.push({ name: value.content.str, nodeId: value.info.id });
 	} else if(value !== undefined) {
 		dataflowLogger.warn(`argument is not a symbol or string in rm, skipping ${JSON.stringify(value)}`);
@@ -111,7 +111,7 @@ function collectListArg<OtherInfo>(targets: RmTargets<OtherInfo>, value: RNode<O
 	if(!value) {
 		return;
 	}
-	if(value.type === RType.String) {
+	if(RString.is(value)) {
 		targets.names.push({ name: value.content.str, nodeId: value.info.id });
 	} else if(isBuiltInLsCall(value, data)) {
 		targets.all = true;
@@ -143,7 +143,7 @@ function collectRmTargets<OtherInfo>(
 ): RmTargets<OtherInfo> {
 	const targets: RmTargets<OtherInfo> = { names: [], all: false, unknown: false };
 	for(const arg of args) {
-		if(arg === EmptyArgument) {
+		if(RArgument.isEmpty(arg)) {
 			continue;
 		}
 		switch(roleOf(arg)) {

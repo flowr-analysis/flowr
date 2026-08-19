@@ -4,10 +4,9 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import { expensiveTrace } from '../../../../../../util/log';
 import { type ForceArguments, patchFunctionCall, processAllArguments } from '../common';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import {
-	EmptyArgument,
-	type PotentiallyEmptyRArgument
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type {
+	PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -25,6 +24,8 @@ import { FunctionArgument } from '../../../../../graph/graph';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { VariableDefinitionVertex, FunctionCallVertex } from '../../../../../graph/vertex';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 
 /**
@@ -103,7 +104,7 @@ export function processReplacementFunction<OtherInfo>(
 		rootId,
 		name,
 		argumentProcessResult:
-			args.map(a => a === EmptyArgument ? undefined : { entryPoint: unpackNonameArg(a)?.info.id as NodeId }),
+			args.map(a => RArgument.isEmpty(a) ? undefined : { entryPoint: unpackNonameArg(a)?.info.id as NodeId }),
 		origin: BuiltInProcName.Replacement,
 		link:   config.assignRootId ? { origin: [config.assignRootId] } : undefined
 	});
@@ -133,7 +134,7 @@ export function processReplacementFunction<OtherInfo>(
 		}
 	}
 
-	if(firstArg?.type === RType.Symbol) {
+	if(RSymbol.is(firstArg)) {
 		res = {
 			...res,
 			in: [...res.in, { name: firstArg.content, type: ReferenceType.Variable, nodeId: firstArg.info.id, cds: data.cds }]

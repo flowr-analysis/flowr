@@ -3,7 +3,7 @@ import { parseLog } from '../../../json/parser';
 import { retrieveMetaStructure } from '../../normalize-meta';
 import { guard } from '../../../../../../../util/assert';
 import type { RArgument } from '../../../../model/nodes/r-argument';
-import type { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
+import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 import type { NoInfo, RNode } from '../../../../model/model';
 import type { RSymbol } from '../../../../model/nodes/r-symbol';
 import { RawRType, RType } from '../../../../model/type';
@@ -51,7 +51,7 @@ export function tryToNormalizeArgument(data: NormalizerData, objs: readonly Name
 		return undefined;
 	}
 
-	guard(parsedValue !== undefined && parsedValue?.type !== RType.Delimiter, () => `[argument] parsed value must not be undefined, yet: ${JSON.stringify(objs)}`);
+	guard(parsedValue !== undefined && !RDelimiter.is(parsedValue), () => `[argument] parsed value must not be undefined, yet: ${JSON.stringify(objs)}`);
 
 	return {
 		type:   RType.Argument,

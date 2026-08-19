@@ -16,11 +16,8 @@ import { unpackNonameArg } from '../argument/unpack-argument';
 import { guard } from '../../../../../../util/assert';
 import { dataflowLogger } from '../../../../../logger';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import {
-	EmptyArgument,
-	type PotentiallyEmptyRArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { type DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
@@ -40,11 +37,14 @@ import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
 import type { ReadOnlyFlowrAnalyzerContext, FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { attachExportVertex } from './built-in-library';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { compactHookStates, getHookInformation, KnownHooks } from '../../../../../hooks';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { Resolve } from '../../../../../environments/resolve-helper';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
+import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 /**
  * Process a function definition, i.e., `function(a, b) { ... }`
@@ -77,7 +77,7 @@ export function processFunctionDefinition<OtherInfo>(
 	for(const param of parameters) {
 		guard(param !== EmptyArgument, () => `Empty param arg in function definition ${Identifier.toString(name.content)}, ${JSON.stringify(args)}`);
 		const processed = processDataflowFor(param, data);
-		if(param.value?.type === RType.Parameter) {
+		if(RParameter.is(param.value)) {
 			paramIds.push(param.value.name.info.id);
 		}
 		subgraph.mergeWith(processed.graph);
@@ -107,9 +107,9 @@ export function processFunctionDefinition<OtherInfo>(
 				continue;
 			}
 			const node = data.completeAst.idMap.get(FunctionArgument.isNamed(a) ? (a.valueId ?? a.nodeId) : a.nodeId);
-			if(node?.type === RType.String) {
+			if(RString.is(node)) {
 				names.push(node.content.str);
-			} else if(node?.type === RType.Symbol) {
+			} else if(RSymbol.is(node)) {
 				names.push(node.content);
 			}
 		}
@@ -202,9 +202,9 @@ export function processFunctionDefinition<OtherInfo>(
 	};
 
 	updateDispatches(subgraph, parameters.map<FunctionArgument>(p => {
-		if(p === EmptyArgument) {
+		if(RArgument.isEmpty(p)) {
 			return EmptyArgument;
-		} else if(!p.name && p.value && p.value.type === RType.Parameter) {
+		} else if(!p.name && p.value && RParameter.is(p.value)) {
 			return { type: ReferenceType.Argument, cds: data.cds, nodeId: p.value.name.info.id, name: p.value.name.content, valueId: p.value.defaultValue?.info.id };
 		} else if(p.name) {
 			return { type: ReferenceType.Argument, valueId: p.value?.info.id, cds: data.cds, nodeId: p.name.info.id, name: p.name.content };
@@ -244,7 +244,7 @@ export function processFunctionDefinition<OtherInfo>(
 				break;
 			}
 			const epNode = subgraph.idMap?.get(ep.nodeId);
-			if(epNode?.type === RType.Symbol) {
+			if(RSymbol.is(epNode)) {
 				const defs = Resolve.byNameAndType(epNode.content, outEnvironment, ReferenceType.Variable);
 				const def = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined);
 				if(def?.envState) {
@@ -390,7 +390,7 @@ function linkSuperAssignmentsToOuterDefinitions(
 			}
 
 			const targetNode = parentGraph.idMap?.get(targetId);
-			if(targetNode?.type !== RType.Symbol) {
+			if(!RSymbol.is(targetNode)) {
 				continue;
 			}
 
@@ -487,7 +487,7 @@ export function updateNestedFunctionCalls(
 			expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${id}`);
 			targetVertex.subflow.in = remainingIn;
 			const linkedParameters = graph.idMap?.get(target);
-			if(linkedParameters?.type === RType.FunctionDefinition) {
+			if(RFunctionDefinition.is(linkedParameters)) {
 				linkArgumentsOnCall(args, linkedParameters.parameters, graph);
 			}
 		}
@@ -505,11 +505,11 @@ export function updateNestedFunctionCalls(
 }
 
 function parseSysFrameOffset(node: RNode<ParentInformation> | undefined): number | undefined {
-	if(!node || node.type !== RType.FunctionCall || !node.named || node.functionName.content !== 'sys.frame' || node.arguments.length !== 1) {
+	if(!node || !RFunctionCall.is(node) || !node.named || Identifier.getName(node.functionName.content) !== 'sys.frame' || node.arguments.length !== 1) {
 		return undefined;
 	}
 	const arg = node.arguments[0];
-	if(arg === EmptyArgument || !arg.value) {
+	if(RArgument.isEmpty(arg) || !arg.value) {
 		return undefined;
 	}
 	return RNumber.literalValueOf(arg.value);

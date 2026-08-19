@@ -14,6 +14,7 @@ import { SourceLocation } from '../util/range';
 import { relativeTo } from '../util/files';
 import { FlowrGithubRef } from '../documentation/doc-util/doc-files';
 import { assertUnreachable } from '../util/assert';
+import { uniqueArray } from '../util/collections/arrays';
 
 /** The linting results of every rule that ran, i.e. what a linter query returns. */
 export type LintResultsByRule = { [L in LintingRuleNames]?: LintingResults<L> };
@@ -106,7 +107,7 @@ function sarifFixes(fixes: readonly LintQuickFix[]): object[] {
  */
 function lintsToSarif(results: LintResultsByRule, flowrVersion: string): string {
 	const flat = findings(results);
-	const reported = [...new Set(flat.map(f => f.rule))];
+	const reported = uniqueArray(flat.map(f => f.rule));
 	return JSON.stringify({
 		$schema: 'https://json.schemastore.org/sarif-2.1.0.json',
 		version: '2.1.0',

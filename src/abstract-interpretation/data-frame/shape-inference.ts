@@ -1,14 +1,8 @@
-import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { AbstractInterpretationVisitor, type AbsintVisitorConfiguration } from '../absint-visitor';
-import { StateAbstractDomain } from '../domains/state-abstract-domain';
+import type { AbsintAnalysis, DomainSemantics } from '../absint-inference';
 import { DataFrameDomain } from './dataframe-domain';
-import { mapDataFrameAccess } from './mappers/access-mapper';
-import { mapDataFrameFunctionCall } from './mappers/function-mapper';
-import { mapDataFrameReplacementFunction } from './mappers/replacement-mapper';
-import { applyDataFrameSemantics, ConstraintType, getConstraintType, type DataFrameOperationArgs, type DataFrameOperationName, type DataFrameOperationOptions } from './semantics';
+import { DataFrameShapeSemantics } from './dataframe-semantics';
+import type { ConstraintType, DataFrameOperationArgs, DataFrameOperationName, DataFrameOperationOptions } from './semantics';
 
 interface Operation<Name extends DataFrameOperationName> {
 	/** The type of the abstract data frame operation (see {@link DataFrameOperationName}) */
@@ -40,98 +34,40 @@ export type DataFrameOperationType<OperationName extends DataFrameOperationName 
  */
 export type DataFrameOperations<OperationName extends DataFrameOperationName = DataFrameOperationName> = DataFrameOperation<OperationName>[] | undefined;
 
-interface DataFrameShapeInferenceConfiguration extends AbsintVisitorConfiguration {
+/**
+ * The abstract domains inferred by the data frame shape analysis (see {@link DataFrameShapeAnalysis}).
+ */
+export type DataFrameShapeDomains = {
+	/** The inferred shape of data frames */
+	readonly dataFrame: DataFrameDomain;
+};
+
+/**
+ * The options of the data frame shape analysis (see {@link DataFrameShapeAnalysis}).
+ */
+export interface DataFrameShapeAnalysisOptions {
+	/** Whether the abstract data frame operations the expressions are mapped to should be stored (defaults to `true`) */
 	readonly trackOperations?: boolean;
+	/** The maximum number of column names to track in the data frame domain (defaults to the maximum of the domain) */
+	readonly maxColNames?:     number;
 }
 
 /**
- * The control flow graph visitor to infer the shape of data frames using abstract interpretation
+ * The abstract interpretation analysis to infer the shape of data frames,
+ * i.e. their column names, number of columns, and number of rows (see {@link DataFrameDomain}).
  */
-export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisitor<StateAbstractDomain<DataFrameDomain>, DataFrameShapeInferenceConfiguration> {
-	/**
-	 * The abstract data frame operations the function call nodes are mapped to.
-	 */
-	private readonly operations?: Map<NodeId, DataFrameOperation[]>;
+export class DataFrameShapeAnalysis implements AbsintAnalysis<DataFrameShapeDomains> {
+	public readonly domains: DataFrameShapeDomains;
 
-	constructor({ trackOperations = true, ...config }: DataFrameShapeInferenceConfiguration) {
-		super(config, StateAbstractDomain.top(DataFrameDomain.top()));
-
-		if(trackOperations) {
-			this.operations = new Map();
-		}
-	}
+	/** The abstract semantics of the analysis, which also provide the abstract data frame operations the expressions are mapped to */
+	public readonly semantics: DomainSemantics<DataFrameShapeDomains> & { readonly dataFrame: DataFrameShapeSemantics };
 
 	/**
-	 * Gets the mapped abstract data frame operations for an AST node (this only includes direct function calls, replacement calls, or access operations).
-	 * This requires that the abstract interpretation visitor has been completed, or at least started.
-	 * @param id - The ID of the node to get the mapped abstract operations for
-	 * @returns The mapped abstract data frame operations for the node, or `undefined` if no abstract operation was mapped for the node or storing mapped abstract operations is disabled via the visitor config.
+	 * Creates the data frame shape analysis.
+	 * @param options - The options of the analysis, i.e. whether the mapped abstract operations should be stored and the maximum number of tracked column names
 	 */
-	public getAbstractOperations(id: NodeId | undefined): Readonly<DataFrameOperations> {
-		return id !== undefined ? this.operations?.get(id) : undefined;
-	}
-
-	protected override onFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		super.onFunctionCall({ call });
-
-		const node = this.getNormalizedAst(call.id);
-
-		if(node === undefined) {
-			return;
-		}
-		const operations = mapDataFrameFunctionCall(node, this, this.config.dfg, this.config.ctx);
-		this.applyDataFrameExpression(node, operations);
-	}
-
-	protected override onReplacementCall({ call, target, source }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
-		super.onReplacementCall({ call, target, source });
-
-		const node = this.getNormalizedAst(call.id);
-		const targetNode = this.getNormalizedAst(target);
-		const sourceNode = this.getNormalizedAst(source);
-
-		if(node === undefined || targetNode === undefined || sourceNode === undefined) {
-			return;
-		}
-		const operations = mapDataFrameReplacementFunction(node, sourceNode, this, this.config.dfg, this.config.ctx);
-		this.applyDataFrameExpression(node, operations);
-	}
-
-	protected override onAccessCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		super.onAccessCall({ call });
-
-		const node = this.getNormalizedAst(call.id);
-
-		if(node === undefined) {
-			return;
-		}
-		const operations = mapDataFrameAccess(node, this, this.config.dfg, this.config.ctx);
-		this.applyDataFrameExpression(node, operations);
-	}
-
-	private applyDataFrameExpression(node: RNode<ParentInformation>, operations: DataFrameOperations): void {
-		if(operations === undefined) {
-			return;
-		} else if(this.operations !== undefined) {
-			this.operations.set(node.info.id, operations);
-		}
-		const maxColNames = this.config.ctx.config.abstractInterpretation.dataFrame.maxColNames;
-		let value = DataFrameDomain.top(maxColNames);
-
-		for(const { operation, operand, type, options, ...args } of operations) {
-			const operandValue = operand !== undefined ? this.getAbstractValue(operand, this.currentState) : value;
-			value = applyDataFrameSemantics(operation, operandValue ?? DataFrameDomain.top(maxColNames), args, options);
-			const constraintType = type ?? getConstraintType(operation);
-
-			if(operand !== undefined && constraintType === ConstraintType.OperandModification) {
-				this.currentState.set(operand, value);
-
-				for(const origin of this.getVariableOrigins(operand)) {
-					this.currentState.set(origin, value);
-				}
-			} else if(constraintType === ConstraintType.ResultPostcondition) {
-				this.currentState.set(node.info.id, value);
-			}
-		}
+	constructor({ trackOperations, maxColNames }: DataFrameShapeAnalysisOptions = {}) {
+		this.domains = { dataFrame: DataFrameDomain.top(maxColNames) };
+		this.semantics = { dataFrame: new DataFrameShapeSemantics({ trackOperations }) };
 	}
 }

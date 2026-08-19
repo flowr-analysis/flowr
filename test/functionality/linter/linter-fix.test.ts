@@ -1,6 +1,7 @@
 import { assert, describe, test } from 'vitest';
 import { LintQuickFixes } from '../../../src/linter/linter-fix';
 import type { LintQuickFix } from '../../../src/linter/linter-format';
+import { SourceLocation } from '../../../src/util/range';
 import type { LinterQueryResult } from '../../../src/queries/catalog/linter-query/linter-query-format';
 
 function remove(loc: LintQuickFix['loc']): LintQuickFix {
@@ -52,6 +53,56 @@ describe('Linter quick fixes', () => {
 			assert.strictEqual(
 				LintQuickFixes.apply('library(x)\n', [replace([1, 9, 1, 9], 'y'), remove([1, 1, 1, 10])]),
 				''
+			);
+		});
+
+		test('a replacement by nothing takes its line just as a removal does', () => {
+			assert.strictEqual(
+				LintQuickFixes.apply('library(x)\nprint(1)\n', [replace([1, 1, 1, 10], '')]),
+				'print(1)\n'
+			);
+		});
+
+		test('a range inside an earlier one is dropped, however far apart they sort', () => {
+			assert.strictEqual(
+				LintQuickFixes.apply('f <- function() {\n  library(x)\n}\nprint(2)\n',
+					[remove([2, 3, 2, 12]), remove([1, 1, 3, 1])]),
+				'print(2)\n'
+			);
+		});
+
+		test('a kind of fix nobody taught it about is refused, not guessed at', () => {
+			assert.throws(
+				() => LintQuickFixes.apply('print(1)\n', [{ type: 'wrap', description: 'wrap it', loc: [1, 1, 1, 8] } as unknown as LintQuickFix]),
+				/Unexpected object/
+			);
+		});
+
+		test('a fix that names no place is refused, not cut somewhere else', () => {
+			assert.strictEqual(
+				LintQuickFixes.apply('library(x)\nprint(1)\n', [remove(SourceLocation.invalid())]),
+				'library(x)\nprint(1)\n'
+			);
+		});
+
+		test('a range outrunning its line stops at the end of it', () => {
+			assert.strictEqual(
+				LintQuickFixes.apply('print(1) # x\nkeep(2)\n', [remove([1, 10, 1, 400])]),
+				'print(1) \nkeep(2)\n'
+			);
+		});
+
+		test('fixes of two files are refused, rather than cut into one text', () => {
+			assert.throws(
+				() => LintQuickFixes.apply('print(1)\n', [remove([1, 1, 1, 5, '/p/a.R']), remove([1, 6, 1, 8, '/p/b.R'])]),
+				/cannot be applied to one text/
+			);
+		});
+
+		test('an insertion is a span of no width, and lands where it points', () => {
+			assert.strictEqual(
+				LintQuickFixes.apply('f(1\n', [replace([1, 4, 1, 3], ')')]),
+				'f(1)\n'
 			);
 		});
 

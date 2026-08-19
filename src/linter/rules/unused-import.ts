@@ -22,6 +22,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { Enrichment } from '../../search/search-executor/search-enrichers';
 import type { DependencyInfo } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
+import { LibraryFunctions } from '../../queries/catalog/dependencies-query/function-info/library-functions';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -50,9 +51,6 @@ export interface UnusedImportMetadata extends MergeableRecord {
 	totalUnused:       number
 }
 
-/** loaders that hand out a namespace to reach as `pkg::fn` without attaching it, matched ignoring their own namespace */
-const NonAttachingLoaders: readonly Identifier[] = ['::', ':::', 'requireNamespace', 'loadNamespace', 'attachNamespace', 'on_package_load'];
-
 /** one attached package, as the search found it */
 interface Attachment {
 	readonly id:       NodeId;
@@ -64,9 +62,14 @@ interface Attachment {
 	readonly callable: ReadonlySet<string>;
 }
 
-/** whether the call puts the package on the search path, rather than just loading or qualifying it */
+/**
+ * Whether the loader a `library`-category finding came from attaches the package, taken from the one place that
+ * says so. A call this does not know attaches nothing either: `pkg::fn` is reported as a loader of `pkg` and is no
+ * import of its own, and neither is whatever else may come to be reported here. Matching ignores the loader's own
+ * namespace, so `base::require` is caught just as well as a bare `require`.
+ */
 function attachesPackage(info: DependencyInfo): boolean {
-	return !NonAttachingLoaders.some(loader => Identifier.matches(loader, info.functionName));
+	return LibraryFunctions.some(loader => loader.attaches && Identifier.matches(loader.name, info.functionName));
 }
 
 /** whether the call reaches no definition of the analyzed code itself */

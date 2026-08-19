@@ -116,6 +116,20 @@ describe('Linter output', () => {
 		test('a fix flowR cannot locate is left out', () => {
 			assert.isUndefined(sarifOf(unusedImport()).runs[0].results[0].fixes);
 		});
+
+		test('a fix naming no place is left out, rather than reported as an invalid region', () => {
+			const results = {
+				'unused-import': {
+					results: [{
+						certainty:  LintingResultCertainty.Uncertain, involvedId: 0, loc:        [2, 1, 2, 10, '/p/a.R'],
+						package:    'ggplot2', version:    '3.5.1',
+						quickFix:   [{ type: 'remove', description: 'drop it', loc: [-1, -1, -1, -1, '/p/a.R'] }]
+					}],
+					'.meta': {}
+				}
+			} as unknown as LinterQueryResult['results'];
+			assert.isUndefined(sarifOf(results).runs[0].results[0].fixes);
+		});
 	});
 
 	describe('github', () => {
@@ -164,6 +178,13 @@ describe('Linter output', () => {
 			assert.include(out, 'a%0Ab%0Dc%25d');
 			assert.strictEqual(out.split('\n').length, 1, 'the annotation stays on one line');
 		});
+	});
+
+	test('a format nobody taught it about is refused, not rendered as no output', () => {
+		assert.throws(
+			() => formatLints(undefinedSymbol(LintingResultCertainty.Certain), 'yaml' as LinterOutputFormat, '1.2.3'),
+			/Unexpected object/
+		);
 	});
 
 	test('the default format is flowR\'s own summary, which it renders itself', () => {

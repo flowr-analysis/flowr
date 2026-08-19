@@ -222,9 +222,13 @@ function buildQuickFix(variable: RNode<ParentInformation>, dfg: DataflowGraph, a
 		variable.info.fullRange ?? variable.location]
 	);
 
+	if(totalRangeToRemove === undefined) {
+		/* a fix that names no place cannot be carried out, so none is offered */
+		return undefined;
+	}
 	return [{
 		type:        'remove',
-		loc:         totalRangeToRemove ?? SourceLocation.invalid(),
+		loc:         totalRangeToRemove,
 		description: `Remove unused definition of \`${variable.lexeme}\``
 	}];
 }

@@ -8,11 +8,12 @@ import {
 	LintingResultCertainty,
 	LintingResults,
 	type LintingResult,
-	type LintQuickFix
+	LintQuickFix
 } from './linter-format';
-import type { SourceLocation } from '../util/range';
+import { SourceLocation } from '../util/range';
 import { relativeTo } from '../util/files';
 import { FlowrGithubRef } from '../documentation/doc-util/doc-files';
+import { assertUnreachable } from '../util/assert';
 
 /** The linting results of every rule that ran, i.e. what a linter query returns. */
 export type LintResultsByRule = { [L in LintingRuleNames]?: LintingResults<L> };
@@ -76,20 +77,27 @@ function sarifLocation(loc: SourceLocation | undefined): object[] {
 }
 
 /**
- * The quick fixes of one finding as SARIF `fixes`. A fix needs a file to change, so the ones flowR cannot locate are
- * left out rather than reported against no artifact. A `remove` is a replacement by nothing.
+ * The quick fixes of one finding as SARIF `fixes`. A fix needs a file and a span to change, so the ones flowR cannot
+ * place are left out rather than reported against no artifact or an invalid region.
  */
 function sarifFixes(fixes: readonly LintQuickFix[]): object[] {
-	return fixes.filter(fix => fix.loc[4] !== undefined).map(fix => ({
-		description:     { text: fix.description },
-		artifactChanges: [{
-			artifactLocation: { uri: reportedPath(fix.loc[4] as string) },
-			replacements:     [{
-				deletedRegion:   { startLine: fix.loc[0], startColumn: fix.loc[1], endLine: fix.loc[2], endColumn: fix.loc[3] },
-				insertedContent: { text: fix.type === 'replace' ? fix.replacement : '' }
+	return fixes.flatMap(fix => {
+		const file = SourceLocation.getFile(fix.loc);
+		if(file === undefined || !LintQuickFix.isPlaced(fix)) {
+			return [];
+		}
+		const [startLine, startColumn, endLine, endColumn] = SourceLocation.getRange(fix.loc);
+		return [{
+			description:     { text: fix.description },
+			artifactChanges: [{
+				artifactLocation: { uri: reportedPath(file) },
+				replacements:     [{
+					deletedRegion:   { startLine, startColumn, endLine, endColumn },
+					insertedContent: { text: LintQuickFix.inserted(fix) }
+				}]
 			}]
-		}]
-	}));
+		}];
+	});
 }
 
 /**
@@ -161,5 +169,8 @@ export function formatLints(results: LintResultsByRule, format: LinterOutputForm
 			return lintsToGithub(results);
 		case LinterOutputFormat.Text:
 			return undefined;
+		default:
+			/* a format nobody taught this about would otherwise read as Text, i.e. as no output at all */
+			assertUnreachable(format);
 	}
 }

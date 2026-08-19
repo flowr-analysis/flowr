@@ -1,13 +1,32 @@
-import { describe } from 'vitest';
+import { assert, describe, test } from 'vitest';
 import { assertLinter, controlledSigDb } from '../_helper/linter';
 import { withTreeSitter } from '../_helper/shell';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
+import { LibraryFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/library-functions';
 
 /** every package here resolves to version `1.0.0` */
 const sigDb = controlledSigDb({
 	ggplot2: ['ggplot', 'aes', 'geom_point'],
 	random1: ['test1', 'test3'],
 	p:       ['f']
+});
+
+describe('unused import: the loaders it knows', () => {
+	test('every library loader says whether it attaches, so none is judged on a guess', () => {
+		for(const loader of LibraryFunctions) {
+			assert.isBoolean(loader.attaches, `\`${loader.name}\` does not say whether it attaches the package`);
+		}
+	});
+
+	test('the ones that only ready a namespace are not counted as attaching', () => {
+		const attaching = new Set(LibraryFunctions.filter(l => l.attaches).map(l => l.name));
+		for(const name of ['requireNamespace', 'loadNamespace', 'on_package_load', 'attach', 'load_code']) {
+			assert.isFalse(attaching.has(name), `\`${name}\` does not put a package on the search path`);
+		}
+		for(const name of ['library', 'require', 'p_load', 'shelf']) {
+			assert.isTrue(attaching.has(name), `\`${name}\` does put a package on the search path`);
+		}
+	});
 });
 
 describe('flowR linter', withTreeSitter(parser => {

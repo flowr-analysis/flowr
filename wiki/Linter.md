@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-19, 16:43:27 UTC (v2.14.1, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-19, 17:55:50 UTC (v2.14.1, R v4.6.1), please do not edit directly._
 
 This page describes the flowR linter, which is a tool that utilizes flowR's dataflow analysis to find common issues in R scripts. The linter can currently be used through the linter [query](https://github.com/flowr-analysis/flowr/wiki/Query-API).
 Some rules also draw on the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database).
@@ -17,7 +17,7 @@ R> :query @linter "read.csv(\"/root/x.txt\")"
 
 
 ```text
-Query: linter (7 ms)
+Query: linter (9 ms)
    ╰ Deprecated Functions (deprecated-functions): no findings
    ╰ File Path Validity (file-path-validity): no findings
    ╰ Seeded Randomness (seeded-randomness): no findings
@@ -34,7 +34,7 @@ Query: linter (7 ms)
    ╰ Undefined Symbol (undefined-symbol): no findings
    ╰ Unused Import (unused-import): no findings
    ╰ Unclosed Connection (unclosed-connection): no findings
-All queries together required ≈7 ms (1ms accuracy, total 10 ms)
+All queries together required ≈9 ms (1ms accuracy, total 11 ms)
 ```
 
 
@@ -56,17 +56,17 @@ Formatted more nicely, this returns:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (219 ms)\
+Query: **linter** (443 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 3, processTimeMs: 1\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 5, processTimeMs: 2\
 &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 1, processTimeMs: 1\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 2, processTimeMs: 0\
 &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation): _no findings_\
@@ -79,11 +79,11 @@ Query: **linter** (219 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Unused Import** (unused-import): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
-_All queries together required ≈219 ms (1ms accuracy, total 221 ms)_
+_All queries together required ≈443 ms (1ms accuracy, total 446 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _220.8 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _446.4 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -100,8 +100,8 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ".meta": {
           "totalCalls": 0,
           "totalFunctionDefinitions": 0,
-          "searchTimeMs": 45,
-          "processTimeMs": 134
+          "searchTimeMs": 106,
+          "processTimeMs": 282
         }
       },
       "file-path-validity": {
@@ -123,8 +123,8 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "totalUnknown": 0,
           "totalWritesBeforeAlways": 0,
           "totalValid": 0,
-          "searchTimeMs": 3,
-          "processTimeMs": 1
+          "searchTimeMs": 5,
+          "processTimeMs": 2
         }
       },
       "seeded-randomness": {
@@ -135,7 +135,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "callsWithAssignmentProducers": 0,
           "callsWithNonConstantProducers": 0,
           "callsWithOtherBranchProducers": 0,
-          "searchTimeMs": 1,
+          "searchTimeMs": 2,
           "processTimeMs": 0
         }
       },
@@ -155,8 +155,8 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ".meta": {
           "totalConsidered": 1,
           "totalUnknown": 0,
-          "searchTimeMs": 1,
-          "processTimeMs": 1
+          "searchTimeMs": 2,
+          "processTimeMs": 0
         }
       },
       "unused-definitions": {
@@ -164,7 +164,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ".meta": {
           "totalConsidered": 0,
           "searchTimeMs": 0,
-          "processTimeMs": 0
+          "processTimeMs": 1
         }
       },
       "network-functions": {
@@ -173,7 +173,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "totalCalls": 0,
           "totalFunctionDefinitions": 0,
           "searchTimeMs": 1,
-          "processTimeMs": 1
+          "processTimeMs": 0
         }
       },
       "dataframe-access-validation": {
@@ -183,13 +183,13 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "numAccesses": 0,
           "totalAccessed": 0,
           "searchTimeMs": 0,
-          "processTimeMs": 2
+          "processTimeMs": 4
         }
       },
       "dead-code": {
         "results": [],
         ".meta": {
-          "searchTimeMs": 0,
+          "searchTimeMs": 1,
           "processTimeMs": 0
         }
       },
@@ -244,7 +244,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             "subscript": 0
           },
           "searchTimeMs": 0,
-          "processTimeMs": 25
+          "processTimeMs": 33
         }
       },
       "unused-import": {
@@ -254,8 +254,8 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "totalUnresolved": 0,
           "totalMultiPackage": 0,
           "totalUnused": 0,
-          "searchTimeMs": 0,
-          "processTimeMs": 0
+          "searchTimeMs": 1,
+          "processTimeMs": 1
         }
       },
       "unclosed-connection": {
@@ -264,16 +264,16 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "totalOpened": 0,
           "totalClosed": 0,
           "searchTimeMs": 0,
-          "processTimeMs": 0
+          "processTimeMs": 1
         }
       }
     },
     ".meta": {
-      "timing": 219
+      "timing": 443
     }
   },
   ".meta": {
-    "timing": 219
+    "timing": 443
   }
 }
 ```
@@ -304,7 +304,7 @@ The following linting rules are available:
 
 
 
-**[Absolute Paths](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Absolute%20File%20Paths):** Checks whether file paths are absolute. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/absolute-path.ts#L135">src/linter/rules/absolute-path.ts</a>]\
+**[Absolute Paths](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Absolute%20File%20Paths):** Checks whether file paths are absolute. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/absolute-path.ts#L137">src/linter/rules/absolute-path.ts</a>]\
 	<span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
 
 **[Dataframe Access Validation](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Dataframe%20Access%20Validation):** Validates the existence of accessed columns and rows of dataframes. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/dataframe-access-validation.ts#L56">src/linter/rules/dataframe-access-validation.ts</a>]\
@@ -355,10 +355,10 @@ The following linting rules are available:
 **[Undefined Symbol](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Undefined%20Symbol):** Flags functions and variables that are neither defined locally, a base R builtin, nor exported by a loaded package. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L102">src/linter/rules/undefined-symbol.ts</a>]\
 	<span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This marks rules which are currently considered experimental, _not_ that they detect experimental code."><a href='#experimental'>![experimental](https://img.shields.io/badge/experimental-teal) </a></span>
 
-**[Unused Definitions](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Unused%20Definitions):** Checks for unused definitions. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-definition.ts#L269">src/linter/rules/unused-definition.ts</a>]\
+**[Unused Definitions](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Unused%20Definitions):** Checks for unused definitions. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-definition.ts#L273">src/linter/rules/unused-definition.ts</a>]\
 	<span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the readability of the code. For example, complex expressions, long lines, or inconsistent formatting."><a href='#readability'>![readability](https://img.shields.io/badge/readability-teal) </a></span>
 
-**[Unused Import](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Unused%20Import):** Highlights packages that are attached but never used, so the code runs just the same without them. Requires a signature database, and packages that only do their work on load should be whitelisted in the configuration. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-import.ts#L137">src/linter/rules/unused-import.ts</a>]\
+**[Unused Import](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Unused%20Import):** Highlights packages that are attached but never used, so the code runs just the same without them. Requires a signature database, and packages that only do their work on load should be whitelisted in the configuration. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-import.ts#L140">src/linter/rules/unused-import.ts</a>]\
 	<span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the readability of the code. For example, complex expressions, long lines, or inconsistent formatting."><a href='#readability'>![readability](https://img.shields.io/badge/readability-teal) </a></span>
 
 **[Useless Loops](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Useless%20Loop):** Detect loops which only iterate once [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/useless-loop.ts#L23">src/linter/rules/useless-loop.ts</a>]\
@@ -368,12 +368,12 @@ The following linting rules are available:
 
 Rules tagged <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> attach a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-format.ts#L98"><code>LintQuickFix</code></a> to their results,
 describing the edit that resolves the finding. flowR does not only report them, it carries them out:
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-fix.ts#L35"><code><span title="Every quick fix a lint run offers, grouped by the file it changes. Fixes flowR cannot locate are left out.">byFile</span></code></a> collects the fixes of a lint run per file and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-fix.ts#L63"><code><span title="The content of one file with the given fixes carried out. Of two overlapping fixes only the one coming first in the file is kept, since the second would be applied to a range that no longer says what it did. What survives is then carried out back to front, so the offsets of the fixes still to come stay valid.">apply</span></code></a>
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-fix.ts#L55"><code><span title="Every quick fix a lint run offers, grouped by the file it changes. Fixes flowR cannot place are left out.">byFile</span></code></a> collects the fixes of a lint run per file and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-fix.ts#L87"><code><span title="The content of one file with the given fixes carried out, as LintQuickFixes.byFile groups them. Of two overlapping fixes only the one coming first in the file is kept, since the second would be applied to a range that no longer says what it did. What survives is then carried out back to front, so the offsets of the edits still to come stay valid. Fixes naming a file must all name the same one, as ...">apply</span></code></a>
 returns that file's content with them applied. Of two overlapping fixes only the one coming first in the file is kept,
 and a removal that leaves nothing but whitespace behind takes its line with it.
 
-In <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-output.ts#L25"><code><span title="[SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html), e.g. to upload to GitHub code scanning">LinterOutputFormat::<b>Sarif</b></span></code></a> output the fixes become SARIF `fixes`, which an editor
-or code scanner can offer directly. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-output.ts#L27"><code><span title="[GitHub workflow commands](https://docs.github.com/actions/reference/workflow-commands-for-github-actions), one annotation per finding">LinterOutputFormat::<b>Github</b></span></code></a> annotations carry no
+In <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-output.ts#L26"><code><span title="[SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html), e.g. to upload to GitHub code scanning">LinterOutputFormat::<b>Sarif</b></span></code></a> output the fixes become SARIF `fixes`, which an editor
+or code scanner can offer directly. <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-output.ts#L28"><code><span title="[GitHub workflow commands](https://docs.github.com/actions/reference/workflow-commands-for-github-actions), one annotation per finding">LinterOutputFormat::<b>Github</b></span></code></a> annotations carry no
 fix of their own, so the descriptions are appended to the message.
 
 <h2 id="tags">Tags</h2>

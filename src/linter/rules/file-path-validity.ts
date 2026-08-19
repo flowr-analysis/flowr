@@ -222,12 +222,14 @@ function pathArgStringNode(idMap: AstIdMap, callId: NodeId, value: string): RStr
 /** rewrite the read path to `found`, an existing file surfaced by the lax retry */
 function buildDidYouMeanFix(idMap: AstIdMap, callId: NodeId, value: string, found: string): LintQuickFixReplacement[] | undefined {
 	const str = pathArgStringNode(idMap, callId, value);
-	if(!str) {
+	const loc = str === undefined ? undefined : SourceLocation.fromNode(str);
+	if(!str || loc === undefined) {
+		/* a fix that names no place cannot be carried out, so none is offered */
 		return undefined;
 	}
 	return [{
 		type:        'replace',
-		loc:         SourceLocation.fromNode(str) ?? SourceLocation.invalid(),
+		loc,
 		description: `Replace with existing path \`${found}\``,
 		replacement: str.content.quotes + found + str.content.quotes
 	}];

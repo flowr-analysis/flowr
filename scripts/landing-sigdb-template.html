@@ -67,19 +67,25 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .mark { flex: none; }
 .bar nav { display: flex; flex-wrap: nowrap; gap: .1rem .2rem; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
 .bar nav::-webkit-scrollbar { display: none; }
-.bar nav a { white-space: nowrap; padding: .3rem .5rem; border-radius: .4rem; color: var(--muted); text-decoration: none; font-size: .82rem; }
+.bar nav a {
+	display: inline-flex; align-items: center; height: 2rem; padding: 0 .5rem; white-space: nowrap;
+	border-radius: .5rem; color: var(--muted); text-decoration: none; font-size: .82rem;
+}
 .bar nav a:hover { background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg); }
 .bar .controls { display: inline-flex; align-items: center; gap: .35rem; flex: none; }
 /* a phone has no room for one row: the links wrap under the name instead of scrolling out of sight */
 @media (max-width: 46rem) {
 	.bar { flex-wrap: wrap; }
-	.bar nav { flex-wrap: wrap; margin-left: 0; order: 3; flex-basis: 100%; overflow-x: visible; }
+	/* the pills hang half a step into the margin so their words, not their backdrops, meet the brand */
+	.bar nav { flex-wrap: wrap; margin-left: -.5rem; order: 3; flex-basis: 100%; overflow-x: visible; gap: .1rem; }
 	.bar .controls { margin-left: auto; }
 }
+/* the four names no longer fit on one line: two by two reads better than three and a stray */
+@media (max-width: 21rem) { .bar nav { display: grid; grid-template-columns: 1fr 1fr; justify-items: start; } }
 /* GitHub asks that its mark stay solid black or white and unmodified, so it does not take the
    page colours; only the backdrop reacts to the pointer */
 .bar .controls .gh, .bar .controls .gh:hover { color: #181717; }
-.bar .controls .gh { display: inline-flex; padding: .3rem .35rem; border-radius: .4rem; }
+.bar .controls .gh { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: .5rem; }
 .bar .controls .gh:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
 :root[data-theme="dark"] .bar .controls .gh, :root[data-theme="dark"] .bar .controls .gh:hover { color: #fff; }
 @media (prefers-color-scheme: dark) {

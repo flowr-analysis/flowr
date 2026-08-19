@@ -23,6 +23,8 @@ const ProcessShim = 'globalThis.process ??= { argv: [], argv0: "browser", env: {
 const Target = path.join('wiki', 'playground');
 /* every node built-in resolves to the same empty module, by absolute path so nested packages find it */
 const empty = path.resolve('scripts', 'playground', 'empty.js');
+/* `path` is the one exception: its arithmetic says nothing about a file system, and flowR needs it */
+const pathShim = path.resolve('scripts', 'playground', 'path-shim.js');
 
 /**
  * Every node built-in becomes an empty module: flowR only reaches for them on paths the browser never
@@ -34,6 +36,9 @@ const stubNodeBuiltins: Plugin = {
 		const known = new Set(builtinModules.flatMap(m => [m, `node:${m}`]));
 		builder.onResolve({ filter: /.*/ }, args => {
 			const bare = args.path.split('/')[0].replace(/^node:/, '');
+			if(bare === 'path') {
+				return { path: pathShim };
+			}
 			return known.has(args.path) || known.has(bare) || known.has(`node:${bare}`)
 				? { path: empty } : undefined;
 		});
@@ -75,12 +80,30 @@ async function baseSignatures(): Promise<string> {
  * stays unknown. Base R plus the packages flowR carries definitions for is what a script typed into the
  * page actually loads, and their export lists are small enough to ride along.
  */
+/** how many of the most-downloaded packages ride along, by their exports alone */
+const TopPackages = 150;
+
+/** the most-downloaded packages, most first, as the list the repository keeps of them */
+function topPackages(): string[] {
+	try {
+		return fs.readFileSync(path.join('scripts', 'top-r-downloads.txt'), 'utf8')
+			.split('\n').map(line => line.split(',')[0].trim()).filter(name => name.length > 0).slice(0, TopPackages);
+	} catch{
+		return [];   /* the list is not what the page needs to work */
+	}
+}
+
 async function packageExports(): Promise<string> {
 	const db = await openDatabase();
 	if(db === undefined) {
 		return '';
 	}
 	const wanted = new Set(db.packageNames().filter(name => db.isBaseR(name)));
+	/* what a script typed into the page actually loads: base R, what flowR carries definitions for, and
+	   the packages people install most, so `library(readr)` brings its exports into scope like the rest */
+	for(const name of topPackages()) {
+		wanted.add(name);
+	}
 	for(const definition of DefaultBuiltinConfig) {
 		for(const id of definition.names) {
 			const namespace = Identifier.getNamespace(id);
@@ -155,7 +178,11 @@ async function main(): Promise<void> {
 	const page = fs.readFileSync(path.join('scripts', 'playground', 'index.html'), 'utf8');
 	const signatures = await baseSignatures();
 	const exports = await packageExports();
+	/* the script the page opens with, kept as an R file so the documentation links to the same one */
+	const sample = fs.readFileSync(path.join('scripts', 'playground', 'sample.R'), 'utf8').trim();
 	fs.writeFileSync(path.join(Target, 'index.html'), page
+		/* the text of a script element ends at `</`, and nothing else in it has to be escaped */
+		.replace('<!--SAMPLE-->', sample.replaceAll('</', '<\\/'))
 		.replace('<!--SIGS-->', signatures)
 		.replace('<!--PKGS-->', exports)
 		.replace('<!--CFGDOCS-->', configDocs())

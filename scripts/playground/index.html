@@ -22,16 +22,16 @@
 <style>
 :root {
 	--bg: #fbfbfc; --panel: #fff; --sunk: #f1f3f6; --fg: #1b1d21; --muted: #5c6270;
-	--border: #d6dae1; --accent: #a63446; --accent-fg: #fff; color-scheme: light;
+	--border: #d6dae1; --accent: #a63446; --accent-fg: #fff; --mark: #e0a300; --markline: #b07d00; color-scheme: light;
 }
 :root[data-theme="dark"] {
 	--bg: #0f1216; --panel: #161a20; --sunk: #1c2129; --fg: #e7e9ed; --muted: #98a1b0;
-	--border: #262c35; --accent: #56b4e9; --accent-fg: #0f1216; color-scheme: dark;
+	--border: #262c35; --accent: #56b4e9; --accent-fg: #0f1216; --mark: #e69f00; --markline: #f0b429; color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme="light"]) {
 		--bg: #0f1216; --panel: #161a20; --sunk: #1c2129; --fg: #e7e9ed; --muted: #98a1b0;
-		--border: #262c35; --accent: #56b4e9; --accent-fg: #0f1216; color-scheme: dark;
+		--border: #262c35; --accent: #56b4e9; --accent-fg: #0f1216; --mark: #e69f00; --markline: #f0b429; color-scheme: dark;
 	}
 }
 * { box-sizing: border-box; }
@@ -57,17 +57,31 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .top .version { margin-left: .55rem; font-size: .82rem; color: var(--muted); text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .top .version:hover { color: var(--fg); }
 .top .note { color: var(--muted); font-size: .8rem; line-height: 1.35; flex: 1 1 22rem; min-width: 14rem; max-width: 54rem; }
+.top .grow { margin-left: auto; }
+.top .links { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .3rem; min-width: 0; }
+.top .controls { display: inline-flex; align-items: center; gap: .3rem; flex: none; }
 /* a narrow window has no room for the aside, and the links matter more */
 @media (max-width: 68rem) { .top .note { display: none; } }
-@media (max-width: 42rem) { .top .version, .top .where { display: none; } }
-.top .grow { margin-left: auto; }
-.top a.link { color: var(--muted); text-decoration: none; font-size: .85rem; padding: .25rem .5rem; border-radius: .4rem; }
-.top a.link { white-space: nowrap; }
+/* a phone fits one row of names: the links move under them rather than breaking the row in two */
+@media (max-width: 46rem) {
+	.top .grow { display: none; }
+	/* the pills hang half a step into the margin so their words, not their backdrops, meet the brand */
+	.top .links { order: 3; flex-basis: 100%; margin-left: -.4rem; gap: .15rem; }
+	.top .links a.link { font-size: .8rem; padding: 0 .4rem; }
+	.top .controls { margin-left: auto; }
+}
+/* the four names no longer fit on one line: two by two reads better than three and a stray */
+@media (max-width: 21rem) { .top .links { display: grid; grid-template-columns: 1fr 1fr; justify-items: start; } }
+@media (max-width: 42rem) { .top .version { display: none; } }
+.top a.link {
+	display: inline-flex; align-items: center; height: 1.9rem; padding: 0 .5rem; white-space: nowrap;
+	color: var(--muted); text-decoration: none; font-size: .85rem; border-radius: .45rem;
+}
 .top a.link:hover { color: var(--fg); background: color-mix(in srgb, var(--fg) 7%, transparent); }
 /* GitHub asks that its mark stay solid black or white and unmodified, so it does not take the
    page colours; only the backdrop reacts to the pointer */
 .top a.gh, .top a.gh:hover { color: #181717; }
-.top a.gh { display: inline-flex; align-items: center; padding: .25rem .4rem; margin-right: -.45rem; }
+.top a.gh { justify-content: center; width: 1.9rem; padding: 0; }
 :root[data-theme="dark"] .top a.gh, :root[data-theme="dark"] .top a.gh:hover { color: #fff; }
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme="light"]) .top a.gh, :root:not([data-theme="light"]) .top a.gh:hover { color: #fff; }
@@ -99,8 +113,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .tools .sharenote { color: var(--muted); font-size: .78rem; }
 /* the graphs flowR builds are handed to mermaid.live rather than drawn in here */
 #views {
-	flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .4rem;
-	padding: .6rem 1rem; border-top: 1px solid var(--border); background: var(--panel);
+	flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;
+	padding: .5rem 1rem; border-top: 1px solid var(--border); background: var(--panel);
 }
 #views .label { color: var(--muted); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; width: 100%; }
 #views button {
@@ -111,24 +125,24 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .tools .preview { font-size: .8rem; font-weight: 700; color: var(--fg); }
 .top .version { color: var(--muted); font-size: .78rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
-.split { flex: 1; display: grid; grid-template-columns: var(--split, 1.15fr) .35rem minmax(14rem, 1fr); min-height: 0; }
+.split { flex: 1; display: grid; grid-template-columns: minmax(0, var(--split, 1.15fr)) .35rem minmax(14rem, 1fr); min-height: 0; }
 /* the bar between the panes, dragged to give one of them more room */
 .divider { cursor: ew-resize; background: var(--border); }
 .divider:hover { background: var(--accent); }
-.pane { min-height: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
+.pane { min-height: 0; min-width: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
 /* the code and the configuration flowR reads it with, one at a time */
-.tabs { display: flex; align-items: center; gap: .2rem; flex: none; padding: .3rem .6rem 0; border-bottom: 1px solid var(--border); }
+.tabs { display: flex; align-items: center; gap: .2rem; flex: none; padding: .3rem 1rem 0; border-bottom: 1px solid var(--border); }
 .tabs .tab {
 	font: inherit; font-size: .8rem; padding: .3rem .7rem; cursor: pointer; color: var(--muted);
 	border: 1px solid transparent; border-bottom: 0; border-radius: .4rem .4rem 0 0; background: none;
 }
 .tabs .tab:hover { color: var(--fg); }
 .tabs .tab[aria-selected="true"] { color: var(--fg); background: var(--panel); border-color: var(--border); margin-bottom: -1px; }
-.tabnote { margin-left: auto; font-size: .76rem; color: var(--muted); padding-right: .2rem; }
+.tabnote { margin-left: auto; font-size: .76rem; color: var(--muted); }
 .tabnote.bad { color: #d55e00; }
-.tabhelp { font-size: .76rem; padding-right: .2rem; }
+.tabhelp { font-size: .76rem; }
 .tabreset {
-	font: inherit; font-size: .74rem; cursor: pointer; padding: .05rem .55rem; margin-right: .4rem;
+	font: inherit; font-size: .74rem; cursor: pointer; padding: .05rem .55rem;
 	border-radius: 1rem; border: 1px solid var(--border); background: var(--panel); color: var(--muted);
 }
 .tabreset:hover { color: var(--accent); border-color: var(--accent); }
@@ -176,6 +190,30 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .cm-outside { opacity: .4; }
 /* the lines the panel row under the pointer stands for */
 .cm-linked { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+/* what a link points at, kept apart from every other mark because it is the reason the link was sent */
+.cm-shown {
+	/* the word and no more, on every side: what stands next to it, and what stands under it on the next
+	   line, belongs to the code rather than to the mark */
+	border-radius: .22rem; padding: .01em 0; margin: 0;
+	background: color-mix(in srgb, var(--mark) 20%, transparent);
+	box-shadow: 0 0 0 1px color-mix(in srgb, var(--markline) 50%, transparent),
+		0 .1em .28rem color-mix(in srgb, var(--mark) 25%, transparent);
+}
+.cm-shown-line {
+	border-radius: .25rem; background: color-mix(in srgb, var(--mark) 14%, transparent);
+	box-shadow: inset 0 0 0 1px var(--markline), 0 0 .35rem color-mix(in srgb, var(--mark) 30%, transparent);
+}
+/* a highlight is there to be noticed and then to get out of the way, so it fades once it has been seen */
+.cm-shown, .cm-shown-line, .shown { transition: background-color 1.4s ease, box-shadow 1.4s ease; }
+.cm-editor.faded .cm-shown, .cm-editor.faded .cm-shown-line,
+#panel.faded .shown, #panel.faded .card.shown, #panel.faded .deps.shown, #panel.faded .lints.shown,
+/* once it has faded it stays faded: the pointer resting on the row is not a reason to paint it again */
+#panel.faded .linked.hot.shown {
+	background: none; box-shadow: none;
+}
+#panel.faded .linked.hot, #panel.faded .linked.hot.shown {
+	background: color-mix(in srgb, var(--accent) 10%, transparent); box-shadow: none;
+}
 /* the completion list, in the page's own colours rather than CodeMirror's */
 .cm-tooltip-autocomplete > ul > li { padding: .1rem .5rem; }
 .cm-tooltip-autocomplete > ul > li[aria-selected] { background: var(--accent); color: var(--accent-fg); }
@@ -189,9 +227,26 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .cm-valuetip { padding: .35rem .55rem; color: var(--fg); font-size: .8rem; max-width: 34rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .cm-valuetip .tcall { font-weight: 600; }
 .cm-valuetip .tabout, .cm-valuetip .tsaid { color: var(--muted); font-size: .76rem; margin-top: .15rem; }
+.cm-valuetip .tlint, #pointed .plint {
+	display: flex; align-items: baseline; gap: .35rem; min-width: 0;
+	color: var(--muted); font-size: .76rem; margin-top: .25rem;
+}
+#pointed .plint { margin-top: 0; font-size: .8rem; overflow: hidden; }
+.cm-valuetip .tlint .rule, #pointed .plint .rule {
+	--hue: var(--muted); flex: none; padding: 0 .4rem; border-radius: 1rem; font-size: .68rem; font-weight: 600;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	color: color-mix(in srgb, var(--hue) 78%, var(--muted));
+	border: 1px solid color-mix(in srgb, var(--hue) 22%, var(--border));
+	background: color-mix(in srgb, var(--hue) 6%, transparent);
+}
+.cm-valuetip .tlint .rule[data-category="security"], #pointed .plint .rule[data-category="security"] { --hue: #cc0000; }
+.cm-valuetip .tlint .rule[data-category="bug"], #pointed .plint .rule[data-category="bug"] { --hue: #b45309; }
+.cm-valuetip .tlint .rule[data-category="reproducibility"], #pointed .plint .rule[data-category="reproducibility"] { --hue: #7b3294; }
+.cm-valuetip .tlint .rule[data-category="robustness"], #pointed .plint .rule[data-category="robustness"] { --hue: #0072b2; }
+.cm-valuetip .tlint .rule[data-category="deprecated"], #pointed .plint .rule[data-category="deprecated"] { --hue: #8a6a1f; }
 .cm-editor { height: 100%; }
 .cm-editor.cm-focused { outline: none; }
-.right { min-height: 0; display: flex; flex-direction: column; background: var(--sunk); }
+.right { min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--sunk); }
 #pointed {
 	display: flex; align-items: baseline; gap: .6rem; flex: none;
 	padding: .5rem 1rem; border-top: 1px solid var(--border); background: var(--panel); min-height: 2.2rem;
@@ -202,7 +257,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .pname { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; font-size: .85rem; color: var(--fg); text-decoration: none; }
 .pname:hover { color: var(--accent); text-decoration: underline; }
 .pvalue { color: var(--muted); font-size: .82rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-#panel { min-height: 0; flex: 1; overflow: auto; padding: 1rem; container: panel / inline-size; }
+#panel { min-height: 0; flex: 1; overflow: auto; padding: 1rem 1.2rem; container: panel / inline-size; }
 /* what the signature database says about the name under the pointer, under everything else */
 #signature { flex: none; padding: .7rem 1rem .9rem; border-top: 1px solid var(--border); background: var(--panel); }
 #signature h3 { margin-top: 0; }
@@ -217,8 +272,19 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	border: 1px solid var(--border); background: var(--sunk);
 }
 .sabout .at { color: var(--muted); font-size: .76rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+#panel h3[data-fold] { cursor: pointer; }
+#panel h3[data-fold]::before {
+	content: "\25BE"; color: var(--muted); font-weight: 400; font-size: .9em;
+	display: inline-block; transition: transform .12s;
+}
+/* a folded heading says what it stands for and nothing more */
+#panel h3[data-fold].folded .aside { display: none; }
+#panel h3[data-fold]:focus-visible { outline: 2px solid var(--accent); outline-offset: .15rem; border-radius: .2rem; }
+#panel h3[data-fold].folded::before { transform: rotate(-90deg); }
+#panel h3[data-fold]:hover { color: var(--accent); }
+#panel .sbody[hidden] { display: none; }
 #panel h3 {
-	display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .6rem;
+	display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .45rem;
 	margin: 1.2rem 0 .4rem; font-size: .72rem; font-weight: 700; letter-spacing: .08em;
 	text-transform: uppercase; color: var(--muted);
 }
@@ -243,8 +309,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #panel .toggle { display: inline-flex; align-items: center; gap: .3rem; white-space: nowrap; text-transform: none; letter-spacing: 0; font-weight: 400; cursor: pointer; }
 #panel .toggle input { accent-color: var(--accent); margin: 0; }
 #panel h3:first-child { margin-top: 0; }
-#panel .card { padding: .6rem .8rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--panel); }
-#panel .card.folded pre { max-height: 11rem; overflow: hidden; mask-image: linear-gradient(to bottom, #000 70%, transparent); }
+#panel .card { padding: .6rem .8rem; border: 1px solid var(--border); border-radius: .5rem; background: color-mix(in srgb, var(--panel) 62%, var(--sunk)); }
+#panel .card.folded pre { max-height: calc(var(--fold-lines, 3) * 1.3rem); overflow: hidden; mask-image: linear-gradient(to bottom, #000 70%, transparent); }
 #panel .unfold {
 	margin-top: .4rem; font: inherit; font-size: .78rem; cursor: pointer; padding: .15rem .6rem;
 	border-radius: 1rem; border: 1px solid var(--border); background: var(--sunk); color: var(--muted);
@@ -257,8 +323,13 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 #panel .copy:hover { color: var(--accent); border-color: var(--accent); }
 #panel pre { margin: 0; overflow-x: auto; font-size: .82rem; }
 /* one grid for all dependency rows, so the chip, the name and the line number line up across them */
+/* one grid for all dependency rows, so the chip, the name and the line number line up across them */
 #panel .deps { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: .6rem; }
-#panel .row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline; padding: .2rem 0; font-size: .86rem; }
+#panel .row {
+	display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline;
+	padding: .28rem .45rem; margin: 0 -.45rem; font-size: .86rem;
+}
+#panel .row.part { padding-left: 1.65rem; }
 #panel .kind {
 	justify-self: start; white-space: nowrap; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; padding: 0 .45rem; border-radius: 1rem; font-size: .68rem; font-weight: 600;
 	color: var(--muted); border: 1px solid var(--border); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -273,14 +344,62 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 /* a row that stands for a place in the code lights that place up while the pointer is on it */
 #panel .linked { cursor: pointer; border-radius: .3rem; }
 #panel .linked.hot { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+/* what a link points at, marked the way the code it stands for is; the pointer does not take it back.
+   Nothing here may change the box: a marked row that moves is a row one cannot click twice. */
+.shown, #panel .linked.hot.shown {
+	border-radius: .35rem;
+	background: color-mix(in srgb, var(--mark) 15%, transparent);
+	/* the border is drawn inside the box, because a marked row that changes size is a row that jumps */
+	box-shadow: inset 1px 0 0 var(--markline), inset -1px 0 0 var(--markline),
+		inset 0 1px 0 var(--markline), inset 0 -1px 0 var(--markline),
+		0 0 .45rem color-mix(in srgb, var(--mark) 25%, transparent);
+}
+/* one run of marked rows is one block: the corners and the border belong to its ends, not to every row */
+.shown + .shown {
+	border-top-left-radius: 0; border-top-right-radius: 0;
+	box-shadow: inset 1px 0 0 var(--markline), inset -1px 0 0 var(--markline),
+		inset 0 -1px 0 var(--markline),
+		.45rem 0 .45rem -.45rem color-mix(in srgb, var(--mark) 25%, transparent),
+		-.45rem 0 .45rem -.45rem color-mix(in srgb, var(--mark) 25%, transparent);
+}
+.shown:has(+ .shown) {
+	border-bottom-left-radius: 0; border-bottom-right-radius: 0;
+	box-shadow: inset 1px 0 0 var(--markline), inset -1px 0 0 var(--markline),
+		inset 0 1px 0 var(--markline),
+		.45rem 0 .45rem -.45rem color-mix(in srgb, var(--mark) 25%, transparent),
+		-.45rem 0 .45rem -.45rem color-mix(in srgb, var(--mark) 25%, transparent);
+}
+/* the middle of a run has neither end, so it carries the two sides and nothing else */
+.shown + .shown:has(+ .shown) {
+	box-shadow: inset 1px 0 0 var(--markline), inset -1px 0 0 var(--markline),
+		.45rem 0 .45rem -.45rem color-mix(in srgb, var(--mark) 25%, transparent),
+		-.45rem 0 .45rem -.45rem color-mix(in srgb, var(--mark) 25%, transparent);
+}
+/* a box holds what it is made of, so marking one draws its edge and leaves the filling to its rows:
+   one mark inside another, both filled, is two answers to the same question */
+#panel .card.shown, #panel .deps.shown, #panel .lints.shown, .shown:has(.shown) {
+	background: none;
+	box-shadow: 0 0 0 1px var(--markline), 0 0 .6rem color-mix(in srgb, var(--mark) 22%, transparent);
+}
+#panel .deps.shown, #panel .lints.shown { border-radius: .45rem; padding: .35rem .5rem; margin: 0 -.5rem; }
+.drawer > summary.shown { border-radius: 0; box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--mark) 45%, transparent); }
+/* what the link points at says so once as the page opens, and then stops asking for attention */
+@keyframes markpulse {
+	0%, 100% { background-color: color-mix(in srgb, var(--mark) 15%, transparent); }
+	50%      { background-color: color-mix(in srgb, var(--mark) 42%, transparent); }
+}
+.shown.fresh, .cm-shown.fresh { animation: markpulse 1.1s ease-in-out 2; }
+@media (prefers-reduced-motion: reduce) { .shown.fresh, .cm-shown.fresh { animation: none; } }
+#clearmarks { border-color: color-mix(in srgb, var(--mark) 55%, var(--border)); color: color-mix(in srgb, var(--mark) 70%, var(--fg)); }
+#clearmarks:hover { border-color: var(--mark); color: var(--mark); }
 /* what a plot is drawn onto belongs to that plot, so it sits under it */
-#panel .row.part { padding-left: 1.2rem; }
+
 #panel .kind.part { color: var(--muted); border-style: dashed; opacity: .8; }
 /* the dependencies and the findings share one column layout, so their line numbers line up down the panel */
-#panel .lints { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: .6rem; row-gap: .2rem; }
+#panel .lints { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: .6rem; }
 #panel .lints .lint {
 	display: grid; grid-column: 1 / -1; grid-template-columns: subgrid;
-	align-items: baseline; padding: .15rem 0;
+	align-items: baseline; padding: .28rem .45rem; margin: 0 -.45rem;
 }
 
 #panel .says { font-size: .84rem; }
@@ -289,15 +408,19 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	padding: 0 .45rem; border-radius: 1rem; font-size: .72rem; font-weight: 600; white-space: nowrap;
 	justify-self: start; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis;
 	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-	color: var(--hue); border: 1px solid color-mix(in srgb, var(--hue) 40%, transparent);
-	background: color-mix(in srgb, var(--hue) 12%, transparent);
+	color: color-mix(in srgb, var(--hue) 78%, var(--muted));
+	border: 1px solid color-mix(in srgb, var(--hue) 22%, var(--border));
+	background: color-mix(in srgb, var(--hue) 6%, transparent);
 }
-#panel .rule[data-category="bug"] { --hue: #d55e00; }
 #panel .rule[data-category="security"] { --hue: #cc0000; }
+#panel .rule[data-category="bug"] { --hue: #b45309; }
 #panel .rule[data-category="reproducibility"] { --hue: #7b3294; }
 #panel .rule[data-category="robustness"] { --hue: #0072b2; }
-#panel .rule[data-category="deprecated"] { --hue: #b07d00; }
-#panel .rule[data-category="style"], #panel .rule[data-category="smell"] { --hue: #0f766e; }
+#panel .rule[data-category="deprecated"] { --hue: #8a6a1f; }
+#panel .rule[data-category="performance"] { --hue: #0072b2; }
+#panel .rule[data-category="style"], #panel .rule[data-category="smell"],
+#panel .rule[data-category="readability"], #panel .rule[data-category="usability"],
+#panel .rule[data-category="documentation"] { --hue: #0f766e; }
 #panel .rule[data-category="other"] { --hue: var(--muted); }
 
 /* a narrow panel has no room for the chip, the text and the line number side by side, so the text
@@ -313,9 +436,17 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	#panel .way, #panel h3 .suggest { padding: .1rem .4rem; }
 }
 
+@media (max-width: 46rem) {
+	/* no pointer here, so the hint describes nothing one can do, and the code needs the room */
+	.tools .hint { display: none; }
+	.tools { gap: .3rem .5rem; }
+	.tools button { display: inline-flex; align-items: center; height: 1.7rem; padding: 0 .6rem; font-size: .78rem; }
+	.tools .preview { font-size: .76rem; }
+}
+
 @media (max-width: 52rem) {
 	body { height: auto; }
-	.split { grid-template-columns: 1fr; }
+	.split { grid-template-columns: minmax(0, 1fr); }
 	.divider { display: none; }
 	.pane { border-right: 0; border-bottom: 1px solid var(--border); }
 	#editor, #config { min-height: 18rem; }
@@ -333,23 +464,27 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	<span class="grow"></span>
 	<span class="note">Fully local, selected features, use the
 		<a href="https://github.com/flowr-analysis/flowr/wiki/Interface" target="_blank" rel="noopener">editor extensions</a> for more.</span>
-	<a class="link" href="../../" target="_blank" rel="noopener">Landing Page</a>
-	<a class="link" href="../sigdb/" target="_blank" rel="noopener">Signature DB</a>
-	<a class="link" href="../stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
-	<a class="link" href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
-	<a class="link gh" href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener" title="flowR on GitHub" aria-label="flowR on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg></a>
-	<button id="theme" type="button" aria-label="Switch between the light and the dark theme" title="Light or dark">
-		<svg class="moon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>
-		<svg class="sun" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="12" r="4.6" fill="currentColor"/><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></g></svg>
-	</button>
+	<nav class="links">
+		<a class="link" href="../../" target="_blank" rel="noopener">Landing Page</a>
+		<a class="link" href="../sigdb/" target="_blank" rel="noopener">Signature DB</a>
+		<a class="link" href="../stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
+		<a class="link" href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
+	</nav>
+	<span class="controls">
+		<a class="link gh" href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener" title="flowR on GitHub" aria-label="flowR on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg></a>
+		<button id="theme" type="button" aria-label="Switch between the light and the dark theme" title="Light or dark">
+			<svg class="moon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>
+			<svg class="sun" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><circle cx="12" cy="12" r="4.6" fill="currentColor"/><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></g></svg>
+		</button>
+	</span>
 </div>
 
 <div class="tools">
 	<button type="button" data-sample="survey">Reset the example</button>
 	<button type="button" id="share" title="The address bar already holds this script; this copies it">Copy link</button>
+	<button type="button" id="clearmarks" hidden title="alt-click highlights what a link points at; this clears every highlight">Clear highlights</button>
 	<span class="sharenote" id="sharenote"></span>
 	<span class="preview">This is a feature preview</span>
-	<span class="hint">hover a name for its value, ctrl-click it to jump to its definition, click a dependency to slice for it</span>
 </div>
 
 <div class="split">
@@ -364,7 +499,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 		<div id="editor"></div>
 		<div id="config" hidden></div>
 		<details class="drawer" id="repl">
-	<summary><span class="label">flowR repl</span><span class="what" title="every command the repl carries, over the script above; :help lists them">every command the repl carries, over the script above; <code>:help</code> lists them</span></summary>
+	<summary data-mark="repl"><span class="label">flowR repl</span><span class="what" title="every command the repl carries, over the script above; :help lists them">every command the repl carries, over the script above; <code>:help</code> lists them</span></summary>
 	<div class="body">
 		<div class="grip" id="replgrip" role="separator" aria-label="Drag to resize the repl" title="drag to resize"></div>
 		<pre class="out" id="replout"></pre>
@@ -388,6 +523,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	</div>
 </div>
 
+<script type="text/plain" id="sample"><!--SAMPLE--></script>
 <script type="text/plain" id="sigs"><!--SIGS--></script>
 <script type="application/json" id="pkgs"><!--PKGS--></script>
 <script type="application/json" id="cfgdocs"><!--CFGDOCS--></script>

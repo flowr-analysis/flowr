@@ -174,6 +174,14 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
  * If you are interested in inspecting these files, refer to {@link ReadOnlyFlowrAnalyzerFilesContext}.
  * Plugins, however, can use this context directly to modify files.
  */
+/**
+ * Whether the file system says the path is there. Where there is none, as in a browser, the stub standing
+ * in for `fs` answers every question with itself, so only a real `true` counts as an answer.
+ */
+function onDisk(path: string): boolean {
+	return fs.existsSync(path) === true;
+}
+
 export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RProjectAnalysisRequest, (RParseRequest | FlowrFile<string>)[], FlowrAnalyzerProjectDiscoveryPlugin> implements ReadOnlyFlowrAnalyzerFilesContext, InvalidationEventReceiver {
 	public readonly name = 'flowr-analyzer-files-context';
 
@@ -367,7 +375,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			return;
 		}
 		this.implicitSourceDirs.add(dir);
-		if(!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
+		if(!onDisk(dir) || !fs.statSync(dir).isDirectory()) {
 			return;
 		}
 		const matchers = implicit.map(entry => globMatcher(entry));
@@ -430,7 +438,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	}
 
 	public hasFile(path: string): boolean {
-		return this.hasCached(path) || (this.ctx.config.project.resolveUnknownPathsOnDisk && fs.existsSync(path));
+		return this.hasCached(path) || (this.ctx.config.project.resolveUnknownPathsOnDisk && onDisk(path));
 	}
 
 	public exists(p: string, ignoreCase: boolean): string | undefined {
@@ -457,12 +465,12 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			}
 			if(this.ctx.config.project.resolveUnknownPathsOnDisk) {
 				let files: string[] | undefined;
-				if(fs.existsSync(dir)) {
+				if(onDisk(dir)) {
 					files = fs.readdirSync(dir);
 				} else {
 					// try to find a dir in parent
 					const parentDir = path.dirname(dir);
-					if(fs.existsSync(parentDir)) {
+					if(onDisk(parentDir)) {
 						const parentFiles = fs.readdirSync(parentDir);
 						const foundDir = parentFiles.find(f => f.toLowerCase() === path.basename(dir).toLowerCase());
 						if(foundDir) {
@@ -508,7 +516,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		}
 		if(this.ctx.config.project.resolveUnknownPathsOnDisk) {
 			fileLog.debug(`File ${path} not found in context, trying to load from disk.`);
-			if(fs.existsSync(path)) {
+			if(onDisk(path)) {
 				return this.addFile(new FlowrTextFile(path));
 			}
 		}

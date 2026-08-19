@@ -1173,6 +1173,7 @@ Besides marking potential exits, the exit points also provide information about 
 
 Finally, the **kill** property (${ctx.link('KillReference', undefined, { type: 'type' })}) tracks references that are removed from scope within the current subtree (e.g., via \`rm(x)\`).
 It is \`undefined\` unless such a removal occurred and, like the outgoing references, bubbles up so that the enclosing scope can apply the removal (see ${ctx.link(applyKills)}) at the right location.
+A definition that such a removal undid is dropped from the outgoing references, so \`x <- 1; rm(x)\` has an empty **out** set (a conditional removal keeps the now maybe-defined \`x\`).
 
 ### Unknown Side Effects
 

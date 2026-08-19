@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import type { ControlDependency, DataflowInformation, ExitPoint } from '../../../../../info';
+import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
 import { ExitPointType, happensInEveryBranch } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -21,6 +21,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import { Identifier, type IdentifierReference } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { applyKills } from '../../../../../environments/apply-kill';
 
 /**
  * Process a built-in try-catch or similar handler.
@@ -105,14 +106,26 @@ export function processTryCatch<OtherInfo>(
 			info.graph.addEdge(rootId, e.nodeId, EdgeType.Returns);
 		}
 	}
-	/* block and finally are evaluated in the enclosing environment, so their definitions have to bubble up */
+	/* block and finally are evaluated in the enclosing environment, so their definitions and removals have to bubble up */
 	const escaping: IdentifierReference[] = [];
+	let escapingKills: KillReference[] | undefined;
 	for(const arg of res.processedArguments) {
 		if(arg && (blockArg.has(arg.entryPoint) || finallyArg.has(arg.entryPoint))) {
 			escaping.push(...arg.out);
+			if(arg.kill?.length) {
+				(escapingKills ??= []).push(...arg.kill);
+			}
 		}
 	}
-	return escaping.length > 0 ? { ...info, out: info.out.concat(escaping) } : info;
+	if(escaping.length === 0 && escapingKills === undefined) {
+		return info;
+	}
+	return {
+		...info,
+		out:         info.out.concat(escaping),
+		environment: applyKills(info.environment, escapingKills),
+		kill:        escapingKills
+	};
 }
 
 function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: DataflowInformation, data: DataflowProcessorInformation<ParentInformation & OtherInfo>): NodeId | undefined {

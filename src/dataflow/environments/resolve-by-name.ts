@@ -214,6 +214,18 @@ export function resolveByNameAnyType(id: Identifier, environment: REnvironmentIn
 }
 
 /**
+ * Whether every definition `name` may refer to is the built-in one (or there is none), i.e., the name is not
+ * shadowed by a user definition. Pass the {@link ReferenceType} the use site wants: `Function` for a call like
+ * `ls()`, `Constant` for a name like `.GlobalEnv`.
+ * @useInstead {@link Resolve.isBuiltIn}
+ */
+export function resolvesToBuiltIn(name: Identifier, environment: REnvironmentInformation, target: ReferenceType.Function | ReferenceType.Constant): boolean {
+	const defs = resolveByName(name, environment, target);
+	const builtIn = target === ReferenceType.Function ? ReferenceType.BuiltInFunction : ReferenceType.BuiltInConstant;
+	return defs === undefined || defs.every(d => isReferenceType(d.type, builtIn));
+}
+
+/**
  * Checks whether the given identifier name resolves to a built-in constant with the given value.
  * @param name               - The name of the identifier to resolve
  * @param environment        - The current environment used for name resolution

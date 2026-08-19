@@ -19,6 +19,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { dataflowLogger } from '../../../../../logger';
 import { Identifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { applyKills } from '../../../../../environments/apply-kill';
 
 /**
  * Process a built-in repeat loop function call like `repeat { ... }`.
@@ -64,6 +65,13 @@ export function processRepeatLoop<OtherInfo>(
 
 	information.exitPoints = filterOutLoopExitPoints(information.exitPoints);
 
-	/* the body is evaluated in the enclosing environment, so its definitions have to bubble up */
-	return { ...information, out: information.out.concat(body.out) };
+	/* the body is evaluated in the enclosing environment, so its definitions and removals have to bubble up */
+	const kill = body.kill?.length ? body.kill : undefined;
+	return {
+		...information,
+		out:         information.out.concat(body.out),
+		/* the body always runs at least once, so a removal within it is certain */
+		environment: applyKills(information.environment, kill),
+		kill
+	};
 }

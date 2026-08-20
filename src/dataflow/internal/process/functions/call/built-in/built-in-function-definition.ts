@@ -1,3 +1,4 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import {
 	type DataflowInformation,
@@ -6,7 +7,6 @@ import {
 } from '../../../../../info';
 import {
 	getAllFunctionCallTargets,
-	linkArgumentsOnCall,
 	linkCircularRedefinitionsWithinALoop,
 	linkInputs,
 	produceNameSharedIdMap
@@ -489,7 +489,7 @@ export function updateNestedFunctionCalls(
 			targetVertex.subflow.in = remainingIn;
 			const linkedParameters = graph.idMap?.get(target);
 			if(RFunctionDefinition.is(linkedParameters)) {
-				linkArgumentsOnCall(args, linkedParameters.parameters, graph);
+				MatchArgs.onCallAndLink(args, linkedParameters.parameters, graph);
 			}
 		}
 		for(const nextMethodId of collectedNextMethods) {

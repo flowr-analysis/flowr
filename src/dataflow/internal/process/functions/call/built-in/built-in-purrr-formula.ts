@@ -1,3 +1,4 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -5,7 +6,7 @@ import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { getAllFunctionCallTargets, linkArgumentsOnCall, pMatch } from '../../../../linker';
+import { getAllFunctionCallTargets } from '../../../../linker';
 import { Dataflow } from '../../../../../graph/df-helper';
 import type { InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { ReferenceType } from '../../../../../environments/identifier';
@@ -73,7 +74,7 @@ function linkOnSymbol<OtherInfo>(rootId: NodeId, filteredArgs: readonly Function
 			// we may find a candidate in the first check
 			if(RFunctionDefinition.is(linked)) {
 				try {
-					return linkArgumentsOnCall(filteredArgs, linked.parameters, graph);
+					return MatchArgs.onCallAndLink(filteredArgs, linked.parameters, graph);
 				} catch(e) {
 					dataflowLogger.warn('Failed to link arguments to parameters for purr formula (symbol target), some bindings may be missing', { error: e });
 				}
@@ -104,7 +105,7 @@ export function processPurrrFormula<OtherInfo>(
 	params[config['.f'].name] = config['.f'].name;
 	params['...'] = '...';
 
-	const argMaps = pMatch(convertFnArguments(args), params);
+	const argMaps = MatchArgs.toSpec(convertFnArguments(args), params);
 
 	const formulaArgId = argMaps.get(config['.f'].name)?.[0];
 	if(!formulaArgId) {
@@ -132,7 +133,7 @@ export function processPurrrFormula<OtherInfo>(
 		const fdef = formulaNode as RFunctionDefinition<ParentInformation & OtherInfo>;
 		information.graph.addEdge(rootId, fdef.info.id, EdgeType.Calls);
 		try {
-			argToParamMap = linkArgumentsOnCall(filteredCallArgs, fdef.parameters, information.graph);
+			argToParamMap = MatchArgs.onCallAndLink(filteredCallArgs, fdef.parameters, information.graph);
 		} catch(e){
 			dataflowLogger.warn('Failed to link arguments to parameters for purr formula, some bindings may be missing', { error: e });
 		}
@@ -150,7 +151,7 @@ export function processPurrrFormula<OtherInfo>(
 						const linked = data.completeAst.idMap.get(t) as RFunctionDefinition<ParentInformation> | undefined;
 						if(linked && RFunctionDefinition.is(linked)) {
 							try {
-								const map = linkArgumentsOnCall(filteredCallArgs, linked.parameters, information.graph);
+								const map = MatchArgs.onCallAndLink(filteredCallArgs, linked.parameters, information.graph);
 								for(const [argId, paramId] of map.entries()) {
 									if(!argToParamMap.has(argId)) {
 										argToParamMap.set(argId, paramId);

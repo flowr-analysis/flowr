@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-08-20, 08:48:18 UTC (v2.14.1, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-08-20, 11:10:00 UTC (v2.14.1, R v4.6.1), please do not edit directly._
 
 # Signature Database
 
@@ -23,7 +23,7 @@ Every function is a <a href="https://github.com/flowr-analysis/flowr/tree/main/s
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/decode.ts#L53"><code>DecodedFunction::<b>file</b></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/decode.ts#L54"><code>DecodedFunction::<b>line</b></code></a> | source location |
 | <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/decode.ts#L56"><code>DecodedFunction::<b>props</b></code></a> | flags like higher-order, recursive, deprecated |
 
-Per version the source also answers declared dependencies (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/decode.ts#L123"><code><span title="a decoded package dependency of one version (type is the compact DepType enum; map to a label via DepTypeNames )">ResolvedDependency</span></code></a>), release dates, the plain export view (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/schema.ts#L14"><code><span title="The resolved identifiers of a singular package version">LibraryExports</span></code></a>), and the versions it carries (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/reader.ts#L171"><code><span title="one version a source can answer for a package, with its release date when known">AvailableVersion</span></code></a>).
+Per version the source also answers declared dependencies (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/decode.ts#L115"><code><span title="a decoded package dependency of one version (type is the compact DepType enum; map to a label via DepTypeNames )">ResolvedDependency</span></code></a>), release dates, the plain export view (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/schema.ts#L14"><code><span title="The resolved identifiers of a singular package version">LibraryExports</span></code></a>), and the versions it carries (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/reader.ts#L171"><code><span title="one version a source can answer for a package, with its release date when known">AvailableVersion</span></code></a>).
 
 Beyond the flags above, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/decode.ts#L56"><code>DecodedFunction::<b>props</b></code></a> also carry <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/schema.ts#L58"><code>FnProp::<b>NoDoc</b></code></a> (a documented package has no help page for this name), <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/schema.ts#L59"><code>FnProp::<b>S3Method</b></code></a> (a registered S3 method, from the package NAMESPACE or base R's method table), and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/schema.ts#L65"><code><span title="An exported function that is also an S3 class this package OWNS: it is a same-named constructor for a class the package registers at least one S3 method for (see LibraryExports.s3Classes , derived from this bit by deriveLibraryExports ).">FnProp::<b>S3Owner</b></span></code></a> (an exported constructor for an S3 class this package OWNS: it also registers at least one S3 method for that class). The owned classes of a version are <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/schema.ts#L25"><code><span title="S3 classes this package version OWNS: it registers at least one S3 method for the class (its NAMESPACE's S3method(generic, class)) AND exports a same-named constructor function. See FnProp.S3Owner .">LibraryExports::<b>s3Classes</b></span></code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/reader.ts#L615"><code>SigDatabase::<b>classOwner</b></code></a> answers, for a class name, which package owns it (backed by a reverse index built once). This lets [version guessing](https://github.com/flowr-analysis/flowr/wiki/Query-API) mark a package used when the analyzed project's own NAMESPACE registers an S3 method for a class it owns, even with no direct call, e.g. tseries's `S3method("as.irts","zoo")` marks `zoo` used.
 
@@ -33,7 +33,36 @@ These are derived on demand by the [signature query](https://github.com/flowr-an
 - the S3 method to generic backlink <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/signature-query/signature-query-format.ts#L69"><code><span title="when the function is an S3 method, the generic it dispatches for (print.rema is print in base, class rema); lazily computed">SignatureFunctionView::<b>s3method</b></span></code></a>, for a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/schema.ts#L59"><code>FnProp::<b>S3Method</b></code></a> function, resolving its generic
 - the transitive call graph <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/reader.ts#L675"><code>SigDatabase::<b>transitiveCallees</b></code></a>, expanding the stored local callees inside one version
 
-Read it back like this:
+## Reading It From an Analyzer
+
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L181"><code>FlowrAnalyzerDependenciesContext::<b>signatures</b></code></a> is the entry point, and it is the one you want.
+
+
+```ts
+function fromTheAnalyzer(analyzer: FlowrAnalyzer) {
+	const db = analyzer.inspectContext().deps.signatures();
+	const lead = Identifier.make('lead', 'dplyr');
+	return {
+		version:    db.versionOf('dplyr'),      // the version this analysis assumes
+		fn:         db.functionOf(lead),        // its entry, decoding only this one function
+		parameters: db.parametersOf(lead),      // its formals, ready for MatchArgs.toNames
+		exports:    db.exportsOf('dplyr')?.exported
+	};
+}
+```
+
+<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts#L28">src/documentation/wiki-signature-database.ts#L28</a></i>
+
+
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/signature-db.ts#L27"><code><span title="The signature database as the analyzed project sees it. A PackageSignatureSource answers for a version you name, and falls back to whatever it holds as newest when you name none. This adds the step above that, taking the version from what flowR resolved for the project, which is where solver.sigdb.versionOverrides, solver.sigdb.versionSelection and solver.sigdb.assumedRVersion have already been ap...">SignatureDb</span></code></a> it hands back is every loaded source as one database, answering for the version
+*the analyzed project* assumes for each package, which is the version `solver.sigdb.versionOverrides`,
+`solver.sigdb.versionSelection` and `solver.sigdb.assumedRVersion` produced. That matters, because a
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/reader.ts#L92"><code><span title="The read interface every package-signature source implements, so a single SigDatabase and a sharded SigDatabaseSet are interchangeable. Queries are synchronous; any decompression/caching happens once during open. Where a query takes an optional version and none is given, it answers for the newest version the database holds for that package. That is not the version flowR assumed for the project, an...">PackageSignatureSource</span></code></a> asked without a version answers for whatever it happens to hold as newest,
+which is not what the analysis assumes. When the assumed version is one the database does not carry, the answer
+falls back to the newest it has and says so in the log rather than quietly answering for another version.
+
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/signature-db.ts#L59"><code><span title="Every loaded source as one, for the questions this interface does not ask.">SignatureDb::<b>sources</b></span></code></a> is the escape hatch to the raw sources for what the interface above does not
+cover, and reaches the same functions directly.
 
 
 ```ts
@@ -53,13 +82,13 @@ Read it back like this:
 }
 ```
 
-<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts#L25">src/documentation/wiki-signature-database.ts#L25</a></i>
+<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts#L39">src/documentation/wiki-signature-database.ts#L39</a></i>
 
 
 To check what a project can resolve against without touching the raw sources, a [context](https://github.com/flowr-analysis/flowr/wiki/Analyzer) exposes
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L143"><code>FlowrAnalyzerDependenciesContext::<b>hasSignatureDatabase</b></code></a> (a cheap presence check) and
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L139"><code>FlowrAnalyzerDependenciesContext::<b>availableSignatureDatabases</b></code></a> (the identifying names of the loaded databases), alongside the
-richer <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L132"><code>FlowrAnalyzerDependenciesContext::<b>loadedSignatureDatabases</b></code></a> metadata.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L164"><code>FlowrAnalyzerDependenciesContext::<b>hasSignatureDatabase</b></code></a> (a cheap presence check) and
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L160"><code>FlowrAnalyzerDependenciesContext::<b>availableSignatureDatabases</b></code></a> (the identifying names of the loaded databases), alongside the
+richer <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-dependencies-context.ts#L153"><code>FlowrAnalyzerDependenciesContext::<b>loadedSignatureDatabases</b></code></a> metadata.
 
 ## Configuration
 
@@ -77,7 +106,7 @@ function usePackageDatabase(parser: KnownParser) {
 }
 ```
 
-<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts#L20">src/documentation/wiki-signature-database.ts#L20</a></i>
+<i>Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts#L22">src/documentation/wiki-signature-database.ts#L22</a></i>
 
 
 File sources load lazily on the first package load, so a script with no `library()` or `use()` calls
@@ -113,11 +142,11 @@ build; the load column is the decompression time measured at generation time.
 
 | Shard | Contents | Versions kept | Packages | Versions | Size (`.br`) | Load (first touch) |
 |-------|----------|---------------|---------:|---------:|-------------:|-------------------:|
-| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | ≈ 270 µs |
-| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | ≈ 1.9 ms |
-| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | ≈ 5 ms |
-| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | ≈ 83 ms |
-| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | ≈ 190 ms |
+| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | ≈ 420 µs |
+| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | ≈ 2.4 ms |
+| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | ≈ 6.7 ms |
+| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | ≈ 88 ms |
+| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | ≈ 180 ms |
 
 Which shard answers a lookup follows from the package and the version asked for. A base-R package comes from
 `base-current`, one of the 1,000 most-downloaded CRAN packages from `current-top`, and anything else from

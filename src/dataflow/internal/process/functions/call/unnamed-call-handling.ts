@@ -1,7 +1,7 @@
+import { MatchArgs } from '../../../../graph/match-args';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
 import type { DataflowInformation } from '../../../../info';
 import { processAllArguments } from './common';
-import { linkArgumentsOnCall } from '../../../linker';
 import type { RUnnamedFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { DfEdge, EdgeType } from '../../../../graph/edge';
@@ -83,7 +83,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 
 	// if we just call a nested fdef
 	if(RFunctionDefinition.is(functionCall.calledFunction)) {
-		linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph);
+		MatchArgs.onCallAndLink(callArgs, functionCall.calledFunction.parameters, finalGraph);
 	} else if(RAccess.is(functionCall.calledFunction) && !accessResolvesToField(finalGraph, calledRootId, functionCall.calledFunction.accessed.info.id)) {
 		// `obj$method()` whose callee did not resolve to a stored function: reached-but-unknown rather than dropped
 		handleUnknownSideEffect(finalGraph, data.environment, functionRootId);

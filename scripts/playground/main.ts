@@ -766,48 +766,57 @@ function showShared(text: string): void {
 
 let shareTimer = 0;
 
+/**
+ * Everything a link carries about the page as it stands right now. Built from the live state rather than read
+ * back out of the address bar, which {@link remember} only catches up with after a pause, so a mark set a
+ * moment ago is already in here.
+ */
+function shareFields(): [string, string][] {
+	const fields: [string, string][] = [];
+	const written = editor.state.doc.toString();
+	/* the sample is what the page opens with anyway, so a link to it carries nothing */
+	if(written !== Sample) {
+		fields.push(['c', packForUrl(written)]);
+	}
+	const configured = config.state.doc.toString();
+	/* the configuration travels only when it is not the one the page opens with */
+	const settings = configured.trim() === Defaults.trim() ? undefined : FlowrConfig.parse(configured);
+	const changed = settings === undefined ? [] : FlowrConfig.changedPaths(settings);
+	if(changed.length > 0) {
+		fields.push(['k', changed.join(';')]);
+	}
+	const dragged = (property: string, unit: string) => document.documentElement.style.getPropertyValue(property).replace(unit, '');
+	const flags = (direction === SliceDirection.Forward ? '>' : '')
+		+ (dimOutside ? 'd' : '')
+		+ ((document.getElementById('repl') as HTMLDetailsElement | null)?.open ? 'r' : '')
+		+ (wholeSlice ? 'a' : '');
+	const view = [dragged('--split', '%'), dragged('--repl-height', 'px'), flags];
+	/* a trailing empty field says nothing and would leave the link ending in a comma, which is where a
+	   chat client stops reading it */
+	while(view.length > 0 && view[view.length - 1].length === 0) {
+		view.pop();
+	}
+	if(view.length > 0) {
+		fields.push(['v', view.join(',')]);
+	}
+	const shortened = PlaygroundMark.compress(marks);
+	if(shortened.length > 0) {
+		fields.push(['h', shortened.join(',')]);
+	}
+	if(folded.length > 0) {
+		fields.push(['f', folded.join(',')]);
+	}
+	if(replSaid.length > 0) {
+		fields.push(['q', packForUrl(replSaid.join('\n'))]);
+	}
+	return fields;
+}
+
 /** writes the current script and configuration into the url, replacing rather than growing the history */
 function remember(): void {
 	clearTimeout(shareTimer);
 	shareTimer = window.setTimeout(() => {
-		const fields: [string, string][] = [];
-		const written = editor.state.doc.toString();
-		/* the sample is what the page opens with anyway, so a link to it carries nothing */
-		if(written !== Sample) {
-			fields.push(['c', packForUrl(written)]);
-		}
-		const configured = config.state.doc.toString();
-		/* the configuration travels only when it is not the one the page opens with */
-		const settings = configured.trim() === Defaults.trim() ? undefined : FlowrConfig.parse(configured);
-		const changed = settings === undefined ? [] : FlowrConfig.changedPaths(settings);
-		if(changed.length > 0) {
-			fields.push(['k', changed.join(';')]);
-		}
-		const dragged = (property: string, unit: string) => document.documentElement.style.getPropertyValue(property).replace(unit, '');
-		const flags = (direction === SliceDirection.Forward ? '>' : '')
-			+ (dimOutside ? 'd' : '')
-			+ ((document.getElementById('repl') as HTMLDetailsElement | null)?.open ? 'r' : '')
-			+ (wholeSlice ? 'a' : '');
-		const view = [dragged('--split', '%'), dragged('--repl-height', 'px'), flags];
-		/* a trailing empty field says nothing and would leave the link ending in a comma, which is where a
-		   chat client stops reading it */
-		while(view.length > 0 && view[view.length - 1].length === 0) {
-			view.pop();
-		}
-		if(view.length > 0) {
-			fields.push(['v', view.join(',')]);
-		}
-		const shortened = PlaygroundMark.compress(marks);
-		if(shortened.length > 0) {
-			fields.push(['h', shortened.join(',')]);
-		}
-		if(folded.length > 0) {
-			fields.push(['f', folded.join(',')]);
-		}
-		if(replSaid.length > 0) {
-			fields.push(['q', packForUrl(replSaid.join('\n'))]);
-		}
-		const hash = Playground.hash(fields);
+		const hash = Playground.hash(shareFields());
 		const fits = hash.length <= MaxShared;
 		try {
 			history.replaceState(null, '', fits ? `#${hash}` : location.pathname + location.search);
@@ -1828,18 +1837,15 @@ document.querySelector('[data-sample]')?.addEventListener('click', () => {
 	showShared('the example is back');
 });
 
-/* the url already carries the example, so sharing is a matter of handing the link over; the cursor is
-   written here rather than in {@link remember}, so the address bar does not churn on every click */
+/* the cursor is written here rather than in {@link remember}, so the address bar does not churn on every click */
 document.getElementById('share')?.addEventListener('click', () => {
-	/* the fields the address bar already holds are handed on as they are: reading them out and writing them
-	   back would escape them a second time */
-	const fields = location.hash.replace(/^#/, '').split('&').filter(field => field.length > 0 && !field.startsWith('p='));
+	const fields = shareFields();
 	const head = editor.state.selection.main.head;
 	const line = editor.state.doc.lineAt(head);
 	if(line.number > 1 || head > line.from) {
-		fields.push(`p=${line.number}:${head - line.from + 1}`);
+		fields.push(['p', `${line.number}:${head - line.from + 1}`]);
 	}
-	const hash = fields.join('&');
+	const hash = Playground.hash(fields);
 	const link = location.href.replace(/#.*$/, '') + (hash.length > 0 ? `#${hash}` : '');
 	void navigator.clipboard?.writeText(link).then(
 		() => showShared('link copied'),

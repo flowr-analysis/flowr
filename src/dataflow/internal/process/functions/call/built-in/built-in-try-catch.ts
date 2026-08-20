@@ -1,3 +1,4 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
 import { ExitPointType, happensInEveryBranch } from '../../../../../info';
@@ -9,7 +10,7 @@ import type {
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { ClosureRefs, pMatch } from '../../../../linker';
+import { ClosureRefs } from '../../../../linker';
 import type { DataflowGraphVertexInfo } from '../../../../../graph/vertex';
 import { VertexType, FunctionDefinitionVertex } from '../../../../../graph/vertex';
 import { tryUnpackNoNameArg, unpackArg } from '../argument/unpack-argument';
@@ -57,7 +58,7 @@ export function processTryCatch<OtherInfo>(
 		params[config.handlers.finally] = 'finally';
 	}
 	// only remove exit points from the block
-	const argMaps = pMatch(res.callArgs, params);
+	const argMaps = MatchArgs.toSpec(res.callArgs, params);
 	const info = res.information;
 
 	const blockArg = new Set(argMaps.get('block'));

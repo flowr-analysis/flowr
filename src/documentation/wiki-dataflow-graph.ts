@@ -64,6 +64,7 @@ import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { SourceRange } from '../util/range';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import { Resolve } from '../dataflow/environments/resolve-helper';
+import { MatchArgs } from '../dataflow/graph/match-args';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { FunctionCallVertex, FunctionDefinitionVertex } from '../dataflow/graph/vertex';
 
@@ -913,6 +914,7 @@ In summary, we discuss the following topics in this wiki page:
 - [Perspectives on the Dataflow Graph](#perspectives)
     - [Call Graph Perspective](#perspectives-cg)
 - [Working with the Dataflow Graph](#dfg-working)
+	- [Matching Arguments to Parameters](#dfg-matching-arguments)
 
 Please be aware that the accompanied [dataflow information](#dataflow-information) (${ctx.link('DataflowInformation')}) returned by _flowR_ 
 contains things besides the graph, like the entry and exit points of the subgraphs, and currently active references (see [below](#dataflow-information)).
@@ -1264,6 +1266,7 @@ FlowR also provides various helper objects (with the same name as the correspond
 * ${ctx.link(Resolve, undefined, { type: 'variable' })} (also reachable as \`Dataflow.resolve\`) to resolve a name against an environment or a node to its value.
   The entry points differ a lot in cost, so take the narrowest one that answers your question: \`byName\` walks the environment layers once and is served from the layer cache,
   \`byNameAndType\` additionally filters and merges the definitions of every layer it passes, and \`toValue\` as well as the \`argument\` family run the evaluator on top of a resolution.
+* ${ctx.link(MatchArgs, undefined, { type: 'variable' })} to bind a call's arguments to the formals of what it calls (see [below](#dfg-matching-arguments))
 
 Some of these functions have been explained in their respective wiki pages. However, some are part of the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph API')} and so we explain them here.
 If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities', 'capabilities')} page.
@@ -1281,6 +1284,23 @@ be used _during_ and _after_ the core analysis. After the dataflow analysis comp
 Additionally, to ${ctx.link(Resolve.toValue)}, we offer the aforementioned ${ctx.link(getValueOfArgument)} to retrieve the value of an argument in a function call.
 Be aware, that this function is currently not optimized for speed, so if you frequently require the values of multiple arguments of the same function call, you may want to open [an issue](${NewIssueUrl}) to request support for resolving
 multiple arguments at once.
+
+${section('Matching Arguments to Parameters', 3, 'dfg-matching-arguments')}
+
+R does not bind a call's arguments to the formals left to right. An exactly named argument takes its formal, then a
+uniquely abbreviated one does (\`pmatch\`), then the rest fill what is still free until \`...\`, and whatever is
+left over goes to \`...\`. ${ctx.link('matchArgumentsToParameters')} is that algorithm, and
+${ctx.link(MatchArgs, undefined, { type: 'variable' })} is how you ask for it:
+
+| Use case | member |
+|----------|--------|
+| AST arguments and the formal names | ${ctx.linkO(MatchArgs, 'toNames')} |
+| graph arguments and the formals (a spec, or a database signature) | ${ctx.linkO(MatchArgs, 'toSpec')} |
+| graph arguments and the callee's ${ctx.link('RParameter')}s, **also adding the [DefinesOnCall](#5-definesoncall-edge) and [DefinedByOnCall](#6-definedbyoncall-edge) edges** | ${ctx.linkO(MatchArgs, 'onCallAndLink')} |
+| only the call, the formals are looked up for you | ${ctx.linkO(MatchArgs, 'toDefinition')} |
+
+${ctx.linkO(MatchArgs, 'toDefinition')} takes the formals from the ${ctx.link('RFunctionDefinition')} the call
+resolves to in user code, and from the ${ctx.linkPage('wiki/Signature Database', 'signature database')} otherwise.
 
 ${section('Assessing Edges', 3, 'dfg-assess-edge')}
 

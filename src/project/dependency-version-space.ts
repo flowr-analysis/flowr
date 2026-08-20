@@ -5,6 +5,7 @@
  * assignments. This is a source-agnostic resolver over {@link PackageSignatureSource} and the dependencies context;
  * the `guess-dep-versions` query presents it, but it is usable on its own (e.g. for compatibility-matrix tooling).
  */
+import { MatchArgs } from '../dataflow/graph/match-args';
 import { minVersion, type Range } from 'semver';
 import { RRange, RVersion, rReleaseDate, type VersionString } from '../util/r-version';
 import { findByPrefixIfUnique } from '../util/prefix';
@@ -12,7 +13,6 @@ import { RBasePrimitives } from '../data/r-base-primitives.generated';
 import { availableVersionEntries, classOwnerIndexFor, sourceForPackage, type PackageSignatureSource } from './sigdb/reader';
 import type { DecodedFunction, ResolvedDependency } from './sigdb/decode';
 import { DepType } from './sigdb/schema';
-import { matchArgumentsToSignature } from './sigdb/signature-match';
 import { parseDateWindow } from './sigdb/sigdb-version';
 import { Identifier } from '../dataflow/environments/identifier';
 import { VertexType } from '../dataflow/graph/vertex';
@@ -510,7 +510,7 @@ function isCompatible(getFn: FnResolver, version: string, usage: PackageUsage, t
 		}
 		for(const args of use.calls.values()) {
 			// R's matching: exact, pmatch prefix, or positional; `...` absorbs the rest
-			const bound = matchArgumentsToSignature(args, decoded.signature);
+			const bound = MatchArgs.toSpec(args, decoded.signature);
 			let placed = 0;
 			for(const ids of bound.values()) {
 				placed += ids.length;

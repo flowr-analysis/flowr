@@ -1,3 +1,4 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -8,7 +9,6 @@ import {
 	type PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { pMatch } from '../../../../linker';
 import { convertFnArguments } from '../common';
 import type { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -55,7 +55,7 @@ export function processRegisterHook<OtherInfo>(
 	}
 	params['...'] = '...';
 
-	const argMaps = pMatch(convertFnArguments(args), params);
+	const argMaps = MatchArgs.toSpec(convertFnArguments(args), params);
 	const exprIds = new Set(argMaps.get('expr'));
 	const addIds = config.args.add ? new Set(argMaps.get('add')) : new Set<NodeId>();
 	const afterIds = config.args.after ? new Set(argMaps.get('after')) : new Set<NodeId>();

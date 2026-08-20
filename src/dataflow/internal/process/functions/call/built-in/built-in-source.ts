@@ -75,14 +75,13 @@ function returnPlatformPath(p: string): string {
 	return p.replaceAll(AnyPathSeparator, path.sep);
 }
 
-function applyReplacements(path: string, replacements: readonly Record<string, string>[]): string[] {
-	const results = [];
-	for(const replacement of replacements) {
-		const newPath = Object.entries(replacement).reduce((acc, [key, value]) => acc.replaceAll(new RegExp(key, 'g'), value), path);
-		results.push(newPath);
-	}
+/** the replacement rules as patterns, compiled once rather than once per candidate path */
+function compileReplacements(replacements: readonly Record<string, string>[]): readonly (readonly [RegExp, string])[][] {
+	return replacements.map(replacement => Object.entries(replacement).map(([key, value]) => [new RegExp(key, 'g'), value] as const));
+}
 
-	return results;
+function applyReplacements(path: string, replacements: readonly (readonly [RegExp, string])[][]): string[] {
+	return replacements.map(replacement => replacement.reduce((acc, [pattern, value]) => acc.replaceAll(pattern, value), path));
 }
 
 /**
@@ -127,7 +126,7 @@ export function findSource(
 	}
 
 	if(resolveSource?.applyReplacements) {
-		const r = resolveSource.applyReplacements;
+		const r = compileReplacements(resolveSource.applyReplacements);
 		tryPaths = tryPaths.flatMap(t => applyReplacements(t, r));
 	}
 

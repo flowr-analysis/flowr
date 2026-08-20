@@ -115,7 +115,9 @@ export enum CallProp {
 	/** hands back a handle the program is expected to close again, like `file` or `DBI::dbConnect` */
 	Opens       = 1 << 27,
 	/** performs a statistical test, so its result is the test statistic a reader is meant to see (`t.test`, `anova`) */
-	Statistics  = 1 << 28
+	Statistics  = 1 << 28,
+	/** marked for removal, with a better alternative available, like `dplyr::funs` */
+	Deprecated  = 1 << 29
 }
 
 /**

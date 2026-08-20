@@ -319,6 +319,25 @@ function markGenerics(definitions: BuiltInDefinitions): BuiltInDefinitions {
  * Contains the built-in definitions recognized by flowR, as they are written down: {@link DefaultBuiltinConfig}
  * is what {@link markGenerics} makes of them, and a test checks that this is all it changes.
  */
+/** what creating a plot does; restated by the deprecated plot creators, which do the same but should not be used */
+const PlotCreateConfig = {
+	forceArgs:             'all',
+	hasUnknownSideEffects: {
+		type:     'link-to-last-call',
+		ignoreIf: (source: NodeId, graph: DataflowGraph) => {
+			const sourceVertex = graph.getVertex(source) as DataflowGraphVertexFunctionCall;
+
+			/* map with add = true appends to an existing plot */
+			return (PlotFunctionsWithAddParam.has(Identifier.getName(sourceVertex.name)) && getValueOfArgument(graph, sourceVertex, {
+				index: -1,
+				name:  'add'
+			}, [RType.Logical])?.content === true);
+		},
+		callName: toRegex(GraphicDeviceOpen)
+	},
+	props: CallProp.Graphics
+} as const;
+
 export const WrittenBuiltinDefinitions = [
 	{ type: 'constant', names: Identifier.fromAll(PkgName.Base, ['NULL', 'NA', 'NA_integer_', 'NA_real_', 'NA_complex_', 'NA_character_']), value: null, assumePrimitive: true },
 	{ type: 'constant', names: [Identifier.from(['NaN', PkgName.Base])], value: NaN, assumePrimitive: true },
@@ -673,25 +692,14 @@ export const WrittenBuiltinDefinitions = [
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['force', 'identity']),
 		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', keepArgumentOut: true, props: CallProp.Pure, sig: [['x', ArgProp.Alias | ArgProp.Forced]] }, assumePrimitive: false },
 	// graphics base
-	{ type:      'function', names:     namespacePlotFunctions(PlotCreate),
-		processor: BuiltInProcName.Default,
-		config:    {
-			forceArgs:             'all',
-			hasUnknownSideEffects: {
-				type:     'link-to-last-call',
-				ignoreIf: (source: NodeId, graph: DataflowGraph) => {
-					const sourceVertex = graph.getVertex(source) as DataflowGraphVertexFunctionCall;
-
-					/* map with add = true appends to an existing plot */
-					return (PlotFunctionsWithAddParam.has(Identifier.getName(sourceVertex.name)) && getValueOfArgument(graph, sourceVertex, {
-						index: -1,
-						name:  'add'
-					}, [RType.Logical])?.content === true);
-				},
-				callName: toRegex(GraphicDeviceOpen)
-			},
-			props: CallProp.Graphics
-		}, assumePrimitive: true },
+	{ type:            'function', names:           namespacePlotFunctions(PlotCreate),
+		processor:       BuiltInProcName.Default,
+		config:          PlotCreateConfig, assumePrimitive: true },
+	/* `qplot` creates a plot like the ones above and is deprecated on top of it; registered after them so this
+	   definition is the one that sticks */
+	{ type:            'function', names:           [Identifier.from(['qplot', PkgName.GgPlot2])],
+		processor:       BuiltInProcName.Default,
+		config:          { ...PlotCreateConfig, props: CallProp.Graphics | CallProp.Deprecated }, assumePrimitive: true },
 	// graphics addons
 	{ type:      'function', names:     namespacePlotFunctions(PlotAddons),
 		processor: BuiltInProcName.Default,             config:    {
@@ -1050,7 +1058,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type:            'function', names:           [Identifier.from(['exec', PkgName.Rlang])],
 		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, nameOfFunctionArgument: '.fn', unquoteFunction: true, hasUnknownSideEffects: true, libFn: true, props: CallProp.MayPure, sig: [['.fn', ArgProp.Callee], ['...', ArgProp.Value]] }, assumePrimitive: false },
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Purrr, ['invoke', 'invoke_map']),
-		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, nameOfFunctionArgument: '.f', unquoteFunction: true, hasUnknownSideEffects: true, libFn: true, props: CallProp.MayPure, sig: [['.f', ArgProp.Callee], ['...', ArgProp.Value]] }, assumePrimitive: false },
+		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, nameOfFunctionArgument: '.f', unquoteFunction: true, hasUnknownSideEffects: true, libFn: true, props: CallProp.MayPure | CallProp.Deprecated, sig: [['.f', ArgProp.Callee], ['...', ArgProp.Value]] }, assumePrimitive: false },
 	/* the `{...}` of a template holds R code, evaluated where the call is; `cli_abort` stays with the other
 	 * error exits, as terminating a branch matters more than interpolating its message */
 	{ type:            'function', names:           [...Identifier.fromAll(PkgName.Glue, ['glue', 'glue_safe', 'glue_collapse']), Identifier.from(['str_glue', PkgName.Stringr])],
@@ -1060,7 +1068,7 @@ export const WrittenBuiltinDefinitions = [
 		'format_inline', 'cli_verbatim']),
 	processor: BuiltInProcName.StringTemplate, config: { markup: true, props: CallProp.MayPure }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['str_interp', PkgName.Stringr])],
-		processor:       BuiltInProcName.StringTemplate, config:          { open: '${', props: CallProp.MayPure }, assumePrimitive: false },
+		processor:       BuiltInProcName.StringTemplate, config:          { open: '${', props: CallProp.MayPure | CallProp.Deprecated }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['local', PkgName.Base])],
 		processor:       BuiltInProcName.Local, config:          { args: { env: 'envir', expr: 'expr' } }, assumePrimitive: false },
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['with', 'within']),
@@ -1370,9 +1378,13 @@ export const WrittenBuiltinDefinitions = [
 
 	/* the tidyverse verbs, under the names R declares them with. They keep the data mask the group above
 	   gives them; what this adds is which argument is the data and what the further ones are called */
-	{ type:            'function', names:           Identifier.fromAll(PkgName.Dplyr, ['mutate', 'transmute', 'select', 'rename']),
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Dplyr, ['mutate', 'select', 'rename']),
 		processor:       BuiltInProcName.Default,
 		config:          { markArgsAsMasked: NseArguments.AllButFirst, props: CallProp.Pure, sig: SigDataDots }, assumePrimitive: false },
+	/* `transmute` is one of them and deprecated on top of it */
+	{ type:            'function', names:           [Identifier.from(['transmute', PkgName.Dplyr])],
+		processor:       BuiltInProcName.Default,
+		config:          { markArgsAsMasked: NseArguments.AllButFirst, props: CallProp.Pure | CallProp.Deprecated, sig: SigDataDots }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['filter', PkgName.Dplyr]), Identifier.from(['slice', PkgName.Dplyr])],
 		processor:       BuiltInProcName.Default,
 		config:          { markArgsAsMasked: NseArguments.AllButFirst, props:            CallProp.Pure,
@@ -1422,7 +1434,7 @@ export const WrittenBuiltinDefinitions = [
 			sig:              [['data', ArgProp.Value], ['...', ArgProp.Value], ['names_from', ArgProp.Value], ['values_from', ArgProp.Value]] }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['separate', PkgName.TidyR])],
 		processor:       BuiltInProcName.Default,
-		config:          { markArgsAsMasked: NseArguments.AllButFirst, props:            CallProp.Pure,
+		config:          { markArgsAsMasked: NseArguments.AllButFirst, props:            CallProp.Pure | CallProp.Deprecated,
 			sig:              [['data', ArgProp.Value], ['col', ArgProp.Value], ['into', ArgProp.Value], ['sep', ArgProp.Value], ['remove', ArgProp.Flag], ['convert', ArgProp.Flag]] }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['unite', PkgName.TidyR])],
 		processor:       BuiltInProcName.Default,
@@ -1471,6 +1483,19 @@ export const WrittenBuiltinDefinitions = [
 	{ type:            'function', names:           [Identifier.from(['download.file', PkgName.Utils])],
 		processor:       BuiltInProcName.DefaultReadAllArgs,
 		config:          { props: CallProp.Network | CallProp.File | CallProp.Writes, sig: [['url', ArgProp.Resource], ['destfile', ArgProp.Resource], ['method', ArgProp.Value], ['quiet', ArgProp.Flag], ['mode', ArgProp.Value], ['cacheOK', ArgProp.Flag], ['extra', ArgProp.Value], ['headers', ArgProp.Value], ['...', ArgProp.Value]] }, assumePrimitive: false },
+	/** Deprecated Functions */
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Deprecated }, names: Identifier.fromAll(PkgName.Dplyr, ['id', 'top_n', 'sample_n', 'recode', 'progress_estimated', 'group_nest', 'add_rownames', 'tbl_df', 'src_local', 'summarise_each', 'summarize_', 'summarise_', 'slice_', 'select_vars_', 'select_', 'rename_vars_', 'rename_', 'transmute_', 'tally_', 'mutate_', 'group_indices_', 'group_by_', 'funs_', 'filter_', 'do_', 'distinct_', 'count_', 'arrange_', 'add_tally_', 'add_count_', 'funs', 'do', 'combine', 'changes', 'location', 'eval_tbls2', 'eval_tbls', 'compare_tbls2', 'compare_tbls', 'bench_tbls', 'current_vars', 'select_var', 'rename_vars', 'select_vars', 'failwith', 'all_vars', 'vars', 'select_all', 'mutate_all', 'summarise_all', 'group_by_all', 'filter_all', 'all_equal', 'arrange_all', 'distinct_all'])  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Deprecated }, names: [ Identifier.make('fct_explicit_na', PkgName.Forecats) ]  },
+	/* deprecated, but still data-masking: restating the mask keeps the column names out of the variable resolution */
+	{ type:      'function', processor: BuiltInProcName.Default, config:    { markArgsAsMasked: NseArguments.AllButFirst, props: CallProp.Pure | CallProp.Deprecated },
+		names:     [...Identifier.fromAll(PkgName.Dplyr, ['nest_by', 'with_groups', 'group_split']), ...Identifier.fromAll(PkgName.TidyR, ['spread', 'separate_rows', 'gather', 'extract'])]  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Deprecated }, names: Identifier.fromAll(PkgName.GgPlot2, ['gg_dep', 'is.theme', 'is.ggplot', 'guide_train', 'is.ggproto', 'fortify', 'is.facet', 'coord_map', 'coord_flip', 'is.Coord', 'annotation_logticks', 'aes_auto', 'aes_'])  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Deprecated }, names: Identifier.fromAll(PkgName.Plyr, ['liply', 'isplit2'])  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Deprecated }, names: Identifier.fromAll(PkgName.Purrr, ['transpose', 'as_vector', 'map_dfr', 'flatten', 'reduce_right', 'accumulate', 'map_raw', 'update_list', 'when', 'rdunif', 'rbernoulli', 'splice', 'rerun', 'prepend', 'at_depth', 'cross', 'list_along' ])  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Deprecated }, names: [ '`%@%`' ]  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Deprecated }, names: Identifier.fromAll(PkgName.Readr, ['read_table2', 'melt_table', 'melt_fwf', 'melt_delim'])  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Deprecated }, names: Identifier.fromAll(PkgName.Tibble, ['repair_names', 'set_tidy_names', 'tidy_names', 'is.tibble', 'trunc_mat', 'frame_data', 'as.tibble', 'as_data_frame', 'lst_', 'data_frame_', 'tibble_', 'data_frame', 'as_tibble' ])  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Deprecated }, names: Identifier.fromAll(PkgName.TidyR, ['nest_legacy', 'unnest_', 'unite_', 'spread_', 'separate_', 'separate_rows_', 'nest_', 'gather_', 'fill_', 'extract_', 'nesting_', 'crossing_', 'expand_', 'drop_na_', 'complete_', 'extract_numeric' ])  },
 ] as const satisfies AnyBuiltInDefinition[];
 
 /**

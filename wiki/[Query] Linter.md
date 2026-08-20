@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-19, 16:35:50 UTC (v2.14.1), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-20, 12:07:46 UTC (v2.14.1), please do not edit directly._
 <h2 id="Linter Query">Linter Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Lints a given R script for common issues.\
@@ -23,12 +23,12 @@ In other words, if you have a script simply reading: `read.csv("i_do_not_exist.c
 
 _Results (prettified and summarized):_
 
-Query: **linter** (14 ms)\
+Query: **linter** (15 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `i_do_not_exist.csv` at 1.1-30\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 0, processTimeMs: 1\
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 1, processTimeMs: 1\
 &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions): _no findings_\
@@ -43,11 +43,11 @@ Query: **linter** (14 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Unused Import** (unused-import): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
-_All queries together required ≈14 ms (1ms accuracy, total 15 ms)_
+_All queries together required ≈15 ms (1ms accuracy, total 16 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _14.6 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _16.0 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -62,10 +62,10 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
       "deprecated-functions": {
         "results": [],
         ".meta": {
-          "totalCalls": 0,
-          "totalFunctionDefinitions": 0,
-          "searchTimeMs": 2,
-          "processTimeMs": 4
+          "builtin": 0,
+          "sigdb": 0,
+          "searchTimeMs": 3,
+          "processTimeMs": 2
         }
       },
       "file-path-validity": {
@@ -87,7 +87,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "totalUnknown": 0,
           "totalWritesBeforeAlways": 0,
           "totalValid": 0,
-          "searchTimeMs": 0,
+          "searchTimeMs": 1,
           "processTimeMs": 1
         }
       },
@@ -125,7 +125,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ".meta": {
           "totalCalls": 0,
           "totalFunctionDefinitions": 0,
-          "searchTimeMs": 1,
+          "searchTimeMs": 0,
           "processTimeMs": 0
         }
       },
@@ -136,13 +136,13 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "numAccesses": 0,
           "totalAccessed": 0,
           "searchTimeMs": 0,
-          "processTimeMs": 0
+          "processTimeMs": 1
         }
       },
       "dead-code": {
         "results": [],
         ".meta": {
-          "searchTimeMs": 0,
+          "searchTimeMs": 1,
           "processTimeMs": 0
         }
       },
@@ -197,7 +197,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             "subscript": 0
           },
           "searchTimeMs": 0,
-          "processTimeMs": 3
+          "processTimeMs": 4
         }
       },
       "unused-import": {
@@ -207,7 +207,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "totalUnresolved": 0,
           "totalMultiPackage": 0,
           "totalUnused": 0,
-          "searchTimeMs": 0,
+          "searchTimeMs": 1,
           "processTimeMs": 0
         }
       },
@@ -217,16 +217,16 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "totalOpened": 0,
           "totalClosed": 0,
           "searchTimeMs": 0,
-          "processTimeMs": 1
+          "processTimeMs": 0
         }
       }
     },
     ".meta": {
-      "timing": 14
+      "timing": 15
     }
   },
   ".meta": {
-    "timing": 14
+    "timing": 15
   }
 }
 ```
@@ -256,16 +256,16 @@ You can also configure which rules to apply and what settings to use for these r
 
 _Results (prettified and summarized):_
 
-Query: **linter** (3 ms)\
+Query: **linter** (5 ms)\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `i_do_not_exist.csv` at 1.1-30\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 3, processTimeMs: 0\
-_All queries together required ≈3 ms (1ms accuracy, total 4 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 5, processTimeMs: 0\
+_All queries together required ≈5 ms (1ms accuracy, total 7 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _4.1 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _6.9 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -296,17 +296,17 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "totalUnknown": 0,
           "totalWritesBeforeAlways": 0,
           "totalValid": 0,
-          "searchTimeMs": 3,
+          "searchTimeMs": 5,
           "processTimeMs": 0
         }
       }
     },
     ".meta": {
-      "timing": 3
+      "timing": 5
     }
   },
   ".meta": {
-    "timing": 3
+    "timing": 5
   }
 }
 ```

@@ -356,6 +356,8 @@ export const enum PkgName {
 	TryCatchLog  = 'tryCatchLog',
 	Tseries      = 'tseries',
 	Withr        = 'withr',
+	Forecats     = 'forcats',
+	Readr        = 'readr'
 }
 
 /**

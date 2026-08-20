@@ -1,10 +1,12 @@
 import fs from 'fs';
+import { exitSafe } from '../util/proc';
 import path from 'path';
 import seedrandom from 'seedrandom';
 import { guard } from '../util/assert';
 import { allRFiles } from '../util/files';
 import { log } from '../util/log';
 import { LimitedThreadPool } from '../util/parallel';
+import { CalibrationSamples } from '../benchmark/calibration';
 import { processCommandLineArgs } from './common/script';
 import type { RParseRequestFromFile } from '../r-bridge/retriever';
 import type { KnownParserName } from '../r-bridge/parser';
@@ -27,6 +29,7 @@ export interface BenchmarkCliOptions {
 	'sampling-strategy':         string
 	cfg?:                        boolean
 	cg?:                         boolean
+	'no-extra-phases'?:          boolean
 }
 
 const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [], {
@@ -39,7 +42,7 @@ const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [], {
 
 if(options.input.length === 0) {
 	console.error('No input files given. Nothing to do. See \'--help\' if this is an error.');
-	process.exit(0);
+	exitSafe(0);
 }
 
 const numberRegex = /^\d+$/;
@@ -95,6 +98,7 @@ async function benchmark() {
 	const limit = options.limit ?? files.length;
 
 	const verboseAdd = options.verbose ? ['--verbose'] : [];
+	const calibrationStep = Math.max(1, Math.ceil(files.length / CalibrationSamples));
 	const args = files.map((f, i) => [
 		'--input', f.request.content,
 		'--file-id', `${i}`,
@@ -107,7 +111,9 @@ async function benchmark() {
 		'--sampling-strategy', options['sampling-strategy'],
 		...(options.seed ? ['--seed', options.seed] : []),
 		...(options.cfg ? ['--cfg'] : []),
-		...(options.cg ? ['--cg'] : [])
+		...(options.cg ? ['--cg'] : []),
+		...(options['no-extra-phases'] ? ['--no-extra-phases'] : []),
+		...(i % calibrationStep === 0 ? ['--calibrate'] : [])
 	]);
 
 	const runs = options.runs ?? 1;

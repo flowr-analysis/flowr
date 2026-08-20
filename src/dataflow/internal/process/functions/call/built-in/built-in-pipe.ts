@@ -1,23 +1,28 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
+import { Nse, Unquote } from '../nse';
 import { guard } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { DataMaskingFunctionNames } from '../../../../../environments/data-masking-functions';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { VertexType } from '../../../../../graph/vertex';
+import { VertexType, FunctionCallVertex, UseVertex } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { toUnnamedArgument } from '../argument/make-argument';
-import { processAssignment, type AssignmentConfiguration } from './built-in-assignment';
+import { processAssignment } from './built-in-assignment';
 import type { BrandedIdentifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { log } from '../../../../../../util/log';
+import type { DataflowGraph } from '../../../../../graph/graph';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 /**
  * Configuration options for the basic R pipe
@@ -38,6 +43,24 @@ interface PipeConfiguration {
 	rhsMightBeSymbol?:   boolean;
 }
 
+
+/** Piping the data in shifts the arguments, so the call's own `all-but-first` marking misses them. */
+function markPipedDataMask<OtherInfo>(rhs: RFunctionCall<OtherInfo & ParentInformation>, graph: DataflowGraph): void {
+	for(const arg of rhs.arguments) {
+		if(RArgument.isEmpty(arg)) {
+			continue;
+		}
+		RNode.visitAst<OtherInfo & ParentInformation>(arg, node => {
+			if(Nse.isUnquote(node, Unquote.Rlang)) {
+				return true;
+			}
+			if(RSymbol.is(node) && Nse.suppliedByMask(graph, node.info.id)) {
+				graph.addEdge(rhs.info.id, node.info.id, EdgeType.NonStandardEvaluation);
+			}
+			return false;
+		});
+	}
+}
 
 /**
  * Support for R's pipe functions like `|>` or magrittr's `%>%`
@@ -77,14 +100,14 @@ export function processPipe<OtherInfo>(
 			location: name.location
 		} as RSymbol<OtherInfo & ParentInformation>;
 
-		information = processAssignment(assignSym, [targetArg, sourceArg], rootId, data, { canBeReplacement: true, mayHaveMoreArgs: true } as AssignmentConfiguration);
+		information = processAssignment(assignSym, [targetArg, sourceArg], rootId, data, { canBeReplacement: true, mayHaveMoreArgs: true });
 	}
 
 	let treatedAsFunctionCall = false;
-	if(rhs.type === RType.Symbol && rhsMightBeSymbol) {
+	if(RSymbol.is(rhs) && rhsMightBeSymbol) {
 		// convert a plain symbol on the RHS into a function-call vertex so we can treat it like `df %>% head`
 		const maybeVertex = information.graph.getVertex(rhs.info.id);
-		if(maybeVertex && maybeVertex.tag === VertexType.Use) {
+		if(maybeVertex && UseVertex.is(maybeVertex)) {
 			information.graph.updateToFunctionCall({
 				tag:         VertexType.FunctionCall,
 				id:          rhs.info.id,
@@ -99,9 +122,9 @@ export function processPipe<OtherInfo>(
 		}
 	}
 
-	if(treatedAsFunctionCall || rhs.type === RType.FunctionCall) {
+	if(treatedAsFunctionCall || RFunctionCall.is(rhs)) {
 		const functionCallNode = information.graph.getVertex(rhs.info.id);
-		guard(functionCallNode?.tag === VertexType.FunctionCall, () => `Expected function call node with id ${rhs.info.id} to be a function call node, but got ${functionCallNode?.tag} instead.`);
+		guard(FunctionCallVertex.is(functionCallNode), () => `Expected function call node with id ${rhs.info.id} to be a function call node, but got ${functionCallNode?.tag} instead.`);
 
 		// make the lhs an argument node (or link it to placeholders within the rhs call):
 		const argId = lhs.info.id;
@@ -109,7 +132,7 @@ export function processPipe<OtherInfo>(
 		// find all symbol occurrences inside the rhs function call AST that match the placeholder name
 		const occurrenceIds: NodeId[] = [];
 		RNode.visitAst<OtherInfo & ParentInformation>(rhs, (node) => {
-			if(node.type === RType.Symbol && node.content === pipePlaceholderName) {
+			if(RSymbol.is(node) && node.content === pipePlaceholderName) {
 				occurrenceIds.push(node.info.id);
 			}
 			return false;
@@ -131,6 +154,10 @@ export function processPipe<OtherInfo>(
 				type:   ReferenceType.Function
 			});
 			information.graph.addEdge(functionCallNode.id, argId, EdgeType.Argument | EdgeType.Reads);
+		}
+
+		if(RFunctionCall.isNamed(rhs) && DataMaskingFunctionNames.has(Identifier.getName(rhs.functionName.content))) {
+			markPipedDataMask(rhs, information.graph);
 		}
 
 	} else {

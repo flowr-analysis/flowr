@@ -1,11 +1,10 @@
 import {
 	FlowrDockerRef,
 	FlowrGithubBaseRef,
-	FlowrNpmRef, FlowrPositron, FlowrSiteBaseRef,
+	FlowrPositron,
 	FlowrVsCode,
-	FlowrWikiBaseRef, getFileContentFromRoot,
-	linkFlowRSourceFile
-} from './doc-util/doc-files';
+	getFileContentFromRoot,
+	linkFlowRSourceFile, FlowrSiteBaseRef } from './doc-util/doc-files';
 import { codeBlock } from './doc-util/doc-code';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { getLastBenchmarkUpdate, getLatestDfAnalysisTime } from './doc-util/doc-benchmarks';
@@ -16,8 +15,10 @@ import { documentReplSession } from './doc-util/doc-repl';
 import { fileNameForGenHeader } from './doc-util/doc-auto-gen';
 import { prefixLines } from './doc-util/doc-general';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
-import { showQuery } from './doc-util/doc-query';
+import { linkToQueryOfName, showQuery } from './doc-util/doc-query';
 import { NewIssueUrl } from './doc-util/doc-issue';
+import { linkToPlayground, tryInPlayground } from './doc-util/doc-playground';
+import { PlaygroundBox } from '../util/text/playground-link';
 import { joinWithLast } from '../util/text/strings';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
@@ -142,9 +143,14 @@ export class DocReadme extends DocMaker<'README.md'> {
 
 	public async text({ treeSitter, ctx }: DocMakerArgs): Promise<string> {
 		const dateOptions: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
+		/* every feature below ends on a link that opens the playground on its own example */
+		const example = getFileContentFromRoot('test/testfiles/example.R');
+		/* the script the playground itself opens with: it loads a package, writes a file, draws a plot, and
+		   leaves one value unused, so every feature below has something real to point at */
+		const playgroundSample = getFileContentFromRoot('scripts/playground/sample.R').trim();
 
 		return `
-[![flowR logo](https://raw.githubusercontent.com/wiki/flowr-analysis/flowr/img/flowR.png)](${FlowrGithubBaseRef}/flowr/wiki)\\
+[![flowR logo](https://raw.githubusercontent.com/wiki/flowr-analysis/flowr/img/flowR.png)](${FlowrSiteBaseRef}/)\\
 [![QA (and potentially deploy)](${FlowrGithubBaseRef}/flowr/actions/workflows/qa.yaml/badge.svg)](${FlowrGithubBaseRef}/flowr/actions/workflows/qa.yaml)
 [![codecov](https://codecov.io/gh/flowr-analysis/flowr/graph/badge.svg)](https://codecov.io/gh/flowr-analysis/flowr)
 [![Docker Image Version (latest semver)](https://img.shields.io/docker/v/eagleoutice/flowr?logo=docker&logoColor=white&label=dockerhub)](${FlowrDockerRef})
@@ -154,14 +160,41 @@ export class DocReadme extends DocMaker<'README.md'> {
 [![DOI](https://zenodo.org/badge/624819038.svg)](https://zenodo.org/doi/10.5281/zenodo.13319290)
 
 _flowR_ is a sophisticated, static [dataflow analyzer](https://en.wikipedia.org/wiki/Data-flow_analysis) for the [R programming language](https://www.r-project.org/),
-available for [VSCode](${FlowrVsCode}), [Positron](${FlowrPositron}), [RStudio](${FlowrGithubBaseRef}/rstudio-addin-flowr),
-and [Docker](${FlowrDockerRef}).
+available for ${ctx.linkPage('flowr:vscode', 'VSCode')}, ${ctx.linkPage('flowr:positron', 'Positron')}, ${ctx.linkPage('flowr:rstudio-addin', 'RStudio')},
+and ${ctx.linkPage('flowr:docker', 'Docker')}.
 It offers a wide variety of features, for example:
 
-* 🐞 **code linting**\\
-   Analyze your R scripts for common issues and potential bugs (see the [wiki page](${FlowrGithubBaseRef}/flowr/wiki/Linter) for more information on the currently supported linters).
+* 📚 **dependency analysis**\\
+  Given your analysis project, flowR offers a plethora of so-called ${ctx.linkPage('wiki/Query API', 'queries')} to get more information about your code.
+  An important query is the ${linkToQueryOfName('dependencies', 'dependencies query')}, which shows you the library your project needs,
+  the data files it reads, the scripts it sources, and the data it outputs.
+  Building on it, the ${linkToQueryOfName('guess-dep-versions', 'guess dependency versions query')} narrows down the version range each
+  of these libraries has to have, by combining the constraints your project declares with the functions your code actually calls.
+  ${tryInPlayground({
+		code:  playgroundSample,
+		marks: [PlaygroundBox.Deps],
+		at:    '12@write.csv'
+	}, 'the dependency example')}
 
-	${prefixLines(details('Example: Linting code with flowR', `To lint your code, you can use the [REPL](${FlowrWikiBaseRef}/Interface#using-the-repl) or the [Visual Studio Code extension](${FlowrVsCode}) (see [vscode-flowr#283](https://github.com/flowr-analysis/vscode-flowr/pull/283)).
+  
+  ${prefixLines(details('Example: Dependency Analysis with flowR', `
+The following showcases the dependency view of the ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')}:
+
+![Dependency Analysis](https://raw.githubusercontent.com/flowr-analysis/vscode-flowr/refs/heads/main/media/dependencies.png)
+  
+  `), '    ')} 
+
+* 🐞 **code linting**\\
+   Analyze your R scripts for common issues and potential bugs (see the ${ctx.linkPage('wiki/Linter', 'wiki page')} for more information on the currently supported linters).
+   ${tryInPlayground({
+		code:      playgroundSample,
+		marks:     ['lint:unused-definitions'],
+		collapsed: [PlaygroundBox.Deps],
+		at:        '10@unused_total'
+	}, 'the linter example')}
+
+
+	${prefixLines(details('Example: Linting code with flowR', `To lint your code, you can use the ${ctx.linkPage('wiki/Interface', 'REPL', 'using-the-repl')} or the ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')} (see [vscode-flowr#283](https://github.com/flowr-analysis/vscode-flowr/pull/283)).
 	
 ${await(async() => {
 	const code = 'read.csv("/root/x.txt")';
@@ -183,10 +216,18 @@ ${res}
 * 🍕 **program slicing**\\
    Given a point of interest like the visualization of a plot, _flowR_ reduces the program to just the parts which are relevant
    for the computation of the point of interest.
+   ${tryInPlayground({
+		code:      example,
+		marks:     [PlaygroundBox.Slice],
+		collapsed: [PlaygroundBox.Deps],
+		at:        '11@sum',
+		dim:       true
+	}, 'the slicing example')}
+
 
 ${prefixLines(details('Example: Slicing with flowR', `
-The simplest way to retrieve slices is with flowR's [Visual Studio Code extension](${FlowrVsCode}). 
-However, you can slice using the [REPL](${FlowrWikiBaseRef}/Interface#using-the-repl) as well.
+The simplest way to retrieve slices is with flowR's ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')}.
+However, you can slice using the ${ctx.linkPage('wiki/Interface', 'REPL', 'using-the-repl')} as well.
 This can help you if you want to reuse specific parts of an existing analysis within another context or if you want to understand
 what is happening in the code.
 
@@ -204,25 +245,18 @@ ${await documentReplSession(treeSitter, [{
    
    `), '    ')}
 
-* 📚 **dependency analysis**\\
-  Given your analysis project, flowR offers a plethora of so-called ${ctx.linkPage('wiki/Query API', 'queries')} to get more information about your code.
-  An important query is the [dependencies query](${FlowrWikiBaseRef}/Query-API#dependencies-query), which shows you the library your project needs,
-  the data files it reads, the scripts it sources, and the data it outputs.
-  
-  ${prefixLines(details('Example: Dependency Analysis with flowR', `
-The following showcases the dependency view of the [Visual Studio Code extension](${FlowrVsCode}):
-
-![Dependency Analysis](https://raw.githubusercontent.com/flowr-analysis/vscode-flowr/refs/heads/main/media/dependencies.png)
-  
-  `), '    ')} 
-
 * 🚀 **fast call-graph, data-, and control-flow graphs**\\
-  Within just [${'<i>' + textWithTooltip(roundToDecimals(await getLatestDfAnalysisTime('"social-science" Benchmark Suite (tree-sitter)'), 1) + ' ms', 'This measurement is automatically fetched from the latest benchmark!') + '</i>'} (as of ${new Date(await getLastBenchmarkUpdate()).toLocaleDateString('en-US', dateOptions)})](${FlowrSiteBaseRef}/wiki/stats/benchmark), 
+  Within just ${ctx.linkPage('flowr:benchmarks', `${'<i>' + textWithTooltip(roundToDecimals(await getLatestDfAnalysisTime('"real-world" Benchmark Suite (tree-sitter)'), 1) + ' ms', 'This measurement is automatically fetched from the latest benchmark!') + '</i>'} (as of ${new Date(await getLastBenchmarkUpdate()).toLocaleDateString('en-US', dateOptions)})`)},
   _flowR_ can analyze the data- and control-flow of the average real-world R&nbsp;script. See the ${ctx.linkPage('flowr:benchmarks', 'benchmarks')} for more information,
   and consult the ${ctx.linkPage('wiki/Dataflow Graph', 'wiki pages')} for more details on the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graphs')} as well as ${ctx.linkPage('wiki/Dataflow Graph', 'call graphs', 'perspectives-cg')}.
+  ${tryInPlayground({
+		code: playgroundSample,
+		at:   '13@plot'
+	}, 'this script')}
+
 
 ${prefixLines(details('Example: Generating a dataflow graph with flowR', `
-You can investigate flowR's analyses using the [REPL](${FlowrWikiBaseRef}/Interface#using-the-repl).
+You can investigate flowR's analyses using the ${ctx.linkPage('wiki/Interface', 'REPL', 'using-the-repl')}.
 Commands like ${getReplCommand('dataflow*')} allow you to view a ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} for a given R script.
 
 Let's have a look at the following example:
@@ -240,13 +274,25 @@ ${await printDfGraphForCode(treeSitter, getFileContentFromRoot('test/testfiles/e
    
    `), '    ')}
 
+Every ▶&nbsp;_Explore in Browser_ link above opens ${linkToPlayground('flowR\'s playground', { code: playgroundSample })},
+which runs the whole analysis locally in your browser, with no setup at all. Once it is open:
+
+| in the playground | what it does |
+| ----------------- | ------------ |
+| hover a name | what flowR knows about it: its value, its shape, its signature, and what the linter said |
+| ctrl-click a name | jump to where it is defined |
+| click a dependency | slice the script for it |
+| alt-click anything (or <kbd>alt</kbd>+<kbd>m</kbd>) | highlight it, so a link points at it; hold <kbd>shift</kbd> to highlight more than one |
+| _Copy link_ | hand the script, the highlights, and the layout to someone else as one url |
+| the _flowR repl_ drawer | every command the ${ctx.linkPage('wiki/Interface', 'repl', 'using-the-repl')} carries, over the script above |
+
 If you want to use flowR and the features it provides, feel free to check out the:
 
-- [Visual Studio Code](${FlowrVsCode})/[Positron](${FlowrPositron}): provides access to flowR directly in VS Code and Positron (or [vscode.dev](https://vscode.dev/))
-- [RStudio Addin](${FlowrGithubBaseRef}/rstudio-addin-flowr): integrates flowR into [RStudio](https://posit.co/downloads/)
-- [R package](${FlowrGithubBaseRef}/flowr-r-adapter): use flowR in your R scripts
-- [Docker image](${FlowrDockerRef}): run flowR in a container, this also includes [flowR's server](${FlowrWikiBaseRef}/Interface#communicating-with-the-server)
-- [NPM package](${FlowrNpmRef}): include flowR in your TypeScript and JavaScript projects
+- ${ctx.linkPage('flowr:vscode', 'Visual Studio Code')}/${ctx.linkPage('flowr:positron', 'Positron')}: provides access to flowR directly in VS Code and Positron (or [vscode.dev](https://vscode.dev/))
+- ${ctx.linkPage('flowr:rstudio-addin', 'RStudio Addin')}: integrates flowR into [RStudio](https://posit.co/downloads/)
+- ${ctx.linkPage('flowr:radapter', 'R package')}: use flowR in your R scripts
+- ${ctx.linkPage('flowr:docker', 'Docker image')}: run flowR in a container, this also includes ${ctx.linkPage('wiki/Interface', "flowR's server", 'communicating-with-the-server')}
+- ${ctx.linkPage('flowr:npm', 'NPM package')}: include flowR in your TypeScript and JavaScript projects
  
 
 If you are already using flowR and want to give feedback, please consider filling out our [feedback form](https://docs.google.com/forms/d/e/1FAIpQLScKFhgnh9LGVU7QzqLvFwZe1oiv_5jNhkIO-G-zND0ppqsMxQ/viewform).
@@ -292,7 +338,10 @@ ${printPublications()}
 
 ## 🚀 Contributing
 
-We welcome every contribution! Please check out the ${ctx.linkPage('wiki/Onboarding', 'developer onboarding')} section in the wiki for all the information you will need.
+We welcome every contribution! The ${ctx.linkPage('wiki/Onboarding', 'developer onboarding')} page has everything you need to get started.
+With **R** and **Node.js** installed, \`npm run setup:dev\` checks your prerequisites, installs the dependencies, and configures the git hooks.
+The [contributing guidelines](${FlowrGithubBaseRef}/flowr/tree/main/.github/CONTRIBUTING.md) explain our commit conventions,
+and ${ctx.linkPage('wiki/Linting and Testing')} shows how to run the tests.
 
 ### Contributors
 
@@ -313,7 +362,7 @@ and received an unrestricted gift from [Posit](https://posit.co/), the open-sour
 
 Please notice that this file was generated automatically using the file ${fileNameForGenHeader(module.filename)} as a source.\\
 If you want to make changes please edit the source file (the CI will take care of the rest).
-In fact, many files in the [wiki](${FlowrWikiBaseRef}) are generated, so make sure to check for the source file if you want to make changes.
+In fact, many files in the ${ctx.linkPage('flowr:wiki', 'wiki')} are generated, so make sure to check for the source file if you want to make changes.
 
 `.trim();
 	}

@@ -5,11 +5,14 @@ import type {
 } from '../../../../src/queries/catalog/call-context-query/call-context-query-format';
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
-import type { QueryResultsWithoutMeta } from '../../../../src/queries/query';
+import { executeQueries, type QueryResultsWithoutMeta } from '../../../../src/queries/query';
 import { CallTargets } from '../../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
-import { describe } from 'vitest';
+import { afterAll, describe, expect, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Identifier } from '../../../../src/dataflow/environments/identifier';
+import { cleanupSigTmpDirs, expFn, sigTmpDir, sigdbAnalyzer, ver, writeAndOpen } from '../../_helper/sigdb';
+import { SigDbBuilder } from '../../../../src/project/sigdb/build';
 
 /** simple query shortcut */
 function q(callName: RegExp | string, c: Partial<CallContextQuery> = {}): CallContextQuery {
@@ -52,6 +55,36 @@ describe('Call Context Query', withTreeSitter(parser => {
 	testQuery('Quoted Call', 'quote(print())', [q(/print/)], baseResult({}));
 	testQuery('Do call', 'do.call("print")', [q(/print/)], r([{ id: 1, name: 'print' }]));
 
+	describe('Namespace filter', () => {
+		testQuery('keeps only bar::foo', 'bar::foo()\nbaz::foo()', [q(/foo/, { callTargetNamespace: 'bar' })],
+			r([{ id: 1, name: Identifier.make('foo', 'bar') }]));
+		testQuery('no match for a different package', 'baz::foo()', [q(/foo/, { callTargetNamespace: 'bar' })], baseResult({}));
+
+		describe('bare callee, resolved through the signature database', () => {
+			afterAll(cleanupSigTmpDirs);
+
+			test('a bare mutate() resolves to dplyr via the sigdb export index', async() => {
+				const b = new SigDbBuilder();
+				b.addPackage('dplyr', { latest: '1.1.0', downloads: 10 });
+				b.addVersion('dplyr', '1.1.0', ver([expFn('mutate')]));
+				const db = await writeAndOpen(sigTmpDir('call-context-sigdb-'), b.build({ date: '2026-05-23', generated: 0 }));
+
+				const analyzer = await sigdbAnalyzer(parser, db);
+				analyzer.addRequest('mutate(x)');
+
+				const hit = await executeQueries({ analyzer }, [q(/mutate/, { callNameExact: true, callTargetNamespace: 'dplyr' })]);
+				expect(hit['call-context'].kinds).toEqual({
+					'test-kind': { subkinds: { 'test-subkind': [{ id: 3, name: 'mutate' }] } }
+				});
+
+				// the sigdb knows `mutate`, but not as an export of `tidyr`
+				const miss = await executeQueries({ analyzer }, [q(/mutate/, { callNameExact: true, callTargetNamespace: 'tidyr' })]);
+				expect(miss['call-context'].kinds).toEqual({});
+
+				db.close();
+			});
+		});
+	});
 	describe('Local Targets', () => {
 		testQuery('Happy Foo(t)', 'foo <- function(){}\nfoo()', [q(/foo/)], r([{ id: 7, name: 'foo' }]));
 		testQuery('Happy Foo(t) (only local)', 'foo <- function(){}\nfoo()', [q(/foo/, { callTargets: CallTargets.OnlyLocal })], r([{ id: 7, calls: [4], name: 'foo' }]));

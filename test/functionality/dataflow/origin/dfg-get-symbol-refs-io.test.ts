@@ -43,7 +43,7 @@ function testRename(shell: RShell, name: string, input: string, symbol: SlicingC
 
 		for(const range of replacements) {
 			const line = newInput[range[0] - 1];
-			newInput[range[0] - 1] = line.substring(0, range[1] - 1) + 'FooBar' + line.substring(range[3]);
+			newInput[range[0] - 1] = line.slice(0, Math.max(0, range[1] - 1)) + 'FooBar' + line.slice(Math.max(0, range[3]));
 		}
 
 		// Generate original output
@@ -58,17 +58,17 @@ function testRename(shell: RShell, name: string, input: string, symbol: SlicingC
 	});
 }
 
-describe.sequential('Get Symbol Refs IO Tests (1)', withShell(shell => {
+describe('Get Symbol Refs IO Tests (1)', { concurrent: false }, withShell(shell => {
 	testRename(shell, 'Simple',      'test<-1\nprint(test)',                             '2@test', ['1@test', '2@test']);
 	testRename(shell, 'Named Arg',   'f <- function(foo) foo\ny <- f(foo=12)\nprint(y)', '1@foo',  ['$1', '$3', '$11']);
 }));
 
-describe.sequential('Get Symbol Refs IO Tests (2)', withShell(shell => {
+describe('Get Symbol Refs IO Tests (2)', { concurrent: false }, withShell(shell => {
 	testRename(shell, 'Inside Scope', 'y <- 2 \n f <- function() { y <- 5\nprint(y) }',   '2@y',    ['2@y', '3@y']);
 	testRename(shell, 'Outside Scope', 'y <- 2 \n f <- function() { y <- 5\nprint(y) }',   '1@y',    ['1@y']);
 }));
 
-describe.sequential('Get Symbol Refs IO Tests (3)', withShell(shell => {
+describe('Get Symbol Refs IO Tests (3)', { concurrent: false }, withShell(shell => {
 	const testCode = `f <- function() {
   x <- 2
   function() { x <<- 1 } 
@@ -80,9 +80,8 @@ print(x)`;
 
 	//         Shell   Name             Code     to rename  expected renames
 	testRename(shell, 'Super assign 1', testCode, '1@f',    ['1@f', '5@f']);
-	testRename(shell, 'Super assign 2', testCode, '2@x',    ['2@x']);
-	// We accept this limitation for now, see #1792
-	testRename(shell, 'Super assign 3', testCode, '3@x',    [/*'2@x',*/ '3@x']);
+	testRename(shell, 'Super assign 2', testCode, '2@x',    ['2@x', '3@x']);
+	testRename(shell, 'Super assign 3', testCode, '3@x',    ['3@x', '2@x']);
 	testRename(shell, 'Super assign 4', testCode, '5@g',    ['5@g', '6@g', '7@g']);
 	testRename(shell, 'Super assign 5', testCode, '7@x',    ['7@x', '8@x']);
 }));

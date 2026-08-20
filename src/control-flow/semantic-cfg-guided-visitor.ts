@@ -4,7 +4,7 @@ import { DataflowAwareCfgGuidedVisitor, type DataflowCfgGuidedVisitorConfigurati
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SyntaxCfgGuidedVisitorConfiguration } from './syntax-cfg-guided-visitor';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type Origin } from '../dataflow/origin/dfg-get-origin';
+import type { Origin } from '../dataflow/origin/dfg-get-origin';
 import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
@@ -21,12 +21,16 @@ import { DfEdge, EdgeType } from '../dataflow/graph/edge';
 import { assertUnreachable, guard } from '../util/assert';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { RNull } from '../r-bridge/lang-4.x/convert-values';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
+import { NodeValue } from '../dataflow/eval/resolve/node-value';
+import { isValue } from '../dataflow/eval/values/r-value';
+import { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 
 export interface SemanticCfgGuidedVisitorConfiguration<
 	OtherInfo = NoInfo,
@@ -60,6 +64,14 @@ export interface SemanticCfgGuidedVisitorConfiguration<
  *
  * Use {@link BasicCfgGuidedVisitor#start} to start the traversal.
  */
+/**
+ * What every `on...Call` hook of the {@link SemanticCfgGuidedVisitor} receives: the call vertex it fired for.
+ * Hooks that recognize more of the call's shape extend this with the parts they resolved.
+ */
+export interface OnCall {
+	readonly call: DataflowGraphVertexFunctionCall;
+}
+
 export class SemanticCfgGuidedVisitor<
 	OtherInfo = NoInfo,
 	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
@@ -73,6 +85,19 @@ export class SemanticCfgGuidedVisitor<
 	 */
 	protected getNormalizedAst(id: NodeId | undefined): RNode<OtherInfo & ParentInformation> | undefined {
 		return id === undefined ? undefined : this.config.normalizedAst.idMap.get(id);
+	}
+
+	/**
+	 * The logical the call's only argument resolves to, `undefined` if the call does not take exactly one
+	 * argument or if that argument does not resolve to a single logical.
+	 */
+	protected getBoolArgValue(data: OnCall): boolean | undefined {
+		if(data.call.args.length !== 1 || data.call.args[0] === EmptyArgument) {
+			return undefined;
+		}
+
+		const value = NodeValue.inGraph.soleOf(data.call.args[0].nodeId, this.config.dfg, this.config.ctx, 'logical', { idMap: this.config.normalizedAst.idMap });
+		return value !== undefined && isValue(value.value) ? Boolean(value.value) : undefined;
 	}
 
 	/**
@@ -96,7 +121,7 @@ export class SemanticCfgGuidedVisitor<
 						node:   astNode as RSymbol<OtherInfo & ParentInformation, typeof RNull>
 					});
 				} else {
-					return this.onSymbolConstant({ vertex: val, node: astNode as RSymbol<OtherInfo & ParentInformation> });
+					return this.onSymbolConstant({ vertex: val, node: astNode });
 				}
 
 		}
@@ -137,7 +162,7 @@ export class SemanticCfgGuidedVisitor<
 	protected override visitFunctionDefinition(vertex: DataflowGraphVertexFunctionDefinition): void {
 		super.visitFunctionDefinition(vertex);
 		const ast = this.getNormalizedAst(vertex.id);
-		if(ast?.type === RType.FunctionDefinition) {
+		if(RFunctionDefinition.is(ast)) {
 			this.onFunctionDefinition({ vertex, parameters: ast.parameters.map(p => p.info.id) });
 		} else {
 			this.onFunctionDefinition({ vertex });
@@ -173,7 +198,7 @@ export class SemanticCfgGuidedVisitor<
 	protected override visitUnknown(vertex: CfgStatementVertex | CfgExpressionVertex) {
 		super.visitUnknown(vertex);
 		const ast = this.getNormalizedAst(CfgVertex.getId(vertex));
-		if(ast && ast.type === RType.ExpressionList && ast.info.parent === undefined) {
+		if(ast && RExpressionList.is(ast) && ast.info.parent === undefined) {
 			this.onProgram(ast);
 		}
 	}
@@ -214,7 +239,7 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.IfThenElse: {
 				// recover dead arguments from ast
 				const ast = this.getNormalizedAst(call.id);
-				if(!ast || ast.type !== RType.IfThenElse) {
+				if(!ast || !RIfThenElse.is(ast)) {
 					return this.onIfThenElseCall({
 						call,
 						condition: call.args[0] === EmptyArgument ? undefined : call.args[0].nodeId,
@@ -239,6 +264,7 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.Vector:
 				return this.onVectorCall({ call });
 			case BuiltInProcName.Assignment:
+			case BuiltInProcName.SuperAssignment:
 			case BuiltInProcName.AssignmentLike:
 			case BuiltInProcName.TableAssignment:
 				return this.onAssignmentCall({ call, ...this.getSourceAndTarget(call) });
@@ -292,11 +318,23 @@ export class SemanticCfgGuidedVisitor<
 				return this.onRecallCall({ call });
 			case BuiltInProcName.PurrrFormula:
 				return this.onPurrFormulaCall({ call });
+			case BuiltInProcName.NamespaceAccess:
+			case BuiltInProcName.NewEnv:
+			case BuiltInProcName.StackEnv:
+			case BuiltInProcName.With:
+			case BuiltInProcName.Attach:
 			case BuiltInProcName.Default:
 			case BuiltInProcName.DefaultReadAllArgs:
 			case BuiltInProcName.Function:
 			case BuiltInProcName.FunctionDefinition:
+			case BuiltInProcName.StringTemplate:
+			case BuiltInProcName.S7MakeConstructor:
+			case BuiltInProcName.ClassGenerator:
+			case BuiltInProcName.DefineArgument:
+			case BuiltInProcName.Switch:
 				return this.onDefaultFunctionCall({ call });
+			case BuiltInProcName.Load:
+				return this.onLoadCall({ call });
 			default:
 				assertUnreachable(origin);
 		}
@@ -310,7 +348,7 @@ export class SemanticCfgGuidedVisitor<
 
 
 	/**
-	 * A helper function to request the {@link getOriginInDfg|origins} of the given node.
+	 * A helper function to request the {@link Dataflow.origin|origins} of the given node.
 	 */
 	protected getOrigins(id: NodeId): Origin[] | undefined {
 		return Dataflow.origin(this.config.dfg, id);
@@ -388,7 +426,7 @@ export class SemanticCfgGuidedVisitor<
 	 * to rely on {@link SemanticCfgGuidedVisitor#getOrigins|`getOrigins`} to get more information.
 	 * @protected
 	 */
-	protected onUnnamedCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onUnnamedCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every function call that is not handled by a specific overload,
@@ -409,7 +447,7 @@ export class SemanticCfgGuidedVisitor<
 	 * The main reason for this separation is part of flowR's handling of these functions, as anonymous calls cannot be resolved using the active environment.
 	 * @protected
 	 */
-	protected onDefaultFunctionCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onDefaultFunctionCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call to the `eval` function.
@@ -419,7 +457,7 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onEvalFunctionCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onEvalFunctionCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call to any of the `*apply` functions.
@@ -429,7 +467,7 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onApplyFunctionCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onApplyFunctionCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every expression list - implicit or explicit, _but_ not for the root program (see {@link SemanticCfgGuidedVisitor#onProgram|`onProgram`} for that).
@@ -438,7 +476,7 @@ export class SemanticCfgGuidedVisitor<
 	 * expression list `x <- x + 1` in `for(x in 1:10) x <- x + 1`.
 	 * @protected
 	 */
-	protected onExpressionList(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onExpressionList(_data: OnCall) {}
 
 
 	/**
@@ -451,19 +489,19 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onSourceCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onSourceCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every subsetting call, i.e., for every call to `[[`, `[`, or `$`.
 	 * @protected
 	 */
-	protected onAccessCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onAccessCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call to the `if` function, which is used to implement the `if-then-else` control flow.
 	 * @protected
 	 */
-	protected onIfThenElseCall(_data: { call: DataflowGraphVertexFunctionCall, condition: NodeId | undefined, yes: NodeId | undefined, no: NodeId | undefined }) {}
+	protected onIfThenElseCall(_data: OnCall & { condition: NodeId | undefined, yes: NodeId | undefined, no: NodeId | undefined }) {}
 
 	/**
 	 * This event triggers for every call to the `get` function, which is used to access variables in the global environment.
@@ -474,7 +512,7 @@ export class SemanticCfgGuidedVisitor<
 	 * this may very well trigger a {@link SemanticCfgGuidedVisitor#onVariableUse|`onVariableUse`} event as well.
 	 * @protected
 	 */
-	protected onGetCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onGetCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call to the `rm` function, which is used to remove variables from the environment.
@@ -482,7 +520,7 @@ export class SemanticCfgGuidedVisitor<
 	 * For example, `rm` in `rm(x)`.
 	 * @protected
 	 */
-	protected onRmCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onRmCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call to a function which loads a library.
@@ -492,7 +530,7 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onLibraryCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onLibraryCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every assignment call, i.e., for every call to `<-` or `=` that assigns a value to a variable.
@@ -503,7 +541,7 @@ export class SemanticCfgGuidedVisitor<
 	 * Please be aware that replacements (e.g. assignments with a function call on the target side) like `names(x) <- 3` are subject to {@link SemanticCfgGuidedVisitor#onReplacementCall|`onReplacementCall`} instead.
 	 * @protected
 	 */
-	protected onAssignmentCall(_data: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }) {}
+	protected onAssignmentCall(_data: OnCall & { target?: NodeId, source?: NodeId }) {}
 
 	/**
 	 * This event triggers for every call to a special binary operator, i.e., every binary function call that starts and ends with a `%` sign.
@@ -513,13 +551,13 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onSpecialBinaryOpCall(_data: { call: DataflowGraphVertexFunctionCall, lhs?: FunctionArgument, rhs?: FunctionArgument }) {}
+	protected onSpecialBinaryOpCall(_data: OnCall & { lhs?: FunctionArgument, rhs?: FunctionArgument }) {}
 
 	/**
 	 * This event triggers for every call to R's pipe operator, i.e., for every call to `|>`.
 	 * @protected
 	 */
-	protected onPipeCall(_data: { call: DataflowGraphVertexFunctionCall, lhs?: FunctionArgument, rhs?: FunctionArgument }) {}
+	protected onPipeCall(_data: OnCall & { lhs?: FunctionArgument, rhs?: FunctionArgument }) {}
 
 
 	/**
@@ -530,7 +568,7 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onQuoteCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onQuoteCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call to the `for` loop function, which is used to implement the `for` loop control flow.
@@ -540,7 +578,7 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onForLoopCall(_data: { call: DataflowGraphVertexFunctionCall, variable: FunctionArgument, vector: FunctionArgument, body: FunctionArgument }) {}
+	protected onForLoopCall(_data: OnCall & { variable: FunctionArgument, vector: FunctionArgument, body: FunctionArgument }) {}
 
 	/**
 	 * This event triggers for every call to the `while` loop function, which is used to implement the `while` loop control flow.
@@ -550,7 +588,7 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onWhileLoopCall(_data: { call: DataflowGraphVertexFunctionCall, condition: FunctionArgument, body: FunctionArgument }) {}
+	protected onWhileLoopCall(_data: OnCall & { condition: FunctionArgument, body: FunctionArgument }) {}
 
 	/**
 	 * This event triggers for every call to the `repeat` loop function, which is used to implement the `repeat` loop control flow.
@@ -560,7 +598,7 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onRepeatLoopCall(_data: { call: DataflowGraphVertexFunctionCall, body: FunctionArgument }) {}
+	protected onRepeatLoopCall(_data: OnCall & { body: FunctionArgument }) {}
 
 	/**
 	 * This event triggers for every call to a function that replaces a value in a container, such as `names(x) <- 3`.
@@ -573,7 +611,7 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onReplacementCall(_data: { call: DataflowGraphVertexFunctionCall, source: NodeId | undefined, target: NodeId | undefined }) {}
+	protected onReplacementCall(_data: OnCall & { source: NodeId | undefined, target: NodeId | undefined }) {}
 
 	/**
 	 * This event triggers for every call that (to the knowledge of flowr) constructs a (new) list.
@@ -583,7 +621,7 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onListCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onListCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call that (to the knowledge of flowr) constructs a (new) vector.
@@ -593,7 +631,7 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onVectorCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onVectorCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call to the `stop` function.
@@ -603,7 +641,7 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onStopCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onStopCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call to the `stopifnot` function.
@@ -613,7 +651,7 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onStopIfNotCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onStopIfNotCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call the `try` function, which is used to catch possible errors.
@@ -623,7 +661,7 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onTryCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onTryCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call to a function that performs a local call, such as `local`.
@@ -633,7 +671,7 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onLocalCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onLocalCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call to a function that performs an S3-like dispatch.
@@ -642,7 +680,7 @@ export class SemanticCfgGuidedVisitor<
 	 * @see {@link SemanticCfgGuidedVisitor#onS3DispatchNextCall|`onS3DispatchNextCall`} for `NextMethod` calls.
 	 * @protected
 	 */
-	protected onS3DispatchCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onS3DispatchCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call to a function that performs an S3-like *next* dispatch.
@@ -651,19 +689,19 @@ export class SemanticCfgGuidedVisitor<
 	 * @see {@link SemanticCfgGuidedVisitor#onS3DispatchCall|`onS3DispatchCall`} for `UseMethod` calls.
 	 * @protected
 	 */
-	protected onS3DispatchNextCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onS3DispatchNextCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call to a function that creates a new S7 generic, such as `new_generic`.
 	 * @protected
 	 */
-	protected onS7NewGenericCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onS7NewGenericCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call to a function that performs an S7 dispatch, such as `S7_dispatch`.
 	 * @protected
 	 */
-	protected onS7DispatchCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onS7DispatchCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call to a function that registers a hook, such as `on.exit`.
@@ -673,7 +711,7 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onRegisterHookCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onRegisterHookCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call to `break` to exit a loop.
@@ -683,7 +721,7 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onBreakCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onBreakCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call to `return` to explicitly return a value in a function.
@@ -693,18 +731,18 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onReturnCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onReturnCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for every call to `Recall`, which is used to recall the function closure (usually in recursive functions).
 	 * @protected
 	 */
-	protected onRecallCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onRecallCall(_data: OnCall) {}
 
 	/**
 	 * This event triggers for any purr formula as in `map(df, ~ .x + 1)`
 	 */
-	protected onPurrFormulaCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onPurrFormulaCall(_data: OnCall) {}
 
 	protected getSourceAndTarget(call: DataflowGraphVertexFunctionCall): { target: NodeId | undefined, source: NodeId | undefined } {
 		const outgoing = this.config.dfg.outgoingEdges(call.id);
@@ -722,4 +760,6 @@ export class SemanticCfgGuidedVisitor<
 		}
 		return { target: undefined, source: undefined };
 	}
+
+	protected onLoadCall(_param: OnCall) {}
 }

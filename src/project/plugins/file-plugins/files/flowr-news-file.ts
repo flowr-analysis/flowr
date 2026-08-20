@@ -44,7 +44,7 @@ export class FlowrNewsFile extends FlowrFile<NewsChunk[]> {
 	}
 
 	/**
-	 * Creates a FlowrNewsFile from given news chunks, path and optional roles. This is useful if you already have the news content parsed and want to create a news file instance without re-parsing.
+	 * Creates a FlowrNewsFile from given news chunks, path, and optional roles. This is useful if you already have the news content parsed and want to create a news file instance without re-parsing.
 	 */
 	public static fromNewsChunks(chunks: NewsChunk[], path: string, roles?: FileRole[]): FlowrNewsFile {
 		const file = new FlowrNewsFile(new FlowrTextFile(path, roles));
@@ -127,13 +127,8 @@ function parseNews(file: FlowrFileProvider): NewsChunk[] {
 	// this is a port of the incredible complex R NEWS regex, but luckily it is  not too liberal :D
 	const regexVersion = makeRversionRegex();
 
-	// filter lines that match the version regex
-	const versionLines = lines.map(line =>
-		regexVersion.test(line)
-	);
-
 	// drop the header by removing everything before the first match
-	const firstVersionIndex = versionLines.findIndex(v => v);
+	const firstVersionIndex = lines.findIndex(line => regexVersion.test(line));
 	const relevantLines = lines.slice(firstVersionIndex);
 
 	// split at every version line

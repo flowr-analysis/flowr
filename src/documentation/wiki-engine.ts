@@ -1,7 +1,6 @@
 import { RShell } from '../r-bridge/shell';
 import { RShellExecutor } from '../r-bridge/shell-executor';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import { FlowrWikiBaseRef } from './doc-util/doc-files';
 import { block } from './doc-util/doc-structure';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
@@ -26,7 +25,7 @@ is synchronous, faster, and no longer needs an R installation, but requires the 
 To allow users of R to freely choose their backend between the R interpreter and the tree-sitter parser,
 we provide the concept of engines.
 
-Engines can be loaded with [flowR's configuration file](${FlowrWikiBaseRef}/Interface#configuring-flowr). Additionally, they
+Engines can be loaded with ${ctx.linkPage('wiki/Interface', "flowR's configuration file", 'configuring-flowr')}. Additionally, they
 are exposed with some command line options (e.g., when using the docker image of flowR):
 
 - ${ctx.cliOption('flowr', 'engine.r-shell.disabled', false)} to disable the ${ctx.link(RShell)} engine

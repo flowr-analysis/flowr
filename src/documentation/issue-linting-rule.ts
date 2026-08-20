@@ -1,6 +1,5 @@
 import { LintingRuleTag } from '../linter/linter-tags';
 import { prefixLines } from './doc-util/doc-general';
-import { FlowrWikiBaseRef } from './doc-util/doc-files';
 import { type LintingRuleNames, LintingRules } from '../linter/linter-rules';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
@@ -32,7 +31,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thank you for suggesting a new linting rule or an improvement to an existing one. Please provide as much detail as possible to help us understand your request. See the [Linter Wiki Page](${FlowrWikiBaseRef}/Linter) for more information.
+        Thank you for suggesting a new linting rule or an improvement to an existing one. Please provide as much detail as possible to help us understand your request. See the ${ctx.linkPage('wiki/Linter', 'Linter Wiki Page')} for more information.
   - type: textarea
     id: description
     attributes:

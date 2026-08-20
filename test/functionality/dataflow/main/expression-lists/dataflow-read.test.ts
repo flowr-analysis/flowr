@@ -8,7 +8,7 @@ import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 
-describe.sequential('Lists with variable references', withShell(shell => {
+describe('Lists with variable references', { concurrent: false }, withShell(shell => {
 	describe('read-read same variable', () => {
 		assertDataflow(label('directly together', ['name-normal', 'newlines']), shell,
 			'x\nx', emptyGraph()

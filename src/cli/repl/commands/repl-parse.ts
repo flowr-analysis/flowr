@@ -2,7 +2,7 @@ import type { ReplCodeCommand } from './repl-main';
 import { type OutputFormatter, FontStyles } from '../../../util/text/ansi';
 import { type JsonEntry, convertPreparedParsedData, prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format';
 import { extractLocation, getTokenType } from '../../../r-bridge/lang-4.x/ast/parser/main/normalize-meta';
-import { fileProtocol, removeRQuotes } from '../../../r-bridge/retriever';
+import { removeRQuotes } from '../../../r-bridge/retriever';
 import type Parser from 'web-tree-sitter';
 import type { ParseStepOutputSingleFile } from '../../../r-bridge/parser';
 import { FlowrFile } from '../../../project/context/flowr-file';
@@ -153,7 +153,7 @@ function depthListToTextTree(list: Readonly<DepthList>, f: OutputFormatter): str
 }
 
 export const parseCommand: ReplCodeCommand = {
-	description:   `Prints ASCII Art of the parsed, unmodified AST, start with '${fileProtocol}' to indicate a file`,
+	description:   'Prints ASCII Art of the parsed, unmodified AST',
 	isCodeCommand: true,
 	usageExample:  ':parse',
 	aliases:       [ 'p' ],

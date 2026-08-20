@@ -1,10 +1,10 @@
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type IdentifierDefinition, ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import type { FunctionArgument } from '../../../../src/dataflow/graph/graph';
-import {
-	type Environment,
-	type IEnvironment,
-	type REnvironmentInformation
+import type {
+	Environment,
+	IEnvironment,
+	REnvironmentInformation
 } from '../../../../src/dataflow/environments/environment';
 import { define } from '../../../../src/dataflow/environments/define';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments/scoping';

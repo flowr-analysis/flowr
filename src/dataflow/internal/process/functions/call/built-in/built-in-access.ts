@@ -2,11 +2,10 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall, type ProcessKnownFunctionCallResult } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
-	EmptyArgument,
-	type PotentiallyEmptyRArgument
+import type {
+	PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -14,9 +13,15 @@ import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 import { markAsAssignment } from './built-in-assignment';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
-import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/reference-to-maybe';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { unpackArg } from '../argument/unpack-argument';
+import { resolveSymbolToEnvir } from './built-in-envir-utils';
+import { resolveNodeToStackEnv, stackEnvInheritsFields } from './built-in-stack-env';
+import { Resolve } from '../../../../../environments/resolve-helper';
+import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -49,7 +54,7 @@ export function processAccess<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { treatIndicesAsString: boolean } & ForceArguments
+	config: { treatIndicesAsString: boolean, resolveField?: boolean } & ForceArguments
 ): DataflowInformation {
 	if(args.length < 1) {
 		dataflowLogger.warn(`Access ${Identifier.getName(name.content)} has less than 1 argument, skipping`);
@@ -58,7 +63,7 @@ export function processAccess<OtherInfo>(
 	const head = args[0];
 
 	let fnCall: ProcessKnownFunctionCallResult;
-	if(head === EmptyArgument) {
+	if(RArgument.isEmpty(head)) {
 		// in this case we may be within a pipe
 		fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: BuiltInProcName.Access });
 	} else if(config.treatIndicesAsString) {
@@ -82,6 +87,28 @@ export function processAccess<OtherInfo>(
 		}
 		/* we include the read edges to the constant arguments as well so that they are included if necessary */
 	}
+
+	if(config.resolveField
+			&& head !== EmptyArgument && head.value !== undefined
+			&& args.length >= 2 && args[1] !== EmptyArgument) {
+		const stackEnvState = resolveNodeToStackEnv(head.value, data);
+		const envState = stackEnvState
+			?? (RSymbol.is(head.value) ? resolveSymbolToEnvir(head.value.content, head.value.info.id, data)?.envDef.envState : undefined);
+		if(envState) {
+			const fieldNode = unpackArg(args[1]);
+			const fieldName = RString.is(fieldNode) ? fieldNode.content.str : (config.treatIndicesAsString ? fieldNode?.lexeme : undefined);
+			const fieldDefs = fieldName
+				? (stackEnvInheritsFields(head.value) ? Resolve.byNameAndType(fieldName, envState, ReferenceType.Unknown) : envState.current.memory.get(fieldName))
+				: undefined;
+			for(const fd of fieldDefs ?? []) {
+				info.graph.addEdge(name.info.id, fd.nodeId, EdgeType.Reads);
+				if(stackEnvState === undefined && fd.type === ReferenceType.Function) {
+					info.graph.addEdge(name.info.id, fd.nodeId, EdgeType.Returns);
+				}
+			}
+		}
+	}
+
 	return {
 		...info,
 		/*
@@ -98,7 +125,7 @@ export function processAccess<OtherInfo>(
 		unknownReferences: makeAllMaybe(info.unknownReferences, info.graph, info.environment, false),
 		entryPoint:        rootId,
 		/** it is, to be precise, the accessed element we want to map to maybe */
-		in:                head === EmptyArgument ? info.in : info.in.map(ref => {
+		in:                RArgument.isEmpty(head) ? info.in : info.in.map(ref => {
 			if(ref.nodeId === head.value?.info.id) {
 				return makeReferenceMaybe(ref, info.graph, info.environment, false);
 			} else {
@@ -128,7 +155,7 @@ function processNumberBasedAccess<OtherInfo>(
 	const existing = data.environment.current.memory.get(':=');
 	const outInfo = { definitionRootNodes: [] };
 	const tableAssignId = NodeId.toBuiltIn(':=-table');
-	data.environment.current.memory.set(':=', [{
+	data.environment.current.writableMemory.set(':=', [{
 		type:      ReferenceType.BuiltInFunction,
 		definedAt: tableAssignId,
 		cds:       undefined,
@@ -141,7 +168,7 @@ function processNumberBasedAccess<OtherInfo>(
 
 	/* recover the environment */
 	if(existing !== undefined) {
-		data.environment.current.memory.set(':=', existing);
+		data.environment.current.writableMemory.set(':=', existing);
 	}
 	if(head.value && outInfo.definitionRootNodes.length > 0) {
 		markAsAssignment(fnCall.information, { type: ReferenceType.Variable, name: head.value.lexeme ?? '', nodeId: head.value.info.id, definedAt: rootId, cds: [] },
@@ -162,7 +189,7 @@ export function symbolArgumentsToStrings<OtherInfo>(args: readonly PotentiallyEm
 	// if the argument is a symbol, we convert it to a string for this perspective
 	for(let i = firstIndexInclusive; i <= lastIndexInclusive; i++) {
 		const arg = newArgs[i];
-		if(arg !== EmptyArgument && arg.value?.type === RType.Symbol) {
+		if(arg !== EmptyArgument && RSymbol.is(arg.value)) {
 			newArgs[i] = {
 				...arg,
 				value: {
@@ -195,7 +222,7 @@ function processStringBasedAccess<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	name: RSymbol<OtherInfo & ParentInformation>,
 	rootId: NodeId,
-	config: { treatIndicesAsString: boolean } & ForceArguments
+	config: { treatIndicesAsString: boolean, resolveField?: boolean } & ForceArguments
 ) {
 	return processKnownFunctionCall({
 		name,

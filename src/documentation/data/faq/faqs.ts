@@ -1,20 +1,29 @@
 import { FaqStore } from './wiki-faq-store';
-import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef, getFilePathMd } from '../../doc-util/doc-files';
+import { FlowrGithubBaseRef, FlowrGithubGroupName, getFilePathMd } from '../../doc-util/doc-files';
 import { codeBlock } from '../../doc-util/doc-code';
 import { recommendedVsCodeTask, recommendedZedConfig } from './recommended-configs';
+import type { GeneralDocContext } from '../../wiki-mk/doc-context';
+import { ProjectKind } from '../../../project/context/project-kind';
+import { getCliLongOptionOf } from '../../doc-util/doc-cli-option';
+import { setMinLevelOfAllLogs } from '../../../../test/functionality/_helper/log';
+import { expensiveTrace, FlowrLogger } from '../../../util/log';
 
 
 /**
  *
  */
-export function registerFaqs(): FaqStore {
+export function registerFaqs(ctx: GeneralDocContext): FaqStore {
 	const wikiFaq = new FaqStore();
 
 	wikiFaq.withTopic('flowr.development')
 		.addFaq('What are *test labels*?', `
 Tests are labeled based on the *flowR* capabilities that they test for.
-The list of supported capabilities can be found on the [Capabilities](${FlowrWikiBaseRef}/Capabilities) wiki page.
-For more extensive information on test labels, see the [test labels wiki section](${FlowrWikiBaseRef}/Linting-and-Testing#test-labels).
+The list of supported capabilities can be found on the ${ctx.linkPage('wiki/Capabilities', 'Capabilities')} wiki page.
+For more extensive information on test labels, see the ${ctx.linkPage('wiki/Linting and Testing', 'test labels wiki section', 'test-labels')}.
+`)
+		.addFaq('How do I run *all checks* before pushing?', `
+Run \`npm run checkup\`: it runs the linter, the functionality and system tests, the wiki generation, and the docker image build + smoke test concurrently, then prints one pass/fail summary.
+Run a subset with the job ids (e.g. \`npm run checkup -- lint tests\`) or skip the container build with \`npm run checkup -- --no-docker\`.
 `)
 		.addFaq('How to get a REPL with debug-info/*hot-reload*?', `
 	To enter the development repl, execute \`npm run main-dev\` in contrast to \`npm run flowr\`
@@ -43,19 +52,56 @@ ${codeBlock('shell', 'npm run wiki:watch')}
 `)
 		.addFaq('Why can\'t I pass *arguments* when running flowR *with npm*?', `
 With \`npm\` you have to pass arguments in a specific way. The \`--\` operator is used to separate the \`npm\` arguments from the script arguments. For example, if you want to run \`flowR\` with the \`--help\` argument, you can use the following command:
-${codeBlock('shell', 'npm run flowR -- --help')}
+${codeBlock('shell', 'npm run flowr -- --help')}
 `)
 		.addFaq('How to do *logging* in flowR?', `
-Check out the [Logging Section in the Linting and Testing wiki page](${FlowrWikiBaseRef}/Linting-and-Testing#logging) for more information on how to do logging in *flowR*.
+Check out the ${ctx.linkPage('wiki/Linting and Testing', 'Logging Section in the Linting and Testing wiki page', 'logging')} for more information on how to do logging in *flowR*.
+`)
+		.addFaq('How to get flowR to *talk*?', `
+When using flowR from the CLI, you can use the ${getCliLongOptionOf('flowr', 'verbose')} option to get more information about what flowR is doing.
+While coding, however, you can use the ${ctx.link(setMinLevelOfAllLogs)} function to set the minimum level of logs to be displayed (this works with the ${ctx.link(FlowrLogger)} abstraction).
+In general, you can configure the levels of individual logs, such as the general \`log\` (obtained with ${ctx.link('getActiveLog')}) or the ${ctx.link('parseLog')}.
+Please note that flowR makes no guarantees that log outputs are persistent across versions, and it is up to the implementors to provide sensible logging.
+If you are an implementor and want to add logging, please make sure there are no larger runtime implications when logging is disabled.
+Have a look at the ${ctx.link(expensiveTrace)} function for example, which uses a function to generate the log message only when the log level is reached.
+`)
+		.addFaq('How to run *tests* with *verbose* logging?', `
+Use the dedicated npm script to run all tests with trace-level log output:
+${codeBlock('shell', 'npm run test:verbose')}
+Alternatively, set the \`FLOWR_VERBOSE\` environment variable directly:
+${codeBlock('shell', 'FLOWR_VERBOSE=true npm run test')}
+Both forms accept the usual vitest filters (e.g. \`npm run test:verbose -- cli/server\`).
+`)
+
+		.addFaq('How to add a *linting rule*?', `
+To add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.
 `)
 	;
 
 	wikiFaq.withTopic('flowr.use')
+		.addFaq('How to *watch* a file for changes in the REPL?', `
+Replace the \`file://\` prefix with \`watch://\` when passing a path to any REPL command.
+flowR will run the command immediately and then re-run it every time the file (or any file inside the specified folder) changes.
+Press Ctrl+C or enter any other command to leave watch mode.
+${codeBlock('shell', ':df watch://path/to/analysis.R')}
+For a folder, flowR uses the same project discovery as with \`file://\`:
+${codeBlock('shell', ':query @linter watch://path/to/project')}
+`)
 		.addFaq('How to *query* an R project?', `
-For this you can use flowR's [Query API](${FlowrWikiBaseRef}/Query-API).
+For this you can use flowR's ${ctx.linkPage('wiki/Query API', 'Query API')}.
 If you want to create your own project using flowR as a library, check out the
 [${FlowrGithubGroupName}/sample-analyzer-project-query](${FlowrGithubBaseRef}/sample-analyzer-project-query) repository for an example project setup.
-		`);
+		`)
+		.addFaq('How to configure flowR *per kind of project*?', `
+Use ${ctx.linkConfig('specializeConfig')}: it overwrites (parts of) the configuration depending on the kind of project flowR detects (e.g. \`${ProjectKind.ShinyApp}\`).
+This is how a shiny app gets its ${ctx.linkConfig('project.implicitSources')} out of the box, as shiny loads these files without any \`source()\` call:
+${codeBlock('json', JSON.stringify({
+	specializeConfig: {
+		[ProjectKind.ShinyApp]: { project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] } }
+	}
+}, null, 2))}
+Anything you configure directly wins over the value the project kind defaults to, so setting \`project.implicitSources\` yourself overrides the list above.
+`);
 
 	wikiFaq.withTopic('r.packages')
 		.addFaq('What is the R *prelude* and R *base* package?', `
@@ -78,6 +124,9 @@ relevant documentation. If you don't know the origin of the package, you can use
 🌐 Secondly, if you don't have or don't want to install the package you can simply google the fully qualified name of the function. Good sources include [rdrr.io](https://rdrr.io/)
 or [rdocumentation.org](https://rdocumentation.org/). Additionally, the package documentation PDF can also
 be downloaded directly from [cran](https://cran.r-project.org/).
+`)
+		.addFaq('How does flowR know a *package\'s exports*?', `
+See the ${ctx.linkPage('wiki/Signature Database', 'Signature Database')} wiki page.
 `)
 	;
 

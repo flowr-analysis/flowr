@@ -5,6 +5,7 @@ import type { REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency, ExitPoint } from '../info';
 import type { Identifier } from '../environments/identifier';
 import type { BuiltInProcName } from '../environments/built-in-proc-name';
+import type { Value } from '../eval/values/r-value';
 
 
 export enum VertexType {
@@ -56,32 +57,27 @@ export interface DataflowGraphVertexAstLink {
 
 /**
  * Marker vertex for a value in the dataflow of the program.
- * This does not contain the _value_ of the referenced constant
- * as this is available with the {@link DataflowGraphVertexBase#id|id} in the {@link NormalizedAst|normalized AST}
- * (or more specifically the {@link AstIdMap}).
- *
- * If you have a {@link DataflowGraph|dataflow graph} named `graph`
- * with an {@link AstIdMap} and a value vertex object with name `value` the following Code should work:
+ * For user-code constants (numbers, strings, logicals) the value is recovered by looking up the
+ * {@link DataflowGraphVertexBase#id|id} in the {@link NormalizedAst|normalized AST}:
  * @example
  * ```ts
  * const node = graph.idMap.get(value.id)
  * ```
  *
- * This then returns the corresponding node in the {@link NormalizedAst|normalized AST}, for example,
- * an {@link RNumber} or {@link RString}.
- *
- * This works similarly for {@link IdentifierReference|identifier references}
- * for which you can use the {@link IdentifierReference#nodeId|`nodeId`}.
- * @see {@link isValueVertex} - to check if a vertex is a value vertex
+ * For built-in constants whose id is not in the {@link AstIdMap} (e.g. `T` resolving to `built-in:T`),
+ * the abstract {@link Value} is stored directly in the {@link DataflowGraphVertexValue#value|value} field.
+ * @see {@link ValueVertex.is} - to check if a vertex is a value vertex
  */
 export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.Value
 	readonly environment?: undefined
+	/** Pre-computed abstract value; set for built-in constants (e.g. `T`, `F`) whose id is not in the AST id map */
+	readonly value?:       Value
 }
 
 /**
  * Arguments required to construct a vertex which represents the usage of a variable in the {@link DataflowGraph|dataflow graph}.
- * @see {@link isUseVertex} - to check if a vertex is a use vertex
+ * @see {@link UseVertex.is} - to check if a vertex is a use vertex
  */
 export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.Use
@@ -93,7 +89,7 @@ export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
  * Arguments required to construct a vertex which represents the call to a function in the {@link DataflowGraph|dataflow graph}.
  * This describes all kinds of function calls, including calls to built-ins and control-flow structures such as `if` or `for` (they are
  * treated as function calls in R).
- * @see {@link isFunctionCallVertex} - to check if a vertex is a function call vertex
+ * @see {@link FunctionCallVertex.is} - to check if a vertex is a function call vertex
  */
 export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase {
 	readonly tag:  VertexType.FunctionCall
@@ -116,6 +112,12 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	environment:   REnvironmentInformation | undefined
 	/** More detailed Information on this function call */
 	origin:        FunctionOriginInformation[] | 'unnamed'
+	/**
+	 * For `new.env()`-family calls: the resolved parent {@link REnvironmentInformation} that the
+	 * freshly-created environment should inherit from. Set by `processNewEnv` when the `parent`
+	 * argument can be statically resolved (tracked env variable or `emptyenv()`-family call).
+	 */
+	newEnvParent?: REnvironmentInformation
 }
 
 /** Describes the processor responsible for a function call */
@@ -123,7 +125,7 @@ export type FunctionOriginInformation = BuiltInProcName;
 
 /**
  * Arguments required to construct a vertex which represents the definition of a variable in the {@link DataflowGraph|dataflow graph}.
- * @see {@link isVariableDefinitionVertex} - to check if a vertex is a variable definition vertex
+ * @see {@link VariableDefinitionVertex.is} - to check if a vertex is a variable definition vertex
  */
 export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.VariableDefinition
@@ -137,31 +139,36 @@ export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVert
 
 /**
  * Arguments required to construct a vertex which represents the definition of a function in the {@link DataflowGraph|dataflow graph}.
- * @see {@link isFunctionDefinitionVertex} - to check if a vertex is a function definition vertex
+ * @see {@link FunctionDefinitionVertex.is} - to check if a vertex is a function definition vertex
  */
 export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVertexBase {
-	readonly tag: VertexType.FunctionDefinition
+	readonly tag:    VertexType.FunctionDefinition
 	/**
 	 * The static subflow of the function definition, constructed within {@link processFunctionDefinition}.
 	 * If the vertex is (for example) a function, it can have a subgraph which is used as a template for each call.
 	 * This is the `body` of the function.
 	 */
-	subflow:      DataflowFunctionFlowInformation
+	subflow:         DataflowFunctionFlowInformation
 	/**
 	 * All exit points of the function definitions.
 	 * In other words: last expressions/return calls
 	 */
-	exitPoints:   readonly ExitPoint[]
+	exitPoints:      readonly ExitPoint[]
 	/** Maps each param to whether it is read, this is an estimate! */
-	params:       Record<NodeId, boolean>
+	params:          Record<NodeId, boolean>
 	/** The environment in which the function is defined (this is only attached if the DFG deems it necessary). */
-	environment?: REnvironmentInformation
+	environment?:    REnvironmentInformation
 	/**
 	 * If the function is a (potential) S3/S4/S7 dispatch
 	 * Please note that flowR may create these flags *on use* (e.g. `s3` as otherwise any func with a `.` would be considered S3).
 	 * This is more of a convenience flag for later processing.
 	 */
-	mode?:        ('s3' | 's4' | 's7')[];
+	mode?:           ('s3' | 's4' | 's7')[];
+	/**
+	 * If this function statically returns a tracked environment, stores the envState it returns.
+	 * Set by `processFunctionDefinition` when exit points include NewEnv calls or symbols resolving to tracked envs.
+	 */
+	returnEnvState?: REnvironmentInformation
 }
 
 /**
@@ -184,37 +191,87 @@ export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = Dataf
 
 
 /**
- * Check if the given vertex is a {@link DataflowGraphVertexValue|value vertex}.
+ * Helpers for {@link DataflowGraphVertexValue} vertices.
+ * @example
+ * ```ts
+ * ValueVertex.is(graph.getVertex(id)) // true for a constant like `42`
+ * ```
  */
-export function isValueVertex(vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexValue {
-	return vertex?.tag === VertexType.Value;
-}
+export const ValueVertex = {
+	name: 'ValueVertex',
+	/** Whether the given vertex is a value vertex. */
+	is(this: void, vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexValue {
+		return vertex?.tag === VertexType.Value;
+	}
+};
 
 /**
- * Check if the given vertex is a {@link DataflowGraphVertexUse|use vertex}.
+ * Helpers for {@link DataflowGraphVertexUse} vertices.
+ * @example
+ * ```ts
+ * UseVertex.is(graph.getVertex(id)) // true for a read of `x`
+ * ```
  */
-export function isUseVertex(vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexUse {
-	return vertex?.tag === VertexType.Use;
-}
+export const UseVertex = {
+	name: 'UseVertex',
+	/** Whether the given vertex is a use vertex. */
+	is(this: void, vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexUse {
+		return vertex?.tag === VertexType.Use;
+	}
+};
 
 /**
- * Check if the given vertex is a {@link DataflowGraphVertexFunctionCall|function call vertex}.
+ * Helpers for {@link DataflowGraphVertexFunctionCall} vertices.
+ * @example
+ * ```ts
+ * const vertex = graph.getVertex(id);
+ * FunctionCallVertex.is(vertex) && vertex.name         // the call's effective name
+ * FunctionCallVertex.hasOrigin(vertex, 'builtin:eval') // the call is an eval
+ * ```
  */
-export function isFunctionCallVertex(vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexFunctionCall {
-	return vertex?.tag === VertexType.FunctionCall;
-}
+export const FunctionCallVertex = {
+	name: 'FunctionCallVertex',
+	/** Whether the given vertex is a function call vertex. */
+	is(this: void, vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexFunctionCall {
+		return vertex?.tag === VertexType.FunctionCall;
+	},
+	/**
+	 * Whether the given vertex is a function call carrying the given origin.
+	 * Deliberately not a type predicate: a `false` says nothing about the tag, the call may simply carry another origin.
+	 */
+	hasOrigin(this: void, vertex: DataflowGraphVertexBase | undefined, origin: BuiltInProcName): boolean {
+		return FunctionCallVertex.is(vertex) && vertex.origin.includes(origin);
+	}
+};
 
 /**
- * Check if the given vertex is a {@link DataflowGraphVertexVariableDefinition|variable definition vertex}.
+ * Helpers for {@link DataflowGraphVertexVariableDefinition} vertices.
+ * @example
+ * ```ts
+ * VariableDefinitionVertex.is(graph.getVertex(id)) // true for the `x` of `x <- 1`
+ * ```
  */
-export function isVariableDefinitionVertex(vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexVariableDefinition {
-	return vertex?.tag === VertexType.VariableDefinition;
-}
+export const VariableDefinitionVertex = {
+	name: 'VariableDefinitionVertex',
+	/** Whether the given vertex is a variable definition vertex. */
+	is(this: void, vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexVariableDefinition {
+		return vertex?.tag === VertexType.VariableDefinition;
+	}
+};
 
 /**
- * Check if the given vertex is a {@link DataflowGraphVertexFunctionDefinition|function definition vertex}.
+ * Helpers for {@link DataflowGraphVertexFunctionDefinition} vertices.
+ * @example
+ * ```ts
+ * const vertex = graph.getVertex(id);
+ * FunctionDefinitionVertex.is(vertex) && vertex.exitPoints // where the body returns
+ * ```
  */
-export function isFunctionDefinitionVertex(vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexFunctionDefinition {
-	return vertex?.tag === VertexType.FunctionDefinition;
-}
+export const FunctionDefinitionVertex = {
+	name: 'FunctionDefinitionVertex',
+	/** Whether the given vertex is a function definition vertex. */
+	is(this: void, vertex?: DataflowGraphVertexBase): vertex is DataflowGraphVertexFunctionDefinition {
+		return vertex?.tag === VertexType.FunctionDefinition;
+	}
+};
 

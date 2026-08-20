@@ -1,3 +1,4 @@
+import { MetaPriority } from '../../../../../src/project/context/flowr-analyzer-meta-context';
 import { describe } from 'vitest';
 import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
@@ -41,7 +42,7 @@ describe('Resolve for Namespaces', withTreeSitter(ts => {
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true,
 			modifyAnalyzer:        a => {
-				a.context().meta.setNamespace('base');
+				a.context().meta.contribute({ namespace: 'base' }, MetaPriority.Description);
 			}
 		} as const
 	);
@@ -53,7 +54,7 @@ describe('Resolve for Namespaces', withTreeSitter(ts => {
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true,
 			modifyAnalyzer:        a => {
-				a.context().meta.setNamespace('base');
+				a.context().meta.contribute({ namespace: 'base' }, MetaPriority.Description);
 			}
 		} as const
 	);
@@ -83,6 +84,24 @@ describe('Resolve for Namespaces', withTreeSitter(ts => {
 		{
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true
+		} as const
+	);
+	assertDataflow(label(':: as function call resolves namespace-qualified definition', ['namespaces', 'lexicographic-scope']), ts,
+		'base::x <- 42\nprint(`::`(base, x))',
+		emptyGraph()
+			.reads('2@`::`', '1@x'),
+		{
+			expectIsSubgraph:      true,
+			resolveIdsAsCriterion: true
+		} as const
+	);
+	assertDataflow(label(':: as function call does not read local variable of different namespace', ['namespaces', 'lexicographic-scope']), ts,
+		'x <- 42\nprint(`::`(base, x))',
+		emptyGraph(),
+		{
+			expectIsSubgraph:      true,
+			resolveIdsAsCriterion: true,
+			mustNotHaveEdges:      [['2@`::`', '1@x']]
 		} as const
 	);
 }));

@@ -1,5 +1,5 @@
-import type { KnownParser } from '../../r-bridge/parser';
-import { type CacheInvalidationEvent, CacheInvalidationEventType, FlowrCache } from './flowr-cache';
+import type { KnownParser, ParseStepOutput } from '../../r-bridge/parser';
+import { FlowrCache, type InvalidationEvent, InvalidationEventType } from './flowr-cache';
 import {
 	createDataflowPipeline,
 	type DEFAULT_DATAFLOW_PIPELINE,
@@ -16,6 +16,7 @@ import type { ControlFlowInformation } from '../../control-flow/control-flow-gra
 import type { CfgKind } from '../cfg-kind';
 import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
 import { FlowrAnalyzerControlFlowCache } from './flowr-analyzer-controlflow-cache';
+import type { Tree } from 'web-tree-sitter';
 import { CallGraph } from '../../dataflow/graph/call-graph';
 
 interface FlowrAnalyzerCacheOptions<Parser extends KnownParser> {
@@ -28,9 +29,15 @@ type AnalyzerPipeline<Parser extends KnownParser> = Parser extends TreeSitterExe
         typeof TREE_SITTER_DATAFLOW_PIPELINE : typeof DEFAULT_DATAFLOW_PIPELINE;
 type AnalyzerPipelineExecutor<Parser extends KnownParser> = PipelineExecutor<AnalyzerPipeline<Parser>>;
 
-/* for whatever reason moving the ternary in with `AnalyzerPipeline` just breaks the type system */
+/* for whatever reason, moving the ternary in with `AnalyzerPipeline` just breaks the type system */
 export type AnalyzerCacheType<Parser extends KnownParser> = Parser extends TreeSitterExecutor ? Partial<PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>>
 	: Partial<PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>>;
+
+function isTreeSitterParse(parse: unknown): parse is ParseStepOutput<Tree> {
+	return typeof parse === 'object' && parse !== null && 'files' in parse
+		&& (parse as ParseStepOutput<unknown>).files.every(
+			f => typeof f.parsed === 'object' && f.parsed !== null && 'rootNode' in f.parsed);
+}
 
 /**
  * This provides the full analyzer caching layer, please avoid using this directly
@@ -55,30 +62,44 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		}) as AnalyzerPipelineExecutor<Parser>;
 		this.controlFlowCache = new FlowrAnalyzerControlFlowCache();
 		this.callGraphCache = undefined;
+		this.computeIfAbsent(true, () => this.pipeline?.getResults(true));
 	}
 
 	public static create<Parser extends KnownParser>(data: FlowrAnalyzerCacheOptions<Parser>): FlowrAnalyzerCache<Parser> {
 		return new FlowrAnalyzerCache<Parser>(data);
 	}
 
-	public override receive(event: CacheInvalidationEvent): void {
+	/** Free the current parse trees: tree-sitter trees live on the WASM heap, which the GC does not reclaim. */
+	private disposeParse() {
+		const files = (this.peekParse() as unknown as { files?: readonly { parsed?: { delete?: () => void } }[] } | undefined)?.files;
+		for(const file of files ?? []) {
+			file.parsed?.delete?.();
+		}
+	}
+
+	public override receive(event: InvalidationEvent): void {
 		super.receive(event);
-		switch(event.type) {
-			case CacheInvalidationEventType.Full:
+		const type = event.type;
+		if(type === InvalidationEventType.Full){
+			this.disposeParse();
+		}
+		switch(type) {
+			case InvalidationEventType.Full:
+			case InvalidationEventType.SingleFileInvalidate:
 				this.initCacheProviders();
 				break;
 			default:
-				assertUnreachable(event.type);
+				assertUnreachable(type);
 		}
 	}
 
 	private get(): AnalyzerCacheType<Parser> {
 		/* this will do a ref assignment, so indirect force */
-		return this.computeIfAbsent(false, () => this.pipeline.getResults(true));
+		return this.computeIfAbsent(false, () => this.pipeline?.getResults(true));
 	}
 
 	public reset() {
-		this.receive({ type: CacheInvalidationEventType.Full });
+		this.receive({ type: InvalidationEventType.Full });
 	}
 
 	private async runTapeUntil<T>(force: boolean | undefined, until: () => T | undefined): Promise<T> {
@@ -87,12 +108,31 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		if(force) {
 			this.reset();
 		}
+		/* the contingent belongs to the analysis, so stepping the tape starts one of its own */
+		return this.args.context.gas.withGas(undefined, () => this.stepTapeUntil(until));
+	}
+
+	private async stepTapeUntil<T>(until: () => T | undefined): Promise<T> {
 		let g: T | undefined;
 		while((g = until()) === undefined && this.pipeline.hasNextStep()) {
 			await this.pipeline.nextStep();
 		}
+
+		this.storeIncrementalSnapshotIfAvailable();
+
 		guard(g !== undefined, 'Could not reach the desired pipeline step, invalid cache state(?)');
 		return g;
+	}
+
+	private storeIncrementalSnapshotIfAvailable(): void {
+		if(this.args.parser.name !== 'tree-sitter') {
+			return;
+		}
+
+		const parse = this.peekParse();
+		if(isTreeSitterParse(parse)) {
+			this.args.context.inc.storeOldParseResults(parse);
+		}
 	}
 
 	/**
@@ -111,7 +151,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 * @see {@link FlowrAnalyzerCache#parse} - to get the parse output, parsing if necessary.
 	 */
 	public peekParse(): NonNullable<AnalyzerCacheType<Parser>['parse']> | undefined {
-		return this.get().parse;
+		return this.get()?.parse;
 	}
 
 	/**
@@ -130,7 +170,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 * @see {@link FlowrAnalyzerCache#normalize} - to get the normalized AST, normalizing if necessary.
 	 */
 	public peekNormalize(): NonNullable<AnalyzerCacheType<Parser>['normalize']> | undefined {
-		return this.get().normalize;
+		return this.get()?.normalize;
 	}
 
 	/**
@@ -149,7 +189,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 * @see {@link FlowrAnalyzerCache#dataflow} - to get the dataflow graph, computing if necessary.
 	 */
 	public peekDataflow(): NonNullable<AnalyzerCacheType<Parser>['dataflow']> | undefined {
-		return this.get().dataflow;
+		return this.get()?.dataflow;
 	}
 
 	/**

@@ -26,6 +26,7 @@ export default defineConfig({
 		reporters:   process.env.GITHUB_ACTIONS ? ['default', 'github-actions'] : ['dot'],
 		isolate:     false,
 		pool:        'threads',
+		environment: 'node',
 		server:      {
 			deps: {
 				external: [/web-tree-sitter/]
@@ -37,6 +38,12 @@ export default defineConfig({
 					enabled: true
 				}
 			}
-		}
+		},
+		exclude: [
+			...configDefaults.exclude,
+			'dist/**',
+			'test/system-tests/**'
+		],
+		include: ['test/functionality/**/*.test.ts']
 	},
 });

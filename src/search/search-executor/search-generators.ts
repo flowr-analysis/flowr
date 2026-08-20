@@ -5,9 +5,12 @@ import type {
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { SlicingCriterion, type SlicingCriteria } from '../../slicing/criterion/parse';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard, isNotUndefined } from '../../util/assert';
+import { SourceRange } from '../../util/range';
 import { type Query, type SupportedQuery, executeQueries, SupportedQueries } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
+import type { LintingResultCertainty } from '../../linter/linter-format';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { enrichElement, Enrichment } from './search-enrichers';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
@@ -52,12 +55,17 @@ async function generateAll(data: ReadonlyFlowrAnalysisProvider): Promise<FlowrSe
 
 async function getAllNodes(data: ReadonlyFlowrAnalysisProvider): Promise<RNodeWithParent[]> {
 	const normalize = await data.normalize();
-	return [...new Map([...normalize.idMap.values()].map(n => [n.info.id, n]))
-		.values()];
+	// the id map holds some nodes under more than one id, so dedup; filled in place to skip the two
+	// intermediate arrays a spread plus `map` would build
+	const byId = new Map<NodeId, RNodeWithParent>();
+	for(const n of normalize.idMap.values()) {
+		byId.set(n.info.id, n);
+	}
+	return [...byId.values()];
 }
 
 
-async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { line, column, id, name, nameIsRegex, filePathRegex } }: { filter: FlowrSearchGetFilter }): Promise<FlowrSearchElements<ParentInformation>> {
+async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { line, column, id, name, nameIsRegex, filePathRegex, fuzzy, innermostOnly } }: { filter: FlowrSearchGetFilter }): Promise<FlowrSearchElements<ParentInformation>> {
 	const normalize = await input.normalize();
 	let potentials = (id ?
 		[normalize.idMap.get(id)].filter(isNotUndefined) :
@@ -65,7 +73,7 @@ async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { lin
 	);
 	if(filePathRegex) {
 		const filePathFilter = new RegExp(filePathRegex);
-		potentials = potentials.filter(({ info }: RNodeWithParent) => info.file && filePathFilter.test(info.file));
+		potentials = potentials.filter(({ info }: RNodeWithParent) => filePathFilter.test(info.file ?? ''));
 	}
 
 	if(line && line < 0) {
@@ -79,7 +87,13 @@ async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { lin
 		line = maxLines + line + 1;
 	}
 
-	if(line && column) {
+	if(fuzzy) {
+		guard(line, 'Fuzzy location matching requires line to be provided');
+		potentials = SourceRange.nodesContaining(potentials, line, column);
+		if(innermostOnly) {
+			potentials = SourceRange.innermostNodes(potentials);
+		}
+	} else if(line && column) {
 		potentials = potentials.filter(({ location }: RNodeWithParent) => location?.[0] === line && location?.[1] === column);
 	} else if(line) {
 		potentials = potentials.filter(({ location }: RNodeWithParent) => location?.[0] === line);
@@ -100,11 +114,13 @@ function generateFrom(_input: ReadonlyFlowrAnalysisProvider, args: { from: Flowr
 }
 
 async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
-	from: readonly Query[]
+	from:       readonly Query[],
+	certainty?: LintingResultCertainty
 }): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
 	const result = await executeQueries({ analyzer: input }, args.from);
 
 	// collect involved nodes
+	const { idMap } = await input.normalize();
 	const nodesByQuery = new Map<Query['type'], Set<FlowrSearchElement<ParentInformation>>>();
 	for(const [query, content] of Object.entries(result)) {
 		if(query === '.meta') {
@@ -112,8 +128,8 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 		}
 		const nodes = new Set<FlowrSearchElement<ParentInformation>>();
 		const queryDef = SupportedQueries[query as Query['type']] as SupportedQuery<Query['type']>;
-		for(const node of queryDef.flattenInvolvedNodes(content as BaseQueryResult, args.from)) {
-			nodes.add({ node: (await input.normalize()).idMap.get(node) as RNode<ParentInformation> });
+		for(const node of queryDef.flattenInvolvedNodes(content as BaseQueryResult, args.from, args.certainty)) {
+			nodes.add({ node: idMap.get(node) as RNode<ParentInformation> });
 		}
 		nodesByQuery.set(query as Query['type'], nodes);
 	}
@@ -127,7 +143,7 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 	return elements.mutate(s => Promise.all(s.map(async e => {
 		const [query, _] = nodearr.find(([_, nodes]) => nodes.has(e)) as [Query['type'], Set<FlowrSearchElement<ParentInformation>>];
 		return await enrichElement(e, elements, input, Enrichment.QueryData, { query });
-	}))) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
+	})));
 }
 
 async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { source: TreeSitter.Query | string, captures: readonly string[] } ): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
@@ -139,7 +155,7 @@ async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { sour
 		args.captures = [defaultCaptureName];
 	}
 	// allow specifying capture names with or without the @ in front :)
-	const captures = new Set<string>(args.captures.map(c => c.startsWith('@') ? c.substring(1) : c));
+	const captures = new Set<string>(args.captures.map(c => c.startsWith('@') ? c.slice(1) : c));
 
 	const info = input.parserInformation();
 	guard(info.name === 'tree-sitter', 'treeSitterQuery can only be used with TreeSitterExecutor parsers!');

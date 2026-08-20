@@ -1,22 +1,29 @@
 import { VariableResolve } from '../../../config';
-import { type ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
+import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import { findSource } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { requestFromInput, type RParseRequest } from '../../../r-bridge/retriever';
 import { assertUnreachable, isNotUndefined, isUndefined } from '../../../util/assert';
 import { DataFrameDomain } from '../dataframe-domain';
-import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars } from '../resolve-args';
+import { unescapeSpecialChars } from '../resolve-args';
 import { ConstraintType } from '../semantics';
-import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../shape-inference';
+import type { DataFrameOperation, DataFrameOperations, DataFrameShapeInferenceVisitor } from '../shape-inference';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isRNull, parseRequestContent, type FunctionParameterLocation } from './arguments';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { Resolve } from '../../../dataflow/environments/resolve-helper';
+import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RNumber } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RUnaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
+import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /**
  * Represents the different types of data frames in R
@@ -229,6 +236,59 @@ const OtherDataFrameFunctions = [
 	}
 ] as const satisfies OtherDataFrameFunctionMapping[];
 
+/** Shared parameters of the `read.csv`/`read.delim` wrappers around `read.table`, which only differ in their separator. */
+const ReadTableVariantParams = {
+	fileName:   { pos: 0, name: 'file' },
+	header:     { pos: 1, name: 'header', default: true },
+	separator:  { pos: 2, name: 'sep', default: ',' },
+	quote:      { pos: 3, name: 'quote', default: '"' },
+	comment:    { pos: 6, name: 'comment.char', default: '' },
+	skipLines:  { pos: -1, name: 'skip', default: 0 },
+	checkNames: { pos: -1, name: 'check.names', default: true },
+	noDupNames: { pos: -1, name: 'check.names', default: true },
+	text:       { pos: -1, name: 'text' },
+	critical:   [
+		{ pos: -1, name: 'row.names' },
+		{ pos: -1, name: 'col.names' },
+		{ pos: -1, name: 'nrows', default: -1 },
+		{ pos: -1, name: 'strip.white', default: false },
+		{ pos: -1, name: 'blank.lines.skip', default: true },
+		{ pos: -1, name: 'allow.escapes', default: false },
+	]
+};
+
+/** Shared parameters of the readr `read_csv`/`read_tsv` wrappers around `read_delim`, which only differ in their separator. */
+const ReadrDelimitedParams = {
+	fileName:   { pos: 0, name: 'file' },
+	header:     { pos: 1, name: 'col_names', default: true },
+	separator:  { pos: -1, default: ',' },
+	quote:      { pos: 8, name: 'quote', default: '"' },
+	comment:    { pos: 9, name: 'comment', default: '' },
+	skipLines:  { pos: 11, name: 'skip', default: 0 },
+	checkNames: { pos: -1, default: false },
+	noDupNames: { pos: -1, default: true },
+	critical:   [
+		{ pos: 3, name: 'col_select' },
+		{ pos: 4, name: 'id' },
+		{ pos: 10, name: 'trim_ws', default: true },
+		{ pos: 12, name: 'n_max', default: Infinity },
+		{ pos: 14, name: 'name_repair', default: 'unique' },
+		{ pos: 18, name: 'skip_empty_rows', default: true }
+	],
+	noEmptyNames: true
+};
+
+/** Shared parameters of the dplyr `*_join` functions, which only differ in the sides they keep. */
+const DplyrJoinParams = {
+	dataFrame:      { pos: 0, name: 'x' },
+	otherDataFrame: { pos: 1, name: 'y' },
+	by:             { pos: 2, name: 'by' },
+	joinAll:        { pos: -1, default: false },
+	joinLeft:       { pos: -1, default: false },
+	joinRight:      { pos: -1, default: false },
+	critical:       [{ pos: -1, name: 'keep' }]
+};
+
 /**
  * Mapper for defining the location of all relevant function parameters for each supported data frame function of {@link DataFrameFunctionMapper}.
  */
@@ -262,83 +322,11 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 			{ pos: 18, name: 'allow.escapes', default: false },
 		]
 	},
-	'read.csv': {
-		fileName:   { pos: 0, name: 'file' },
-		header:     { pos: 1, name: 'header', default: true },
-		separator:  { pos: 2, name: 'sep', default: ',' },
-		quote:      { pos: 3, name: 'quote', default: '"' },
-		comment:    { pos: 6, name: 'comment.char', default: '' },
-		skipLines:  { pos: -1, name: 'skip', default: 0 },
-		checkNames: { pos: -1, name: 'check.names', default: true },
-		noDupNames: { pos: -1, name: 'check.names', default: true },
-		text:       { pos: -1, name: 'text' },
-		critical:   [
-			{ pos: -1, name: 'row.names' },
-			{ pos: -1, name: 'col.names' },
-			{ pos: -1, name: 'nrows', default: -1 },
-			{ pos: -1, name: 'strip.white', default: false },
-			{ pos: -1, name: 'blank.lines.skip', default: true },
-			{ pos: -1, name: 'allow.escapes', default: false },
-		]
-	},
-	'read.csv2': {
-		fileName:   { pos: 0, name: 'file' },
-		header:     { pos: 1, name: 'header', default: true },
-		separator:  { pos: 2, name: 'sep', default: ';' },
-		quote:      { pos: 3, name: 'quote', default: '"' },
-		comment:    { pos: 6, name: 'comment.char', default: '' },
-		skipLines:  { pos: -1, name: 'skip', default: 0 },
-		checkNames: { pos: -1, name: 'check.names', default: true },
-		noDupNames: { pos: -1, name: 'check.names', default: true },
-		text:       { pos: -1, name: 'text' },
-		critical:   [
-			{ pos: -1, name: 'row.names' },
-			{ pos: -1, name: 'col.names' },
-			{ pos: -1, name: 'nrows', default: -1 },
-			{ pos: -1, name: 'strip.white', default: false },
-			{ pos: -1, name: 'blank.lines.skip', default: true },
-			{ pos: -1, name: 'allow.escapes', default: false },
-		]
-	},
-	'read.delim': {
-		fileName:   { pos: 0, name: 'file' },
-		header:     { pos: 1, name: 'header', default: true },
-		separator:  { pos: 2, name: 'sep', default: '\\t' },
-		quote:      { pos: 3, name: 'quote', default: '"' },
-		comment:    { pos: 6, name: 'comment.char', default: '' },
-		skipLines:  { pos: -1, name: 'skip', default: 0 },
-		checkNames: { pos: -1, name: 'check.names', default: true },
-		noDupNames: { pos: -1, name: 'check.names', default: true },
-		text:       { pos: -1, name: 'text' },
-		critical:   [
-			{ pos: -1, name: 'row.names' },
-			{ pos: -1, name: 'col.names' },
-			{ pos: -1, name: 'nrows', default: -1 },
-			{ pos: -1, name: 'strip.white', default: false },
-			{ pos: -1, name: 'blank.lines.skip', default: true },
-			{ pos: -1, name: 'allow.escapes', default: false },
-		]
-	},
-	'read.delim2': {
-		fileName:   { pos: 0, name: 'file' },
-		header:     { pos: 1, name: 'header', default: true },
-		separator:  { pos: 2, name: 'sep', default: '\\t' },
-		quote:      { pos: 3, name: 'quote', default: '"' },
-		comment:    { pos: 6, name: 'comment.char', default: '' },
-		skipLines:  { pos: -1, name: 'skip', default: 0 },
-		checkNames: { pos: -1, name: 'check.names', default: true },
-		noDupNames: { pos: -1, name: 'check.names', default: true },
-		text:       { pos: -1, name: 'text' },
-		critical:   [
-			{ pos: -1, name: 'row.names' },
-			{ pos: -1, name: 'col.names' },
-			{ pos: -1, name: 'nrows', default: -1 },
-			{ pos: -1, name: 'strip.white', default: false },
-			{ pos: -1, name: 'blank.lines.skip', default: true },
-			{ pos: -1, name: 'allow.escapes', default: false },
-		]
-	},
-	'read_table': {
+	'read.csv':    { ...ReadTableVariantParams, separator: { pos: 2, name: 'sep', default: ',' } },
+	'read.csv2':   { ...ReadTableVariantParams, separator: { pos: 2, name: 'sep', default: ';' } },
+	'read.delim':  { ...ReadTableVariantParams, separator: { pos: 2, name: 'sep', default: '\\t' } },
+	'read.delim2': { ...ReadTableVariantParams, separator: { pos: 2, name: 'sep', default: '\\t' } },
+	'read_table':  {
 		fileName:   { pos: 0, name: 'file' },
 		header:     { pos: 1, name: 'col_names', default: true },
 		separator:  { pos: -1, default: '\\s' },
@@ -353,63 +341,9 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 		],
 		noEmptyNames: true
 	},
-	'read_csv': {
-		fileName:   { pos: 0, name: 'file' },
-		header:     { pos: 1, name: 'col_names', default: true },
-		separator:  { pos: -1, default: ',' },
-		quote:      { pos: 8, name: 'quote', default: '"' },
-		comment:    { pos: 9, name: 'comment', default: '' },
-		skipLines:  { pos: 11, name: 'skip', default: 0 },
-		checkNames: { pos: -1, default: false },
-		noDupNames: { pos: -1, default: true },
-		critical:   [
-			{ pos: 3, name: 'col_select' },
-			{ pos: 4, name: 'id' },
-			{ pos: 10, name: 'trim_ws', default: true },
-			{ pos: 12, name: 'n_max', default: Infinity },
-			{ pos: 14, name: 'name_repair', default: 'unique' },
-			{ pos: 18, name: 'skip_empty_rows', default: true }
-		],
-		noEmptyNames: true
-	},
-	'read_csv2': {
-		fileName:   { pos: 0, name: 'file' },
-		header:     { pos: 1, name: 'col_names', default: true },
-		separator:  { pos: -1, default: ';' },
-		quote:      { pos: 8, name: 'quote', default: '"' },
-		comment:    { pos: 9, name: 'comment', default: '' },
-		skipLines:  { pos: 11, name: 'skip', default: 0 },
-		checkNames: { pos: -1, default: false },
-		noDupNames: { pos: -1, default: true },
-		critical:   [
-			{ pos: 3, name: 'col_select' },
-			{ pos: 4, name: 'id' },
-			{ pos: 10, name: 'trim_ws', default: true },
-			{ pos: 12, name: 'n_max', default: Infinity },
-			{ pos: 14, name: 'name_repair', default: 'unique' },
-			{ pos: 18, name: 'skip_empty_rows', default: true }
-		],
-		noEmptyNames: true
-	},
-	'read_tsv': {
-		fileName:   { pos: 0, name: 'file' },
-		header:     { pos: 1, name: 'col_names', default: true },
-		separator:  { pos: -1, default: '\\t' },
-		quote:      { pos: 8, name: 'quote', default: '"' },
-		comment:    { pos: 9, name: 'comment', default: '' },
-		skipLines:  { pos: 11, name: 'skip', default: 0 },
-		checkNames: { pos: -1, default: false },
-		noDupNames: { pos: -1, default: true },
-		critical:   [
-			{ pos: 3, name: 'col_select' },
-			{ pos: 4, name: 'id' },
-			{ pos: 10, name: 'trim_ws', default: true },
-			{ pos: 12, name: 'n_max', default: Infinity },
-			{ pos: 14, name: 'name_repair', default: 'unique' },
-			{ pos: 18, name: 'skip_empty_rows', default: true }
-		],
-		noEmptyNames: true
-	},
+	'read_csv':   { ...ReadrDelimitedParams, separator: { pos: -1, default: ',' } },
+	'read_csv2':  { ...ReadrDelimitedParams, separator: { pos: -1, default: ';' } },
+	'read_tsv':   { ...ReadrDelimitedParams, separator: { pos: -1, default: '\\t' } },
 	'read_delim': {
 		fileName:   { pos: 0, name: 'file' },
 		separator:  { pos: 1, name: 'delim', default: '\t' },
@@ -485,43 +419,11 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 		dataFrame: { pos: 0, name: '.data' },
 		special:   ['.by', '.groups']
 	},
-	'inner_join': {
-		dataFrame:      { pos: 0, name: 'x' },
-		otherDataFrame: { pos: 1, name: 'y' },
-		by:             { pos: 2, name: 'by' },
-		joinAll:        { pos: -1, default: false },
-		joinLeft:       { pos: -1, default: false },
-		joinRight:      { pos: -1, default: false },
-		critical:       [{ pos: -1, name: 'keep' }]
-	},
-	'left_join': {
-		dataFrame:      { pos: 0, name: 'x' },
-		otherDataFrame: { pos: 1, name: 'y' },
-		by:             { pos: 2, name: 'by' },
-		joinAll:        { pos: -1, default: false },
-		joinLeft:       { pos: -1, default: true },
-		joinRight:      { pos: -1, default: false },
-		critical:       [{ pos: -1, name: 'keep' }]
-	},
-	'right_join': {
-		dataFrame:      { pos: 0, name: 'x' },
-		otherDataFrame: { pos: 1, name: 'y' },
-		by:             { pos: 2, name: 'by' },
-		joinAll:        { pos: -1, default: false },
-		joinLeft:       { pos: -1, default: false },
-		joinRight:      { pos: -1, default: true },
-		critical:       [{ pos: -1, name: 'keep' }]
-	},
-	'full_join': {
-		dataFrame:      { pos: 0, name: 'x' },
-		otherDataFrame: { pos: 1, name: 'y' },
-		by:             { pos: 2, name: 'by' },
-		joinAll:        { pos: -1, default: true },
-		joinLeft:       { pos: -1, default: false },
-		joinRight:      { pos: -1, default: false },
-		critical:       [{ pos: -1, name: 'keep' }]
-	},
-	'merge': {
+	'inner_join': { ...DplyrJoinParams },
+	'left_join':  { ...DplyrJoinParams, joinLeft: { pos: -1, default: true } },
+	'right_join': { ...DplyrJoinParams, joinRight: { pos: -1, default: true } },
+	'full_join':  { ...DplyrJoinParams, joinAll: { pos: -1, default: true } },
+	'merge':      {
 		dataFrame:      { pos: 0, name: 'x' },
 		otherDataFrame: { pos: 1, name: 'y' },
 		by:             { pos: 2, name: 'by' },
@@ -617,6 +519,27 @@ type DataFrameFunctionParamsMapping = {
 	[Name in DataFrameFunction]: DataFrameFunctionParams<Name> & { critical?: FunctionParameterLocation<unknown>[] }
 };
 
+/** Records an access to the given columns of `operand`, ignoring an empty access. */
+function pushAccessedCols(result: DataFrameOperation[], operand: NodeId | undefined, columns: string[] | number[]): void {
+	if(columns.length > 0) {
+		result.push({ operation: 'accessCols', operand, columns });
+	}
+}
+
+/**
+ * Records the accessed columns of `operand` split by how they are indexed, as accessing a column by name and
+ * accessing it by index are separate operations.
+ * @param result          - The operations recorded so far, appended to in place.
+ * @param operand         - The data frame the columns are accessed on.
+ * @param columns         - The accessed columns, by name or by index.
+ * @param absoluteIndices - Whether negative indices deselect the column they name and thus access the same column.
+ */
+function pushAccessedColsByIndexing(result: DataFrameOperation[], operand: NodeId | undefined, columns: readonly unknown[], absoluteIndices = false): void {
+	pushAccessedCols(result, operand, columns.filter(col => typeof col === 'string'));
+	const indices = columns.filter(col => typeof col === 'number');
+	pushAccessedCols(result, operand, absoluteIndices ? indices.map(Math.abs) : indices);
+}
+
 /**
  * Maps a concrete data frame function call to abstract data frame operations.
  * @param node      - The R node of the function call
@@ -631,7 +554,7 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 	dfg: DataflowGraph,
 	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameOperations {
-	if(node.type !== RType.FunctionCall || !node.named) {
+	if(!RFunctionCall.is(node) || !node.named) {
 		return;
 	}
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx };
@@ -689,8 +612,8 @@ function mapDataFrameCreate(
 	const noDupNames = getArgumentValue(args, params.noDupNames, info);
 	args = getEffectiveArgs(args, params.special);
 
-	const argNames = args.map(arg => resolveIdToArgName(arg, info));
-	const argLengths = args.map(arg => resolveIdToArgVectorLength(arg, info));
+	const argNames = args.map(arg => Resolve.argument.toName(arg, info));
+	const argLengths = args.map(arg => Resolve.argument.vectorLength(arg, info));
 	const allVectors = argLengths.every(isNotUndefined);
 	const rows = allVectors ? Math.max(...argLengths, 0) : undefined;
 	let colnames: (string | undefined)[] | undefined = argNames;
@@ -719,7 +642,7 @@ function mapDataFrameConvert(
 ): DataFrameOperations {
 	const dataFrame = getFunctionArgument(args, params.dataFrame, info);
 
-	if(dataFrame === EmptyArgument || dataFrame?.value === undefined) {
+	if(RArgument.isEmpty(dataFrame) || dataFrame?.value === undefined) {
 		return [{ operation: 'unknown', operand: undefined }];
 	}
 	return [{
@@ -834,8 +757,8 @@ function mapDataFrameColBind(
 				});
 				operand = undefined;
 			// added columns are top if argument cannot be resolved to constant (vector-like) value
-			} else if(resolveIdToArgValue(arg, info) !== undefined) {
-				const colname = resolveIdToArgName(arg, info);
+			} else if(Resolve.argument.value(arg, info) !== undefined) {
+				const colname = Resolve.argument.toName(arg, info);
 				colnames?.push(colname);
 			} else {
 				colnames = undefined;
@@ -882,7 +805,7 @@ function mapDataFrameRowBind(
 				});
 				operand = undefined;
 			// number of added rows is top if arguments cannot be resolved to constant (vector-like) value
-			} else if(resolveIdToArgValue(arg, info) !== undefined) {
+			} else if(Resolve.argument.value(arg, info) !== undefined) {
 				rows = rows !== undefined ? rows + 1 : undefined;
 			} else {
 				rows = undefined;
@@ -959,7 +882,7 @@ function mapDataFrameSubset(
 	let operand: RNode<ParentInformation> | undefined = dataFrame.value;
 
 	const filterArg = getFunctionArgument(args, params.subset, info);
-	const filterValue = resolveIdToArgValue(filterArg, info);
+	const filterValue = Resolve.argument.value(filterArg, info);
 	const selectArg = getFunctionArgument(args, params.select, info);
 	const dropArg = getFunctionArgument(args, params.drop, info);
 
@@ -971,20 +894,7 @@ function mapDataFrameSubset(
 	const mixedAccess = accessedCols.some(col => typeof col === 'string') && accessedCols.some(col => typeof col === 'number');
 	const duplicateCols = accessedCols.some((col, index, list) => col !== undefined && list.indexOf(col) !== index);
 
-	if(accessedCols.some(col => typeof col === 'string')) {
-		result.push({
-			operation: 'accessCols',
-			operand:   operand?.info.id,
-			columns:   accessedCols.filter(col => typeof col === 'string')
-		});
-	}
-	if(accessedCols.some(col => typeof col === 'number')) {
-		result.push({
-			operation: 'accessCols',
-			operand:   operand?.info.id,
-			columns:   accessedCols.filter(col => typeof col === 'number').map(Math.abs)
-		});
-	}
+	pushAccessedColsByIndexing(result, operand?.info.id, accessedCols, true);
 
 	if(filterArg !== undefined && filterArg !== EmptyArgument) {
 		result.push({
@@ -1011,6 +921,7 @@ function mapDataFrameSubset(
 				colnames:  selectedCols?.map(col => typeof col === 'string' ? col : undefined),
 				...(duplicateCols || mixedAccess ? { options: { duplicateCols: true } } : {})
 			});
+			// eslint-disable-next-line no-useless-assignment -- ends the chain
 			operand = undefined;
 		}
 	}
@@ -1034,18 +945,12 @@ function mapDataFrameFilter(
 	const result: DataFrameOperations = [];
 
 	const filterArgs = args.filter(arg => arg !== dataFrame);
-	const filterValues = filterArgs.map(arg => resolveIdToArgValue(arg, info));
+	const filterValues = filterArgs.map(arg => Resolve.argument.value(arg, info));
 
 	const accessedNames = filterArgs.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph).map(Identifier.getName));
-	const condition = filterValues.every(value => typeof value === 'boolean') ? filterValues.every(cond => cond) : undefined;
+	const condition = filterValues.every(value => typeof value === 'boolean') ? filterValues.every(Boolean) : undefined;
 
-	if(accessedNames.length > 0) {
-		result.push({
-			operation: 'accessCols',
-			operand:   dataFrame.value.info.id,
-			columns:   accessedNames
-		});
-	}
+	pushAccessedCols(result, dataFrame.value.info.id, accessedNames);
 
 	result.push({
 		operation: 'filterRows',
@@ -1085,20 +990,7 @@ function mapDataFrameSelect(
 		unselectedCols = [];
 	}
 
-	if(accessedCols.some(col => typeof col === 'string')) {
-		result.push({
-			operation: 'accessCols',
-			operand:   operand?.info.id,
-			columns:   accessedCols.filter(col => typeof col === 'string')
-		});
-	}
-	if(accessedCols.some(col => typeof col === 'number')) {
-		result.push({
-			operation: 'accessCols',
-			operand:   operand?.info.id,
-			columns:   accessedCols.filter(col => typeof col === 'number').map(Math.abs)
-		});
-	}
+	pushAccessedColsByIndexing(result, operand?.info.id, accessedCols, true);
 
 	if(unselectedCols === undefined || unselectedCols.length > 0) {
 		result.push({
@@ -1115,6 +1007,7 @@ function mapDataFrameSelect(
 			colnames:  selectedCols?.map(col => typeof col === 'string' ? col : undefined),
 			...(renamedCols ? { options: { renamedCols: true } } : {})
 		});
+		// eslint-disable-next-line no-useless-assignment -- ends the chain
 		operand = undefined;
 	}
 	return result;
@@ -1146,10 +1039,10 @@ function mapDataFrameMutate(
 
 	let deletedCols: (string | undefined)[] | undefined = mutateArgs
 		.filter(isRNull)
-		.map(arg => resolveIdToArgName(arg, info));
+		.map(arg => Resolve.argument.toName(arg, info));
 	let mutatedCols: (string | undefined)[] | undefined = mutateArgs
 		.filter(arg => !isRNull(arg))
-		.map(arg => resolveIdToArgName(arg, info));
+		.map(arg => Resolve.argument.toName(arg, info));
 
 	// only column names that are not created by mutation are preconditions on the operand
 	const accessedNames = mutateArgs
@@ -1159,13 +1052,7 @@ function mapDataFrameMutate(
 	deletedCols = filterValidNames(deletedCols, params.checkNames, params.noDupNames, undefined, true);
 	mutatedCols = filterValidNames(mutatedCols, params.checkNames, params.noDupNames, undefined, true);
 
-	if(accessedNames.length > 0) {
-		result.push({
-			operation: 'accessCols',
-			operand:   operand?.info.id,
-			columns:   accessedNames
-		});
-	}
+	pushAccessedCols(result, operand?.info.id, accessedNames);
 
 	if(mutatedCols === undefined || mutatedCols.length > 0 || deletedCols?.length === 0) {
 		result.push({
@@ -1182,6 +1069,7 @@ function mapDataFrameMutate(
 			colnames:  deletedCols,
 			options:   { maybe: true }
 		});
+		// eslint-disable-next-line no-useless-assignment -- ends the chain
 		operand = undefined;
 	}
 	return result;
@@ -1209,17 +1097,11 @@ function mapDataFrameGroupBy(
 	const byArgs = args.filter(arg => arg !== dataFrame);
 
 	const accessedNames = byArgs.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph)).map(Identifier.toString);
-	const byNames = byArgs.map(arg => RArgument.isNamed(arg) ? resolveIdToArgName(arg, info) : resolveIdToArgValueSymbolName(arg, info));
+	const byNames = byArgs.map(arg => RArgument.isNamed(arg) ? Resolve.argument.toName(arg, info) : Resolve.argument.symbolName(arg, info));
 
 	const mutatedCols = byArgs.some(RArgument.isNamed) || byNames.some(isUndefined);
 
-	if(accessedNames.length > 0) {
-		result.push({
-			operation: 'accessCols',
-			operand:   dataFrame.value.info.id,
-			columns:   accessedNames
-		});
-	}
+	pushAccessedCols(result, dataFrame.value.info.id, accessedNames);
 
 	result.push({
 		operation: 'groupBy',
@@ -1245,20 +1127,14 @@ function mapDataFrameSummarize(
 	const result: DataFrameOperations = [];
 	const summarizeArgs = args.filter(arg => arg !== dataFrame);
 
-	const summarizedCols = summarizeArgs.map(arg => resolveIdToArgName(arg, info));
+	const summarizedCols = summarizeArgs.map(arg => Resolve.argument.toName(arg, info));
 
 	// only column names that are not created by summarize are preconditions on the operand
 	const accessedNames = summarizeArgs
 		.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph).map(Identifier.toString))
 		.filter(arg => !summarizedCols.includes(arg));
 
-	if(accessedNames.length > 0) {
-		result.push({
-			operation: 'accessCols',
-			operand:   dataFrame.value.info.id,
-			columns:   accessedNames
-		});
-	}
+	pushAccessedCols(result, dataFrame.value.info.id, accessedNames);
 
 	result.push({
 		operation: 'summarize',
@@ -1304,7 +1180,7 @@ function mapDataFrameJoin(
 	const joinType = getJoinType(joinAll, joinLeft, joinRight);
 
 	if(byArg !== undefined) {
-		const byValue = resolveIdToArgValue(byArg, info);
+		const byValue = Resolve.argument.value(byArg, info);
 
 		if(typeof byValue === 'string' || typeof byValue === 'number') {
 			byCols = [byValue];
@@ -1313,20 +1189,7 @@ function mapDataFrameJoin(
 		}
 	}
 
-	if(byCols?.some(by => typeof by === 'string')) {
-		result.push({
-			operation: 'accessCols',
-			operand:   dataFrame.value.info.id,
-			columns:   byCols.filter(by => typeof by === 'string')
-		});
-	}
-	if(byCols?.some(by => typeof by === 'number')) {
-		result.push({
-			operation: 'accessCols',
-			operand:   dataFrame.value.info.id,
-			columns:   byCols.filter(by => typeof by === 'number')
-		});
-	}
+	pushAccessedColsByIndexing(result, dataFrame.value.info.id, byCols ?? []);
 
 	result.push({
 		operation: 'join',
@@ -1399,7 +1262,7 @@ function getRequestFromRead(
 	let request: RParseRequest | undefined;
 
 	if(fileNameArg !== undefined && fileNameArg !== EmptyArgument) {
-		const fileName = resolveIdToArgValue(fileNameArg, info);
+		const fileName = Resolve.argument.value(fileNameArg, info);
 
 		if(typeof fileName === 'string') {
 			const text = unescapeSpecialChars(fileName);
@@ -1417,7 +1280,7 @@ function getRequestFromRead(
 			}
 		}
 	} else if(textArg !== undefined && textArg !== EmptyArgument) {
-		const text = resolveIdToArgValue(textArg, info);
+		const text = Resolve.argument.value(textArg, info);
 
 		if(typeof text === 'string') {
 			request = requestFromInput(unescapeSpecialChars(text));
@@ -1461,20 +1324,20 @@ function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInfo
 
 	for(const arg of args) {
 		if(arg !== undefined && arg !== EmptyArgument) {
-			if(arg.value?.type === RType.FunctionCall && arg.value.named && arg.value.functionName.content === 'c') {
+			if(RFunctionCall.isNamed(arg.value) && Identifier.getName(arg.value.functionName.content) === 'c') {
 				const result = getSelectedColumns(arg.value.arguments, info);
 				selectedCols = joinColumns(selectedCols, result.selectedCols);
 				unselectedCols = joinColumns(unselectedCols, result.unselectedCols);
-			} else if(arg.value?.type === RType.UnaryOp && arg.value.operator === '+' && info.idMap !== undefined) {
+			} else if(RUnaryOp.is(arg.value) && arg.value.operator === '+' && info.idMap !== undefined) {
 				const result = getSelectedColumns([toUnnamedArgument(arg.value.operand, info.idMap)], info);
 				selectedCols = joinColumns(selectedCols, result.selectedCols);
 				unselectedCols = joinColumns(unselectedCols, result.unselectedCols);
-			} else if(arg.value?.type === RType.UnaryOp && arg.value.operator === '-' && info.idMap !== undefined) {
+			} else if(RUnaryOp.is(arg.value) && arg.value.operator === '-' && info.idMap !== undefined) {
 				const result = getSelectedColumns([toUnnamedArgument(arg.value.operand, info.idMap)], info);
 				selectedCols = joinColumns(selectedCols, result.unselectedCols);
 				unselectedCols = joinColumns(unselectedCols, result.selectedCols);
-			} else if(arg.value?.type === RType.BinaryOp && arg.value.operator === ':' && info.idMap !== undefined) {
-				const values = resolveIdToArgValue(toUnnamedArgument(arg.value, info.idMap), { ...info, resolve: VariableResolve.Disabled });
+			} else if(RBinaryOp.is(arg.value) && arg.value.operator === ':' && info.idMap !== undefined) {
+				const values = Resolve.argument.value(toUnnamedArgument(arg.value, info.idMap), { ...info, resolve: VariableResolve.Disabled });
 
 				if(Array.isArray(values) && values.every(value => typeof value === 'number')) {
 					selectedCols = joinColumns(selectedCols, values.filter(value => value >= 0));
@@ -1482,9 +1345,9 @@ function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInfo
 				} else {
 					selectedCols = undefined;
 				}
-			} else if(arg.value?.type === RType.Symbol || arg.value?.type === RType.String) {
-				selectedCols?.push(resolveIdToArgValueSymbolName(arg, info));
-			} else if(arg.value?.type === RType.Number) {
+			} else if(RSymbol.is(arg.value) || RString.is(arg.value)) {
+				selectedCols?.push(Resolve.argument.symbolName(arg, info));
+			} else if(RNumber.is(arg.value)) {
 				selectedCols?.push(arg.value.content.num);
 			} else {
 				selectedCols = undefined;

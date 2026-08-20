@@ -15,4 +15,21 @@ describe('R Regex Pattern Parsing', () => {
 	chk('hex[a[:xdigit:]b]{2}', 'hex[aA-Fa-f0-9b]{2}');
 	chk('ascii[[:ascii:]]+', 'ascii[\x00-\x7F]+');
 	chk('*.IData', '.*.IData');
+
+	describe('what JavaScript spells differently', () => {
+		test('inline flags become flags of their own', () => {
+			const rgx = parseRRegexPattern('(?i)^foo');
+			assert.strictEqual(rgx.source, '^foo');
+			assert.strictEqual(rgx.flags, 'i');
+			assert.isTrue(rgx.test('FOO'));
+		});
+		test('an extended-mode flag has no counterpart and is dropped', () => {
+			assert.strictEqual(parseRRegexPattern('(?x)foo').flags, '');
+		});
+		test('a pattern JavaScript cannot compile matches nothing instead of throwing', () => {
+			const rgx = parseRRegexPattern('a(b');
+			assert.isFalse(rgx.test('a(b'));
+			assert.isFalse(rgx.test(''));
+		});
+	});
 });

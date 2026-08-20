@@ -1,0 +1,1407 @@
+:root {
+	--bg: #fbfbfc;
+	--panel: #ffffff;
+	--sunk: #f1f3f6;
+	--fg: #1b1d21;
+	--muted: #5c6270;
+	--border: #d6dae1;
+	--grid: #e6e9ee;
+	--accent: #a63446;
+	--shadow: 0 1px 2px rgba(16, 20, 30, .06), 0 6px 18px rgba(16, 20, 30, .06);
+	--c1: #0072b2;
+	--c2: #d55e00;
+	--c3: #009e73;
+	--c4: #cc79a7;
+	--c5: #3ba3dd;
+	--c6: #b07d00;
+	--c7: #7b3294;
+	--c8: #b2182b;
+	--c9: #01665e;
+	--c10: #8c510a;
+	--c11: #4d7d00;
+	--c12: #a11a5b;
+	--c13: #5b5bd6;
+	--c14: #0099a8;
+	--c15: #f2778f;
+	--c16: #6b7280;
+	--c17: #24478f;
+	--c18: #46a03c;
+	color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+	--bg: #14161a;
+	--panel: #1c1f25;
+	--sunk: #23272f;
+	--fg: #e7e9ed;
+	--muted: #a2a9b6;
+	--border: #333945;
+	--grid: #2a2f38;
+	--accent: #56b4e9;
+	--shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .35);
+	--c1: #56b4e9;
+	--c2: #ff9147;
+	--c3: #45d6a4;
+	--c4: #f0a6d0;
+	--c5: #9ad3f5;
+	--c6: #f0c86b;
+	--c7: #c79bf0;
+	--c8: #ff8a8a;
+	--c9: #4fd3de;
+	--c10: #d9b38c;
+	--c11: #b9d94a;
+	--c12: #8fb8ff;
+	--c13: #a3a0ff;
+	--c14: #40c9d8;
+	--c15: #ff9fb0;
+	--c16: #9aa5b8;
+	--c17: #7f9cff;
+	--c18: #7bd455;
+	color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) {
+		--bg: #14161a;
+		--panel: #1c1f25;
+		--sunk: #23272f;
+		--fg: #e7e9ed;
+		--muted: #a2a9b6;
+		--border: #333945;
+		--grid: #2a2f38;
+		--accent: #56b4e9;
+		--shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .35);
+		--c1: #56b4e9;
+		--c2: #ff9147;
+		--c3: #45d6a4;
+		--c4: #f0a6d0;
+		--c5: #9ad3f5;
+		--c6: #f0c86b;
+		--c7: #c79bf0;
+		--c8: #ff8a8a;
+		--c9: #4fd3de;
+		--c10: #d9b38c;
+		--c11: #b9d94a;
+		--c12: #8fb8ff;
+		--c13: #a3a0ff;
+		--c14: #40c9d8;
+		--c15: #ff9fb0;
+		--c16: #9aa5b8;
+		--c17: #7f9cff;
+		--c18: #7bd455;
+		color-scheme: dark;
+	}
+}
+
+* {
+	box-sizing: border-box;
+}
+
+/* every animation here is decoration, so it goes away for anyone who asked for that */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		transition-duration: .01ms !important;
+		animation-duration: .01ms !important;
+		scroll-behavior: auto !important;
+	}
+}
+
+/* our own display rules would otherwise win against the hidden attribute */
+[hidden] {
+	display: none !important;
+}
+
+body {
+	margin: 0 auto;
+	padding: 0 1rem 2rem;
+	max-width: 100rem;
+	background: var(--bg);
+	color: var(--fg);
+	font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+a {
+	color: var(--accent);
+}
+
+header {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .4rem 1.5rem;
+	align-items: baseline;
+	justify-content: space-between;
+	padding: .8rem 0 .6rem;
+	border-bottom: 1px solid var(--border);
+}
+
+.titles h1 {
+	margin: 0;
+	font-size: 1.15rem;
+	line-height: 1.2;
+	/* the brand box takes its baseline from the mark, not from its text, so the row centres instead */
+	display: inline-flex;
+	align-items: center;
+}
+
+.titles h1 a.brand {
+	display: inline-flex;
+	align-items: center;
+	gap: .45rem;
+	color: var(--fg);
+	text-decoration: none;
+}
+
+.mark { flex: none; }
+
+/* the slash owns the space on both of its sides, so the two names sit evenly around it */
+.titles h1 .where {
+	color: var(--muted);
+	font-weight: 400;
+	font-size: 1.05rem;
+	white-space: nowrap;
+}
+
+.titles h1 .where::before { content: "/"; margin: 0 .5rem; opacity: .55; }
+
+/* a grid is only as wide as its widest row, which puts the release above the end of the intro */
+.titles {
+	display: inline-grid;
+	max-width: 90ch;
+}
+
+.title-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0 1.5rem;
+}
+
+.intro {
+	margin: .15rem 0 0;
+	font-size: .82rem;
+	color: var(--muted);
+}
+
+/* the way back to the landing page, after the sentence rather than crowding the heading */
+.intro a { margin-left: .5rem; }
+
+/* the release this page is about, which is what a reader looks for first */
+/* the size of the title it shares its line with, so the two read as one heading */
+.latest {
+	margin-left: .55rem;
+	white-space: nowrap;
+}
+
+/* the number of the release the page is about, in the same plain text every flowR page carries */
+.latest .version {
+	font-size: .82rem;
+	font-weight: 400;
+	color: var(--muted);
+	font-variant-numeric: tabular-nums;
+	text-decoration: none;
+	transition: color .18s ease;
+}
+
+.latest .version:hover,
+.latest .version:focus-visible {
+	color: var(--fg);
+}
+
+.theme {
+	display: flex;
+	align-items: center;
+	gap: .4rem;
+	font-size: .8rem;
+	color: var(--muted);
+}
+
+.theme select {
+	width: auto;
+}
+
+
+
+.status {
+	margin: .8rem 0 0;
+	padding: .6rem .8rem;
+	border-radius: 8px;
+	border: 1px solid var(--border);
+	background: var(--sunk);
+	font-size: .88rem;
+}
+
+.status.bad {
+	border-color: var(--c2);
+}
+
+/*
+ * A link asked for the screen, which only the reader's next click can grant. Nothing happens until they
+ * make one, so the ask has to be the loudest thing on the page rather than a line they read past.
+ */
+.status.ask {
+	border-color: var(--c1);
+	border-left-width: 5px;
+	color: var(--fg);
+	font-weight: 600;
+	animation: ask 1.4s ease-in-out infinite;
+}
+
+@keyframes ask {
+	50% {
+		box-shadow: 0 0 0 3px var(--sunk);
+		border-color: var(--c5);
+	}
+}
+
+/* the page reloads itself once the reader is idle, this is for whoever does not want to wait */
+.status .reload {
+	margin-left: .2rem;
+	padding: .15rem .55rem;
+	border: 1px solid var(--border);
+	border-radius: 6px;
+	background: var(--bg);
+	color: inherit;
+	font: inherit;
+	font-size: .85rem;
+	cursor: pointer;
+}
+
+.status .reload:hover {
+	border-color: var(--c1);
+}
+
+main {
+	display: grid;
+	grid-template-columns: 16.5rem minmax(0, 1fr);
+	gap: 1rem;
+	align-items: start;
+	margin-top: 1rem;
+}
+
+@media (max-width: 900px) {
+	main {
+		grid-template-columns: 1fr;
+	}
+
+	#charts {
+		grid-template-columns: 1fr;
+	}
+}
+
+#controls {
+	display: grid;
+	gap: .7rem;
+	position: sticky;
+	top: .5rem;
+}
+
+@media (max-width: 900px) {
+	#controls {
+		position: static;
+		grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+	}
+}
+
+/* every control section folds away, and states what it holds while it is folded */
+.panel {
+	margin: 0;
+	padding: .55rem .8rem;
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	background: var(--panel);
+	box-shadow: var(--shadow);
+}
+
+.panel[open] {
+	padding-bottom: .8rem;
+}
+
+.panel > summary {
+	display: flex;
+	align-items: baseline;
+	gap: .45rem;
+	cursor: pointer;
+	list-style: none;
+	min-width: 0;
+}
+
+.panel > summary::-webkit-details-marker {
+	display: none;
+}
+
+/* the chevron is the marker, it turns with the section */
+.panel > summary::after {
+	content: "";
+	flex: none;
+	margin-left: auto;
+	width: .42rem;
+	height: .42rem;
+	border-right: 1.5px solid var(--muted);
+	border-bottom: 1.5px solid var(--muted);
+	transform: translateY(-1px) rotate(45deg);
+	transition: transform .12s ease;
+}
+
+.panel[open] > summary::after {
+	transform: translateY(1px) rotate(-135deg);
+}
+
+.panel > summary:hover::after,
+.panel > summary:focus-visible::after {
+	border-color: var(--accent);
+}
+
+.panel > summary:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+	border-radius: 6px;
+}
+
+.panel-title {
+	flex: none;
+	font-size: .72rem;
+	font-weight: 600;
+	letter-spacing: .08em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+/* what the section says while it is closed, cut rather than wrapped */
+.digest {
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	font-size: .76rem;
+	color: var(--muted);
+}
+
+.panel[open] .digest {
+	display: none;
+}
+
+.panel[open] > summary {
+	margin-bottom: .55rem;
+}
+
+.field {
+	display: block;
+	margin-bottom: .65rem;
+}
+
+.field:last-child {
+	margin-bottom: 0;
+}
+
+.field > span {
+	display: block;
+	font-size: .8rem;
+	color: var(--muted);
+	margin-bottom: .25rem;
+}
+
+output {
+	color: var(--fg);
+	font-variant-numeric: tabular-nums;
+	font-weight: 600;
+}
+
+select {
+	width: 100%;
+	padding: .35rem .45rem;
+	background: var(--sunk);
+	color: var(--fg);
+	border: 1px solid var(--border);
+	border-radius: 7px;
+	font: inherit;
+	font-size: .88rem;
+	cursor: pointer;
+	transition: border-color .12s, background .12s;
+}
+
+select:hover,
+button:hover {
+	border-color: var(--accent);
+	background: var(--panel);
+}
+
+select:focus-visible,
+button:focus-visible,
+input:focus-visible,
+.legend button:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 1px;
+}
+
+input[type="range"] {
+	width: 100%;
+	accent-color: var(--accent);
+	cursor: pointer;
+}
+
+.check {
+	display: flex;
+	align-items: center;
+	gap: .45rem;
+	font-size: .85rem;
+	padding: .15rem 0;
+	cursor: pointer;
+}
+
+.check input {
+	accent-color: var(--accent);
+	cursor: pointer;
+}
+
+.check:has(input:disabled) {
+	color: var(--muted);
+	cursor: default;
+}
+
+.hint {
+	margin: .35rem 0 0;
+	font-size: .76rem;
+	line-height: 1.35;
+	color: var(--muted);
+}
+
+.buttons {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .35rem;
+}
+
+button {
+	background: var(--sunk);
+	color: var(--fg);
+	border: 1px solid var(--border);
+	border-radius: 7px;
+	padding: .28rem .6rem;
+	font: inherit;
+	font-size: .8rem;
+	cursor: pointer;
+	transition: border-color .12s, background .12s, opacity .12s;
+}
+
+button:active {
+	transform: translateY(1px);
+}
+
+#charts {
+	display: grid;
+	/* two charts at most, and only while each of them still gets a usable width */
+	grid-template-columns: repeat(auto-fit, minmax(min(34rem, 100%), 1fr));
+	gap: .8rem;
+	min-width: 0;
+}
+
+figure {
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: .7rem .8rem .5rem;
+	background: var(--panel);
+	border: 1px solid var(--border);
+	border-radius: 10px;
+	box-shadow: var(--shadow);
+	min-width: 0;
+	transition: border-color .12s ease, box-shadow .12s ease;
+}
+
+figure:hover {
+	border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+
+/*
+ * Tiles that were not on the page before arrive instead of blinking into place. Only those: a redraw
+ * replaces every tile, and a slider one drags redraws on every step, which would fade the whole page in
+ * over and over. The class is set by `render` only where the set of tiles actually changed.
+ */
+@keyframes rise {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+}
+
+figure.rise,
+.folded-row.rise {
+	animation: rise .16s ease-out;
+}
+
+/* a folded tile is a button in all but name, so it answers to the pointer like one */
+figure.folded:hover {
+	border-color: var(--accent);
+}
+
+figcaption {
+	font-size: .95rem;
+	font-weight: 600;
+	margin-bottom: .35rem;
+}
+
+figcaption .sub {
+	display: block;
+	font-weight: 400;
+	font-size: .78rem;
+	color: var(--muted);
+}
+
+figcaption .head {
+	display: flex;
+	align-items: center;
+	gap: .4rem;
+}
+
+figcaption .title {
+	min-width: 0;
+}
+
+.fold {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex: none;
+	margin-left: auto;
+	width: 1.5rem;
+	height: 1.5rem;
+	border: 1px solid var(--border);
+	border-radius: 7px;
+	background: var(--sunk);
+	color: var(--fg);
+	transition: color .12s ease, border-color .12s ease, background .12s ease;
+}
+
+.fold:hover,
+.fold:focus-visible {
+	background: var(--panel);
+	border-color: var(--accent);
+	color: var(--fg);
+}
+
+.fold .chevron {
+	width: .8rem;
+	height: .8rem;
+	stroke-width: 2;
+	transform: rotate(180deg);
+	transition: transform .12s ease;
+}
+
+.fold.open .chevron {
+	transform: rotate(0deg);
+}
+
+/* the tiles the reader folded away, as chips in one row instead of a column each */
+.folded-row {
+	grid-column: 1 / -1;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	gap: .5rem;
+	min-width: 0;
+}
+
+figure.folded {
+	padding: .35rem .7rem;
+	max-width: 100%;
+}
+
+figure.folded figcaption {
+	margin: 0;
+	color: var(--muted);
+	font-size: .85rem;
+	font-weight: 500;
+}
+
+figure[draggable="true"] figcaption .title {
+	cursor: grab;
+}
+
+figure.dragging {
+	opacity: .5;
+}
+
+figure.drop-target {
+	outline: 2px dashed var(--accent);
+	outline-offset: 2px;
+}
+
+figcaption .chip {
+	padding: .05rem .4rem;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	font-weight: 500;
+	font-size: .7rem;
+	color: var(--muted);
+	white-space: nowrap;
+}
+
+svg {
+	width: 100%;
+	height: auto;
+	display: block;
+	touch-action: pan-y;
+}
+
+.axis {
+	fill: var(--muted);
+	font-size: 10px;
+}
+
+.axis.major {
+	fill: var(--muted);
+	font-size: 9px;
+	font-weight: 600;
+}
+
+.grid {
+	stroke: var(--grid);
+	stroke-width: 1;
+}
+
+.zero {
+	stroke: var(--muted);
+	stroke-width: 1;
+	stroke-dasharray: 4 3;
+	opacity: .8;
+}
+
+.marker {
+	stroke: var(--muted);
+	stroke-width: 1;
+	stroke-dasharray: 2 3;
+	opacity: .85;
+}
+
+/* an invisible wider line would be nicer to hit, this at least reacts */
+.marker:hover {
+	stroke: var(--accent);
+	stroke-width: 2;
+	opacity: 1;
+}
+
+.marker.minor {
+	stroke-dasharray: 3 3;
+	opacity: .6;
+}
+
+.release {
+	font-size: 9px;
+	fill: var(--muted);
+}
+
+.release.major {
+	font-weight: 600;
+	fill: var(--fg);
+}
+
+.line {
+	fill: none;
+	stroke: var(--c);
+	stroke-width: 1.9;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.band {
+	fill: var(--c);
+	stroke: none;
+	opacity: .07;
+}
+
+/* no easing here: the cursor line snaps from run to run, and a sliding dot would trail behind it */
+.dot {
+	fill: var(--c);
+	stroke: var(--panel);
+	stroke-width: 1.2;
+}
+
+/* several series can start in the same release, so their points must not melt into one blob */
+.dot.lone {
+	stroke-width: 1.6;
+}
+
+.cursor {
+	stroke: var(--muted);
+	stroke-width: 1;
+}
+
+.legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .3rem .4rem;
+	margin-top: .5rem;
+}
+
+.legend button {
+	display: inline-flex;
+	align-items: center;
+	gap: .4rem;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: var(--sunk);
+	padding: .2rem .6rem .2rem .45rem;
+	font-size: .82rem;
+	line-height: 1.3;
+	color: var(--fg);
+}
+
+.legend button:hover {
+	background: var(--panel);
+	border-color: var(--c);
+}
+
+.legend button.off {
+	opacity: .4;
+	text-decoration: line-through;
+}
+
+.swatch {
+	/* inline elements ignore a size, which hid the dot inside the tooltip table */
+	display: inline-block;
+	width: .7rem;
+	height: .7rem;
+	border-radius: 50%;
+	background: var(--c);
+	flex: none;
+}
+
+.ssum {
+	--c: var(--muted);
+}
+
+.line.ssum {
+	stroke-dasharray: 5 3;
+}
+
+.s0 {
+	--c: var(--c1);
+}
+
+.s1 {
+	--c: var(--c2);
+}
+
+.s2 {
+	--c: var(--c3);
+}
+
+.s3 {
+	--c: var(--c4);
+}
+
+.s4 {
+	--c: var(--c5);
+}
+
+.s5 {
+	--c: var(--c6);
+}
+
+.s6 {
+	--c: var(--c7);
+}
+
+.s7 {
+	--c: var(--c8);
+}
+
+.s8 {
+	--c: var(--c9);
+}
+
+.s9 {
+	--c: var(--c10);
+}
+
+.s10 {
+	--c: var(--c11);
+}
+
+.s11 {
+	--c: var(--c12);
+}
+
+.s12 {
+	--c: var(--c13);
+}
+
+.s13 {
+	--c: var(--c14);
+}
+
+.s14 {
+	--c: var(--c15);
+}
+
+.s15 {
+	--c: var(--c16);
+}
+
+.s16 {
+	--c: var(--c17);
+}
+
+.s17 {
+	--c: var(--c18);
+}
+
+#tooltip {
+	position: fixed;
+	z-index: 10;
+	/* wide enough for a note to fit on one line, never wider than the window it has to stay inside */
+	max-width: min(30rem, calc(100vw - 1rem));
+	pointer-events: none;
+	/* opaque: a chart read through the numbers that explain it is unreadable twice over */
+	background: var(--panel);
+	color: var(--fg);
+	border: 1px solid var(--border);
+	border-radius: 8px;
+	padding: .45rem .55rem;
+	font-size: .8rem;
+	box-shadow: var(--shadow);
+	transition: opacity .1s ease, transform .1s ease;
+}
+
+#tooltip[hidden] {
+	/* the attribute already hides it, this only keeps the fade from starting at the wrong place */
+	opacity: 0;
+}
+
+/* a finger covers the point it touches, so on a phone the panel sits at the bottom edge instead */
+#tooltip.sheet {
+	left: .5rem;
+	right: .5rem;
+	bottom: .5rem;
+	top: auto;
+	max-width: none;
+	padding: .5rem .6rem calc(.5rem + env(safe-area-inset-bottom, 0px));
+	border-radius: 12px;
+	background: var(--panel);
+	font-size: .82rem;
+}
+
+#tooltip.sheet .head {
+	font-size: .9rem;
+}
+
+/* the sheet is reachable, unlike the panel that follows a mouse */
+#tooltip.sheet {
+	pointer-events: auto;
+}
+
+#tooltip .open-commit {
+	display: inline-block;
+	margin-top: .15rem;
+	color: var(--accent);
+}
+
+#tooltip .head {
+	font-weight: 600;
+}
+
+#tooltip .msg {
+	color: var(--muted);
+	overflow-wrap: anywhere;
+}
+
+/* the commit keeps to its line and is cut rather than reflowing the panel under the pointer */
+#tooltip .commit {
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+#tooltip table {
+	border-spacing: 0;
+	margin: .25rem 0;
+	width: 100%;
+}
+
+#tooltip td {
+	padding: 0 0 0 .4rem;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+#tooltip td:first-child {
+	padding: 0;
+	width: .9rem;
+}
+
+#tooltip td.name {
+	white-space: normal;
+	overflow-wrap: anywhere;
+	width: 100%;
+}
+
+/* the values line up on their last digit, so a 100 reads taller than an 11 */
+#tooltip td:last-child {
+	text-align: right;
+}
+
+/* a series the sum of this chart does not contain, dimmed so the rows that do add up stand out */
+#tooltip tr.faint {
+	opacity: .6;
+}
+
+/* the swatch keeps its hue, but a duller one, so the row reads as an aside and not as another part */
+#tooltip tr.faint .swatch {
+	filter: saturate(.55);
+}
+
+/* a touch is coarser than a mouse: thicker lines, larger points, a cursor one can actually see */
+@media (pointer: coarse), (max-width: 900px) {
+	.line {
+		stroke-width: 2.6;
+	}
+
+	.line.ssum {
+		stroke-dasharray: 6 4;
+	}
+
+	.dot {
+		stroke-width: 1.6;
+	}
+
+	.cursor {
+		stroke-width: 1.6;
+		opacity: .8;
+	}
+
+	.grid {
+		stroke-width: 1.2;
+	}
+
+	.axis {
+		font-size: 11px;
+	}
+
+	/* the chart reads a horizontal drag, the page keeps the vertical one */
+	figure svg {
+		touch-action: pan-y;
+	}
+
+	/* a finger needs something to hit */
+	.legend button {
+		padding: .25rem .5rem;
+	}
+
+	.point,
+	.fold {
+		min-height: 1.9rem;
+	}
+}
+
+/* the sections slide open where the browser can interpolate to a content-sized box */
+@supports (interpolate-size: allow-keywords) {
+	:root {
+		interpolate-size: allow-keywords;
+	}
+
+	.panel::details-content {
+		block-size: 0;
+		overflow: hidden;
+		transition: block-size .18s ease, content-visibility .18s allow-discrete;
+	}
+
+	.panel[open]::details-content {
+		block-size: auto;
+	}
+}
+
+/* the notes are sentences, and a sentence that may not wrap pushes the table out of the panel around it */
+#tooltip td.msg {
+	text-align: left;
+	white-space: normal;
+}
+
+.good {
+	color: var(--c3);
+}
+
+.bad {
+	color: var(--c2);
+}
+
+.empty {
+	color: var(--muted);
+	font-size: .85rem;
+	padding: .5rem 0 .8rem;
+}
+
+footer {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .4rem;
+	margin-top: 1.5rem;
+	padding-top: .8rem;
+	border-top: 1px solid var(--border);
+	font-size: .8rem;
+	color: var(--muted);
+}
+
+/* whether the page is still watching for a newer history, and why not where it is not */
+#watch-note {
+	cursor: help;
+	border-bottom: 1px dotted var(--border);
+}
+
+#fullscreen {
+	margin-left: auto;
+}
+
+/* the button the notice is about, so the eye that follows the notice lands on something */
+#fullscreen.asked {
+	border-color: var(--c1);
+	color: var(--fg);
+	font-weight: 600;
+	animation: ask 1.4s ease-in-out infinite;
+}
+
+@media (max-width: 560px) {
+	body {
+		padding: 0 .6rem 1.5rem;
+	}
+
+	header {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	#controls {
+		grid-template-columns: 1fr;
+	}
+
+	.legend button {
+		font-size: .8rem;
+	}
+
+	figure {
+		padding: .6rem;
+	}
+}
+
+.composition {
+	/* the detail sits at the bottom, so two charts side by side line up */
+	margin-top: auto;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .4rem 1rem;
+	margin-top: .6rem;
+	padding-top: .6rem;
+	border-top: 1px solid var(--border);
+}
+
+.donut {
+	width: 6.5rem;
+	height: 6.5rem;
+	flex: none;
+}
+
+.slice {
+	fill: var(--c);
+	stroke: var(--panel);
+	stroke-width: 1;
+}
+
+.donut-center {
+	fill: var(--fg);
+	font-size: 20px;
+	font-weight: 600;
+}
+
+/* what the donut is about, above it, so the number in its middle has a subject */
+.composition .subject {
+	flex-basis: 100%;
+	margin: 0;
+}
+
+.composition ul {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	font-size: .82rem;
+}
+
+.composition li {
+	display: flex;
+	align-items: center;
+	gap: .4rem;
+	padding: .1rem 0;
+}
+
+.composition li.note {
+	color: var(--muted);
+}
+
+.composition .note {
+	margin: 0;
+	font-size: .78rem;
+	color: var(--muted);
+}
+
+.facts {
+	margin-top: .4rem;
+}
+
+.facts dl {
+	display: grid;
+	margin: 0;
+	gap: .1rem 1.4rem;
+	grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+	grid-auto-flow: column;
+	grid-template-rows: auto auto;
+}
+
+.facts dt {
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	line-height: 1.15;
+}
+
+.facts dd {
+	margin: 0;
+	color: var(--muted);
+	font-size: .78rem;
+}
+
+.facts .lead dt {
+	font-size: 1.5rem;
+}
+
+.facts .rest {
+	margin-top: .7rem;
+}
+
+.facts .rest dt {
+	font-size: .95rem;
+}
+
+.timeline {
+	margin-top: .7rem;
+	padding-top: .6rem;
+	border-top: 1px solid var(--border);
+}
+
+.timeline svg {
+	width: 100%;
+	height: auto;
+	display: block;
+}
+
+.timeline .pickable {
+	cursor: crosshair;
+}
+
+.timeline-base {
+	stroke: var(--border);
+	stroke-width: 1;
+}
+
+/* the releases, as faint as the sparkline is small */
+.timeline-marker {
+	stroke: var(--muted);
+	stroke-width: 1;
+	stroke-dasharray: 2 3;
+	opacity: .5;
+}
+
+.timeline-marker.minor {
+	opacity: .3;
+}
+
+.timeline-area {
+	fill: var(--c);
+	opacity: .1;
+	stroke: none;
+}
+
+.timeline-line {
+	fill: none;
+	stroke: var(--c);
+	stroke-width: 1.4;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.timeline-dot {
+	fill: var(--c);
+	stroke: var(--panel);
+	stroke-width: 1.2;
+}
+
+.timeline-tick {
+	fill: var(--muted);
+	font-size: 5.5px;
+	font-variant-numeric: tabular-nums;
+}
+
+.facts .composition {
+	border-top: 1px solid var(--border);
+}
+
+/* the state picker belongs to the numbers above it, so it sits on the same separator the rest uses */
+.history {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: .3rem .45rem;
+	margin-top: .6rem;
+	padding-top: .5rem;
+	border-top: 1px solid var(--border);
+}
+
+.history > .note:first-child {
+	font-size: .72rem;
+	font-weight: 600;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+}
+
+/* what follows the picker explains it, so it keeps to the far side */
+.history > .note:last-child {
+	margin-left: auto;
+}
+
+.point {
+	padding: .15rem .55rem;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: var(--sunk);
+	color: var(--muted);
+	font-size: .75rem;
+	font-variant-numeric: tabular-nums;
+	transition: color .12s ease, border-color .12s ease, background .12s ease;
+}
+
+.point:hover,
+.point:focus-visible {
+	background: var(--panel);
+	border-color: var(--accent);
+	color: var(--fg);
+}
+
+.point.on {
+	border-color: var(--accent);
+	color: var(--fg);
+}
+
+/* a long history does not fit into a row of buttons */
+.point-select {
+	width: auto;
+	max-width: 100%;
+	padding: .12rem 1.4rem .12rem .45rem;
+	border-radius: 999px;
+	font-size: .75rem;
+	font-variant-numeric: tabular-nums;
+	color: var(--fg);
+	/* the arrow of the control, drawn rather than left to the platform, so it matches the chips next to it */
+	appearance: none;
+	background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+		linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+	background-position: right .72rem center, right .5rem center;
+	background-size: .22rem .22rem, .22rem .22rem;
+	background-repeat: no-repeat;
+}
+
+.point-select:hover,
+.point-select:focus-visible {
+	border-color: var(--accent);
+}
+
+.facts dt.missing {
+	color: var(--muted);
+	font-weight: 500;
+}
+
+.composition.tags {
+	display: block;
+}
+
+.composition.tags ul {
+	display: grid;
+	grid-template-columns: auto 1fr auto;
+	gap: .15rem .5rem;
+	width: 100%;
+}
+
+.composition.tags li {
+	display: contents;
+}
+
+.tag-name {
+	color: var(--muted);
+}
+
+.tag-track {
+	align-self: center;
+	height: .5rem;
+	border-radius: 3px;
+	background: var(--sunk);
+	overflow: hidden;
+}
+
+.tag-bar {
+	display: block;
+	height: 100%;
+	background: var(--c);
+}
+
+.tag-value {
+	font-variant-numeric: tabular-nums;
+	text-align: right;
+	min-width: 1.6rem;
+}
+
+.tags-foot {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: .3rem .6rem;
+	margin-top: .45rem;
+}
+
+.unfold {
+	display: inline-flex;
+	align-items: center;
+	gap: .3rem;
+	padding: .2rem .6rem .2rem .4rem;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: var(--sunk);
+	color: var(--muted);
+	font-size: .78rem;
+	line-height: 1.3;
+	transition: color .12s ease, border-color .12s ease, background .12s ease;
+}
+
+.unfold:hover,
+.unfold:focus-visible {
+	background: var(--panel);
+	border-color: var(--accent);
+	color: var(--fg);
+}
+
+.chevron {
+	width: .85rem;
+	height: .85rem;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.6;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	transition: transform .15s ease;
+}
+
+.unfold.open .chevron {
+	transform: rotate(180deg);
+}
+
+.mark { flex: none; vertical-align: -.2em; margin-right: .3rem; }

@@ -12,6 +12,13 @@ import { NETWORK_FUNCTIONS } from './rules/network-functions';
 import { STOP_WITH_CALL_ARG } from './rules/stop-with-call-arg';
 import { ROXYGEN_ARGS } from './rules/roxygen-arguments';
 import { PROBLEMATIC_INPUTS } from './rules/problematic-inputs';
+import { SOFTWARE_HAS_LICENSE } from './rules/software-has-license';
+import { SOFTWARE_HAS_TESTS } from './rules/software-has-tests';
+import { NO_LEAKED_CREDENTIALS } from './rules/no-leaked-credentials';
+import { UNDEFINED_SYMBOL } from './rules/undefined-symbol';
+import { UNUSED_IMPORT } from './rules/unused-import';
+import { SYNTACTICALLY_VALID } from './rules/syntactically-valid';
+import { UNCLOSED_CONNECTION } from './rules/unclosed-connection';
 
 /**
  * The registry of currently supported linting rules.
@@ -30,7 +37,14 @@ export const LintingRules = {
 	'useless-loop':                USELESS_LOOP,
 	'problematic-inputs':          PROBLEMATIC_INPUTS,
 	'stop-call':                   STOP_WITH_CALL_ARG,
-	'roxygen-arguments':           ROXYGEN_ARGS
+	'roxygen-arguments':           ROXYGEN_ARGS,
+	'software-has-license':        SOFTWARE_HAS_LICENSE,
+	'software-has-tests':          SOFTWARE_HAS_TESTS,
+	'no-leaked-credentials':       NO_LEAKED_CREDENTIALS,
+	'undefined-symbol':            UNDEFINED_SYMBOL,
+	'unused-import':               UNUSED_IMPORT,
+	'syntactically-valid':         SYNTACTICALLY_VALID,
+	'unclosed-connection':         UNCLOSED_CONNECTION
 } as const;
 
 export type LintingRuleNames = keyof typeof LintingRules;

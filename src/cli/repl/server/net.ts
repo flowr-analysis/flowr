@@ -32,6 +32,7 @@ export class WebSocketServerWrapper implements Server {
 
 	start(port: number) {
 		this.server = new WebSocketServer({ port, maxPayload: 1024 * 1024 * 1024 * 1024 });
+		this.server.on('error', (e: NodeJS.ErrnoException) => reportListenFailure(port, e));
 		serverLog.info('WebSocket-Server wrapper is active!');
 		this.server.on('connection', c => this.connectHandler?.(new WebSocketWrapper(c)));
 	}
@@ -91,6 +92,19 @@ export class NetServer implements Server {
 	}
 
 	public start(port: number) {
+		this.server.on('error', (e: NodeJS.ErrnoException) => reportListenFailure(port, e));
 		this.server.listen(port);
 	}
+}
+
+/** Log a clear, actionable message for a server that failed to bind its port, then exit (there is nothing left to serve). */
+function reportListenFailure(port: number, e: NodeJS.ErrnoException): void {
+	if(e.code === 'EADDRINUSE') {
+		serverLog.error(`Port ${port} is already in use. Pick another port with --port <number> or stop the process using it.`);
+	} else if(e.code === 'EACCES') {
+		serverLog.error(`Not allowed to listen on port ${port} (permission denied). Try a port above 1024 with --port <number>.`);
+	} else {
+		serverLog.error(`Failed to start the server on port ${port}: ${e.message}`);
+	}
+	process.exit(1);
 }

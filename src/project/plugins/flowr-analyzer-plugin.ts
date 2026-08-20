@@ -15,13 +15,14 @@ import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
  * │           │   │                   │   │             │   │               │   │       │
  * │ *Builder* ├──▶│ Project Discovery ├──▶│ File Loader ├──▶│ Dependencies  ├──▶│ *DFA* │
  * │           │   │  (if necessary)   │   │             │   │   (static)    │   │       │
- * └───────────┘   └───────────────────┘   └──────┬──────┘   └───────────────┘   └───────┘
- *                                                │                                  ▲
- *                                                │          ┌───────────────┐       │
- *                                                │          │               │       │
- *                                                └─────────▶│ Loading Order ├───────┘
- *                                                           │               │
- *                                                           └───────────────┘
+ * └───────────┘   └───────────────────┘   └──────┬──────┘   └───────────────┘   └────┬──┘
+ *                                                │                                  ▲│
+ *                                                │          ┌───────────────┐       ││
+ *                                                │          │               │       ││ on-demand
+ *                                                └─────────▶│ Loading Order ├───────┘│
+ *                                                           │               │        │  ┌───────────┐
+ *                                                           └───────────────┘        └─▶│    Gas    │
+ *                                                                                       └───────────┘
  *```
  *
  */
@@ -45,7 +46,13 @@ export enum PluginType {
 	 * Plugins that are applied to load and parse files.
 	 * @see {@link FlowrAnalyzerFilePlugin} - for the base class to implement such a plugin.
 	 */
-	FileLoad                 = 'file-load'
+	FileLoad                 = 'file-load',
+	/**
+	 * Plugins that are queried on-demand during analysis to report the current resource-usage pressure level.
+	 * Multiple Gas plugins are combined by taking the maximum level returned.
+	 * @see {@link FlowrAnalyzerGasPlugin} - for the base class to implement such a plugin.
+	 */
+	Gas                      = 'gas'
 }
 
 /**
@@ -103,6 +110,11 @@ export abstract class FlowrAnalyzerPlugin<In = unknown, Out extends AsyncOrSync<
 	public processor(context: FlowrAnalyzerContext, args: In): Out {
 		const now = Date.now();
 		try {
+			// record activation before running: many plugins contribute by mutating the context and return `void`, so
+			// a return value is not a reliable signal -- a plugin activated if its processor ran for this analysis
+			if(context.config.repl.showPlugins) {
+				context.activatedPlugins.add(this.constructor.name);
+			}
 			const result = this.process(context, args);
 			const duration = Date.now() - now;
 			expensiveTrace(generalPluginLog, () => `Plugin ${this.name} (v${this.version.format()}, ${this.type}) executed in ${duration}ms.`);

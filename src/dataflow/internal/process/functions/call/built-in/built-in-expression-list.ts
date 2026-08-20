@@ -2,18 +2,17 @@
  * Processes a list of expressions joining their dataflow graphs accordingly.
  * @module
  */
-import type { ControlDependency, DataflowInformation, ExitPoint } from '../../../../../info';
+import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
 import { addNonDefaultExitPoints, alwaysExits, ExitPointType, happensInEveryBranch } from '../../../../../info';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { linkFunctionCalls } from '../../../../linker';
+import { getAllLinkedFunctionDefinitions, linkFunctionCalls } from '../../../../linker';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import { patchFunctionCall } from '../common';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
-import { Identifier, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
+import { Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
 import { type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment } from '../../../../../environments/scoping';
@@ -25,16 +24,36 @@ import { dataflowLogger } from '../../../../../logger';
 import { expensiveTrace } from '../../../../../../util/log';
 import type { Writable } from 'ts-essentials';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
+import { cancelRevivedKills, dropKilledWrites, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { valueFromTsValue } from '../../../../../eval/values/general';
+import { FunctionDefinitionVertex, FunctionCallVertex } from '../../../../../graph/vertex';
+import { Resolve } from '../../../../../environments/resolve-helper';
 
 
+
+/**
+ * Whether the definitions of this list among the `targets` of a read cover every branch, alone or together.
+ * Only then the read is resolved here and must not bubble up as an ingoing reference.
+ */
+function coveredByListDefinitions(targets: readonly IdentifierDefinition[], listEnvironments: Set<NodeId>): boolean {
+	let cds: ControlDependency[] | undefined;
+	for(const target of targets) {
+		if(!listEnvironments.has(target.nodeId)) {
+			continue;
+		} else if(target.cds === undefined) {
+			return true;
+		}
+		(cds ??= []).push(...target.cds);
+	}
+	return cds !== undefined && happensInEveryBranch(cds);
+}
 
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph) {
 	const readName = read.name && Identifier.isDotDotDotAccess(read.name) ? Identifier.dotdotdot() : read.name;
-	const probableTarget = readName ? resolveByName(readName, environments, read.type) : undefined;
+	const probableTarget = readName ? Resolve.byNameAndType(readName, environments, read.type) : undefined;
 
-	// record if at least one has not been defined
-	if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId) || !happensInEveryBranch(t.cds))) {
+	if(probableTarget === undefined || !coveredByListDefinitions(probableTarget, listEnvironments)) {
 		const readId = readName ? Identifier.getName(readName) : undefined;
 		const has = remainingRead.get(readId);
 		if(has) {
@@ -53,14 +72,84 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 	}
 
 	const rid = read.nodeId;
+	const isFunc = read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction;
 	for(const target of probableTarget) {
 		const tid = target.nodeId;
-		if(NodeId.isBuiltIn(target.definedAt) && (read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction)) {
+		if(NodeId.isBuiltIn(target.definedAt) && isFunc) {
 			nextGraph.addEdge(rid, tid, EdgeType.Reads | EdgeType.Calls);
 		} else {
 			nextGraph.addEdge(rid, tid, EdgeType.Reads);
 		}
+		if(target.type === ReferenceType.BuiltInConstant) {
+			nextGraph.addVertex({
+				tag:   VertexType.Value,
+				id:    tid,
+				cds:   undefined,
+				value: valueFromTsValue((target).value)
+			}, environments, false);
+		}
 	}
+}
+
+/**
+ * Expands the directly-called function definitions (`direct`) with those they transitively call (resolved by name in
+ * `resolveEnv`). A sibling/outer callee is invisible inside its caller's (clean) body, so its escaped globals never fold
+ * into the caller's subflow; pulling them here lets a super-assignment escaping through several call levels reach the
+ * outer read. Escapes are folded popped to the fold level, so a write binding an intermediate frame stops there.
+ * Package attachments keep their own (lazy) propagation, so transitive callees only contribute their `<<-` escapes.
+ */
+function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInfo[], graph: DataflowGraph, resolveEnv: REnvironmentInformation): Generator<{ fn: DataflowGraphVertexInfo, direct: boolean }> {
+	const seen = new Set<NodeId>();
+	const stack = initial.map(fn => ({ fn, direct: true }));
+	while(stack.length > 0) {
+		const { fn, direct } = stack.pop() as { fn: DataflowGraphVertexInfo, direct: boolean };
+		if(!FunctionDefinitionVertex.is(fn) || seen.has(fn.id)) {
+			continue;
+		}
+		seen.add(fn.id);
+		yield { fn, direct };
+		for(const nodeId of fn.subflow.graph) {
+			const call = graph.getVertex(nodeId);
+			if(!FunctionCallVertex.is(call) || call.onlyBuiltin || call.name === undefined) {
+				continue;
+			}
+			const resolved = Resolve.byNameAndType(call.name, resolveEnv, ReferenceType.Function);
+			if(resolved === undefined) {
+				continue;
+			}
+			const [targets] = getAllLinkedFunctionDefinitions(new Set(resolved.map(r => r.nodeId)), graph);
+			for(const target of targets) {
+				if(!seen.has(target.id)) {
+					stack.push({ fn: target, direct: false });
+				}
+			}
+		}
+	}
+}
+
+/** Rebuilds `env` without its attached-package/namespace layers (`t !== undefined`), keeping only the lexical frames a `<<-` can bind. */
+function withoutPackageLayers(env: REnvironmentInformation): REnvironmentInformation {
+	let builtIn: Environment = env.current;
+	const core: Environment[] = [];
+	let hasPackage = false;
+	while(!builtIn.builtInEnv) {
+		if(builtIn.t === undefined) {
+			core.push(builtIn);
+		} else {
+			hasPackage = true;
+		}
+		builtIn = builtIn.parent;
+	}
+	if(!hasPackage) {
+		return env;
+	}
+	let parent: Environment = builtIn;
+	for(let i = core.length - 1; i >= 0; i--) {
+		const cloned = core[i].clone(false);
+		cloned.parent = parent;
+		parent = cloned;
+	}
+	return { current: parent, level: env.level };
 }
 
 function updateSideEffectsForCalledFunctions(calledEnvs: {
@@ -69,10 +158,10 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 }[], inputEnvironment: REnvironmentInformation, nextGraph: DataflowGraph, localDefs: readonly IdentifierReference[]) {
 	for(const { functionCall, called } of calledEnvs) {
 		let callDependencies: ControlDependency[] | null | undefined = null;
-		for(const calledFn of called) {
-			guard(calledFn.tag === VertexType.FunctionDefinition, 'called function must be a function definition');
+		for(const { fn: calledFn, direct } of transitivelyCalledDefinitions(called, nextGraph, inputEnvironment)) {
+			guard(FunctionDefinitionVertex.is(calledFn), 'called function must be a function definition');
 			// only merge the environments they have in common
-			let environment = calledFn.subflow.environment;
+			let environment = direct ? calledFn.subflow.environment : withoutPackageLayers(calledFn.subflow.environment);
 			while(environment.level > inputEnvironment.level) {
 				environment = popLocalEnvironment(environment);
 			}
@@ -81,6 +170,10 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 
 			let hasUpdate = false;
 			while(!current?.builtInEnv) {
+				// a package attached inside the body (library()) must propagate to the caller, like R attaching globally
+				if(current.t !== undefined) {
+					hasUpdate = true;
+				}
 				for(const definitions of current.memory.values()) {
 					for(const def of definitions) {
 						if(!NodeId.isBuiltIn(def.definedAt)) {
@@ -120,9 +213,7 @@ export function processExpressionList<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	const expressions = args.map(unpackNonameArg);
-
-	expensiveTrace(dataflowLogger, () => `[expr list] with ${expressions.length} expressions`);
+	expensiveTrace(dataflowLogger, () => `[expr list] with ${args.length} expressions`);
 
 	let { environment } = data;
 	// used to detect if a "write" happens within the same expression list
@@ -131,15 +222,19 @@ export function processExpressionList<OtherInfo>(
 	const remainingRead = new Map<string, IdentifierReference[]>();
 
 	const nextGraph = new DataflowGraph(data.completeAst.idMap);
-	let out: IdentifierReference[] = [];
+	const out: IdentifierReference[] = [];
+	/* lazily created - `rm` is rare, so rm-free lists never allocate this */
+	let killed: KillReference[] | undefined;
 	const exitPoints: ExitPoint[] = [];
 	const activeCdsAtStart: ControlDependency[] | undefined = data.cds;
 	const invertExitCds: ControlDependency[] = [];
 
 	const processedExpressions: (DataflowInformation | undefined)[] = [];
 	let defaultReturnExpr: undefined | DataflowInformation = undefined;
+	let hooks: DataflowInformation['hooks'] | undefined;
 
-	for(const expression of expressions) {
+	for(const arg of args) {
+		const expression = unpackNonameArg(arg);
 		if(expression === undefined) {
 			processedExpressions.push(undefined);
 			continue;
@@ -158,13 +253,16 @@ export function processExpressionList<OtherInfo>(
 			processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environment, false);
 		}
 
-		out = out.concat(processed.out);
+		if(processed.hooks.length > 0) {
+			(hooks ??= []).push(...processed.hooks);
+		}
 
 		// all inputs that have not been written until now are read!
-		for(const ls of [processed.in, processed.unknownReferences]) {
-			for(const read of ls) {
-				linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
-			}
+		for(const read of processed.in) {
+			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
+		}
+		for(const read of processed.unknownReferences) {
+			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
 		}
 
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph);
@@ -181,8 +279,22 @@ export function processExpressionList<OtherInfo>(
 		// if the called function has global redefinitions, we have to keep them within our environment
 		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out);
 
-		for(const { nodeId } of processed.out) {
-			listEnvironments.add(nodeId);
+		// removals are already reflected in the threaded environment; we only bubble them (net of later writes)
+		if(killed && processed.out.length > 0) {
+			killed = cancelRevivedKills(killed, processed.out);
+		}
+		if(processed.kill?.length) {
+			// if we may have already exited (break/next), the removal only happens maybe
+			const kills = exitPoints.length > 0 ? makeKillsMaybe(processed.kill, invertExitCds) : processed.kill;
+			killed ??= [];
+			for(const kill of kills) {
+				killed.push(kill);
+			}
+		}
+
+		for(const ref of processed.out) {
+			out.push(ref);
+			listEnvironments.add(ref.nodeId);
 		}
 
 		/** if at least built-one of the exit points encountered happens unconditionally, we exit here (dead code)! */
@@ -197,7 +309,12 @@ export function processExpressionList<OtherInfo>(
 		exitPoints.push(...defaultReturnExpr.exitPoints);
 	}
 
-	const ingoing = remainingRead.values().toArray().flat();
+	const ingoing: IdentifierReference[] = [];
+	for(const refs of remainingRead.values()) {
+		for(const ref of refs) {
+			ingoing.push(ref);
+		}
+	}
 
 	const rootNode = data.completeAst.idMap.get(rootId);
 	const withGroup = rootNode?.grouping;
@@ -238,10 +355,8 @@ export function processExpressionList<OtherInfo>(
 			continue;
 		}
 
-		console.log(`processing: ${current.entryPoint}`);
 		// TODO: If more than one, we should add ControlFlow edges instead of FlowDependency edges
 		for(const exit of current.exitPoints) {
-			console.log(`EL Edge ${exit.nodeId} -> ${next.entryPoint}`);
 			if(exit.cds) {
 				nextGraph.addEdge(exit.nodeId, next.entryPoint, EdgeType.ControlDependency, { when: exit.cds[0].when, condition: exit.cds[0].id });
 			} else {
@@ -250,18 +365,18 @@ export function processExpressionList<OtherInfo>(
 		}
 	}
 
-	console.log(`Expression List Exit Points of ${rootId}: ${JSON.stringify(exitPoints)}`);
-
 	return {
 		/* no active nodes remain, they are consumed within the remaining read collection */
 		unknownReferences: [],
 		in:                ingoing,
-		out,
+		/* a definition that a still-effective removal undid is no longer visible to the outside */
+		out:               dropKilledWrites(out, killed),
 		environment:       environment,
 		graph:             nextGraph,
 		/* if we have no group, we take the last evaluated expr */
 		entryPoint:        meId,
 		exitPoints:        exitPoints,
-		hooks:             processedExpressions.flatMap(p => p?.hooks ?? []),
+		hooks:             hooks ?? [],
+		kill:              killed,
 	};
 }

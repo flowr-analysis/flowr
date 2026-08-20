@@ -9,7 +9,7 @@ import type { Origin } from '../../../dataflow/origin/dfg-get-origin';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import { sliceCriterionParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter, queryLineCode, sliceCriterionParser } from '../../../cli/repl/parser/slice-query-parser';
 
 
 export interface OriginQuery extends BaseQueryFormat {
@@ -36,12 +36,13 @@ function originQueryLineParser(output: ReplOutput, line: readonly string[], _con
 			type:      'origin',
 			criterion: criterion
 		},
-		rCode: line[1]
+		rCode: queryLineCode(line)
 	};
 }
 
 
 export const OriginQueryDefinition = {
+	title:           'Origin Query',
 	executor:        executeResolveValueQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'origin'>['origin'];
@@ -52,8 +53,10 @@ export const OriginQueryDefinition = {
 		}
 		return true;
 	},
-	fromLine: originQueryLineParser,
-	schema:   Joi.object({
+	fromLine:  originQueryLineParser,
+	completer: criteriaQueryCompleter,
+	syntax:    '@origin (<criterion>) <code | file://path>',
+	schema:    Joi.object({
 		type:      Joi.string().valid('origin').required().description('The type of the query.'),
 		criterion: Joi.string().required().description('The slicing criteria to use'),
 	}).description('The resolve value query used to get definitions of an identifier'),

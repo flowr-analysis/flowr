@@ -1,4 +1,41 @@
+import type { ExecException } from 'child_process';
 import { exec } from 'child_process';
+
+/** How long a command may take, generous because the checkup jobs run alongside. */
+const DefaultTimeout = 5 * 60 * 1000;
+
+/** the cli the global setup bundled, run directly so no test rebuilds it while another one runs it */
+export const FlowrBin = 'node dist/src/cli/flowr.min.js';
+
+/**
+ * A child that died on a signal did not fail the test, it stopped existing: a V8 abort, an OOM kill, the timeout
+ * killing it. Those are worth one more attempt, where a clean non-zero exit is a verdict to report as-is.
+ */
+function diedAbnormally(error: ExecException): boolean {
+	return error.signal !== undefined && error.signal !== null;
+}
+
+/** Everything known about a failed command, so a crash in CI is diagnosable from the message alone. */
+function failure(command: string, error: ExecException, stdout: string, stderr: string): Error {
+	const how = diedAbnormally(error) ? `killed by ${error.signal}` : `exit code ${error.code ?? 'unknown'}`;
+	return Object.assign(
+		new Error(`\`${command}\` failed (${how})\n--- stdout ---\n${stdout}\n--- stderr ---\n${stderr}`),
+		{ crashed: diedAbnormally(error) }
+	);
+}
+
+/** Runs `attempt` again once if the first run did not fail but died; see {@link diedAbnormally}. */
+async function retryOnCrash<T>(attempt: () => Promise<T>): Promise<T> {
+	try {
+		return await attempt();
+	} catch(e) {
+		if(!(e as { crashed?: boolean }).crashed) {
+			throw e;
+		}
+		console.error(`retrying once, the command did not fail but died: ${(e as Error).message.split('\n')[0]}`);
+		return await attempt();
+	}
+}
 
 /**
  * Runs the flowr repl and feeds input to the repl
@@ -11,10 +48,11 @@ import { exec } from 'child_process';
  *
  */
 export async function flowrRepl(input: string[]): Promise<string> {
-	const process = new Promise<string>((resolve, reject) => {
-		const child = exec('npm run flowr', { timeout: 60 * 1000 }, (error, stdout, _) => {
+	return retryOnCrash(() => new Promise<string>((resolve, reject) => {
+		const child = exec(FlowrBin, { timeout: DefaultTimeout }, (error, stdout, stderr) => {
 			if(error) {
-				reject(new Error(`${error.name}: ${error.message}\n${stdout}`));
+				reject(failure(FlowrBin, error, stdout, stderr));
+				return;
 			}
 
 			resolve(stdout);
@@ -32,9 +70,25 @@ export async function flowrRepl(input: string[]): Promise<string> {
 				}
 			}
 		});
-	});
+	}));
+}
 
-	return await process;
+/**
+ * Like {@link run}, but returns the combined stdout and stderr so diagnostics printed to stderr can be asserted on.
+ * @param command - Command to run
+ * @param timeout - (optional) timeout in milliseconds
+ */
+export async function runCaptureAll(command: string, timeout = DefaultTimeout): Promise<string> {
+	return retryOnCrash(() => new Promise<string>((resolve, reject) => {
+		exec(command, { timeout }, (error, stdout, stderr) => {
+			const output = `${stdout}${stderr}`;
+			if(error && output.length === 0) {
+				reject(failure(command, error, stdout, stderr));
+			} else {
+				resolve(output);
+			}
+		});
+	}));
 }
 
 /**
@@ -45,11 +99,12 @@ export async function flowrRepl(input: string[]): Promise<string> {
  * @param timeout - (optional) timeout in milliseconds
  * @returns output of command
  */
-export async function run(command: string, terminateOn?: string, timeout = 60 * 1000): Promise<string> {
-	const process = new Promise<string>((resolve, reject) => {
-		const child = exec(command, { timeout }, (error, stdout, _) => {
+export async function run(command: string, terminateOn?: string, timeout = DefaultTimeout): Promise<string> {
+	return retryOnCrash(() => new Promise<string>((resolve, reject) => {
+		const child = exec(command, { timeout }, (error, stdout, stderr) => {
 			if(error) {
-				reject(new Error(`${error.name}: ${error.message}\n${stdout}`));
+				reject(failure(command, error, stdout, stderr));
+				return;
 			}
 
 			resolve(stdout);
@@ -66,8 +121,6 @@ export async function run(command: string, terminateOn?: string, timeout = 60 * 
 				}
 			});
 		}
-	});
-
-	return await process;
+	}));
 }
 

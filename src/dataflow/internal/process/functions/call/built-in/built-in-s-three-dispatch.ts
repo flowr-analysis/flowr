@@ -1,17 +1,16 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
 import { DataflowInformation, alwaysExits } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { pMatch } from '../../../../linker';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
-import { isValue } from '../../../../../eval/values/r-value';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { SourceRange } from '../../../../../../util/range';
@@ -48,7 +47,7 @@ export function processS3Dispatch<OtherInfo>(
 		[config.args.object]:  'object',
 		'...':                 '...'
 	};
-	const argMaps = pMatch(convertFnArguments(args), params);
+	const argMaps = MatchArgs.toSpec(convertFnArguments(args), params);
 	const generic = unpackArg(RArgument.getWithId(args, argMaps.get('generic')?.[0]));
 	if(!generic && !config.inferFromClosure) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
@@ -91,15 +90,7 @@ export function processS3Dispatch<OtherInfo>(
 		};
 	}
 
-	const n = resolveIdToValue(generic.info.id, { environment: data.environment, resolve: data.ctx.config.solver.variables, idMap: data.completeAst.idMap, full: true, ctx: data.ctx });
-	const accessedIdentifiers: string[] = [];
-	if(n.type === 'set') {
-		for(const elem of n.elements) {
-			if(elem.type === 'string' && isValue(elem.value)) {
-				accessedIdentifiers.push(elem.value.str);
-			}
-		}
-	}
+	const accessedIdentifiers = NodeValue.knownStringsOf(generic.info.id, data);
 	if(accessedIdentifiers.length === 0) {
 		dataflowLogger.warn('s3 dispatch with non-resolvable generic, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;

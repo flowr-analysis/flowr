@@ -61,12 +61,30 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 	private readonly guesses:   (readonly RParseRequest[])[] = [];
 	/** just the base collection of requests we know nothing about the order! */
 	private readonly unordered: RParseRequest[] = [];
+	/** what {@link unordered} already holds, so the same file is never analyzed (and reconstructed) twice */
+	private readonly seen = new Set<string>();
 
 	public reset(): void {
 		this.knownOrder = undefined;
 		this.guesses.length = 0;
 		this.unordered.length = 0;
+		this.seen.clear();
 		this.rerunRequired = this.plugins.length > 0;
+	}
+
+	/**
+	 * Registers `request` as unordered unless the same one is already there, reporting whether it was new.
+	 * Project discovery and the implicit-source scan reach the same file from both ends, so a file otherwise
+	 * lands in the loading order more than once and every later step repeats it.
+	 */
+	private register(request: RParseRequest): boolean {
+		const key = `${request.request}\u0000${request.content}`;
+		if(this.seen.has(key)) {
+			return false;
+		}
+		this.seen.add(key);
+		this.unordered.push(request);
+		return true;
 	}
 
 	/**
@@ -76,7 +94,9 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 	 * This is a batched version of {@link addRequest}.
 	 */
 	public addRequests(requests: readonly RParseRequest[]): void {
-		this.unordered.push(...requests);
+		if(!requests.map(r => this.register(r)).some(Boolean)) {
+			return;
+		}
 		if(this.knownOrder || this.guesses.length > 0) {
 			loadingOrderLog.warn(`Adding requests ${requests.map(r => r.request).join(', ')} after known order!`);
 			this.rerunRequired = true;
@@ -90,7 +110,9 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 	 * If you want to add multiple requests, consider using {@link addRequests} instead for efficiency.
 	 */
 	public addRequest(request: RParseRequest): void  {
-		this.unordered.push(request);
+		if(!this.register(request)) {
+			return;
+		}
 		if(this.knownOrder || this.guesses.length > 0) {
 			loadingOrderLog.warn(`Adding request ${request.request} ${request.content} after known order!`);
 			this.rerunRequired = true;
@@ -114,6 +136,49 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 			}
 		} else {
 			this.guesses.push(guess);
+		}
+	}
+
+	/**
+	 * Move `requests` to the front of every order known so far, keeping their relative order.
+	 * Use this for files R evaluates before anything else (e.g. `.Rprofile`), as it refines the
+	 * existing orders instead of competing with them like {@link addGuess} would.
+	 */
+	public prependToOrder(requests: readonly RParseRequest[]): void {
+		if(requests.length === 0) {
+			return;
+		}
+		const front = (order: readonly RParseRequest[]) => [...requests, ...order.filter(r => !requests.includes(r))];
+		if(this.knownOrder) {
+			this.knownOrder = front(this.knownOrder);
+		}
+		for(let i = 0; i < this.guesses.length; i++) {
+			this.guesses[i] = front(this.guesses[i]);
+		}
+		if(!this.knownOrder && this.guesses.length === 0) {
+			this.addGuess(front(this.unordered));
+		}
+	}
+
+	/**
+	 * Drop `requests` from every order known so far. Use this for files another file already
+	 * contains (e.g. the target of an Rmd `child` chunk), as it refines the existing orders instead
+	 * of competing with them like {@link addGuess} would.
+	 */
+	public removeFromOrder(requests: readonly RParseRequest[]): void {
+		if(requests.length === 0) {
+			return;
+		}
+		const drop = new Set(requests);
+		const without = (order: readonly RParseRequest[]) => order.filter(r => !drop.has(r));
+		if(this.knownOrder) {
+			this.knownOrder = without(this.knownOrder);
+		}
+		for(let i = 0; i < this.guesses.length; i++) {
+			this.guesses[i] = without(this.guesses[i]);
+		}
+		if(!this.knownOrder && this.guesses.length === 0) {
+			this.addGuess(without(this.unordered));
 		}
 	}
 

@@ -7,11 +7,13 @@ import {
 	type DependencyCategoryName,
 	type DependencyInfo,
 	getAllCategories,
+	Constant,
 	Unknown
 } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
-import { type DataflowGraphVertexFunctionCall, VertexType } from '../../../dataflow/graph/vertex';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import { FunctionCallVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
+import { Identifier } from '../../../dataflow/environments/identifier';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { BasicQueryData } from '../../base-query-format';
 import { compactRecord } from '../../../util/objects';
@@ -29,6 +31,9 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flow
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { log } from '../../../util/log';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { FunctionArgument } from '../../../dataflow/graph/graph';
+import { linkPlotsToDevices } from './link-devices';
+import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 
 /**
@@ -69,11 +74,12 @@ export async function executeDependenciesQuery({
 	if(query.additionalCategories !== undefined){
 		for(const [category, value] of Object.entries(query.additionalCategories)) {
 			// custom categories only use the "functions" collection and do not allow specifying additional functions in the object itself, so we "undefined" a lot here
-			functions.set(category, getFunctionsToCheck(undefined, category, undefined, false, value.functions));
+			const custom = getFunctionsToCheck(undefined, category, undefined, false, value.functions);
+			functions.set(category, [...(functions.get(category) ?? []), ...custom]);
 		}
 	}
 
-	const queryResults = functions.values().toArray().flat().length === 0 ? { kinds: {}, '.meta': { timing: 0 } } :
+	const queryResults = !functions.values().toArray().some(f => f.length > 0) ? { kinds: {}, '.meta': { timing: 0 } } :
 		await executeQueriesOfSameType<CallContextQuery>(data, functions.entries().flatMap(makeCallContextQuery).toArray());
 	const g = getAllCategories(queries);
 	const enabled = query.enabledCategories;
@@ -86,6 +92,11 @@ export async function executeDependenciesQuery({
 		}
 		return [c, results];
 	}))) as { [C in DependencyCategoryName]?: DependencyInfo[] };
+
+	/* also without a device: a plot on screen has no file, but still has the addons drawn onto it */
+	if(results.visualize?.length) {
+		linkPlotsToDevices(results.write ?? [], results.visualize, dataflow, normalize);
+	}
 
 	return {
 		'.meta': {
@@ -132,6 +143,15 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 			const vertex = dfg.getVertex(id) as DataflowGraphVertexFunctionCall;
 			const info = functionMap.get(name) as FunctionInfo;
 
+			const functionName = Dataflow.qualify(id, dfg, false) ?? vertex.name;
+
+			if(info.package !== undefined) {
+				const callNamespace = Identifier.getNamespace(functionName);
+				if(callNamespace !== undefined && callNamespace !== info.package) {
+					continue;
+				}
+			}
+
 			const args = getArgumentStringValue(vars, dfg, vertex, info.argIdx, info.argName, info.resolveValue, ictx);
 			const linkedArgs = collectValuesFromLinks(args, { dataflow, config, ctx: ictx }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
 			const linked = dropInfoOnLinkedIds(linkedIds);
@@ -156,6 +176,26 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 				return false;
 			}
 
+			function ignoreOnArgSet() {
+				if(info.ignoreIf !== 'arg-set') {
+					return;
+				}
+
+				const hasArg = (name?: string, index?: number | 'unnamed') => vertex.args.some((arg, idx) =>
+					FunctionArgument.isNamed(arg) && arg.name === name ||
+					FunctionArgument.isPositional(arg) && idx === index
+				);
+
+				if(hasArg(info.argName, info.argIdx)) {
+					return false;
+				}
+
+				const margs = info.additionalArgs?.argSet;
+				guard(margs, 'Need additional argument argSet when checking for arg-set');
+
+				return hasArg(margs.argName, margs.argIdx);
+			}
+
 			const foundValues = linkedArgs ?? args;
 			if(!foundValues) {
 				if(info.ignoreIf === 'arg-missing') {
@@ -165,7 +205,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 				}
 				const record = compactRecord({
 					nodeId:           id,
-					functionName:     vertex.name,
+					functionName,
 					lexemeOfArgument: undefined,
 					linkedIds:        linked?.length ? linked : undefined,
 					value:            info.defaultValue ?? defaultValue
@@ -186,20 +226,27 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 					// all modes are write-only, so we can ignore this
 					continue;
 				}
-			} else if(ignoreOnArgVal()) {
+			} else if(ignoreOnArgVal() || ignoreOnArgSet()) {
 				continue;
 			}
 			for(const [arg, values] of foundValues.entries()) {
 				for(const value of values) {
-					const dep = value ? d.getDependency(value) ?? undefined : undefined;
+					let resolvedValue = value;
+					if(info.stringReplacements && resolvedValue !== undefined && Object.hasOwn(info.stringReplacements, resolvedValue)) {
+						resolvedValue = info.stringReplacements[resolvedValue];
+					}
+					const dep = resolvedValue ? d.getDependency(resolvedValue) ?? undefined : undefined;
+					const lexeme = getLexeme(value, arg);
 					finalResults.push(compactRecord({
 						nodeId:             id,
-						functionName:       vertex.name,
-						lexemeOfArgument:   getLexeme(value, arg),
+						functionName,
+						/* only a value we could not make sense of is worth asking about further */
+						argumentId:         lexeme === undefined ? undefined : arg,
+						lexemeOfArgument:   lexeme,
 						linkedIds:          linked?.length ? linked : undefined,
-						value:              value ?? info.defaultValue ?? defaultValue,
+						value:              resolvedValue ?? info.defaultValue ?? defaultValue,
 						versionConstraints: dep?.versionConstraints,
-						derivedVersion:     dep?.derivedVersion,
+						derivedRange:       dep?.effectiveRange,
 						namespaceInfo:      dep?.namespaceInfo
 					} as DependencyInfo));
 				}
@@ -209,24 +256,24 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 
 	return finalResults;
 
-	function getLexeme(argument: string | undefined | typeof Unknown, id: NodeId | undefined) {
-		if((argument && argument !== Unknown) || !id) {
+	function getLexeme(argument: string | undefined, id: NodeId | undefined) {
+		if((argument && argument !== Unknown && argument !== Constant) || !id) {
 			return undefined;
 		}
 		let get = normalize.idMap.get(id);
-		if(get?.type === RType.Argument) {
+		if(RArgument.is(get)) {
 			get = get.value;
 		}
 		return RNode.lexeme(get);
 	}
 }
 
-function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undefined, data: { dataflow: DataflowInformation, config: FlowrConfig, ctx: ReadOnlyFlowrAnalyzerContext }, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined): Map<NodeId, Set<string|undefined>> | undefined {
+function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | undefined, data: { dataflow: DataflowInformation, config: FlowrConfig, ctx: ReadOnlyFlowrAnalyzerContext }, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined): Map<NodeId, Set<string | undefined>> | undefined {
 	if(!linkedIds || linkedIds.length === 0) {
 		return undefined;
 	}
-	const hasAtLeastAValue = args !== undefined && args.values().flatMap(x => Array.from(x)).toArray().some(v => v !== Unknown && v !== undefined);
-	const map = new Map<NodeId, Set<string|undefined>>();
+	const hasAtLeastAValue = args !== undefined && args.values().flatMap(x => Array.from(x)).toArray().some(v => v !== Unknown && v !== Constant && v !== undefined);
+	const map = new Map<NodeId, Set<string | undefined>>();
 	for(const linkedId of linkedIds) {
 		if(typeof linkedId !== 'object' || !linkedId.info) {
 			continue;
@@ -238,7 +285,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undef
 		}
 		// collect this one!
 		const vertex = data.dataflow.graph.getVertex(linkedId.id);
-		if(vertex?.tag !== VertexType.FunctionCall) {
+		if(!FunctionCallVertex.is(vertex)) {
 			continue;
 		}
 		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue, data.ctx);
@@ -258,7 +305,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undef
 
 function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, functionFlag: DependencyCategoryName, enabled: DependencyCategoryName[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
 	// "If unset or empty, all function types are searched for."
-	if(enabled !== undefined && (enabled?.length === 0 || enabled.indexOf(functionFlag) < 0)) {
+	if(enabled !== undefined && (enabled?.length === 0 || !enabled.includes(functionFlag))) {
 		return [];
 	}
 	let functions: FunctionInfo[] = ignoreDefaultFunctions ? [] : defaultFunctions.slice();

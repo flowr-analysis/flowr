@@ -87,7 +87,8 @@ export async function documentReplSession(parser: KnownParser, commands: readonl
 	for(const command of commands) {
 		const entry: Collect = { command, lines: [] };
 		const collectingOutput: ReplOutput = {
-			formatter: voidFormatter,
+			formatter:      voidFormatter,
+			allowClipboard: false,
 			stdout(msg: string) {
 				entry.lines.push(dropAnsiEscapeCodesAndCodeTags(msg));
 			},

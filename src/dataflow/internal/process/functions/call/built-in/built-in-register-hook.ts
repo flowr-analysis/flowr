@@ -1,4 +1,5 @@
-import { type DataflowProcessorInformation } from '../../../../../processor';
+import { MatchArgs } from '../../../../../graph/match-args';
+import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -8,18 +9,17 @@ import {
 	type PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { pMatch } from '../../../../linker';
 import { convertFnArguments } from '../common';
 import type { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { HookInformation, KnownHooks } from '../../../../../hooks';
-import type { ResolveInfo } from '../../../../../eval/resolve/alias-tracking';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { Resolve } from '../../../../../environments/resolve-helper';
 
 export interface RegisterHookConfig {
 	/** name of the hook to register, 'fn-exit' if it triggers on exit */
@@ -55,7 +55,7 @@ export function processRegisterHook<OtherInfo>(
 	}
 	params['...'] = '...';
 
-	const argMaps = pMatch(convertFnArguments(args), params);
+	const argMaps = MatchArgs.toSpec(convertFnArguments(args), params);
 	const exprIds = new Set(argMaps.get('expr'));
 	const addIds = config.args.add ? new Set(argMaps.get('add')) : new Set<NodeId>();
 	const afterIds = config.args.after ? new Set(argMaps.get('after')) : new Set<NodeId>();
@@ -63,7 +63,7 @@ export function processRegisterHook<OtherInfo>(
 	const wrappedFunctions = new Set<NodeId>();
 	// we automatically transform the expr to a function definition that takes no arguments
 	const transformed = args.map(arg => {
-		if(arg === EmptyArgument)  {
+		if(RArgument.isEmpty(arg))  {
 			return EmptyArgument;
 		} else if(exprIds.has(arg.info.id) && arg.value) {
 			const val = arg.value;
@@ -91,19 +91,12 @@ export function processRegisterHook<OtherInfo>(
 	});
 
 	const res = processKnownFunctionCall({ name, args: transformed, rootId, data, origin: BuiltInProcName.RegisterHook });
-	const resolveArgs: ResolveInfo = {
-		graph:       res.information.graph,
-		environment: res.information.environment,
-		resolve:     data.ctx.config.solver.variables,
-		ctx:         data.ctx,
-		idMap:       data.completeAst.idMap,
-		full:        true
-	};
+	const resolveArgs = NodeValue.infoOf(data, { graph: res.information.graph, environment: res.information.environment });
 	const shouldAdd = addIds.size === 0 ? config.args.add?.default :
-		Array.from(addIds).flatMap(id => valueSetGuard(resolveIdToValue(id, resolveArgs))?.elements ?? [])
+		Array.from(addIds).flatMap(id => valueSetGuard(Resolve.toValue(id, resolveArgs))?.elements ?? [])
 			.some(v => v.type === 'logical' && v.value !== false);
 	const shouldBeAfter = afterIds.size === 0 ? config.args.after?.default :
-		Array.from(afterIds).flatMap(id => valueSetGuard(resolveIdToValue(id, resolveArgs))?.elements ?? [])
+		Array.from(afterIds).flatMap(id => valueSetGuard(Resolve.toValue(id, resolveArgs))?.elements ?? [])
 			.some(v => v.type === 'logical' && v.value !== false);
 
 	const info = res.information;

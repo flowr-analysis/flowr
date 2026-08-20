@@ -35,17 +35,23 @@ import { staticSlice } from '../slicing/static/static-slicer';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
+import { FlowrAnalyzerGasContext } from '../project/context/flowr-analyzer-gas-context';
+import { FlowrAnalyzerGasPlugin } from '../project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
+import { GasFeatureKey, GasLevel } from '../gas';
+import { ArgProp, CallProp, ExclusiveCallProps, SigDbInferable } from '../dataflow/environments/built-in-props';
+import { BuiltInIndex, inferFnProps } from '../dataflow/environments/query-fn-props';
+import type { GeneralDocContext } from './wiki-mk/doc-context';
+import { SemVer } from 'semver';
+import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { processValue } from '../dataflow/internal/process/process-value';
 import { DataflowGraph } from '../dataflow/graph/graph';
 import { processAsNamedCall } from '../dataflow/internal/process/process-named-call';
 import { getCliLongOptionOf, getReplCommand } from './doc-util/doc-cli-option';
-import { FlowrWikiBaseRef, RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
+import { RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 import { block, details } from './doc-util/doc-structure';
 import { RShell } from '../r-bridge/shell';
-import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
-import { expensiveTrace, FlowrLogger } from '../util/log';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 
 async function makeAnalyzerExample() {
@@ -84,6 +90,106 @@ export function inspectContextExample(analyzer: FlowrAnalyzer) {
 	console.log('loading order', ctx.files.loadingOrder.getLoadingOrder());
 }
 
+async function gasPluginExample() {
+	class MyGasPlugin extends FlowrAnalyzerGasPlugin {
+		readonly name        = 'my-gas-plugin';
+		readonly description = 'Returns Critical for source when RSS exceeds 1 GB.';
+		readonly version     = new SemVer('1.0.0');
+
+		protected process(_ctx: FlowrAnalyzerContext, key: string): GasLevel | undefined {
+			if(key === GasFeatureKey.Source) {
+				const { rss } = process.memoryUsage();
+				if(rss > 1024 * 1024 * 1024) {
+					return GasLevel.Critical;
+				}
+				if(rss > 512  * 1024 * 1024) {
+					return GasLevel.Problematic;
+				}
+			}
+			return undefined;
+		}
+	}
+
+	return await new FlowrAnalyzerBuilder()
+		.registerPlugins(new MyGasPlugin())
+		.setEngine('tree-sitter')
+		.build();
+}
+
+/** the names of the {@link CallProp} bits that make up a mask, as inline code */
+function propNames(mask: number): string {
+	return Object.entries(CallProp).filter(([, b]) => typeof b === 'number' && (b & mask) !== 0)
+		.map(([n]) => `\`${n}\``).join(', ');
+}
+
+/** The "Labeling the Built-Ins" section of the Core page, with a table per enum taken from the configuration. */
+function builtInLabelsSection(ctx: GeneralDocContext): string {
+	const index = BuiltInIndex.default();
+	/* the doc comment of a bit is its explanation, flattened to fit a table cell; bits nothing carries are left out */
+	const table = (type: 'CallProp' | 'ArgProp', of: (bit: number) => number) => [
+		`| ${type === 'CallProp' ? 'Call property' : 'Argument role'} | Built-ins | Meaning |`,
+		'| :-- | --: | :-- |',
+		...Object.entries(type === 'CallProp' ? CallProp : ArgProp)
+			.filter(([, bit]) => typeof bit === 'number' && of(bit) > 0)
+			.map(([name, bit]) => {
+				/* a `{@link}` has already become an anchor, so dropping the tags leaves the bare name and a stray space */
+				const doc = ctx.doc(`${type}::${name}`).replaceAll(/<[^>]*>/g, '').replaceAll(/\s+/g, ' ')
+					.replaceAll(/ ([),.;])/g, '$1').replaceAll('|', '\\|').trim();
+				const db = type === 'CallProp' && ((bit as number) & SigDbInferable) !== 0 ? '<sup>db</sup>' : '';
+				return `| \`${name}\`${db} | ${of(bit as number)} | ${doc} |`;
+			})
+	].join('\n');
+
+	return `#### Labeling the Built-Ins
+
+Besides the processor, an entry says what the function *is*, in two label vocabularies:
+
+* ${ctx.link('CallProp')} labels the call as a whole (\`props\`): whether it is pure, whether it throws, whether it
+  touches the file system, whether it dispatches, and so on. \`print\` is \`Invisible | Generic | Prints\`; R's
+  primitive generics (\`+\`, \`sin\`, \`length\`, ...) are \`Pure | Generic\`, and as they have no R body, the store is
+  the only place that can say they dispatch.
+* ${ctx.link('ArgProp')} labels each parameter (\`sig\`), in the order R declares them: which one carries the data,
+  which one only selects a behavior, which one names a file, which one is called as a function.
+
+For several analyses the labels are all they know about a call: ${ctx.link(BuiltInIndex.name)} turns them into the
+questions callers ask over and over (\`with\`, \`without\`, \`params\`), which is how the
+${ctx.linkPage('wiki/Query API', 'input-sources query')} knows which functions bring in data of their own, and how
+${ctx.linkPage('wiki/Linter', 'linting rules')} like *seeded randomness* find every call drawing from the RNG without
+naming a single one of them. Labeling a built-in therefore teaches all of them at once.
+
+So \`lapply\` is pure on its own but runs what it is handed, and says which argument that is:
+
+${codeBlock('ts', `{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['lapply', 'sapply', 'vapply']),
+  processor: BuiltInProcName.Apply,
+  config:    { indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true,
+               props: CallProp.MayPure, sig: [['X', ArgProp.Value], ['FUN', ArgProp.Callee]] } }`)}
+
+The two tables below are generated from the configuration itself, so they always list every label that exists,
+what it means, and how many built-ins carry it.
+
+${details('What each call property means', `<sup>db</sup> marks the bits the ${ctx.linkPage('wiki/Signature Database', 'signature database')}
+states for any package function on its own (${ctx.link(inferFnProps.name)} reads them off an entry and carries what a
+function calls over to the function calling it).
+
+${table('CallProp', bit => index.with(bit).length)}
+
+Most of these combine freely. The exceptions are ${ctx.link('ExclusiveCallProps')}, which a test checks the whole
+configuration against:
+
+${ExclusiveCallProps.map(([bit, forbidden]) => `* \`${CallProp[bit]}\` rules out ${propNames(forbidden)}`).join('\n')}
+
+Two pairs read like refinements but are not: \`TempFile\` does not imply \`File\` (making up a path touches no file
+system, so a call doing both states both), and \`Reads\`/\`Writes\` say what happens to the resource an
+\`ArgProp.Resource\` argument names, so they only ever appear next to a resource bit.`)}
+
+${details('What each argument role means', `A role is stated per parameter in the ${ctx.link('FnSig')} of a built-in, in the order R declares
+them, with \`...\` covering every position from where it appears. The count is how many built-ins have at least one
+parameter in that role.
+
+${table('ArgProp', bit => new Set(index.params(bit).map(p => p.call)).size)}`)}
+`;
+}
+
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Core
  */
@@ -100,13 +206,13 @@ This wiki page provides an overview of the inner workings of _flowR_.
 It is mostly intended for developers that want to extend the capabilities of _flowR_
 and assumes knowledge of [TypeScript](https://www.typescriptlang.org/) and [R](https://www.r-project.org/).
 If you think parts of the wiki are missing, wrong, or outdated, please do not hesitate to [open a new issue](${NewIssueUrl})!
-In case you are new and want to develop for flowR, please check out the relevant [Setup](${FlowrWikiBaseRef}/Setup#-developing-for-flowr) wiki page
-and the [Contributing Guidelines](${RemoteFlowrFilePathBaseRef}/.github/CONTRIBUTING.md).
+In case you are new and want to develop for flowR, please check out the relevant ${ctx.linkPage('wiki/Setup', 'Setup', '-developing-for-flowr')} wiki page
+and the [Contributing Guidelines](${RemoteFlowrFilePathBaseRef}.github/CONTRIBUTING.md).
 
 ${block({
 	type:    'NOTE',
 	content: `
-Essentially every step we explain here can be explored directly from flowR's REPL in an interactive fashion (see the [Interface](${FlowrWikiBaseRef}/Interface#using-the-repl) wiki page).
+Essentially every step we explain here can be explored directly from flowR's REPL in an interactive fashion (see the ${ctx.linkPage('wiki/Interface', 'Interface', 'using-the-repl')} wiki page).
 We recommend to use commands like ${getReplCommand('parse')} or ${getReplCommand('dataflow*')} to explore the output of flowR using your own samples.
 As a quickstart you may use:
 
@@ -116,7 +222,7 @@ ${await documentReplSession(shell, [{
 }])}
 	
 If you are brave (or desperate) enough, you can also try to use the ${getCliLongOptionOf('flowr', 'verbose')} option to be dumped with information about flowR's internals (please, never use this for benchmarking).
-See the [Getting flowR to Talk](#getting-flowr-to-talk) section below for more information.
+See the ${ctx.linkPage('wiki/FAQ', 'FAQ')} (*How to get flowR to talk?*) for more information.
 `
 })}
 	
@@ -127,9 +233,10 @@ See the [Getting flowR to Talk](#getting-flowr-to-talk) section below for more i
   * [Parsing](#parsing)
   * [Normalization](#normalization)
   * [Dataflow Graph Generation](#dataflow-graph-generation)
+    * [Labeling the Built-Ins](#labeling-the-built-ins)
 * [Beyond the Dataflow Graph](#beyond-the-dataflow-graph)
   * [Static Backward Slicing](#static-backward-slicing)
-* [Getting flowR to Talk](#getting-flowr-to-talk)
+* [Gas (Resource Guard)](#gas-resource-guard)
 
 ## Creating and Using a flowR Analyzer Instance
 
@@ -138,15 +245,15 @@ It provides a fluent interface for the configuration and creation of a ${ctx.lin
 
 ${ctx.code(makeAnalyzerExample, { dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true })}
 
-Have a look at the [Engine](${FlowrWikiBaseRef}/Engines) wiki page to understand the different engines and parsers you can use.
+Have a look at the ${ctx.linkPage('wiki/Engines', 'Engine')} wiki page to understand the different engines and parsers you can use.
 
-The analyzer instance can then be used to access analysis results like the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST),
-the [dataflow graph](${FlowrWikiBaseRef}/Dataflow-Graph), and the [controlflow graph](${FlowrWikiBaseRef}/Control-Flow-Graph):
+The analyzer instance can then be used to access analysis results like the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')},
+the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, and the ${ctx.linkPage('wiki/Control Flow Graph', 'controlflow graph')}:
 
 ${ctx.code(extractStepsExample, {  dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true })}
 
 The underlying ${ctx.link(FlowrAnalyzer.name)} instance will take care of caching, updates, and running the appropriate steps.
-It also exposes the [query API](${FlowrWikiBaseRef}/Query-API):
+It also exposes the ${ctx.linkPage('wiki/Query API', 'query API')}:
 
 ${ctx.code(sliceQueryExample, { dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true })}
 
@@ -159,7 +266,7 @@ ${ctx.code(inspectContextExample, { dropLinesStart: 1, dropLinesEnd: 1, hideDefi
 At the core of every analysis done via a ${ctx.link(FlowrAnalyzer)} is the ${ctx.link(PipelineExecutor)} class which takes a sequence of analysis steps (in the form of a ${ctx.link('Pipeline')}) and executes it
 on a given input. In general, these pipeline steps are analysis agnostic and may use arbitrary input and ordering. However, two important and predefined pipelines, 
 the ${ctx.link('DEFAULT_DATAFLOW_PIPELINE')} and the ${ctx.link('TREE_SITTER_DATAFLOW_PIPELINE')} adequately cover the most common analysis steps 
-(differentiated only by the [Engine](${FlowrWikiBaseRef}/Engines) used).
+(differentiated only by the ${ctx.linkPage('wiki/Engines', 'Engine')} used).
 
 ${block({
 	type:    'TIP',
@@ -169,7 +276,7 @@ ${block({
 `
 })}
 	
-Using the [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines) you can request a dataflow analysis of a sample piece of R code like the following:
+Using the ${ctx.linkPage('wiki/Engines', '`tree-sitter` engine')} you can request a dataflow analysis of a sample piece of R code like the following:
 
 ${codeBlock('typescript', `
 const executor = new PipelineExecutor(TREE_SITTER_DATAFLOW_PIPELINE, {
@@ -179,7 +286,7 @@ const executor = new PipelineExecutor(TREE_SITTER_DATAFLOW_PIPELINE, {
 const result = await executor.allRemainingSteps();
 `)}
 
-This is, roughly, what the ${ctx.link('dataflow')} function does when using the [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines).
+This is, roughly, what the ${ctx.link('dataflow')} function does when using the ${ctx.linkPage('wiki/Engines', '`tree-sitter` engine')}.
 We create a new ${ctx.link(PipelineExecutor)} with the ${ctx.link('TREE_SITTER_DATAFLOW_PIPELINE')} and then use 
 ${ctx.link(`${PipelineExecutor.name}::${PipelineExecutor.prototype.allRemainingSteps.name}`)} 
 to cause the execution of all contained steps (in general, pipelines can be executed step-by-step, but this is usually not required if you just want the result).
@@ -191,8 +298,8 @@ automatically selects the correct pipeline based on the engine used.
 
 Everything that complies to the ${ctx.link('IPipelineStep')} interface can be used as a step in a pipeline, with the most important definition being the
 \`processor\` function, which refers to the actual work performed by the step.
-For example, the ${ctx.link('STATIC_DATAFLOW')} step ultimately relies on the ${ctx.link(produceDataFlowGraph)} function to create a [dataflow graph](${FlowrWikiBaseRef}/Dataflow-Graph) 
-using the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) of the program.
+For example, the ${ctx.link('STATIC_DATAFLOW')} step ultimately relies on the ${ctx.link(produceDataFlowGraph)} function to create a ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}
+using the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} of the program.
 
 ### Shape of a Pipeline Step
 
@@ -216,10 +323,10 @@ However, as such steps are currently not relevant for any of flowR's core analys
 	
 ## How flowR Produces Dataflow Graphs
 
-This section focuses on the generation of a [dataflow graph](${FlowrWikiBaseRef}/Dataflow-Graph) from a given R program, using the [RShell Engine](${FlowrWikiBaseRef}/Engines) and hence the 
-${ctx.link('DEFAULT_DATAFLOW_PIPELINE')}. The [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines) uses the ${ctx.link('TREE_SITTER_DATAFLOW_PIPELINE')}), 
-which replaces the parser with the integrated tree-sitter parser and hence uses a slightly adapted normalization step to produce a similar [normalized AST](${FlowrWikiBaseRef}/Normalized-AST).
-The [dataflow graph](${FlowrWikiBaseRef}/Dataflow-Graph) should be the same for both engines (although [\`tree-sitter\`](${FlowrWikiBaseRef}/Engines) is faster and may be able to parse more files).
+This section focuses on the generation of a ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} from a given R program, using the ${ctx.linkPage('wiki/Engines', 'RShell Engine')} and hence the
+${ctx.link('DEFAULT_DATAFLOW_PIPELINE')}. The ${ctx.linkPage('wiki/Engines', '`tree-sitter` engine')} uses the ${ctx.link('TREE_SITTER_DATAFLOW_PIPELINE')}),
+which replaces the parser with the integrated tree-sitter parser and hence uses a slightly adapted normalization step to produce a similar ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')}.
+The ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} should be the same for both engines (although ${ctx.linkPage('wiki/Engines', '`tree-sitter`')} is faster and may be able to parse more files).
 
 ### Overview
 
@@ -231,9 +338,9 @@ We can see that it relies on three steps:
 
 1. **${ctx.link('PARSE_WITH_R_SHELL_STEP', { codeFont: false })}** ([parsing](#parsing)): Uses the ${ctx.link(RShell)} to parse the input program.\\
    _Its main function linked as the processor is the ${ctx.link(parseRequests, { codeFont: false })} function._
-2. **${ctx.link('NORMALIZE', { codeFont: false })}** ([normalization](#normalization)):  Normalizes the AST produced by the parser (to create a [normalized AST](${FlowrWikiBaseRef}/Normalized-AST)).\\
+2. **${ctx.link('NORMALIZE', { codeFont: false })}** ([normalization](#normalization)):  Normalizes the AST produced by the parser (to create a ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')}).\\
    _Its main function linked as the processor is the ${ctx.link(normalize, { codeFont: false })} function._
-3. **${ctx.link('STATIC_DATAFLOW', { codeFont: false })}** ([dataflow](#dataflow-graph-generation)): Produces the actual [dataflow graph](${FlowrWikiBaseRef}/Dataflow-Graph) from the normalized AST.\\
+3. **${ctx.link('STATIC_DATAFLOW', { codeFont: false })}** ([dataflow](#dataflow-graph-generation)): Produces the actual ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} from the normalized AST.\\
    _Its main function linked as the processor is the ${ctx.link(produceDataFlowGraph, { codeFont: false })} function._
 
 To explore these steps, let's use the REPL with the (very simple and contrived) R code: \`${sampleCode}\`.
@@ -265,13 +372,13 @@ ${block({
 	type:    'NOTE',
 	content: 'Maybe you are left with the question: What is tree-sitter doing differently? Expand the following to get more information!\n\n' + details('And what changes with tree-sitter?', `
 
-Essentially not much (from a user perspective, it does essentially everything and all differently under the hood)! Have a look at the [Engines](${FlowrWikiBaseRef}/Engines) wiki page for more information on the differences between the engines.
+Essentially not much (from a user perspective, it does essentially everything and all differently under the hood)! Have a look at the ${ctx.linkPage('wiki/Engines', 'Engines')} wiki page for more information on the differences between the engines.
 Below you can see the Repl commands for the tree-sitter engine (using ${getCliLongOptionOf('flowr', 'default-engine')} to set the engine to tree-sitter):
 
 ${await (async() => {
 	return await documentReplSession(treeSitter, [{
 		command:     `:parse "${sampleCode}"`,
-		description: `This shows the ASCII-Art representation of the parse-tree of the R code \`${sampleCode}\`, as it is provided by the ${ctx.link(TreeSitterExecutor)}. See the [Engines](${FlowrWikiBaseRef}/Engines) wiki page for more information on the differences between the engines.`
+		description: `This shows the ASCII-Art representation of the parse-tree of the R code \`${sampleCode}\`, as it is provided by the ${ctx.link(TreeSitterExecutor)}. See the ${ctx.linkPage('wiki/Engines', 'Engines')} wiki page for more information on the differences between the engines.`
 	},
 	{
 		command:     `:normalize* "${sampleCode}"`,
@@ -287,7 +394,7 @@ ${await (async() => {
 
 ### Parsing
 
-The parsing step uses the ${ctx.link(RShell)} to parse the input program (or, of course, the ${ctx.link(TreeSitterExecutor)} when using the [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines)).
+The parsing step uses the ${ctx.link(RShell)} to parse the input program (or, of course, the ${ctx.link(TreeSitterExecutor)} when using the ${ctx.linkPage('wiki/Engines', '`tree-sitter` engine')}).
 To speed up the process, we use the ${ctx.link(initCommand)} function to compile the parsing function and rely on a 
 custom serialization, which outputs the information in a CSV-like format.
 This means, that the ${getReplCommand('parse')} command actually kind-of lies to you, as it does pretty print the serialized version which looks more like the following (this uses the ${ctx.link(retrieveParseDataFromRCode.name)} function with the sample code \`${sampleCode}\`):
@@ -310,7 +417,7 @@ ${await retrieveParseDataFromRCode(requestFromInput(sampleCode), shell).then(dat
 </details>
 
 In fact, this data is merely what R's [\`base::parse\`](https://stat.ethz.ch/R-manual/R-devel/library/base/html/parse.html) and [\`utils::getParseData\`](https://stat.ethz.ch/R-manual/R-devel/library/utils/html/getParseData.html) functions provide.
-We then use this data in the [normalization](#normalization) step to create a [normalized AST](${FlowrWikiBaseRef}/Normalized-AST).
+We then use this data in the [normalization](#normalization) step to create a ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')}.
 
 If you are interested in the raw token types that we may encounter, have a look at the ${ctx.link('RawRType')} enum.
 
@@ -321,14 +428,14 @@ ${ctx.link(convertPreparedParsedData)} functions to first transform the serializ
 Next, ${ctx.link(normalizeRootObjToAst)} transforms this object to a normalized AST and ${ctx.link(decorateAst)} adds additional information to the AST (like roles, ids, depth, etc.).
 While looking at the mermaid visualization of such an AST is nice and usually sufficient, looking at the objects themselves shows you the full range of information the AST provides (all encompassed within the ${ctx.link(RNode)} type).
 
-Let's have a look at the normalized AST for the sample code \`${sampleCode}\` (please refer to the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) wiki page for more information):
+Let's have a look at the normalized AST for the sample code \`${sampleCode}\` (please refer to the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} wiki page for more information):
 
 ${details('Normalized AST for <code>x <- 1; print(x)</code>', codeBlock('json',
 	JSON.stringify((await createNormalizePipeline(shell, { context: contextFromInput(sampleCode) }).allRemainingSteps()).normalize.ast, jsonReplacer, 4)
 ))}
 
 This is… a lot! We get the type from the ${ctx.link('RType')} enum, the lexeme, location information, an id, the children of the node, and their parents.
-While the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) wiki page provides you with information on how to interpret this data, we will focus on how we get it from the
+While the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} wiki page provides you with information on how to interpret this data, we will focus on how we get it from the
 table provided by the [parsing](#parsing) step.
 
 There are two important functions: ${ctx.link(normalizeRootObjToAst)}, which operates on the parse-output already transformed into a tree-like structure,
@@ -356,11 +463,11 @@ ${details('Ast for <code>x <- 1; print(x)</code> after the first normalization',
 The decoration is comparatively trivial. We take the AST throw it into the ${ctx.link(decorateAst.name)} function (which again, handles each normalized node type) and
 get:
 
-1. The AST with ids, roles, and depth information (see the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) wiki page for more information).
+1. The AST with ids, roles, and depth information (see the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} wiki page for more information).
 2. A mapping of ids to nodes in the form of a ${ctx.link('AstIdMap')} object. This allows us to quickly access nodes by their id.
 
 The ids used for the AST generation are arbitrary (usually created by the ${ctx.link(deterministicCountingIdGenerator.name)}) function) but unique and intentionally
-separated from the ids used by the R&nbsp;parser. For one, this detaches us from the [Engine](${FlowrWikiBaseRef}/Engines) used, and secondly, it allows for much easier
+separated from the ids used by the R&nbsp;parser. For one, this detaches us from the ${ctx.linkPage('wiki/Engines', 'Engine')} used, and secondly, it allows for much easier
 extension of the AST (e.g., when R&nbsp;files use [\`base::source\`](https://stat.ethz.ch/R-manual/R-devel/library/base/html/source.html) to include other R&nbsp;files).
 All ids conform to the ${ctx.link('NodeId')} type.
 
@@ -378,7 +485,7 @@ Looking at the function showcases the general structure of a processor:
 
 ${ctx.hierarchy(processUninterestingLeaf, { maxDepth: 2, openTop: true })}
 
-Every processor has the same shape. It takes the normalized node (see the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) for more information),
+Every processor has the same shape. It takes the normalized node (see the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} for more information),
 and a ${ctx.link('DataflowProcessorInformation')} object which, as some kind of "backpack" carries global information
 to every handler. 
 This information is to be used to create a ${ctx.link('DataflowInformation')}:
@@ -391,13 +498,14 @@ to produce a new dataflow information to pass upwards in the fold. The ${ctx.lin
 * the ${ctx.link(DataflowGraph)} of the current subtree 
 * the currently active ${ctx.link('REnvironmentInformation')} as an abstraction of all active definitions linking to potential definition locations (see [Advanced R::Environments](https://adv-r.hadley.nz/environments.html))
 * control flow information in ${ctx.link('DataflowCfgInformation')} which is used to enrich the dataflow information with control flow information
-* and sets of currently ingoing (read), outgoing (write) and unknown ${ctx.link('IdentifierReference')}s.
+* sets of currently ingoing (read), outgoing (write), and unknown ${ctx.link('IdentifierReference')}s.
+* and a set of ${ctx.link('KillReference')}s which tracks variables that go out of scope within the current subtree (e.g., due to \`rm\`). Just like the reference sets above, kills are carried upwards in the fold so that the enclosing scope (expression list, branch, loop, or function body) can apply the removal (via ${ctx.link('applyKills')}) at the correct location, even when the \`rm\` happens nested within a branch or block. This also covers clearing the whole environment with \`rm(list=ls())\` and conservatively handling removals whose target cannot be resolved statically.
 
 While all of them are essentially empty when processing an “uninteresting leaf”, handling a constant is slightly more interesting with ${ctx.link(processValue)}:
 
 ${ctx.hierarchy(processValue, { maxDepth: 2, openTop: true })}
 
-Please note, that we add the [value vertex](${FlowrWikiBaseRef}/Dataflow-Graph#value-vertex) to the newly created dataflow graph,
+Please note, that we add the ${ctx.linkPage('wiki/Dataflow Graph', 'value vertex', 'value-vertex')} to the newly created dataflow graph,
 which holds a reference to the constant. If you are confused with the use of the ${ctx.link('ParentInformation')} type, 
 this stems from the [AST decoration](#normalization) and signals that we have a decorated ${ctx.link(RNode)} (which may have additional information in \`OtherInfo\`).
 
@@ -408,11 +516,16 @@ We do this, because R does it the same way, and allows to even overwrite these o
 By treating them like R, as function calls, we get support for these overwrites for free, courtesy of flowR's call resolution.
 
 But where are all the interesting things handled then? 
-For that, we want to have a look at the built-in environment, which can be freely configured using flowR's [configuration system](${FlowrWikiBaseRef}/Interface#configuring-flowr).
+For that, we want to have a look at the built-in environment, which can be freely configured using flowR's ${ctx.linkPage('wiki/Interface', 'configuration system', 'configuring-flowr')}.
 FlowR's heart and soul resides in the ${ctx.link('DefaultBuiltinConfig')} object, which is used to configure the built-in environment
 by mapping function names to ${ctx.link('BuiltInProcessorMapper')} functions.
-There you can find functions like ${ctx.link(processAccess)} which handles the (subset) access to a variable, 
+There you can find functions like ${ctx.link(processAccess)} which handles the (subset) access to a variable,
 or ${ctx.link(processForLoop)} which handles the primitive for loop construct (whenever it is not overwritten).
+
+Besides the processor, an entry states what the function does with ${ctx.link('BuiltInFnInfo')} -- see
+[Labeling the Built-Ins](#labeling-the-built-ins) below for the labels it may carry.
+
+${builtInLabelsSection(ctx)}
 
 Just as an example, we want to have a look at the ${ctx.link(processRepeatLoop)} function, as it is one of the simplest built-in processors
 we have:
@@ -437,9 +550,9 @@ to produce a new dataflow information.
 
 ## Beyond the Dataflow Graph
 
-Given the [dataflow graph](${FlowrWikiBaseRef}/Dataflow-Graph), you can do a lot more!
-You can issue [queries](${FlowrWikiBaseRef}/Query-API) to explore the graph, [search](${FlowrWikiBaseRef}/Search-API) for specific elements, or, for example, request a [static backward slice](#static-backward-slicing).
-Of course, all of these endeavors work not just with the ${ctx.link(RShell)} but also with the [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines). 
+Given the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, you can do a lot more!
+You can issue ${ctx.linkPage('wiki/Query API', 'queries')} to explore the graph, ${ctx.linkPage('wiki/Search API', 'search')} for specific elements, or, for example, request a [static backward slice](#static-backward-slicing).
+Of course, all of these endeavors work not just with the ${ctx.link(RShell)} but also with the ${ctx.linkPage('wiki/Engines', '`tree-sitter` engine')}.
 
 ### Static Backward Slicing
 
@@ -458,16 +571,123 @@ ${await documentReplSession(treeSitter, [{
 	description: 'Slice for the example file for the variable "prod" in line 12.'
 }], { openOutput: true })}
 
-## Helpful Things
+## Gas (Resource Guard)
 
-### Getting flowR to Talk
+During a large analysis, flowR may run into memory or time pressure.
+The _gas_ system provides per-feature resource guards that check the current heap usage and elapsed analysis time.
 
-When using flowR from the CLI, you can use the ${getCliLongOptionOf('flowr', 'verbose')} option to get more information about what flowR is doing.
-While coding, however, you can use the ${ctx.link(setMinLevelOfAllLogs)} function to set the minimum level of logs to be displayed (this works with the ${ctx.link(FlowrLogger)} abstraction).
-In general, you can configure the levels of individual logs, such as the general \`log\` (obtained with ${ctx.link('getActiveLog')}) or the ${ctx.link('parseLog')}.
-Please note that flowR makes no guarantees that log outputs are persistent across versions, and it is up to the implementors to provide sensible logging.
-If you are an implementor and want to add logging, please make sure there are no larger runtime impliciations when logging is disabled. 
-Have a look at the ${ctx.link(expensiveTrace)} function for example, which uses a function to generate the log message only when the log level is reached.
+Any analysis site queries the level with ${ctx.linkM(FlowrAnalyzerGasContext, 'checkGas')}, where \`key\` is a feature name.
+The call is a no-op when gas is disabled for that key and no gas plugins are registered.
+Heap statistics come from the \`v8\` module (Node.js, Electron, VS Code) or Chromium's \`performance.memory\` in browsers. If neither is available, gas skips the memory check and only the elapsed-time thresholds apply. Programmatic configs can supply a custom source via the \`heapProvider\` of the ${ctx.link('FlowrGasConfig')} (\`config.gas.heapProvider\`), and gas plugins can override levels entirely.
+
+| Level                    | Value | Description                         |
+|:-------------------------|------:|:------------------------------------|
+| \`GasLevel.Normal\`      |     0 | ${ctx.doc('GasLevel::Normal')}      |
+| \`GasLevel.Problematic\` |     1 | ${ctx.doc('GasLevel::Problematic')} |
+| \`GasLevel.Critical\`    |     2 | ${ctx.doc('GasLevel::Critical')}    |
+
+### Enabling Gas for a Feature
+
+Gas is **disabled by default** for every feature (see ${ctx.link('GasFeatureKey')} for all recognized keys).
+Enable it by setting a positive factor in \`config.gas.features\`:
+
+\`\`\`json
+{
+  "gas": {
+    "thresholds": {
+      "memory": { "problematic": 0.7, "critical": 0.9 },
+      "timeMs":  { "problematic": 100000, "critical": 120000 }
+    },
+    "features": {
+      "source": 1
+    }
+  }
+}
+\`\`\`
+
+The factor scales both dimensions before comparing against the thresholds:
+
+\`\`\`
+scaled_ratio   = (used_heap / heap_limit) * factor
+scaled_elapsed = elapsed_ms              * factor
+\`\`\`
+
+A factor of \`2\` makes the check twice as sensitive: it triggers \`Problematic\` when the heap
+is at 35% (= 0.7 / 2) instead of 70%.
+
+### Per-Feature Thresholds
+
+A dataflow extraction, a linter pass and a static slice are not worth the same allowance, so each dimension
+of \`config.gas.thresholds\` may be bounded per feature key (see ${ctx.link('GasThresholdSpec')}), with
+\`default\` covering the keys that have no entry of their own:
+
+\`\`\`json
+{
+  "gas": {
+    "thresholds": {
+      "timeMs": {
+        "default": { "problematic": 60000, "critical": 120000 },
+        "slicer":  { "problematic": 24000, "critical": 30000 }
+      }
+    },
+    "features": {
+      "slicer": 1
+    }
+  }
+}
+\`\`\`
+
+An entry only has to name the bounds it changes; the rest falls back to \`default\` and then to a directly
+given \`{ problematic, critical }\` pair, which stays valid and still means "the same bound for everything".
+
+### Per-Operation Contingents
+
+The elapsed-time bound is *not* measured from the creation of the analyzer. Each analysis run (parse,
+normalize, dataflow) and each ${ctx.link(staticSlice.name)} runs against a contingent of its own, so analysing
+a project and then asking for twenty slices gives twenty-one contingents, not one clock the analysis spent.
+
+Anything beginning a new analysis restarts it too: an added file, a cache invalidation, a re-parse, or an
+explicit ${ctx.linkM(FlowrAnalyzer, 'reset')}. Operations in flight keep theirs, as restarting a running
+traversal's clock would defeat the guard bounding it. To split your *own* phases, call
+${ctx.linkM(FlowrAnalyzerGasContext, 'reset', { codeFont: true, realNameWrapper: 'i' })} on the writeable
+context (\`analyzer.context().gas.reset()\`) - supported API, not an internal hook.
+
+### Bounding a Single Call
+
+Bounds for one call, keyed by the same feature names and measured from that call (see ${ctx.link('GasOverrides')}):
+
+${codeBlock('ts', `await analyzer.query([{ type: 'static-slice', criteria: ['12@product'] }], {
+    gas: { slicer: { critical: 30_000 } }
+});`)}
+
+Bare \`problematic\`/\`critical\` numbers are elapsed milliseconds; use \`timeMs\`/\`memory\` to be explicit and
+\`factor\` for the sensitivity. Naming a feature enables gas for it even when \`config.gas.features\` disables
+it (pass \`factor: 0\` to keep it off). ${ctx.linkM(FlowrAnalyzer, 'runFull')} and
+${ctx.linkM(FlowrAnalyzer, 'runSearch')} take the same, and read-only holders of a context can derive a
+bounded view with ${ctx.linkM(FlowrAnalyzerGasContext, 'scope', { codeFont: true, realNameWrapper: 'i' })}.
+
+### When the Slicer Runs Out
+
+A slice cut short comes back with \`stoppedEarly\` and a \`progress\` saying how far it got (see
+${ctx.link('SliceProgress')}). A \`frontier\` of \`0\` means the queue drained after all; a small \`frontier\`
+next to a large \`visited\` says little is missing. Without it a truncated slice is all-or-nothing, and
+"as far as flowR got" is not "what is independent", so it would have to be discarded.
+
+### Known Feature Keys
+
+${ctx.doc('GasFeatureKey')}
+
+| Key | Description |
+|:----|:------------|
+${Object.entries(GasFeatureKey).map(([name, key]) => `| \`${key}\` | ${ctx.doc(`GasFeatureKey::${name}`)} |`).join('\n')}
+
+You can search for \`ctx.gas.checkGas(\` in the source to locate every active check site.
+
+### Gas Plugins
+
+${ctx.doc(FlowrAnalyzerGasPlugin)}
+
+${ctx.code(gasPluginExample, { dropLinesStart: 1, dropLinesEnd: 1, hideDefinedAt: true })}
 
 `;
 	}

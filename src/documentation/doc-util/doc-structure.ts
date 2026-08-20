@@ -18,8 +18,7 @@ ${prefixInit}<details${open ? ' open' : ''}><summary${color ? ' style="color:' +
 
 ${content}
 
-${prefixInit}</details>
-    `;
+${prefixInit}</details>`;
 }
 
 export interface BlockOptions {

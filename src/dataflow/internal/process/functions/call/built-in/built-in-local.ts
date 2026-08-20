@@ -1,3 +1,4 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
 import { DataflowInformation, alwaysExits } from '../../../../../info';
@@ -6,13 +7,14 @@ import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { pMatch } from '../../../../linker';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { resolveEnvirArg, routeWrittenToCustomEnv } from './built-in-envir-utils';
+import { Resolve } from '../../../../../environments/resolve-helper';
 
 
 export interface LocalFunctionConfiguration {
@@ -42,12 +44,15 @@ export function processLocal<OtherInfo>(
 		[config.args.env]:  'env',
 		'...':              '...'
 	};
-	const argMaps = pMatch(convertFnArguments(args), params);
+	const argMaps = MatchArgs.toSpec(convertFnArguments(args), params);
 	const env = unpackArg(RArgument.getWithId(args, argMaps.get('env')?.[0]));
 	const expr = unpackArg(RArgument.getWithId(args, argMaps.get('expr')?.[0]));
 	if(!expr) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
+
+	/* when envir resolves to a tracked environment, evaluate expr inside it */
+	const envirResolution = env ? resolveEnvirArg(args, data, config.args.env) : undefined;
 
 	const dfEnv = env ? processDataflowFor(env, data) : DataflowInformation.initialize(rootId, data);
 	if(alwaysExits(dfEnv)) {
@@ -62,10 +67,11 @@ export function processLocal<OtherInfo>(
 		return dfEnv;
 	}
 
+	const baseEnvironment = envirResolution
+		? envirResolution.envirData.environment     // evaluate in the tracked custom env
+		: pushLocalEnvironment(data.environment);   // normal new local scope
 
-	const bodyData  = { ...data, environment: pushLocalEnvironment(data.environment) };
-
-	const dfExpr = processDataflowFor(expr, bodyData);
+	const dfExpr = processDataflowFor(expr, { ...data, environment: baseEnvironment });
 	patchFunctionCall({
 		nextGraph:             dfEnv.graph,
 		rootId,
@@ -75,16 +81,28 @@ export function processLocal<OtherInfo>(
 		origin:                BuiltInProcName.Local
 	});
 
+	const resultEnvironment = envirResolution ? data.environment : popLocalEnvironment(dfExpr.environment);
+	/* definitions of the local scope vanish with it, only what escaped it (e.g. via `<<-`) may bubble up */
+	const escaping = envirResolution ? dfExpr.out : dfExpr.out.filter(
+		o => o.name !== undefined && Resolve.byNameAndType(o.name, resultEnvironment, o.type)?.some(d => d.nodeId === o.nodeId)
+	);
+
 	const ingoing = dfEnv.in.concat(dfExpr.in, dfEnv.unknownReferences, dfExpr.unknownReferences);
 	ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
-	return {
+	const baseResult = {
 		hooks:             dfExpr.hooks.concat(dfEnv.hooks),
-		environment:       popLocalEnvironment(dfExpr.environment),
+		environment:       resultEnvironment,
 		exitPoints:        dfEnv.exitPoints.concat(dfExpr.exitPoints),
 		graph:             dfEnv.graph.mergeWith(dfExpr.graph),
 		entryPoint:        rootId,
 		in:                ingoing,
-		out:               dfExpr.out.concat(dfEnv.out),
+		out:               escaping.concat(dfEnv.out),
 		unknownReferences: []
 	};
+
+	/* move all definitions made inside the body into the custom env's tracked state */
+	if(envirResolution) {
+		return routeWrittenToCustomEnv(baseResult, envirResolution.envDef, rootId);
+	}
+	return baseResult;
 }

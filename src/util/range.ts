@@ -1,5 +1,6 @@
 import { guard, isNotUndefined } from './assert';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import type { RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 /**
  * A source position in a file.
@@ -134,7 +135,7 @@ export const SourceRange = {
 	},
 	/**
 	 * Merges multiple source ranges into a single source range that spans from the earliest start to the latest end.
-	 * If you are interested in combining overlapping ranges into a minimal set of ranges, see {@link combineRanges}.
+	 * If you are interested in reducing a set of ranges to those none of the others contains, see {@link combineRanges}.
 	 * @throws if no ranges are provided
 	 */
 	merge(this: void, rs: (SourceRange | undefined)[]): SourceRange {
@@ -151,17 +152,15 @@ export const SourceRange = {
 	startsCompletelyBefore(this: void, [,,r1el, r1ec]: SourceRange, [r2sl, r2sc,,]: SourceRange): boolean {
 		return r1el < r2sl || (r1el === r2sl && r1ec < r2sc);
 	},
-	/**
-	 * Checks if the two ranges overlap.
-	 */
-	overlap(this: void, [r1sl, r1sc, r1el, r1ec]: SourceRange, [r2sl, r2sc, r2el, r2ec]: SourceRange): boolean {
-		return r1sl <= r2el && r2sl <= r1el && r1sc <= r2ec && r2sc <= r1ec;
+	/** Checks if the two ranges overlap, i.e. whether neither of them lies completely before the other. */
+	overlap(this: void, r1: SourceRange, r2: SourceRange): boolean {
+		return !SourceRange.startsCompletelyBefore(r1, r2) && !SourceRange.startsCompletelyBefore(r2, r1);
 	},
 	/**
 	 * Calculates the component-wise sum of two ranges.
 	 */
 	add(this: void, [r1sl, r1sc, r1el, r1ec]: SourceRange, [r2sl, r2sc, r2el, r2ec]: SourceRange): SourceRange {
-		return [r1sl+r2sl, r1sc+r2sc, r1el+r2el, r1ec+r2ec];
+		return [r1sl + r2sl, r1sc + r2sc, r1el + r2el, r1ec + r2ec];
 	},
 	/**
 	 * Provides a comparator for {@link SourceRange}s that sorts them in ascending order.
@@ -175,20 +174,114 @@ export const SourceRange = {
 		}
 	},
 	/**
+	 * Checks if two ranges are equal (i.e., they start and end at the same position).
+	 */
+	equals(this: void, [r1sl, r1sc, r1el, r1ec]: SourceRange, [r2sl, r2sc, r2el, r2ec]: SourceRange): boolean {
+		return r1sl === r2sl && r1sc === r2sc && r1el === r2el && r1ec === r2ec;
+	},
+	/**
+	 * Checks if a given position (line, column) is contained within the range.
+	 */
+	containsPosition(this: void, [sl, sc, el, ec]: SourceRange, line: number, column: number): boolean {
+		if(line < sl || line > el) {
+			return false;
+		} else if(sl === el) {
+			return sc <= column && column <= ec;
+		} else if(line === sl) {
+			return column >= sc;
+		} else if(line === el) {
+			return column <= ec;
+		}
+		return true;
+	},
+	/**
 	 * Checks if the first range is a subset of the second range.
 	 */
 	isSubsetOf(this: void, [r1sl, r1sc, r1el, r1ec]: SourceRange, [r2sl, r2sc, r2el, r2ec]: SourceRange): boolean {
-		return (r1sl > r2sl || r1sl === r2sl && r1sc >= r2sc) && (r1el < r2el || r1sl === r2sl && r1ec <= r2ec);
+		return (r1sl > r2sl || r1sl === r2sl && r1sc >= r2sc) && (r1el < r2el || r1el === r2el && r1ec <= r2ec);
 	},
 	/**
-	 * Combines overlapping or subset ranges into a minimal set of ranges.
+	 * Checks if the first range is a strict subset of the second range (i.e., it is a subset but not equal).
+	 */
+	isStrictSubsetOf(this: void, r1: SourceRange, r2: SourceRange): boolean {
+		return SourceRange.isSubsetOf(r1, r2) && !SourceRange.equals(r1, r2);
+	},
+	/**
+	 * Reduces the ranges to those no other one contains, keeping the first of any duplicates. Ranges that merely
+	 * overlap are both kept, as neither contains the other. A non-empty input always yields a non-empty result.
 	 * @see {@link SourceRange.merge} for merging multiple ranges into a single range.
 	 */
 	combineRanges(this: void, ...ranges: SourceRange[]): SourceRange[] {
-		return ranges.filter(range => !ranges.some(other => range !== other && SourceRange.isSubsetOf(range, other)));
+		return ranges.filter((range, i) => !ranges.some((other, j) => i !== j
+			&& (SourceRange.isStrictSubsetOf(range, other) || (j < i && SourceRange.equals(range, other)))));
 	},
 	fromNode<OtherInfo>(this: void, node: RNode<OtherInfo> | undefined): SourceRange | undefined {
 		return node?.info.fullRange ?? node?.location;
+	},
+	/**
+	 * "Fuzzy" position match, as opposed to requiring a node to *start* exactly at the position.
+	 * @see {@link SourceRange.innermostNodes} to narrow the result down to the deepest matches
+	 */
+	nodesContaining<OtherInfo>(this: void, nodes: readonly RNodeWithParent<OtherInfo>[], line: number, column?: number): RNodeWithParent<OtherInfo>[] {
+		return nodes.filter(node => {
+			const range = SourceRange.fromNode(node);
+			if(range === undefined) {
+				return false;
+			}
+			return column === undefined ? range[0] <= line && line <= range[2] : SourceRange.containsPosition(range, line, column);
+		});
+	},
+	/**
+	 * Collects all nodes satisfying the innermost condition: those containing no other of the given nodes.
+	 *
+	 * Nodes may share a range (a function call and the symbol naming it do), so `treatChildAsInner` decides that
+	 * tie: with it, a node sharing its parent's range counts as the inner one and the parent drops out; without
+	 * it, both are kept and the caller may pick between them (e.g. by node type).
+	 *
+	 * A non-empty input always yields a non-empty result: enclosure is a strict order so some node is always minimal,
+	 * and a node carrying no range at all is kept rather than dropped.
+	 * @see {@link SourceRange.nodesContaining} which this usually narrows down
+	 */
+	innermostNodes<OtherInfo>(this: void, nodes: readonly RNodeWithParent<OtherInfo>[], treatChildAsInner = true): RNodeWithParent<OtherInfo>[] {
+		const result: RNodeWithParent<OtherInfo>[] = [];
+
+		for(const node of nodes) {
+			const range = SourceRange.fromNode(node);
+			if(!range) {
+				result.push(node);
+				continue;
+			}
+
+			let inner = false;
+
+			for(const other of nodes) {
+				if(other === node) {
+					continue;
+				}
+
+				const otherRange = SourceRange.fromNode(other);
+				if(!otherRange) {
+					continue;
+				}
+
+				if(SourceRange.isStrictSubsetOf(otherRange, range) ||
+					(
+						treatChildAsInner &&
+						other.info.parent === node.info.id &&
+						SourceRange.equals(otherRange, range)
+					)
+				) {
+					inner = true;
+					break;
+				}
+			}
+
+			if(!inner) {
+				result.push(node);
+			}
+		}
+
+		return result.length > 0 ? result : nodes.slice();
 	}
 } as const;
 
@@ -215,29 +308,30 @@ export const SourceLocation = {
 			return SourceRange.format(location as SourceRange);
 		}
 	},
-	/**
-	 * Returns the {@link SourceRange|source range} part of a {@link SourceLocation|source location}.
-	 */
-	getRange(this: void, location: SourceLocation): SourceRange {
-		return location as SourceRange;
+	/** Returns the {@link SourceRange|source range} part of a {@link SourceLocation|source location}, file excluded. */
+	getRange(this: void, [sl, sc, el, ec]: SourceLocation): SourceRange {
+		return [sl, sc, el, ec];
 	},
+	/**
+	 * Returns the file part of a {@link SourceLocation|source location}, or `undefined` if no file is set.
+	 */
 	getFile(this: void, location: SourceLocation): string | undefined {
 		return location[4];
 	},
 	/**
-	 * Returns the file part of a {@link SourceLocation|source location}, or `undefined` if no file is set.
+	 * Creates a {@link SourceLocation|source location} from a {@link SourceRange|source range} and a file name.
 	 */
 	from(this: void, range: SourceRange, file?: string): SourceLocation {
 		return file !== undefined ? [...range, file] : range;
 	},
 	/**
-	 * Creates a {@link SourceLocation|source location} from a {@link SourceRange|source range} and a file name.
+	 * The {@link SourceLocation|source location} of an AST node, file included.
 	 * @returns undefined if the given range is undefined
 	 * @see {@link SourceRange.fromNode} for getting the range from an AST node
 	 */
-	fromNode<OtherInfo>(this: void, node: RNode<OtherInfo>): SourceLocation | undefined {
+	fromNode<OtherInfo>(this: void, node: RNode<OtherInfo> | undefined): SourceLocation | undefined {
 		const range = SourceRange.fromNode(node);
-		return range !== undefined ? SourceLocation.from(range, node.info.file) : undefined;
+		return node !== undefined && range !== undefined ? SourceLocation.from(range, node.info.file) : undefined;
 	},
 	/**
 	 * Maps the file part of a {@link SourceLocation|source location} using the given mapper function.

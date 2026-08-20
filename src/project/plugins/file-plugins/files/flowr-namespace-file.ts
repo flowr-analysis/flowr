@@ -2,6 +2,7 @@ import type { FileRole, FlowrFileProvider } from '../../../context/flowr-file';
 import { FlowrTextFile, FlowrFile } from '../../../context/flowr-file';
 import { unquoteArgument } from '../../../../abstract-interpretation/data-frame/resolve-args';
 import { removeRQuotes } from '../../../../r-bridge/retriever';
+import { startAndEndsWith } from '../../../../util/text/strings';
 import type { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
 import type { FlowrAnalyzerContext } from '../../../context/flowr-analyzer-context';
 import type {
@@ -13,13 +14,15 @@ import { foldAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/fold
 import { Identifier } from '../../../../dataflow/environments/identifier';
 import { isNotUndefined } from '../../../../util/assert';
 import type { PotentiallyEmptyRArgument, RFunctionCall } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import {
 	toUnnamedArgument
 } from '../../../../dataflow/internal/process/functions/call/argument/make-argument';
 import { SourceRange } from '../../../../util/range';
 import { parseRRegexPattern } from '../../../../util/r-regex';
+import { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { uniqueArray } from '../../../../util/collections/arrays';
+import { EmptyArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 export interface NamespaceInfo {
 	exportedSymbols:      string[];
@@ -28,10 +31,8 @@ export interface NamespaceInfo {
 	exportedPatterns:     string[];
 	importedPackages:     Map<string, string[] | 'all'>;
 	loadsWithSideEffects: boolean;
-	/**
-	 * This will only be present in complex parsed NAMESPACE files and tell you
-	 * about which parts are only active with given conditions!
-	 */
+	callable:             string[];
+	/** Present only in complex parsed NAMESPACE files. Maps conditions to the parts they gate. */
 	conditional?:         Map<RNode<ParentInformation>, NamespaceInfo>;
 }
 
@@ -41,26 +42,21 @@ export interface NamespaceFormat {
 }
 
 /**
- * This decorates a text file and provides access to its content in the {@link NamespaceFormat}.
- * Namespace files can be parsed in a simple mode which is much quicker, but does not support `if`/other R-constructs!
+ * Decorates a text file to expose its content as a {@link NamespaceFormat}.
+ * Simple parsing is quicker but does not support `if`/other R constructs.
  */
 export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 	private readonly wrapped: FlowrFileProvider;
 	private readonly ctx:     FlowrAnalyzerContext | undefined;
 
-	/**
-	 * Prefer the static {@link FlowrNamespaceFile.from} method to create instances of this class as it will not re-create if already a namespace file
-	 * and handle role assignments.
-	 */
+	/** Prefer {@link FlowrNamespaceFile.from}, which avoids re-wrapping and handles roles. */
 	constructor(file: FlowrFileProvider, ctx?: FlowrAnalyzerContext) {
 		super(file.path(), file.roles);
 		this.wrapped = file;
 		this.ctx = ctx;
 	}
 
-	/**
-	 * Creates a {@link FlowrNamespaceFile} from a given {@link NamespaceFormat}, path and optional roles. This is useful if you already have the namespace content parsed and want to create a namespace file instance without re-parsing.
-	 */
+	/** Creates a {@link FlowrNamespaceFile} from an already-parsed {@link NamespaceFormat}. */
 	public static fromNamespaceFormat(fmt: NamespaceFormat, path: string, roles?: FileRole[]): FlowrNamespaceFile {
 		const file = new FlowrNamespaceFile(new FlowrTextFile(path, roles));
 		file.setContent(fmt);
@@ -88,8 +84,7 @@ export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 	}
 
 	/**
-	 * Namespace file lifter, this does not re-create if already a namespace file
-	 * and handles role assignments.
+	 * Lifts a file to a {@link FlowrNamespaceFile}, reusing it if already one and assigning roles.
 	 * @param file - The file to lift or return if already a namespace file
 	 * @param ctx - An optional analyzer context to use for complex parsing
 	 * @param role - An optional role to assign to the file
@@ -127,12 +122,11 @@ export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo
 	}
 	if(name.includes('.')) {
 		for(const [k, m] of nsInfo.exportS3Generics.entries()) {
-			if(m.map(m => `${k}.${m}`).includes(name)) {
+			if(m.some(method => `${k}.${method}` === name)) {
 				return true;
 			}
 		}
 	}
-	// pattern
 	for(const pattern of nsInfo.exportedPatterns) {
 		const regex = parseRRegexPattern(pattern);
 		if(regex.test(name)) {
@@ -140,7 +134,6 @@ export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo
 		}
 	}
 	if(nsInfo.conditional) {
-		// nested with recursion
 		for(const [cond, info] of nsInfo.conditional) {
 			const res = isExportedInInfo(name, info);
 			if(res === true) {
@@ -219,6 +212,8 @@ function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContex
 					case 'import':
 						return handleImportCall(g, call.arguments);
 					case 'importFrom':
+					case 'importClassesFrom':
+					case 'importMethodsFrom':
 						return handleImportFromCall(g, call.arguments);
 					case 'useDynLib':
 						return handleUseDynLibCall(g, call.arguments);
@@ -230,6 +225,33 @@ function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContex
 			}
 		}
 	});
+}
+
+/** All exported names of a namespace that can be referenced (functions, symbols, patterns, and S3 methods as `generic.class`). */
+export function getExportedNames(info: NamespaceInfo): string[] {
+	const s3: string[] = [];
+	for(const [g, methods] of info.exportS3Generics){
+		for(const m of methods){
+			s3.push(`${g}.${m}`);
+		}
+	}
+	return uniqueArray([...info.exportedSymbols, ...info.exportedFunctions, ...info.exportedPatterns, ...s3]);
+}
+
+/** The names a package makes callable: the explicitly configured {@link NamespaceInfo#callable} subset, or all exports (see {@link getExportedNames}) by default. */
+export function getCallables(info: NamespaceInfo): string[] {
+	return info.callable.length > 0 ? info.callable : getExportedNames(info);
+}
+
+/** Sets the given list of strings as callable functions */
+export function setCallable(info: NamespaceInfo, func: string[]): NamespaceInfo{
+	const all = new Set(getExportedNames(info));
+	for(const f of func){
+		if(all.has(f)){
+			info.callable.push(f);
+		}
+	}
+	return info;
 }
 
 function handleConditionCall(idMap: AstIdMap, cond: RNode<ParentInformation>, thenBranch: NamespaceFormat, elseBranch: NamespaceFormat | undefined): NamespaceFormat {
@@ -260,8 +282,13 @@ function wrapRNodeInNotCall(node: RNode<ParentInformation>, idMap: AstIdMap): RF
 		arguments: [toUnnamedArgument(node, idMap)]
 	};
 }
+/** the name a NAMESPACE directive lists, without the quotes or backticks R allows around it */
+function unquoteName(name: string): string {
+	return startAndEndsWith(name, '`') ? name.slice(1, -1) : removeRQuotes(name);
+}
+
 function handleExportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
-	g.current.exportedSymbols.push(...args.filter(a => a !== EmptyArgument).map(a => a.lexeme ? removeRQuotes(a.lexeme) : undefined).filter(isNotUndefined));
+	g.current.exportedSymbols.push(...args.filter(a => a !== EmptyArgument).map(a => a.lexeme ? unquoteName(a.lexeme) : undefined).filter(isNotUndefined));
 	return g;
 }
 function handleExportPatternCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
@@ -269,16 +296,17 @@ function handleExportPatternCall(g: NamespaceFormat, args: readonly PotentiallyE
 	return g;
 }
 function handleS3MethodCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
-	if(args.length !== 2) {
+	/* `S3method(generic, class)` and `S3method(generic, class, method)` both register the class */
+	if(args.length !== 2 && args.length !== 3) {
 		return g;
 	}
 	const pkgArg = args[0];
 	const funcArg = args[1];
-	if(pkgArg === EmptyArgument || funcArg === EmptyArgument || !pkgArg.lexeme || !funcArg.lexeme) {
+	if(RArgument.isEmpty(pkgArg) || RArgument.isEmpty(funcArg) || !pkgArg.lexeme || !funcArg.lexeme) {
 		return g;
 	}
-	const pkg = removeRQuotes(pkgArg.lexeme);
-	const func = removeRQuotes(funcArg.lexeme);
+	const pkg = unquoteName(pkgArg.lexeme);
+	const func = unquoteName(funcArg.lexeme);
 	let arr = g.current.exportS3Generics.get(pkg);
 	if(!arr) {
 		arr = [];
@@ -288,15 +316,12 @@ function handleS3MethodCall(g: NamespaceFormat, args: readonly PotentiallyEmptyR
 	return g;
 }
 function handleImportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
-	if(args.length !== 1) {
-		return g;
+	/* `import(a, b)` imports both; a named argument like `except =` names no package */
+	for(const arg of args) {
+		if(arg !== EmptyArgument && arg.name === undefined && arg.lexeme) {
+			g.current.importedPackages?.set(unquoteName(arg.lexeme), 'all');
+		}
 	}
-	const pkgArg = args[0];
-	if(pkgArg === EmptyArgument || !pkgArg.lexeme) {
-		return g;
-	}
-	const pkg = removeRQuotes(pkgArg.lexeme);
-	g.current.importedPackages?.set(pkg, 'all');
 	return g;
 }
 
@@ -305,10 +330,10 @@ function handleImportFromCall(g: NamespaceFormat, args: readonly PotentiallyEmpt
 		return g;
 	}
 	const pkgArg = args[0];
-	if(pkgArg === EmptyArgument || !pkgArg.lexeme) {
+	if(RArgument.isEmpty(pkgArg) || !pkgArg.lexeme) {
 		return g;
 	}
-	const pkg = removeRQuotes(pkgArg.lexeme);
+	const pkg = unquoteName(pkgArg.lexeme);
 	let arr = g.current.importedPackages?.get(pkg);
 	if(!arr || arr === 'all') {
 		arr = [];
@@ -316,10 +341,10 @@ function handleImportFromCall(g: NamespaceFormat, args: readonly PotentiallyEmpt
 	}
 	for(let i = 1; i < args.length; i++) {
 		const symArg = args[i];
-		if(symArg === EmptyArgument || !symArg.lexeme) {
+		if(RArgument.isEmpty(symArg) || !symArg.lexeme) {
 			continue;
 		}
-		const sym = removeRQuotes(symArg.lexeme);
+		const sym = unquoteName(symArg.lexeme);
 		arr.push(sym);
 	}
 	return g;
@@ -329,19 +354,12 @@ function handleUseDynLibCall(g: NamespaceFormat, args: readonly PotentiallyEmpty
 		return g;
 	}
 	const pkgArg = args[0];
-	if(pkgArg === EmptyArgument || !pkgArg.lexeme) {
+	if(RArgument.isEmpty(pkgArg) || !pkgArg.lexeme) {
 		return g;
 	}
-	const pkg = removeRQuotes(pkgArg.lexeme);
+	const pkg = unquoteName(pkgArg.lexeme);
 	if(!g[pkg]) {
-		g[pkg] = {
-			exportedSymbols:      [],
-			exportedFunctions:    [],
-			exportS3Generics:     new Map<string, string[]>(),
-			exportedPatterns:     [],
-			importedPackages:     new Map<string, string[] | 'all'>(),
-			loadsWithSideEffects: false,
-		};
+		g[pkg] = emptyNamespaceInfo();
 	}
 	g[pkg].loadsWithSideEffects = true;
 	return g;
@@ -350,23 +368,27 @@ function handleExportClassesCall(g: NamespaceFormat, args: readonly PotentiallyE
 	if(args.length !== 1) {
 		return g;
 	}
-	const classArgs = args.filter(a => a !== EmptyArgument).map(a => a.lexeme ? removeRQuotes(a.lexeme) : undefined).filter(isNotUndefined);
+	const classArgs = args.filter(a => a !== EmptyArgument).map(a => a.lexeme ? unquoteName(a.lexeme) : undefined).filter(isNotUndefined);
 	g.current.exportedFunctions.push(...classArgs);
 	return g;
 }
 const cleanLineCommentRegex = /^#.*$/gm;
 
-function getEmptyNamespaceFormat(): NamespaceFormat {
+/** A namespace that neither exports nor imports anything yet. */
+function emptyNamespaceInfo(): NamespaceInfo {
 	return {
-		current: {
-			exportedSymbols:      [] as string[],
-			exportedFunctions:    [] as string[],
-			exportS3Generics:     new Map<string, string[]>(),
-			exportedPatterns:     [] as string[],
-			importedPackages:     new Map<string, string[] | 'all'>(),
-			loadsWithSideEffects: false,
-		},
+		exportedSymbols:      [] as string[],
+		exportedFunctions:    [] as string[],
+		exportS3Generics:     new Map<string, string[]>(),
+		exportedPatterns:     [] as string[],
+		importedPackages:     new Map<string, string[] | 'all'>(),
+		callable:             [] as string[],
+		loadsWithSideEffects: false,
 	};
+}
+
+function getEmptyNamespaceFormat(): NamespaceFormat {
+	return { current: emptyNamespaceInfo() };
 }
 function mergeNamespaceFormat(target: NamespaceFormat, source: NamespaceFormat): NamespaceFormat {
 	return {
@@ -427,6 +449,7 @@ function mergeNamespaceInfo(target: NamespaceInfo, source: NamespaceInfo): Names
 	}
 
 	return {
+		callable:             [...target.callable, ...source.callable],
 		exportedSymbols:      [...target.exportedSymbols, ...source.exportedSymbols],
 		exportedFunctions:    [...target.exportedFunctions, ...source.exportedFunctions],
 		exportS3Generics:     mergedS3Generics,
@@ -435,6 +458,34 @@ function mergeNamespaceInfo(target: NamespaceInfo, source: NamespaceInfo): Names
 		loadsWithSideEffects: target.loadsWithSideEffects || source.loadsWithSideEffects,
 		conditional:          mergedConditional.size > 0 ? mergedConditional : undefined,
 	};
+}
+
+/** an argument given by name (`except = c(x)`), which names no symbol of its own */
+const namedArgument = /^[\w.]+\s*=[^=]/;
+
+/**
+ * Split a NAMESPACE directive's argument list (`a, "b", except = c(x)`) into its positional, quote-stripped
+ * names. Only top-level commas separate, so an argument that is itself a call stays in one piece.
+ */
+function splitNamespaceArgs(args: string): string[] {
+	const names: string[] = [];
+	let depth = 0;
+	let start = 0;
+	for(let i = 0; i <= args.length; i++) {
+		const c = args[i];
+		if(c === '(' || c === '[') {
+			depth++;
+		} else if(c === ')' || c === ']') {
+			depth--;
+		} else if(i === args.length || (c === ',' && depth === 0)) {
+			const part = args.slice(start, i).trim();
+			start = i + 1;
+			if(part.length > 0 && !namedArgument.test(part)) {
+				names.push(unquoteName(part));
+			}
+		}
+	}
+	return names;
 }
 
 /**
@@ -446,7 +497,7 @@ function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 		.split(/\r?\n/).filter(Boolean);
 
 	for(const line of fileContent) {
-		const match = line.trim().match(/^(\w+)\(([^)]*)\)$/);
+		const match = line.trim().match(/^(\w+)\((.*)\)$/);
 		if(!match) {
 			continue;
 		}
@@ -455,12 +506,13 @@ function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 		switch(type) {
 			case 'exportClasses':
 			case 'exportMethods':
-				result.current.exportedFunctions.push(removeRQuotes(args));
+				// a single directive may list several symbols, e.g. `exportMethods(show, summary)`
+				result.current.exportedFunctions.push(...splitNamespaceArgs(args));
 				break;
 			case 'S3method':
 			{
-				const parts = args.split(',').map(s => removeRQuotes(s.trim()));
-				if(parts.length !== 2) {
+				const parts = splitNamespaceArgs(args);
+				if(parts.length !== 2 && parts.length !== 3) {
 					continue;
 				}
 				const [pkg, func] = parts;
@@ -473,7 +525,8 @@ function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 				break;
 			}
 			case 'export':
-				result.current.exportedSymbols.push(removeRQuotes(args));
+				// `export(a, b)` exports both `a` and `b`, so split rather than storing the literal `"a, b"`
+				result.current.exportedSymbols.push(...splitNamespaceArgs(args));
 				break;
 			case 'useDynLib':
 			{
@@ -483,25 +536,21 @@ function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 				}
 				const [pkg] = parts;
 				if(!result[pkg]) {
-					result[pkg] = {
-						exportedSymbols:      [],
-						exportedFunctions:    [],
-						exportS3Generics:     new Map<string, string[]>(),
-						exportedPatterns:     [],
-						importedPackages:     new Map<string, string[] | 'all'>(),
-						loadsWithSideEffects: false,
-					};
+					result[pkg] = emptyNamespaceInfo();
 				}
 				result[pkg].loadsWithSideEffects = true;
 				break;
 			}
 			case 'import': {
-				const pkg = args.trim();
-				result.current.importedPackages?.set(pkg, 'all');
+				for(const pkg of splitNamespaceArgs(args)) {
+					result.current.importedPackages?.set(pkg, 'all');
+				}
 				break;
 			}
-			case 'importFrom': {
-				const parts = args.split(',').map(s => s.trim());
+			case 'importFrom':
+			case 'importClassesFrom':
+			case 'importMethodsFrom': {
+				const parts = splitNamespaceArgs(args);
 				if(parts.length < 2) {
 					continue;
 				}

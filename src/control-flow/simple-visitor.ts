@@ -1,5 +1,6 @@
 import { type ControlFlowGraph, CfgVertex } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { ArrayQueue } from '../util/collections/queue';
 
 // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 export type SimpleCfgVisitor = (graph: ControlFlowGraph, nodes: readonly NodeId[], visitor: (node: NodeId) => boolean | void) => void;
@@ -64,10 +65,10 @@ export function visitCfgInOrder(
 	visitor: (node: NodeId) => boolean | void
 ): Set<NodeId> {
 	const visited = new Set<NodeId>();
-	const queue = startNodes.slice();
+	const queue = new ArrayQueue(startNodes);
 	const hasBb = graph.mayHaveBasicBlocks();
-	while(queue.length > 0) {
-		const current = queue.shift() as NodeId;
+	while(!queue.isEmpty()) {
+		const current = queue.dequeue() as NodeId;
 		if(visited.has(current)) {
 			continue;
 		}
@@ -79,13 +80,13 @@ export function visitCfgInOrder(
 			if(CfgVertex.isBlock(get)) {
 				const elems = CfgVertex.getBasicBlockElements(get);
 				for(const e of elems.toReversed()) {
-					queue.push(CfgVertex.getId(e));
+					queue.enqueue(CfgVertex.getId(e));
 				}
 			}
 		}
 		const outgoing = graph.ingoingEdges(current) ?? [];
 		for(const [to] of outgoing) {
-			queue.push(to);
+			queue.enqueue(to);
 		}
 	}
 	return visited;

@@ -20,6 +20,7 @@ export const RLogical = {
 	name: 'RLogical',
 	/**
 	 * Type guard for {@link RLogical} nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RLogical<Info> {
 		return node?.type === RType.Logical;

@@ -1,5 +1,6 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { alwaysExits, type DataflowInformation } from '../../../../../info';
+import { alwaysExits, type DataflowInformation, type KillReference } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
@@ -11,12 +12,11 @@ import { dataflowLogger } from '../../../../../logger';
 import { EdgeType } from '../../../../../graph/edge';
 import { appendEnvironment } from '../../../../../environments/append';
 import { Identifier, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
-import { type REnvironmentInformation } from '../../../../../environments/environment';
-import { valueSetGuard } from '../../../../../eval/values/general';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import type { REnvironmentInformation } from '../../../../../environments/environment';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
+import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import { pMatch } from '../../../../linker';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
@@ -44,7 +44,7 @@ function getArguments<OtherInfo>(config: IfThenElseConfig | undefined, args: rea
 			[config.args.no]:   'no',
 			'...':              '...'
 		};
-		const argMaps = pMatch(convertFnArguments(args), params);
+		const argMaps = MatchArgs.toSpec(convertFnArguments(args), params);
 		condArg = unpackArg(RArgument.getWithId(args, argMaps.get('cond')?.[0]));
 		thenArg = unpackArg(RArgument.getWithId(args, argMaps.get('yes')?.[0]));
 		otherwiseArg = unpackArg(RArgument.getWithId(args, argMaps.get('no')?.[0]));
@@ -93,9 +93,9 @@ export function processIfThenElse<OtherInfo>(
 	let makeThenMaybe = false;
 
 	// we should defer this to the abstract interpretation
-	const values = resolveIdToValue(condArg?.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx });
-	const conditionIsAlwaysFalse = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
-	const conditionIsAlwaysTrue = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
+	const values = NodeValue.setOf(condArg?.info.id, data);
+	const conditionIsAlwaysFalse = values?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
+	const conditionIsAlwaysTrue = values?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 
 	if(!conditionIsAlwaysFalse) {
 		then = processDataflowFor(thenArg, data);
@@ -106,7 +106,6 @@ export function processIfThenElse<OtherInfo>(
 			makeThenMaybe = true;
 		}
 	}
-	console.log(`then directly after: ${JSON.stringify(then?.exitPoints)}`);
 
 	let otherwise: DataflowInformation | undefined;
 	let makeOtherwiseMaybe = false;
@@ -154,6 +153,14 @@ export function processIfThenElse<OtherInfo>(
 			(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.out, nextGraph, finalEnvironment, true, cdFalse) : otherwise?.out ?? []),
 		);
 
+	// a branch-local removal only happens maybe; apply it here since the branch-environment merge cannot represent it
+	let killed: KillReference[] | undefined;
+	if(then?.kill?.length || otherwise?.kill?.length) {
+		killed = (makeThenMaybe ? makeKillsMaybe(then?.kill, cdTrue) : then?.kill ?? [])
+			.concat(makeOtherwiseMaybe ? makeKillsMaybe(otherwise?.kill, cdFalse) : otherwise?.kill ?? []);
+		finalEnvironment = applyKills(finalEnvironment, killed);
+	}
+
 	patchFunctionCall({
 		nextGraph,
 		rootId,
@@ -170,7 +177,6 @@ export function processIfThenElse<OtherInfo>(
 		.concat((otherwise?.exitPoints ?? []).map(e => ({ ...e, cds: makeOtherwiseMaybe ? [...data.cds ?? [], { id: rootId, when: false }] : e.cds })));
 
 	if(then !== undefined) {
-		console.log(`then exits: ${JSON.stringify(then.exitPoints)}`);
 		nextGraph.addEdge(cond.entryPoint, then.entryPoint, EdgeType.ControlDependency, { condition: cond.entryPoint, when: true });
 	}
 
@@ -187,5 +193,6 @@ export function processIfThenElse<OtherInfo>(
 		environment:       finalEnvironment,
 		graph:             nextGraph,
 		hooks:             cond.hooks.concat(then?.hooks ?? [], otherwise?.hooks ?? []),
+		kill:              killed,
 	};
 }

@@ -4,6 +4,7 @@ import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { Unknown } from '../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import { withTreeSitter } from '../_helper/shell';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
+import { getPlatform } from '../../../src/util/os';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('file path validity', () => {
@@ -31,6 +32,14 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('deep lax', parser, 'cat("hello")\nread.csv("invalid/path/to/deep-file.csv")\nread.csv("invalid/path/to/deep-file-missing.csv")', 'file-path-validity', [
 			{ certainty: LintingResultCertainty.Certain, filePath: 'invalid/path/to/deep-file-missing.csv', loc: [3, 1, 3, 49] }
 		], { totalReads: 2, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 1 }, { addFiles });
+		/* setwd makes a relative path resolve against the new working directory (location sensitive) */
+		const wdFiles = [new FlowrInlineTextFile('sub/only-here.csv', '')];
+		assertLinter('setwd relative valid', parser, 'setwd("sub")\nread.csv("only-here.csv")', 'file-path-validity', [],
+			{ totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 1 }, { addFiles: wdFiles });
+		/* without the setwd the same relative path is missing (guards the case above against a false pass) */
+		assertLinter('no setwd relative missing', parser, 'read.csv("only-here.csv")', 'file-path-validity', [
+			{ certainty: LintingResultCertainty.Certain, filePath: 'only-here.csv', loc: [1, 1, 1, 25] }
+		], { totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 }, { addFiles: wdFiles });
 		/* If we use a relative path that is not valid, but we create a file of such a name within the script, we expect the linter to not report an issue */
 		assertLinter('write before', parser, 'write.csv("hello", "file-missing.csv")\nread.csv("file-missing.csv")', 'file-path-validity', [], { totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 1, totalValid: 0 }, { addFiles });
 		/* If we use a relative path that is not valid, but we create a file of such a name within the script, and ignore case, we expect the linter to not report an issue */
@@ -49,5 +58,35 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('unknown on', parser, 'path <- "file" + runif(1) + ".csv"; read.csv(path)', 'file-path-validity', [
 			{ certainty: LintingResultCertainty.Uncertain, filePath: Unknown, loc: [1, 37, 1, 50] }
 		], { totalReads: 1, totalUnknown: 1, totalWritesBeforeAlways: 0, totalValid: 0 }, { includeUnknown: true, addFiles });
+
+		describe('url handling', () => {
+			const remoteUrls = [
+				'https://raw.githubusercontent.com/user/repo/main/data.csv',
+				'http://example.com/data.csv',
+				'ftp://files.example.org/data.csv',
+				'ftps://secure.ftp.example.org/data.csv',
+				's3://my-bucket/data.csv',
+				'gs://my-bucket/data.csv'
+			];
+
+			describe('checkUrls=false (default)', () => {
+				for(const url of remoteUrls) {
+					/* @ignore-in-wiki */
+					assertLinter(url, parser, `read.csv("${url}")`, 'file-path-validity', [],
+						{ totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 });
+				}
+				assertLinter('url and missing file', parser, `read.csv("${remoteUrls[0]}")\nread.csv("missing.csv")`, 'file-path-validity', [
+					{ certainty: LintingResultCertainty.Certain, filePath: 'missing.csv', loc: [2, 1, 2, 23] }
+				], { totalReads: 2, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 });
+				assertLinter('url and existing file', parser, `read.csv("${remoteUrls[0]}")\nread.csv("file.csv")`, 'file-path-validity', [],
+					{ totalReads: 2, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 1 }, { addFiles });
+			});
+
+			describe.skipIf(getPlatform() === 'windows')('file:// urls (checked as local paths, ignores checkUrls)', () => {
+				assertLinter('file:// missing', parser, 'read.csv("file:///missing/file.csv")', 'file-path-validity', [
+					{ certainty: LintingResultCertainty.Certain, filePath: '/missing/file.csv', loc: [1, 1, 1, 36] }
+				], { totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 });
+			});
+		});
 	});
 }));

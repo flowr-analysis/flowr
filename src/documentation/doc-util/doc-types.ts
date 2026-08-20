@@ -1,6 +1,6 @@
 import ts, { SyntaxKind, type NamedDeclaration, type SourceFile, type TypeChecker } from 'typescript';
 import { guard } from '../../util/assert';
-import { RemoteFlowrFilePathBaseRef } from './doc-files';
+import { RemoteFlowrFilePathBaseRef, toPosixPath } from './doc-files';
 import fs from 'fs';
 import path from 'path';
 import { codeBlock } from './doc-code';
@@ -61,8 +61,10 @@ const options: ts.CompilerOptions = {
  */
 export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files: ts.SourceFile[], program: ts.Program } {
 	try {
-		const program = ts.createProgram(fileNames, options);
-		return { program, files: fileNames.map(fileName => program.getSourceFile(fileName)).filter(file => !!file) };
+		// keeps wiki/doc links consistent across OSes (Windows uses backslashes)
+		const normalizedFileNames = fileNames.map(toPosixPath);
+		const program = ts.createProgram(normalizedFileNames, options);
+		return { program, files: normalizedFileNames.map(fileName => program.getSourceFile(fileName)).filter(file => !!file) };
 	} catch(err) {
 		console.error('Failed to get source files', err);
 		return { files: [], program: undefined as unknown as ts.Program };
@@ -190,6 +192,20 @@ function followTypeReference(type: ts.TypeReferenceNode, sourceFile: ts.SourceFi
 	return [nodeLexeme, baseLexeme, ...args];
 }
 
+/** The base types a declaration extends or implements, with their generics dropped. */
+function heritageTypeNames(node: ts.ClassDeclaration | ts.InterfaceDeclaration, sourceFile: ts.SourceFile): string[] {
+	return node.heritageClauses?.flatMap(clause =>
+		clause.types
+			.map(type => type.getText(sourceFile) ?? '')
+			.map(dropGenericsFromTypeName)
+	) ?? [];
+}
+
+/** The names of the type parameters a declaration takes. */
+function genericNames(node: { readonly typeParameters?: ts.NodeArray<ts.TypeParameterDeclaration> }, sourceFile: ts.SourceFile): string[] {
+	return node.typeParameters?.map(param => param.getText(sourceFile) ?? '') ?? [];
+}
+
 function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], options: GetTypesWithProgramOption): TypeElementInSource[] {
 	const hierarchyList: TypeElementInSource[] = [];
 	const typeChecker = options.program.getTypeChecker();
@@ -200,12 +216,8 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 
 		if(ts.isInterfaceDeclaration(node)) {
 			const interfaceName = node.name?.getText(sourceFile) ?? '';
-			const baseTypes = node.heritageClauses?.flatMap(clause =>
-				clause.types
-					.map(type => type.getText(sourceFile) ?? '')
-					.map(dropGenericsFromTypeName)
-			) ?? [];
-			const generics = node.typeParameters?.map(param => param.getText(sourceFile) ?? '') ?? [];
+			const baseTypes = heritageTypeNames(node, sourceFile);
+			const generics = genericNames(node, sourceFile);
 
 			hierarchyList.push({
 				name:       dropGenericsFromTypeName(interfaceName),
@@ -230,7 +242,7 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 				baseTypes = followTypeReference(node.type, sourceFile).map(dropGenericsFromTypeName);
 			}
 
-			const generics = node.typeParameters?.map(param => param.getText(sourceFile) ?? '') ?? [];
+			const generics = genericNames(node, sourceFile);
 
 			hierarchyList.push({
 				name:       dropGenericsFromTypeName(typeName),
@@ -270,12 +282,8 @@ function collectHierarchyInformation(sourceFiles: readonly ts.SourceFile[], opti
 			});
 		} else if(ts.isClassDeclaration(node)) {
 			const className = node.name?.getText(sourceFile) ?? '';
-			const baseTypes = node.heritageClauses?.flatMap(clause =>
-				clause.types
-					.map(type => type.getText(sourceFile) ?? '')
-					.map(dropGenericsFromTypeName)
-			) ?? [];
-			const generics = node.typeParameters?.map(param => param.getText(sourceFile) ?? '') ?? [];
+			const baseTypes = heritageTypeNames(node, sourceFile);
+			const generics = genericNames(node, sourceFile);
 
 			hierarchyList.push({
 				name:       dropGenericsFromTypeName(className),
@@ -353,7 +361,7 @@ function getTypePathForTypeScript({ filePath }: Pick<TypeElementInSource, 'fileP
 
 /**
  * Return the link to the type in the source code.
- * If you create a wiki, please refer to the functions provided by the {@link GeneralWikiContext}.
+ * If you create a wiki, please refer to the functions provided by the {@link GeneralDocContext}.
  */
 export function getTypePathLink(elem: Pick<TypeElementInSource, 'filePath' | 'lineNumber' >, relative = false): string {
 	const fromSource = getTypePathForTypeScript(elem);
@@ -522,7 +530,7 @@ function implSnippet(node: TypeElementInSource | undefined, program: ts.Program,
 		text = '  ' + text;
 	}
 	if(showImplSnippet) {
-		const code = node.node.getFullText(program.getSourceFile(node.node.getSourceFile().fileName));
+		const code = node.node.getFullText(program.getSourceFile(node.node.getSourceFile().fileName)).trim();
 		text += `\n<details${open ? ' open' : ''}><summary style="color:gray">Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, true)}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
 	} else {
 		text += `\n<br/><i>(Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, true)}</a>)</i>\n`;
@@ -549,7 +557,7 @@ export const mermaidHide = ['MergeableRecord', 'Leaf', 'Location', 'Namespace', 
 
 /**
  * Print the hierarchy of types starting from the given root.
- * If you create a wiki, please refer to the functions provided by the {@link GeneralWikiContext}.
+ * If you create a wiki, please refer to the functions provided by the {@link GeneralDocContext}.
  */
 export function printHierarchy({ program, info, root, ignoredTypes, collapseFromNesting = 1, initialNesting = 0, maxDepth = 20, skipNesting = 0, openTop, showImplSnippet = true, reverse = false }: PrintHierarchyArguments): string {
 	if(initialNesting > maxDepth) {
@@ -612,7 +620,7 @@ export interface FnElementInfo {
 
 /**
  * Print an element from the info as code block.
- * If you create a wiki, please refer to the functions provided by the {@link GeneralWikiContext}.
+ * If you create a wiki, please refer to the functions provided by the {@link GeneralDocContext}.
  *
  * This is great to show examples that are directly taken from the source code.
  */
@@ -629,12 +637,12 @@ export function printCodeOfElement(info: FnElementInfo, name: string): string {
 
 /**
  * Print a source file as code block.
- * If you create a wiki, please refer to the functions provided by the {@link GeneralWikiContext}.
+ * If you create a wiki, please refer to the functions provided by the {@link GeneralDocContext}.
  *
  * This is great to show examples that are directly taken from the source code.
  */
 export function printCodeOfFile(info: FnElementInfo, relativePath: string): string {
-	const fullPath = path.resolve(__dirname, `../../../${relativePath}`);
+	const fullPath = toPosixPath(path.resolve(__dirname, `../../../${relativePath}`));
 	const code = info.program.getSourceFile(fullPath)?.getFullText().trim();
 	if(!code) {
 		console.error(`Could not find source file ${relativePath}!`);
@@ -681,7 +689,7 @@ function fuzzyCompare(a: string, b: string): boolean {
 	return aStr === bStr || aStr.includes(bStr) || bStr.includes(aStr);
 }
 
-function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], fuzzy = false, type: TypeElementKind | undefined = undefined): [string | undefined, string, TypeElementInSource]| undefined {
+function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], fuzzy = false, type: TypeElementKind | undefined = undefined): [string | undefined, string, TypeElementInSource] | undefined {
 	let container: string | undefined = undefined;
 	if(name.includes('::')) {
 		[container, name] = name.split(/:::?/);
@@ -737,7 +745,7 @@ export function shortLink(name: string, hierarchy: readonly TypeElementInSource[
 
 /**
  * Create a short link to a type in the documentation.
- * If you create a wiki, please refer to the functions provided by the {@link GeneralWikiContext}.
+ * If you create a wiki, please refer to the functions provided by the {@link GeneralDocContext}.
  * @param name      - The name of the type, e.g. `MyType`, may include a container, e.g.,`MyContainer::MyType` (this works with function nestings too)
  *                    Use `:::` if you want to access a scoped function, but the name should be displayed without the scope
  * @param hierarchy - The hierarchy of types to search in
@@ -760,7 +768,7 @@ export interface GetDocumentationForTypeFilters {
 
 /**
  * Retrieve documentation comments for a type.
- * If you create a wiki, please refer to the functions provided by the {@link GeneralWikiContext}.
+ * If you create a wiki, please refer to the functions provided by the {@link GeneralDocContext}.
  * @param name      - The name of the type, e.g. `MyType`, may include a container, e.g.,`MyContainer::MyType` (this works with function nestings too)
  *                    Use `:::` if you want to access a scoped function, but the name should be displayed without the scope
  * @param hierarchy - The hierarchy of types to search in

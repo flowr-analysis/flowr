@@ -10,21 +10,22 @@ import { jsonReplacer } from '../../src/util/json';
 import { GlobalSummaryFile } from './summary-def';
 import { TreeSitterExecutor } from '../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
+// the tests use controlled package information; do not let the shipped CRAN signature database leak in
+process.env.FLOWR_DISABLE_DEFAULT_SIGDB ??= '1';
+
 
 declare global {
 	var hasNetwork: boolean;
 	var rVersion: SemVer | null | undefined;
-	var hasXmlParseData: boolean;
 	var produceLabelSummary: boolean;
 }
 
 
 globalThis.hasNetwork = false;
-globalThis.hasXmlParseData = false;
 globalThis.produceLabelSummary = false;
 
 await (async() => {
-	const isVerbose = process.argv.includes('--verbose');
+	const isVerbose = process.env['FLOWR_VERBOSE'] === 'true';
 	setMinLevelOfAllLogs(isVerbose ? LogLevel.Trace : LogLevel.Error, isVerbose);
 	globalThis.produceLabelSummary = process.argv.includes('--make-summary');
 
@@ -34,7 +35,6 @@ await (async() => {
 		shell = new RShell();
 		shell.tryToInjectHomeLibPath();
 		globalThis.rVersion = await shell.usedRVersion();
-		globalThis.hasXmlParseData = await shell.isPackageInstalled('xmlparsedata');
 	} catch(e) {
 		console.error(e);
 	} finally {

@@ -5,7 +5,7 @@ import { guard } from '../../../../../../../util/assert';
 import type { RParameter } from '../../../../model/nodes/r-parameter';
 import { RawRType, RType } from '../../../../model/type';
 import type { RNode } from '../../../../model/model';
-import type { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
+import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
 import type { NamedJsonEntry } from '../../../json/format';
 
@@ -33,7 +33,7 @@ export function tryNormalizeParameter(data: NormalizerData, objs: readonly Named
 
 	const { location, content } = retrieveMetaStructure(symbol.content);
 
-	const delim = defaultValue?.type === RType.Delimiter;
+	const delim = RDelimiter.is(defaultValue);
 
 	return {
 		type:    RType.Parameter,

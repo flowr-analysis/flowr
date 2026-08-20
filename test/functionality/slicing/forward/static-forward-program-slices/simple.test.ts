@@ -3,7 +3,7 @@ import { describe } from 'vitest';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 
-describe.sequential('Simple Forward', withShell(shell => {
+describe('Simple Forward', { concurrent: false }, withShell(shell => {
 	describe('Constant assignments', () => {
 		for(const i of [1, 2, 3]) {
 			assertSlicedF(label(`slice constant assignment ${i}`, ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines']),
@@ -76,6 +76,19 @@ print(x)
     `, ['2@x'],  `x <- 1
 if(i > 3) { x <- x * 2 }
 print(x)`);
+		const whileIfElse = `a <- 1
+while (TRUE) {
+  if (a > 0) {
+    a <- a + 1
+  } else {
+    a <- a - 2
+  }
+}`;
+		assertSlicedF(label('initial definition flows through the loop into both branches', ['name-normal', 'while-loop', 'logical', 'if', 'newlines', 'numbers', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['>'].capabilities, ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['-'].capabilities, 'precedence']),
+			shell, whileIfElse, ['1@a'], `a <- 1
+while(TRUE)
+    { if(a > 0) { a <- a + 1 } else
+    { a <- a - 2 } }`);
 	});
 	describe('Replacement With Argument-Name', () => {
 		assertSlicedF(label('simple argument', ['replacement-functions']), shell,
@@ -172,4 +185,16 @@ cat(a)
 			'4@a', '4@$',
 			'6@cat', '6@a'
 		]);
+	/* a forward slice follows what the seed reaches, so an unrelated data flow stays out of it */
+	describe('Unrelated flows are not tainted', () => {
+		const code = `a <- read.csv("a.csv")
+b <- read.csv("b.csv")
+x <- undefined_symbol
+plot(a$v)
+plot(b$v)`;
+		assertSlicedF(label('a seed of its own reaches only its assignment', ['name-normal', 'function-calls', ...OperatorDatabase['<-'].capabilities]),
+			shell, code, ['3@x'], 'x <- undefined_symbol');
+		assertSlicedF(label('one of two reads taints only the plot using it', ['name-normal', 'function-calls', 'dollar-access', ...OperatorDatabase['<-'].capabilities]),
+			shell, code, ['1@a'], 'a <- read.csv("a.csv")\nplot(a$v)');
+	});
 }));

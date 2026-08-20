@@ -1,19 +1,22 @@
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph, FunctionArgument } from '../../../dataflow/graph/graph';
 import { visitCfgInReverseOrder } from '../../../control-flow/simple-visitor';
-import { type DataflowGraphVertexFunctionCall, isFunctionCallVertex } from '../../../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, FunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
-import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
-import { Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
+import { Identifier } from '../../../dataflow/environments/identifier';
 import { assertUnreachable } from '../../../util/assert';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import type { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { LinkToLastCall } from './call-context-query-format';
 import { CascadeAction } from './cascade-action';
-import type { PromotedLinkTo } from './call-context-query-executor';
+import type { PromotedCallTest, PromotedLinkTo } from './call-context-query-executor';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import { CfgKind } from '../../../project/cfg-kind';
 import type { ControlFlowGraph } from '../../../control-flow/control-flow-graph';
+import { Resolve } from '../../../dataflow/environments/resolve-helper';
+import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+
+type KnownCalls = Map<NodeId, Required<DataflowGraphVertexFunctionCall>>;
 
 export enum CallTargets {
 	/** call targets a function that is not defined locally in the script (e.g., the call targets a library function) */
@@ -44,12 +47,21 @@ export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, grap
 
 	let builtIn = false;
 
+	/*
+     * a resolved call target that is itself a built-in - a base builtin or a loaded-package export
+     * like `ggplot2::ggplot` (added by `library()`) - is a global resolution, so such calls count
+     * as global for every call-context query (`callTargetNamespace` then narrows down to the package).
+     */
+	if(callTargets.some(t => NodeId.isBuiltIn(t))) {
+		builtIn = true;
+	}
+
 	if(info.environment !== undefined) {
 		/*
          * for performance and scoping reasons, flowR will not identify the global linkage,
          * including any potential built-in mapping.
          */
-		const reResolved = resolveByName(info.name, info.environment, ReferenceType.Unknown);
+		const reResolved = Resolve.byName(info.name, info.environment);
 		if(reResolved?.some(t => NodeId.isBuiltIn(t.definedAt))) {
 			builtIn = true;
 		}
@@ -106,7 +118,7 @@ export function getValueOfArgument<Types extends readonly RType[] = readonly RTy
 		return undefined;
 	}
 	let valueNode = graph.idMap?.get(refAtIndex);
-	if(valueNode?.type === RType.Argument) {
+	if(RArgument.is(valueNode)) {
 		valueNode = valueNode.value;
 	}
 	if(valueNode) {
@@ -127,12 +139,33 @@ export async function identifyLinkToLastCallRelation(
 	from: NodeId,
 	analyzer: ReadonlyFlowrAnalysisProvider,
 	l: LinkToLastCall<RegExp> | PromotedLinkTo<LinkToLastCall<RegExp>>,
-	knownCalls?: Map<NodeId, Required<DataflowGraphVertexFunctionCall>>
+	knownCalls?: KnownCalls
 ): Promise<NodeId[]> {
 	const graph = (await analyzer.dataflow()).graph;
 	const cfg = (await analyzer.controlflow([], CfgKind.WithDataflow)).graph;
 
 	return identifyLinkToLastCallRelationSync(from, cfg, graph, l, knownCalls);
+}
+
+/**
+ * Memoizes, per set of known calls and per `callName`, whether any call can match it at all. One link keeps the same
+ * `callName` object across every call site it is evaluated against, so identity is enough to key it.
+ */
+const candidatesPerCallSet = new WeakMap<KnownCalls, Map<RegExp | PromotedCallTest, boolean>>();
+
+function anyCallMatches(knownCalls: KnownCalls, callName: RegExp | PromotedCallTest, matches: (vertex: DataflowGraphVertexFunctionCall) => boolean): boolean {
+	let perName = candidatesPerCallSet.get(knownCalls);
+	if(perName === undefined) {
+		perName = new Map();
+		candidatesPerCallSet.set(knownCalls, perName);
+	}
+	const cached = perName.get(callName);
+	if(cached !== undefined) {
+		return cached;
+	}
+	const matched = knownCalls.values().some(matches);
+	perName.set(callName, matched);
+	return matched;
 }
 
 /**
@@ -143,7 +176,7 @@ export function identifyLinkToLastCallRelationSync(
 	cfg: ControlFlowGraph,
 	graph: DataflowGraph,
 	{ callName, cascadeIf, ignoreIf }: LinkToLastCall<RegExp> | PromotedLinkTo<LinkToLastCall<RegExp>>,
-	knownCalls?: Map<NodeId, Required<DataflowGraphVertexFunctionCall>>
+	knownCalls?: KnownCalls
 ): NodeId[] {
 	if(ignoreIf?.(from, graph)) {
 		return [];
@@ -152,11 +185,18 @@ export function identifyLinkToLastCallRelationSync(
 	const cNameCheck = callName instanceof RegExp ? ({ name }: DataflowGraphVertexFunctionCall) => callName.test(Identifier.getName(name))
 		: ({ name }: DataflowGraphVertexFunctionCall) => callName(Identifier.getName(name));
 
+	/* only a call matching `callName` is ever collected, so with none in the whole graph every walk below returns
+	 * nothing: skipping them turns one reverse walk per call site into a single scan (a `sink` redirect in a
+	 * script that never sinks is the common case) */
+	if(knownCalls !== undefined && !anyCallMatches(knownCalls, callName, cNameCheck)) {
+		return [];
+	}
+
 	const getVertex = knownCalls ?
 		(node: NodeId) => knownCalls.get(node) :
 		(node: NodeId) => {
 			const v = graph.getVertex(node);
-			return isFunctionCallVertex(v) ? v : undefined;
+			return FunctionCallVertex.is(v) ? v : undefined;
 		};
 
 	visitCfgInReverseOrder(cfg, [from], node => {

@@ -3,14 +3,13 @@ import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking'
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import type { RAccess, RIndexAccess, RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { RAccess, type RIndexAccess, type RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import { resolveIdToArgValue, resolveIdToArgValueSymbolName } from '../resolve-args';
 import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../shape-inference';
 import { getArgumentValue, isDataFrameArgument } from './arguments';
+import { Resolve } from '../../../dataflow/environments/resolve-helper';
+import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /**
  * Maps a concrete data frame access operation to abstract data frame operations.
@@ -26,7 +25,7 @@ export function mapDataFrameAccess(
 	dfg: DataflowGraph,
 	ctx: ReadOnlyFlowrAnalyzerContext
 ): DataFrameOperations {
-	if(node.type !== RType.Access) {
+	if(!RAccess.is(node)) {
 		return;
 	}
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx };
@@ -48,7 +47,7 @@ function mapDataFrameNamedColumnAccess(
 	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	}
-	const colname = resolveIdToArgValueSymbolName(access.access[0], info);
+	const colname = Resolve.argument.symbolName(access.access[0], info);
 
 	return [{
 		operation: 'accessCols',
@@ -69,7 +68,7 @@ function mapDataFrameIndexColRowAccess(
 
 	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
-	} else if(args.every(arg => arg === EmptyArgument)) {
+	} else if(args.every(arg => RArgument.isEmpty(arg))) {
 		return [{ operation: 'identity', operand: dataFrame.info.id }];
 	}
 	const result: DataFrameOperations = [];
@@ -80,7 +79,7 @@ function mapDataFrameIndexColRowAccess(
 	let columns: string[] | number[] | undefined = undefined;
 
 	if(rowArg !== undefined && rowArg !== EmptyArgument) {
-		const rowValue = resolveIdToArgValue(rowArg, info);
+		const rowValue = Resolve.argument.value(rowArg, info);
 
 		if(typeof rowValue === 'number') {
 			rows = [rowValue];
@@ -94,7 +93,7 @@ function mapDataFrameIndexColRowAccess(
 		});
 	}
 	if(colArg !== undefined && colArg !== EmptyArgument) {
-		const colValue = resolveIdToArgValue(colArg, info);
+		const colValue = Resolve.argument.value(colArg, info);
 
 		if(typeof colValue === 'number') {
 			columns = [colValue];
@@ -121,7 +120,7 @@ function mapDataFrameIndexColRowAccess(
 		const colSubset = columns === undefined || columns.every(col => typeof col === 'string' || col >= 0);
 		const rowZero = rows?.length === 1 && rows[0] === 0;
 		const colZero = columns?.length === 1 && columns[0] === 0;
-		const duplicateRows = rows?.some((row, index, list) => list.indexOf(row as never) !== index);
+		const duplicateRows = rows?.some((row, index, list) => list.indexOf(row) !== index);
 		const duplicateCols = columns?.some((col, index, list) => list.indexOf(col as never) !== index);
 
 		let operand: RNode<ParentInformation> | undefined = dataFrame;
@@ -158,6 +157,7 @@ function mapDataFrameIndexColRowAccess(
 					colnames:  columns?.map(col => typeof col === 'string' ? col : undefined)
 				});
 			}
+			// eslint-disable-next-line no-useless-assignment -- ends the chain
 			operand = undefined;
 		}
 	}

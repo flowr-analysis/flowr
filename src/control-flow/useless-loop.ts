@@ -1,8 +1,7 @@
-import { resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
-import { valueSetGuard } from '../dataflow/eval/values/general';
+import { NodeValue } from '../dataflow/eval/resolve/node-value';
 import { isValue } from '../dataflow/eval/values/r-value';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import { type DataflowGraphVertexFunctionCall, VertexType } from '../dataflow/graph/vertex';
+import { FunctionCallVertex } from '../dataflow/graph/vertex';
 import { type ControlDependency, happensInEveryBranch } from '../dataflow/info';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -10,7 +9,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard } from '../util/assert';
 import type { ControlFlowInformation } from './control-flow-graph';
 import { CfgVertex } from './control-flow-graph';
-import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration } from './semantic-cfg-guided-visitor';
+import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration, type OnCall } from './semantic-cfg-guided-visitor';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
@@ -32,7 +31,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 		return undefined;
 	}
 
-	guard(vertex.tag === VertexType.FunctionCall, 'invalid vertex type for onlyLoopsOnce');
+	guard(FunctionCallVertex.is(vertex), 'invalid vertex type for onlyLoopsOnce');
 	guard(vertex.origin !== 'unnamed' && loopyFunctions.has(vertex.origin[0]), 'onlyLoopsOnce can only be called with loops');
 
 	// 1. In case of for loop, check if vector has only one element
@@ -46,17 +45,12 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 			return undefined;
 		}
 
-		const values = valueSetGuard(resolveIdToValue(vectorOfLoop.nodeId, {
-			graph:   dataflow,
-			idMap:   dataflow.idMap,
-			resolve: ctx.config.solver.variables,
-			ctx:     ctx
-		}));
-		if(values?.elements.length !== 1 || values.elements[0].type !== 'vector' || !isValue(values.elements[0].elements)) {
+		const vector = NodeValue.inGraph.soleOf(vectorOfLoop.nodeId, dataflow, ctx, 'vector');
+		if(vector === undefined || !isValue(vector.elements)) {
 			return undefined;
 		}
 
-		if(values.elements[0].elements.length === 1) {
+		if(vector.elements.length === 1) {
 			return true;
 		}
 	}
@@ -86,25 +80,6 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 		this.loopToCheck = loop;
 	}
 
-	private getBoolArgValue(data: { call: DataflowGraphVertexFunctionCall }): boolean | undefined {
-		if(data.call.args.length !== 1 || data.call.args[0] === EmptyArgument) {
-			return undefined;
-		}
-
-		const values = valueSetGuard(resolveIdToValue(data.call.args[0].nodeId, {
-			graph:   this.config.dfg,
-			full:    true,
-			idMap:   this.config.normalizedAst.idMap,
-			resolve: this.config.ctx.config.solver.variables,
-			ctx:     this.config.ctx
-		}));
-		if(values?.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
-			return undefined;
-		}
-
-		return Boolean(values.elements[0].value);
-	}
-
 	protected startVisitor(_: readonly NodeId[]): void {
 		const g = this.config.controlFlow.graph;
 		const ingoing = (i: NodeId) => g.ingoingEdges(i);
@@ -114,7 +89,7 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 
 		const stack: NodeId[] = [this.loopToCheck];
 		while(stack.length > 0) {
-			const current = stack.shift() as NodeId;
+			const current = stack.pop() as NodeId;
 
 			if(!this.visitNode(current)) {
 				continue;
@@ -124,7 +99,7 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 			if(!exits.has(current)) {
 				const next = ingoing(current) ?? [];
 				for(const [to] of next) {
-					stack.unshift(to);
+					stack.push(to);
 				}
 			}
 
@@ -148,22 +123,22 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 		}
 	}
 
-	protected onBreakCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+	protected onBreakCall(data: OnCall): void {
 		this.encounteredLoopBreaker = true;
 		this.app(data.call.cds);
 	}
 
-	protected onReturnCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+	protected onReturnCall(data: OnCall): void {
 		this.encounteredLoopBreaker = true;
 		this.app(data.call.cds);
 	}
 
-	protected onStopCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+	protected onStopCall(data: OnCall): void {
 		this.encounteredLoopBreaker = true;
 		this.app(data.call.cds);
 	}
 
-	protected onStopIfNotCall(data: { call: DataflowGraphVertexFunctionCall }): void {
+	protected onStopIfNotCall(data: OnCall): void {
 		const arg = this.getBoolArgValue(data);
 		if(arg === false) {
 			this.encounteredLoopBreaker = true;

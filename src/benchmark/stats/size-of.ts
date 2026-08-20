@@ -1,6 +1,7 @@
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { type DataflowGraphVertexInfo, VertexType } from '../../dataflow/graph/vertex';
+import type { ControlFlowGraph } from '../../control-flow/control-flow-graph';
+import { FunctionDefinitionVertex, type DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import {
 	type BrandedIdentifier,
 	type IdentifierDefinition,
@@ -52,7 +53,7 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
 			} as DataflowGraphVertexInfo;
 		}
 
-		if(vertex.tag === VertexType.FunctionDefinition) {
+		if(FunctionDefinitionVertex.is(vertex)) {
 			vertex = {
 				...vertex,
 				subflow: {
@@ -75,6 +76,14 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
 	}
 
 	return safeSizeOf([...verts, ...df.edges()]);
+}
+
+/**
+ * Calculates the size of the control flow graph in bytes, counting its vertices and edges like
+ * {@link getSizeOfDfGraph} does for the dataflow graph.
+ */
+export function getSizeOfCfGraph(cfg: ControlFlowGraph): number {
+	return safeSizeOf([...cfg.vertices(true).values(), ...cfg.edges()]);
 }
 
 /**

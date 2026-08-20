@@ -1,9 +1,9 @@
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
-import { fileProtocol } from '../../../r-bridge/retriever';
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 import { handleString } from '../core';
+import { ReplClipboard } from './repl-clipboard';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import type { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
@@ -13,7 +13,7 @@ function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInfo
 }
 
 export const normalizeCommand: ReplCodeCommand = {
-	description:   `Get mermaid code for the normalized AST of R code, start with '${fileProtocol}' to indicate a file`,
+	description:   'Get mermaid code for the normalized AST of R code',
 	isCodeCommand: true,
 	usageExample:  ':normalize',
 	aliases:       [ 'n' ],
@@ -22,12 +22,7 @@ export const normalizeCommand: ReplCodeCommand = {
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.normalize();
 		const mermaid = normalizedAstToMermaid(result.ast);
-		output.stdout(mermaid);
-		try {
-			const clipboard = await import('clipboardy');
-			clipboard.default.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid url', result));
-		} catch{ /* do nothing this is a service thing */ }
+		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid url', result));
 	}
 };
 
@@ -41,12 +36,7 @@ export const normalizeStarCommand: ReplCodeCommand = {
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.normalize();
 		const mermaid = normalizedAstToMermaidUrl(result.ast);
-		output.stdout(mermaid);
-		try {
-			const clipboard = await import('clipboardy');
-			clipboard.default.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid url', result));
-		} catch{ /* do nothing this is a service thing */ }
+		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid url', result));
 	}
 };
 

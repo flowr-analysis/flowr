@@ -5,7 +5,7 @@ import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/dat
 import { describe } from 'vitest';
 import { FlowrConfig } from '../../../../../src/config';
 
-describe.sequential('Simple', withShell(shell => {
+describe('Simple', { concurrent: false }, withShell(shell => {
 	describe('Constant assignments', () => {
 		const config = FlowrConfig.default();
 
@@ -19,6 +19,10 @@ describe.sequential('Simple', withShell(shell => {
 		);
 		assertSliced(label('slice constant assignment with print (slice for arg)', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
 			shell, 'x <- 2\nx <- 3\nprint(x)', ['3@x'], 'x <- 3\nx', config
+		);
+		// the ids the slice consists of: R's own `<-` and `print` are no nodes of the program and must not appear
+		assertSliced(label('slice contains no built-in ids', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
+			shell, 'x <- 2\nprint(x)', ['2@print'], ['1@x', '1:6', '1@<-', '2@x', '2@print'], config
 		);
 		assertSliced(label('using setnames', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'function-calls']),
 			shell, 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nprint(x)', ['3@x'], 'x <- read.csv("foo")\nsetnames(x, 2:3, c("foo"))\nx', config
@@ -180,7 +184,7 @@ cat("Product:", product, "\\n")
 `;
 
 		assertSliced(label('Sum lhs in for', capabilities),
-			shell, code, ['8:3'],
+			shell, code, ['8@[1]sum'],
 			`sum <- 0
 w <- 7
 N <- 10
@@ -190,7 +194,7 @@ for(i in 1:(N-1)) sum <- sum + i + w`, {
 		);
 
 		assertSliced(label('Sum rhs in for', capabilities),
-			shell, code, ['8:10'],
+			shell, code, ['8@[2]sum'],
 			`sum <- 0
 w <- 7
 N <- 10
@@ -198,14 +202,14 @@ for(i in 1:(N-1)) sum <- sum + i + w`
 		);
 
 		assertSliced(label('Product lhs in for', capabilities),
-			shell, code, ['9:3'],
+			shell, code, ['9@[1]product'],
 			`product <- 1
 N <- 10
 for(i in 1:(N-1)) product <- product * i`
 		);
 
 		assertSliced(label('Product rhs in for', capabilities),
-			shell, code, ['9:14'],
+			shell, code, ['9@[2]product'],
 			`product <- 1
 N <- 10
 for(i in 1:(N-1)) product <- product * i`

@@ -1,4 +1,4 @@
-import { type RShell } from './shell';
+import type { RShell } from './shell';
 import { startAndEndsWith } from '../util/text/strings';
 import type { AsyncOrSync } from 'ts-essentials';
 import { guard } from '../util/assert';
@@ -8,6 +8,7 @@ import { ErrorMarker } from './init';
 import { ts2r } from './lang-4.x/convert-values';
 import { type NormalizedAst, deterministicCountingIdGenerator } from './lang-4.x/ast/model/processing/decorate';
 import { RawRType } from './lang-4.x/ast/model/type';
+import { log } from '../util/log';
 import fs from 'fs';
 import path from 'path';
 
@@ -84,7 +85,7 @@ export function requestFromInput(input: `${typeof fileProtocol}${string}` | stri
 	if(file) {
 		return {
 			request: 'file',
-			content: content.substring(fileProtocol.length),
+			content: content.slice(fileProtocol.length),
 		};
 	} else {
 		return {
@@ -108,11 +109,15 @@ export function requestProviderFromFile(): RParseRequestProvider {
 				}
 				// walk the directory and find the first match
 				const dir = path.dirname(p);
+				if(!fs.existsSync(dir)) {
+					return undefined;
+				}
 				const file = path.basename(p);
 				const files = fs.readdirSync(dir);
 				const found = files.find(f => f.toLowerCase() === file.toLowerCase());
 				return found ? path.join(dir, found) : undefined;
-			} catch{
+			} catch(e) {
+				log.warn(`Could not resolve '${p}': ${e instanceof Error ? e.message : String(e)}`);
 				return undefined;
 			}
 		},
@@ -170,9 +175,12 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
 	}
 
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : '';
+	/* R's `parse(text=)` (unlike reading a file) rejects a carriage return as an "invalid token", so normalize
+	 * CRLF/CR line endings to LF for text requests to match R's own file handling and stay robust to Windows sources. */
+	const content = request.request === 'text' ? request.content.replace(/\r\n?/g, '\n') : request.content;
 	/* call the function with the request */
-	const command =`flowr_get_ast(${request.request}=${JSON.stringify(
-		request.content
+	const command = `flowr_get_ast(${request.request}=${JSON.stringify(
+		content
 	)}${suffix})`;
 
 	if(shell instanceof RShellExecutor) {
@@ -187,7 +195,8 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
 /**
  * Uses {@link retrieveParseDataFromRCode} and returns the nicely formatted object-AST.
  * If successful, allows further querying the last result with {@link retrieveNumberOfRTokensOfLastParse}.
- * This function is outdated and should only be used for legacy reasons. Please use the {@link FlowrAnalyzer} instead.
+ * This function is outdated and should only be used for legacy reasons.
+ * @useInstead {@link FlowrAnalyzer}
  */
 export async function retrieveNormalizedAstFromRCode(request: RParseRequest, shell: RShell): Promise<NormalizedAst> {
 	const data = await retrieveParseDataFromRCode(request, shell);

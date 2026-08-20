@@ -8,6 +8,7 @@ import type { CommonOptions } from './options';
 import commandLineArgs from 'command-line-args';
 import { italic } from '../../util/text/ansi';
 import { log, LogLevel } from '../../util/log';
+import { exitSafe } from '../../util/proc';
 
 /**
  * Just a helping data structure to allow the user to provide example usages of the respective script.
@@ -47,7 +48,7 @@ export function processCommandLineArgs<T extends CommonOptions>(script: keyof ty
 
 	if(options.help) {
 		console.log(helpForOptions(script, help));
-		process.exit(0);
+		exitSafe(0);
 	} else if(requireAdditionally.length > 0) {
 		const keys = new Set(Object.keys(options));
 
@@ -55,7 +56,7 @@ export function processCommandLineArgs<T extends CommonOptions>(script: keyof ty
 		if(missing.length > 0) {
 			console.error(italic(`Missing required arguments: ${missing.join(', ')}. Showing help.`));
 			console.log(helpForOptions(script, help));
-			process.exit(0);
+			exitSafe(0);
 		}
 	}
 

@@ -5,7 +5,7 @@ import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { describe } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
 
-describe.sequential('Parse the line directive', withShell(shell => {
+describe('Parse the line directive', { concurrent: false }, withShell(shell => {
 	assertAst(label('Simple line', ['comments']),
 		shell, '#line 42 "foo.R"',
 		exprList({

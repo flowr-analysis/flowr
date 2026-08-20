@@ -1,4 +1,5 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
+import { appendEnvironment } from '../../../../../environments/append';
 import { DataflowInformation } from '../../../../../info';
 import { DropPathsOption, type FlowrLaxSourcingOptions, InferWorkingDirectory } from '../../../../../../config';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -9,14 +10,12 @@ import {
 	type ParentInformation,
 	sourcedDeterministicCountingIdGenerator
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
-	EmptyArgument,
-	type PotentiallyEmptyRArgument
+import type {
+	PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { NoInfo } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { expensiveTrace, log, LogLevel } from '../../../../../../util/log';
@@ -24,14 +23,16 @@ import { normalize, normalizeTreeSitter } from '../../../../../../r-bridge/lang-
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import path from 'path';
-import { valueSetGuard } from '../../../../../eval/values/general';
+import { GasFeatureKey, GasLevel, GasWikiRef } from '../../../../../../gas';
 import { isValue } from '../../../../../eval/values/r-value';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import type { RProjectFile } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { EdgeType } from '../../../../../graph/edge';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /**
  * Infers working directories based on the given option and reference chain
@@ -74,14 +75,13 @@ function returnPlatformPath(p: string): string {
 	return p.replaceAll(AnyPathSeparator, path.sep);
 }
 
-function applyReplacements(path: string, replacements: readonly Record<string, string>[]): string[] {
-	const results = [];
-	for(const replacement of replacements) {
-		const newPath = Object.entries(replacement).reduce((acc, [key, value]) => acc.replaceAll(new RegExp(key, 'g'), value), path);
-		results.push(newPath);
-	}
+/** the replacement rules as patterns, compiled once rather than once per candidate path */
+function compileReplacements(replacements: readonly Record<string, string>[]): readonly (readonly [RegExp, string])[][] {
+	return replacements.map(replacement => Object.entries(replacement).map(([key, value]) => [new RegExp(key, 'g'), value] as const));
+}
 
-	return results;
+function applyReplacements(path: string, replacements: readonly (readonly [RegExp, string])[][]): string[] {
+	return replacements.map(replacement => replacement.reduce((acc, [pattern, value]) => acc.replaceAll(pattern, value), path));
 }
 
 /**
@@ -126,7 +126,7 @@ export function findSource(
 	}
 
 	if(resolveSource?.applyReplacements) {
-		const r = resolveSource.applyReplacements;
+		const r = compileReplacements(resolveSource.applyReplacements);
 		tryPaths = tryPaths.flatMap(t => applyReplacements(t, r));
 	}
 
@@ -180,10 +180,10 @@ export function processSourceCall<OtherInfo>(
 
 	let sourceFile: string[] | undefined;
 
-	if(sourceFileArgument !== EmptyArgument && sourceFileArgument?.value?.type === RType.String) {
+	if(sourceFileArgument !== EmptyArgument && RString.is(sourceFileArgument?.value)) {
 		sourceFile = [removeRQuotes(sourceFileArgument.lexeme)];
 	} else if(sourceFileArgument !== EmptyArgument) {
-		const resolved = valueSetGuard(resolveIdToValue(sourceFileArgument.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx }));
+		const resolved = NodeValue.setOf(sourceFileArgument.info.id, data);
 		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
 	}
 
@@ -196,6 +196,7 @@ export function processSourceCall<OtherInfo>(
 		if(filepath !== undefined && filepath.length > 0) {
 			let result = information;
 			const origCds = data.cds?.slice() ?? [];
+			const maybe = !data.ctx.config.solver.resolveSource?.assumeFilesExist || filepath.length > 1;
 			for(const f of filepath) {
 				// check if the sourced file has already been dataflow analyzed, and if so, skip it
 				const limit = data.ctx.config.solver.resolveSource?.repeatedSourceLimit ?? 0;
@@ -211,7 +212,7 @@ export function processSourceCall<OtherInfo>(
 				result = sourceRequest(rootId, {
 					request: 'file',
 					content: f
-				}, data, result, true, sourcedDeterministicCountingIdGenerator((findCount > 0 ? findCount + '::' : '') + f, name.location));
+				}, data, result, maybe, sourcedDeterministicCountingIdGenerator((findCount > 0 ? findCount + '::' : '') + data.ctx.files.relativePath(f), name.location));
 			}
 			return result;
 		}
@@ -226,8 +227,8 @@ export function processSourceCall<OtherInfo>(
  * Processes a source request with the given dataflow processor information and existing dataflow information
  * Otherwise, this can be an {@link RProjectFile} representing a standalone source file
  */
-export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest | RProjectFile<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, makeMaybe: boolean, getId?: IdGenerator<NoInfo>): DataflowInformation {
-	// parse, normalize and dataflow the sourced file
+export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest | RProjectFile<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, makeMaybe: boolean, getId?: IdGenerator<NoInfo>, evaluatedByRoot = false): DataflowInformation {
+	// parse, normalize, and dataflow the sourced file
 	let dataflow: DataflowInformation;
 	let fst: RProjectFile<OtherInfo & ParentInformation>;
 	let filePath: string | undefined;
@@ -246,7 +247,24 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 		} else {
 			guard(textRequest !== undefined, `Expected text request to be defined for sourced file ${JSON.stringify(request)}`);
 		}
-		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r);
+		if(textRequest.path) {
+			const dotIdx = textRequest.path.lastIndexOf('.');
+			const ext = dotIdx >= 0 ? textRequest.path.slice(dotIdx).toLowerCase() : '';
+			if(ext !== '' && ext !== '.r') {
+				expensiveTrace(dataflowLogger, () => `Skipping source of non-R file ${JSON.stringify(textRequest.path)}`);
+				handleUnknownSideEffect(information.graph, information.environment, rootId);
+				return information;
+			}
+		}
+		const gasLevel = data.ctx.gas.checkGas(GasFeatureKey.Source);
+		if(gasLevel >= GasLevel.Critical) {
+			dataflowLogger.warn(`Skipping source of ${JSON.stringify(request)} due to resource pressure (gas: critical). See ${GasWikiRef}`);
+			handleUnknownSideEffect(information.graph, information.environment, rootId);
+			return information;
+		} else if(gasLevel >= GasLevel.Problematic) {
+			dataflowLogger.warn(`Approaching resource limits for source of ${JSON.stringify(request)} (gas: problematic). See ${GasWikiRef}`);
+		}
+		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r, data.ctx);
 		const normalized = (typeof parsed !== 'string' ?
 			normalizeTreeSitter({ files: [{ parsed, filePath: textRequest.path }] }, getId, data.ctx.config)
 			: normalize({ files: [{ parsed, filePath: textRequest.path }] }, getId)) as NormalizedAst<OtherInfo & ParentInformation>;
@@ -277,7 +295,12 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 
 	// take the entry point as well as all the written references, and give them a control dependency to the source call to show that they are conditional
 	if(!String(rootId).startsWith('file-')) {
-		if(makeMaybe) {
+		if(evaluatedByRoot) {
+			/* the call evaluates the code and builds its result from it, so the value flows into the call */
+			for(const exit of dataflow.exitPoints) {
+				dataflow.graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
+			}
+		} else if(makeMaybe) {
 			if(dataflow.graph.hasVertex(dataflow.entryPoint)) {
 				dataflow.graph.addControlDependency(dataflow.entryPoint, rootId, true);
 			}
@@ -330,4 +353,24 @@ export function standaloneSourceFile<OtherInfo>(
 		environment:    information.environment,
 		referenceChain: [...data.referenceChain, file.filePath]
 	}, information, false);
+}
+
+/**
+ * Folds the results of analyzing sourced code back into the information of the call that asked for it, which
+ * `eval` and the string templates both need: the code contributes everything it reads, writes, and leaves open.
+ */
+export function mergeSourced(information: DataflowInformation, sourced: readonly DataflowInformation[]): DataflowInformation {
+	if(sourced.length === 0) {
+		return information;
+	}
+	return {
+		...information,
+		graph:             sourced.reduce((acc, r) => acc.mergeWith(r.graph), information.graph),
+		environment:       sourced.reduce((acc, r) => appendEnvironment(acc, r.environment), information.environment),
+		in:                information.in.concat(sourced.flatMap(r => r.in)),
+		out:               information.out.concat(sourced.flatMap(r => r.out)),
+		unknownReferences: information.unknownReferences.concat(sourced.flatMap(r => r.unknownReferences)),
+		exitPoints:        information.exitPoints.concat(sourced.flatMap(r => r.exitPoints)),
+		hooks:             information.hooks.concat(sourced.flatMap(r => r.hooks))
+	};
 }

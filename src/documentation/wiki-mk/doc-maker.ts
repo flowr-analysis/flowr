@@ -32,6 +32,11 @@ export enum WikiChangeType {
 	Identical
 }
 
+/** Strips `\r` so generated files stay consistent regardless of OS/checkout settings. */
+export function normalizeLineEndings(text: string): string {
+	return text.replace(/\r\n/g, '\n');
+}
+
 export interface DocMakerLike<Target extends string = string> {
 	make(args: DocMakerArgs & DocMakerOutputArgs): Promise<boolean>;
 	getTarget(): Target;
@@ -40,18 +45,23 @@ export interface DocMakerLike<Target extends string = string> {
 }
 
 
+/** url-encoded home paths like `%2Fhome%2Fuser%2Fgit%2F` or `C%3A%5CUsers%5Cuser%5C` */
+const UrlEncodedHomePath = /(?:[a-z]%3A)?(%2F|%5C)(?:home|users)\1(?:[\w.%-]+\1)*/gi;
+
 const DefaultReplacementPatterns: Array<[RegExp, string]> = [
+	// mute signature database load time variance in wiki table (before the `ms` rule, which would eat half of it)
+	[/≈\s*<?[\d.]+\s*[µm]s/g, ''],
 	// eslint-disable-next-line no-irregular-whitespace -- we may produce it in output
 	[/\d+(\.\d+)?( |\s*)?ms/g, ''],
 	[/tmp[%A-Za-z0-9-]+/g, ''],
 	[/"?(timing|searchTimeMs|processTimeMs|id|tsId)"?:\s*\d+(\.\d)?,?/g, ''],
-	[/"format":"compact".+/gmius, ''],
+	[/"format":"compact"[^\n\r]*/giu, ''],
 	[/%%\s*\d*-+/g, ''],
 	[/"[rR]": "\d+\.\d+\.\d+.*?"/g, ''],
 	[/R\s*\d+\.\d+\.\d+/g, ''],
 	[/v\d+\.\d+\.\d+/g, ''],
 	// clean paths
-	[/%2Fhome%2F([a-zA-Z0-9._-]+%2F)*/g, ''],
+	[UrlEncodedHomePath, ''],
 	// async wrapper depends on whether the promise got fulfilled already
 	[/async|%20/g, ''],
 	[/\s*Copied mermaid url to clipboard\s*\([^)]+\)/gmi, '']
@@ -118,7 +128,7 @@ export abstract class DocMaker<Target extends string> implements DocMakerLike<Ta
 	): Promise<boolean> {
 		this.currentArgs = args;
 		this.writtenSubfiles = new Set();
-		const newText = (this.printHeader ? (await args.ctx.header(this.filename, this.purpose)) + '\n': '') + await this.text(args);
+		const newText = normalizeLineEndings((this.printHeader ? (await args.ctx.header(this.filename, this.purpose)) + '\n\n' : '') + await this.text(args));
 		if(args.force || this.didUpdate(this.target, newText, args.readFileSync(this.target)?.toString()) === WikiChangeType.Changed) {
 			args.writeFileSync(this.target, newText);
 			return true;
@@ -133,6 +143,7 @@ export abstract class DocMaker<Target extends string> implements DocMakerLike<Ta
 		if(!this.currentArgs) {
 			throw new Error('DocMaker: writeSubFile called outside of make()');
 		}
+		data = normalizeLineEndings(data);
 		if(this.currentArgs.force || this.didUpdate(path, data, this.currentArgs.readFileSync(path)?.toString()) === WikiChangeType.Changed) {
 			this.currentArgs.writeFileSync(path.toString(), data);
 			this.writtenSubfiles.add(path.toString());

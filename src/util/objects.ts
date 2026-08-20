@@ -1,11 +1,23 @@
 import type { DeepPartial, DeepReadonly, DeepRequired } from 'ts-essentials';
+import { guard } from './assert';
 import { jsonReplacer } from './json';
+import { expensiveTrace } from './log';
+import type { ILogObj, Logger } from 'tslog';
+import { FlowrFilter } from '../search/flowr-search-filters';
 
 /**
  * checks if `item` is an object (it may be an array, ...)
  */
 export function isObjectOrArray(item: unknown): boolean {
 	return typeof item === 'object';
+}
+
+/**
+ * checks if `item` is a record with keys, i.e. an object that is neither `null` nor an array
+ * @see {@link isObjectOrArray} to allow arrays as well
+ */
+export function isPlainObject(item: unknown): item is Record<string, unknown> {
+	return typeof item === 'object' && item !== null && !Array.isArray(item);
 }
 
 export type MergeableRecord = Record<string, unknown>;
@@ -97,7 +109,9 @@ export function deepMergeObjectInPlace(base?: Mergeable, addon?: Mergeable): Mer
 	if(!baseIsArray && !addonIsArray) {
 		deepMergeObjectWithResult(addon, base, base);
 	} else if(baseIsArray && addonIsArray) {
-		(base).push(...addon);
+		for(const item of addon) {
+			(base).push(item);
+		}
 	} else {
 		throw new Error('cannot merge object with array!');
 	}
@@ -181,4 +195,108 @@ export function deepClonePreserveUnclonable<T>(obj: T): T {
 		}
 		return result as T;
 	}
+}
+
+/**
+ * Compares the two passed objects deeply using the loose comparison system designed for the {@link FlowrFilter.MatchesEnrichment}. For this system in use, see {@link FlowrFilter.MatchesEnrichment} in use.
+ * @param obj - The real object which we want to test against.
+ * @param expected - The object to test the real value {@link obj} against, which should be an object in the shape of {@link obj} with each value to test for replaced by a {@link RegExp} or value to match against. The test will pass if the partial structure matches and the value at each {@link RegExp}, string or primitive location matches the corresponding regular expression. For array entries, {@link arrayMatch} determines whether every element in the array has to match the given expected value, or only some.
+ * @param arrayMatch - For array entries, the expected value in {@link test} is compared against each array entry in the real value. This property determines whether every element in the array has to match, or only some. If unset, this defaults to `some`.
+ * @param logger - The logger to use for trace debugging.
+ */
+export function looselyCompareObjects(obj: Record<string, unknown>, expected: Record<string, unknown>, arrayMatch?: 'some' | 'every', logger?: Logger<ILogObj>): boolean {
+	expensiveTrace(logger, () => `Comparing ${JSON.stringify(obj)} against ${JSON.stringify(expected)}`);
+
+	for(const [expectedKey, expectedValue] of Object.entries(expected)) {
+		const realValue = obj[expectedKey];
+		if(!realValue) {
+			expensiveTrace(logger, () => `Real value ${JSON.stringify(realValue)} does not exist for expected key ${expectedKey}`);
+			return false;
+		}
+
+		if(Array.isArray(realValue)) {
+			const match = typeof expectedValue === 'object' ? expectedValue instanceof RegExp ?
+				// if we expect a regular expression but an array is supplied, test each value
+				(value: unknown) => expectedValue.test(typeof value === 'string' ? value : String(value)) :
+				// if we expect an object that is not a regular expression, match against our expected structure
+				(value: unknown) => looselyCompareObjects(value as Record<string, unknown>, expectedValue as Record<string, unknown>, arrayMatch, logger) :
+				// in any other case (primitives!), match against the exact value
+				(value: unknown) => expectedValue === value;
+			if(!(arrayMatch === 'every' ? realValue.every(match) : realValue.some(match))) {
+				expensiveTrace(logger, () => `Array ${JSON.stringify(realValue)} does not match expected value ${JSON.stringify(expectedValue)} (array match ${arrayMatch})`);
+				return false;
+			}
+		} else if(typeof realValue === 'object') {
+			// for objects, we recursively match
+			if(!looselyCompareObjects(realValue as Record<string, unknown>, expectedValue as Record<string, unknown>, arrayMatch, logger)) {
+				expensiveTrace(logger, () => `Object ${JSON.stringify(realValue)} does not match expected object ${JSON.stringify(expectedValue)}`);
+				return false;
+			}
+		} else if(expectedValue instanceof RegExp) {
+			// for anything else, we match with our regular expression or string
+			// (arrays and objects are handled above, so only primitives reach this point)
+			const realPrimitive: Primitive = realValue as Primitive;
+			if(!expectedValue.test(typeof realPrimitive === 'string' ? realPrimitive : String(realPrimitive))) {
+				expensiveTrace(logger, () => `Value ${JSON.stringify(realValue)} does not match expected regular expression ${expectedValue}`);
+				return false;
+			}
+		} else if(typeof expectedValue !== 'object') {
+			if(expectedValue !== realValue) {
+				expensiveTrace(logger, () => `Value ${JSON.stringify(realValue)} does not match expected string ${JSON.stringify(expectedValue)}`);
+				return false;
+			}
+		}
+	}
+
+	expensiveTrace(logger, () => `Object ${JSON.stringify(obj)} matches ${JSON.stringify(expected)}`);
+	return true;
+}
+
+/** Segments that would let a dotted path reach into the prototype chain. */
+const magicPathSegments = new Set(['__proto__', 'prototype', 'constructor']);
+
+/**
+ * Splits a dot-separated path into its segments, turning integral segments into numbers
+ * so that `a.0.b` indexes an array rather than an object with the key `'0'`.
+ */
+function pathSegments(path: string): (string | number)[] {
+	return path.split('.').map(segment => {
+		guard(!magicPathSegments.has(segment), () => `refusing to walk the magic property '${segment}' in path '${path}'`);
+		const asInt = parseInt(segment);
+		return String(asInt) === segment ? asInt : segment;
+	});
+}
+
+/**
+ * Reads the value at the given dot-separated `path` of `obj` (e.g. `solver.sigdb.additionalPaths`),
+ * or `undefined` if any segment along the way is missing.
+ * @see {@link setOnPath} for the counterpart that writes such a path
+ */
+export function getOnPath(obj: unknown, path: string): unknown {
+	let at: unknown = obj;
+	for(const segment of pathSegments(path)) {
+		if(at === null || typeof at !== 'object' || !Object.prototype.hasOwnProperty.call(at, segment)) {
+			return undefined;
+		}
+		at = (at as Record<string | number, unknown>)[segment];
+	}
+	return at;
+}
+
+/**
+ * Writes `value` at the given dot-separated `path` of `obj`, creating the intermediate steps that do not exist yet.
+ * An intermediate is created as an array if the segment indexing it is a number, and as an object otherwise.
+ * @see {@link getOnPath} for the counterpart that reads such a path
+ */
+export function setOnPath(obj: object, path: string, value: unknown): void {
+	const segments = pathSegments(path);
+	let at = obj as Record<string | number, unknown>;
+	for(let i = 0; i < segments.length - 1; i++) {
+		const segment = segments[i];
+		if(at[segment] === undefined) {
+			at[segment] = typeof segments[i + 1] === 'number' ? [] : {};
+		}
+		at = at[segment] as Record<string | number, unknown>;
+	}
+	at[segments[segments.length - 1]] = value;
 }

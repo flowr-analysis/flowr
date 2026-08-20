@@ -22,6 +22,7 @@ export const RBinaryOp = {
 	name: 'RBinaryOp',
 	/**
 	 * Type guard for {@link RBinaryOp} nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RBinaryOp<Info> {
 		return node?.type === RType.BinaryOp;

@@ -1,10 +1,12 @@
 import type { DataFrameOperationName } from '../../abstract-interpretation/data-frame/semantics';
 import type { SummarizedMeasurement } from '../../util/summarizer';
 import type {
+	AdditionalSlicerMeasurements,
 	CommonSlicerMeasurements,
 	PerSliceMeasurements,
 	SlicerStats,
 	SlicerStatsDfShape,
+	SlicerStatsControlFlow,
 	SlicerStatsDataflow,
 	SlicerStatsInput
 } from '../stats/stats';
@@ -52,48 +54,64 @@ export interface TimePerToken<T = SummarizedMeasurement> {
 
 export interface SummarizedPerSliceStats {
 	/** number of total slicing calls */
-	numberOfSlices:            number
+	numberOfSlices:               number
 	/** statistics on the used slicing criteria (number of ids within criteria etc.) */
-	sliceCriteriaSizes:        SummarizedMeasurement
-	measurements:              Map<PerSliceMeasurements, SummarizedMeasurement>
-	sliceTimePerToken:         TimePerToken
-	reconstructTimePerToken:   TimePerToken
-	totalPerSliceTimePerToken: TimePerToken
-	reduction:                 Reduction<SummarizedMeasurement>
+	sliceCriteriaSizes:           SummarizedMeasurement
+	measurements:                 Map<PerSliceMeasurements, SummarizedMeasurement>
+	sliceTimePerToken:            TimePerToken
+	reconstructTimePerToken:      TimePerToken
+	totalPerSliceTimePerToken:    TimePerToken
+	/** the per 100 lines of input pendant to {@link sliceTimePerToken} */
+	sliceTimePer100Lines:         SummarizedMeasurement
+	reconstructTimePer100Lines:   SummarizedMeasurement
+	totalPerSliceTimePer100Lines: SummarizedMeasurement
+	reduction:                    Reduction<SummarizedMeasurement>
 	/** reduction, but without taking into account comments and empty lines */
-	reductionNoFluff:          Reduction<SummarizedMeasurement>
-	failedToRepParse:          number
-	timesHitThreshold:         number
+	reductionNoFluff:             Reduction<SummarizedMeasurement>
+	failedToRepParse:             number
+	timesHitThreshold:            number
 	sliceSize: {
 		[K in keyof SliceSizeCollection]: SummarizedMeasurement
 	}
 }
 
 export interface UltimateSlicerStats {
-	totalRequests:               number
-	totalSlices:                 number
-	commonMeasurements:          Map<CommonSlicerMeasurements, SummarizedMeasurement>
-	perSliceMeasurements:        Map<PerSliceMeasurements, SummarizedMeasurement>
-	retrieveTimePerToken:        TimePerToken
-	normalizeTimePerToken:       TimePerToken
-	dataflowTimePerToken:        TimePerToken
-	totalCommonTimePerToken:     TimePerToken
-	controlFlowTimePerToken?:    TimePerToken
-	callGraphTimePerToken?:      TimePerToken
-	dataFrameShapeTimePerToken?: TimePerToken
-	sliceTimePerToken:           TimePerToken
-	reconstructTimePerToken:     TimePerToken
-	totalPerSliceTimePerToken:   TimePerToken
+	totalRequests:                number
+	totalSlices:                  number
+	commonMeasurements:           Map<CommonSlicerMeasurements, SummarizedMeasurement>
+	perSliceMeasurements:         Map<PerSliceMeasurements, SummarizedMeasurement>
+	/** measured after all {@link commonMeasurements}, see {@link AdditionalSlicerMeasurements} */
+	additionalMeasurements:       Map<AdditionalSlicerMeasurements, SummarizedMeasurement>
+	retrieveTimePerToken:         TimePerToken
+	normalizeTimePerToken:        TimePerToken
+	dataflowTimePerToken:         TimePerToken
+	totalCommonTimePerToken:      TimePerToken
+	controlFlowTimePerToken?:     TimePerToken
+	callGraphTimePerToken?:       TimePerToken
+	dataFrameShapeTimePerToken?:  TimePerToken
+	sliceTimePerToken:            TimePerToken
+	reconstructTimePerToken:      TimePerToken
+	totalPerSliceTimePerToken:    TimePerToken
+	/** the per 100 lines of input pendant to {@link retrieveTimePerToken} */
+	retrieveTimePer100Lines:      SummarizedMeasurement
+	normalizeTimePer100Lines:     SummarizedMeasurement
+	dataflowTimePer100Lines:      SummarizedMeasurement
+	totalCommonTimePer100Lines:   SummarizedMeasurement
+	controlFlowTimePer100Lines?:  SummarizedMeasurement
+	sliceTimePer100Lines:         SummarizedMeasurement
+	reconstructTimePer100Lines:   SummarizedMeasurement
+	totalPerSliceTimePer100Lines: SummarizedMeasurement
 	/** sum */
-	failedToRepParse:            number
+	failedToRepParse:             number
 	/** sum */
-	timesHitThreshold:           number
-	reduction:                   Reduction<SummarizedMeasurement>
+	timesHitThreshold:            number
+	reduction:                    Reduction<SummarizedMeasurement>
 	/** reduction, but without taking into account comments and empty lines */
-	reductionNoFluff:            Reduction<SummarizedMeasurement>
-	input:                       SlicerStatsInput<SummarizedMeasurement>
-	dataflow:                    SlicerStatsDataflow<SummarizedMeasurement>
-	dataFrameShape?:             SummarizedDfShapeStats<SummarizedMeasurement>
+	reductionNoFluff:             Reduction<SummarizedMeasurement>
+	input:                        SlicerStatsInput<SummarizedMeasurement>
+	dataflow:                     SlicerStatsDataflow<SummarizedMeasurement>
+	controlFlow?:                 SlicerStatsControlFlow<SummarizedMeasurement>
+	dataFrameShape?:              SummarizedDfShapeStats<SummarizedMeasurement>
 }
 
 export interface SummarizedDfShapeStats<T = number> extends Omit<SlicerStatsDfShape<T>, 'perNodeStats'> {

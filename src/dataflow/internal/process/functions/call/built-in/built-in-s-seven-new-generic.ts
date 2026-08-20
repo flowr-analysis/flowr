@@ -1,15 +1,16 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
-	type PotentiallyEmptyRArgument,
-	type RFunctionCall
+import type {
+	PotentiallyEmptyRArgument,
+	RFunctionCall
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { resolveFunctionArgument } from './built-in-apply';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { pMatch } from '../../../../linker';
 import { convertFnArguments } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -20,11 +21,11 @@ import type { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/as
 import { isNotUndefined } from '../../../../../../util/assert';
 import type { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { Identifier } from '../../../../../environments/identifier';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
-import { isValue } from '../../../../../eval/values/r-value';
-import { VertexType } from '../../../../../graph/vertex';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
+import { VertexType, UseVertex, FunctionDefinitionVertex } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /** e.g. new_generic(name, dispatch_args, fun=NULL) */
 interface S7GenericDispatchConfig {
@@ -57,20 +58,12 @@ export function processS7NewGeneric<OtherInfo>(
 	}
 	params[config.args.fun] = 'fun';
 	params['...'] = '...';
-	const argMaps = pMatch(convertFnArguments(args), params);
+	const argMaps = MatchArgs.toSpec(convertFnArguments(args), params);
 	const genName = unpackArg(RArgument.getWithId(args, argMaps.get('name')?.[0]));
 	if(!genName) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const n = resolveIdToValue(genName.info.id, { environment: data.environment, resolve: data.ctx.config.solver.variables, idMap: data.completeAst.idMap, full: true, ctx: data.ctx });
-	const accessedIdentifiers: string[] = [];
-	if(n.type === 'set') {
-		for(const elem of n.elements) {
-			if(elem.type === 'string' && isValue(elem.value)) {
-				accessedIdentifiers.push(elem.value.str);
-			}
-		}
-	}
+	const accessedIdentifiers = NodeValue.knownStringsOf(genName.info.id, data);
 	if(accessedIdentifiers.length === 0) {
 		dataflowLogger.warn('s7 new_generic non-resolvable skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
@@ -91,11 +84,94 @@ export function processS7NewGeneric<OtherInfo>(
 	info.graph.addEdge(rootId, funArg, EdgeType.Returns);
 	info.entryPoint = funArg;
 	const fArg = info.graph.getVertex(funArg);
-	if(fArg?.tag === VertexType.FunctionDefinition) {
+	if(FunctionDefinitionVertex.is(fArg)) {
 		fArg.mode ??= ['s4', 's7'];
 	}
 	return info;
 }
+
+/**
+ * Process a call that **returns a function**: S7/S4 constructor factories (`make_constructor`, `new_class`,
+ * `setClass`) and generic function factories (`Negate`, `Vectorize`, `partial`, …). We model the result as a
+ * synthetic function definition so the assigned symbol is recognized as a **function** rather than a plain
+ * constant.
+ */
+export function processMakeConstructor<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config?: { readonly mode?: readonly ('s7' | 's3' | 's4')[], readonly wrapIndex?: number, readonly wrapName?: string }
+): DataflowInformation {
+	// synthesise `function(...) S7_dispatch()` and make the call return it
+	const [funArg, funId]: [RArgument<OtherInfo & ParentInformation>, NodeId] = makeS7DispatchFDef(name, [], rootId, args.length, data.completeAst.idMap);
+	const info = processKnownFunctionCall({ name, forceArgs: 'all', args: [...args, funArg], rootId, data, origin: BuiltInProcName.S7MakeConstructor }).information;
+	info.graph.addEdge(rootId, funId, EdgeType.Returns);
+	info.entryPoint = funId;
+	const fArg = info.graph.getVertex(funId);
+	if(FunctionDefinitionVertex.is(fArg) && config?.mode) {
+		fArg.mode ??= config.mode.slice();   // copy: mode is mutated in place later, config.mode is shared
+	}
+	if(config?.wrapIndex !== undefined) {
+		linkWrappedFunction(info, args, config.wrapIndex, config.wrapName, data);
+	}
+	return info;
+}
+
+/** Mark the wrapped function of an eager higher-order wrapper (`Negate`/`Vectorize`/`partial`) as called. */
+function linkWrappedFunction<OtherInfo>(
+	info: DataflowInformation,
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	wrapIndex: number,
+	wrapName: string | undefined,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+): void {
+	let wrapped: PotentiallyEmptyRArgument<OtherInfo & ParentInformation> | undefined = undefined;
+	if(wrapName !== undefined) {
+		wrapped = args.find(a => a !== EmptyArgument && a.name?.content === wrapName);
+	}
+	if(wrapped === undefined) {
+		let pos = 0;
+		for(const a of args) {
+			if(RArgument.isEmpty(a) || a.name) {
+				continue;
+			}
+			if(pos === wrapIndex) {
+				wrapped = a;
+				break;
+			}
+			pos++;
+		}
+	}
+	if(wrapped === undefined || RArgument.isEmpty(wrapped) || !wrapped.value) {
+		return;
+	}
+	const resolved = resolveFunctionArgument(wrapped.value, data, {});
+	if(resolved === undefined || resolved.anonymous) {
+		return;
+	}
+	const vertex = info.graph.getVertex(resolved.functionId);
+	if(!UseVertex.is(vertex)) {
+		return;
+	}
+	info.graph.updateToFunctionCall({
+		tag:         VertexType.FunctionCall,
+		id:          resolved.functionId,
+		name:        resolved.functionName,
+		args:        [],
+		environment: data.environment,
+		onlyBuiltin: false,
+		cds:         data.cds,
+		origin:      [BuiltInProcName.Function]
+	});
+}
+
+/**
+ * Node-id suffix of the `fun = function(...) S7_dispatch()` argument flowR synthesizes for S7 calls that do not
+ * carry one (`new_class`, `new_generic`, ...). It stands for no argument in the source, so consumers that reason
+ * about how the *code* calls a function (e.g. matching a call against a package's signature history) must skip it.
+ */
+export const S7SyntheticFunArgSuffix = '-s7-new-generic-fun-arg';
 
 // 'function([dispatch_args],...) S7_dispatch()'; returns the value id
 function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: (string | undefined)[], rootId: NodeId, args: number, idMap: AstIdMap): [RArgument<OtherInfo & ParentInformation>, NodeId] {
@@ -107,7 +183,7 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 		content: 'fun',
 		info:    {
 			id:        argNameId,
-			nesting:   name.info.nesting,
+			nest:      name.info.nest,
 			role:      RoleInParent.ArgumentName,
 			fullRange: r,
 			adToks:    undefined,
@@ -124,7 +200,7 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 		lexeme: 'S7_dispatch',
 		info:   {
 			id:        funcNameId,
-			nesting:   name.info.nesting,
+			nest:      name.info.nest,
 			role:      RoleInParent.FunctionCallName,
 			fullRange: r,
 			adToks:    undefined,
@@ -133,7 +209,7 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 			index:     0
 		},
 		location: r,
-		content:  Identifier.make('S7_dispatch', 's7'),
+		content:  Identifier.make('S7_dispatch', 'S7'),
 	} satisfies RSymbol<ParentInformation>;
 	const funcBody = {
 		type:         RType.FunctionCall,
@@ -144,7 +220,7 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 		arguments:    [],
 		info:         {
 			id:        rootId + '-s7-new-generic-fun-body',
-			nesting:   name.info.nesting,
+			nest:      name.info.nest,
 			role:      RoleInParent.FunctionDefinitionBody,
 			fullRange: r,
 			adToks:    undefined,
@@ -159,7 +235,7 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 		info: {
 			file:      name.info.file,
 			id:        fdefId,
-			nesting:   name.info.nesting,
+			nest:      name.info.nest,
 			role:      RoleInParent.ArgumentValue,
 			parent:    rootId,
 			index:     args + 1,
@@ -177,7 +253,7 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 				content: n,
 				info:    {
 					id:        paramNameId,
-					nesting:   name.info.nesting,
+					nest:      name.info.nest,
 					role:      RoleInParent.ParameterName,
 					fullRange: r,
 					adToks:    undefined,
@@ -196,7 +272,7 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 				special:      n === '...',
 				info:         {
 					id:        paramId,
-					nesting:   name.info.nesting,
+					nest:      name.info.nest,
 					role:      RoleInParent.FunctionDefinitionParameter,
 					parent:    fdefId,
 					index:     i,
@@ -214,14 +290,14 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 	idMap.set(funcNameId, funcName);
 	idMap.set(funcBody.info.id, funcBody);
 	idMap.set(fdefId, argValue);
-	const argId = rootId + '-s7-new-generic-fun-arg';
+	const argId = rootId + S7SyntheticFunArgSuffix;
 	const argument: RArgument<ParentInformation> = {
 		type:     RType.Argument,
 		lexeme:   'fun',
 		location: r,
 		info:     {
 			id:        argId,
-			nesting:   name.info.nesting,
+			nest:      name.info.nest,
 			role:      RoleInParent.FunctionCallArgument,
 			fullRange: r,
 			adToks:    undefined,

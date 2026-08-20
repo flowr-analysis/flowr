@@ -5,10 +5,10 @@ import { IntervalDomain, IntervalTop } from '../abstract-interpretation/domains/
 import { BottomSymbol, Top } from '../abstract-interpretation/domains/lattice';
 import { MultiValueDomain, MultiValueStateDomain } from '../abstract-interpretation/domains/multi-value-state-domain';
 import { StateAbstractDomain } from '../abstract-interpretation/domains/state-abstract-domain';
-import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
+import { SemanticCfgGuidedVisitor, type OnCall } from '../control-flow/semantic-cfg-guided-visitor';
 import { Identifier } from '../dataflow/environments/identifier';
 import { FunctionArgument } from '../dataflow/graph/graph';
-import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexValue } from '../dataflow/graph/vertex';
+import type { DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import { CfgKind } from '../project/cfg-kind';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
@@ -31,7 +31,7 @@ export class IntervalInferenceVisitor extends AbstractInterpretationVisitor<Stat
 		this.currentState.set(node.info.id, interval);
 	}
 
-	protected override onFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
+	protected override onFunctionCall({ call }: OnCall): void {
 		super.onFunctionCall({ call });
 
 		if(call.args.length === 2 && call.args.every(FunctionArgument.isNotEmpty)) {
@@ -133,15 +133,12 @@ In _flowR_, an abstract domain is represented by the class ${ctx.link(AbstractDo
  * ${ctx.linkM(AbstractDomain, 'widen')} to perform widening with another abstract value to ensure termination of the fixpoint iteration
  * ${ctx.linkM(AbstractDomain, 'narrow')} to perform narrowing with another abstract value to refine the abstract value after widening
 
- - ${ctx.linkM(AbstractDomain, 'concretize')} representing the concretization function of the abstract domain
- - ${ctx.linkM(AbstractDomain, 'abstract')} representing the abstraction function of the abstract domain
-
 ${details('Class Diagram', `
 All boxes link to their respective implementation in the source code.
 ${codeBlock('mermaid', ctx.mermaid(AbstractDomain))}
 `.trim())}
 
-The ${ctx.link('Top')} and ${ctx.link('Bottom')} symbols can be used to explicitly represent the top or bottom elment of an abstract domain. Additionally, for value abstract domains, there is the ${ctx.link('SatisfiableDomain')} interface that provides the function ${ctx.link('SatisfiableDomain:::satisfies')} to check whether the current abstract value of the abstract domain satisfies a concrete value (see also ${ctx.link('NumericalComparator')} and ${ctx.link('SetComparator')}).
+The ${ctx.link('Top')} and ${ctx.link('Bottom')} symbols can be used to explicitly represent the top or bottom elment of an abstract domain. Additionally, for value abstract domains, there is the ${ctx.link('ValueDomain')} interface that provides the function ${ctx.link('ValueDomain:::satisfies')} to check whether the current abstract value of the abstract domain satisfies a concrete value (see also ${ctx.link('NumericalComparator')} and ${ctx.link('SetComparator')}).
 
 _flowR_ already provides different abstract domains for abstract interpretation in ${linkFlowRSourceFile('src/abstract-interpretation/domains')}. Many of the abstract domains are generic and can be used for differend kinds of analyses. The existing abstract domains are presented in the following. Some of the listed abstract domains can be expanded to show the inherited abstract domains.
 
@@ -154,7 +151,7 @@ ${codeBlock('mermaid', ctx.mermaid(AbstractDomain, { simplify: true, reverse: tr
 
 Multiple abstract domains can be combined using a ${ctx.link(MultiValueDomain)} (for example, to use an interval domain for numbers and bounded set domain for strings at the same time). A multi-value state domain (${ctx.link(MultiValueStateDomain)}) as state domain of a multi-value domain can be used to track the state of multiple value domains in a program. Additionally, is enables to define reductions on the multi-value domain to refine the inferred value for a value domain based on the other value domains in the multi-value domain. For example, the following example shows how a multi-value state domain can be defined to track numbers and strings at the same time with a simple reduction that sets both domains to bottom if one domain is bottom.
 
-${ctx.code(multiValueExample, { dropLinesStart: 1, dropLinesEnd: 1 })}
+${ctx.code(multiValueExample, { dropLinesStart: 1, dropLinesEnd: 1, hideDefinedAt: true })}
 
 ${section('Abstract Interpretation', 2, 'abstract-interpretation')}
 

@@ -11,16 +11,16 @@ import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { DeepWritable } from 'ts-essentials';
 
 describe('Does Call Query', withTreeSitter(parser => {
-	function testQuery(name: string, code: string, rawQueries: readonly Omit<DoesCallQuery, 'type'> [], results: readonly (SlicingCriterion|false)[]) {
+	function testQuery(name: string, code: string, rawQueries: readonly Omit<DoesCallQuery, 'type'> [], results: readonly (SlicingCriterion | false)[]) {
 		let i = 0;
 		const query: DoesCallQuery[] = [];
 		for(const rq of rawQueries) {
 			const q = rq as DeepWritable<DoesCallQuery>;
 			q.type = 'does-call';
 			if(!q.queryId) {
-				(q as DeepWritable<typeof q>).queryId = String(++i);
+				(q).queryId = String(++i);
 			}
-			query.push(q as DoesCallQuery);
+			query.push(q);
 		}
 		assertQuery(label(name), parser, code, query, (info) => {
 			const idMap = info.normalize.idMap;

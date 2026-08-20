@@ -1,5 +1,5 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { alwaysExits, type DataflowInformation, ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
+import { alwaysExits, type DataflowInformation, ExitPointType } from '../../../../../info';
 import {
 	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,
@@ -22,6 +22,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { IdentifierDefinition } from '../../../../../environments/identifier';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { applyCdsToAllInGraphButConstants, applyCdToReferences } from '../../../../../environments/reference-to-maybe';
+import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
@@ -68,7 +69,8 @@ export function processForLoop<OtherInfo>(
 	const writtenIds = new Set<NodeId>();
 	for(const write of writtenVariable) {
 		writtenIds.add(write.nodeId);
-		headEnvironments = define({ ...write, definedAt: name.info.id, type: ReferenceType.Variable } as (IdentifierDefinition & { name: string }), false, headEnvironments);
+		headEnvironments = define({ ...write, definedAt: name.info.id, type:      ReferenceType.Variable,
+			value:     [vectorArg.info.id], iterated:  true } as (IdentifierDefinition & { name: string }), false, headEnvironments);
 	}
 
 	(data as { environment: REnvironmentInformation }).environment = headEnvironments;
@@ -95,7 +97,11 @@ export function processForLoop<OtherInfo>(
 	applyCdToReferences(body.out, cd);
 	const outgoing = variable.out.concat(writtenVariable, body.out);
 
-	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out);
+	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out, body.environment);
+
+	/* the loop variable is bound by the head whenever the body runs, so reads of it are not ingoing */
+	const loopVariables = new Set(writtenVariable.map(w => w.name));
+	const bodyReadsOfOthers = [...nameIdShares.entries()].filter(([n]) => !loopVariables.has(n)).flatMap(([, refs]) => refs);
 
 	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), nextGraph);
 
@@ -126,21 +132,25 @@ export function processForLoop<OtherInfo>(
 		nextGraph.addEdge(exit.nodeId, body.entryPoint, EdgeType.ControlDependency, { when: true, condition: rootId });
 	}
 
-	console.log(`LOOP EXITS: ${JSON.stringify(filterOutLoopExitPoints(body.exitPoints))}`);
 	for(const exit of body.exitPoints.filter(p => p.type === ExitPointType.Default)) {
 		nextGraph.addEdge(exit.nodeId, rootId, EdgeType.FlowDependency);
 	}
 
+	// the body may never execute, so a removal within it only happens maybe; apply it as the merge cannot represent it
+	const loopKill = body.kill?.length ? makeKillsMaybe(body.kill, cd) : undefined;
+	const loopEnvironment = appendEnvironment(origEnv, outEnvironment);
+
 	return {
 		unknownReferences: [],
 		// we only want those not bound by a local variable
-		in:                [{ nodeId: rootId, name: name.content, cds: originalDependency, type: ReferenceType.Function }, ...vector.unknownReferences, ...[...nameIdShares.values()].flat()],
+		in:                [{ nodeId: rootId, name: name.content, cds: originalDependency, type: ReferenceType.Function }, ...vector.unknownReferences, ...bodyReadsOfOthers],
 		out:               outgoing,
 		graph:             nextGraph,
 		entryPoint:        name.info.id,
 		exitPoints:        variable.exitPoints, // TODO: Body exit points
 		// if we can not be sure that the for-loop runs once, we have to merge back the original environment, as the body may never execute
-		environment:       appendEnvironment(origEnv, outEnvironment),
+		environment:       loopKill ? applyKills(loopEnvironment, loopKill) : loopEnvironment,
 		hooks:             variable.hooks.concat(vector.hooks, body.hooks),
+		kill:              loopKill,
 	};
 }

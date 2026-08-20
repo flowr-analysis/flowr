@@ -1,24 +1,8 @@
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import js from '@eslint/js';
-import { FlatCompat } from '@eslint/eslintrc';
+import flowr from '@eagleoutice/eslint-config-flowr';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const compat = new FlatCompat({
-	baseDirectory:     __dirname,
-	recommendedConfig: js.configs.recommended,
-	allConfig:         js.configs.all
-});
-
-export default[...compat.extends('@eagleoutice/eslint-config-flowr'), {
-	settings: {
-		'import/resolver': {
-			node: {
-				extensions: ['.ts'],
-			},
-		},
-	},
-
+export default [...flowr, {
+	/* what the browser build puts in place of node's built-ins is plain JS, outside the TypeScript project */
+	ignores: ['scripts/playground/empty.js', 'scripts/playground/path-shim.js']
+}, {
 	rules: {},
 }];

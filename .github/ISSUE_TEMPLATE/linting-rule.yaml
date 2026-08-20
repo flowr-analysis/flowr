@@ -30,11 +30,18 @@ body:
         - File Path Validity
         - Naming Convention
         - Network Functions
+        - No Leaked Credentials
         - Problematic inputs
         - Roxygen Arguments
         - Seeded Randomness
+        - Software Has License
+        - Software Has Tests
         - Stop without call.=False argument
+        - Syntactically Valid
+        - Unclosed Connection
+        - Undefined Symbol
         - Unused Definitions
+        - Unused Import
         - Useless Loops
       default: 0
   - type: checkboxes

@@ -4,14 +4,12 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import { expensiveTrace } from '../../../../../../util/log';
 import { type ForceArguments, patchFunctionCall, processAllArguments } from '../common';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import {
-	EmptyArgument,
-	type PotentiallyEmptyRArgument
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type {
+	PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { VertexType } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
 import { unpackArg, unpackNonameArg } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
@@ -21,9 +19,13 @@ import { handleReplacementOperator } from '../../../../../graph/unknown-replacem
 import { S7DispatchSeparator } from './built-in-s-seven-dispatch';
 import { toUnnamedArgument } from '../argument/make-argument';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { FunctionArgument } from '../../../../../graph/graph';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { VariableDefinitionVertex, FunctionCallVertex } from '../../../../../graph/vertex';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 
 /**
@@ -76,11 +78,11 @@ export function processReplacementFunction<OtherInfo>(
 	);
 
 	const createdVert = res.graph.getVertex(rootId);
-	if(createdVert?.tag === VertexType.FunctionCall) {
+	if(FunctionCallVertex.is(createdVert)) {
 		createdVert.origin = [BuiltInProcName.Replacement];
 	}
 	const targetVert = res.graph.getVertex(unpackArg(args[0])?.info.id as NodeId);
-	if(targetVert?.tag === VertexType.VariableDefinition) {
+	if(VariableDefinitionVertex.is(targetVert)) {
 		(targetVert as { par: boolean }).par = true;
 	}
 
@@ -102,7 +104,7 @@ export function processReplacementFunction<OtherInfo>(
 		rootId,
 		name,
 		argumentProcessResult:
-			args.map(a => a === EmptyArgument ? undefined : { entryPoint: unpackNonameArg(a)?.info.id as NodeId }),
+			args.map(a => RArgument.isEmpty(a) ? undefined : { entryPoint: unpackNonameArg(a)?.info.id as NodeId }),
 		origin: BuiltInProcName.Replacement,
 		link:   config.assignRootId ? { origin: [config.assignRootId] } : undefined
 	});
@@ -132,12 +134,14 @@ export function processReplacementFunction<OtherInfo>(
 		}
 	}
 
-	const fa = unpackNonameArg(args[0]);
-	if(fa) {
+	if(RSymbol.is(firstArg)) {
 		res = {
 			...res,
-			in: [...res.in, { name: fa.lexeme, type: ReferenceType.Variable, nodeId: fa.info.id, cds: data.cds }]
+			in: [...res.in, { name: firstArg.content, type: ReferenceType.Variable, nodeId: firstArg.info.id, cds: data.cds }]
 		};
+	} else if(firstArg !== undefined && RAccess.is(firstArg)) {
+		/* a nested target (e.g. `a$b$c <- 5`) is no variable read, it is read through its own accessor */
+		res.graph.addEdge(firstArg.info.id, NodeId.toBuiltIn(firstArg.operator), EdgeType.Reads);
 	}
 
 	// dispatches actually as S3:

@@ -19,7 +19,7 @@ describe('repl', () => {
 			context: contextFromInput(code)
 		}).allRemainingSteps();
 	}
-	describe.sequential('inspection', withShell(shell => {
+	describe('inspection', { concurrent: false }, withShell(shell => {
 		for(const [code, str] of [
 			['test', false],
 			['x <- 3', false],
@@ -68,12 +68,22 @@ describe('repl', () => {
 		}
 	});
 
+	test('reports the loaded package database', async() => {
+		const output = await flowrRepl([':version', ':quit']);
+		try {
+			assert.include(output, 'databases');
+		} catch(e) {
+			console.error('Output was:', output);
+			throw e;
+		}
+	});
+
 	describe(':query api', () => {
 		describe('dependencies', () => {
 			test('Provide Library Load', async() => {
 				const output = await flowrRepl([':query @dependencies "library(x)"', ':quit']);
-				assert.include(output, '`library`');
-				assert.include(output, '`x`');
+				assert.include(output, 'Libraries');
+				assert.include(output, 'via library');
 			});
 		});
 	});

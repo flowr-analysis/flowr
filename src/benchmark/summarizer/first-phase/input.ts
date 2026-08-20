@@ -5,10 +5,9 @@ import { summarizeSlicerStats } from './process';
 import { guard } from '../../../util/assert';
 import { escape } from '../../../util/text/ansi';
 import { jsonReplacer } from '../../../util/json';
-import type { BenchmarkMemoryMeasurement, CommonSlicerMeasurements, PerNodeStatsDfShape, PerSliceMeasurements, PerSliceStats, SlicerStats } from '../../stats/stats';
+import type { AdditionalSlicerMeasurements, BenchmarkMemoryMeasurement, CommonSlicerMeasurements, PerSliceMeasurements, PerSliceStats, SlicerStats } from '../../stats/stats';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import { stats2string } from '../../stats/print';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 interface BenchmarkData {
 	filename:  string,
@@ -39,13 +38,20 @@ export async function processRunMeasurement(line: Buffer, fileNum: number, lineN
 						return [k, BigInt(v.slice(0, -1))];
 					})
 			),
+			additionalMeasurements: new Map(
+				(got.stats.additionalMeasurements as unknown as [AdditionalSlicerMeasurements, string][] ?? [])
+					.map(([k, v]) => {
+						guard(v.endsWith('n'), 'Expected a bigint');
+						return [k, BigInt(v.slice(0, -1))];
+					})
+			),
 			perSliceMeasurements: new Map(
 				(got.stats.perSliceMeasurements as unknown as [SlicingCriteria, PerSliceStats][])
 					.map(([k, v]) => mapPerSliceStats(k, v))
 			),
 			dataFrameShape: got.stats.dataFrameShape !== undefined ? {
 				...got.stats.dataFrameShape,
-				perNodeStats: new Map(got.stats.dataFrameShape.perNodeStats as unknown as [NodeId, PerNodeStatsDfShape][])
+				perNodeStats: new Map(got.stats.dataFrameShape.perNodeStats)
 			} : undefined
 		}
 	};

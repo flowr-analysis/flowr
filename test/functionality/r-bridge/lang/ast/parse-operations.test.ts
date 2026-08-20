@@ -9,7 +9,7 @@ import type { RShell } from '../../../../../src/r-bridge/shell';
 import { describe } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
 
-describe.sequential('Parse simple operations', withShell(shell => {
+describe('Parse simple operations', { concurrent: false }, withShell(shell => {
 	describe('unary operations', () => {
 		for(const op of UnaryOperatorPool) {
 			const simpleInput = `${op}42`;
@@ -454,7 +454,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 							info:     {},
 						}, {
 							type:     RType.Symbol,
-							location: SourceRange.from(1, 12 + 2*opOffset, 1, 12 + 2*opOffset),
+							location: SourceRange.from(1, 12 + 2 * opOffset, 1, 12 + 2 * opOffset),
 							lexeme:   ')',
 							content:  ')',
 							info:     {},

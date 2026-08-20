@@ -6,8 +6,7 @@ import type { OptionDefinition } from 'command-line-usage';
 import {
 	benchmarkHelperOptions,
 	benchmarkOptions,
-	exportQuadsOptions,
-	slicerOptions, statisticHelperOptions, statisticOptions,
+	slicerOptions,
 	summarizerOptions
 } from './options';
 import type { MergeableRecord } from '../../util/objects';
@@ -73,31 +72,6 @@ const _scripts = {
 		options:      summarizerOptions,
 		usageExample: 'summarizer "benchmark.json"',
 		type:         'master script',
-	},
-	'export-quads': {
-		toolName:     'export-quads',
-		target:       'export-quads-app',
-		description:  'Export quads of the normalized AST of a given R code file',
-		usageExample: 'export-quads "example.R" --output "example.quads"',
-		options:      exportQuadsOptions,
-		type:         'master script',
-	},
-	'stats': {
-		toolName:     'stats',
-		target:       'statistics-app',
-		description:  'Generate usage Statistics for R scripts',
-		options:      statisticOptions,
-		usageExample: 'stats -i example.R --output-dir "output-folder/"',
-		type:         'master script',
-	},
-	'stats-helper': {
-		toolName:      'stats-helper',
-		target:        'statistics-helper-app',
-		description:   'Generate usage Statistics for a single R script (parallel helper for stats)',
-		options:       statisticHelperOptions,
-		usageExample:  'stats-helper -i example.R --output-dir "output-folder/"',
-		type:          'helper script',
-		masterScripts: [ 'stats' ]
 	}
 };
 

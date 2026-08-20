@@ -8,7 +8,8 @@ set -eu
 
 reset() {
   echo "Cleaning up and return control"
-  rm -r "$flowrtmpdir"
+  # the symlinked node_modules must not be followed when removing the throwaway clone
+  rm -rf "$flowrtmpdir"
   cd "$curdir"
 }
 
@@ -27,7 +28,8 @@ if [ -n "$(git status --porcelain)" ]; then
   echo "Cloning copy..." # cloning obeys gitignore
   git clone . "$flowrtmpdir"
   echo "Keep installed packages..."
-  cp -r node_modules/ "$flowrtmpdir/node_modules"
+  # a symlink keeps the push fast, the clone only needs to run the installed tools
+  ln -s "$(pwd)/node_modules" "$flowrtmpdir/node_modules" 2>/dev/null || cp -r node_modules/ "$flowrtmpdir/node_modules"
   cd "$flowrtmpdir"
 
   git reset --hard
@@ -41,6 +43,29 @@ if git log -1 --pretty=%B | grep -q "\[release"; then
 else
   echo "Linting project (local mode)..."
   $NPM_CMD run lint-local -- --fix
+  if [ -n "$(git status --porcelain)" ]; then
+    if $unclean; then
+      # we linted a disposable clone, so copy fixes back before it gets removed by the reset trap;
+      # skip files you already have uncommitted changes for, to avoid clobbering your edits
+      dirtyFiles="$(git -C "$curdir" status --porcelain | awk '{print $2}')"
+      for f in $(git diff --name-only); do
+        if echo "$dirtyFiles" | grep -qx "$f"; then
+          echo "  - skipping $f (you have uncommitted changes to it, fix it manually)"
+        else
+          mkdir -p "$(dirname "$curdir/$f")"
+          cp -f "$f" "$curdir/$f"
+          echo "  - copied lint fix for $f back to your working tree"
+        fi
+      done
+    fi
+    echo ""
+    echo "╔══════════════════════════════════════════════════════════════╗"
+    echo "║  lint --fix changed files --- please review, stage, and      ║"
+    echo "║  recommit before pushing.                                    ║"
+    echo "╚══════════════════════════════════════════════════════════════╝"
+    echo ""
+    exit 1
+  fi
 fi
 
 

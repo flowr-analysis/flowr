@@ -1,3 +1,4 @@
+import { MatchArgs } from '../../dataflow/graph/match-args';
 import {
 	LintingPrettyPrintContext,
 	type LintingResult,
@@ -13,14 +14,12 @@ import { isNotUndefined } from '../../util/assert';
 import type { Writable } from 'ts-essentials';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { VertexType } from '../../dataflow/graph/vertex';
-import { resolveIdToValue } from '../../dataflow/eval/resolve/alias-tracking';
-import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
-import { pMatch } from '../../dataflow/internal/linker';
+import { OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { valueSetGuard } from '../../dataflow/eval/values/general';
+import { Resolve } from '../../dataflow/environments/resolve-helper';
+import { Dataflow } from '../../dataflow/graph/df-helper';
 
-export interface StopWithCallResult extends LintingResult {
-	readonly loc: SourceLocation
-}
+export type StopWithCallResult = LintingResult;
 
 export type StopWithCallConfig = MergeableRecord;
 
@@ -30,7 +29,8 @@ export interface StopWithCallMetadata extends MergeableRecord {
 
 export const STOP_WITH_CALL_ARG = {
 	createSearch:        () => Q.var('stop').filter(VertexType.FunctionCall),
-	processSearchResult: (elements, _config, { dataflow, analyzer }) => {
+	processSearchResult: async(elements, _config, data) => {
+		const dataflow = await data.dataflow();
 		const meta: StopWithCallMetadata = {
 			consideredNodes: 0
 		};
@@ -39,7 +39,7 @@ export const STOP_WITH_CALL_ARG = {
 				elements.getElements()
 					.filter(element => {
 						//only built-in functions
-						const origins = getOriginInDfg(dataflow.graph, element.node.info.id);
+						const origins = Dataflow.origin(dataflow.graph, element.node.info.id);
 						if(isNotUndefined(origins)) {
 							const builtIn = origins.every(e => e.type === OriginType.BuiltInFunctionOrigin);
 							if(!builtIn){
@@ -55,10 +55,10 @@ export const STOP_WITH_CALL_ARG = {
 							'call.':  'call.',
 							'domain': 'domain'
 						} as const;
-						const mapping = pMatch(fCall.args, stopParamMap);
+						const mapping = MatchArgs.toSpec(fCall.args, stopParamMap);
 						const mappedToStop = mapping.get('call.') ?? [];
 						for(const argId of mappedToStop) {
-							const res = resolveIdToValue(argId, { graph: dataflow.graph, environment: fCall.environment, ctx: analyzer.inspectContext() });
+							const res = Resolve.toValue(argId, { graph: dataflow.graph, environment: fCall.environment, ctx: data.inspectContext() });
 							const values = valueSetGuard(res);
 							if(values?.type === 'set' && values.elements.length !== 0){
 								if(values.elements[0].type === 'logical'){
@@ -78,8 +78,8 @@ export const STOP_WITH_CALL_ARG = {
 		};
 	},
 	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Code at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `Code at ${SourceLocation.format(result.loc)} does call stop without setting call. to FALSE`,
+		[LintingPrettyPrintContext.Query]: result => `\`stop()\` without \`call. = FALSE\` at ${SourceLocation.format(result.loc)}`,
+		[LintingPrettyPrintContext.Full]:  result => `\`stop()\` at ${SourceLocation.format(result.loc)} is called without \`call. = FALSE\`; the originating call is then appended to the error message, which is usually not intended - pass \`call. = FALSE\` to suppress it`,
 	},
 	info: {
 		name:          'Stop without call.=False argument',

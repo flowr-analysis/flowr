@@ -12,16 +12,20 @@ import type { RShell } from '../../r-bridge/shell';
 import type { ValidWikiDocumentTargetsNoSuffix } from '../../cli/wiki';
 import type { PathLike } from 'fs';
 import {
+	flowrSourceFileUrl,
 	FlowrDockerRef,
 	FlowrGithubRef,
 	FlowrNpmRef,
 	FlowrPositron, FlowrRAdapter, FlowrRStudioAddin,
+	FlowrSiteBaseRef,
 	FlowrVsCode,
 	FlowrWikiBaseRef
 } from '../doc-util/doc-files';
 import type { scripts } from '../../cli/common/scripts-info';
 import type { ScriptOptions } from '../doc-util/doc-cli-option';
-import { getReplCommand, getCliLongOptionOf } from '../doc-util/doc-cli-option';
+import { getReplCommand, getCliLongOptionOf, getConfigOption } from '../doc-util/doc-cli-option';
+import type { FlowrConfig } from '../../config';
+import type { AutocompletablePaths } from '../../util/objects';
 import type { ReplCommandNames } from '../../cli/repl/commands/repl-commands';
 
 /**
@@ -77,8 +81,8 @@ export const ConstantWikiLinkInfo = {
 	'flowr:positron':      { url: FlowrPositron, name: 'flowR extension for Positron' },
 	'flowr:rstudio-addin': { url: FlowrRStudioAddin, name: 'flowR RStudio Addin' },
 	'flowr:radapter':      { url: FlowrRAdapter, name: 'flowR R Adapter' },
-	'flowr:benchmarks':    { url: 'https://flowr-analysis.github.io/flowr/wiki/stats/benchmark', name: 'flowR benchmark page' },
-	'flowr:docs':          { url: 'https://flowr-analysis.github.io/flowr/docs', name: 'flowR code docs' },
+	'flowr:benchmarks':    { url: `${FlowrSiteBaseRef}/wiki/stats/benchmark`, name: 'flowR benchmark page' },
+	'flowr:docs':          { url: `${FlowrSiteBaseRef}/doc/`, name: 'flowR code docs' },
 	'flowr:zenodo':        { url: 'https://zenodo.org/doi/10.5281/zenodo.13319290', name: 'flowR on Zenodo' },
 } as const;
 
@@ -121,8 +125,8 @@ export interface GeneralDocContext {
 	 * ```
 	 *
 	 * Creates a (markdown) link to the `myMethod` member of the `MyClass` class in the code base.
-	 * @see {@link GeneralWikiContext#link|link} - for the underlying impl.
-	 * @see {@link GeneralWikiContext#linkO|linkO} - to link using an object reference instead of a class and member name (e.g. for helper objects).
+	 * @see {@link GeneralDocContext#link|link} - for the underlying impl.
+	 * @see {@link GeneralDocContext#linkO|linkO} - to link using an object reference instead of a class and member name (e.g. for helper objects).
 	 */
 	linkM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, fmt?: LinkFormat & { hideClass?: boolean }, filter?: ElementFilter): string;
 	/**
@@ -130,6 +134,16 @@ export interface GeneralDocContext {
 	 * This is similar to {@link GeneralDocContext#link}, but it uses the type/element name as link text, which is especially useful for types with long or complex names.
 	 */
 	linkO<T extends object &  { name: string }>(obj: T, element: keyof T, fmt?: LinkFormat, filter?: ElementFilter): string;
+	/**
+	 * Generate a hyperlink to an enum member. Enums have no runtime prototype ({@link GeneralDocContext#linkM|linkM})
+	 * nor `name` ({@link GeneralDocContext#linkO|linkO}), so pass the enum type as the explicit type argument -- the
+	 * member is then checked against its keys -- together with the enum's name.
+	 * @example
+	 * ```ts
+	 * linkE<typeof FnProp>('FnProp', 'NoDoc')
+	 * ```
+	 */
+	linkE<E>(enumName: string, element: keyof E, fmt?: LinkFormat, filter?: ElementFilter): string;
 	/**
 	 * Generate a hyperlink to a type/element definition in the code base which is displayed using the file path as name
 	 * @param element - The element to create a link for, the name can be qualified with `::` to specify the class.
@@ -139,7 +153,7 @@ export interface GeneralDocContext {
 	 * ```
 	 * Creates a (markdown) link to the `registerPluginMaker` function in the code base
 	 * using the file path as link name.
-	 * @see {@link GeneralWikiContext#link|link} - to create a link with a custom name/using the type name by default.
+	 * @see {@link GeneralDocContext#link|link} - to create a link with a custom name/using the type name by default.
 	 * @see {@link linkFile}  - for the underlying impl.
 	 */
 	linkFile(element: ElementIdOrRef): string;
@@ -162,7 +176,27 @@ export interface GeneralDocContext {
 	doc(element: ElementIdOrRef, filter?: Omit<ElementFilter, 'file'>): string;
 
 	/**
-	 * Returns the code snippet for a code element as markdown string.
+	 * Returns the documentation for a member of a class as Markdown string.
+	 * This is a convenience method around {@link GeneralDocContext#doc|doc}.
+	 * @example
+	 * ```ts
+	 * docM(MyClass, 'myMethod')
+	 * ```
+	 *
+	 * Creates the documentation for the `myMethod` member of the `MyClass` class in the code base.
+	 * @see {@link GeneralDocContext#doc|doc}   - for the underlying impl.
+	 * @see {@link GeneralDocContext#docO|docO} - to get documentation using an object reference instead of a class and member name.
+	 */
+	docM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, filter?: Omit<ElementFilter, 'file'>): string;
+
+	/**
+	 * Returns the documentation for a type/element definition which is retrieved from an object reference.
+	 * This is similar to {@link GeneralDocContext#doc}, but it uses an object reference to identify the element.
+	 */
+	docO<T extends object & { name: string }>(obj: T, element: keyof T, filter?: Omit<ElementFilter, 'file'>): string;
+
+	/**
+	 * Returns the code snippet for a code element as Markdown string.
 	 * @param element - The element to create a code snippet for, the name can be qualified with `::` to specify the class.
 	 * @param fmt     - Formatting options for the code snippet (see {@link FnElementInfo})
 	 * @param filter  - An optional filter to further specify the element to get the code for, in case multiple elements with the same name exist.
@@ -290,6 +324,19 @@ export interface GeneralDocContext {
 	 * @see {@link getReplCommand} - for the underlying impl.
 	 */
 	replCmd(commandName: ReplCommandNames, quote?: boolean, showStar?: boolean): string
+
+	/**
+	 * Generates a link to a flowR configuration option, resolving its schema type and description as a hover tooltip.
+	 * @example
+	 * ```ts
+	 * linkConfig('solver.sigdb.enabled')
+	 * ```
+	 * Returns a link to the configuration section of the Interface wiki page, showing `solver.sigdb.enabled` with its documentation on hover.
+	 * @param path  - The `.`-separated configuration path (autocompletes to valid config keys only).
+	 * @param quote - Whether to render the path as inline code. Default is `false`.
+	 * @see {@link getConfigOption} - for the underlying impl.
+	 */
+	linkConfig<K extends AutocompletablePaths<FlowrConfig>>(path: K, quote?: boolean): string
 }
 
 /**
@@ -316,6 +363,15 @@ export function makeDocContextForTypes(
 		doc(this: void, element: ElementIdOrRef, filter?: Omit<ElementFilter, 'file'>): string {
 			return getDocumentationForType(getNameFromElementIdOrRef(element), info, '', filter);
 		},
+		docM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, filter?: Omit<ElementFilter, 'file'>): string {
+			const className = cls.prototype.constructor.name;
+			const fullName = `${className}::${String(element)}`;
+			return this.doc(fullName, filter);
+		},
+		docO<T extends object & { name: string }>(obj: T, element: keyof T, filter?: Omit<ElementFilter, 'file'>): string {
+			const fullName = `${obj.name}::${String(element)}`;
+			return this.doc(fullName, filter);
+		},
 		link(this: void, element: ElementIdOrRef, fmt?: LinkFormat, filter?: ElementFilter): string {
 			guard(filter?.file === undefined, 'filtering for files is not yet supported for link');
 			return shortLink(getNameFromElementIdOrRef(element), info, fmt?.codeFont, fmt?.realNameWrapper, filter?.fuzzy, filter?.type);
@@ -329,6 +385,9 @@ export function makeDocContextForTypes(
 		linkO<T extends object &  { name: string }>(obj: T, element: keyof T, fmt?: LinkFormat, filter?: ElementFilter): string {
 			const fullName = `${obj.name}::${String(element)}`;
 			return this.link(fullName, fmt, filter);
+		},
+		linkE<E>(enumName: string, element: keyof E, fmt?: LinkFormat, filter?: ElementFilter): string {
+			return this.link(`${enumName}::${String(element)}`, fmt, filter);
 		},
 		linkFile(this: void, element: ElementIdOrRef): string {
 			return shortLinkFile(getNameFromElementIdOrRef(element), info);
@@ -371,15 +430,18 @@ export function makeDocContextForTypes(
 				const i = ConstantWikiLinkInfo[pageName as keyof typeof ConstantWikiLinkInfo];
 				link = i.url;
 				text ??= i.name;
+			} else if(pageName.startsWith('wiki/')) {
+				link = `${FlowrWikiBaseRef}/${pageName.slice('wiki/'.length).replaceAll(' ', '-')}`;
 			} else {
-				link = `${FlowrGithubRef}/${pageName.toLowerCase().replaceAll(' ', '-')}`;
+				link = flowrSourceFileUrl(/\.[a-z0-9]+$/i.test(pageName) ? pageName : pageName + '.md');
 			}
 			text ??= pageName.split('/').pop() ?? pageName;
 			return `[${text}](${link}${segment ? '#' + segment : ''})`;
 		},
 		linkCode(this: void, path: PathLike, lineNumber?: number): string {
-			const lnk = lineNumber ? `${path.toString()}#L${lineNumber}` : path.toString();
-			return `[${path.toString()}](${encodeURIComponent(lnk)})`;
+			const p = path.toString();
+			const lnk = flowrSourceFileUrl(p) + (lineNumber ? `#L${lineNumber}` : '');
+			return `[${p}](${encodeURI(lnk)})`;
 		},
 		cliOption<
 			ScriptName extends keyof typeof scripts | 'flowr',
@@ -389,6 +451,9 @@ export function makeDocContextForTypes(
 		},
 		replCmd(this: void, commandName: ReplCommandNames | string, quote = true, showStar = false): string {
 			return getReplCommand(commandName, quote, showStar);
+		},
+		linkConfig(this: void, path: AutocompletablePaths<FlowrConfig>, quote = false): string {
+			return getConfigOption(path, quote);
 		}
 	};
 }

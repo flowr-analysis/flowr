@@ -1,6 +1,6 @@
 # Example R script for demonstrating the flowR dataframe shape inference
 # Try it out in the REPL:
-#R> :query @df-shape file://test/testfiles/df-shape.R
+#R> :query @absint df-shape file://test/testfiles/df-shape.R
 
 library(dplyr)
 

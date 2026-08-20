@@ -23,11 +23,11 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 		`,
 		emptyGraph()
 			.call('1@<-', '<-', [argumentInCall('1@foo'), argumentInCall('1@function')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('1@<-', NodeId.toBuiltIn('function')).calls('1@<-', NodeId.toBuiltIn('assignment'))
+			.calls('1@<-', NodeId.toBuiltIn('function')).calls('1@<-', NodeId.mapBuiltInProc(BuiltInProcName.Assignment))
 			.call('4@<-', '<-', [argumentInCall('4@bar'), argumentInCall('4@function')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('4@<-', NodeId.toBuiltIn('function')).calls('4@<-', NodeId.toBuiltIn('assignment'))
+			.calls('4@<-', NodeId.toBuiltIn('function')).calls('4@<-', NodeId.mapBuiltInProc(BuiltInProcName.Assignment))
 			.call('7@<-', '<-', [argumentInCall('7@u'), argumentInCall('7@bar')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('7@<-', NodeId.toBuiltIn('assignment')).calls('7@<-', '7@bar')
+			.calls('7@<-', NodeId.mapBuiltInProc(BuiltInProcName.Assignment)).calls('7@<-', '7@bar')
 			.call('7@bar', 'bar', [argumentInCall('7@3')], { omitArgs: true })
 			.calls('7@bar', '4@function')
 			.call(11, '{', [argumentInCall('1@10')], { omitArgs: true, onlyBuiltIn: true })
@@ -41,7 +41,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 				environment:       defaultEnv().pushEnv().defineParameter('y', '4@y', '4@y')
 			}, { readParams: [[15, true]] })
 			.calls('4@function', [28, '5@return', 23, 25])
-			.calls(28, [27, NodeId.toBuiltIn('expression-list')])
+			.calls(28, [27, NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList)])
 			.defineFunction('1@function', [{ nodeId: 10, cds: undefined, type: ExitPointType.Return }], {
 				out:               [],
 				in:                [],
@@ -51,15 +51,15 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 				environment:       defaultEnv().pushEnv().defineParameter('x', '1@x', '1@x')
 			}, { readParams: [[1, true]] })
 			.call('2@return', 'return', [argumentInCall('2@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return] })
-			.calls('2@return', NodeId.toBuiltIn('return')).calls('2@return', '2@+')
+			.calls('2@return', NodeId.mapBuiltInProc(BuiltInProcName.Return)).calls('2@return', '2@+')
 			.call('2@+', '+', [argumentInCall('2@x'), argumentInCall('2@1')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('2@+', NodeId.toBuiltIn('default'))
+			.calls('2@+', NodeId.mapBuiltInProc(BuiltInProcName.Default))
 			.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return] })
 			.calls('1@function', [8, 11, '2@return'])
-			.calls(11, [10, NodeId.toBuiltIn('expression-list')])
-			.calls('5@return', NodeId.toBuiltIn('return')).calls('5@return', '5@*')
+			.calls(11, [10, NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList)])
+			.calls('5@return', NodeId.mapBuiltInProc(BuiltInProcName.Return)).calls('5@return', '5@*')
 			.call('5@*', '*', [argumentInCall('5@foo'), argumentInCall('5@2')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('5@*', NodeId.toBuiltIn('default')).calls('5@*', '5@foo')
+			.calls('5@*', NodeId.mapBuiltInProc(BuiltInProcName.Default)).calls('5@*', '5@foo')
 			.call('5@foo', 'foo', [argumentInCall('5@y')], { omitArgs: true })
 			.calls('5@foo', '1@function')
 		, { context: 'call-graph', resolveIdsAsCriterion: true }
@@ -76,11 +76,11 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 		`,
 		emptyGraph()
 			.call('1@<-', '<-', [argumentInCall('1@fib'), argumentInCall('1@function')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('1@<-', NodeId.toBuiltIn('function')).calls('1@<-', NodeId.toBuiltIn('assignment'))
+			.calls('1@<-', NodeId.toBuiltIn('function')).calls('1@<-', NodeId.mapBuiltInProc(BuiltInProcName.Assignment))
 			.call('7@fib', 'fib', [argumentInCall('7@5')], { omitArgs: true })
 			.calls('7@fib', '1@function')
 			.call(32, '{', [argumentInCall(31)], { omitArgs: true, onlyBuiltIn: true })
-			.calls(32, [NodeId.toBuiltIn('expression-list'), 15, 31])
+			.calls(32, [NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList), 15, 31])
 			.defineFunction('1@function', [{ nodeId: 13, type: ExitPointType.Return, cds: [{ id: 15, when: true }] }, { nodeId: 31, type: ExitPointType.Return, cds: undefined }], {
 				out:               [],
 				in:                [],
@@ -91,25 +91,25 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			}, { readParams: [[1, true]] })
 			.calls('1@function', ['3@return', '5@return', 7, 14, 15, 20, 22, 26, 28, 29, 32])
 			.call('2@if', 'if', [argumentInCall(7), argumentInCall('2@return'), argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('2@if', NodeId.toBuiltIn('if-then-else')).calls('2@if', 14).calls('2@if', 7)
+			.calls('2@if', NodeId.mapBuiltInProc(BuiltInProcName.IfThenElse)).calls('2@if', 14).calls('2@if', 7)
 			.call(14, '{', [argumentInCall(13)], { omitArgs: true, onlyBuiltIn: true, cds: [{ id: 15, when: true }] })
-			.calls(14, NodeId.toBuiltIn('expression-list')).calls(14, 13)
+			.calls(14, NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList)).calls(14, 13)
 			.call('3@return', 'return', [argumentInCall('3@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: true }] })
-			.calls('3@return', NodeId.toBuiltIn('return'))
+			.calls('3@return', NodeId.mapBuiltInProc(BuiltInProcName.Return))
 			.call(7, '<=', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true })
-			.calls(7, NodeId.toBuiltIn('default'))
+			.calls(7, NodeId.mapBuiltInProc(BuiltInProcName.Default))
 			.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: false }] })
-			.calls('5@return', NodeId.toBuiltIn('return')).calls('5@return', '5@+')
+			.calls('5@return', NodeId.mapBuiltInProc(BuiltInProcName.Return)).calls('5@return', '5@+')
 			.call('5@+', '+', [argumentInCall('5@fib'), argumentInCall(28)], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false } ] })
-			.calls('5@+', NodeId.toBuiltIn('default')).calls('5@+', 22)
+			.calls('5@+', NodeId.mapBuiltInProc(BuiltInProcName.Default)).calls('5@+', 22)
 			.call(22, 'fib', [argumentInCall(24)], { omitArgs: true, cds: [{ id: 15, when: false }] })
 			.calls(22, '1@function').calls(22, 31)
 			.call(28, 'fib', [argumentInCall(26)], { omitArgs: true, cds: [{ id: 15, when: false }] })
 			.calls(28, '1@function').calls(28, 31)
 			.call(20, '-', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false }] })
-			.calls(20, NodeId.toBuiltIn('default'))
+			.calls(20, NodeId.mapBuiltInProc(BuiltInProcName.Default))
 			.call(26, '-', [argumentInCall('1@n'), argumentInCall('1@2')], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false }] })
-			.calls(26, NodeId.toBuiltIn('default'))
+			.calls(26, NodeId.mapBuiltInProc(BuiltInProcName.Default))
 		, { context: 'call-graph', resolveIdsAsCriterion: true }
 	);
 
@@ -142,7 +142,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 		emptyGraph()
 			.calls('6@inc', '1@function')
 			.calls('1@function', '2@return')
-			.calls('8@<-', NodeId.toBuiltIn('assignment'))
+			.calls('8@<-', NodeId.mapBuiltInProc(BuiltInProcName.Assignment))
 			.calls('8@<-', '8@add')
 		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
@@ -161,6 +161,62 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 		emptyGraph()
 			.calls('2@g', '4@function')
 		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
+
+	for(const { name, code, call } of [
+		{ name: 'Map',                          code: 'myHelper <- function(a, b) { a + b }\nresult <- Map(myHelper, 1:3, 4:6)',                          call: '2@myHelper' },
+		{ name: 'Filter',                       code: 'pred <- function(x) { x > 0 }\nresult <- Filter(pred, 1:3)',                                 call: '2@pred' },
+		{ name: 'Reduce',                       code: 'red <- function(a, b) { a + b }\nresult <- Reduce(red, 1:3)',                                 call: '2@red' },
+		{ name: 'sapply with a string name',    code: 'myFn <- function(x) { x + 1 }\nresult <- sapply(1:3, "myFn")',                               call: '2@"myFn"' },
+		{ name: 'Vectorize wraps a target',     code: 'myScalarFn <- function(x, y) { if(x > y) x else y }\nvecFn <- Vectorize(myScalarFn)\nvecFn(1:3, 3:1)', call: '2@myScalarFn' }
+	]) {
+		assertDataflow(label(`higher-order builtin: ${name}`, ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
+			ts, code, emptyGraph().calls(call, '1@function'),
+			{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+		);
+	}
+
+	assertDataflow(label('get resolves a name aliased to a constant string', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
+		ts,
+		`handler_foo <- function(a) { a + 1 }
+nm <- "handler_foo"
+fn <- get(nm)
+fn(5)`,
+		emptyGraph()
+			.calls('4@fn', '1@function')
+		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
+
+	assertDataflow(label('get resolves a name built from constants', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
+		ts,
+		'handler_foo <- function(a) { a + 1 }\nfn <- get(paste0("handler_", "foo"))\nfn(5)',
+		emptyGraph()
+			.calls('3@fn', '1@function')
+		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
+
+	assertDataflow(label('unresolved get is reached-but-unknown, not dropped', ['function-calls', 'resolution', 'built-in']),
+		ts,
+		'nm <- 5\nget(nm)',
+		emptyGraph()
+			.markIdForUnknownSideEffects('2@get')
+		, { resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
+
+	assertDataflow(label('unresolved do.call target is reached-but-unknown, not dropped', ['function-calls', 'resolve-arguments', 'built-in']),
+		ts,
+		'f <- function(x) do.call(paste0("h_", x), list(5))',
+		emptyGraph()
+			.markIdForUnknownSideEffects('1@do.call')
+		, { resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
+
+	assertDataflow(label('dispatch on an opaque object is reached-but-unknown, not dropped', ['function-calls', 'built-in', 'named-arguments']),
+		ts,
+		'f <- function(obj) obj$method(5)',
+		emptyGraph()
+			.markIdForUnknownSideEffects('1@obj$method')
+		, { resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
 
 	assertDataflow(label('ping-pong-rec', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'recursion']),
@@ -262,11 +318,11 @@ f.numeric <- function(x) {
 		`,
 		emptyGraph()
 			.call('1@<-', '<-', [argumentInCall('1@fib'), argumentInCall('1@function')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('1@<-', NodeId.toBuiltIn('function')).calls('1@<-', NodeId.toBuiltIn('assignment'))
+			.calls('1@<-', NodeId.toBuiltIn('function')).calls('1@<-', NodeId.mapBuiltInProc(BuiltInProcName.Assignment))
 			.call('7@fib', 'fib', [argumentInCall('7@5')], { omitArgs: true })
 			.calls('7@fib', '1@function')
 			.call(32, '{', [argumentInCall(31)], { omitArgs: true, onlyBuiltIn: true })
-			.calls(32, [NodeId.toBuiltIn('expression-list'), 15, 31])
+			.calls(32, [NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList), 15, 31])
 			.defineFunction('1@function', [{ nodeId: 13, type: ExitPointType.Return, cds: [{ id: 15, when: true }] }, { nodeId: 31, type: ExitPointType.Return, cds: undefined }], {
 				out:               [],
 				in:                [],
@@ -277,25 +333,58 @@ f.numeric <- function(x) {
 			}, { readParams: [[1, true]] })
 			.calls('1@function', ['3@return', '5@return', 7, 14, 15, 20, 22, 26, 28, 29, 32])
 			.call('2@if', 'if', [argumentInCall(7), argumentInCall('2@return'), argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('2@if', NodeId.toBuiltIn('if-then-else')).calls('2@if', 14).calls('2@if', 7)
+			.calls('2@if', NodeId.mapBuiltInProc(BuiltInProcName.IfThenElse)).calls('2@if', 14).calls('2@if', 7)
 			.call(14, '{', [argumentInCall(13)], { omitArgs: true, onlyBuiltIn: true, cds: [{ id: 15, when: true }] })
-			.calls(14, NodeId.toBuiltIn('expression-list')).calls(14, 13)
+			.calls(14, NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList)).calls(14, 13)
 			.call('3@return', 'return', [argumentInCall('3@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: true }] })
-			.calls('3@return', NodeId.toBuiltIn('return'))
+			.calls('3@return', NodeId.mapBuiltInProc(BuiltInProcName.Return))
 			.call(7, '<=', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true })
-			.calls(7, NodeId.toBuiltIn('default'))
+			.calls(7, NodeId.mapBuiltInProc(BuiltInProcName.Default))
 			.call('5@return', 'return', [argumentInCall('5@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return], cds: [{ id: 15, when: false }] })
-			.calls('5@return', NodeId.toBuiltIn('return')).calls('5@return', '5@+')
+			.calls('5@return', NodeId.mapBuiltInProc(BuiltInProcName.Return)).calls('5@return', '5@+')
 			.call('5@+', '+', [argumentInCall('5@Recall'), argumentInCall(28)], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false } ] })
-			.calls('5@+', NodeId.toBuiltIn('default')).calls('5@+', 22)
+			.calls('5@+', NodeId.mapBuiltInProc(BuiltInProcName.Default)).calls('5@+', 22)
 			.call(22, UnnamedFunctionCallPrefix + '22-Recall', [argumentInCall(24)], { omitArgs: true, cds: [{ id: 15, when: false }], origin: [BuiltInProcName.Recall] })
 			.calls(22, '1@function').calls(22, 31).calls(22, NodeId.toBuiltIn('Recall'))
 			.call(28, UnnamedFunctionCallPrefix + '28-Recall', [argumentInCall(26)], { omitArgs: true, cds: [{ id: 15, when: false }], origin: [BuiltInProcName.Recall] })
 			.calls(28, '1@function').calls(28, 31).calls(28, NodeId.toBuiltIn('Recall'))
 			.call(20, '-', [argumentInCall('1@n'), argumentInCall('1@1')], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false }] })
-			.calls(20, NodeId.toBuiltIn('default'))
+			.calls(20, NodeId.mapBuiltInProc(BuiltInProcName.Default))
 			.call(26, '-', [argumentInCall('1@n'), argumentInCall('1@2')], { onlyBuiltIn: true, omitArgs: true, cds: [{ id: 15, when: false }] })
-			.calls(26, NodeId.toBuiltIn('default'))
+			.calls(26, NodeId.mapBuiltInProc(BuiltInProcName.Default))
 		, { context: 'call-graph', resolveIdsAsCriterion: true }
 	);
+
+	for(const { name, code, call } of [
+		{ name: 'via $',                code: 'handler_foo <- function(x) x * 2\ndispatch <- list(foo = handler_foo)\ndispatch$foo(5)',          call: '3@dispatch$foo' },
+		{ name: 'via [[',               code: 'handler_foo <- function(x) x * 2\ndispatch <- list(foo = handler_foo)\ndispatch[["foo"]](5)',      call: '3@dispatch[["foo"]]' },
+		{ name: 'inline function',      code: 'dispatch <- list(foo = function(x) x * 2)\ndispatch$foo(5)',                                        call: '2@dispatch$foo' },
+		{ name: 'through an alias',     code: 'handler_foo <- function(x) x * 2\ndispatch <- list(foo = handler_foo)\nd <- dispatch\nd$foo(5)',    call: '4@d$foo' }
+	]) {
+		assertDataflow(label(`list dispatch table ${name}`, ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
+			ts, code, emptyGraph().calls(call, '1@function'),
+			{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+		);
+	}
+
+	for(const { name, code, call } of [
+		{ name: 'R6Class',     code: 'Cls <- R6Class("C", public = list(greet = function() 5))\ng <- Cls$new()\ng$greet()',    call: '3@g$greet' },
+		{ name: 'R6 via [[',   code: 'Cls <- R6Class("C", public = list(greet = function() 5))\ng <- Cls[["new"]]()\ng$greet()', call: '3@g$greet' },
+		{ name: 'setRefClass', code: 'Cls <- setRefClass("C", methods = list(greet = function() 5))\ng <- Cls$new()\ng$greet()', call: '3@g$greet' }
+	]) {
+		assertDataflow(label(`class dispatch ${name}`, ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
+			ts, code, emptyGraph().calls(call, '1@function'),
+			{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
+		);
+	}
+
+	for(const { name, code, edge } of [
+		{ name: 'ignores non-function entries', code: 'handler_foo <- function(x) x * 2\ndispatch <- list(foo = handler_foo, n = 5)\ndispatch$n(5)',    edge: ['3@dispatch$n', '1@function'] as [NodeId, NodeId] },
+		{ name: 'drops a stale target on reassignment', code: 'handler_foo <- function(x) x * 2\ndispatch <- list(foo = handler_foo)\ndispatch <- 5\ndispatch$foo(5)', edge: ['4@dispatch$foo', '1@function'] as [NodeId, NodeId] }
+	]) {
+		assertDataflow(label(`list dispatch table ${name}`, ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
+			ts, code, emptyGraph(),
+			{ context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true, mustNotHaveEdges: [edge] }
+		);
+	}
 }));

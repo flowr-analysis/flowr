@@ -43,7 +43,7 @@ x[2] <- x[1] + x[3]
 				ids = (await analyzer.runSearch(Q.var('print').first())).getElements().map(n => n.node.info.id);
 			}
 			guard(ids !== undefined, () => 'no result');
-			staticSlice(result.ctx, result.dataflow, result.normalize, [ids[0]], SliceDirection.Backward, threshold);
+			staticSlice({ ctx: result.ctx, info: result.dataflow, ast: result.normalize, ids: [ids[0]], direction: SliceDirection.Backward, threshold });
 		});
 	}
 });

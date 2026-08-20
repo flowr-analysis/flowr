@@ -10,15 +10,16 @@ function grayOut(): string {
 
 function mergeJointRangesInSorted(loc: { location: SourceRange; selected: boolean }[]) {
 	return loc.reduce((acc, curr) => {
-		if(SourceRange.overlap(acc[acc.length - 1].location, curr.location)) {
-			return [
-				...acc.slice(0, -1), {
-					selected: curr.selected || acc[acc.length - 1].selected,
-					location: SourceRange.merge([acc[acc.length - 1].location, curr.location])
-				}];
+		const last = acc[acc.length - 1];
+		if(SourceRange.overlap(last.location, curr.location)) {
+			acc[acc.length - 1] = {
+				selected: curr.selected || last.selected,
+				location: SourceRange.merge([last.location, curr.location])
+			};
 		} else {
-			return [...acc, curr];
+			acc.push(curr);
 		}
+		return acc;
 	}, [loc[0]]);
 }
 
@@ -50,7 +51,7 @@ export function sliceDiffAnsi(slice: ReadonlySet<NodeId>, normalized: Normalized
 	for(const { selected, location } of importantLocations) {
 		const [sl, sc, , ec] = location;
 		const line = lines[sl - 1];
-		lines[sl - 1] = `${line.substring(0, sc - 1)}${ansiFormatter.reset()}${highlight(line.substring(sc - 1, ec), selected)}${grayOut()}${line.substring(ec)}`;
+		lines[sl - 1] = `${line.slice(0, Math.max(0, sc - 1))}${ansiFormatter.reset()}${highlight(line.slice(Math.max(0, sc - 1), ec), selected)}${grayOut()}${line.slice(Math.max(0, ec))}`;
 	}
 
 	return `${grayOut()}${lines.join('\n')}${ansiFormatter.reset()}`;

@@ -10,7 +10,7 @@ export type TailOfArray<T extends unknown[]> = T extends [infer _, ...infer Rest
  * Returns the union of types in an array, but the first one, uses U as a fallback if the array is empty.
  */
 export type TailTypesOrUndefined<T extends AnyArray, U = undefined> = T extends [] ?
-	U : T extends [unknown] ? U :Tail<T>[number];
+	U : T extends [unknown] ? U : Tail<T>[number];
 
 /**
  * Returns the union of types in an array, but the first and the second one, uses U as a fallback if the array is empty.
@@ -102,23 +102,6 @@ export function *allPermutations<T>(arr: T[]): Generator<T[], void, void>  {
 }
 
 /**
- * Returns a tuple of two arrays, where the first one contains all elements for which the predicate returned true,
- * and the second one contains all elements for which the predicate returned false.
- */
-export function partition<T>(arr: T[], predicate: (elem: T) => boolean): [T[], T[]] {
-	const left: T[] = [];
-	const right: T[] = [];
-	for(const elem of arr) {
-		if(predicate(elem)) {
-			left.push(elem);
-		} else {
-			right.push(elem);
-		}
-	}
-	return [left, right];
-}
-
-/**
  * Generate all unique combinations of the array with the given size.
  * In other words, given `[a,b,c]`, as well as `minSize=2` and `maxSize=2`, this will generate `[a,b]`, `[a,c]` and `[b,c]`,
  * but not, e.g., `[a,a]` or `[b,a]`.
@@ -165,8 +148,8 @@ export function *getUniqueCombinationsOfSize<T>(array: T[], minSize = 0, maxSize
  */
 export function arraySum(arr: readonly number[]): number {
 	let sum = 0;
-	for(const elem of arr) {
-		sum += elem;
+	for(let i = 0, n = arr.length; i < n; i++) {
+		sum += arr[i];
 	}
 	return sum;
 }
@@ -245,11 +228,7 @@ export function cartesianProduct<T>(...arrays: T[][]): T[][] {
 
 /** merge two arrays, removing duplicates */
 export function uniqueArrayMerge<T>(left: readonly T[], right: readonly T[]): T[] {
-	const result = new Set<T>(left);
-	for(const elem of right) {
-		result.add(elem);
-	}
-	return Array.from(result);
+	return Array.from(new Set<T>(left).union(new Set<T>(right)));
 }
 
 /**
@@ -263,15 +242,5 @@ export function uniqueArray<T>(a: Iterable<T>): T[] {
  * Groups the elements of the given array by the key returned by the given key function.
  */
 export function arraysGroupBy<T, K>(arr: readonly T[], keyFn: (elem: T) => K): Map<K, T[]> {
-	const result = new Map<K, T[]>();
-	for(const elem of arr) {
-		const key = keyFn(elem);
-		const group = result.get(key);
-		if(group) {
-			group.push(elem);
-		} else {
-			result.set(key, [elem]);
-		}
-	}
-	return result;
+	return Map.groupBy(arr, keyFn);
 }

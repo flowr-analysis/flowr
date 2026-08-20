@@ -9,11 +9,13 @@ import { log, LogLevel } from '../util/log';
 import type { MergeableRecord } from '../util/objects';
 import type { DataflowInformation } from '../dataflow/info';
 import type { SliceResult } from '../slicing/static/slicer-types';
-import type { ReconstructionResult } from '../reconstruct/reconstruct';
+import type { InlineFull, ReconstructionResult } from '../reconstruct/reconstruct';
 import type { PipelineExecutor } from '../core/pipeline-executor';
 import { guard } from '../util/assert';
 import { withoutWhitespace } from '../util/text/strings';
+import { countAstComments } from './stats/count-comments';
 import type {
+	AdditionalSlicerMeasurements,
 	BenchmarkMemoryMeasurement,
 	CommonSlicerMeasurements,
 	ElapsedTime,
@@ -37,15 +39,15 @@ import {
 } from '../r-bridge/retriever';
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
 import { collectAllSlicingCriteria, type SlicingCriteriaFilter } from '../slicing/criterion/collect-all';
-import { getSizeOfDfGraph, safeSizeOf } from './stats/size-of';
+import { getSizeOfCfGraph, getSizeOfDfGraph, safeSizeOf } from './stats/size-of';
 import type { AutoSelectPredicate } from '../reconstruct/auto-select/auto-select-defaults';
 import type { KnownParser, KnownParserName, KnownParserType } from '../r-bridge/parser';
 import type { SyntaxNode, Tree } from 'web-tree-sitter';
 import { RShell } from '../r-bridge/shell';
 import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import { VertexType } from '../dataflow/graph/vertex';
-import { equidistantSampling } from '../util/collections/arrays';
+import { FunctionCallVertex, FunctionDefinitionVertex } from '../dataflow/graph/vertex';
+import { equidistantSampling, arraySum } from '../util/collections/arrays';
 import { FlowrConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { extractCfg } from '../control-flow/extract-cfg';
@@ -53,11 +55,12 @@ import { DataFrameShapeInferenceVisitor } from '../abstract-interpretation/data-
 import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
 import { SetRangeDomain } from '../abstract-interpretation/domains/set-range-domain';
 import fs from 'fs';
-import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
-import { contextFromInput } from '../project/context/flowr-analyzer-context';
+import { type FlowrAnalyzerContext, contextFromInput } from '../project/context/flowr-analyzer-context';
 import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
-import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import { CallGraph } from '../dataflow/graph/call-graph';
+import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
+import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
+import { runCalibration } from './calibration';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -102,7 +105,7 @@ export type SamplingStrategy = 'random' | 'equidistant';
 
 /**
  * A slicer that can be used to slice exactly one file (multiple times).
- * It holds its own {@link RShell} instance, maintains a cached dataflow and keeps measurements.
+ * It holds its own {@link RShell} instance, maintains a cached dataflow, and keeps measurements.
  *
  * Make sure to call {@link init} to initialize the slicer, before calling {@link slice}.
  * After slicing, call {@link finish} to close the R session and retrieve the stats.
@@ -114,8 +117,12 @@ export class BenchmarkSlicer {
 	private readonly commonMeasurements   = new Measurements<CommonSlicerMeasurements>();
 	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>();
 	private readonly deltas               = new Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>();
+	/** filled by {@link measureAdditionalPhases}, only holds the phases that did not fail */
+	private readonly additionalMeasurements = new Map<AdditionalSlicerMeasurements, ElapsedTime>();
 	private readonly parserName: KnownParserName;
 	private context:             FlowrAnalyzerContext | undefined;
+	private config:              FlowrConfig | undefined;
+	private request:             RParseRequestFromFile | RParseRequestFromText | undefined;
 	private stats:               SlicerStats | undefined;
 	private loadedXml:           string | KnownParserType[] | undefined;
 	private dataflow:            DataflowInformation | undefined;
@@ -138,7 +145,8 @@ export class BenchmarkSlicer {
 	 * Can only be called once for each instance.
 	 */
 	public async init(request: RParseRequestFromFile | RParseRequestFromText, config: FlowrConfig,
-		autoSelectIf?: AutoSelectPredicate, threshold?: number) {
+		autoSelectIf?: AutoSelectPredicate, threshold?: number, inlineSources?: boolean, includeCallees?: boolean,
+		inlineFull?: InlineFull) {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice');
 
 		// we know these are in sync so we just cast to one of them
@@ -152,12 +160,17 @@ export class BenchmarkSlicer {
 				}
 			}
 		);
+		this.config = config;
+		this.request = request;
 		this.context = contextFromInput({ ...request }, config);
 		this.executor = createSlicePipeline(this.parser, {
 			context:   this.context,
 			criterion: [],
 			autoSelectIf,
 			threshold,
+			inlineSources,
+			includeCallees,
+			inlineFull,
 		});
 
 		this.loadedXml = (await this.measureCommonStep('parse', 'retrieve AST from R code')).files.map(p => p.parsed);
@@ -186,8 +199,8 @@ export class BenchmarkSlicer {
 				return ret;
 			};
 			const root = (this.loadedXml as Tree[]).map(t => t.rootNode);
-			numberOfRTokens = root.map(r => countChildren(r)).reduce((a, b) => a + b, 0);
-			numberOfRTokensNoComments = root.map(r => countChildren(r, true)).reduce((a, b) => a + b, 0);
+			numberOfRTokens = arraySum(root.map(r => countChildren(r)));
+			numberOfRTokensNoComments = arraySum(root.map(r => countChildren(r, true)));
 		}
 
 		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined after initialization');
@@ -202,37 +215,23 @@ export class BenchmarkSlicer {
 		for(const [n, info] of vertices) {
 			const outgoingEdges = this.dataflow.graph.outgoingEdges(n);
 			numberOfEdges += outgoingEdges?.size ?? 0;
-			if(info.tag === VertexType.FunctionCall) {
+			if(FunctionCallVertex.is(info)) {
 				numberOfCalls++;
-			} else if(info.tag === VertexType.FunctionDefinition) {
+			} else if(FunctionDefinitionVertex.is(info)) {
 				numberOfDefinitions++;
 			}
 		}
 
-		let nodes = 0;
-		let nodesNoComments = 0;
-		let commentChars = 0;
-		let commentCharsNoWhitespace = 0;
-		RProject.visitAst(this.normalizedAst.ast, t => {
-			nodes++;
-			const comments = t.info.adToks?.filter(RComment.is);
-			if(comments && comments.length > 0) {
-				const content = comments.map(c => c.lexeme ?? '').join('');
-				commentChars += content.length;
-				commentCharsNoWhitespace += withoutWhitespace(content).length;
-			} else {
-				nodesNoComments++;
-			}
-			return false;
-		});
+		const { nodes, nodesNoComments, commentChars, commentCharsNoWhitespace } = countAstComments(this.normalizedAst.ast);
 
 		const split = loadedContent.split('\n');
 		const nonWhitespace = withoutWhitespace(loadedContent).length;
 		this.stats = {
-			perSliceMeasurements: this.perSliceMeasurements,
-			memory:               this.deltas,
+			perSliceMeasurements:   this.perSliceMeasurements,
+			additionalMeasurements: this.additionalMeasurements,
+			memory:                 this.deltas,
 			request,
-			input:                {
+			input:                  {
 				numberOfLines:                             split.length,
 				numberOfNonEmptyLines:                     split.filter(l => l.trim().length > 0).length,
 				numberOfCharacters:                        loadedContent.length,
@@ -253,11 +252,15 @@ export class BenchmarkSlicer {
 			},
 
 			// these are all properly initialized in finish()
-			commonMeasurements:      new Map<CommonSlicerMeasurements, ElapsedTime>(),
-			retrieveTimePerToken:    { raw: 0, normalized: 0 },
-			normalizeTimePerToken:   { raw: 0, normalized: 0 },
-			dataflowTimePerToken:    { raw: 0, normalized: 0 },
-			totalCommonTimePerToken: { raw: 0, normalized: 0 }
+			commonMeasurements:         new Map<CommonSlicerMeasurements, ElapsedTime>(),
+			retrieveTimePerToken:       { raw: 0, normalized: 0 },
+			normalizeTimePerToken:      { raw: 0, normalized: 0 },
+			dataflowTimePerToken:       { raw: 0, normalized: 0 },
+			totalCommonTimePerToken:    { raw: 0, normalized: 0 },
+			retrieveTimePer100Lines:    0,
+			normalizeTimePer100Lines:   0,
+			dataflowTimePer100Lines:    0,
+			totalCommonTimePer100Lines: 0
 		};
 	}
 
@@ -332,6 +335,13 @@ export class BenchmarkSlicer {
 		const ast = this.normalizedAst;
 
 		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, this.context as FlowrAnalyzerContext, undefined, undefined, true));
+		if(this.stats) {
+			this.stats.controlFlow = {
+				numberOfVertices: this.controlFlow.graph.vertices(true).size,
+				numberOfEdges:    [...this.controlFlow.graph.edges().values()].reduce((a, e) => a + e.size, 0),
+				sizeOfObject:     getSizeOfCfGraph(this.controlFlow.graph)
+			};
+		}
 	}
 
 	public extractCG(): void {
@@ -434,12 +444,72 @@ export class BenchmarkSlicer {
 		return stats;
 	}
 
+	/**
+	 * Measure the phases that are not part of the slicing itself: the dependencies query, the linter,
+	 * and the synthetic {@link runCalibration | calibration} workload, the only one that reports its own time.
+	 *
+	 * These run *after* all other steps and are excluded from the {@link CommonSlicerMeasurements} (and hence from
+	 * the `total`), so that they cannot distort any of the existing measurements.
+	 * A failing phase is logged and skipped, it never aborts the benchmark.
+	 * @param calibrate - whether to run the calibration, which describes the machine and hence only has to run for some files of a suite
+	 */
+	public async measureAdditionalPhases(calibrate = true): Promise<void> {
+		this.totalStopwatch.pause();
+		try {
+			this.guardActive();
+			const analyzer = await this.buildAnalyzerForAdditionalPhases();
+			if(analyzer !== undefined) {
+				await this.measureAdditional('dependencies query', () => analyzer.query([{ type: 'dependencies' }]));
+				await this.measureAdditional('linter run', () => analyzer.query([{ type: 'linter' }]));
+			}
+			if(calibrate) {
+				/* the calibration times itself, so that neither the warmup nor the reps it discards count */
+				this.additionalMeasurements.set('calibration', runCalibration());
+			}
+		} catch(e: unknown) {
+			benchmarkLogger.error(`failed to measure the additional phases: ${e instanceof Error ? e.message : String(e)}`);
+		} finally {
+			this.totalStopwatch.resume();
+		}
+	}
+
+	/**
+	 * The additional phases work on the analyzer api, so we have to set up an analyzer for the same request.
+	 * All of its analyses happen before the measurement starts.
+	 */
+	private async buildAnalyzerForAdditionalPhases(): Promise<ReadonlyFlowrAnalysisProvider | undefined> {
+		try {
+			guard(this.config !== undefined && this.request !== undefined, 'need to call init before the additional phases');
+			const analyzer = new FlowrAnalyzerBuilder()
+				.setParser(this.parser)
+				.setConfig(this.config)
+				.buildSync();
+			analyzer.addRequest({ ...this.request });
+			await analyzer.runFull();
+			return analyzer;
+		} catch(e: unknown) {
+			benchmarkLogger.error(`failed to set up the analyzer for the additional phases: ${e instanceof Error ? e.message : String(e)}`);
+			return undefined;
+		}
+	}
+
+	private async measureAdditional(keyToMeasure: AdditionalSlicerMeasurements, measurement: () => unknown): Promise<void> {
+		const start = process.hrtime.bigint();
+		try {
+			await measurement();
+		} catch(e: unknown) {
+			benchmarkLogger.error(`failed to measure '${keyToMeasure}': ${e instanceof Error ? e.message : String(e)}`);
+			return;
+		}
+		this.additionalMeasurements.set(keyToMeasure, process.hrtime.bigint() - start);
+	}
+
 	private getInferredRange<T>(value: SetRangeDomain<T> | PosIntervalDomain): number {
 		if(value.isValue()) {
 			if(value instanceof SetRangeDomain) {
-				return value.isFinite() ? value.value.range.size : Infinity;
+				return value.isFinite() ? value.may.size : Infinity;
 			} else {
-				return value.value[1] - value.value[0];
+				return value.upper - value.lower;
 			}
 		}
 		return 0;
@@ -452,9 +522,9 @@ export class BenchmarkSlicer {
 			if(!value.isFinite()) {
 				return 'infinite';
 			} else if(value instanceof SetRangeDomain) {
-				return Math.floor(value.value.min.size + (value.value.range.size / 2));
+				return Math.floor(value.value.must.size + (value.value.may.size / 2));
 			} else {
-				return Math.floor((value.value[0] + value.value[1]) / 2);
+				return Math.floor((value.lower + value.upper) / 2);
 			}
 		}
 		return 'bottom';
@@ -469,6 +539,12 @@ export class BenchmarkSlicer {
 		const { result } = await this.commonMeasurements.measureAsync(
 			keyToMeasure, () => this.executor.nextStep(expectedStep)
 		);
+		this.recordMemoryDelta(keyToMeasure, memoryInit);
+		return result as PipelineStepOutputWithName<SupportedPipelines, Step>;
+	}
+
+	/** Stores what the step measured as `keyToMeasure` added to the memory usage it started with. */
+	private recordMemoryDelta(keyToMeasure: CommonSlicerMeasurements, memoryInit: NodeJS.MemoryUsage): void {
 		const memoryEnd = process.memoryUsage();
 		this.deltas.set(keyToMeasure, {
 			heap:     memoryEnd.heapUsed - memoryInit.heapUsed,
@@ -476,7 +552,6 @@ export class BenchmarkSlicer {
 			external: memoryEnd.external - memoryInit.external,
 			buffs:    memoryEnd.arrayBuffers - memoryInit.arrayBuffers
 		});
-		return result as PipelineStepOutputWithName<SupportedPipelines, Step>;
 	}
 
 	private measureSimpleStep<Out>(
@@ -487,13 +562,7 @@ export class BenchmarkSlicer {
 		const result = this.commonMeasurements.measure(
 			keyToMeasure, measurement
 		);
-		const memoryEnd = process.memoryUsage();
-		this.deltas.set(keyToMeasure, {
-			heap:     memoryEnd.heapUsed - memoryInit.heapUsed,
-			rss:      memoryEnd.rss - memoryInit.rss,
-			external: memoryEnd.external - memoryInit.external,
-			buffs:    memoryEnd.arrayBuffers - memoryInit.arrayBuffers
-		});
+		this.recordMemoryDelta(keyToMeasure, memoryInit);
 		return result;
 	}
 
@@ -609,6 +678,13 @@ export class BenchmarkSlicer {
 			raw:        dataFrameShapeTime / this.stats.input.numberOfRTokens,
 			normalized: dataFrameShapeTime / this.stats.input.numberOfNormalizedTokens,
 		};
+
+		const per100Lines = 100 / this.stats.input.numberOfLines;
+		this.stats.retrieveTimePer100Lines = retrieveTime * per100Lines;
+		this.stats.normalizeTimePer100Lines = normalizeTime * per100Lines;
+		this.stats.dataflowTimePer100Lines = dataflowTime * per100Lines;
+		this.stats.totalCommonTimePer100Lines = (retrieveTime + normalizeTime + dataflowTime) * per100Lines;
+		this.stats.controlFlowTimePer100Lines = Number.isNaN(controlFlowTime) ? undefined : controlFlowTime * per100Lines;
 
 		return {
 			stats:     this.stats,

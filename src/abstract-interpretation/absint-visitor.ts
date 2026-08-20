@@ -1,19 +1,27 @@
 import { type CfgExpressionVertex, type CfgStatementVertex, CfgVertex, type ControlFlowInformation } from '../control-flow/control-flow-graph';
-import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
+import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration, type OnCall } from '../control-flow/semantic-cfg-guided-visitor';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, isFunctionCallVertex, VertexType } from '../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, FunctionCallVertex } from '../dataflow/graph/vertex';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
 import { type NoInfo, RLoopConstructs, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { guard, isNotUndefined } from '../util/assert';
 import { AbstractDomain } from './domains/abstract-domain';
 import type { AnyStateDomain, ValueDomain } from './domains/state-domain-like';
 import { UnsupportedFunctions } from './unsupported-functions';
+import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
+import { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
+import { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+
+export type DomainOfVisitor<AbsintVisitor extends AbstractInterpretationVisitor<AnyStateDomain>> =
+	AbsintVisitor extends AbstractInterpretationVisitor<infer StateDomain> ? StateDomain : never;
 
 export type AbsintVisitorConfiguration = Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'>;
 
@@ -74,22 +82,22 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 			return state.get(node.info.id) as ValueDomain<StateDomain>;
 		}
 		const vertex = this.getDataflowGraph(node.info.id);
-		const call = isFunctionCallVertex(vertex) ? vertex : undefined;
+		const call = FunctionCallVertex.is(vertex) ? vertex : undefined;
 		const origins = Array.isArray(call?.origin) ? call.origin : [];
 
-		if(node.type === RType.Symbol) {
+		if(RSymbol.is(node)) {
 			const values = this.getVariableOrigins(node.info.id)
 				.map(origin => (this.getAbstractState(origin)?.isBottom() ? this.currentState.domain.bottom() : state?.get(origin)) as ValueDomain<StateDomain>);
 
 			if(values.length > 0 && values.every(isNotUndefined)) {
 				return AbstractDomain.joinAll(values);
 			}
-		} else if(node.type === RType.Argument && node.value !== undefined) {
+		} else if(RArgument.isWithValue(node)) {
 			return this.getAbstractValue(node.value, state);
-		} else if(node.type === RType.ExpressionList && node.children.length > 0) {
+		} else if(RExpressionList.is(node) && node.children.length > 0) {
 			return this.getAbstractValue(node.children.at(-1), state);
 		} else if(origins.includes(BuiltInProcName.Pipe)) {
-			if(node.type === RType.Pipe || node.type === RType.BinaryOp) {
+			if(RPipe.is(node) || RBinaryOp.is(node)) {
 				return this.getAbstractValue(node.rhs, state);
 			} else if(call?.args.length === 2 && call?.args[1] !== EmptyArgument) {
 				return this.getAbstractValue(call.args[1].nodeId, state);
@@ -97,7 +105,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 		} else if(origins.includes(BuiltInProcName.IfThenElse)) {
 			let values: (ValueDomain<StateDomain> | undefined)[] = [];
 
-			if(node.type === RType.IfThenElse && node.otherwise !== undefined) {
+			if(RIfThenElse.is(node) && node.otherwise !== undefined) {
 				values = [node.then, node.otherwise].map(entry => this.getAbstractValue(entry, state));
 			} else if(call?.args.every(arg => arg !== EmptyArgument) && call.args.length === 3) {
 				values = call.args.slice(1, 3).map(entry => this.getAbstractValue(entry.nodeId, state));
@@ -220,7 +228,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 			for(const replacement of replacements) {
 				const call = this.getDataflowGraph(replacement);
 
-				if(isFunctionCallVertex(call)) {
+				if(FunctionCallVertex.is(call)) {
 					this.onReplacementCall({ call, ...this.getSourceAndTarget(call) });
 				}
 			}
@@ -264,12 +272,12 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 	}
 
 	protected override onVariableDefinition({ vertex }: { vertex: DataflowGraphVertexVariableDefinition; }): void {
-		if(this.currentState.get(vertex.id) === undefined) {
+		if(!this.trace.has(vertex.id)) {
 			this.unassigned.add(vertex.id);
 		}
 	}
 
-	protected override onAssignmentCall({ target, source }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
+	protected override onAssignmentCall({ target, source }: OnCall & { target?: NodeId, source?: NodeId }): void {
 		if(target === undefined || source === undefined) {
 			return;
 		}
@@ -278,11 +286,13 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 
 		if(value !== undefined) {
 			this.currentState.set(target, value);
-			this.trace.set(target, this.currentState);
+		} else {
+			this.currentState.remove(target);
 		}
+		this.trace.set(target, this.currentState);
 	}
 
-	protected override onReplacementCall({ target }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
+	protected override onReplacementCall({ target }: OnCall & { target?: NodeId, source?: NodeId }): void {
 		if(target !== undefined) {
 			this.unassigned.delete(target);
 		}
@@ -297,7 +307,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 	 * This bundles all function calls that are no conditions, loops, assignments, replacement calls, and access operations.
 	 * @protected
 	 */
-	protected onFunctionCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onFunctionCall(_data: OnCall) {}
 
 	/** Gets all AST nodes for the predecessor vertices that are leaf nodes and exit vertices */
 	protected getPredecessorNodes(vertexId: NodeId): NodeId[] {
@@ -325,7 +335,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 
 	/** Checks whether a node represents a unsupported (environment-changing) function call (e.g. `eval`, `load`, `attach`, `rm`, ...) */
 	protected isUnsupportedFunctionCall(nodeId: NodeId): boolean {
-		return UnsupportedFunctions.isUnsupportedCall(this.getDataflowGraph(nodeId));
+		return UnsupportedFunctions.isUnsupportedCall(this.getDataflowGraph(nodeId), this.config.dfg);
 	}
 
 	/** We only perform widening at `for`, `while`, or `repeat` loops with more than one ingoing CFG edge */
@@ -339,7 +349,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 		}
 		const dataflowVertex = this.getDataflowGraph(nodeId);
 
-		if(dataflowVertex?.tag !== VertexType.FunctionCall || !Array.isArray(dataflowVertex.origin)) {
+		if(!FunctionCallVertex.is(dataflowVertex) || !Array.isArray(dataflowVertex.origin)) {
 			return false;
 		}
 		const origin = dataflowVertex.origin;

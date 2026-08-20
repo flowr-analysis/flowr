@@ -7,6 +7,7 @@ import type { REnvironmentInformation } from './environment';
 import type { Origin } from '../origin/dfg-get-origin';
 /* type-only, as the value import would cycle back through the graph helpers */
 import type { Dataflow } from '../graph/df-helper';
+import { enumMembers } from '../../util/objects';
 
 /** this is just a safe-guard type to prevent mixing up branded identifiers with normal strings */
 export type BrandedIdentifier = string & { __brand?: 'identifier' };
@@ -401,7 +402,7 @@ export enum ReferenceType {
 }
 
 /** Reverse mapping of the reference types so you can get the name from the bitmask (useful for debugging) */
-export const ReferenceTypeReverseMapping = new Map<ReferenceType, string>(Object.entries(ReferenceType).map(([k, v]) => [v as ReferenceType, k]));
+export const ReferenceTypeReverseMapping = new Map<ReferenceType, string>(enumMembers(ReferenceType).map(([name, value]) => [value, name]));
 
 /**
  * Check if the reference types have an overlapping type!

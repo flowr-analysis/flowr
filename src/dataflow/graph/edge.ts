@@ -1,4 +1,4 @@
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { ControlDependency } from '../info';
 
 /**
  * An edge consist of only of the type (source and target are encoded with the Dataflow Graph).
@@ -11,13 +11,13 @@ export interface DfEdge {
 }
 
 /**
- * Control Flow edges additionally encode which node encodes the condition {@link DFControlFlowEdge.condition}, and
- * when the condition {@link DFControlFlowEdge.condition} is met.
+ * A {@link EdgeType.ControlEdge} additionally carries what decides whether its target runs.
+ * This is the very {@link ControlDependency} the vertices behind the edge carry in their `cds`, so the two
+ * never say different things about the same branch.
  */
 export interface DFControlFlowEdge extends DfEdge {
-	types:     EdgeType.ControlDependency,
-	when?:     boolean,
-	condition: NodeId
+	types: EdgeType.ControlEdge,
+	cd:    ControlDependency
 }
 
 /**
@@ -49,10 +49,16 @@ export enum EdgeType {
 	SideEffectOnCall = 1 << 7,
 	/** The Edge determines that the reference is affected by a non-standard evaluation (e.g., a for-loop body or a quotation) */
 	NonStandardEvaluation = 1 << 8,
-	/** This edge determines that the source is evaluated before the target */
-	FlowDependency = 1 << 12,
-	/** This edge determines that the target is evaluated based on a condition (e.g. branches of an if-else-statement) */
-	ControlDependency = 1 << 13,
+	/**
+	 * The edge points the way execution goes: the target is evaluated after the source.
+	 * @see {@link ControlFlowGraph} - the view these edges carry
+	 */
+	FlowEdge = 1 << 12,
+	/**
+	 * Like {@link EdgeType.FlowEdge}, pointing the way execution goes, but only taken when the condition the
+	 * edge names evaluates to the value it names (e.g. one branch of an if-else).
+	 */
+	ControlEdge = 1 << 13,
 }
 
 /**
@@ -68,11 +74,18 @@ export const enum EdgeTypeName {
 	Argument              = 'arg',
 	SideEffectOnCall      = 'side-effect-on-call',
 	NonStandardEvaluation = 'non-standard-evaluation',
-	FlowDependency        = 'flow-dependency',
-	ControlDependency     = 'control-dependency'
+	FlowEdge              = 'flows-to',
+	ControlEdge           = 'branches-to'
 }
 
 export type EdgeTypeBits = number;
+
+/**
+ * The edge types that carry the control flow of the program, all of them pointing the way execution goes.
+ * The {@link ControlFlowGraph} is a view on them.
+ * @see {@link EdgeType.FlowEdge}, {@link EdgeType.ControlEdge}
+ */
+export const ControlFlowEdgeTypes: EdgeTypeBits = EdgeType.FlowEdge | EdgeType.ControlEdge;
 
 const edgeTypeToHumanReadableName: ReadonlyMap<EdgeType, EdgeTypeName> = new Map<EdgeType, EdgeTypeName>([
 	[EdgeType.Reads,                 EdgeTypeName.Reads                ],
@@ -84,8 +97,8 @@ const edgeTypeToHumanReadableName: ReadonlyMap<EdgeType, EdgeTypeName> = new Map
 	[EdgeType.Argument,              EdgeTypeName.Argument             ],
 	[EdgeType.SideEffectOnCall,      EdgeTypeName.SideEffectOnCall     ],
 	[EdgeType.NonStandardEvaluation, EdgeTypeName.NonStandardEvaluation],
-	[EdgeType.FlowDependency,        EdgeTypeName.FlowDependency],
-	[EdgeType.ControlDependency,     EdgeTypeName.ControlDependency]
+	[EdgeType.FlowEdge,              EdgeTypeName.FlowEdge],
+	[EdgeType.ControlEdge,           EdgeTypeName.ControlEdge]
 ]);
 
 type DfEdgeLike = { types: number };
@@ -185,6 +198,18 @@ export const DfEdge = {
 	 */
 	isOnlyType(this: void, { types }: DfEdgeLike, only: EdgeType): boolean {
 		return types === only;
+	},
+	/**
+	 * Whether the edge carries nothing but control flow, i.e. it exists only because the
+	 * {@link ControlFlowGraph} is a view on the dataflow graph.
+	 * @see {@link ControlFlowEdgeTypes}
+	 */
+	isOnlyControlFlow(this: void, { types }: DfEdgeLike): boolean {
+		return (types & ~ControlFlowEdgeTypes) === 0;
+	},
+	/** The same edge without the given types, e.g. to look at the dataflow part of an edge on its own. */
+	without(this: void, { types }: DfEdgeLike, drop: EdgeTypeBits): DfEdge {
+		return { types: types & ~drop };
 	},
 } as const;
 

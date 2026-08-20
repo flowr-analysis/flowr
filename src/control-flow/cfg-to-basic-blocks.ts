@@ -2,7 +2,7 @@ import { CfgEdge, type ControlFlowInformation, ControlFlowGraph, CfgVertex } fro
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isUndefined } from '../util/assert';
 
-/** if true, return the target */
+/** the single vertex the given edges connect to, if there is exactly one and it is a flow dependency */
 function singleOutgoingFd(outgoing: ReadonlyMap<NodeId, CfgEdge> | undefined): NodeId | undefined {
 	if(!outgoing || outgoing.size !== 1) {
 		return undefined;
@@ -30,20 +30,18 @@ export function convertCfgToBasicBlocks(cfInfo: ControlFlowInformation): Control
 			continue;
 		}
 
-		const outgoing = newCfg.outgoingEdges(id);
-		const target = singleOutgoingFd(outgoing);
-		if(target) {
-			const targetIn = newCfg.ingoingEdges(target);
-			if(targetIn && targetIn.size === 1) {
-				newCfg.mergeTwoBasicBlocks(id, target);
+		const next = singleOutgoingFd(newCfg.outgoingEdges(id));
+		if(next) {
+			const into = newCfg.ingoingEdges(next);
+			if(into && into.size === 1) {
+				newCfg.mergeTwoBasicBlocks(id, next);
 			}
 		}
-		const ingoing = newCfg.ingoingEdges(id);
-		const ingoingTarget = singleOutgoingFd(ingoing);
-		if(ingoingTarget) {
-			const ingoingOut = newCfg.outgoingEdges(ingoingTarget);
-			if(ingoingOut && ingoingOut.size === 1) {
-				newCfg.mergeTwoBasicBlocks(ingoingTarget, id);
+		const previous = singleOutgoingFd(newCfg.ingoingEdges(id));
+		if(previous) {
+			const outOf = newCfg.outgoingEdges(previous);
+			if(outOf && outOf.size === 1) {
+				newCfg.mergeTwoBasicBlocks(previous, id);
 			}
 		}
 	}

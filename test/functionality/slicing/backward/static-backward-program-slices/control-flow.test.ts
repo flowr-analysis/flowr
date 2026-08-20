@@ -34,7 +34,9 @@ ${loop} {
    x <- 2;
    break
 }
-print(x)`, ['6@x'], `x <- 1\n${loop} x <- 2\nx`);
+print(x)`, ['6@x'], `x <- 1\n${loop} x <- 2\nx`,
+				/* the block always breaks, so the vertex that would mark its completion is never reached */
+				{ cfgExcludeProperties: ['entry-reaches-all', 'exit-reaches-all'] });
 			assertSliced(label('Break in condition', [...caps, 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
 				shell, `x <- 1
 ${loop} {

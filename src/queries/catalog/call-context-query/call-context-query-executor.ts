@@ -10,6 +10,7 @@ import type {
 	SubCallContextQueryFormat
 } from './call-context-query-format';
 import { type NodeId, recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { FunctionCallVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
@@ -18,8 +19,6 @@ import type { BasicQueryData } from '../../base-query-format';
 import { satisfiesCallTargets } from './identify-link-to-last-call-relation';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
-import { CfgKind } from '../../../project/cfg-kind';
-import { getCallsInCfg } from '../../../control-flow/extract-cfg';
 import { identifyLinkToRelation } from './identify-link-to-relation';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
@@ -285,9 +284,9 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 
 	let cfg = undefined;
 	if(requiresCfg) {
-		cfg = await analyzer.controlflow(undefined, CfgKind.Quick);
+		cfg = await analyzer.controlflow(undefined);
 	}
-	const calls = cfg ? getCallsInCfg(cfg, dataflow.graph) : undefined;
+	const calls = cfg ? new Map(dataflow.graph.verticesOfType(VertexType.FunctionCall) as MapIterator<[NodeId, Required<DataflowGraphVertexFunctionCall>]>) : undefined;
 	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);
 	/* index exact-name queries so each vertex costs one map lookup instead of a predicate check per query */
 	const nonAliasByName = new Map<string, PromotedQuery[]>();

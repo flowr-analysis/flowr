@@ -697,6 +697,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 		hooks:             information.hooks,
 		unknownReferences: [],
 		entryPoint:        rootId,
+		cfgEntry:          information.cfgEntry,
 		in:                readTargets,
 		out:               writeNodes.concat(readFromSourceWritten as typeof writeNodes),
 	};

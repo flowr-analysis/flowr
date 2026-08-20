@@ -10,7 +10,7 @@ import {
 	CfgVertex
 } from '../control-flow/control-flow-graph';
 import { simplifyControlFlowInformation } from '../control-flow/cfg-simplification';
-import { extractCfg, ResolvedCallSuffix } from '../control-flow/extract-cfg';
+import { extractCfg } from '../control-flow/control-flow-graph';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
 import { convertCfgToBasicBlocks } from '../control-flow/cfg-to-basic-blocks';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -21,21 +21,21 @@ import { assertCfgSatisfiesProperties } from '../control-flow/cfg-properties';
 import { BasicCfgGuidedVisitor } from '../control-flow/basic-cfg-guided-visitor';
 import { SyntaxAwareCfgGuidedVisitor } from '../control-flow/syntax-cfg-guided-visitor';
 import { diffOfControlFlowGraphs } from '../control-flow/diff-cfg';
-import { type NodeId, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { DataflowAwareCfgGuidedVisitor } from '../control-flow/dfg-cfg-guided-visitor';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import { cfgVisitorConfig, DataflowAwareCfgGuidedVisitor } from '../control-flow/dfg-cfg-guided-visitor';
 import type { DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import { type SemanticCfgGuidedVisitorConfiguration, SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { DfEdge, EdgeType } from '../dataflow/graph/edge';
 import { guard } from '../util/assert';
-import type { DataflowGraph } from '../dataflow/graph/graph';
-import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { prefixLines } from './doc-util/doc-general';
 import { codeBlock } from './doc-util/doc-code';
 import { Dataflow } from '../dataflow/graph/df-helper';
+import { enumMembers } from '../util/objects';
 
 const CfgLongExample = `f <- function(a, b = 3) {
  if(a > b) {
@@ -105,10 +105,6 @@ class CollectNumbersSyntaxVisitor extends SyntaxAwareCfgGuidedVisitor {
 class CollectNumbersDataflowVisitor extends DataflowAwareCfgGuidedVisitor {
 	private numbers: RNumberValue[] = [];
 
-	constructor(controlFlow: ControlFlowInformation, dataflow: DataflowGraph) {
-		super({ controlFlow, dfg: dataflow, defaultVisitingOrder: 'forward' });
-	}
-
 	protected override visitValue(node: DataflowGraphVertexValue): void {
 		const astNode = this.config.dfg.idMap?.get(node.id);
 		if(RNumber.is(astNode)) {
@@ -124,17 +120,13 @@ class CollectNumbersDataflowVisitor extends DataflowAwareCfgGuidedVisitor {
 class CollectSourcesSemanticVisitor extends SemanticCfgGuidedVisitor {
 	private sources: string[] = [];
 
-	constructor(controlFlow: ControlFlowInformation, normalizedAst: NormalizedAst, dataflow: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext) {
-		super({ controlFlow, normalizedAst, dfg: dataflow, ctx, defaultVisitingOrder: 'forward' });
-	}
-
 	protected override onAssignmentCall({ source }: { source?: NodeId }): void {
 		if(source) {
-			this.sources.push(recoverName(source, this.config.normalizedAst.idMap) ?? '??');
+			this.sources.push(RNode.lexeme(this.getNormalizedAst(source)) ?? '??');
 		}
 	}
 
-	public getSources(): NodeId[] {
+	public getSources(): string[] {
 		return this.sources;
 	}
 }
@@ -149,13 +141,12 @@ export class WikiCfg extends DocMaker<'wiki/Control Flow Graph.md'> {
 
 	public async text({ ctx, shell }: DocMakerArgs): Promise<string> {
 		return `
-_flowR_ produces three main perspectives of the program: 1) a ${ctx.linkPage('wiki/Normalized AST', 'normalized version of the AST')}
-and 2) a ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, and 3) a control flow graph (CFG).
+_flowR_ produces three main perspectives of the program: 1)&nbsp;a ${ctx.linkPage('wiki/Normalized AST', 'normalized version of the AST')}, 
+2)&nbsp;a ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, and 3)&nbsp;a control flow graph&nbsp;(CFG).
 flowR uses this CFG interweaved with its data flow analysis and for some of its queries (e.g., to link to the last call in a ${linkToQueryOfName('call-context')}).
 
-Please note that, mostly due to historical reasons, the ${ctx.linkPage('wiki/Dataflow Graph', 'control dependencies', 'control-dependencies')} that are stored directly within the
-DFG provide only a partial view of the CFG. While they provide you with information on the conditional execution of vertices, they do not encode the order of execution.
-	In contrast, the CFG describes a complete view of the program's control flow.
+Please note that the control flow graph is a view on the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')},
+similar to the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph', 'perspectives-cg')}.
 
 ${
 	block({
@@ -194,41 +185,53 @@ For now, let's look at a CFG for a program without any branching:
 
 ${codeBlock('r', 'x <- 2 * 3 + 1')}
 
-The corresponding CFG is a directed, labeled graph with two types of edges (control and flow dependencies).
+The corresponding CFG is a directed, labeled graph with two kinds of edges: flow edges and control edges.
 
-${await printCfgCode(shell, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart RL\n', ctx })}
+${await printCfgCode(shell, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart LR\n', ctx })}
 
 ${block({
 	type:    'IMPORTANT',
-	content: 'As the edges describe dependencies they point in the inverse order of execution (which is very helpful for backward analyses)! The [visitors](#cfg-working) abstract away from this and there is no harm in considering an inverted CFG. Yet, you should keep this in mind!'
+	content: 'Edges are in flow order: an edge from `a` to `b` means that `b` is evaluated after `a`. Use `outgoingEdges` (or `successors`) to ask what may run next and `ingoingEdges` (or `predecessors`) to ask what ran before. The [visitors](#cfg-working) can walk either way.'
 })}
 
-Every normalized node of the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} that has any relevance to the
-execution is added and automatically linked using its id (similarly to vertices of the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}).
-Expressions, such as \`2 * 3\` get an additional node with an artificial id that ends in \`-exit\` to mark whenever their calculation is over.
+Every vertex of the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} is a vertex here as well, carrying the same id
+and hence linking back to the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')}.
+The control flow is modeled in post-order, so an expression such as \`2 * 3\` is reached once both operands have been
+evaluated: the \`*\` vertex itself is where the calculation is over, and no extra node is needed.
 
 To gain a better understanding, let's have a look at a simple program with a single branching structure:
 
-${await printCfgCode(shell, 'if(u) 3 else 2', { showCode: true, openCode: false, prefix: 'flowchart RL\n', ctx })}
+${await printCfgCode(shell, 'if(u) 3 else 2', { showCode: true, openCode: false, prefix: 'flowchart LR\n', ctx })}
 
-Here, you can see the \`if\` node followed by the condition (in this case merely \`u\`) that then splits into two branches for the two possible outcomes.
-The \`if\` structure is terminated by the corresponding \`-exit\` node (see the [structure](#cfg-structure) section for more details).
+The condition \`u\` runs first and splits into the two branches, which join again on the \`if\` vertex itself.
+The \`if\` is therefore where the structure is left (see the [structure](#cfg-structure) section for more details).
+
+Standing on \`u\`, the edges leaving it are control edges that name the \`if\`, so what a condition belongs to can be
+read off locally. ${ctx.linkM(ControlFlowGraph, 'decides')} lists the constructs a vertex decides,
+and ${ctx.linkM(ControlFlowGraph, 'entryOf')} goes the other way, from the \`if\` to the condition it starts with.
 
 For you to compare, the following shows the CFG of an \`if\` without an \`else\` branch:
 
-${await printCfgCode(shell, 'if(u || v) 3', { showCode: true, openCode: false, prefix: 'flowchart RL\n', ctx })}
+${await printCfgCode(shell, 'if(u || v) 3', { showCode: true, openCode: false, prefix: 'flowchart LR\n', ctx })}
 
-Activating the calculation of basic blocks produces the following:
+The \`||\` branches as well, as it only evaluates \`v\` when \`u\` did not already decide the answer.
 
-${await printCfgCode(shell, 'if(u || v) 3', { showCode: true, openCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'], ctx })}
+Basic blocks group what always runs together. A block ends where the flow may go more than one way, and starts
+where more than one way may arrive:
 
-Which is probably much more readable if compacted (although the reconstucted code can sometimes be slightly mislieading as flowR tries its best to make it syntactically correct and hence add closing braces etc. which are technically not part of the respective block):
+${await printCfgCode(shell, 'x <- 1\ny <- x + 2\nif(y) print(y)', { showCode: true, openCode: false, prefix: 'flowchart LR\n', simplifications: ['to-basic-blocks'], ctx })}
 
-${await printCfgCode(shell, 'if(u || v) 3', { showCode: true, openCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'], simplify: true, ctx })}
+Compacting them is easier to read (although the reconstructed code can be slightly misleading, as flowR tries its
+best to make it syntactically correct and hence adds closing braces which are technically not part of the block):
+
+${await printCfgCode(shell, 'x <- 1\ny <- x + 2\nif(y) print(y)', { showCode: true, openCode: false, prefix: 'flowchart LR\n', simplifications: ['to-basic-blocks'], simplify: true, ctx })}
+
+Branch-heavy code gains nothing from this: in \`if(u || v) 3\` every vertex may be reached or left in more than
+one way, so every block holds a single vertex.
 
 The control flow graph also harmonizes with function definitions, and calls:
 
-${await printCfgCode(shell, 'f <- function() { 3 }\nf()', { showCode: true, openCode: true, prefix: 'flowchart RL\n', ctx })}
+${await printCfgCode(shell, 'f <- function() { 3 }\nf()', { showCode: true, openCode: true, prefix: 'flowchart LR\n', ctx })}
 
 ${section('Structure of the Control Flow Graph', 2, 'cfg-structure')}
 
@@ -243,28 +246,23 @@ ${ctx.hierarchy('ControlFlowInformation', { openTop: true })}
 To check whether the CFG has the expected shape, you can use the test function ${ctx.link('assertCfg')} which supports testing for
  sub-graphs as well (it provides diffing capabilities similar to ${ctx.link('assertDataflow')}).
 As the CFG may become unhandy for larger programs, there are simplifications available with ${ctx.link(simplifyControlFlowInformation)}
-(these can be passed on to the ${ctx.link(extractCfg)} function as well).
+(the ${ctx.linkPage('wiki/Analyzer', 'analyzer')} applies the ones you ask for when you request the control flow).
 
 ${section('CFG Vertices', 3, 'cfg-structure-vertices')}
 
 All vertex types are summarized in the ${ctx.link('CfgVertexType')} enum which currently contains the following types:
 
-${Object.entries(CfgVertexType).map(([key, value]) => `- \`${key}\` (${value})`).join('\n')}
+${enumMembers(CfgVertexType).map(([name, value]) => `- \`${name}\` (${value})`).join('\n')}
 
 We use the ${ctx.link('CfgBasicBlockVertex')} to represent [basic blocks](#cfg-basic-blocks) and separate
 expressions (${ctx.link('CfgExpressionVertex')}) and statements (${ctx.link('CfgStatementVertex')}) 
 as control flow units with and without side effects (if you want to, you can see view statements as effectful expressions).
-The markers (${ctx.link('CfgMarkerVertex')}) indicate the end of larger expressions/statements. 
 
-To signal these links, the expressions and statements contain information about the attached markers:
+Every vertex corresponds to a vertex of the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}: the control flow
+is modeled in post-order, so a vertex is reached once everything it is made of has been evaluated, which makes it the
+point at which the construct is left. That is why there are no separate marker vertices to close an \`if\` or a loop.
 
-${ctx.hierarchy('CfgWithMarker', { openTop: true })}
-
-Similarly, the markers contain a link to their root: 
-
-${ctx.hierarchy('CfgWithRoot', { openTop: true })}
-
-In mermaid visualizations, we use rectangles for statements, rounded rectangles for expressions and circles for exit markers.
+In mermaid visualizations, we use rectangles for statements and rounded rectangles for expressions.
 Blocks are visualized as boxes around the contained vertices.
 
 ${block({
@@ -272,88 +270,86 @@ ${block({
 	content: `
 	Every CFG vertex has a ${ctx.link('NodeId')} that links it to the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} (although basic blocks will find no counterpart as they are a structuring element of the CFG).
 	Additionally, it may provide information on the called functions (in case that the current element is a function call).
-	Have a look at the ${ctx.link('CfgBaseVertexWithMarker')} interface for more information.
+	Additionally, a function definition names the vertices of its body as children, which is the only way into that region.
 		`.trim()
 })}
 
 ${section('CFG Edges', 3, 'cfg-structure-edges')}
 
-The ${ctx.link(ControlFlowGraph)} uses two types of edges to represent the control flow, separated by the ${ctx.link('CfgEdgeType')} enum
-and the two interfaces: ${ctx.link('CfgFlowDependencyEdge')} and ${ctx.link('CfgControlDependencyEdge')}.
+Every edge points the way execution goes: an edge from \`a\` to \`b\` means that \`b\` runs after \`a\`.
+There are two kinds, told apart by the ${ctx.link('CfgEdgeType')} enum.
 
-${section('Flow Dependencies', 4, 'cfg-flow-dependency')}
+${section('Flow Edges', 4, 'cfg-flow-edge')}
 
-The most common edge is the flow dependency&nbsp;(FD) which simply signals that the source vertex happens _after_ the target vertex in the control flow.
-So \`x; y\` would produce a flow dependency from \`y\` to \`x\` (additionally to the program-enveloping root expression list):
+A flow edge says that the target simply runs next. In \`x; y\` there is one from \`x\` to \`y\`:
 
-${await printCfgCode(shell, 'x; y', { showCode: false, prefix: 'flowchart RL\n', ctx })}
+${await printCfgCode(shell, 'x; y', { showCode: false, prefix: 'flowchart LR\n', ctx })}
 
-${section('Control Dependencies', 4, 'cfg-control-dependency')}
+${section('Control Edges', 4, 'cfg-control-edge')}
 
-Control dependencies&nbsp;(CD) are used to signal that the execution of the source vertex depends on the taget vertex (which, e.g., is the condition of an \`if\` statement or \`while\` loop).
-They contain additional information to signal _when_ the source vertex is executed:
+A control edge says the same, but only when a condition holds, which is how the branches of an \`if\` or the
+body of a loop are attached. Diagrams draw these dashed.
 
-${ctx.hierarchy('CfgControlDependencyEdge', { openTop: true })}
+The edge *is* the ${ctx.link('ControlDependency')} it stands for, the same one the vertices behind it carry in
+their \`cds\`, so it names the deciding vertex, whether it is the true or the false case, and whether the
+decision comes from iterating a loop:
 
-The extra \`caused\` link signals the vertex that caused the control flow influence.
+${ctx.hierarchy('ControlDependency', { openTop: true })}
 
 
 ${await (async() => {
-	const exa = await printCfgCode(shell, 'if(u) 3 else 2', { showCode: true, prefix: 'flowchart RL\n', ctx });
+	const exa = await printCfgCode(shell, 'if(u) 3 else 2', { showCode: true, prefix: 'flowchart LR\n', ctx });
 	return details('Example: if-else', exa);
 })()}
 
 ${await (async() => {
-	const exa = await printCfgCode(shell, 'while(u) b', { showCode: true, prefix: 'flowchart RL\n', ctx });
+	const exa = await printCfgCode(shell, 'while(u) b', { showCode: true, prefix: 'flowchart LR\n', ctx });
 	return details('Example: while-loop', exa);
 })()}
 <br/>
 
-Please note that repeat loops do _not_ have control dependencies, as they repeat their body unconditionally.
+Please note that repeat loops have no control edges, as they repeat their body unconditionally.
 Additionally, the control flow graph does not have to be connected. If you use a repeat without any exit condition,
-the corresponding exit markers are not reachable from the entry:
+the loop is never left, so its vertex is not reachable from the entry:
 
 ${await (async() => {
-	const exa = await printCfgCode(shell, 'repeat { b }; after', { showCode: true, prefix: 'flowchart RL\n', ctx });
+	const exa = await printCfgCode(shell, 'repeat { b }; after', { showCode: true, prefix: 'flowchart LR\n', ctx });
 	return details('Example: repeat-loop (infinite)',  exa);
 })()}
 
 ${await (async() => {
-	const exa = await printCfgCode(shell, 'repeat { b; if(u) break; }; after', { showCode: true, prefix: 'flowchart RL\n', ctx });
+	const exa = await printCfgCode(shell, 'repeat { b; if(u) break; }; after', { showCode: true, prefix: 'flowchart LR\n', ctx });
 	return details('Example: repeat-loop (with break)',  exa);
 })()}
 <br/>
 
-In the context of a for-loop, the control dependency refer to whether the respective vector still has values to iterate over.
+For a for-loop, the control edge says whether the sequence still has values to iterate over.
 
 ${await (async() => {
-	const exa = await printCfgCode(shell, 'for(i in 1:10) b', { showCode: true, prefix: 'flowchart RL\n', ctx });
+	const exa = await printCfgCode(shell, 'for(i in 1:10) b', { showCode: true, prefix: 'flowchart LR\n', ctx });
 	return details('Example: for-loop', exa);
 })()}
 
 ${section('Extra: Call Links', 4, 'cfg-call-links')}
 
-If you generate the CFG with the ${ctx.link(extractCfg)} function you can (and, if you want to gain inter-procedural information, should)
-pass a matching ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} to it to incorporate the dataflow perspective into the CFG.
+The control flow graph is a view on the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}: the dataflow analysis
+records the control flow while it walks the program, and ${ctx.link(extractCfg)} projects it into the shape the control
+flow analyses expect. Because of that, the interprocedural knowledge the dataflow analysis gained is available without
+a second pass over the program.
 
-The difference becomes obvious when we look at the code \`f <- function() b; f()\` first without the dataflow graph:
+Control flow itself stays intra-procedural. A call does not flow into the body of what it calls, and the body of a
+function definition is not entered when the definition is evaluated &dash; it only produces the closure. What a call
+may reach is named separately:
 
-${await printCfgCode(shell, 'f <- function() b; f()', { showCode: true, prefix: 'flowchart RL\n', useDfg: false, ctx })}
+${await printCfgCode(shell, 'f <- function() b; f()', { showCode: true, prefix: 'flowchart LR\n', ctx })}
 
-And now, including dataflow information:
-
-${await printCfgCode(shell, 'f <- function() b; f()', { showCode: true, prefix: 'flowchart RL\n', useDfg: true, ctx })}
-
-There are two important additions:
-
-1. A new exit marker, canonically suffixed with \`${ResolvedCallSuffix}\` signals that we are aware of the function call target.
-   This marker always follows the exit marker of the function call and links not just the call but also the exit points of the function definition.
-2. A new _calls_ attribute attached to the function call vertex. This holds the ${ctx.link('NodeId')} of the function definitions that are called from this vertex.
+A _calls_ attribute attached to the function call vertex holds the ${ctx.link('NodeId')} of the function definitions that
+are called from this vertex, taken from the \`calls\` edges the dataflow analysis resolved.
 
 For built-in functions that are provided by flowR's built-in configuration (see the ${ctx.linkPage('wiki/Interface', 'interface wiki page')}) the CFG does not contain
 the additional information directly:
 
-${await printCfgCode(shell, 'print(3)', { showCode: true, prefix: 'flowchart RL\n', ctx })}
+${await printCfgCode(shell, 'print(3)', { showCode: true, prefix: 'flowchart LR\n', ctx })}
 
 This is due to the fact that the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} does contain the required call information (and there are no new control vertices to add as the built-in call has no target in the source code):
 
@@ -368,16 +364,16 @@ Yet, we can request basic blocks or transform an existing CFG into basic blocks 
 
 Any program without any (un-)conditional jumps now contains a single basic block:
 
-${await printCfgCode(shell, 'x <- 2 * 3 + 1', { showCode: true, openCode: true, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'], simplify: true, ctx })}
+${await printCfgCode(shell, 'x <- 2 * 3 + 1', { showCode: true, openCode: true, prefix: 'flowchart LR\n', simplifications: ['to-basic-blocks'], simplify: true, ctx })}
 
 While the CFG without basic blocks is much bigger:
 
-${await printCfgCode(shell, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart RL\n', ctx })}
+${await printCfgCode(shell, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart LR\n', ctx })}
 
 In a way, using the basic blocks perspective does not remove any of these vertices (we just usually visualize them compacted as their execution order should be "obvious").
 The vertices are still there, as elems of the ${ctx.link('CfgBasicBlockVertex')}:
 
-${await printCfgCode(shell, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'], simplify: false, ctx })}
+${await printCfgCode(shell, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart LR\n', simplifications: ['to-basic-blocks'], simplify: false, ctx })}
 
 The benefit (for comprehensibility and algorithms) becomes more apparent when we look at a more complicated program:
 
@@ -385,12 +381,12 @@ ${codeBlock('r', CfgLongExample)}
 
 With basic blocks, this code looks like this:
 
-${await printCfgCode(shell, CfgLongExample, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'], simplify: true, ctx })}
+${await printCfgCode(shell, CfgLongExample, { showCode: false, prefix: 'flowchart LR\n', simplifications: ['to-basic-blocks'], simplify: true, ctx })}
 
 Now, without basic blocks, this is a different story...
 
 ${await (async() => {
-	const exa = await printCfgCode(shell, CfgLongExample, { showCode: false, prefix: 'flowchart RL\n', ctx });
+	const exa = await printCfgCode(shell, CfgLongExample, { showCode: false, prefix: 'flowchart LR\n', ctx });
 	return details('The full CFG', exa);
 })()}
 
@@ -456,6 +452,11 @@ visitors that incorporate various alternative perspectives:
 - [Semantic CFG Visitor](#cfg-traversal-semantic):\\
   Currently the most advanced visitor that combines syntactic with dataflow information.
 
+The later ones need the dataflow graph and the ast as well. As the CFG is a view on the dataflow graph, and that
+graph knows the ast, ${ctx.link(cfgVisitorConfig)} takes both from the control flow you hand it:
+
+${codeBlock('ts', "new MyVisitor(cfgVisitorConfig({ controlFlow, defaultVisitingOrder: 'forward' }))")}
+
 ${section('Basic CFG Visitor', 4, 'cfg-traversal-basic')}
 
 The ${ctx.link(BasicCfgGuidedVisitor)} class essential provides the same functionality as the [simple traversal](#cfg-simple-traversal) functions but in a class-based version.
@@ -509,7 +510,7 @@ Again, executing it with the CFG and Dataflow of the expression \`x - 1 + 2L * 3
 
 ${await (async() => {
 	const res = await getCfg(shell, 'x - 1 + 2L * 3');
-	const visitor = new CollectNumbersDataflowVisitor(res.info, res.dataflow.graph);
+	const visitor = new CollectNumbersDataflowVisitor(cfgVisitorConfig({ controlFlow: res.info, defaultVisitingOrder: 'forward' }));
 	visitor.start();
 	const collected = visitor.getNumbers();
 	return collected.map(n => '\n- `' + JSON.stringify(n) + '`').join('');
@@ -534,7 +535,7 @@ Executing it with the CFG and Dataflow of the expression \`x <- 2; 3 -> x; assig
 
 ${await (async() => {
 	const res = await getCfg(shell, 'x <- 2; 3 -> x; assign("x", 42 + 21)');
-	const visitor = new CollectSourcesSemanticVisitor(res.info, res.ast, res.dataflow.graph, contextFromInput(''));
+	const visitor = new CollectSourcesSemanticVisitor(cfgVisitorConfig({ controlFlow: res.info, ctx: contextFromInput(''), defaultVisitingOrder: 'forward' }));
 	visitor.start();
 	const collected = visitor.getSources();
 	return collected.map(n => '\n- `' + n + '`').join('');
@@ -560,43 +561,31 @@ With the ${ctx.linkPage('wiki/Dataflow Graph')} you already get a \`${DfEdge.typ
 (given that this function call does neither transform nor create a value).
 But the control flow perspective gives you more! Given a simple addition like \`x + 1\`, the CFG looks like this:
 
-${await (async function() {
-	const cfg = await getCfg(shell, 'x + 1');
-	const [plusVertexId, plusVertex] = cfg.info.graph.vertices().entries().filter(([n]) => recoverName(n, cfg.ast.idMap) === '+').toArray()[0];
-	guard(CfgVertex.isExpression(plusVertex));
-	const numOfExits
-		= CfgVertex.getEnd(plusVertex)?.length ?? 0;
-	guard(numOfExits === 1);
+${await printCfgCode(shell, 'x + 1', { showCode: true, prefix: 'flowchart LR\n', ctx })}
 
-	return `${await printCfgCode(shell, 'x + 1', { showCode: true, prefix: 'flowchart RL\n', ctx })}
-	
-Looking at the binary operation vertex for \`+\` (with id \`${plusVertexId}\`) we see that it is linked to a single exit ("end marker") point: \`${CfgVertex.getEnd(plusVertex)?.[0] ?? '??'}\`.
-Checking this vertex essentially reveals all exit points of the expression &dash; in this case, this simply refers to the operands of the addition.
-However, the idea transfers to more complex expressions as well...
-	`;
-})()}
+The control flow is modeled in post-order: a vertex is reached once everything it is made of has been evaluated.
+For the addition above that means both operands come first and the \`+\` vertex itself is where they join again,
+so the vertex of an expression *is* its exit point &dash; there are no separate marker vertices.
 
-${details('Example: Exit Points for an if', await (async function() {
+${details('Example: Where an if joins again', await (async function() {
 	const expr = 'if(u) 3 else 2';
 	const cfg = await getCfg(shell, expr);
-	const [ifVertexId, ifVertex] = [...cfg.info.graph.vertices()].filter(([n]) => recoverName(n, cfg.ast.idMap) === 'if')[0];
-	guard(CfgVertex.isStatement(ifVertex));
-	const numOfExits
-		=  CfgVertex.getEnd(ifVertex)?.length ?? 0;
-	guard(numOfExits === 1);
+	const [ifVertexId, ifVertex] = [...cfg.info.graph.vertices()].filter(([n]) => cfg.ast.idMap.get(n)?.lexeme === 'if')[0];
+	guard(CfgVertex.isStatement(ifVertex) || CfgVertex.isExpression(ifVertex));
 
-	return `${await printCfgCode(shell, expr, { showCode: true, prefix: 'flowchart RL\n', ctx })}
-	
-Looking at the if vertex for (with id \`${ifVertexId}\`) we see that it is again linked to a single exit point: \`${CfgVertex.getEnd(ifVertex)?.[0] ?? '??'}\`.
-Yet, now this exit vertex is linked to the two branches of the if statement (the \`then\` and \`else\` branch).
+	return `${await printCfgCode(shell, expr, { showCode: true, prefix: 'flowchart LR\n', ctx })}
+
+Both branches of the if (with id \`${ifVertexId}\`) flow into the if vertex itself, which is therefore the single
+point at which the statement is left, whichever branch ran.
 	`;
 })())}
 
-Hence, you may rely on the corresponding exit point(s) to identify all exits of a given expression (in a way, these exit-points are merely super-sinks trying to ensure the hammock graph property).
+Hence, the vertex of an expression names all of its exits, which is what keeps the graph a hammock graph without
+any auxiliary vertices.
 
 ${block({
 	type:    'WARNING',
-	content: 'Using basic blocks, this works just the same. However, please keep in mind that the corresponding exit markers do not (and for control statements usually will not) be part of the same basic block.'
+	content: 'Using basic blocks, this works just the same. However, please keep in mind that the vertex a control statement joins on does not have to be part of the same basic block as the branches leading to it.'
 })}
 
 `;

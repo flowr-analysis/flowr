@@ -21,7 +21,7 @@ import {
 } from './messages/message-repl';
 import { replProcessAnswer } from '../core';
 import { LogLevel } from '../../../util/log';
-import { cfg2quads } from '../../../control-flow/extract-cfg';
+import { cfg2quads } from '../../../control-flow/control-flow-graph';
 import { defaultQuadIdGenerator, type QuadSerializationConfiguration } from '../../../util/quads';
 import { printStepResult, StepOutputFormat } from '../../../core/print/print';
 import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse';

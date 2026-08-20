@@ -592,8 +592,8 @@ export class DataflowGraph<
 		return this;
 	}
 
-	public addEdge(fromId: NodeId, toId: NodeId, type: EdgeType.ControlDependency, data: Omit<DFControlFlowEdge, 'types'>): this;
-	public addEdge(fromId: NodeId, toId: NodeId, type: Exclude<EdgeType, EdgeType.ControlDependency> | number): this;
+	public addEdge(fromId: NodeId, toId: NodeId, type: EdgeType.ControlEdge, data: Omit<DFControlFlowEdge, 'types'>): this;
+	public addEdge(fromId: NodeId, toId: NodeId, type: Exclude<EdgeType, EdgeType.ControlEdge> | number): this;
 	public addEdge(fromId: NodeId, toId: NodeId, type: EdgeType | number, data?: Omit<DFControlFlowEdge, 'types'>): this {
 		if(fromId === toId) {
 			return this;
@@ -610,7 +610,8 @@ export class DataflowGraph<
 			return this;
 		}
 
-		const added = { types: type, ...data } as unknown as Edge;
+		/* the spread would build the object through a slower path, and this runs for every edge of every graph */
+		const added = (data === undefined ? { types: type } : { types: type, cd: data.cd }) as unknown as Edge;
 		if(fromEdges === undefined) {
 			this.edgeInformation.set(fromId, new Map([[toId, added]]));
 		} else {

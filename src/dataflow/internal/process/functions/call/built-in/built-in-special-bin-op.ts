@@ -1,6 +1,7 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import type { DataflowInformation } from '../../../../../info';
+import type { ControlDependency, DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
+import { ControlFlow } from '../../../../control-flow';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -29,14 +30,17 @@ export function processSpecialBinOp<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 
+	/* the very dependency the right-hand side runs under, carried by its vertices and by the branch alike */
+	const evalsRhs: ControlDependency = { id: rootId, when: config.evalRhsWhen ?? true };
 	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs,
 		patchData: (d, i) => {
 			if(config.lazy && i === 1) {
-				return { ...d, cds: [...d.cds ?? [], { id: rootId, when: config.evalRhsWhen ?? true }] };
+				return { ...d, cds: [...d.cds ?? [], evalsRhs] };
 			}
 			return d;
 		},
-		origin: BuiltInProcName.SpecialBinOp
+		customControlFlow: config.lazy,
+		origin:            BuiltInProcName.SpecialBinOp
 	});
 
 	for(const arg of processedArguments) {
@@ -46,6 +50,17 @@ export function processSpecialBinOp<OtherInfo>(
 		if(config.lazy) {
 			break;
 		}
+	}
+
+	const [lhs, rhs] = processedArguments;
+	if(config.lazy && lhs !== undefined) {
+		const graph = information.graph;
+		if(rhs !== undefined) {
+			ControlFlow.branchesTo(graph, lhs, ControlFlow.entryOf(rhs), evalsRhs);
+			ControlFlow.continuesWith(graph, rhs, rootId);
+		}
+		ControlFlow.branchesTo(graph, lhs, rootId, { id: rootId, when: !evalsRhs.when });
+		return { ...information, cfgEntry: ControlFlow.entryOf(lhs), cfgExit: rootId };
 	}
 
 	return information;

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[src/documentation/wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts)' on 2026-08-16, 06:15:25 UTC (v2.13.16), so please do not edit it directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-20, 22:53:36 UTC (v2.14.1), please do not edit directly._
 <h2 id="Does-Call Query">Does-Call Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Checks whether a function calls another function matching given constraints.\
@@ -44,11 +44,11 @@ _Results (prettified and summarized):_
 Query: **does-call** (2ms)\
 &nbsp;&nbsp;- **calls-eval** found:\
 &nbsp;&nbsp;&nbsp;&nbsp;- Call with id **15** (2.1)\
-_All queries together required ≈2 ms (1ms accuracy, total 3 ms)_
+_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _2.9 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _2.2 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -93,7 +93,7 @@ f("1 + 1")
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _1.5 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _1.3 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered unknown side effects (with ids: 8) during the analysis.
 
 
@@ -127,7 +127,6 @@ eval`"]
 #123;`"]
     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
 end
-   %% No edges found for 10
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 10)`"]
     11[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -145,22 +144,34 @@ end
     15[["`*#91;RFunctionCall#93;* **f**
       *2.1-10* (**id: 15**)
     arg: (13)`"]]
+    1 -.->|"flow"| 6
+    linkStyle 0 stroke:gray,color:gray;
     1 -->|"def-by-on-call"| 13
     6 -->|"reads"| 1
+    6 -.->|"flow"| 8
+    linkStyle 3 stroke:gray,color:gray;
     8 -->|"reads, returns, arg"| 6
     8 -.->|"reads, calls"| built-in:eval
-    linkStyle 3 stroke:gray;
+    linkStyle 5 stroke:gray;
+    8 -.->|"flow"| 9
+    linkStyle 6 stroke:gray,color:gray;
     9 -->|"returns, arg"| 8
     9 -.->|"reads, calls"| built-in:_
-    linkStyle 5 stroke:gray;
+    linkStyle 8 stroke:gray;
 10 -.-|function| flow-10
 
+    10 -.->|"flow"| 0
+    linkStyle 10 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 11
     0 -->|"defined-by"| 10
-    0 -->|"defined-by"| 11
     11 -->|"reads, arg"| 10
     11 -->|"returns, arg"| 0
     11 -.->|"reads, calls"| built-in:_-
-    linkStyle 11 stroke:gray;
+    linkStyle 15 stroke:gray;
+    11 -.->|"flow"| 13
+    linkStyle 16 stroke:gray,color:gray;
+    13 -.->|"flow"| 15
+    linkStyle 17 stroke:gray,color:gray;
     13 -->|"def-on-call"| 1
     15 -->|"reads, arg"| 13
     15 -->|"reads"| 0

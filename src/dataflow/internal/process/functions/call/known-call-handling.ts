@@ -4,13 +4,15 @@ import { ExitPointType } from '../../../../info';
 import { type ForceArguments, processAllArguments } from './common';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { type IdentifierReference, ReferenceType } from '../../../../environments/identifier';
 import type { FunctionArgument } from '../../../../graph/graph';
 import { DataflowGraph } from '../../../../graph/graph';
 import { EdgeType } from '../../../../graph/edge';
+import { ControlFlow } from '../../../control-flow';
 import { dataflowLogger } from '../../../../logger';
 import { type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
@@ -38,6 +40,16 @@ export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments
 	readonly origin:                FunctionOriginInformation | 'default'
 	/** see {@link ProcessAllArgumentInput#nonFunction} */
 	readonly nonFunction?:          ReadonlySet<NodeId>
+	/**
+	 * Suppress the default control flow linkage (arguments in order, then the call).
+	 * Constructs that branch or loop set this and wire their control flow themselves.
+	 */
+	readonly customControlFlow?:    boolean
+	/**
+	 * From this argument index on, the arguments are alternatives of which at most one is evaluated,
+	 * which is how `switch` picks an arm. The arguments before it are evaluated in order as usual.
+	 */
+	readonly alternativeArgsFrom?:  number
 }
 
 /** The result of processing a known function call. */
@@ -148,7 +160,7 @@ function markArgument(graph: DataflowGraph, rootId: NodeId, arg: DataflowInforma
  * add any specific handling.
  */
 export function processKnownFunctionCall<OtherInfo>(
-	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect, origin, nonFunction }: ProcessKnownFunctionCallInput<OtherInfo>,
+	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect, origin, nonFunction, customControlFlow, alternativeArgsFrom }: ProcessKnownFunctionCallInput<OtherInfo>,
 ): ProcessKnownFunctionCallResult {
 	const functionName = processDataflowFor(name, data);
 	const finalGraph = new DataflowGraph(data.completeAst.idMap);
@@ -206,22 +218,23 @@ export function processKnownFunctionCall<OtherInfo>(
 		}
 	}
 
-	// Connects Args in control flow
-	const firstArg = processedArguments[0];
-	if(firstArg) {
-		finalGraph.addEdge(rootId, firstArg.entryPoint, EdgeType.FlowDependency);
-	}
-
-	for(let i = 0; i < processedArguments.length - 1; i++) {
-		const current = processedArguments[i];
-		const next = processedArguments[i + 1];
-
-		if(current === undefined || next === undefined) {
-			continue;
-		}
-
-		for(const exit of current.exitPoints) {
-			finalGraph.addEdge(exit.nodeId, next.entryPoint, EdgeType.FlowDependency);
+	/* an alternative without a name is the default arm, which runs when nothing else matched */
+	const cfgEntry = customControlFlow ? rootId
+		: alternativeArgsFrom === undefined ? ControlFlow.inSequence(finalGraph, processedArguments, rootId)
+			: ControlFlow.picksOneOf(finalGraph, processedArguments, alternativeArgsFrom, rootId,
+				processArgs.slice(alternativeArgsFrom).some(a => a !== EmptyArgument && (!RArgument.is(a) || a.name === undefined)));
+	if(!customControlFlow) {
+		/*
+		 * A jump within an argument that the call does not pass on is caught here (the callee decides whether it
+		 * ever forces that argument), so control resumes at the call rather than leaving it.
+		 */
+		for(const argument of processedArguments) {
+			for(const exit of argument?.exitPoints ?? []) {
+				/* a `return` leaves the enclosing function whatever the call around it does with the argument */
+				if(exit.type !== ExitPointType.Default && exit.type !== ExitPointType.Return && !exitPoints?.includes(exit)) {
+					finalGraph.addEdge(exit.nodeId, rootId, EdgeType.FlowEdge);
+				}
+			}
 		}
 	}
 
@@ -234,7 +247,8 @@ export function processKnownFunctionCall<OtherInfo>(
 			graph:             finalGraph,
 			environment:       finalEnv,
 			entryPoint:        rootId,
-			exitPoints:        exitPoints ?? processedArguments[processArgs.length - 1]?.exitPoints ?? [{ nodeId: rootId, type: ExitPointType.Default, cds: data.cds }],
+			cfgEntry:          cfgEntry === rootId ? undefined : cfgEntry,
+			exitPoints:        exitPoints ?? [{ nodeId: rootId, type: ExitPointType.Default, cds: data.cds }],
 			hooks:             functionName.hooks
 		},
 		callArgs,

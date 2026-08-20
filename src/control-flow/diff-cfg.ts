@@ -87,21 +87,12 @@ function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 				);
 			}
 		}
-		setDifference(new Set(CfgVertex.getMid(lInfo) ?? []), new Set(CfgVertex.getMid(rInfo) ?? []), {
-			...ctx,
-			position: `${ctx.position}Vertex ${id} differs in attached mid markers. `
-		});
-		setDifference(new Set(CfgVertex.getEnd(lInfo) ?? []), new Set(CfgVertex.getEnd(rInfo) ?? []), {
-			...ctx,
-			position: `${ctx.position}Vertex ${id} differs in attached end markers. `
-		});
-
-		const lRoot = CfgVertex.getRootId(lInfo);
-		const rRoot = CfgVertex.getRootId(rInfo);
-		if(lRoot !== rRoot) {
-			ctx.report.addComment(`Vertex ${id} differs in root. ${ctx.leftname}: ${JSON.stringify(lRoot)} vs ${ctx.rightname}: ${JSON.stringify(rRoot)}`, {
-				tag: 'vertex',
-				id
+		const lTargets = CfgVertex.getCallTargets(lInfo);
+		const rTargets = CfgVertex.getCallTargets(rInfo);
+		if(lTargets !== undefined || rTargets !== undefined) {
+			setDifference(lTargets ?? new Set(), rTargets ?? new Set(), {
+				...ctx,
+				position: `${ctx.position}Vertex ${id} differs in call targets. `
 			});
 		}
 

@@ -300,3 +300,15 @@ export function setOnPath(obj: object, path: string, value: unknown): void {
 	}
 	at[segments[segments.length - 1]] = value;
 }
+
+/**
+ * The members of an enum as name-value pairs.
+ * A numeric enum maps its values back to their names as well, which this leaves out.
+ * @example
+ * ```ts
+ * enumMembers(CfgVertexType) // [['Statement', 1], ['Expression', 2], ['Block', 3]]
+ * ```
+ */
+export function enumMembers<T extends object>(enumObject: T): [name: string, value: T[keyof T]][] {
+	return Object.entries(enumObject).filter(([name]) => Number.isNaN(Number(name))) as [string, T[keyof T]][];
+}

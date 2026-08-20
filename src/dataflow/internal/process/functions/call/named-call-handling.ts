@@ -30,6 +30,8 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 		graph:             info.graph.mergeWith(newInfo.graph),
 		environment:       appendEnvironment(info.environment, newInfo.environment),
 		entryPoint:        newInfo.entryPoint,
+		cfgEntry:          newInfo.cfgEntry,
+		cfgExit:           newInfo.cfgExit,
 		exitPoints:        info.exitPoints.concat(newInfo.exitPoints),
 		hooks:             info.hooks.concat(newInfo.hooks)
 	};

@@ -189,6 +189,20 @@ export interface DataflowCfgInformation {
 	/** The entry node into the subgraph */
 	entryPoint: NodeId,
 	/**
+	 * The node control flow enters this subtree at.
+	 * Control flow is modeled in post-order (operands are evaluated before the operator that consumes them),
+	 * so for compound constructs this is not the {@link DataflowCfgInformation#entryPoint|entryPoint}
+	 * (which names the value-producing node) but the first node that is actually evaluated.
+	 * Left `undefined` whenever both coincide, which is the case for all leaves.
+	 */
+	cfgEntry?:  NodeId,
+	/**
+	 * The node control flow leaves this subtree at, joining the branches of the construct if it has any.
+	 * Left `undefined` whenever the {@link DataflowCfgInformation#exitPoints|exitPoints} already name it,
+	 * which is the case whenever the construct has a single point of exit.
+	 */
+	cfgExit?:   NodeId,
+	/**
 	 * All already identified exit points (active 'return'/'break'/'next'-likes) of the respective structure.
 	 * This also tracks (local knowledge of) exceptions thrown within the structure.
 	 * See the {@link ExitPointType#Error|Error} type for more information.

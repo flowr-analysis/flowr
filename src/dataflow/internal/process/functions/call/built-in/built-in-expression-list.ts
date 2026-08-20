@@ -14,6 +14,7 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { DataflowGraph } from '../../../../../graph/graph';
 import { Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
+import { ControlFlow } from '../../../../control-flow';
 import { type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment } from '../../../../../environments/scoping';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
@@ -306,7 +307,14 @@ export function processExpressionList<OtherInfo>(
 	}
 
 	if(defaultReturnExpr) {
-		exitPoints.push(...defaultReturnExpr.exitPoints);
+		exitPoints.push(data.cds ? {
+			type:   ExitPointType.Default,
+			nodeId: defaultReturnExpr.entryPoint,
+			cds:    data.cds
+		} : {
+			type:   ExitPointType.Default,
+			nodeId: defaultReturnExpr.entryPoint
+		});
 	}
 
 	const ingoing: IdentifierReference[] = [];
@@ -342,28 +350,9 @@ export function processExpressionList<OtherInfo>(
 
 	const meId = withGroup ? rootId : (processedExpressions.find(isNotUndefined)?.entryPoint ?? rootId);
 
-	// TODO: Factor out into separate function
-	const firstArg = processedExpressions[0];
-	if(firstArg) {
-		nextGraph.addEdge(rootId, firstArg.entryPoint, EdgeType.FlowDependency);
-	}
-	for(let i = 0; i < processedExpressions.length - 1; i++) {
-		const current = processedExpressions[i];
-		const next = processedExpressions[i + 1];
-
-		if(current === undefined || next === undefined) {
-			continue;
-		}
-
-		// TODO: If more than one, we should add ControlFlow edges instead of FlowDependency edges
-		for(const exit of current.exitPoints) {
-			if(exit.cds) {
-				nextGraph.addEdge(exit.nodeId, next.entryPoint, EdgeType.ControlDependency, { when: exit.cds[0].when, condition: exit.cds[0].id });
-			} else {
-				nextGraph.addEdge(exit.nodeId, next.entryPoint, EdgeType.FlowDependency);
-			}
-		}
-	}
+	/* an empty group completes on the spot, otherwise the last expression has to be able to reach the end */
+	const reachesEnd = !!withGroup && (processedExpressions.length === 0 || exitPoints.some(e => e.type === ExitPointType.Default));
+	const cfgEntry = ControlFlow.inSequence(nextGraph, processedExpressions, reachesEnd ? rootId : undefined);
 
 	return {
 		/* no active nodes remain, they are consumed within the remaining read collection */
@@ -375,6 +364,8 @@ export function processExpressionList<OtherInfo>(
 		graph:             nextGraph,
 		/* if we have no group, we take the last evaluated expr */
 		entryPoint:        meId,
+		cfgEntry:          cfgEntry === meId ? undefined : cfgEntry,
+		cfgExit:           reachesEnd ? rootId : undefined,
 		exitPoints:        exitPoints,
 		hooks:             hooks ?? [],
 		kill:              killed,

@@ -2,11 +2,11 @@ import { assert, describe, it } from 'vitest';
 import { type BasicCfgGuidedVisitorConfiguration, BasicCfgGuidedVisitor } from '../../../src/control-flow/basic-cfg-guided-visitor';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
-import { extractCfg } from '../../../src/control-flow/extract-cfg';
+import { extractCfg, CfgVertex  } from '../../../src/control-flow/control-flow-graph';
 import { withTreeSitter } from '../_helper/shell';
 import { simplifyControlFlowInformation } from '../../../src/control-flow/cfg-simplification';
 import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
-import { CfgVertex } from '../../../src/control-flow/control-flow-graph';
+import { visitCfgInOrder } from '../../../src/control-flow/simple-visitor';
 import { FlowrConfig } from '../../../src/config';
 
 describe('Control Flow Graph', withTreeSitter(parser => {
@@ -33,7 +33,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				const result = await createDataflowPipeline(parser, {
 					context
 				}).allRemainingSteps();
-				let cfg = extractCfg(result.normalize, context, result.dataflow?.graph);
+				let cfg = extractCfg(result.dataflow);
 				if(useBasicBlocks) {
 					cfg = simplifyControlFlowInformation(cfg, { ast: result.normalize, dfg: result.dataflow.graph, ctx: context }, ['to-basic-blocks', 'remove-dead-code']);
 				}
@@ -50,12 +50,29 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 		});
 	}
 
-	assertOrderBasic('simple assignment', 'a <- 1', [3, 2, 0, 1, CfgVertex.toExitId(2), CfgVertex.toExitId(3)]);
-	assertOrderBasic('simple assignment (basic blocks)', 'a <- 1', [CfgVertex.toBasicBlockId(CfgVertex.toExitId(3)), 3, 2, 0, 1, CfgVertex.toExitId(2), CfgVertex.toExitId(3)], [CfgVertex.toBasicBlockId(CfgVertex.toExitId(3)), CfgVertex.toExitId(3), CfgVertex.toExitId(2), 1, 0, 2, 3], true);
-	assertOrderBasic('sequence', 'a;b', [2, 0, 1, CfgVertex.toExitId(2)]);
+	it('walking the control flow does not copy it out of the dataflow graph', async() => {
+		const context = contextFromInput('x <- 1\nif(u) { y <- 2 } else { y <- 3 }\nprint(y)', FlowrConfig.default());
+		const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
+		const cfg = extractCfg(result.dataflow);
+		const projection = cfg.graph as unknown as { projected: boolean };
+
+		visitCfgInOrder(cfg.graph, cfg.entryPoints, () => { /* just walk it */ });
+		assert.isFalse(projection.projected, 'a traversal is answered by the dataflow graph itself');
+
+		cfg.graph.vertices(true);
+		assert.isTrue(projection.projected, 'asking for every vertex at once is what projects the graph');
+	});
+
+	assertOrderBasic('simple assignment', 'a <- 1', [1, 0, 2]);
+	assertOrderBasic('simple assignment (basic blocks)', 'a <- 1',
+		[CfgVertex.toBasicBlockId(1), 1, 0, 2],
+		[CfgVertex.toBasicBlockId(1), 2, 0, 1],
+		true
+	);
+	assertOrderBasic('sequence', 'a;b', [0, 1]);
 	assertOrderBasic('while-loop', 'while(TRUE) a + b',
-		[6, 5, 0, 4, 3, 1, 2, CfgVertex.toExitId(3), CfgVertex.toExitId(4), CfgVertex.toExitId(5), CfgVertex.toExitId(6)],
-		[CfgVertex.toExitId(6), CfgVertex.toExitId(5), 0, 5, CfgVertex.toExitId(4), CfgVertex.toExitId(3), 2, 1, 3, 4, 6]
+		[0, 1, 2, 3, 5],
+		[5, 0, 3, 2, 1]
 	);
 
 }));

@@ -47,10 +47,12 @@ import { RShell } from '../r-bridge/shell';
 import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { FunctionCallVertex, FunctionDefinitionVertex } from '../dataflow/graph/vertex';
+import { ControlFlowEdgeTypes, DfEdge } from '../dataflow/graph/edge';
+import { NoEdges } from '../dataflow/graph/graph';
 import { equidistantSampling, arraySum } from '../util/collections/arrays';
 import { FlowrConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
-import { extractCfg } from '../control-flow/extract-cfg';
+import { extractCfg } from '../control-flow/control-flow-graph';
 import { DataFrameShapeInferenceVisitor } from '../abstract-interpretation/data-frame/shape-inference';
 import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
 import { SetRangeDomain } from '../abstract-interpretation/domains/set-range-domain';
@@ -209,12 +211,21 @@ export class BenchmarkSlicer {
 		// collect dataflow graph size
 		const vertices = this.dataflow.graph.vertices(true);
 		let numberOfEdges = 0;
+		let numberOfControlFlowEdges = 0;
 		let numberOfCalls = 0;
 		let numberOfDefinitions = 0;
 
 		for(const [n, info] of vertices) {
 			const outgoingEdges = this.dataflow.graph.outgoingEdges(n);
-			numberOfEdges += outgoingEdges?.size ?? 0;
+			for(const [, edge] of outgoingEdges ?? NoEdges) {
+				/* the control flow lives in the very same graph, so it is counted on its own to stay comparable */
+				if(DfEdge.includesType(edge, ControlFlowEdgeTypes)) {
+					numberOfControlFlowEdges++;
+				}
+				if(!DfEdge.isOnlyControlFlow(edge)) {
+					numberOfEdges++;
+				}
+			}
 			if(FunctionCallVertex.is(info)) {
 				numberOfCalls++;
 			} else if(FunctionDefinitionVertex.is(info)) {
@@ -246,6 +257,7 @@ export class BenchmarkSlicer {
 			dataflow: {
 				numberOfNodes:               this.dataflow.graph.vertices(true).toArray().length,
 				numberOfEdges:               numberOfEdges,
+				numberOfControlFlowEdges:    numberOfControlFlowEdges,
 				numberOfCalls:               numberOfCalls,
 				numberOfFunctionDefinitions: numberOfDefinitions,
 				sizeOfObject:                getSizeOfDfGraph(this.dataflow.graph),
@@ -324,17 +336,27 @@ export class BenchmarkSlicer {
 	}
 
 	/**
-	 * Extract the control flow graph using {@link extractCFG}
+	 * Project the control flow graph out of the dataflow graph that carries it.
+	 *
+	 * There is no separate control flow analysis any more, so what the step measures is the cost of holding
+	 * the control flow as its own structure; walking it on the dataflow graph costs nothing on top of the
+	 * dataflow analysis itself.
 	 */
 	public extractCFG(): void {
 		benchmarkLogger.trace('try to extract the control flow graph');
 
 		this.guardActive();
-		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined for control flow extraction');
+		guard(this.dataflow !== undefined, 'dataflow should be defined for control flow extraction');
 
-		const ast = this.normalizedAst;
+		const dataflow = this.dataflow;
 
-		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, this.context as FlowrAnalyzerContext, undefined, undefined, true));
+		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => {
+			const cfg = extractCfg(dataflow);
+			/* the graph is a view until something asks for all of it, so this is what there is to measure */
+			cfg.graph.vertices(true);
+			cfg.graph.edges();
+			return cfg;
+		});
 		if(this.stats) {
 			this.stats.controlFlow = {
 				numberOfVertices: this.controlFlow.graph.vertices(true).size,

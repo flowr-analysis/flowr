@@ -3,6 +3,7 @@ import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { expensiveTrace } from '../../../../../../util/log';
 import { type ForceArguments, patchFunctionCall, processAllArguments } from '../common';
+import { ControlFlow } from '../../../../control-flow';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type {
@@ -89,7 +90,7 @@ export function processReplacementFunction<OtherInfo>(
 	const convertedArgs = config.readIndices ? args.slice(1, -1) : symbolArgumentsToStrings(args.slice(1, -1), 0);
 
 	/* now, we soft-inject other arguments, so that calls like `x[y] <- 3` are linked correctly */
-	const { callArgs } = processAllArguments({
+	const { callArgs, processedArguments: indexArguments } = processAllArguments({
 		functionName:   DataflowInformation.initialize(rootId, data),
 		args:           convertedArgs,
 		data,
@@ -97,6 +98,17 @@ export function processReplacementFunction<OtherInfo>(
 		finalGraph:     res.graph,
 		forceArgs:      config.forceArgs,
 	});
+
+	const cfgEntry = ControlFlow.inSequence(res.graph, indexArguments, ControlFlow.entryOf(res));
+	const targetNode = unpackArg(args[0]);
+	if(targetNode !== undefined && targetNode.info.id !== rootId) {
+		/*
+		 * `x$a[i] <- v` becomes one replacement call per accessor, each taking what the previous one produced
+		 * (see the arguments of the call vertices), so the target is what this call continues from.
+		 */
+		res.graph.addEdge(targetNode.info.id, rootId, EdgeType.FlowEdge);
+	}
+	res = { ...res, cfgEntry: cfgEntry ?? res.cfgEntry, cfgExit: rootId };
 
 	patchFunctionCall({
 		nextGraph: res.graph,

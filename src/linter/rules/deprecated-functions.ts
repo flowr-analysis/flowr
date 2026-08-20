@@ -314,7 +314,7 @@ export const DEPRECATED_FUNCTIONS = {
 		};
 	},
 	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: (result: DeprecatedFunctionRuleResult) => `${result.type === 'deprecated-argument' ? `Argument \`${result.arg}\` of ` : ''}Function \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)}`,
+		[LintingPrettyPrintContext.Query]: (result: DeprecatedFunctionRuleResult) => `${result.type === 'deprecated-argument' ? `Argument \`${result.arg}\` of ` : ''}function \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)}`,
 		[LintingPrettyPrintContext.Full]:  (result: DeprecatedFunctionRuleResult) => {
 			const str: string[] = [];
 			if(result.type === 'deprecated-argument') {

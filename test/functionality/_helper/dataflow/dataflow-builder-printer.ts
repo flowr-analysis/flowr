@@ -45,8 +45,8 @@ const EdgeTypeFnMap: Record<EdgeType, string | undefined> = {
 	[EdgeType.NonStandardEvaluation]: 'nse',
 	[EdgeType.SideEffectOnCall]:      'sideEffectOnCall',
 	[EdgeType.DefinedByOnCall]:       'definedByOnCall',
-	[EdgeType.FlowDependency]:        'flowDependency',
-	[EdgeType.ControlDependency]:     'controlDependency'
+	[EdgeType.FlowEdge]:              'flowDependency',
+	[EdgeType.ControlEdge]:           'controlDependency'
 };
 
 class DataflowBuilderPrinter {

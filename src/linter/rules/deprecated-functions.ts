@@ -103,7 +103,7 @@ export type DeprecatedFunctionRuleResult = DeprecatedFunctionResult | Deprecated
 
 export enum DeprecationState {
 	/** A better alternative is available, but the function is kept (softer alternative to deprecated) {@link https://lifecycle.r-lib.org/articles/stages.html#superseded} */
-	Superseeded = 'superseeded',
+	Superseded = 'superseded',
 	/** A better alternative is available, and the function is marked for removal {@link https://lifecycle.r-lib.org/articles/stages.html#deprecated} */
 	Deprecated = 'deprecated',
 	/** No longer works and is removed and replaced by another function {@link https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/Defunct} */

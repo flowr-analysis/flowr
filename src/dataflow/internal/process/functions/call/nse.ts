@@ -1,7 +1,7 @@
 import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RUnaryOp } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 import { EmptyArgument, RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Identifier } from '../../../../environments/identifier';
 import { DataMaskingFunctionNames } from '../../../../environments/data-masking-functions';
@@ -50,6 +50,9 @@ function isNegation<Info>(node: RNode<Info>): node is RUnaryOp<Info> {
  * tell that it does not. Only where nothing at all can be attached is a function ruled out as an operand.
  */
 function definesAFunction(graph: DataflowGraph, id: NodeId): boolean {
+	if(NodeId.isBuiltIn(id)) {
+		return true;
+	}
 	const vertex = graph.getVertex(id);
 	if(FunctionDefinitionVertex.is(vertex)) {
 		return true;

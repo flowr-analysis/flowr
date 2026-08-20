@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-08-19, 23:28:36 UTC (v2.14.1, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-08-20, 00:09:29 UTC (v2.14.1, R v4.6.1), please do not edit directly._
 
 
 This wiki page provides an overview of the inner workings of _flowR_.
@@ -358,7 +358,7 @@ x"])
 
 ```
 	
-(The analysis required _1.8 ms_ (including parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+(The analysis required _2.6 ms_ (including parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 
 
 
@@ -418,7 +418,7 @@ print`"]
 ```
 
 	
-(The analysis required _1.3 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _2.4 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
@@ -586,7 +586,7 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 > ```
 > 
 > 	
-> (The analysis required _0.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+> (The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 > 
 > 
 > 
@@ -1254,7 +1254,7 @@ By treating them like R, as function calls, we get support for these overwrites 
 
 But where are all the interesting things handled then? 
 For that, we want to have a look at the built-in environment, which can be freely configured using flowR's [configuration system](https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr).
-FlowR's heart and soul resides in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/default-builtin-config.ts#L1477"><code><span title="Contains the built-in definitions recognized by flowR">DefaultBuiltinConfig</span></code></a> object, which is used to configure the built-in environment
+FlowR's heart and soul resides in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/default-builtin-config.ts#L1479"><code><span title="Contains the built-in definitions recognized by flowR">DefaultBuiltinConfig</span></code></a> object, which is used to configure the built-in environment
 by mapping function names to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in.ts#L342"><code>BuiltInProcessorMapper</code></a> functions.
 There you can find functions like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-access.ts#L52"><code><span title="Processes different types of access operations.  Example:   a[i] a$foo a[[i]] a@foo  ">processAccess</span></code></a> which handles the (subset) access to a variable,
 or <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-for-loop.ts#L37"><code><span title="Processes a for-loop call: for(<variable> in <vector>) <body> desugared as:   for(<variable>, <vector>, <body>)  ">processForLoop</span></code></a> which handles the primitive for loop construct (whenever it is not overwritten).
@@ -1305,9 +1305,9 @@ function calls over to the function calling it).
 | `Pure` | 406 | computes a result and nothing else, the positive counterpart of `hasUnknownSideEffects` (excludes ImpureProps) |
 | `MayPure` | 58 | pure on its own, but it runs code it is handed, so whatever that code does happens too. The parameter it runs is marked ArgProp.Callee or ArgProp.Nse, as with `lapply(x, f)`. |
 | `Throws`<sup>db</sup> | 10 | may signal an error, like `stop()` (see SigDbInferable) |
-| `Invisible` | 90 | returns invisibly, so the result is not auto-printed |
+| `Invisible` | 92 | returns invisibly, so the result is not auto-printed |
 | `Generic`<sup>db</sup> | 131 | dispatches on the class of an argument (S3, S4, or S7), a group generic like `+` on either operand |
-| `Scope` | 58 | binds, rebinds, or removes names outside of its own frame, like `assign` or `library` |
+| `Scope` | 59 | binds, rebinds, or removes names outside of its own frame, like `assign` or `library` |
 | `Random` | 28 | draws from the random number generator, or sets its state (stated instead of `NonDet`) |
 | `Ambient` | 16 | depends on ambient state like the clock, the locale, environment variables, or global options (stated instead of `NonDet`) |
 | `File` | 89 | touches the file system |
@@ -1352,8 +1352,8 @@ parameter in that role.
 
 | Argument role | Built-ins | Meaning |
 | :-- | --: | :-- |
-| `Alias` | 13 | the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge |
-| `Value` | 238 | the result is computed from the argument's value, like `x` in `sum(x)` |
+| `Alias` | 17 | the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge |
+| `Value` | 242 | the result is computed from the argument's value, like `x` in `sum(x)` |
 | `Shape` | 26 | only the shape is used (length, dimensions, names, other attributes), like `x` in `nrow(x)` |
 | `Flag` | 31 | selects a behavior instead of carrying data, like `na.rm` in `sum(x, na.rm = TRUE)` |
 | `Resource` | 63 | names the resource the call reads or writes, like `file` in `write.csv(x, file)` |

@@ -188,7 +188,9 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 		const value = stands !== undefined ? faint(stands, formatter) : bold(i.value as string, formatter);
 		const version = i.derivedRange !== undefined ? ` ${faint(i.derivedRange.format(), formatter)}` : '';
 		const linked = i.linkedIds ? `, linked ${i.linkedIds.join(', ')}` : '';
-		result.push(`     ${value}${version} ${faint(`via ${fn} (node ${i.nodeId}${linked})`, formatter)}`);
+		/* an output nothing asked for reads like every other one, so it says that it is the top level echoing */
+		const how = i.implicit ? 'auto-printed by' : 'via';
+		result.push(`     ${value}${version} ${faint(`${how} ${fn} (node ${i.nodeId}${linked})`, formatter)}`);
 	}
 }
 

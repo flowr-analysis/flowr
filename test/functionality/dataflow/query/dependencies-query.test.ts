@@ -845,6 +845,21 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				write: [{ nodeId: '1@summary', functionName: 'summary', value: 'stdout', implicit: true }]
 			});
 			testQuery('a pipe into an invisible call prints nothing', 'x |> invisible()', {});
+			/* magrittr's pipe is a call of its own, and what it prints is what the call it feeds does */
+			testQuery('a magrittr pipe reports the call it feeds', 'x %>% summary()', {
+				write: [{ nodeId: '1@summary', functionName: 'summary', value: 'stdout', implicit: true }]
+			});
+			testQuery('a magrittr pipe into an invisible call prints nothing', 'x %>% invisible()', {});
+			testQuery('a magrittr assignment pipe prints nothing', 'x %<>% summary()', {});
+		});
+		describe('A group is visible, whatever it holds', () => {
+			/* `(` hands its argument back visibly, which is the idiom for assigning and seeing the value */
+			testQuery('a parenthesized assignment', '(x <- 1)', {
+				write: [{ nodeId: 4, functionName: '<-', value: 'stdout', implicit: true }]
+			});
+			testQuery('a parenthesized invisible call', '(invisible(1))', {
+				write: [{ nodeId: '1@invisible', functionName: 'invisible', value: 'stdout', implicit: true }]
+			});
 		});
 		describe('A statement returning invisibly', () => {
 			/* every loop hands back an invisible NULL, however often its body runs */
@@ -899,6 +914,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				'function(x) x',
 				'{ invisible(1); 2 }',
 				'{}',
+				'(x <- 1)',
+				'(invisible(1))',
 				'if(TRUE) 42',
 				'summary(1:10)',
 				'suppressWarnings(1)',

@@ -892,11 +892,12 @@ export const WrittenBuiltinDefinitions = [
 		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: true, evalRhsWhen: false, props: CallProp.Pure }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Logical },
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['&', '|']),
 		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: false, props: CallProp.Pure }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Logical },
+	/* a pipe hands back what the side it feeds hands back, which `Alias` is what states */
 	{ type:            'function', names:           ['|>'],
-		processor:       BuiltInProcName.Pipe, config:          { pipePlaceholderName: '_', assignLhs: false, returnLhs: false }, assumePrimitive: true },
-	{ type: 'function', names: [Identifier.from(['%>%', PkgName.Magrittr]), '%!>%'], processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: false, returnLhs: false, rhsMightBeSymbol: true }, assumePrimitive: true  },
-	{ type: 'function', names: [Identifier.from(['%<>%', PkgName.Magrittr])],        processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: true, returnLhs: false, rhsMightBeSymbol: true }, assumePrimitive: true  },
-	{ type: 'function', names: [Identifier.from(['%T>%', PkgName.Magrittr])],        processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: false, returnLhs: true, rhsMightBeSymbol: true }, assumePrimitive: true  },
+		processor:       BuiltInProcName.Pipe, config:          { pipePlaceholderName: '_', assignLhs: false, returnLhs: false, sig: [['lhs', ArgProp.Value], ['rhs', ArgProp.Alias]] }, assumePrimitive: true },
+	{ type: 'function', names: [Identifier.from(['%>%', PkgName.Magrittr]), '%!>%'], processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: false, returnLhs: false, rhsMightBeSymbol: true, sig: [['lhs', ArgProp.Value], ['rhs', ArgProp.Alias]] }, assumePrimitive: true  },
+	{ type: 'function', names: [Identifier.from(['%<>%', PkgName.Magrittr])],        processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: true, returnLhs: false, rhsMightBeSymbol: true, props: CallProp.Invisible | CallProp.Scope }, assumePrimitive: true  },
+	{ type: 'function', names: [Identifier.from(['%T>%', PkgName.Magrittr])],        processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: false, returnLhs: true, rhsMightBeSymbol: true, sig: [['lhs', ArgProp.Alias], ['rhs', ArgProp.Value]] }, assumePrimitive: true  },
 	{ type:      'function', names:     Identifier.fromAll(PkgName.Purrr, ['map', 'map_lgl', 'map_int', 'map_dbl', 'map_chr']), processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x': { index: 0, name: '.x' }

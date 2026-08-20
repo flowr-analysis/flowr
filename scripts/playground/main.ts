@@ -565,8 +565,16 @@ const knownNames = new Set(builtInNames);
  */
 function ranked(options: readonly (Completion & { boost: number })[]): Completion[] {
 	const sorted = [...options].sort((a, b) => b.boost - a.boost);
-	const last = Math.max(1, sorted.length - 1);
-	return sorted.map((option, at) => ({ ...option, boost: Math.round(99 - at / last * 198) }));
+	/* the same name may reach the list from more than one source (a package the script attached and
+	   flowR's own built-ins both carry `ggplot`); the nearest source ranks first, so the rest go */
+	const seen = new Set<string>();
+	const unique = sorted.filter(option => {
+		const first = !seen.has(option.label);
+		seen.add(option.label);
+		return first;
+	});
+	const last = Math.max(1, unique.length - 1);
+	return unique.map((option, at) => ({ ...option, boost: Math.round(99 - at / last * 198) }));
 }
 
 function complete(context: CompletionContext): CompletionResult | null {

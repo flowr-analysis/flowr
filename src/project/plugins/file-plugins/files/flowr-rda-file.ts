@@ -1,6 +1,7 @@
 import type { FileRole, FlowrFileProvider } from '../../../context/flowr-file';
 import { FlowrFile } from '../../../context/flowr-file';
 import fs from 'fs';
+import { assertUnreachable } from '../../../../util/assert';
 import { RFunTabOffsets } from './r-fun-tab';
 import { RShellExecutor } from '../../../../r-bridge/shell-executor';
 
@@ -21,7 +22,7 @@ export class FlowrRDAFile extends FlowrFile<RObjectData[]> {
 	constructor(file: FlowrFileProvider, shortcut: boolean = true) {
 		super(file.path(), file.roles);
 		this.wrapped = file;
-		this.shortcut = shortcut ?? false;
+		this.shortcut = shortcut;
 	}
 
 	/**
@@ -61,6 +62,42 @@ export enum CompressionType {
 	CompUnknownOrNo = 'COMP_UNKNOWN_OR_NO',
 }
 
+/** One byte of a {@link CompressionSignature}: an exact value, or an inclusive range for the bytes that vary. */
+type MagicByte = number | readonly [from: number, to: number];
+
+/** What the first bytes of a file say about how it is compressed. */
+type CompressionSignature =
+	/** The bytes identify a kind flowR can unwrap. */
+	| { readonly magic: readonly MagicByte[], readonly type: CompressionType, readonly zlibOnly?: boolean }
+	/** The bytes are recognizable, but there is no reader for them; the string states why. */
+	| { readonly magic: readonly MagicByte[], readonly unsupported: string };
+
+/**
+ * The magic bytes {@link RDAParser.detectCompression} tries, in order: the first match wins, so a longer
+ * signature has to come before any shorter one it starts with.
+ * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/connections.c#L2675-L2710 | R source: comp_type_from_memory}
+ */
+const CompressionSignatures: readonly CompressionSignature[] = [
+	{ type: CompressionType.CompGz, magic: [0x1f, 0x8b] },
+	/* a zlib header is only two bytes and thus easy to hit by accident, so it is asked for explicitly */
+	{ type: CompressionType.CompGz, zlibOnly: true, magic: [0x78, 0x9c] },
+	/* `BZh` + the block size as a digit, then one of the two block magics bzip2 opens a stream with */
+	{ type: CompressionType.CompBz, magic: [0x42, 0x5a, 0x68, [0x31, 0x39], 0x31, 0x41, 0x59, 0x26, 0x53, 0x59] },
+	{ type: CompressionType.CompBz, magic: [0x42, 0x5a, 0x68, [0x31, 0x39], 0x17, 0x72, 0x45, 0x38, 0x50, 0x90] },
+	{ unsupported: 'this is a lzop-compressed file which this build of R does not support', magic: [0x89, 0x4c, 0x5a, 0x4f] },
+	{ type: CompressionType.CompZstd, magic: [0x28, 0xb5, 0x2f, 0xfd] },
+	{ type: CompressionType.CompXz, magic: [0xfd, 0x37, 0x7a, 0x58, 0x5a] },
+	{ type: CompressionType.CompLzma, magic: [0xff, 0x4c, 0x5a, 0x4d, 0x41] },
+	/* lzma_alone, which has no magic of its own: this is the default filter/dictionary header */
+	{ type: CompressionType.CompLzma, magic: [0x5d, 0x00, 0x00, 0x80, 0x00] }
+];
+
+/** Whether `buf` starts with the given magic. */
+function startsWithMagic(buf: Buffer, magic: readonly MagicByte[]): boolean {
+	return buf.length >= magic.length
+		&& magic.every((byte, i) => typeof byte === 'number' ? buf[i] === byte : buf[i] >= byte[0] && buf[i] <= byte[1]);
+}
+
 /**
  * RDA file serialization format and version.
  * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/saveload.c#L61-L72 | R source: saveload.c}
@@ -81,6 +118,30 @@ export enum SerializationTypeTag {
 }
 
 type SerializationTypes = SerializationTypeTag | number;
+
+/** The five-byte magic each serialization variant starts with. */
+const SerializationMagic: Readonly<Record<string, SerializationTypeTag>> = {
+	'RDA1\n': SerializationTypeTag.MagicAsciiV1,
+	'RDB1\n': SerializationTypeTag.MagicBinaryV1,
+	'RDX1\n': SerializationTypeTag.MagicXdrV1,
+	'RDA2\n': SerializationTypeTag.MagicAsciiV2,
+	'RDB2\n': SerializationTypeTag.MagicBinaryV2,
+	'RDX2\n': SerializationTypeTag.MagicXdrV2,
+	'RDA3\n': SerializationTypeTag.MagicAsciiV3,
+	'RDB3\n': SerializationTypeTag.MagicBinaryV3,
+	'RDX3\n': SerializationTypeTag.MagicXdrV3,
+};
+
+/** The variants {@link RDAParser.deserialize} handles. */
+const SupportedSerializationTypes: ReadonlySet<SerializationTypes> = new Set([
+	SerializationTypeTag.MagicAsciiV2, SerializationTypeTag.MagicBinaryV2, SerializationTypeTag.MagicXdrV2,
+	SerializationTypeTag.MagicAsciiV3, SerializationTypeTag.MagicBinaryV3, SerializationTypeTag.MagicXdrV3
+]);
+
+/** The variants that would need the version one reader, see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/saveload.c#L2157-L2196 | R source: R_LoadSavedData}. */
+const VersionOneSerializationTypes: ReadonlySet<SerializationTypes> = new Set([
+	SerializationTypeTag.MagicAsciiV1, SerializationTypeTag.MagicBinaryV1, SerializationTypeTag.MagicXdrV1
+]);
 
 type RObject = RValues.NilValue | RObjectData;
 
@@ -214,11 +275,9 @@ export class RDAParser{
 	private currentDepth:                  number = 0;
 	private static readonly INITIAL_DEPTH: number = 1;
 	private lastName:                      string | undefined = undefined;
-	private setLastName = false;
 	private offset = 0;
 	private static readonly R_CODE_SET_MAX = 2 ** 6 - 1;
 	private RWeakRefs:                     null | RObjectData = null;
-	private static readonly CHUNK_SIZE = 8906;
 	private static readonly SIZE_OF_DOUBLE = 2 ** 3;
 	private static readonly WORD_SIZE = 2 ** 7;
 	private static readonly MAX_VECTOR_LENGTH = 2 ** 16;
@@ -226,25 +285,20 @@ export class RDAParser{
 	private readonly refTable:             RObject[] = [];
 	private Registry:                      RObjectData | null = null;
 
-
-	private opinfo = {
-		addr:     null,
-		argc:     null,
-		instName: null
-	};
-
+	/**
+	 * @param file     - The RDA file to read.
+	 * @param shortcut - When `true`, only top-level object names and types are collected, payloads are skipped.
+	 */
 	constructor(file: FlowrFileProvider, shortcut: boolean = true) {
 		this.file = file;
-		this.shortcut = shortcut ?? true;
+		this.shortcut = shortcut;
 	}
 
 	/**
 	 * Parses an RDA file.
 	 *
-	 * The file is decompressed, deserialized, and converted into a flattened
-	 * object representation.
-	 * @param file - RDA file provider.
-	 * @param shortcut - When `true`, only names and types are collected.
+	 * The file is decompressed, deserialized, and converted into a flattened object representation,
+	 * as far as the `shortcut` the parser was constructed with asks for.
 	 * @returns List of found {@link RObjectData} or `null` if the file is empty.
 	 */
 	parse(): RObjectData[] | null {
@@ -261,49 +315,21 @@ export class RDAParser{
 
 	/**
 	 * Detects the compression algorithm used for an RDA file.
-	 * @param buf - Raw file buffer.
-	 * @param with_zlib - Whether zlib headers should also be considered.
-	 * @returns Detected {@link CompressionType}.
+	 * @param buf      - Raw file buffer.
+	 * @param withZlib - Whether a bare zlib header should count as gzip, see {@link CompressionSignatures}.
+	 * @returns The first {@link CompressionSignatures} entry the buffer matches, {@link CompressionType.CompUnknownOrNo} if none does.
+	 * @throws Error if the file is of a recognized but unreadable kind.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/connections.c#L2675-L2710 | R source: comp_type_from_memory}
 	 */
-	detectCompression(buf: Buffer, with_zlib: boolean = false): CompressionType {
-		if(buf.length >= 2 && buf[0] == 0x1f && buf[1] == 0x8b) {
-			return CompressionType.CompGz;
-		}
-		if(with_zlib && buf.length >= 2 && buf[0] == 0x78 && buf[1] == 0x9c){
-			return CompressionType.CompGz;
-		}
-		if(buf.length >= 10 && buf[0] === 0x42 && buf[1] === 0x5a && buf[2] === 0x68) {
-			if(buf[3] >= 0x31 && buf[3] <= 0x39) {
-				const magic1 = [0x31, 0x41, 0x59, 0x26, 0x53, 0x59];
-				const magic2 = [0x17, 0x72, 0x45, 0x38, 0x50, 0x90];
-				const isMagic1 = magic1.every((v, i) => buf[4 + i] === v);
-				const isMagic2 = magic2.every((v, i) => buf[4 + i] === v);
-
-				if(isMagic1 || isMagic2) {
-					return CompressionType.CompBz;
-				}
+	detectCompression(buf: Buffer, withZlib: boolean = false): CompressionType {
+		for(const signature of CompressionSignatures) {
+			if(!startsWithMagic(buf, signature.magic) || ('zlibOnly' in signature && signature.zlibOnly && !withZlib)) {
+				continue;
+			} else if('unsupported' in signature) {
+				throw new Error(signature.unsupported);
 			}
+			return signature.type;
 		}
-
-		if(buf.length >= 4){
-			if(buf.length >= 4 && buf[0] == 0x89 && buf[1] === 0x4c && buf[2] === 0x5a && buf[3] === 0x4f) {
-				throw new Error('this is a lzop-compressed file which this build of R does not support');
-			} else if(buf.length >= 4 && buf[0] === 0x28 && buf[1] === 0xB5 && buf[2] === 0x2F && buf[3] === 0xFD) {
-				return CompressionType.CompZstd;
-			}
-		}
-
-		if(buf.length >= 5) {
-			if(buf[0] === 0xFD && buf[1] === 0x37 && buf[2] === 0x7a && buf[3] === 0x58 && buf[4] === 0x5a) {
-				return CompressionType.CompXz;
-			} else if(buf[0] === 0xFF && buf[1] === 0x4C && buf[2] === 0x5A && buf[3] === 0x4D && buf[4] === 0x41) {
-				return CompressionType.CompLzma;
-			} else if(buf[0] === 0x5D && buf[1] === 0x00 && buf[2] === 0x00 && buf[3] === 0x80 && buf[4] === 0x00) {
-				return CompressionType.CompLzma;
-			}
-		}
-
 		return CompressionType.CompUnknownOrNo;
 	}
 
@@ -343,15 +369,14 @@ export class RDAParser{
 
 			case CompressionType.CompXz:
 			case CompressionType.CompLzma:
-			case CompressionType.CompZstd: {
-				throw new Error(compressionType + 'not supported yet.');
-			}
+			case CompressionType.CompZstd:
+				throw new Error(`${compressionType} is not supported yet.`);
 
 			case CompressionType.CompUnknownOrNo:
 				buffer = fileContent;
 				break;
 			default:
-				throw new Error('Unknown or unsupported compression type.');
+				assertUnreachable(compressionType);
 		}
 
 		return buffer;
@@ -373,31 +398,12 @@ export class RDAParser{
 		}
 
 		const magic = buf.toString('ascii', 0, 5);
-		switch(magic) {
-			case 'RDA1\n':
-				return SerializationTypeTag.MagicAsciiV1;
-			case 'RDB1\n':
-				return SerializationTypeTag.MagicBinaryV1;
-			case 'RDX1\n':
-				return SerializationTypeTag.MagicXdrV1;
-			case 'RDA2\n':
-				return SerializationTypeTag.MagicAsciiV2;
-			case 'RDB2\n':
-				return SerializationTypeTag.MagicBinaryV2;
-			case 'RDX2\n':
-				return SerializationTypeTag.MagicXdrV2;
-			case 'RDA3\n':
-				return SerializationTypeTag.MagicAsciiV3;
-			case 'RDB3\n':
-				return SerializationTypeTag.MagicBinaryV3;
-			case 'RDX3\n':
-				return SerializationTypeTag.MagicXdrV3;
-		}
-
-		if(magic.startsWith('RD')) {
+		if(magic in SerializationMagic) {
+			return SerializationMagic[magic];
+		} else if(magic.startsWith('RD')) {
 			return SerializationTypeTag.MagicMaybeTooNew;
 		}
-
+		/* no magic at all: the first four bytes are the version number of a pre-magic workspace */
 		return Number(buf.toString('ascii', 0, 4));
 	}
 
@@ -412,32 +418,16 @@ export class RDAParser{
 		this.offset += 5;
 
 		if(
-			serializationType === undefined         ||
-			serializationType === 'R_MAGIC_CORRUPT' ||
-			serializationType === 'R_MAGIC_EMPTY'   ||
-			serializationType === 'R_MAGIC_MAYBE_TOONEW'
+			serializationType === SerializationTypeTag.MagicCorrupt ||
+			serializationType === SerializationTypeTag.MagicEmpty   ||
+			serializationType === SerializationTypeTag.MagicMaybeTooNew
 		) {
 			throw new Error('Could not determine serialization type');
 		}
 
-		if(
-			serializationType === 'R_MAGIC_ASCII_V2'  ||
-			serializationType === 'R_MAGIC_ASCII_V3'  ||
-			serializationType === 'R_MAGIC_XDR_V2'    ||
-			serializationType === 'R_MAGIC_XDR_V3'    ||
-			serializationType === 'R_MAGIC_BINARY_V2' ||
-			serializationType === 'R_MAGIC_BINARY_V3'
-		) {
-			const result = this.deserialize();
-			this.currentDepth--;
-			return result;
-		}
-		if(
-			serializationType === 'R_MAGIC_ASCII_V1' ||
-			serializationType === 'R_MAGIC_XDR_V1'   ||
-			serializationType === 'R_MAGIC_BINARY_V1'
-		){
-			// https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/saveload.c#L2157-L2196
+		if(SupportedSerializationTypes.has(serializationType)) {
+			return this.deserialize();
+		} else if(VersionOneSerializationTypes.has(serializationType)) {
 			console.warn('Version one rda files are not supported yet');
 		}
 		return RValues.NilValue;
@@ -455,10 +445,12 @@ export class RDAParser{
 			case 'B': this.format = SerializationFormat.Binary; break;
 			case 'X': this.format = SerializationFormat.Xdr; break;
 			case '\n':
-				if(String.fromCodePoint(this.buffer[this.offset + 1]) === 'A') {
-					this.format = SerializationFormat.Ascii;
-					this.offset += 1;
+				/* an ASCII stream may leave a trailing newline behind, so the format follows in the next two bytes */
+				if(String.fromCodePoint(this.buffer[this.offset + 1]) !== 'A') {
+					throw new Error('unknown input format');
 				}
+				this.format = SerializationFormat.Ascii;
+				this.offset += 2;
 				break;
 			default:
 				throw new Error('unknown input format');
@@ -539,8 +531,6 @@ export class RDAParser{
 			this.skipWord();
 		} else if(this.format === SerializationFormat.Binary || this.format === SerializationFormat.Xdr) {
 			this.offset += 4;
-		} else {
-			return;
 		}
 	}
 
@@ -594,7 +584,7 @@ export class RDAParser{
 			c = this.inChar();
 		}
 		if(i >= size) {
-			throw new Error(`$\{i} >= ${size} when reading word.`);
+			throw new Error(`${i} >= ${size} when reading word.`);
 		}
 
 		return word.join('');
@@ -608,24 +598,7 @@ export class RDAParser{
 	 * @throws Error if EOF is reached or the word exceeds {@link RDAParser.WORD_SIZE}.
 	 */
 	skipWord(): string {
-		let c;
-		let i = 0;
-
-		do{
-			c = this.inChar();
-			if(c === -1){
-				throw new Error('Read character is -1.');
-			}
-		} while(this.isSpace(c));
-
-		while(!this.isSpace(c) && i < RDAParser.WORD_SIZE) {
-			i++;
-			c = this.inChar();
-		}
-		if(i >= RDAParser.WORD_SIZE) {
-			throw new Error(`$\{i} >= ${RDAParser.WORD_SIZE} when reading word.`);
-		}
-
+		this.inWord(RDAParser.WORD_SIZE);
 		return '';
 	}
 
@@ -726,35 +699,8 @@ export class RDAParser{
 	 */
 	skipString(len: number): void {
 		if(this.format === SerializationFormat.Ascii) {
-			if(len > 0){
-				while(this.offset < this.buffer.length) {
-					const c = this.buffer[this.offset++];
-					if(!this.isSpace(c)) {
-						break;
-					}
-				}
-
-				this.offset--;
-
-				for(let i = 0; i < len; i++) {
-					let c = String.fromCodePoint(this.buffer[this.offset++]);
-					if(c === '\\'){
-						c = String.fromCodePoint(this.buffer[this.offset++]);
-						switch(c){
-							case '0': case '1': case '2': case '3':
-							case '4': case '5': case '6': case '7': {
-								let j = 0;
-								while('0' <= c && c < '8' && j < 3) {
-									c = String.fromCodePoint(this.buffer[this.offset++]);
-									j++;
-								}
-								this.offset--;
-								break;
-							}
-						}
-					}
-				}
-			}
+			// the escape handling makes the consumed length depend on the content, so we have to decode it
+			this.inString(len);
 		} else {
 			this.offset += len;
 		}
@@ -767,9 +713,9 @@ export class RDAParser{
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2230-L2235 | R source: decodeVersion}
 	 */
 	decodeVersion(writerVersion: number): number[] {
-		const v = writerVersion / RDAParser.MAX_VECTOR_LENGTH;
+		const v = Math.trunc(writerVersion / RDAParser.MAX_VECTOR_LENGTH);
 		writerVersion = writerVersion % RDAParser.MAX_VECTOR_LENGTH;
-		const p = writerVersion / 2 ** 8;
+		const p = Math.trunc(writerVersion / 2 ** 8);
 		writerVersion = writerVersion % 2 ** 8;
 		const s = writerVersion;
 
@@ -983,13 +929,11 @@ export class RDAParser{
 								throw new Error('invalid length');
 							}
 							const name = this.inString(len);
-							const index = (RFunTabOffsets as Record<string, string | number>)[name] as number;
-							if(name in RFunTabOffsets) {
-								s = this.mkPrimSxp(index, type === SexpType.BuiltInSxp ? 1 : 0);
-							} else {
-								s.value = RValues.NilValue;
+							if(!(name in RFunTabOffsets)) {
 								throw new Error(`unrecognized internal function name "${name}"`);
 							}
+							const index = (RFunTabOffsets as Record<string, string | number>)[name] as number;
+							s = this.mkPrimSxp(index, type === SexpType.BuiltInSxp ? 1 : 0);
 						}
 						break;
 					case SexpType.CharSxp: {
@@ -998,8 +942,6 @@ export class RDAParser{
 							throw new Error(`Invalid length ${len} of string.`);
 						} else if(len == -1) {
 							s.name = RValues.NaString;
-						} else if(len < 1000) {
-							s.name = this.readChar(len, levels);
 						} else {
 							s.name = this.readChar(len, levels);
 						}
@@ -1211,8 +1153,6 @@ export class RDAParser{
 							throw new Error(`Invalid length ${len} of string.`);
 						} else if(len == -1) {
 							s.name = RValues.NaString;
-						} else if(len < 1000) {
-							s.name = this.readChar(len, levels);
 						} else {
 							s.name = this.readChar(len, levels);
 						}
@@ -1302,13 +1242,8 @@ export class RDAParser{
 				}
 				break;
 			default: {
-				for(let done = 0; done < len;) {
-					const t = Math.min(RDAParser.CHUNK_SIZE, len - done);
-					for(let i = 0; i < t; i++) {
-						result[done + i] = this.buffer[this.offset];
-						this.offset += 1;
-					}
-					done += t;
+				for(let i = 0; i < len; i++) {
+					result[i] = this.buffer[this.offset++];
 				}
 			}
 		}
@@ -1327,13 +1262,7 @@ export class RDAParser{
 				this.skipWord();
 			}
 		} else {
-			for(let done = 0; done < len;) {
-				const t = Math.min(RDAParser.CHUNK_SIZE, len - done);
-				for(let i = 0; i < t; i++) {
-					this.offset += 1;
-				}
-				done += t;
-			}
+			this.offset += len;
 		}
 	}
 
@@ -1515,7 +1444,6 @@ export class RDAParser{
 
 			if(hasTag && this.currentDepth == RDAParser.INITIAL_DEPTH && typeof s.tag === 'object') {
 				this.lastName = s.tag.name;
-				this.setLastName = true;
 			}
 
 			s.car = this.shortcut ? this.skipItem() : this.readItem();
@@ -1630,39 +1558,19 @@ export class RDAParser{
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/dstruct.c#L37-L68 | R source: mkPRIMSXP}
 	 */
 	mkPrimSxp(index: number, evaluation: number): RObjectData {
-		const type = evaluation ? SexpType.BuiltInSxp : SexpType.SpecialSxp;
-		let primCache: RObject = RValues.NilValue;
-		let funTabSize = 0;
-		if(!primCache || primCache === RValues.NilValue){
-			funTabSize = Object.keys(RFunTabOffsets).length;
-
-			primCache = {};
-			primCache.type = SexpType.VecSxp;
-			primCache.value = new Array(funTabSize);
-		}
-
-		if(index < 0 || index >= funTabSize) {
+		if(index < 0 || index >= Object.keys(RFunTabOffsets).length) {
 			throw new Error('offset is out of R_FunTab range');
 		}
-
-		let result = this.VECTOR_ELT(primCache, index);
-
-		if(!result || result === RValues.NilValue) {
-			result = {};
-			result.type = type;
-			result.offset = index;
-			// SET_VECTOR_ELT(primCache, index, result);
-		} else if(result.type !== type) {
-			throw new Error('requested primitive type is not consistent with cached value');
-		}
-
-		return result;
+		return {
+			type:   evaluation ? SexpType.BuiltInSxp : SexpType.SpecialSxp,
+			offset: index
+		};
 	}
 
 	/**
 	 * Reads `len` bytes as a character string and applies encoding from the GP bits.
 	 *
-	 * Encoding flags: bit 3 = UTF-8, bit 2 = Latin-1, bit 6 = bytes (returned as-is).
+	 * Encoding flags: bit 3 = UTF-8, bit 2 = Latin-1, bit 1 = raw bytes, bit 6 = ASCII (native-safe).
 	 * @param len - Number of bytes to read.
 	 * @param levels - GP levels bits from the `CharSxp` flags word.
 	 * @returns The decoded string, or `''` when the encoding is not yet handled.
@@ -1678,7 +1586,7 @@ export class RDAParser{
 		if(levels & (1 << 2)) {
 			return new TextDecoder('iso-8859-1').decode(bytes);
 		}
-		if(levels & (1 << 6)) {
+		if(levels & (1 << 1) || levels & (1 << 6)) {
 			return bytes.toString('latin1');
 		}
 		console.warn('Native encoding detected! Native encoding not supported yet! Value will be empty');
@@ -1699,12 +1607,12 @@ export class RDAParser{
 		if(len == -1) {
 			const len1 = this.assertInteger(this.inInteger());
 			const len2 = this.assertInteger(this.inInteger());
-			const xLen = len1;
 			/* sanity check for now */
 			if(len1 > RDAParser.MAX_VECTOR_LENGTH) {
 				throw new Error('invalid upper part of serialized vector length');
 			}
-			return (xLen << 32) + len2;
+			/* both halves are written as unsigned; a shift would wrap at 32 bit, so the high half is scaled instead */
+			return len1 * 2 ** 32 + (len2 >>> 0);
 		} else {
 			return len;
 		}
@@ -1722,16 +1630,12 @@ export class RDAParser{
 			case SerializationFormat.Xdr:
 			{
 				const result: number[] = [];
-				for(let done = 0; done < len;) {
-					const t = Math.min(RDAParser.CHUNK_SIZE, len - done);
-					for(let cnt = 0; cnt < t; cnt++) {
-						if(this.offset + 4 > this.buffer.length) {
-							throw new Error('XDR read failed');
-						}
-						result[done + cnt] = this.buffer.readInt32BE(this.offset);
-						this.offset += 4;
+				for(let cnt = 0; cnt < len; cnt++) {
+					if(this.offset + 4 > this.buffer.length) {
+						throw new Error('XDR read failed');
 					}
-					done += t;
+					result[cnt] = this.buffer.readInt32BE(this.offset);
+					this.offset += 4;
 				}
 				return result;
 			}
@@ -1761,16 +1665,10 @@ export class RDAParser{
 		switch(this.format) {
 			case SerializationFormat.Xdr:
 			{
-				for(let done = 0; done < len;) {
-					const t = Math.min(RDAParser.CHUNK_SIZE, len - done);
-					for(let cnt = 0; cnt < t; cnt++) {
-						if(this.offset + 4 > this.buffer.length) {
-							throw new Error('XDR read failed');
-						}
-						this.offset += 4;
-					}
-					done += t;
+				if(this.offset + 4 * len > this.buffer.length) {
+					throw new Error('XDR read failed');
 				}
+				this.offset += 4 * len;
 				break;
 			}
 			case SerializationFormat.Binary:
@@ -1797,18 +1695,9 @@ export class RDAParser{
 		switch(this.format) {
 			case SerializationFormat.Xdr: {
 				const result = [];
-				for(let done = 0; done < len;) {
-					const t = Math.min(RDAParser.CHUNK_SIZE, len - done);
-
-					const chunkBytes = t * RDAParser.SIZE_OF_DOUBLE;
-					const chunk = this.buffer.subarray(this.offset, this.offset + chunkBytes);
-					this.offset += chunkBytes;
-
-					for(let i = 0; i < t; i++) {
-						const value = chunk.readDoubleBE(i * RDAParser.SIZE_OF_DOUBLE);
-						result.push(value);
-					}
-					done += t;
+				for(let i = 0; i < len; i++) {
+					result.push(this.buffer.readDoubleBE(this.offset));
+					this.offset += RDAParser.SIZE_OF_DOUBLE;
 				}
 				return result;
 			}
@@ -1837,12 +1726,7 @@ export class RDAParser{
 	skipRealVec(len: number): (number | RValues)[] | null[] {
 		switch(this.format) {
 			case SerializationFormat.Xdr: {
-				for(let done = 0; done < len;) {
-					const t = Math.min(RDAParser.CHUNK_SIZE, len - done);
-					const chunkBytes = t * RDAParser.SIZE_OF_DOUBLE;
-					this.offset += chunkBytes;
-					done += t;
-				}
+				this.offset += len * RDAParser.SIZE_OF_DOUBLE;
 				break;
 			}
 			case SerializationFormat.Binary:
@@ -1908,11 +1792,8 @@ export class RDAParser{
 	skipReal(): void {
 		if(this.format === SerializationFormat.Ascii) {
 			this.skipWord();
-			return;
-
 		} else if(this.format === SerializationFormat.Binary || this.format === SerializationFormat.Xdr) {
 			this.offset += 8;
-			return;
 		}
 	}
 
@@ -1926,29 +1807,14 @@ export class RDAParser{
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1579-L1616 | R source: InComplexVec}
 	 */
 	inComplexVec(len: number): Complex[] {
-		switch(this.format) {
-			case SerializationFormat.Xdr: {
-				const result: Complex[] = [];
-				for(let done = 0; done < len;) {
-					const t = Math.min(RDAParser.CHUNK_SIZE, len - done);
-					for(let cnt = 0; cnt < t; cnt++) {
-						result[done] = this.inComplex();
-					}
-					done += t;
-				}
-				return result;
-			}
-			case SerializationFormat.Binary: {
-				throw new Error('No binary support yet.');
-			}
-			default: {
-				const result: Complex[] = [];
-				for(let cnt = 0; cnt < len; cnt++) {
-					result[cnt] = this.inComplex();
-				}
-				return result;
-			}
+		if(this.format === SerializationFormat.Binary) {
+			throw new Error('No binary support yet.');
 		}
+		const result: Complex[] = [];
+		for(let cnt = 0; cnt < len; cnt++) {
+			result[cnt] = this.inComplex();
+		}
+		return result;
 	}
 
 	/**
@@ -1959,25 +1825,11 @@ export class RDAParser{
 	 * @throws Error for BINARY format.
 	 */
 	skipComplexVec(len: number): void {
-		switch(this.format) {
-			case SerializationFormat.Xdr: {
-				for(let done = 0; done < len;) {
-					const t = Math.min(RDAParser.CHUNK_SIZE, len - done);
-					for(let cnt = 0; cnt < t; cnt++) {
-						this.skipComplex();
-					}
-					done += t;
-				}
-				break;
-			}
-			case SerializationFormat.Binary: {
-				throw new Error('No binary support yet.');
-			}
-			default: {
-				for(let cnt = 0; cnt < len; cnt++) {
-					this.skipComplex();
-				}
-			}
+		if(this.format === SerializationFormat.Binary) {
+			throw new Error('No binary support yet.');
+		}
+		for(let cnt = 0; cnt < len; cnt++) {
+			this.skipComplex();
 		}
 	}
 
@@ -2008,25 +1860,16 @@ export class RDAParser{
 	 * @throws Error if `x` is not a {@link SexpType.StrSxp} or `i` is out of bounds.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L4283-L4301 | R source: SET_STRING_ELT}
 	 */
-	SET_STRING_ELT(x: RObjectData, i: number, _v: RObjectData): void {
+	SET_STRING_ELT(x: RObjectData, i: number, v: RObjectData): void {
 		if(x.type !== SexpType.StrSxp) {
 			throw new Error(`SET_STRING_ELT() can only be applied to a 'character vector', not a '${x.type}'`);
 		}
-		// if(v.type !== SexpType.CharSxp) {
-		// throw new Error(`Value of SET_STRING_ELT() must be a 'CHARSXP' not a '${v.type}'`);
-		// }
-
-		const arr = x.value as [];
+		const arr = x.value as (string | RValues)[];
 
 		if(i < 0 || i >= arr.length) {
 			throw new Error(`attempt to set index ${i}/${arr.length} in SET_STRING_ELT`);
 		}
-
-		// if(x.altRep){
-		// this.ALTSTRING_SET_ELT(x, i, v);
-		// }
-
-		// arr[i] = v.name;
+		arr[i] = v.name ?? RValues.NaString;
 	}
 
 	/**

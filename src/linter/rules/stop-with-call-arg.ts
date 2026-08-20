@@ -1,3 +1,4 @@
+import { MatchArgs } from '../../dataflow/graph/match-args';
 import {
 	LintingPrettyPrintContext,
 	type LintingResult,
@@ -14,7 +15,6 @@ import type { Writable } from 'ts-essentials';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
-import { pMatch } from '../../dataflow/internal/linker';
 import { valueSetGuard } from '../../dataflow/eval/values/general';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import { Dataflow } from '../../dataflow/graph/df-helper';
@@ -55,7 +55,7 @@ export const STOP_WITH_CALL_ARG = {
 							'call.':  'call.',
 							'domain': 'domain'
 						} as const;
-						const mapping = pMatch(fCall.args, stopParamMap);
+						const mapping = MatchArgs.toSpec(fCall.args, stopParamMap);
 						const mappedToStop = mapping.get('call.') ?? [];
 						for(const argId of mappedToStop) {
 							const res = Resolve.toValue(argId, { graph: dataflow.graph, environment: fCall.environment, ctx: data.inspectContext() });

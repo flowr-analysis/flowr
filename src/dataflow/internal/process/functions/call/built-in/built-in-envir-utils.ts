@@ -7,7 +7,6 @@ import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-
 import { RFunctionCall, EmptyArgument  } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { unpackArg } from '../argument/unpack-argument';
-import { signatureParameterNames } from '../../../../../../project/sigdb/decode';
 import type { IdentifierDefinition, InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { define } from '../../../../../environments/define';
@@ -90,8 +89,7 @@ export function signatureParamNames<OtherInfo>(
 	id:       Identifier,
 	fallback: readonly string[]
 ): readonly string[] {
-	const sig = data.ctx.deps.signatureOf(id)?.signature;
-	const names = sig ? signatureParameterNames(sig) : [];
+	const names = data.ctx.deps.signatures().parametersOf(id) ?? [];
 	return names.length > 0 ? names : fallback;
 }
 

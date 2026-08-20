@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's control flow graph">Generated</span> from '[wiki-cfg.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-cfg.ts "src/documentation/wiki-cfg.ts")' on 2026-08-19, 21:38:38 UTC (v2.14.1, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's control flow graph">Generated</span> from '[wiki-cfg.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-cfg.ts "src/documentation/wiki-cfg.ts")' on 2026-08-20, 08:55:15 UTC (v2.14.1, R v4.6.1), please do not edit directly._
 
 
 _flowR_ produces three main perspectives of the program: 1) a [normalized version of the AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)
@@ -88,7 +88,7 @@ flowchart RL
 ```
 
 	
-_(The analysis required _4.0 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+_(The analysis required _2.5 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	)_
 
@@ -147,7 +147,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _2.7 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _1.0 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -209,7 +209,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _3.2 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _1.1 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -283,7 +283,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _2.9 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _1.0 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplifications: `unique-cf-sets`, `to-basic-blocks` .
 	
 
@@ -329,7 +329,7 @@ v`"]]
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _2.7 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _1.0 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplifications: `unique-cf-sets`, `to-basic-blocks`  and render a simplified/compacted version.
 	
 
@@ -394,7 +394,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _3.4 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _1.2 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -412,7 +412,7 @@ f()
 <h2 id="cfg-structure">Structure of the Control Flow Graph</h2>
 
 You can produce your very own control flow graph with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/extract-cfg.ts#L128"><code><span title="Given a normalized AST, this approximates the control flow graph of the program. This view is different from the computation of the dataflow graph and may differ, especially because it focuses on intra-procedural analysis.">extractCfg</span></code></a>.
-The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L659"><code><span title="This class represents the control flow graph of an R program. The control flow may be hierarchical when confronted with function definitions (see CfgVertex and rootVertexIds() ). There are two very simple visitors to traverse a CFG: - visitCfgInOrder visits the graph in the order of the vertices - visitCfgInReverseOrder visits the graph in reverse order If you want to prohibit modification, please...">ControlFlowGraph</span></code></a> class describes everything required to model the control flow graph, with its edge types described by
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L659"><code><span title="This class represents the control flow graph of an R program. The control flow may be hierarchical when confronted with function definitions (see CfgVertex and rootIds() ). There are two very simple visitors to traverse a CFG: - visitCfgInOrder visits the graph in the order of the vertices - visitCfgInReverseOrder visits the graph in reverse order If you want to prohibit modification, please refer...">ControlFlowGraph</span></code></a> class describes everything required to model the control flow graph, with its edge types described by
  <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L439"><code><span title="An edge in the ControlFlowGraph .">CfgEdge</span></code></a> and its vertices by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L72"><code><span title="A vertex in the ControlFlowGraph . Please use the helper object (e.g. getType() ) to work with vertices instead of directly accessing the properties.">CfgVertex</span></code></a>.
 However, you should be aware of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L952"><code><span title="Summarizes the control information of a program">ControlFlowInformation</span></code></a> interface which adds some additional information the CFG
 (and is used during the construction of the CFG as well):
@@ -490,7 +490,7 @@ Blocks are visualized as boxes around the contained vertices.
 
 <h3 id="cfg-structure-edges">CFG Edges</h3>
 
-The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L659"><code><span title="This class represents the control flow graph of an R program. The control flow may be hierarchical when confronted with function definitions (see CfgVertex and rootVertexIds() ). There are two very simple visitors to traverse a CFG: - visitCfgInOrder visits the graph in the order of the vertices - visitCfgInReverseOrder visits the graph in reverse order If you want to prohibit modification, please...">ControlFlowGraph</span></code></a> uses two types of edges to represent the control flow, separated by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L33"><code>CfgEdgeType</code></a> enum
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L659"><code><span title="This class represents the control flow graph of an R program. The control flow may be hierarchical when confronted with function definitions (see CfgVertex and rootIds() ). There are two very simple visitors to traverse a CFG: - visitCfgInOrder visits the graph in the order of the vertices - visitCfgInReverseOrder visits the graph in reverse order If you want to prohibit modification, please refer...">ControlFlowGraph</span></code></a> uses two types of edges to represent the control flow, separated by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L33"><code>CfgEdgeType</code></a> enum
 and the two interfaces: <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L432"><code>CfgFlowDependencyEdge</code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L433"><code>CfgControlDependencyEdge</code></a>.
 
 <h4 id="cfg-flow-dependency">Flow Dependencies</h4>
@@ -517,7 +517,7 @@ flowchart RL
 ```
 
 	
-_(The analysis required _4.1 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+_(The analysis required _1.2 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	)_
 
@@ -589,7 +589,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _4.5 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _0.8 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -642,7 +642,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _3.5 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _1.0 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -698,7 +698,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _3.6 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _1.1 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -769,7 +769,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _3.7 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _1.2 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -836,7 +836,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _7.4 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _1.0 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -905,7 +905,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _4.8 ms_ (including the  normalization and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _0.7 ms_ (including the  normalization and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -971,7 +971,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _3.8 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _0.8 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -1027,7 +1027,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _5.8 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _0.7 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -1068,7 +1068,7 @@ print`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _3.1 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _0.6 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered unknown side effects (with ids: 3 (linked)) during the analysis.
 
 
@@ -1107,7 +1107,7 @@ x #60;#45; 2 #42; 3 #43; 1`"]]
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _4.2 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _0.8 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplifications: `unique-cf-sets`, `to-basic-blocks`  and render a simplified/compacted version.
 	
 
@@ -1163,7 +1163,7 @@ flowchart RL
 ```
 
 	
-_(The analysis required _3.6 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+_(The analysis required _0.7 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	)_
 
@@ -1215,7 +1215,7 @@ flowchart RL
 ```
 
 	
-_(The analysis required _4.2 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+_(The analysis required _0.8 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplifications: `unique-cf-sets`, `to-basic-blocks` .
 	)_
 
@@ -1298,7 +1298,7 @@ f(42)`"]]
 ```
 
 	
-_(The analysis required _16.8 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+_(The analysis required _4.0 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplifications: `unique-cf-sets`, `to-basic-blocks`  and render a simplified/compacted version.
 	)_
 
@@ -1551,7 +1551,7 @@ flowchart RL
 ```
 
 	
-_(The analysis required _10.0 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+_(The analysis required _2.5 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	)_
 
@@ -1567,7 +1567,7 @@ There is a plethora of functions that you can use the traverse the [normalized A
 Similarly, flowR provides you with a set of utility functions and classes that you can use to interact with the control flow graph:
 
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/simple-visitor.ts#L61"><code><span title="Visit all nodes reachable from the start node in the control flow graph, traversing the dependencies in execution order but ignoring cycles.">visitCfgInOrder</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/simple-visitor.ts#L17"><code><span title="Visit all nodes reachable from the start node in the control flow graph, traversing the dependencies but ignoring cycles.">visitCfgInReverseOrder</span></code></a> for simple traversals
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/basic-cfg-guided-visitor.ts#L25"><code><span title="In contrast to visitCfgInOrder and visitCfgInReverseOrder , this visitor is not a simple visitor and serves as the basis for a variety of more complicated visiting orders of the control flow graph. It includes features to provide additional information using the NormalizedAst and the DataflowGraph . Use BasicCfgGuidedVisitor#start to start the traversal.">BasicCfgGuidedVisitor</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/syntax-cfg-guided-visitor.ts#L52"><code><span title="This visitor extends on the BasicCfgGuidedVisitor by dispatching visitors based on the AST type of the node. Use BasicCfgGuidedVisitor#start to start the traversal.">SyntaxAwareCfgGuidedVisitor</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/dfg-cfg-guided-visitor.ts#L32"><code><span title="This visitor extends on the BasicCfgGuidedVisitor by dispatching visitors based on the dataflow graph. Use BasicCfgGuidedVisitor#start to start the traversal.">DataflowAwareCfgGuidedVisitor</span></code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L67"><code><span title="This visitor extends on the DataflowAwareCfgGuidedVisitor by dispatching visitors for separate function calls as well, providing more information! In a way, this is the mixin of syntactic and dataflow guided visitation. Overwrite the functions starting with on to implement your logic. In general, there is just one special case that you need to be aware of: In the context of a function call, flowR ...">SemanticCfgGuidedVisitor</span></code></a> for more sophisticated traversals
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/basic-cfg-guided-visitor.ts#L25"><code><span title="In contrast to visitCfgInOrder and visitCfgInReverseOrder , this visitor is not a simple visitor and serves as the basis for a variety of more complicated visiting orders of the control flow graph. It includes features to provide additional information using the NormalizedAst and the DataflowGraph . Use BasicCfgGuidedVisitor#start to start the traversal.">BasicCfgGuidedVisitor</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/syntax-cfg-guided-visitor.ts#L52"><code><span title="This visitor extends on the BasicCfgGuidedVisitor by dispatching visitors based on the AST type of the node. Use BasicCfgGuidedVisitor#start to start the traversal.">SyntaxAwareCfgGuidedVisitor</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/dfg-cfg-guided-visitor.ts#L32"><code><span title="This visitor extends on the BasicCfgGuidedVisitor by dispatching visitors based on the dataflow graph. Use BasicCfgGuidedVisitor#start to start the traversal.">DataflowAwareCfgGuidedVisitor</span></code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L75"><code>SemanticCfgGuidedVisitor</code></a> for more sophisticated traversals
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L444"><code><span title="Helper object for CfgEdge - an edge in the ControlFlowGraph .">CfgEdge</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L77"><code><span title="Helper object for CfgVertex - a vertex in the ControlFlowGraph that may have markers attached to it (e.g., for function calls).">CfgVertex</span></code></a> for easy access to the properties of the CFG and its vertices and edges
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/cfg-properties.ts#L108"><code><span title="Check if the given CFG satisfies all properties.">assertCfgSatisfiesProperties</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/cfg-properties.ts#L10"><code><span title="The collection of properties that can be checked on a control flow graph.">CfgProperties</span></code></a> to check for properties of the CFG
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/diff-cfg.ts#L13"><code><span title="Compare two control flow graphs and return a report on the differences. If you simply want to check whether they equal, use <result>.isEqual() .">diffOfControlFlowGraphs</span></code></a> to diff two CFGs
@@ -1758,7 +1758,7 @@ Again, executing it with the CFG and Dataflow of the expression `x - 1 + 2L * 3`
 
 <h4 id="cfg-traversal-semantic">Semantic CFG Visitor</h4>
 
-The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L67"><code><span title="This visitor extends on the DataflowAwareCfgGuidedVisitor by dispatching visitors for separate function calls as well, providing more information! In a way, this is the mixin of syntactic and dataflow guided visitation. Overwrite the functions starting with on to implement your logic. In general, there is just one special case that you need to be aware of: In the context of a function call, flowR ...">SemanticCfgGuidedVisitor</span></code></a> class is flowR's most advanced visitor that combines the syntactic and dataflow information.
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L75"><code>SemanticCfgGuidedVisitor</code></a> class is flowR's most advanced visitor that combines the syntactic and dataflow information.
 The main idea is simple, it provides special handlers for assignments, conditionals, and other R semantics but still follows
 the structure of the CFG.
 
@@ -1802,32 +1802,32 @@ Executing it with the CFG and Dataflow of the expression `x <- 2; 3 -> x; assign
 
 All in all, this visitor offers the following semantic events:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L86"><code><span title="The logical the call's only argument resolves to, undefined if the call does not take exactly one argument or if that argument does not resolve to a single logical.">SemanticCfgGuidedVisitor::<b>getBoolArgValue</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L94"><code><span title="The logical the call's only argument resolves to, undefined if the call does not take exactly one argument or if that argument does not resolve to a single logical.">SemanticCfgGuidedVisitor::<b>getBoolArgValue</b></span></code></a>\
   The logical the call's only argument resolves to, `undefined` if the call does not take exactly one
   argument or if that argument does not resolve to a single logical.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L78"><code><span title="A helper function to get the normalized AST node for the given id or fail if it does not exist.">SemanticCfgGuidedVisitor::<b>getNormalizedAst</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L86"><code><span title="A helper function to get the normalized AST node for the given id or fail if it does not exist.">SemanticCfgGuidedVisitor::<b>getNormalizedAst</b></span></code></a>\
   A helper function to get the normalized AST node for the given id or fail if it does not exist.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L345"><code><span title="A helper function to request the origins of the given node.">SemanticCfgGuidedVisitor::<b>getOrigins</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L353"><code><span title="A helper function to request the origins of the given node.">SemanticCfgGuidedVisitor::<b>getOrigins</b></span></code></a>\
   A helper function to request the
   <code>origins</code>
   of the given node.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L739"><code>SemanticCfgGuidedVisitor::<b>getSourceAndTarget</b></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L747"><code>SemanticCfgGuidedVisitor::<b>getSourceAndTarget</b></code></a>\
   
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L490"><code><span title="This event triggers for every subsetting call, i.e., for every call to [[, [, or $.">SemanticCfgGuidedVisitor::<b>onAccessCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L498"><code><span title="This event triggers for every subsetting call, i.e., for every call to [[, [, or $.">SemanticCfgGuidedVisitor::<b>onAccessCall</b></span></code></a>\
   This event triggers for every subsetting call, i.e., for every call to `[[`, `[`, or `$`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L462"><code><span title="This event triggers for every call to any of the *apply functions. For example, lapply in lapply(1:10, function(x) { x + 1 }). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onApplyFunctionCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L470"><code><span title="This event triggers for every call to any of the *apply functions. For example, lapply in lapply(1:10, function(x) { x + 1 }). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onApplyFunctionCall</b></span></code></a>\
   This event triggers for every call to any of the `*apply` functions.
   For example, `lapply` in `lapply(1:10, function(x) { x + 1 })`.
   More specifically, this relates to the corresponding
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L536"><code><span title="This event triggers for every assignment call, i.e., for every call to <- or = that assigns a value to a variable. For example, this triggers for <- in x <- 42 or assign in assign('x', 42). This also triggers for the data.table assign := active within subsetting calls, e.g., DT[, x := 42]. Please be aware that replacements (e.g. assignments with a function call on the target side) like names(x) <-...">SemanticCfgGuidedVisitor::<b>onAssignmentCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L544"><code><span title="This event triggers for every assignment call, i.e., for every call to <- or = that assigns a value to a variable. For example, this triggers for <- in x <- 42 or assign in assign('x', 42). This also triggers for the data.table assign := active within subsetting calls, e.g., DT[, x := 42]. Please be aware that replacements (e.g. assignments with a function call on the target side) like names(x) <-...">SemanticCfgGuidedVisitor::<b>onAssignmentCall</b></span></code></a>\
   This event triggers for every assignment call, i.e., for every call to `<-` or `=` that assigns a value to a variable.
   For example, this triggers for `<-` in `x <- 42` or `assign` in `assign("x", 42)`.
   This also triggers for the `data.table` assign `:=` active within subsetting calls, e.g., `DT[, x := 42]`.
@@ -1835,14 +1835,14 @@ All in all, this visitor offers the following semantic events:
   <code>`onReplacementCall`</code>
   instead.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L716"><code><span title="This event triggers for every call to break to exit a loop. For example, this triggers for break in repeat { break }. More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onBreakCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L724"><code><span title="This event triggers for every call to break to exit a loop. For example, this triggers for break in repeat { break }. More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onBreakCall</b></span></code></a>\
   This event triggers for every call to `break` to exit a loop.
   For example, this triggers for `break` in `repeat { break }`.
   More specifically, this relates to the corresponding
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L442"><code><span title="This event triggers for every function call that is not handled by a specific overload, and hence may be a function that targets a user-defined function. In a way, these are functions that are named, but flowR does not specifically care about them (currently) wrt. to their dataflow impact. Use getOrigins to get the origins of the call. For example, this triggers for foo(x) in   foo <- function(x) ...">SemanticCfgGuidedVisitor::<b>onDefaultFunctionCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L450"><code><span title="This event triggers for every function call that is not handled by a specific overload, and hence may be a function that targets a user-defined function. In a way, these are functions that are named, but flowR does not specifically care about them (currently) wrt. to their dataflow impact. Use getOrigins to get the origins of the call. For example, this triggers for foo(x) in   foo <- function(x) ...">SemanticCfgGuidedVisitor::<b>onDefaultFunctionCall</b></span></code></a>\
   This event triggers for every function call that is not handled by a specific overload,
   and hence may be a function that targets a user-defined function. In a way, these are functions that are named,
   but flowR does not specifically care about them (currently) wrt. to their dataflow impact.
@@ -1860,12 +1860,12 @@ All in all, this visitor offers the following semantic events:
   event.
   The main reason for this separation is part of flowR's handling of these functions, as anonymous calls cannot be resolved using the active environment.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L219"><code><span title="This function is responsible for dispatching the appropriate event based on a given dataflow vertex. The default serves as a backend for the event functions, but you may overwrite and extend this function at will.">SemanticCfgGuidedVisitor::<b>onDispatchFunctionCallOrigin</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L227"><code><span title="This function is responsible for dispatching the appropriate event based on a given dataflow vertex. The default serves as a backend for the event functions, but you may overwrite and extend this function at will.">SemanticCfgGuidedVisitor::<b>onDispatchFunctionCallOrigin</b></span></code></a>\
   This function is responsible for dispatching the appropriate event
   based on a given dataflow vertex. The default serves as a backend
   for the event functions, but you may overwrite and extend this function at will.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L206"><code><span title="Given a function call that has multiple targets (e.g., two potential built-in definitions). This function is responsible for calling onDispatchFunctionCallOrigin for each of the origins, and aggregating their results (which is just additive by default). If you want to change the behavior in case of multiple potential function definition targets, simply overwrite this function with the logic you de...">SemanticCfgGuidedVisitor::<b>onDispatchFunctionCallOrigins</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L214"><code><span title="Given a function call that has multiple targets (e.g., two potential built-in definitions). This function is responsible for calling onDispatchFunctionCallOrigin for each of the origins, and aggregating their results (which is just additive by default). If you want to change the behavior in case of multiple potential function definition targets, simply overwrite this function with the logic you de...">SemanticCfgGuidedVisitor::<b>onDispatchFunctionCallOrigins</b></span></code></a>\
   Given a function call that has multiple targets (e.g., two potential built-in definitions).
   This function is responsible for calling
   <code>onDispatchFunctionCallOrigin</code>
@@ -1874,33 +1874,33 @@ All in all, this visitor offers the following semantic events:
   If you want to change the behavior in case of multiple potential function definition targets, simply overwrite this function
   with the logic you desire.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L452"><code><span title="This event triggers for every call to the eval function. For example, eval in eval(parse(text = 'x + 1')). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onEvalFunctionCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L460"><code><span title="This event triggers for every call to the eval function. For example, eval in eval(parse(text = 'x + 1')). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onEvalFunctionCall</b></span></code></a>\
   This event triggers for every call to the `eval` function.
   For example, `eval` in `eval(parse(text = "x + 1"))`.
   More specifically, this relates to the corresponding
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L471"><code><span title="This event triggers for every expression list - implicit or explicit, _but_ not for the root program (see onProgram for that). For example, this triggers for the expression list created by { and } in ìf (TRUE) { x <- 1; y <- 2; }. But also for the implicit expression list x <- x + 1 in for(x in 1:10) x <- x + 1.">SemanticCfgGuidedVisitor::<b>onExpressionList</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L479"><code><span title="This event triggers for every expression list - implicit or explicit, _but_ not for the root program (see onProgram for that). For example, this triggers for the expression list created by { and } in ìf (TRUE) { x <- 1; y <- 2; }. But also for the implicit expression list x <- x + 1 in for(x in 1:10) x <- x + 1.">SemanticCfgGuidedVisitor::<b>onExpressionList</b></span></code></a>\
   This event triggers for every expression list - implicit or explicit, _but_ not for the root program (see
   <code>`onProgram`</code>
   for that).
   For example, this triggers for the expression list created by `{` and `}` in `ìf (TRUE) { x <- 1; y <- 2; }`. But also for the implicit
   expression list `x <- x + 1` in `for(x in 1:10) x <- x + 1`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L573"><code><span title="This event triggers for every call to the for loop function, which is used to implement the for loop control flow. For example, this triggers for for in for(i in 1:10) { print(i) }. More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onForLoopCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L581"><code><span title="This event triggers for every call to the for loop function, which is used to implement the for loop control flow. For example, this triggers for for in for(i in 1:10) { print(i) }. More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onForLoopCall</b></span></code></a>\
   This event triggers for every call to the `for` loop function, which is used to implement the `for` loop control flow.
   For example, this triggers for `for` in `for(i in 1:10) { print(i) }`.
   More specifically, this relates to the corresponding
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L409"><code><span title="Called for every anonymous function definition.  For example, function(x) { x + 1 } in lapply(1:10, function(x) { x + 1 }).">SemanticCfgGuidedVisitor::<b>onFunctionDefinition</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L417"><code><span title="Called for every anonymous function definition.  For example, function(x) { x + 1 } in lapply(1:10, function(x) { x + 1 }).">SemanticCfgGuidedVisitor::<b>onFunctionDefinition</b></span></code></a>\
   Called for every anonymous function definition.
   
   For example, `function(x) { x + 1 }` in `lapply(1:10, function(x) { x + 1 })`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L507"><code><span title="This event triggers for every call to the get function, which is used to access variables in the global environment. For example, get in get('x'). Please be aware, that with flowR resolving the get during the dataflow analysis, this may very well trigger a onVariableUse event as well.">SemanticCfgGuidedVisitor::<b>onGetCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L515"><code><span title="This event triggers for every call to the get function, which is used to access variables in the global environment. For example, get in get('x'). Please be aware, that with flowR resolving the get during the dataflow analysis, this may very well trigger a onVariableUse event as well.">SemanticCfgGuidedVisitor::<b>onGetCall</b></span></code></a>\
   This event triggers for every call to the `get` function, which is used to access variables in the global environment.
   For example, `get` in `get("x")`.
   Please be aware, that with flowR resolving the `get` during the dataflow analysis,
@@ -1908,83 +1908,83 @@ All in all, this visitor offers the following semantic events:
   <code>`onVariableUse`</code>
   event as well.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L496"><code><span title="This event triggers for every call to the if function, which is used to implement the if-then-else control flow.">SemanticCfgGuidedVisitor::<b>onIfThenElseCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L504"><code><span title="This event triggers for every call to the if function, which is used to implement the if-then-else control flow.">SemanticCfgGuidedVisitor::<b>onIfThenElseCall</b></span></code></a>\
   This event triggers for every call to the `if` function, which is used to implement the `if-then-else` control flow.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L525"><code><span title="This event triggers for every call to a function which loads a library. For example, library in library(dplyr). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onLibraryCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L533"><code><span title="This event triggers for every call to a function which loads a library. For example, library in library(dplyr). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onLibraryCall</b></span></code></a>\
   This event triggers for every call to a function which loads a library.
   For example, `library` in `library(dplyr)`.
   More specifically, this relates to the corresponding
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L616"><code><span title="This event triggers for every call that (to the knowledge of flowr) constructs a (new) list. For example, this triggers for list in list(1, 2, 3). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onListCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L624"><code><span title="This event triggers for every call that (to the knowledge of flowr) constructs a (new) list. For example, this triggers for list in list(1, 2, 3). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onListCall</b></span></code></a>\
   This event triggers for every call that (to the knowledge of flowr) constructs a (new) list.
   For example, this triggers for `list` in `list(1, 2, 3)`.
   More specifically, this relates to the corresponding
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L756"><code>SemanticCfgGuidedVisitor::<b>onLoadCall</b></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L764"><code>SemanticCfgGuidedVisitor::<b>onLoadCall</b></code></a>\
   
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L666"><code><span title="This event triggers for every call to a function that performs a local call, such as local. For example, this triggers for local in local({ x <- 1; y <- 2; x + y }). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onLocalCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L674"><code><span title="This event triggers for every call to a function that performs a local call, such as local. For example, this triggers for local in local({ x <- 1; y <- 2; x + y }). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onLocalCall</b></span></code></a>\
   This event triggers for every call to a function that performs a local call, such as `local`.
   For example, this triggers for `local` in `local({ x <- 1; y <- 2; x + y })`.
   More specifically, this relates to the corresponding
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L375"><code><span title="Called for every constant logical value in the program.  For example, TRUE in if(TRUE) { ... }.">SemanticCfgGuidedVisitor::<b>onLogicalConstant</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L383"><code><span title="Called for every constant logical value in the program.  For example, TRUE in if(TRUE) { ... }.">SemanticCfgGuidedVisitor::<b>onLogicalConstant</b></span></code></a>\
   Called for every constant logical value in the program.
   
   For example, `TRUE` in `if(TRUE) { ... }`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L354"><code><span title="Called for every occurrence of a NULL in the program. For other symbols that are not referenced as a variable, see onSymbolConstant .">SemanticCfgGuidedVisitor::<b>onNullConstant</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L362"><code><span title="Called for every occurrence of a NULL in the program. For other symbols that are not referenced as a variable, see onSymbolConstant .">SemanticCfgGuidedVisitor::<b>onNullConstant</b></span></code></a>\
   Called for every occurrence of a `NULL` in the program.
   For other symbols that are not referenced as a variable, see
   <code>`onSymbolConstant`</code>
   .
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L368"><code><span title="Called for every constant number value in the program.  For example, 42 in print(42).">SemanticCfgGuidedVisitor::<b>onNumberConstant</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L376"><code><span title="Called for every constant number value in the program.  For example, 42 in print(42).">SemanticCfgGuidedVisitor::<b>onNumberConstant</b></span></code></a>\
   Called for every constant number value in the program.
   
   For example, `42` in `print(42)`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L552"><code><span title="This event triggers for every call to R's pipe operator, i.e., for every call to |>.">SemanticCfgGuidedVisitor::<b>onPipeCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L560"><code><span title="This event triggers for every call to R's pipe operator, i.e., for every call to |>.">SemanticCfgGuidedVisitor::<b>onPipeCall</b></span></code></a>\
   This event triggers for every call to R's pipe operator, i.e., for every call to `|>`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L339"><code><span title="This event is called for the root program node, i.e., the program that is being analyzed.">SemanticCfgGuidedVisitor::<b>onProgram</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L347"><code><span title="This event is called for the root program node, i.e., the program that is being analyzed.">SemanticCfgGuidedVisitor::<b>onProgram</b></span></code></a>\
   This event is called for the root program node, i.e., the program that is being analyzed.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L737"><code><span title="This event triggers for any purr formula as in map(df, ~ .x + 1)">SemanticCfgGuidedVisitor::<b>onPurrFormulaCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L745"><code><span title="This event triggers for any purr formula as in map(df, ~ .x + 1)">SemanticCfgGuidedVisitor::<b>onPurrFormulaCall</b></span></code></a>\
   This event triggers for any purr formula as in `map(df, ~ .x + 1)`
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L563"><code><span title="This event triggers for every call to the quote function, which is used to quote expressions. For example, quote in quote(x + 1). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onQuoteCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L571"><code><span title="This event triggers for every call to the quote function, which is used to quote expressions. For example, quote in quote(x + 1). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onQuoteCall</b></span></code></a>\
   This event triggers for every call to the `quote` function, which is used to quote expressions.
   For example, `quote` in `quote(x + 1)`.
   More specifically, this relates to the corresponding
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L732"><code><span title="This event triggers for every call to Recall, which is used to recall the function closure (usually in recursive functions).">SemanticCfgGuidedVisitor::<b>onRecallCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L740"><code><span title="This event triggers for every call to Recall, which is used to recall the function closure (usually in recursive functions).">SemanticCfgGuidedVisitor::<b>onRecallCall</b></span></code></a>\
   This event triggers for every call to `Recall`, which is used to recall the function closure (usually in recursive functions).
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L706"><code><span title="This event triggers for every call to a function that registers a hook, such as on.exit. For example, this triggers for on.exit in on.exit(print('exiting function')). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onRegisterHookCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L714"><code><span title="This event triggers for every call to a function that registers a hook, such as on.exit. For example, this triggers for on.exit in on.exit(print('exiting function')). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onRegisterHookCall</b></span></code></a>\
   This event triggers for every call to a function that registers a hook, such as `on.exit`.
   For example, this triggers for `on.exit` in `on.exit(print("exiting function"))`.
   More specifically, this relates to the corresponding
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L593"><code><span title="This event triggers for every call to the repeat loop function, which is used to implement the repeat loop control flow. For example, this triggers for repeat in repeat { i <- i + 1; if(i >= 10) break }. More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onRepeatLoopCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L601"><code><span title="This event triggers for every call to the repeat loop function, which is used to implement the repeat loop control flow. For example, this triggers for repeat in repeat { i <- i + 1; if(i >= 10) break }. More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onRepeatLoopCall</b></span></code></a>\
   This event triggers for every call to the `repeat` loop function, which is used to implement the `repeat` loop control flow.
   For example, this triggers for `repeat` in `repeat { i <- i + 1; if(i >= 10) break }`.
   More specifically, this relates to the corresponding
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L606"><code><span title="This event triggers for every call to a function that replaces a value in a container, such as names(x) <- 3. This is different from onAssignmentCall in that it does not assign a value to a variable, but rather replaces a value in a container. For example, this triggers for names in names(x) <- 3, but not for x <- 3. More specifically, this relates to the corresponding BuiltInProcessorMapper handl...">SemanticCfgGuidedVisitor::<b>onReplacementCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L614"><code><span title="This event triggers for every call to a function that replaces a value in a container, such as names(x) <- 3. This is different from onAssignmentCall in that it does not assign a value to a variable, but rather replaces a value in a container. For example, this triggers for names in names(x) <- 3, but not for x <- 3. More specifically, this relates to the corresponding BuiltInProcessorMapper handl...">SemanticCfgGuidedVisitor::<b>onReplacementCall</b></span></code></a>\
   This event triggers for every call to a function that replaces a value in a container, such as `names(x) <- 3`.
   This is different from
   <code>`onAssignmentCall`</code>
@@ -1995,35 +1995,35 @@ All in all, this visitor offers the following semantic events:
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L726"><code><span title="This event triggers for every call to return to explicitly return a value in a function. For example, this triggers for return in f <- function() { return(42) }. More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onReturnCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L734"><code><span title="This event triggers for every call to return to explicitly return a value in a function. For example, this triggers for return in f <- function() { return(42) }. More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onReturnCall</b></span></code></a>\
   This event triggers for every call to `return` to explicitly return a value in a function.
   For example, this triggers for `return` in `f <- function() { return(42) }`.
   More specifically, this relates to the corresponding
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L515"><code><span title="This event triggers for every call to the rm function, which is used to remove variables from the environment.  For example, rm in rm(x).">SemanticCfgGuidedVisitor::<b>onRmCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L523"><code><span title="This event triggers for every call to the rm function, which is used to remove variables from the environment.  For example, rm in rm(x).">SemanticCfgGuidedVisitor::<b>onRmCall</b></span></code></a>\
   This event triggers for every call to the `rm` function, which is used to remove variables from the environment.
   
   For example, `rm` in `rm(x)`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L675"><code><span title="This event triggers for every call to a function that performs an S3-like dispatch.  For example, this triggers for UseMethod in UseMethod('print').">SemanticCfgGuidedVisitor::<b>onS3DispatchCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L683"><code><span title="This event triggers for every call to a function that performs an S3-like dispatch.  For example, this triggers for UseMethod in UseMethod('print').">SemanticCfgGuidedVisitor::<b>onS3DispatchCall</b></span></code></a>\
   This event triggers for every call to a function that performs an S3-like dispatch.
   
   For example, this triggers for `UseMethod` in `UseMethod("print")`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L684"><code><span title="This event triggers for every call to a function that performs an S3-like *next* dispatch.  For example, this triggers for NextMethod.">SemanticCfgGuidedVisitor::<b>onS3DispatchNextCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L692"><code><span title="This event triggers for every call to a function that performs an S3-like *next* dispatch.  For example, this triggers for NextMethod.">SemanticCfgGuidedVisitor::<b>onS3DispatchNextCall</b></span></code></a>\
   This event triggers for every call to a function that performs an S3-like *next* dispatch.
   
   For example, this triggers for `NextMethod`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L696"><code><span title="This event triggers for every call to a function that performs an S7 dispatch, such as S7_dispatch.">SemanticCfgGuidedVisitor::<b>onS7DispatchCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L704"><code><span title="This event triggers for every call to a function that performs an S7 dispatch, such as S7_dispatch.">SemanticCfgGuidedVisitor::<b>onS7DispatchCall</b></span></code></a>\
   This event triggers for every call to a function that performs an S7 dispatch, such as `S7_dispatch`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L690"><code><span title="This event triggers for every call to a function that creates a new S7 generic, such as new_generic.">SemanticCfgGuidedVisitor::<b>onS7NewGenericCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L698"><code><span title="This event triggers for every call to a function that creates a new S7 generic, such as new_generic.">SemanticCfgGuidedVisitor::<b>onS7NewGenericCall</b></span></code></a>\
   This event triggers for every call to a function that creates a new S7 generic, such as `new_generic`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L484"><code><span title="This event triggers for every call to the source function. For example, source in source('script.R'). By default, this does not provide the resolved source file. Yet you can access the DataflowGraph to ask for sourced files. More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onSourceCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L492"><code><span title="This event triggers for every call to the source function. For example, source in source('script.R'). By default, this does not provide the resolved source file. Yet you can access the DataflowGraph to ask for sourced files. More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onSourceCall</b></span></code></a>\
   This event triggers for every call to the `source` function.
   For example, `source` in `source("script.R")`.
   By default, this does not provide the resolved source file. Yet you can access the
@@ -2033,33 +2033,33 @@ All in all, this visitor offers the following semantic events:
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L546"><code><span title="This event triggers for every call to a special binary operator, i.e., every binary function call that starts and ends with a % sign. For example, this triggers for%in% in x %in% y. More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onSpecialBinaryOpCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L554"><code><span title="This event triggers for every call to a special binary operator, i.e., every binary function call that starts and ends with a % sign. For example, this triggers for%in% in x %in% y. More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onSpecialBinaryOpCall</b></span></code></a>\
   This event triggers for every call to a special binary operator, i.e., every binary function call that starts and ends with a `%` sign.
   For example, this triggers for`%in%` in `x %in% y`.
   More specifically, this relates to the corresponding
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L636"><code><span title="This event triggers for every call to the stop function. For example, this triggers for stop in stop(). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onStopCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L644"><code><span title="This event triggers for every call to the stop function. For example, this triggers for stop in stop(). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onStopCall</b></span></code></a>\
   This event triggers for every call to the `stop` function.
   For example, this triggers for `stop` in `stop()`.
   More specifically, this relates to the corresponding
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L646"><code><span title="This event triggers for every call to the stopifnot function. For example, this triggers for stopifnot in stopifnot(x > 0). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onStopIfNotCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L654"><code><span title="This event triggers for every call to the stopifnot function. For example, this triggers for stopifnot in stopifnot(x > 0). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onStopIfNotCall</b></span></code></a>\
   This event triggers for every call to the `stopifnot` function.
   For example, this triggers for `stopifnot` in `stopifnot(x > 0)`.
   More specifically, this relates to the corresponding
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L361"><code><span title="Called for every constant string value in the program.  For example, 'Hello World' in print('Hello World').">SemanticCfgGuidedVisitor::<b>onStringConstant</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L369"><code><span title="Called for every constant string value in the program.  For example, 'Hello World' in print('Hello World').">SemanticCfgGuidedVisitor::<b>onStringConstant</b></span></code></a>\
   Called for every constant string value in the program.
   
   For example, `"Hello World"` in `print("Hello World")`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L385"><code><span title="Called for every constant symbol value in the program. For example, foo in library(foo) or a in l$a. This most likely happens as part of non-standard-evaluation, i.e., the symbol is not evaluated to a value, but used as a symbol in and of itself. Please note, that due to its special behaviors, NULL is handled in onNullConstant and not here.">SemanticCfgGuidedVisitor::<b>onSymbolConstant</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L393"><code><span title="Called for every constant symbol value in the program. For example, foo in library(foo) or a in l$a. This most likely happens as part of non-standard-evaluation, i.e., the symbol is not evaluated to a value, but used as a symbol in and of itself. Please note, that due to its special behaviors, NULL is handled in onNullConstant and not here.">SemanticCfgGuidedVisitor::<b>onSymbolConstant</b></span></code></a>\
   Called for every constant symbol value in the program.
   For example, `foo` in `library(foo)` or `a` in `l$a`. This most likely happens as part of non-standard-evaluation, i.e., the symbol is not evaluated to a value,
   but used as a symbol in and of itself.
@@ -2067,14 +2067,14 @@ All in all, this visitor offers the following semantic events:
   <code>`onNullConstant`</code>
   and not here.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L656"><code><span title="This event triggers for every call the try function, which is used to catch possible errors. For example, this triggers for try in try(stop('error')). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onTryCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L664"><code><span title="This event triggers for every call the try function, which is used to catch possible errors. For example, this triggers for try in try(stop('error')). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onTryCall</b></span></code></a>\
   This event triggers for every call the `try` function, which is used to catch possible errors.
   For example, this triggers for `try` in `try(stop("error"))`.
   More specifically, this relates to the corresponding
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L421"><code><span title="This event triggers for every anonymous call within the program. For example, (function(x) { x + 1 })(42) or the second call in a()(). This is separate from onDefaultFunctionCall which is used for named function calls that do not trigger any of these events. The main differentiation for these calls is that you may not infer their semantics from any name alone and probably _have_ to rely on getOrig...">SemanticCfgGuidedVisitor::<b>onUnnamedCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L429"><code><span title="This event triggers for every anonymous call within the program. For example, (function(x) { x + 1 })(42) or the second call in a()(). This is separate from onDefaultFunctionCall which is used for named function calls that do not trigger any of these events. The main differentiation for these calls is that you may not infer their semantics from any name alone and probably _have_ to rely on getOrig...">SemanticCfgGuidedVisitor::<b>onUnnamedCall</b></span></code></a>\
   This event triggers for every anonymous call within the program.
   For example, `(function(x) { x + 1 })(42)` or the second call in `a()()`.
   This is separate from
@@ -2085,7 +2085,7 @@ All in all, this visitor offers the following semantic events:
   <code>`getOrigins`</code>
   to get more information.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L402"><code><span title="Called for every variable that is written within the program. You can use getOrigins to get the origins of the variable. For example, x in x <- 42 or x in assign('x', 42). See SemanticCfgGuidedVisitor#onAssignmentCall for the assignment call. This event handler also provides you with information on the source.">SemanticCfgGuidedVisitor::<b>onVariableDefinition</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L410"><code><span title="Called for every variable that is written within the program. You can use getOrigins to get the origins of the variable. For example, x in x <- 42 or x in assign('x', 42). See SemanticCfgGuidedVisitor#onAssignmentCall for the assignment call. This event handler also provides you with information on the source.">SemanticCfgGuidedVisitor::<b>onVariableDefinition</b></span></code></a>\
   Called for every variable that is written within the program.
   You can use
   <code>getOrigins</code>
@@ -2095,28 +2095,28 @@ All in all, this visitor offers the following semantic events:
   <code>SemanticCfgGuidedVisitor#onAssignmentCall</code>
   for the assignment call. This event handler also provides you with information on the source.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L393"><code><span title="Called for every variable that is read within the program. You can use getOrigins to get the origins of the variable. For example, x in print(x).">SemanticCfgGuidedVisitor::<b>onVariableUse</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L401"><code><span title="Called for every variable that is read within the program. You can use getOrigins to get the origins of the variable. For example, x in print(x).">SemanticCfgGuidedVisitor::<b>onVariableUse</b></span></code></a>\
   Called for every variable that is read within the program.
   You can use
   <code>getOrigins</code>
   to get the origins of the variable.
   For example, `x` in `print(x)`.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L626"><code><span title="This event triggers for every call that (to the knowledge of flowr) constructs a (new) vector. For example, this triggers for c in c(1, 2, 3). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onVectorCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L634"><code><span title="This event triggers for every call that (to the knowledge of flowr) constructs a (new) vector. For example, this triggers for c in c(1, 2, 3). More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onVectorCall</b></span></code></a>\
   This event triggers for every call that (to the knowledge of flowr) constructs a (new) vector.
   For example, this triggers for `c` in `c(1, 2, 3)`.
   More specifically, this relates to the corresponding
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L583"><code><span title="This event triggers for every call to the while loop function, which is used to implement the while loop control flow. For example, this triggers for while in while(i < 10) { i <- i + 1 }. More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onWhileLoopCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L591"><code><span title="This event triggers for every call to the while loop function, which is used to implement the while loop control flow. For example, this triggers for while in while(i < 10) { i <- i + 1 }. More specifically, this relates to the corresponding BuiltInProcessorMapper handler.">SemanticCfgGuidedVisitor::<b>onWhileLoopCall</b></span></code></a>\
   This event triggers for every call to the `while` loop function, which is used to implement the `while` loop control flow.
   For example, this triggers for `while` in `while(i < 10) { i <- i + 1 }`.
   More specifically, this relates to the corresponding
   <code>BuiltInProcessorMapper</code>
   handler.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L173"><code><span title="See DataflowAwareCfgGuidedVisitor#visitFunctionCall for the base implementation. This function is called for every function call in the program and dispatches the appropriate event. You probably do not have to overwrite it and just use onUnnamedCall for anonymous calls, or onDispatchFunctionCallOrigins for named calls (or just overwrite the events you are interested in directly).">SemanticCfgGuidedVisitor::<b>visitFunctionCall</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L181"><code><span title="See DataflowAwareCfgGuidedVisitor#visitFunctionCall for the base implementation. This function is called for every function call in the program and dispatches the appropriate event. You probably do not have to overwrite it and just use onUnnamedCall for anonymous calls, or onDispatchFunctionCallOrigins for named calls (or just overwrite the events you are interested in directly).">SemanticCfgGuidedVisitor::<b>visitFunctionCall</b></span></code></a>\
   See
   <code>DataflowAwareCfgGuidedVisitor#visitFunctionCall</code>
   for the base implementation.
@@ -2129,7 +2129,7 @@ All in all, this visitor offers the following semantic events:
   for named calls (or just overwrite
   the events you are interested in directly).
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L154"><code><span title="See DataflowAwareCfgGuidedVisitor#visitFunctionDefinition for the base implementation. This function is called for every function definition in the program and dispatches the appropriate event. You probably do not have to overwrite it and just use onFunctionDefinition instead.">SemanticCfgGuidedVisitor::<b>visitFunctionDefinition</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L162"><code><span title="See DataflowAwareCfgGuidedVisitor#visitFunctionDefinition for the base implementation. This function is called for every function definition in the program and dispatches the appropriate event. You probably do not have to overwrite it and just use onFunctionDefinition instead.">SemanticCfgGuidedVisitor::<b>visitFunctionDefinition</b></span></code></a>\
   See
   <code>DataflowAwareCfgGuidedVisitor#visitFunctionDefinition</code>
   for the base implementation.
@@ -2138,7 +2138,7 @@ All in all, this visitor offers the following semantic events:
   <code>`onFunctionDefinition`</code>
   instead.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L190"><code><span title="See DataflowAwareCfgGuidedVisitor#visitUnknown for the base implementation. This function is called for every unknown vertex in the program. It dispatches the appropriate event based on the type of the vertex. In case you have to overwrite this function please make sure to still call this implementation to get a correctly working onProgram .">SemanticCfgGuidedVisitor::<b>visitUnknown</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L198"><code><span title="See DataflowAwareCfgGuidedVisitor#visitUnknown for the base implementation. This function is called for every unknown vertex in the program. It dispatches the appropriate event based on the type of the vertex. In case you have to overwrite this function please make sure to still call this implementation to get a correctly working onProgram .">SemanticCfgGuidedVisitor::<b>visitUnknown</b></span></code></a>\
   See
   <code>DataflowAwareCfgGuidedVisitor#visitUnknown</code>
   for the base implementation.
@@ -2148,13 +2148,13 @@ All in all, this visitor offers the following semantic events:
   <code>`onProgram`</code>
   .
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L99"><code><span title="See DataflowAwareCfgGuidedVisitor#visitValue for the base implementation. This now dispatches the value to the appropriate event handler based on its type.">SemanticCfgGuidedVisitor::<b>visitValue</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L107"><code><span title="See DataflowAwareCfgGuidedVisitor#visitValue for the base implementation. This now dispatches the value to the appropriate event handler based on its type.">SemanticCfgGuidedVisitor::<b>visitValue</b></span></code></a>\
   See
   <code>DataflowAwareCfgGuidedVisitor#visitValue</code>
   for the base implementation.
   This now dispatches the value to the appropriate event handler based on its type.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L142"><code><span title="See DataflowAwareCfgGuidedVisitor#visitVariableDefinition for the base implementation. This function is called for every variable definition in the program and dispatches the appropriate event. You probably do not have to overwrite it and just use onVariableDefinition instead.">SemanticCfgGuidedVisitor::<b>visitVariableDefinition</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L150"><code><span title="See DataflowAwareCfgGuidedVisitor#visitVariableDefinition for the base implementation. This function is called for every variable definition in the program and dispatches the appropriate event. You probably do not have to overwrite it and just use onVariableDefinition instead.">SemanticCfgGuidedVisitor::<b>visitVariableDefinition</b></span></code></a>\
   See
   <code>DataflowAwareCfgGuidedVisitor#visitVariableDefinition</code>
   for the base implementation.
@@ -2163,7 +2163,7 @@ All in all, this visitor offers the following semantic events:
   <code>`onVariableDefinition`</code>
   instead.
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L130"><code><span title="See DataflowAwareCfgGuidedVisitor#visitVariableUse for the base implementation. This function is called for every use of a variable in the program and dispatches the appropriate event. You probably do not have to overwrite it and just use onVariableUse instead.">SemanticCfgGuidedVisitor::<b>visitVariableUse</b></span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L138"><code><span title="See DataflowAwareCfgGuidedVisitor#visitVariableUse for the base implementation. This function is called for every use of a variable in the program and dispatches the appropriate event. You probably do not have to overwrite it and just use onVariableUse instead.">SemanticCfgGuidedVisitor::<b>visitVariableUse</b></span></code></a>\
   See
   <code>DataflowAwareCfgGuidedVisitor#visitVariableUse</code>
   for the base implementation.
@@ -2208,7 +2208,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _2.2 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _0.9 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -2272,7 +2272,7 @@ flowchart RL
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _2.9 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _0.7 ms_ (including the dataflow analysis,  normalization,  and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 

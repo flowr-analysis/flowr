@@ -1,3 +1,4 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -27,8 +28,6 @@ import type { DataflowFunctionFlowInformation } from '../../../../../graph/graph
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import type {
 	PotentiallyEmptyRArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RFunctionCall
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { resolveArgToEnvir, signatureParamNames } from './built-in-envir-utils';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -284,7 +283,7 @@ function sexpTypeToReferenceType(type?: SexpType): ReferenceType{
 function getArguments<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	// prefer R's real `base::load` signature from the database, falling back to the known formals when it is absent
 	const loadParams = signatureParamNames(data, Identifier.make('load', PkgName.Base), ['file', 'envir', 'verbose']);
-	const bound = RFunctionCall.matchArgsToParams(args, loadParams);
+	const bound = MatchArgs.toNames(args, loadParams);
 
 	const fileArgBound = bound.get('file');
 	const envirArg = bound.get('envir');

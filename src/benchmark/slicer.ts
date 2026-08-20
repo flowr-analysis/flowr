@@ -13,6 +13,7 @@ import type { InlineFull, ReconstructionResult } from '../reconstruct/reconstruc
 import type { PipelineExecutor } from '../core/pipeline-executor';
 import { guard } from '../util/assert';
 import { withoutWhitespace } from '../util/text/strings';
+import { countAstComments } from './stats/count-comments';
 import type {
 	AdditionalSlicerMeasurements,
 	BenchmarkMemoryMeasurement,
@@ -56,7 +57,6 @@ import { SetRangeDomain } from '../abstract-interpretation/domains/set-range-dom
 import fs from 'fs';
 import { type FlowrAnalyzerContext, contextFromInput } from '../project/context/flowr-analyzer-context';
 import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
-import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import { CallGraph } from '../dataflow/graph/call-graph';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
@@ -222,22 +222,7 @@ export class BenchmarkSlicer {
 			}
 		}
 
-		let nodes = 0;
-		let nodesNoComments = 0;
-		let commentChars = 0;
-		let commentCharsNoWhitespace = 0;
-		RProject.visitAst(this.normalizedAst.ast, t => {
-			nodes++;
-			const comments = t.info.adToks?.filter(RComment.is);
-			if(comments && comments.length > 0) {
-				const content = comments.map(c => c.lexeme ?? '').join('');
-				commentChars += content.length;
-				commentCharsNoWhitespace += withoutWhitespace(content).length;
-			} else {
-				nodesNoComments++;
-			}
-			return false;
-		});
+		const { nodes, nodesNoComments, commentChars, commentCharsNoWhitespace } = countAstComments(this.normalizedAst.ast);
 
 		const split = loadedContent.split('\n');
 		const nonWhitespace = withoutWhitespace(loadedContent).length;
@@ -554,6 +539,12 @@ export class BenchmarkSlicer {
 		const { result } = await this.commonMeasurements.measureAsync(
 			keyToMeasure, () => this.executor.nextStep(expectedStep)
 		);
+		this.recordMemoryDelta(keyToMeasure, memoryInit);
+		return result as PipelineStepOutputWithName<SupportedPipelines, Step>;
+	}
+
+	/** Stores what the step measured as `keyToMeasure` added to the memory usage it started with. */
+	private recordMemoryDelta(keyToMeasure: CommonSlicerMeasurements, memoryInit: NodeJS.MemoryUsage): void {
 		const memoryEnd = process.memoryUsage();
 		this.deltas.set(keyToMeasure, {
 			heap:     memoryEnd.heapUsed - memoryInit.heapUsed,
@@ -561,7 +552,6 @@ export class BenchmarkSlicer {
 			external: memoryEnd.external - memoryInit.external,
 			buffs:    memoryEnd.arrayBuffers - memoryInit.arrayBuffers
 		});
-		return result as PipelineStepOutputWithName<SupportedPipelines, Step>;
 	}
 
 	private measureSimpleStep<Out>(
@@ -572,13 +562,7 @@ export class BenchmarkSlicer {
 		const result = this.commonMeasurements.measure(
 			keyToMeasure, measurement
 		);
-		const memoryEnd = process.memoryUsage();
-		this.deltas.set(keyToMeasure, {
-			heap:     memoryEnd.heapUsed - memoryInit.heapUsed,
-			rss:      memoryEnd.rss - memoryInit.rss,
-			external: memoryEnd.external - memoryInit.external,
-			buffs:    memoryEnd.arrayBuffers - memoryInit.arrayBuffers
-		});
+		this.recordMemoryDelta(keyToMeasure, memoryInit);
 		return result;
 	}
 

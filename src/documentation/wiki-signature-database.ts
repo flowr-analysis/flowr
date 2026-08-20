@@ -12,6 +12,8 @@ import { CompressedExtPattern, decompressSyncFor } from '../project/sigdb/codec'
 import { DefaultAssumedRVersion } from '../config';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin } from '../project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
+import type { FlowrAnalyzer } from '../project/flowr-analyzer';
+import { Identifier } from '../dataflow/environments/identifier';
 import { FlowrAnalyzerDependenciesContext } from '../project/context/flowr-analyzer-dependencies-context';
 import type { KnownParser } from '../r-bridge/parser';
 import { warnMissingSigDb } from './doc-util/doc-sigdb';
@@ -20,6 +22,18 @@ import { warnMissingSigDb } from './doc-util/doc-sigdb';
 function usePackageDatabase(parser: KnownParser) {
 	const sigdb = new FlowrAnalyzerPackageVersionsSigDbPlugin('/path/to/sigs.manifest.json.br');
 	return new FlowrAnalyzerBuilder().setParser(parser).registerPlugins(sigdb).build();
+}
+
+/** the entry point: one database, versions already resolved the way the project's configuration says */
+function fromTheAnalyzer(analyzer: FlowrAnalyzer) {
+	const db = analyzer.inspectContext().deps.signatures();
+	const lead = Identifier.make('lead', 'dplyr');
+	return {
+		version:    db.versionOf('dplyr'),      // the version this analysis assumes
+		fn:         db.functionOf(lead),        // its entry, decoding only this one function
+		parameters: db.parametersOf(lead),      // its formals, ready for MatchArgs.toNames
+		exports:    db.exportsOf('dplyr')?.exported
+	};
 }
 
 function accessTheDatabase(source: PackageSignatureSource) {
@@ -251,7 +265,21 @@ These are derived on demand by the ${ctx.linkPage('wiki/Query API', 'signature q
 - the S3 method to generic backlink ${ctx.link('SignatureFunctionView::s3method')}, for a ${ctx.linkE<typeof FnProp>('FnProp', 'S3Method')} function, resolving its generic
 - the transitive call graph ${ctx.linkM(SigDatabase, 'transitiveCallees')}, expanding the stored local callees inside one version
 
-Read it back like this:
+## Reading It From an Analyzer
+
+${ctx.linkM(FlowrAnalyzerDependenciesContext, 'signatures')} is the entry point, and it is the one you want.
+
+${ctx.code(fromTheAnalyzer, { dropLinesStart: 1 })}
+
+The ${ctx.link('SignatureDb')} it hands back is every loaded source as one database, answering for the version
+*the analyzed project* assumes for each package, which is the version \`solver.sigdb.versionOverrides\`,
+\`solver.sigdb.versionSelection\` and \`solver.sigdb.assumedRVersion\` produced. That matters, because a
+${ctx.link('PackageSignatureSource')} asked without a version answers for whatever it happens to hold as newest,
+which is not what the analysis assumes. When the assumed version is one the database does not carry, the answer
+falls back to the newest it has and says so in the log rather than quietly answering for another version.
+
+${ctx.link('SignatureDb::sources')} is the escape hatch to the raw sources for what the interface above does not
+cover, and reaches the same functions directly.
 
 ${ctx.code(accessTheDatabase, { dropLinesStart: 1 })}
 

@@ -253,7 +253,8 @@ export function processAssignment<OtherInfo>(
 	}
 	const { type, named } = target;
 
-	if(type === RType.Symbol && !config.targetVariable) {
+	/** the target is a plain name, so the assignment defines it directly (with `targetName` set whenever the name had to be resolved first) */
+	const assignToSymbol = (targetName?: Identifier) => {
 		const res = processKnownFunctionCall({
 			name,
 			args,
@@ -268,35 +269,21 @@ export function processAssignment<OtherInfo>(
 			nameOfAssignmentFunction: name.content,
 			source,
 			targetId:                 target.info.id,
+			targetName,
 			args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
 			rootId,
 			data,
 			information:              res.information,
 		});
+	};
+
+	if(type === RType.Symbol && !config.targetVariable) {
+		return assignToSymbol();
 	} else if(config.targetVariable && (type === RType.Symbol || type === RType.FunctionCall)) {
 		// the target expression (`assign(x, v)` / `assign(paste0("cfg_", k), v)`) resolving to a constant name defines that name, keeping the reads that produced it; a dynamic name falls through to the unknown-target handling below
 		const resolvedName = resolveConstantString(target, data);
 		if(resolvedName !== undefined) {
-			const res = processKnownFunctionCall({
-				name,
-				args,
-				rootId,
-				data,
-				reverseOrder: !config.swapSourceAndTarget,
-				forceArgs:    config.forceArgs,
-				origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
-			});
-			return processAssignmentToSymbol<OtherInfo & ParentInformation>({
-				...config,
-				nameOfAssignmentFunction: name.content,
-				source,
-				targetId:                 target.info.id,
-				targetName:               resolvedName,
-				args:                     getEffectiveOrder(config, res.processedArguments as [DataflowInformation, DataflowInformation]),
-				rootId,
-				data,
-				information:              res.information,
-			});
+			return assignToSymbol(resolvedName);
 		}
 	} else if(config.canBeReplacement && type === RType.FunctionCall && named) {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
@@ -557,15 +544,6 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
 	readonly information:              DataflowInformation
 }
 
-/**
- * Consider a call like `x <- v`
- * @param information        - the information to define the assignment within
- * @param nodeToDefine       - `x`
- * @param sourceIds          - `v`
- * @param rootIdOfAssignment - `<-`
- * @param data               - The dataflow analysis fold backpack
- * @param assignmentConfig   - configuration for the assignment processing
- */
 /**
  * Model a call like `Hmisc::getHdata(x)` that loads a dataset into the variable it is *given*: the argument symbol
  * `x` is both **read** (as the call's argument, its value comes from outside the code) and **defined** by the call.

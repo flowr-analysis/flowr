@@ -31,7 +31,7 @@ export interface StaticSliceQuery extends BaseQueryFormat, SliceQueryOptions {
 export interface StaticSliceQueryResult extends BaseQueryResult {
 	/**
 	 * only contains the results of the slice steps to not repeat ourselves, this does not contain the reconstruction
-	 * if you set the {@link SliceQuery#noReconstruction|noReconstruction} flag.
+	 * if you set the {@link SliceQueryOptions#noReconstruction|noReconstruction} flag.
 	 *
 	 * The keys are serialized versions of the used queries (i.e., the result of `JSON.stringify`).
 	 * This implies that multiple slice queries with the same query configuration will _not_ be re-executed.

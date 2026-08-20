@@ -4,7 +4,7 @@ import type {
 	RParseRequest,
 	RParseRequestFromFile } from '../../r-bridge/retriever';
 import { isParseRequest } from '../../r-bridge/retriever';
-import { assertUnreachable, guard } from '../../util/assert';
+import { guard } from '../../util/assert';
 import type {
 	FlowrAnalyzerLoadingOrderContext,
 	ReadOnlyFlowrAnalyzerLoadingOrderContext
@@ -28,7 +28,7 @@ import { classifyProjectKind, resolveClassifyOptions, type ContentReader } from 
 import { FlowrAnalyzer } from '../flowr-analyzer';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
-import { InvalidationEventType } from '../cache/flowr-cache';
+import { resetOnFullInvalidation } from '../cache/flowr-cache';
 
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
@@ -170,11 +170,6 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 }
 
 /**
- * This is the analyzer file context to be modified by all plugins that affect the files.
- * If you are interested in inspecting these files, refer to {@link ReadOnlyFlowrAnalyzerFilesContext}.
- * Plugins, however, can use this context directly to modify files.
- */
-/**
  * Whether the file system says the path is there. Where there is none, as in a browser, the stub standing
  * in for `fs` answers every question with itself, so only a real `true` counts as an answer.
  */
@@ -182,6 +177,11 @@ function onDisk(path: string): boolean {
 	return fs.existsSync(path) === true;
 }
 
+/**
+ * This is the analyzer file context to be modified by all plugins that affect the files.
+ * If you are interested in inspecting these files, refer to {@link ReadOnlyFlowrAnalyzerFilesContext}.
+ * Plugins, however, can use this context directly to modify files.
+ */
 export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RProjectAnalysisRequest, (RParseRequest | FlowrFile<string>)[], FlowrAnalyzerProjectDiscoveryPlugin> implements ReadOnlyFlowrAnalyzerFilesContext, InvalidationEventReceiver {
 	public readonly name = 'flowr-analyzer-files-context';
 
@@ -247,19 +247,9 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		return root === undefined ? filePath : relativeTo(root, filePath);
 	}
 
+	/* only the content of a known file changes the file set, so revisit once we add dedicated FileAdded / FileRemoved events */
 	receive(event: InvalidationEvent): void {
-		const type = event.type;
-		switch(type) {
-			case InvalidationEventType.Full:
-				this.reset();
-				break;
-			case InvalidationEventType.SingleFileInvalidate:
-				// only the content of a known file changed, so the file set stays valid -> nothing to do.
-				// revisit once we add dedicated FileAdded / FileRemoved events.
-				break;
-			default:
-				assertUnreachable(type);
-		}
+		resetOnFullInvalidation(this, event);
 	}
 
 	/**

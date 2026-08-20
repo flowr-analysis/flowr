@@ -2,7 +2,7 @@ import { rPath } from '../../../_helper/r-path';
 import { describe, expect, it } from 'vitest';
 import { RShellExecutor } from '../../../../../src/r-bridge/shell-executor';
 import type { RObjectData } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
-import { RDAParser } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
+import { CompressionType, RDAParser } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
 import fs from 'fs';
 import { FlowrTextFile } from '../../../../../src/project/context/flowr-file';
 import path from 'path';
@@ -68,6 +68,77 @@ describe('rda-files', () => {
 				expect(result2).toBeDefined();
 
 				expectNames(result2 as RObjectData[], varsAndTypesFromShell);
+			});
+		}
+
+		process.on('exit', () => {
+			try {
+				fs.rmSync(tempFolder, { recursive: true, force: true });
+			} catch(e) {
+				console.error('Error during cleanup:', e);
+			}
+		});
+	});
+
+	describe('compression detection', () => {
+		const detect = (bytes: number[], withZlib = false) =>
+			new RDAParser(new FlowrTextFile('unused')).detectCompression(Buffer.from(bytes), withZlib);
+
+		it.each([
+			['gzip',                     [0x1f, 0x8b],                                                               CompressionType.CompGz],
+			['bzip2 (first block magic)', [0x42, 0x5a, 0x68, 0x39, 0x31, 0x41, 0x59, 0x26, 0x53, 0x59],              CompressionType.CompBz],
+			['bzip2 (second block magic)', [0x42, 0x5a, 0x68, 0x31, 0x17, 0x72, 0x45, 0x38, 0x50, 0x90],             CompressionType.CompBz],
+			['zstd',                     [0x28, 0xb5, 0x2f, 0xfd],                                                   CompressionType.CompZstd],
+			['xz',                       [0xfd, 0x37, 0x7a, 0x58, 0x5a],                                             CompressionType.CompXz],
+			['lzma',                     [0xff, 0x4c, 0x5a, 0x4d, 0x41],                                             CompressionType.CompLzma],
+			['lzma_alone',               [0x5d, 0x00, 0x00, 0x80, 0x00],                                             CompressionType.CompLzma],
+			['an uncompressed RDX2',     [0x52, 0x44, 0x58, 0x32, 0x0a],                                             CompressionType.CompUnknownOrNo],
+			['nothing at all',           [],                                                                         CompressionType.CompUnknownOrNo],
+			['a truncated magic',        [0x1f],                                                                     CompressionType.CompUnknownOrNo],
+			/* `BZh` with a block size outside 1-9, or with the block magic broken, is not bzip2 */
+			['BZh with a bad block size', [0x42, 0x5a, 0x68, 0x30, 0x31, 0x41, 0x59, 0x26, 0x53, 0x59],              CompressionType.CompUnknownOrNo],
+			['BZh with a broken magic',  [0x42, 0x5a, 0x68, 0x39, 0x31, 0x41, 0x59, 0x26, 0x53, 0x58],               CompressionType.CompUnknownOrNo],
+			['a bzip2 header cut short', [0x42, 0x5a, 0x68, 0x39, 0x31, 0x41, 0x59, 0x26, 0x53],                     CompressionType.CompUnknownOrNo],
+		])('recognizes %s', (_what, bytes, expected) => {
+			expect(detect(bytes)).toBe(expected);
+		});
+
+		it('only takes a bare zlib header for gzip when asked to', () => {
+			expect(detect([0x78, 0x9c])).toBe(CompressionType.CompUnknownOrNo);
+			expect(detect([0x78, 0x9c], true)).toBe(CompressionType.CompGz);
+		});
+
+		it('rejects lzop, which has no reader', () => {
+			expect(() => detect([0x89, 0x4c, 0x5a, 0x4f])).toThrow(/lzop/);
+		});
+	});
+
+	describe('full payloads', () => {
+		const tempFolder = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-load-payload-test-'));
+		const setup = `
+			cx <- complex(real = c(1, 2, 3, 4, 5), imaginary = c(-1, -2, -3, -4, -5))
+			iv <- as.integer(c(10, 20, 30))
+			rv <- c(1.5, 2.5, 3.5)
+			sv <- c("alpha", "beta", paste(rep("x", 1500), collapse = ""))
+			rw <- as.raw(c(1, 2, 255))`;
+
+		for(const [ascii, version] of [['FALSE', '2'], ['TRUE', '2'], ['FALSE', '3'], ['TRUE', '3']]) {
+			it(`reads every element back (ascii = ${ascii}, version = ${version})`, () => {
+				const file = `${tempFolder}/payload_${ascii}_${version}.rda`;
+				const rShell = new RShellExecutor();
+				rShell.run(`${setup}
+					save(cx, iv, rv, sv, rw, file = "${rPath(file)}", ascii = ${ascii}, version = ${version}, compress = FALSE)`);
+				rShell.close();
+
+				/* not the shortcut parser: we want the payloads, not just the names */
+				const parsed = new RDAParser(new FlowrTextFile(file), false).parse() as RObjectData[];
+				const byName = new Map(parsed.map(o => [o.name as string, o.value]));
+
+				expect(byName.get('cx')).toEqual([1, 2, 3, 4, 5].map(r => ({ r, i: -r })));
+				expect(byName.get('iv')).toEqual([10, 20, 30]);
+				expect(byName.get('rv')).toEqual([1.5, 2.5, 3.5]);
+				expect(byName.get('sv')).toEqual(['alpha', 'beta', 'x'.repeat(1500)]);
+				expect(byName.get('rw')).toEqual([1, 2, 255]);
 			});
 		}
 

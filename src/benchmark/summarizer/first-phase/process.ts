@@ -4,6 +4,7 @@ import fs from 'fs';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { log } from '../../../util/log';
 import { withoutWhitespace } from '../../../util/text/strings';
+import { countAstComments } from '../../stats/count-comments';
 import { type SummarizedMeasurement, summarizeMeasurement } from '../../../util/summarizer';
 import { isNotUndefined } from '../../../util/assert';
 import type { PerNodeStatsDfShape, PerSliceMeasurements, PerSliceStats, SlicerStats, SlicerStatsDfShape, SlicerStatsDataflow, SlicerStatsInput } from '../../stats/stats';
@@ -13,8 +14,6 @@ import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse } fr
 import { arraySum } from '../../../util/collections/arrays';
 import type { RShellEngineConfig } from '../../../config';
 import { DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
-import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
-import { RComment } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 
 const tempfile = (() => {
 	let _tempfile: tmp.FileResult | undefined = undefined;
@@ -142,22 +141,12 @@ export async function summarizeSlicerStats(
 				{ request: 'file', content: tempfile().name },
 				reParseShellSession
 			);
-			let numberOfNormalizedTokens = 0;
-			let numberOfNormalizedTokensNoComments = 0;
-			let commentChars = 0;
-			let commentCharsNoWhitespace = 0;
-			RProject.visitAst(reParsed.ast, t => {
-				numberOfNormalizedTokens++;
-				const comments = t.info.adToks?.filter(RComment.is);
-				if(comments && comments.length > 0) {
-					const content = comments.map(c => c.lexeme ?? '').join('');
-					commentChars += content.length;
-					commentCharsNoWhitespace += withoutWhitespace(content).length;
-				} else {
-					numberOfNormalizedTokensNoComments++;
-				}
-				return false;
-			});
+			const {
+				nodes:            numberOfNormalizedTokens,
+				nodesNoComments:  numberOfNormalizedTokensNoComments,
+				commentChars,
+				commentCharsNoWhitespace
+			} = countAstComments(reParsed.ast);
 			sliceSize.normalizedTokens.push(numberOfNormalizedTokens);
 			sliceSize.normalizedTokensNoComments.push(numberOfNormalizedTokensNoComments);
 			sliceSize.charactersNoComments.push(output.length - commentChars);

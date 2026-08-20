@@ -61,14 +61,6 @@ export interface DecodedFunction {
 }
 
 /**
- * The formal parameter names of a known signature, ready for `RFunctionCall.matchArgumentsToParameters`: the
- * `...` parameter is excluded so partial (`pmatch`) matches against the remaining names stay unambiguous.
- */
-export function signatureParameterNames(signature: readonly SigParameter[]): string[] {
-	return signature.map(p => p.name).filter(n => n !== '...');
-}
-
-/**
  * The transitive callees of `name`. Each local callee that is itself a function of `functions` (one package
  * version's set) is expanded, names outside the set stay as leaves. Deduplicated and ascending.
  */

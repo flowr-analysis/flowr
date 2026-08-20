@@ -263,13 +263,6 @@ export const RGroupGenerics = {
 } as const satisfies Record<string, readonly string[]>;
 
 /**
- * Every R generic flowR states a built-in for: the {@link RGroupGenerics} members, the `.S3PrimitiveGenerics` and
- * internal generics (which have no R body, so {@link fnInfoFromSignature} could never see them), and the
- * `UseMethod` closures flowR models itself, as its own definition hides the one in the signature database.
- * The `<-` forms are left out, one replacement definition covers many names.
- * `npm run check:generic-labels` (part of `checkup`) compares this against a synced database.
- */
-/**
  * The internal generics: they dispatch in C rather than through `UseMethod`, so no signature can state it and
  * the list has to be written down. Everything that dispatches from R is generated, see {@link RBasePackageStore}.
  */
@@ -281,7 +274,14 @@ const InternalGenerics: readonly string[] = [
 	'is.na', 'is.nan', 'is.finite', 'is.infinite', 'is.matrix', 'is.numeric', 'cbind', 'rbind'
 ];
 
-/** Every name R dispatches on: the generated closure generics plus the {@link InternalGenerics}. */
+/**
+ * Every name R dispatches on: the generated closure generics plus the {@link InternalGenerics}, i.e. the
+ * {@link RGroupGenerics} members, the `.S3PrimitiveGenerics` and internal generics (which have no R body, so
+ * {@link fnInfoFromSignature} could never see them), and the `UseMethod` closures flowR models itself, as its
+ * own definition hides the one in the signature database.
+ * The `<-` forms are left out, one replacement definition covers many names.
+ * `npm run check:generic-labels` (part of `checkup`) compares this against a synced database.
+ */
 const RGenerics: ReadonlySet<string> = new Set([...RBasePackageStore.generics, ...InternalGenerics]);
 
 /** Label every {@link RGenerics} {@link CallProp.Generic}, splitting an entry that mixes them with names that do not dispatch (`&` does, `&&` does not). */

@@ -5,7 +5,6 @@ import path from 'path';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
-import { arraysGroupBy } from '../../../../src/util/collections/arrays';
 import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { FlowrConfig } from '../../../../src/config';
 import {
@@ -16,7 +15,7 @@ describe('Rprofile-file', function() {
 	function ctxWith(...files: string[]): FlowrAnalyzerContext {
 		const ctx = new FlowrAnalyzerContext(
 			FlowrConfig.default(),
-			arraysGroupBy([new FlowrAnalyzerRprofileFilePlugin()], p => p.type)
+			[new FlowrAnalyzerRprofileFilePlugin()]
 		);
 		for(const f of files) {
 			ctx.addFile(new FlowrInlineTextFile(f, ''));

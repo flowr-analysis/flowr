@@ -24,7 +24,7 @@ import { FunctionDefinitionVertex, ValueVertex, UseVertex, VariableDefinitionVer
 
 /**
  * Describes the information we store per function body.
- * The {@link DataflowFunctionFlowInformation#exitPoints} are stored within the enclosing {@link DataflowGraphVertexFunctionDefinition} vertex.
+ * The {@link DataflowInformation#exitPoints} this type omits are stored within the enclosing {@link DataflowGraphVertexFunctionDefinition} vertex.
  */
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> };
 

@@ -164,16 +164,17 @@ available for ${ctx.linkPage('flowr:vscode', 'VSCode')}, ${ctx.linkPage('flowr:p
 and ${ctx.linkPage('flowr:docker', 'Docker')}.
 It offers a wide variety of features, for example:
 
-* 📚 **dependency analysis** ${tryInPlayground({
-	code:  playgroundSample,
-	marks: [PlaygroundBox.Deps],
-	at:    '12@write.csv'
-}, 'the dependency example')}\\
+* 📚 **dependency analysis**\\
   Given your analysis project, flowR offers a plethora of so-called ${ctx.linkPage('wiki/Query API', 'queries')} to get more information about your code.
   An important query is the ${linkToQueryOfName('dependencies', 'dependencies query')}, which shows you the library your project needs,
   the data files it reads, the scripts it sources, and the data it outputs.
   Building on it, the ${linkToQueryOfName('guess-dep-versions', 'guess dependency versions query')} narrows down the version range each
   of these libraries has to have, by combining the constraints your project declares with the functions your code actually calls.
+  ${tryInPlayground({
+		code:  playgroundSample,
+		marks: [PlaygroundBox.Deps],
+		at:    '12@write.csv'
+	}, 'the dependency example')}
 
   
   ${prefixLines(details('Example: Dependency Analysis with flowR', `
@@ -183,13 +184,14 @@ The following showcases the dependency view of the ${ctx.linkPage('flowr:vscode'
   
   `), '    ')} 
 
-* 🐞 **code linting** ${tryInPlayground({
-	code:      playgroundSample,
-	marks:     ['lint:unused-definitions'],
-	collapsed: [PlaygroundBox.Deps],
-	at:        '10@unused_total'
-}, 'the linter example')}\\
+* 🐞 **code linting**\\
    Analyze your R scripts for common issues and potential bugs (see the ${ctx.linkPage('wiki/Linter', 'wiki page')} for more information on the currently supported linters).
+   ${tryInPlayground({
+		code:      playgroundSample,
+		marks:     ['lint:unused-definitions'],
+		collapsed: [PlaygroundBox.Deps],
+		at:        '10@unused_total'
+	}, 'the linter example')}
 
 
 	${prefixLines(details('Example: Linting code with flowR', `To lint your code, you can use the ${ctx.linkPage('wiki/Interface', 'REPL', 'using-the-repl')} or the ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')} (see [vscode-flowr#283](https://github.com/flowr-analysis/vscode-flowr/pull/283)).
@@ -211,15 +213,16 @@ ${res}
 	   `), '    ')}
 
 
-* 🍕 **program slicing** ${tryInPlayground({
-	code:      example,
-	marks:     [PlaygroundBox.Slice],
-	collapsed: [PlaygroundBox.Deps],
-	at:        '11@sum',
-	dim:       true
-}, 'the slicing example')}\\
+* 🍕 **program slicing**\\
    Given a point of interest like the visualization of a plot, _flowR_ reduces the program to just the parts which are relevant
    for the computation of the point of interest.
+   ${tryInPlayground({
+		code:      example,
+		marks:     [PlaygroundBox.Slice],
+		collapsed: [PlaygroundBox.Deps],
+		at:        '11@sum',
+		dim:       true
+	}, 'the slicing example')}
 
 
 ${prefixLines(details('Example: Slicing with flowR', `
@@ -242,13 +245,14 @@ ${await documentReplSession(treeSitter, [{
    
    `), '    ')}
 
-* 🚀 **fast call-graph, data-, and control-flow graphs** ${tryInPlayground({
-	code: playgroundSample,
-	at:   '13@plot'
-}, 'this script')}\\
+* 🚀 **fast call-graph, data-, and control-flow graphs**\\
   Within just ${ctx.linkPage('flowr:benchmarks', `${'<i>' + textWithTooltip(roundToDecimals(await getLatestDfAnalysisTime('"real-world" Benchmark Suite (tree-sitter)'), 1) + ' ms', 'This measurement is automatically fetched from the latest benchmark!') + '</i>'} (as of ${new Date(await getLastBenchmarkUpdate()).toLocaleDateString('en-US', dateOptions)})`)},
   _flowR_ can analyze the data- and control-flow of the average real-world R&nbsp;script. See the ${ctx.linkPage('flowr:benchmarks', 'benchmarks')} for more information,
   and consult the ${ctx.linkPage('wiki/Dataflow Graph', 'wiki pages')} for more details on the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graphs')} as well as ${ctx.linkPage('wiki/Dataflow Graph', 'call graphs', 'perspectives-cg')}.
+  ${tryInPlayground({
+		code: playgroundSample,
+		at:   '13@plot'
+	}, 'this script')}
 
 
 ${prefixLines(details('Example: Generating a dataflow graph with flowR', `

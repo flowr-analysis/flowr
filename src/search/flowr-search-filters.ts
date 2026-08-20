@@ -30,7 +30,7 @@ export enum FlowrFilter {
 	/**
 	 * Only returns search elements whose enrichments' JSON representations match a given test regular expression.
 	 * This filter accepts {@link MatchesEnrichmentArgs}, which includes the enrichment to match for, as well as the regular expression to test the enrichment's (non-pretty-printed) JSON representation for.
-	 * To test for included function names in an enrichment like {@link Enrichment.CallTargets}, the helper function {@link matchIdentifiers} can be used.
+	 * To test for included function names in an enrichment like {@link Enrichment.CallTargets}, the helper function {@link Identifier.regex} can be used.
 	 */
 	MatchesEnrichment = 'matches-enrichment',
 	/**

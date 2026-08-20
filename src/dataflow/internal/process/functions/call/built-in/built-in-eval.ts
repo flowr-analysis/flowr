@@ -1,3 +1,4 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -46,7 +47,7 @@ export function processEvalCall<OtherInfo>(
 		supportFunctionCall?: boolean
 	}
 ): DataflowInformation {
-	const bound = RFunctionCall.matchArgsToParams(args, EvalParameterNames);
+	const bound = MatchArgs.toNames(args, EvalParameterNames);
 	/* `evalText` names its formal differently, so a lone argument is the expression whatever it is called */
 	const evalArgument = (bound.get('expr') ?? RFunctionCall.soleArgument(args))?.value;
 	const envirArg = bound.get('envir');

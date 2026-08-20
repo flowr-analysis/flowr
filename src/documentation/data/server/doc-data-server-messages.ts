@@ -332,7 +332,7 @@ The \`results\` field of the response contains two keys of importance:
 
 - \`slice\`: which contains the result of the slicing (e.g., the ids included in the slice in \`result\`).
 - \`reconstruct\`: contains the reconstructed code, as well as additional meta information. 
-                   The automatically selected lines correspond to additional filters (e.g., magic comments) which force the unconditiojnal inclusion of certain elements.
+                   The automatically selected lines correspond to additional filters (e.g., magic comments) which force the unconditional inclusion of certain elements.
 `
 		}]
 	})

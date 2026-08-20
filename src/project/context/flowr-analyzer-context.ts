@@ -114,8 +114,8 @@ export const enum RVersionOrigin {
  * Besides these, this layer only orchestrates the different steps and layers, providing a collection of convenience methods.
  * In general, you do not have to worry about these details, as the {@link FlowrAnalyzerBuilder} and {@link FlowrAnalyzer} take care of them.
  *
- * To inspect, e.g., the loading order, you can do so via {@link files.loadingOrder.getLoadingOrder}. To get information on a specific library, use
- * {@link deps.getDependency}.
+ * To inspect, e.g., the loading order, you can do so via {@link ReadOnlyFlowrAnalyzerLoadingOrderContext#getLoadingOrder|files.loadingOrder.getLoadingOrder}.
+ * To get information on a specific library, use {@link ReadOnlyFlowrAnalyzerDependenciesContext#getDependency|deps.getDependency}.
  * If you are just interested in inspecting the context, you can use {@link ReadOnlyFlowrAnalyzerContext} instead (e.g., via {@link inspect}).
  */
 export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, InvalidationEventReceiver {
@@ -236,19 +236,25 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		}
 	}
 
-	constructor(config: FlowrConfig, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>) {
+	/**
+	 * @param config  - The configuration to analyze with.
+	 * @param plugins - The plugins to run, either already grouped by their {@link PluginType} or as a plain list.
+	 */
+	constructor(config: FlowrConfig, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]> | readonly FlowrAnalyzerPlugin[] = []) {
+		const byType = Array.isArray(plugins) ? arraysGroupBy(plugins as readonly FlowrAnalyzerPlugin[], p => p.type)
+			: plugins as ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>;
 		this.baseConfig = config;
 		this._config = config;
-		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
-		this.files = new FlowrAnalyzerFilesContext(this, loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
-			(plugins.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
+		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, byType.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
+		this.files = new FlowrAnalyzerFilesContext(this, loadingOrder, (byType.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
+			(byType.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
 		this.env = new FlowrAnalyzerEnvironmentContext(this);
 		this.inc = new FlowrAnalyzerIncrementalAnalysisContext(this);
 		const functions = new FlowrAnalyzerFunctionsContext(this);
-		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
+		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (byType.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 		// the plugins contributing the metadata are the ones the dependency context runs on demand
 		this.meta = new FlowrAnalyzerMetaContext(() => this.deps.ensureStaticsLoaded());
-		this.gas  = new FlowrAnalyzerGasContext(this, config.gas, (plugins.get(PluginType.Gas) ?? []) as FlowrAnalyzerGasPlugin[]);
+		this.gas  = new FlowrAnalyzerGasContext(this, config.gas, (byType.get(PluginType.Gas) ?? []) as FlowrAnalyzerGasPlugin[]);
 	}
 
 	/**
@@ -361,10 +367,7 @@ export function contextFromInput(
 	config = FlowrConfig.default(),
 	plugins?: FlowrAnalyzerPlugin[],
 ): FlowrAnalyzerContext {
-	const context = new FlowrAnalyzerContext(
-		config,
-		arraysGroupBy(plugins ?? [], (p) => p.type)
-	);
+	const context = new FlowrAnalyzerContext(config, plugins);
 	if(typeof input === 'string' || Array.isArray(input) && input.every(i => typeof i === 'string')) {
 		const requests = requestFromInput(input);
 		context.addRequests(Array.isArray(requests) ? requests : [requests] );
@@ -388,10 +391,7 @@ export function contextFromSources(
 	config = FlowrConfig.default(),
 	plugins?: FlowrAnalyzerPlugin[],
 ): FlowrAnalyzerContext {
-	const context = new FlowrAnalyzerContext(
-		config,
-		arraysGroupBy(plugins ?? [], (p) => p.type)
-	);
+	const context = new FlowrAnalyzerContext(config, plugins);
 
 	for(const [p, c] of Object.entries(sources)) {
 		context.addFile(new FlowrInlineTextFile(p, c));

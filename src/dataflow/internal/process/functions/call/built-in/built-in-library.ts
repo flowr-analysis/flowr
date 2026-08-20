@@ -1,3 +1,4 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { RValue } from '../../../../../eval/values/r-value';
 import type { DataflowInformation, ControlDependency } from '../../../../../info';
@@ -28,7 +29,6 @@ import { Package } from '../../../../../../project/plugins/package-version-plugi
 import { attachedAlongside } from '../../../../../../project/attached-packages';
 import { getCallables, type NamespaceInfo } from '../../../../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { convertFnArguments } from '../common';
-import { pMatch } from '../../../../linker';
 import type { Lift, TernaryLogical } from '../../../../../eval/values/r-value';
 import { VertexType } from '../../../../../graph/vertex';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -86,7 +86,7 @@ export function processLibrary<OtherInfo>(
 		/* last, so the positional fallback keeps its previous order */
 		'pos':            'pos'
 	};
-	const argMaps = pMatch(convertFnArguments(args), params);
+	const argMaps = MatchArgs.toSpec(convertFnArguments(args), params);
 	const packageId = uniqueArray(argMaps.get('pkg') ?? []);
 	const charId = uniqueArray(argMaps.get('char') ?? []);
 	/* `import::from` has no `pos`; its extra arguments name exports */

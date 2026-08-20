@@ -13,6 +13,7 @@ import { ReadFunctions } from '../src/queries/catalog/dependencies-query/functio
 import { WriteFunctions } from '../src/queries/catalog/dependencies-query/function-info/write-functions';
 import { VisualizeFunctions } from '../src/queries/catalog/dependencies-query/function-info/visualize-functions';
 import { TestFunctions } from '../src/queries/catalog/dependencies-query/function-info/test-functions';
+import { statisticsFunctions } from '../src/queries/catalog/dependencies-query/function-info/statistics-functions';
 import { DefaultBuiltinConfig, statedSignatures, type StatedSignature } from '../src/dataflow/environments/default-builtin-config';
 import { Identifier } from '../src/dataflow/environments/identifier';
 
@@ -175,12 +176,13 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
  */
 function builtInKinds(): Map<string, string[]> {
 	const categories: Record<string, readonly { name: string }[]> = {
-		library:   LibraryFunctions,
-		source:    SourceFunctions,
-		read:      ReadFunctions,
-		write:     WriteFunctions,
-		visualize: VisualizeFunctions,
-		test:      TestFunctions
+		library:    LibraryFunctions,
+		source:     SourceFunctions,
+		read:       ReadFunctions,
+		write:      WriteFunctions,
+		visualize:  VisualizeFunctions,
+		test:       TestFunctions,
+		statistics: statisticsFunctions()
 	};
 	const kinds = new Map<string, string[]>();
 	/* flowR's own built-in definitions: `:`, `<-`, `TRUE` and the rest of what it understands without

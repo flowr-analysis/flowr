@@ -35,6 +35,9 @@
 	}
 }
 * { box-sizing: border-box; }
+/* every list here gives its rows a `display` of their own, and that beats what `hidden` states: said once
+   for the page, so nothing has to remember it again */
+[hidden] { display: none !important; }
 body {
 	margin: 0; height: 100vh; display: flex; flex-direction: column;
 	color: var(--fg); background: var(--bg);
@@ -354,6 +357,19 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 /* one grid for all dependency rows, so the chip, the name and the line number line up across them */
 /* one grid for all dependency rows, so the chip, the name and the line number line up across them */
 #panel .deps { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: .6rem; }
+/* a script with a great many dependencies keeps its own scrollbar, so the findings under it stay where they
+   are; sideways there is nothing to reach, as every cell already cuts what does not fit */
+#panel .deps { max-height: min(28rem, 50vh); overflow: hidden auto; overscroll-behavior: contain; }
+/* the word of a category is written once, and the rows under it line up with that one */
+#panel .kind.ditto { border-color: transparent; background: none; }
+/* the same dotted line the code carries: this output is printed without anything asking for it */
+#panel .echo { border-bottom: 1px dotted color-mix(in srgb, var(--accent) 60%, transparent); }
+#panel .deps .more {
+	/* it belongs to the rows above it, so it starts where they say what they are, not at the edge */
+	grid-column: 2 / -1; justify-self: start; margin: .1rem 0 .2rem; padding: 0; border: 0; background: none;
+	font: inherit; font-size: .72rem; color: var(--muted); cursor: pointer; text-decoration: underline dotted;
+}
+#panel .deps .more:hover { color: var(--accent); }
 #panel .row {
 	display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: baseline;
 	padding: .28rem .45rem; margin: 0 -.45rem; font-size: .86rem;
@@ -458,6 +474,8 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 @container panel (max-width: 22rem) {
 	#panel .deps, #panel .lints { grid-template-columns: minmax(0, 1fr) auto; }
 	#panel .row, #panel .lints .lint { grid-template-rows: auto auto; row-gap: .1rem; }
+	/* two columns here, and the first is where the rows begin */
+	#panel .deps .more { grid-column: 1 / -1; }
 	#panel .kind, #panel .rule { grid-column: 1; grid-row: 1; }
 	#panel .at { grid-column: 2; grid-row: 1; }
 	#panel .what, #panel .says { grid-column: 1 / -1; grid-row: 2; }

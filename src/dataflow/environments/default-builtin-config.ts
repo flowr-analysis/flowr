@@ -501,6 +501,29 @@ export const WrittenBuiltinDefinitions = [
 		config:          { props: CallProp.Pure },
 		assumePrimitive: true
 	},
+	/* the hypothesis tests: they compute a test statistic and hand it back visibly, which is the output a reader sees */
+	{
+		type:  'function',
+		names: [
+			...Identifier.fromAll(PkgName.Stats, [
+				'anova', 'ansari.test', 'aov', 'bartlett.test', 'binom.test', 'Box.test', 'chisq.test', 'cor.test',
+				'fisher.test', 'fligner.test', 'friedman.test', 'kruskal.test', 'ks.test', 'manova', 'mantelhaen.test',
+				'mauchly.test', 'mcnemar.test', 'mood.test', 'oneway.test', 'pairwise.prop.test', 'pairwise.t.test',
+				'pairwise.wilcox.test', 'poisson.test', 'PP.test', 'prop.test', 'prop.trend.test', 'quade.test',
+				'shapiro.test', 't.test', 'TukeyHSD', 'var.test', 'wilcox.test'
+			]),
+			...Identifier.fromAll(PkgName.Car, ['Anova', 'durbinWatsonTest', 'leveneTest', 'linearHypothesis', 'ncvTest', 'outlierTest']),
+			...Identifier.fromAll(PkgName.LmTest, ['bgtest', 'bptest', 'coeftest', 'dwtest', 'gqtest', 'lrtest', 'raintest', 'resettest', 'waldtest']),
+			...Identifier.fromAll(PkgName.NorTest, ['ad.test', 'cvm.test', 'lillie.test', 'pearson.test', 'sf.test']),
+			...Identifier.fromAll(PkgName.Tseries, ['adf.test', 'jarque.bera.test', 'kpss.test', 'pp.test', 'runs.test', 'white.test']),
+			...Identifier.fromAll(PkgName.Rstatix, ['anova_test', 'chisq_test', 'cor_test', 'kruskal_test', 'shapiro_test', 't_test', 'wilcox_test']),
+			Identifier.from(['glht', PkgName.Multcomp])
+		],
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.Pure | CallProp.Statistics },
+		assumePrimitive: false
+	},
+
 	/* indices and index sequences: bounded by the shape of what they are handed, never by its contents */
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['which', 'which.max', 'which.min', 'seq_len', 'seq_along']),
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure | CallProp.Narrows }, assumePrimitive: true },
@@ -810,7 +833,8 @@ export const WrittenBuiltinDefinitions = [
 	{ type:            'function', names:           ['{'],
 		processor:       BuiltInProcName.ExpressionList, config:          {}, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['source', PkgName.Base])],
-		processor:       BuiltInProcName.Source, config:          { includeFunctionCall: true, forceFollow: false }, assumePrimitive: false },
+		/* it hands back what it evaluated invisibly, so a top-level `source()` prints nothing of its own */
+		processor:       BuiltInProcName.Source, config:          { includeFunctionCall: true, forceFollow: false, props: CallProp.Invisible }, assumePrimitive: false },
 	{ type:            'function', names:           ['['],
 		processor:       BuiltInProcName.Access, config:          { treatIndicesAsString: false, props: CallProp.Pure }, assumePrimitive: true },
 	{ type:            'function', names:           ['[['],
@@ -868,11 +892,12 @@ export const WrittenBuiltinDefinitions = [
 		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: true, evalRhsWhen: false, props: CallProp.Pure }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Logical },
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['&', '|']),
 		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: false, props: CallProp.Pure }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Logical },
+	/* a pipe hands back what the side it feeds hands back, which `Alias` is what states */
 	{ type:            'function', names:           ['|>'],
-		processor:       BuiltInProcName.Pipe, config:          { pipePlaceholderName: '_', assignLhs: false, returnLhs: false }, assumePrimitive: true },
-	{ type: 'function', names: [Identifier.from(['%>%', PkgName.Magrittr]), '%!>%'], processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: false, returnLhs: false, rhsMightBeSymbol: true }, assumePrimitive: true  },
-	{ type: 'function', names: [Identifier.from(['%<>%', PkgName.Magrittr])],        processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: true, returnLhs: false, rhsMightBeSymbol: true }, assumePrimitive: true  },
-	{ type: 'function', names: [Identifier.from(['%T>%', PkgName.Magrittr])],        processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: false, returnLhs: true, rhsMightBeSymbol: true }, assumePrimitive: true  },
+		processor:       BuiltInProcName.Pipe, config:          { pipePlaceholderName: '_', assignLhs: false, returnLhs: false, sig: [['lhs', ArgProp.Value], ['rhs', ArgProp.Alias]] }, assumePrimitive: true },
+	{ type: 'function', names: [Identifier.from(['%>%', PkgName.Magrittr]), '%!>%'], processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: false, returnLhs: false, rhsMightBeSymbol: true, sig: [['lhs', ArgProp.Value], ['rhs', ArgProp.Alias]] }, assumePrimitive: true  },
+	{ type: 'function', names: [Identifier.from(['%<>%', PkgName.Magrittr])],        processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: true, returnLhs: false, rhsMightBeSymbol: true, props: CallProp.Invisible | CallProp.Scope }, assumePrimitive: true  },
+	{ type: 'function', names: [Identifier.from(['%T>%', PkgName.Magrittr])],        processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: false, returnLhs: true, rhsMightBeSymbol: true, sig: [['lhs', ArgProp.Alias], ['rhs', ArgProp.Value]] }, assumePrimitive: true  },
 	{ type:      'function', names:     Identifier.fromAll(PkgName.Purrr, ['map', 'map_lgl', 'map_int', 'map_dbl', 'map_chr']), processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x': { index: 0, name: '.x' }

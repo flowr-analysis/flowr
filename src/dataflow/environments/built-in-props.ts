@@ -113,7 +113,9 @@ export enum CallProp {
 	/** hands back what the program was invoked with, as `commandArgs` and the option parsers built on it do */
 	CommandLine = 1 << 26,
 	/** hands back a handle the program is expected to close again, like `file` or `DBI::dbConnect` */
-	Opens       = 1 << 27
+	Opens       = 1 << 27,
+	/** performs a statistical test, so its result is the test statistic a reader is meant to see (`t.test`, `anova`) */
+	Statistics  = 1 << 28
 }
 
 /**

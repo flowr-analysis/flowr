@@ -11,9 +11,8 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import { guard, isUndefined } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
-	EmptyArgument,
-	type PotentiallyEmptyRArgument
+import type {
+	PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -29,6 +28,7 @@ import {
 import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import { appendEnvironment } from '../../../../../environments/append';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 
 /**
@@ -40,7 +40,7 @@ export function processWhileLoop<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	if(args.length !== 2 || args[1] === EmptyArgument) {
+	if(args.length !== 2 || RArgument.isEmpty(args[1])) {
 		dataflowLogger.warn(`While-Loop ${Identifier.toString(name.content)} does not have 2 arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}

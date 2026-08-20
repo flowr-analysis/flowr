@@ -6,7 +6,9 @@ import type {
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { slicerLogger } from '../static/static-slicer';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /** An optional `(file-regex)` suffix restricting a criterion to nodes stemming from a matching file. */
 type FileFilterSuffix = '' | `(${string})`;
@@ -17,7 +19,7 @@ export type SlicingCriterion = `${number}:${number}${FileFilterSuffix}` | `${num
 
 /**
  * The helper object associated with {@link SlicingCriterion} which makes it easy
- * to parse, validate and resolve slicing criteria.
+ * to parse, validate, and resolve slicing criteria.
  */
 export const SlicingCriterion = {
 	name: 'SlicingCriterion',
@@ -56,7 +58,7 @@ export const SlicingCriterion = {
 	tryParse(this: void, criterion: SlicingCriterion | NodeId, idMap: AstIdMap): NodeId | undefined {
 		criterion = criterion.toString(); // in case it's a number
 		if(criterion.startsWith('$')) {
-			return NodeId.normalize(criterion.substring(1));
+			return NodeId.normalize(criterion.slice(1));
 		}
 		const split = splitFileFilter(criterion);
 		if(split === undefined) {
@@ -65,8 +67,8 @@ export const SlicingCriterion = {
 		const { rest: base, file } = split;
 		if(base.includes('@')) {
 			const at = base.indexOf('@');
-			const line = parseLineNumber(base.substring(0, at), idMap, file);
-			const name = base.substring(at + 1);
+			const line = parseLineNumber(base.slice(0, Math.max(0, at)), idMap, file);
+			const name = base.slice(Math.max(0, at + 1));
 			if(line === undefined || name.length === 0) {
 				return undefined;
 			}
@@ -106,7 +108,7 @@ export interface DecodedCriterion {
 export type DecodedCriteria = ReadonlyArray<DecodedCriterion>;
 
 /**
- * The helper object associated with {@link SlicingCriteria} which makes it easy to parse, validate and resolve slicing criteria.
+ * The helper object associated with {@link SlicingCriteria} which makes it easy to parse, validate, and resolve slicing criteria.
  */
 export const SlicingCriteria = {
 	name: 'SlicingCriteria',
@@ -146,7 +148,7 @@ function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: AstIdM
 
 		expensiveTrace(slicerLogger, () => `can resolve id ${id} (${JSON.stringify(nodeInfo.location)}) for location ${JSON.stringify(location)}`);
 		// function calls have the same location as the symbol they refer to, so we need to prefer the function call
-		if(candidate !== undefined && nodeInfo.type !== RType.FunctionCall || nodeInfo.type === RType.Argument || nodeInfo.type === RType.ExpressionList) {
+		if(candidate !== undefined && !RFunctionCall.is(nodeInfo) || RArgument.is(nodeInfo) || RExpressionList.is(nodeInfo)) {
 			continue;
 		}
 
@@ -163,13 +165,13 @@ function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: AstIdM
 function fuzzyLocationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: AstIdMap<OtherInfo>, file?: RegExp): NodeId | undefined {
 	const potentials = [...dataflowIdMap.values()].filter(nodeInfo =>
 		// arguments and expression lists only wrap their content, sharing its range, so they never say more than it
-		nodeInfo.type !== RType.Argument && nodeInfo.type !== RType.ExpressionList && matchesFile(nodeInfo, file)
+		!RArgument.is(nodeInfo) && !RExpressionList.is(nodeInfo) && matchesFile(nodeInfo, file)
 	);
 	/* a call shares its range with the symbol naming it, so keep both (`treatChildAsInner: false`) and let the
 	 * preference below decide, rather than always landing on the symbol */
 	const candidates = SourceRange.innermostNodes(SourceRange.nodesContaining(potentials, location[0], location[1]), false);
 	// prefer the call over the symbol it refers to, exactly as locationToId does
-	return (candidates.find(n => n.type === RType.FunctionCall) ?? candidates[0])?.info.id;
+	return (candidates.find(n => RFunctionCall.is(n)) ?? candidates[0])?.info.id;
 }
 
 /** Walks up to the statement `node` belongs to: the outermost node still below the root of its file. */
@@ -276,12 +278,12 @@ function nthOccurrenceToId<OtherInfo>(line: number, name: string, dataflowIdMap:
 		if(nodeInfo.location === undefined || nodeInfo.location[0] !== line || nodeInfo.lexeme !== name || !matchesFile(nodeInfo, file)) {
 			continue;
 		}
-		if(nodeInfo.type === RType.Argument || nodeInfo.type === RType.ExpressionList) {
+		if(RArgument.is(nodeInfo) || RExpressionList.is(nodeInfo)) {
 			continue;
 		}
 		const column = nodeInfo.location[1];
 		// function calls have the same location as the symbol they refer to, so we need to prefer the function call
-		if(!byColumn.has(column) || nodeInfo.type === RType.FunctionCall) {
+		if(!byColumn.has(column) || RFunctionCall.is(nodeInfo)) {
 			byColumn.set(column, nodeInfo);
 		}
 	}

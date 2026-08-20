@@ -20,6 +20,7 @@ export const RDelimiter = {
 	name: 'RDelimiter',
 	/**
 	 * Type guard for {@link RDelimiter} nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is(this: void, node: unknown): node is RDelimiter {
 		return typeof node === 'object' && node !== null && 'type' in node && (node as RDelimiter).type === RType.Delimiter;

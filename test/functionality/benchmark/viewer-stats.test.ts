@@ -1,6 +1,6 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { createRequire } from 'node:module';
+import fs from 'fs';
+import path from 'path';
+import { createRequire } from 'module';
 import { assert, describe, test } from 'vitest';
 import { infoGraphPath, isInfoEntry } from '../../../src/benchmark/summarizer/second-phase/graph';
 
@@ -12,6 +12,7 @@ interface BenchStats {
 	baselineOf(values: readonly (number | null)[], n: number): number;
 	toPercentDelta(values: readonly (number | null)[], baseline: number): (number | null)[];
 	calibrationFactors(values: readonly (number | null)[]): number[];
+	calibrationScales(values: readonly (number | null)[]): (number | null)[][];
 	applyFactors(values: readonly (number | null)[], factors: readonly number[] | null): (number | null)[];
 	parseVersion(message: string): { major: number, minor: number, patch: number, text: string } | null;
 	releaseBumps(runs: readonly { commit: { message: string } }[]): { index: number, version: string, kind: string }[];
@@ -76,10 +77,29 @@ describe('Benchmark page helpers', () => {
 	});
 
 	test('cancel out the machine with a calibration series', () => {
-		const factors = S.calibrationFactors([100, 125, 100]);
-		assert.deepStrictEqual(factors, [1, 1.25, 1], 'the median run is the reference');
-		assert.deepStrictEqual(S.applyFactors([200, 250, 200], factors), [200, 200, 200]);
+		const factors = S.calibrationFactors([100, 125, 100, 100]);
+		assert.deepStrictEqual(factors, [1, 1.25, 1, 1], 'the fastest run saw the machine, the others carry interference');
+		assert.deepStrictEqual(S.applyFactors([200, 250, 200, 200], factors), [200, 200, 200, 200]);
 		assert.deepStrictEqual(S.applyFactors([200], null), [200], 'without a calibration nothing changes');
+		assert.deepStrictEqual(S.calibrationFactors([100, 125, 100]), [1, 1, 1],
+			'too few runs to tell a machine from a noisy one, so nothing is scaled');
+	});
+
+	test('keep a redefined calibration workload to itself', () => {
+		assert.deepStrictEqual(S.calibrationScales([15, 16, 1.5, 1.6]), [[15, 16], [1.5, 1.6]],
+			'an order of magnitude is a new workload, not a slower machine');
+		assert.deepStrictEqual(S.calibrationScales([15, null, 16]), [[15, null, 16]],
+			'a run without a calibration stays with the scale around it');
+		assert.deepStrictEqual(S.calibrationFactors([100, 125, 100, 100, 10, 12.5, 10, 10]),
+			[1, 1.25, 1, 1, 1, 1.25, 1, 1], 'every scale is its own yardstick');
+		assert.deepStrictEqual(S.calibrationFactors([100, 125, 100, 100, 10]), [1, 1.25, 1, 1, 1],
+			'a scale too short to have a yardstick keeps its numbers');
+		assert.deepStrictEqual(S.calibrationFactors([100, null, 100]), [1, 1, 1]);
+		assert.deepStrictEqual(S.calibrationFactors([]), []);
+		const clamped = S.calibrationFactors([100, 100, 299, 100, 100]);
+		assert.strictEqual(clamped[2], 1.5, 'a lone slow run counts, but it cannot redraw the chart around it');
+		assert.ok(S.calibrationFactors([500, 400, 450, 380, 370]).every(f => f >= 1),
+			'no run is ever scaled up, a calibration can only reveal added time');
 	});
 
 	test('read the version of a run', () => {

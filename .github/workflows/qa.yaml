@@ -11,7 +11,6 @@ name: "QA"
       - '**/*.md'
       - 'LICENSE'
       - '.gitignore'
-      - 'scripts/**'
   pull_request:
     types: [ opened, synchronize ]
     branches: [ main ]
@@ -19,7 +18,6 @@ name: "QA"
       - '**/*.md'
       - 'LICENSE'
       - '.gitignore'
-      - 'scripts/**'
   workflow_dispatch:
     inputs:
       force-full:
@@ -33,19 +31,18 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  deployments: write
-  contents:    write
+  contents: write
 
 jobs:
   debug:
     name:    "🔍 Debug"
     runs-on: ubuntu-22.04
+    timeout-minutes: 10
     steps:
       - name: "🛒 Checkout Repository"
         uses: actions/checkout@v6
 
       - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "🔍 Debug state"
@@ -66,6 +63,7 @@ jobs:
     name: "👩‍🏫 Linting (local)"
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
     runs-on: ubuntu-22.04
+    timeout-minutes: 20
     steps:
       - name: "🛒 Checkout Repository"
         uses: actions/checkout@v6
@@ -73,7 +71,6 @@ jobs:
             submodules: true
 
       - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
@@ -81,6 +78,7 @@ jobs:
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
+          cache: npm
 
       - name: "👩‍🏫 Run linter"
         run: bash .github/workflows/scripts/run-flowr-command.sh lint-local
@@ -90,6 +88,7 @@ jobs:
     name: "👩‍🏫 Linting on Main"
     if: ${{ (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main') || github.base_ref == 'main' }}
     runs-on: ubuntu-22.04
+    timeout-minutes: 20
     steps:
       - name: "🛒 Checkout Repository"
         uses: actions/checkout@v6
@@ -97,7 +96,6 @@ jobs:
           submodules: true
 
       - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
@@ -105,6 +103,7 @@ jobs:
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
+          cache: npm
 
       - name: "👩‍🏫 Run linter"
         run: bash .github/workflows/scripts/run-flowr-command.sh lint
@@ -114,6 +113,7 @@ jobs:
     name: "⚗️ Test Suite (coverage)"
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.base.ref != 'main' }}
     runs-on: ubuntu-22.04
+    timeout-minutes: 65
     steps:
       - name: "🛒 Checkout Repository"
         uses: actions/checkout@v6
@@ -121,7 +121,6 @@ jobs:
             submodules: true
 
       - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
@@ -129,18 +128,27 @@ jobs:
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
+          cache: npm
 
       - name: "⬇️ Setup R"
-        uses: r-lib/actions/setup-r@v2
+        uses: ./.github/actions/setup-r
+        timeout-minutes: 45
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
 
       - name: "📦 Install R Packages"
         uses: r-lib/actions/setup-r-dependencies@v2
+        timeout-minutes: 20
         with:
+          cache: 'true'
+          cache-version: '1'
           extra-packages: |
             any::dplyr
             any::readr
+
+      - name: "📦 Install Node Dependencies"
+        # the sync below runs through ts-node, so the dependencies have to be there before it
+        run: npm ci
 
       - name: "💾 Cache the Signature Database Bundles"
         uses: actions/cache@v4
@@ -157,7 +165,7 @@ jobs:
         run: bash .github/workflows/scripts/run-flowr-command.sh sync:sigdb
 
       - name: "🧪 Run the Tests"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"
 
       - name: "⚙️ Run System Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test:system -- --no-watch"
@@ -179,86 +187,12 @@ jobs:
           fail_ci_if_error: true
 
 
-  prerelease:
-    name: "📦 Prerelease"
-    runs-on: ubuntu-22.04
-    needs: [test]
-    if: ${{ 
-          github.event_name == 'push' && github.ref == 'refs/heads/main'
-          && !(
-            startsWith(github.event.head_commit.message, '[release:minor]') ||
-            startsWith(github.event.head_commit.message, '[release:major]') ||
-            startsWith(github.event.head_commit.message, '[release:patch]')
-          )
-        }}
-    steps:
-      - name: "🛒 Checkout Repository"
-        uses: actions/checkout@v6
-        with:
-          submodules: true
-          fetch-depth: 2
-
-      - name: "🌍 Retrieve the latest version"
-        id: get-version
-        run: |
-          if git diff --name-only HEAD^ HEAD | grep -q '^src/|package.json'; then
-              VERSION="$(npm show @eagleoutice/flowr-dev version)"
-              # parse the date contained in the 0.0.YYYY-MM-DD-HH-MM version
-              DATE=$(echo $VERSION | sed -n 's/0.0.\([0-9]*-[0-9]*-[0-9]*\)-[0-9]*-[0-9]*/\1/p')
-              NOW=$(date +'%Y-%m-%d')
-              SECONDS_IN_DAY=86400
-              if [ $(( ( $(date --date="$NOW" +%s) - $(date --date="$DATE" +%s) ) / $SECONDS_IN_DAY )) -ge 1 ]; then
-                    echo "Making dev release, last release was more than a day ago, last release was $DATE"
-                  echo "::set-output makeRelease=true"
-              else
-                  echo "Skipping dev release, last release was less than a day ago"
-                  echo "::set-output makeRelease=false"
-              fi
-          else
-              echo "Skipping dev release, no changes in src/ directory or in package.json"
-              echo "::set-output makeRelease=false"
-          fi 
-
-      - name: "🌍 Load Versions to Use"
-        if: steps.get-version.outputs.makeRelease == 'true'
-        id: doc-global-versions
-        run: bash .github/workflows/scripts/global-configuration.sh
-
-      - name: "⬇️ Use Node.js"
-        if: steps.get-version.outputs.makeRelease == 'true'
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.ACTION_NODE_VERSION }}
-          registry-url: "https://registry.npmjs.org/"
-
-      - name: "⬇️ Setup R"
-        if: steps.get-version.outputs.makeRelease == 'true'
-        uses: r-lib/actions/setup-r@v2
-        with:
-          r-version: ${{ env.ACTION_R_VERSION }}
-
-      - name: "📦 Install Dependencies"
-        if: steps.get-version.outputs.makeRelease == 'true'
-        run: npm ci
-
-      - name: "🌟 Prerelease"
-        if: steps.get-version.outputs.makeRelease == 'true'
-        run: |
-          sed -i -e 's/"name":.*"@eagleoutice\/flowr"/"name": "@eagleoutice\/flowr-dev"/g' package.json
-          npm version 0.0.$(date +'%Y-%m-%d-%H-%M') --no-git-tag-version
-          
-          rm -rf dist
-          npm run build
-          npm run publish-library
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
-
   performance-test:
     needs: [ test ]
     name: "⏱️ Performance Test"
     # we do not run if the release workflow runs it with pushing
     if: ${{
-              always()
+              !cancelled()
           && !failure()
           && (inputs.force-full || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
           && !(
@@ -268,7 +202,7 @@ jobs:
               )
       }}
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 75
     strategy:
       fail-fast: true
       matrix:
@@ -282,7 +216,6 @@ jobs:
             submodules: true
 
       - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
@@ -290,14 +223,16 @@ jobs:
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
+          cache: npm
 
       - name: "⬇️ Setup R"
-        uses: r-lib/actions/setup-r@v2
+        uses: ./.github/actions/setup-r
+        timeout-minutes: 45
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
 
       - name: "⏱️ Run the performance benchmarks"
-        run: bash .github/workflows/scripts/run-flowr-command.sh performance-test -- 1 1 "${{ matrix.name }}" "${{ matrix.parser }}"
+        run: bash .github/workflows/scripts/run-flowr-command.sh test:performance -- 1 1 "${{ matrix.name }}" "${{ matrix.parser }}"
 
       - name: "⬆️ Upload Benchmark Results"
         uses: actions/upload-artifact@v4
@@ -309,6 +244,7 @@ jobs:
   performance-test-upload:
     name: "⬆️ Upload Performance Test Results"
     runs-on: ubuntu-22.04
+    timeout-minutes: 45
     needs: [ performance-test ]
     steps:
       - name: "Checkout Repository"
@@ -317,12 +253,10 @@ jobs:
           submodules: true
           token:      ${{ secrets.RELEASE_TOKEN }}
 
-      - name: "⚙️ Name and Email for Git (config) and update"
-        # we pull just to be totally sure
+      - name: "⚙️ Name and Email for Git (config)"
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git pull
 
       - name: "🌍 Load Versions to Use"
         run: bash .github/workflows/scripts/global-configuration.sh
@@ -331,6 +265,7 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
+          cache: npm
 
       - name: "⬇️ Get the Test Label Details"
         uses: actions/download-artifact@v4
@@ -542,53 +477,3 @@ jobs:
           name: benchmark-results-graph-data
           path: wiki/stats/benchmark/
           retention-days: 1
-
-  deploy-doc:
-    needs: [ test, performance-test ]
-    name: "🚀 Build and Deploy Documentation (only on main)"
-    if: ${{ always() && !failure() && (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 40
-    concurrency:
-      group: doc-${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: true
-
-    steps:
-      - name: "🛒 Checkout Repository"
-        uses: actions/checkout@v6
-        with:
-            token:      ${{ secrets.DOCUMENTATION_TOKEN }}
-            submodules: true
-            lfs: true
-
-      - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
-        run: bash .github/workflows/scripts/global-configuration.sh
-
-      - name: "⬇️ Use Node.js"
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.ACTION_NODE_VERSION }}
-          registry-url: "https://registry.npmjs.org/"
-
-      - name: "⬇️ Setup R"
-        uses: r-lib/actions/setup-r@v2
-        with:
-          r-version: ${{ env.ACTION_R_VERSION }}
-
-      - name: "📦 Install R Packages"
-        uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: |
-            any::dplyr
-            any::readr
-
-      - name: "🛠️ Build the documentation"
-        run: bash .github/workflows/scripts/run-flowr-command.sh doc
-
-      - name: "⬆️ Push New Documentation"
-        uses: ad-m/github-push-action@master
-        with:
-          branch: gh-pages
-          github_token: ${{ secrets.DOCUMENTATION_TOKEN }}
-          force: true

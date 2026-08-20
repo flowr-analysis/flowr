@@ -20,7 +20,7 @@ import { identifyLinkToLastCallRelationSync
 } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
-import { propagateTransitiveSideEffects, reResolveOpenReferences, linkMaterializedExportsToLoaders } from './internal/process/functions/call/built-in/transitive-side-effects';
+import { reResolveOpenReferences, linkMaterializedExportsToLoaders } from './internal/process/functions/call/built-in/transitive-side-effects';
 import type { REnvironmentInformation } from './environments/environment';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
@@ -36,6 +36,8 @@ import { Quoted } from './internal/process/functions/call/quoted';
 import { SourceRange } from '../util/range';
 import { dataflowLogger } from './logger';
 import { GasFeatureKey, GasLevel, GasWikiRef } from '../gas';
+import { Dataflow } from './graph/df-helper';
+import { uniqueArray } from '../util/collections/arrays';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -98,7 +100,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph, ctx:
 			if(graph.unknownSideEffects.size > 20) {
 				knownCalls = getCallsInCfg(cf, graph);
 
-				allCallNames = Array.from(new Set(knownCalls.values().map(c => Identifier.toString(c.name))));
+				allCallNames = uniqueArray(knownCalls.values().map(c => Identifier.toString(c.name)));
 			}
 		} else if(handled.has(s.id)) {
 			continue;
@@ -175,7 +177,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	updateNestedFunctionCalls(df.graph, df.environment, ctx);
 	const escapedNames = new Set<string>();
 	for(let round = 0; round < transitiveSideEffectRounds; round++) {
-		const { environment, grew, escapedNames: roundNames } = propagateTransitiveSideEffects(df.graph, df.environment, ctx);
+		const { environment, grew, escapedNames: roundNames } = Dataflow.sideEffects.propagateTransitive(df.graph, df.environment, ctx);
 		(df as { environment: REnvironmentInformation }).environment = environment;
 		for(const n of roundNames) {
 			escapedNames.add(n);

@@ -1,7 +1,7 @@
 import { NodeValue } from '../dataflow/eval/resolve/node-value';
 import { isValue } from '../dataflow/eval/values/r-value';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import { type DataflowGraphVertexFunctionCall, VertexType } from '../dataflow/graph/vertex';
+import { FunctionCallVertex } from '../dataflow/graph/vertex';
 import { type ControlDependency, happensInEveryBranch } from '../dataflow/info';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -9,7 +9,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard } from '../util/assert';
 import type { ControlFlowInformation } from './control-flow-graph';
 import { CfgVertex } from './control-flow-graph';
-import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration } from './semantic-cfg-guided-visitor';
+import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration, type OnCall } from './semantic-cfg-guided-visitor';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
@@ -31,7 +31,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 		return undefined;
 	}
 
-	guard(vertex.tag === VertexType.FunctionCall, 'invalid vertex type for onlyLoopsOnce');
+	guard(FunctionCallVertex.is(vertex), 'invalid vertex type for onlyLoopsOnce');
 	guard(vertex.origin !== 'unnamed' && loopyFunctions.has(vertex.origin[0]), 'onlyLoopsOnce can only be called with loops');
 
 	// 1. In case of for loop, check if vector has only one element
@@ -123,22 +123,22 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 		}
 	}
 
-	protected onBreakCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+	protected onBreakCall(data: OnCall): void {
 		this.encounteredLoopBreaker = true;
 		this.app(data.call.cds);
 	}
 
-	protected onReturnCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+	protected onReturnCall(data: OnCall): void {
 		this.encounteredLoopBreaker = true;
 		this.app(data.call.cds);
 	}
 
-	protected onStopCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+	protected onStopCall(data: OnCall): void {
 		this.encounteredLoopBreaker = true;
 		this.app(data.call.cds);
 	}
 
-	protected onStopIfNotCall(data: { call: DataflowGraphVertexFunctionCall }): void {
+	protected onStopIfNotCall(data: OnCall): void {
 		const arg = this.getBoolArgValue(data);
 		if(arg === false) {
 			this.encounteredLoopBreaker = true;

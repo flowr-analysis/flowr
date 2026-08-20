@@ -5,7 +5,6 @@ import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-fi
 import { createSlicePipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
 import { deterministicCountingIdGenerator } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model';
-import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { reconstructToCode } from '../../../../../src/reconstruct/reconstruct';
 import { SourceInlineMap } from '../../../../../src/reconstruct/inline/source-inline-map';
 import type { SlicingCriteria } from '../../../../../src/slicing/criterion/parse';
@@ -13,10 +12,11 @@ import type { ParentInformation } from '../../../../../src/r-bridge/lang-4.x/ast
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { executeStaticSliceQuery } from '../../../../../src/queries/catalog/static-slice-query/static-slice-query-executor';
 import { SliceDirection } from '../../../../../src/util/slice-direction';
+import { RFunctionCall } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /** force-select every named `source()` call so the inlining recursion is exercised regardless of what the slice pulls in */
 function selectSourceCalls(node: RNode<ParentInformation>): boolean {
-	return node.type === RType.FunctionCall && node.named === true && node.functionName.lexeme === 'source';
+	return RFunctionCall.isNamed(node) && node.functionName.lexeme === 'source';
 }
 
 async function run(input: string, files: FlowrInlineTextFile[], criteria: SlicingCriteria) {
@@ -53,7 +53,7 @@ async function runViaPipeline(input: string, files: FlowrInlineTextFile[], crite
 	return res.reconstruct;
 }
 
-describe.sequential('inline source()', () => {
+describe('inline source()', { concurrent: false }, () => {
 	beforeAll(async() => {
 		await TreeSitterExecutor.initTreeSitter();
 	});

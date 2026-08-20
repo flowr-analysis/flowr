@@ -3,20 +3,28 @@
  *
  * Publishing its runtime alongside the real measurements allows a viewer to normalize the other numbers by it,
  * and hence to cancel out how fast or how loaded the machine was that produced them.
- * The workload must therefore stay deterministic (no file system, no R session, no randomness)
- * and cheap (well below a second).
+ * The workload must therefore stay deterministic (no file system, no R session, no randomness).
+ *
+ * Changing the work or the round count puts every future run on a new scale. Whoever changes it has to
+ * back-correct the published history by the shift, or say so in the name of the measurement.
  * @module
  */
 
-/** How often the {@link calibrationRound} is timed within one {@link runCalibration} call. */
-export const CalibrationReps = 6;
+/** How many {@link calibrationBatch}es may be timed within one {@link runCalibration} call. */
+export const CalibrationMaxReps = 24;
+/** How many batches in a row may fail to beat the best one before it is taken as the machine's time. */
+export const CalibrationSettle = 4;
+/** How much closer than the best a batch has to be to count as an improvement rather than as noise. */
+export const CalibrationImprovement = 0.005;
+/** How many files of a suite carry the calibration, which describes the machine and not the file. */
+export const CalibrationSamples = 8;
+/** How many {@link calibrationRound}s make up one timed batch. */
+export const CalibrationRounds = 256;
 /** How many elements a single {@link calibrationRound} works on. */
 export const CalibrationSize = 4096;
 
-/** the checksums land here, so that no engine can decide the workload has no effect and drop it */
 let sink = 0;
 
-/** xorshift32 with a fixed seed so that every round does the exact same work */
 function nextRandom(state: number): number {
 	state ^= state << 13;
 	state ^= state >>> 17;
@@ -24,15 +32,8 @@ function nextRandom(state: number): number {
 	return state | 0;
 }
 
-/**
- * One round of the calibration workload, mixing integer arithmetic, array sorting, string handling,
- * short-lived objects, and map lookups to cover the operations that dominate the analysis itself.
- *
- * Every round does the very same work, which is what allows {@link runCalibration} to compare its repetitions.
- * @returns a checksum, only returned so that the work cannot be optimized away
- */
-function calibrationRound(): number {
-	let state = 0x1337;
+function calibrationRound(round: number): number {
+	let state = 0x1337 + round;
 	const numbers = new Array<number>(CalibrationSize);
 	for(let i = 0; i < CalibrationSize; i++) {
 		state = nextRandom(state);
@@ -40,7 +41,6 @@ function calibrationRound(): number {
 	}
 	numbers.sort((a, b) => a - b);
 
-	/* the analysis spends most of its time on small objects that die young, so the workload allocates some too */
 	const nodes: { id: string, value: number, next: number }[] = [];
 	const map = new Map<string, number>();
 	const seen = new Set<string>();
@@ -64,24 +64,34 @@ function calibrationRound(): number {
 	return checksum;
 }
 
+function calibrationBatch(): number {
+	let checksum = 0;
+	for(let round = 0; round < CalibrationRounds; round++) {
+		checksum = (checksum + calibrationRound(round)) | 0;
+	}
+	return checksum;
+}
+
 /**
- * Times {@link calibrationRound} {@link CalibrationReps} times and reports the fastest of them.
- *
- * The first round is thrown away: it pays for compiling the workload and would describe the engine
- * rather than the machine. Of the rounds that follow, only the fastest counts, because every
- * disturbance a shared runner can add (another job, a scheduler switch, a collection) can only ever
- * make a round slower. That makes the number a statement about the machine, not about its bad luck.
- * @returns the nanoseconds the fastest round took
+ * Times {@link calibrationBatch} until the fastest batch stops improving and reports it. A fixed count of
+ * repetitions ends before the workload is fully compiled, and then reports how far that got rather than how
+ * fast the machine is: eight fresh processes on one idle machine spread 39% that way and 7% this way.
+ * @returns the nanoseconds the fastest batch took
  */
 export function runCalibration(): bigint {
-	sink = calibrationRound();
+	sink = calibrationRound(0);
 	let best: bigint | undefined = undefined;
-	for(let rep = 0; rep < CalibrationReps; rep++) {
+	let since = 0;
+	for(let rep = 0; rep < CalibrationMaxReps && since < CalibrationSettle; rep++) {
 		const start = process.hrtime.bigint();
-		sink = (sink + calibrationRound()) | 0;
+		sink = (sink + calibrationBatch()) | 0;
 		const took = process.hrtime.bigint() - start;
 		if(best === undefined || took < best) {
+			/* a batch that is barely better is the same batch, only the noise moved */
+			since = best !== undefined && Number(best - took) < Number(best) * CalibrationImprovement ? since + 1 : 0;
 			best = took;
+		} else {
+			since++;
 		}
 	}
 	return best ?? 0n;

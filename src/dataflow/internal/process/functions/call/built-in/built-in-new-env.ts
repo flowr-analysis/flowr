@@ -2,17 +2,17 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { pushLocalEnvironment } from '../../../../../environments/scoping';
 import { Environment, type REnvironmentInformation } from '../../../../../environments/environment';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { unpackArg } from '../argument/unpack-argument';
 import { FunctionCallVertex } from '../../../../../graph/vertex';
 import { RNull } from '../../../../../../r-bridge/lang-4.x/convert-values';
 import { resolveSymbolToEnvir } from './built-in-envir-utils';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 const EmptyParentEnvFunctions = new Set(['emptyenv', 'baseenv']);
 
@@ -60,20 +60,20 @@ function resolveNewEnvParentArg<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): REnvironmentInformation | undefined {
 	for(const arg of args) {
-		if(arg === EmptyArgument || arg.name?.content !== 'parent') {
+		if(RArgument.isEmpty(arg) || arg.name?.content !== 'parent') {
 			continue;
 		}
 		const node = unpackArg(arg);
 		if(!node) {
 			return undefined;
 		}
-		if(node.type === RType.Symbol) {
+		if(RSymbol.is(node)) {
 			if(node.content === RNull) {
 				return undefined;
 			}
 			return resolveSymbolToEnvir(node.content, node.info.id, data)?.envDef.envState;
 		}
-		if(RFunctionCall.isNamed(node) && node.functionName.type === RType.Symbol
+		if(RFunctionCall.isNamed(node) && RSymbol.is(node.functionName)
 				&& EmptyParentEnvFunctions.has(node.functionName.content as string)) {
 			return createIsolatedEnvState(data);
 		}

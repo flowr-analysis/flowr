@@ -1,5 +1,6 @@
 import { guard } from '../../util/assert';
-import type { DfEdge, EdgeType } from './edge';
+import type { EdgeType } from './edge';
+import { DfEdge } from './edge';
 import type { DataflowInformation } from '../info';
 import {
 	type DataflowGraphVertexArgument,
@@ -11,7 +12,7 @@ import {
 } from './vertex';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { BrandedIdentifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
+import type { BrandedIdentifier, Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Environment, type EnvType, type IEnvironment, type REnvironmentInformation } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -19,10 +20,11 @@ import { cloneEnvironmentInformation } from '../environments/clone';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { Writable } from 'ts-essentials';
 import type { BuiltInMemory } from '../environments/built-in';
+import { FunctionDefinitionVertex, ValueVertex, UseVertex, VariableDefinitionVertex } from './vertex';
 
 /**
  * Describes the information we store per function body.
- * The {@link DataflowFunctionFlowInformation#exitPoints} are stored within the enclosing {@link DataflowGraphVertexFunctionDefinition} vertex.
+ * The {@link DataflowInformation#exitPoints} this type omits are stored within the enclosing {@link DataflowGraphVertexFunctionDefinition} vertex.
  */
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> };
 
@@ -183,6 +185,35 @@ export type OutgoingEdges<Edge extends DfEdge = DfEdge> = Map<NodeId, Edge>;
  * In other words, it maps the source to the edge information.
  */
 export type IngoingEdges<Edge extends DfEdge = DfEdge> = Map<NodeId, Edge>;
+/**
+ * {@link IngoingEdges} as handed out by {@link DataflowGraph#ingoingEdges|ingoingEdges()}: a vertex without any
+ * shares the single {@link NoEdges}, so what a caller gets back is not theirs to write into.
+ */
+export type ReadonlyIngoingEdges<Edge extends DfEdge = DfEdge> = ReadonlyMap<NodeId, Edge>;
+
+/**
+ * The shared answer for a vertex without edges. Use it instead of a fresh `[]` fallback, the lookups sit in
+ * traversal loops where a miss is the common case.
+ * @example
+ * ```ts
+ * for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) { /* ... *\/ }
+ * ```
+ */
+export const NoEdges: ReadonlyMap<NodeId, never> = new Map<NodeId, never>();
+
+/**
+ * Resolves the `pkg::fn` name of the call `id`, without and with the base-R qualification.
+ * Passed to {@link DataflowGraph#qualify}, which caches what it returns.
+ */
+export type CallQualifier =
+	(graph: DataflowGraph, id: NodeId, vertex: DataflowGraphVertexInfo | undefined) => readonly [bare: Identifier | undefined, baseR: Identifier | undefined];
+
+/** the cached `pkg::fn` names, `complete` once every call vertex is in there */
+interface QualificationCache {
+	readonly bare:  Map<NodeId, Identifier | undefined>,
+	readonly baseR: Map<NodeId, Identifier | undefined>,
+	complete:       boolean
+}
 
 /**
  * The structure of the serialized {@link DataflowGraph}.
@@ -279,6 +310,9 @@ export class DataflowGraph<
 
 	private readonly types: Map<Vertex['tag'], NodeId[]> = new Map<Vertex['tag'], NodeId[]>();
 
+	/* the qualified call names, built on demand and dropped on every change, as vertices and edges both decide them */
+	private qualifiedNames?: QualificationCache;
+
 
 	toJSON(): DataflowGraphJson {
 		return {
@@ -331,7 +365,7 @@ export class DataflowGraph<
 		return this.edgeInformation.get(id);
 	}
 
-	public ingoingEdges(id: NodeId): IngoingEdges | undefined {
+	public ingoingEdges(id: NodeId): ReadonlyIngoingEdges | undefined {
 		if(this.incomingIndex === undefined) {
 			const index = new Map<NodeId, IngoingEdges<Edge>>();
 			for(const [source, outgoing] of this.edgeInformation.entries()) {
@@ -346,8 +380,61 @@ export class DataflowGraph<
 			}
 			this.incomingIndex = index;
 		}
-		/* the historic contract is an (possibly empty) map for every id, never `undefined` */
-		return this.incomingIndex.get(id) ?? new Map<NodeId, Edge>();
+		/* the historic contract is an (possibly empty) map for every id, never `undefined`; the miss is the common
+		 * case in traversal loops, so it answers with the shared empty map rather than a fresh one */
+		return this.incomingIndex.get(id) ?? NoEdges;
+	}
+
+	/**
+	 * The cached `pkg::fn` name of the call `id`, asking `resolve` only for a call the cache does not know yet.
+	 * @useInstead {@link Dataflow.qualify} - which passes the resolution
+	 */
+	public qualify(id: NodeId, qualifyBaseR: boolean, resolve: CallQualifier): Identifier | undefined {
+		const cache = this.qualifications();
+		const wanted = qualifyBaseR ? cache.baseR : cache.bare;
+		const hit = wanted.get(id);
+		if(hit !== undefined || wanted.has(id)) {
+			return hit;
+		}
+		this.resolveInto(cache, id, this.vertexInformation.get(id), resolve);
+		return wanted.get(id);
+	}
+
+	/**
+	 * The cached `pkg::fn` name of every call, resolving the calls that are still missing.
+	 * @useInstead {@link Dataflow.qualifyAll} - which passes the resolution
+	 */
+	public qualifyAll(qualifyBaseR: boolean, resolve: CallQualifier): ReadonlyMap<NodeId, Identifier | undefined> {
+		const cache = this.qualifications();
+		const wanted = qualifyBaseR ? cache.baseR : cache.bare;
+		if(cache.complete) {
+			return wanted;
+		}
+		for(const id of this.types.get(VertexType.FunctionCall) ?? []) {
+			if(!wanted.has(id)) {
+				this.resolveInto(cache, id, this.vertexInformation.get(id), resolve);
+			}
+		}
+		cache.complete = true;
+		return wanted;
+	}
+
+	private qualifications(): QualificationCache {
+		return this.qualifiedNames ??= { bare: new Map(), baseR: new Map(), complete: false };
+	}
+
+	/** one resolution fills both variants: what costs is resolving the call, not qualifying it */
+	private resolveInto(cache: QualificationCache, id: NodeId, vertex: Vertex | undefined, resolve: CallQualifier): void {
+		const [bare, baseR] = resolve(this, id, vertex);
+		cache.bare.set(id, bare);
+		cache.baseR.set(id, baseR);
+	}
+
+	/** Drops the cached qualifications, as the graph may no longer imply them */
+	private dropQualifications(): void {
+		if(this.qualifiedNames !== undefined) {
+			this.qualifiedNames = undefined;
+		}
 	}
 
 	/**
@@ -453,8 +540,9 @@ export class DataflowGraph<
 		if(edge === undefined || targets === undefined) {
 			return this;
 		}
+		this.dropQualifications();
 		edge.types &= ~type;
-		if(edge.types !== 0) {
+		if(DfEdge.hasAnyType(edge)) {
 			/* the reverse index holds this very object, so a narrowed type is already visible through it */
 			return this;
 		}
@@ -485,6 +573,7 @@ export class DataflowGraph<
 		if(this.vertexInformation.has(vid) && !overwrite) {
 			return this;
 		}
+		this.dropQualifications();
 		const vtag = vertex.tag;
 
 		// keep a clone of the original environment, isolating the snapshot from later updates
@@ -507,6 +596,7 @@ export class DataflowGraph<
 		if(fromId === toId) {
 			return this;
 		}
+		this.dropQualifications();
 		const fromEdges = this.edgeInformation.get(fromId);
 		const existing = fromEdges?.get(toId);
 		if(existing !== undefined) {
@@ -564,6 +654,7 @@ export class DataflowGraph<
 	}
 
 	public mergeVertices(otherGraph: DataflowGraph<Vertex, Edge>, mergeRootVertices = true) {
+		this.dropQualifications();
 		// merge root ids
 		if(mergeRootVertices) {
 			for(const root of otherGraph.rootVertices) {
@@ -581,6 +672,7 @@ export class DataflowGraph<
 	}
 
 	private mergeEdges(otherGraph: DataflowGraph<Vertex, Edge>) {
+		this.dropQualifications();
 		this.incomingIndex = undefined;
 		for(const [id, edges] of otherGraph.edgeInformation.entries()) {
 			let existing = this.edgeInformation.get(id);
@@ -606,9 +698,10 @@ export class DataflowGraph<
 	 * @param sourceIds - The id of the source vertex of the def, if available
 	 */
 	public setDefinitionOfVertex(reference: IdentifierReference, sourceIds: readonly NodeId[] | undefined): void {
+		this.dropQualifications();
 		const vertex = this.getVertex(reference.nodeId);
 		guard(vertex !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set reference`);
-		if(vertex.tag === VertexType.FunctionDefinition || vertex.tag === VertexType.VariableDefinition) {
+		if(FunctionDefinitionVertex.is(vertex) || VariableDefinitionVertex.is(vertex)) {
 			vertex.cds = reference.cds;
 		} else {
 			const oldTag = vertex.tag;
@@ -637,9 +730,10 @@ export class DataflowGraph<
 	 * @param info - The information about the new function call node
 	 */
 	public updateToFunctionCall(info: DataflowGraphVertexFunctionCall): void {
+		this.dropQualifications();
 		const infoId = info.id;
 		const vertex = this.getVertex(infoId);
-		guard(vertex !== undefined && (vertex.tag === VertexType.Use || vertex.tag === VertexType.Value), () => `node must be a use or value node for ${JSON.stringify(info.id)} to update it to a function call but is ${vertex?.tag}`);
+		guard(vertex !== undefined && (UseVertex.is(vertex) || ValueVertex.is(vertex)), () => `node must be a use or value node for ${JSON.stringify(info.id)} to update it to a function call but is ${vertex?.tag}`);
 		const previousTag = vertex.tag;
 		this.vertexInformation.set(infoId, { ...vertex, ...info, tag: VertexType.FunctionCall });
 		const prevIds = this.types.get(previousTag);
@@ -713,7 +807,7 @@ export class DataflowGraph<
 function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex, next: Vertex): Vertex {
 	if(current.tag !== next.tag) {
 		return current;
-	} else if(current.tag === VertexType.FunctionDefinition) {
+	} else if(FunctionDefinitionVertex.is(current)) {
 		const n = next as DataflowGraphVertexFunctionDefinition;
 		current.exitPoints = uniqueArrayMerge(current.exitPoints, n.exitPoints);
 		if(n.mode && n.mode.length > 0) {

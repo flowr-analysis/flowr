@@ -47,7 +47,7 @@ export const Identifier = {
 	 */
 	make(this: void, name: BrandedIdentifier, namespace?: BrandedNamespace, internal: boolean = false): Identifier {
 		if(startAndEndsWith(name, '`')) {
-			name = name.substring(1, name.length - 1);
+			name = name.slice(1, -1);
 		}
 		if(namespace) {
 			return [name, namespace, internal];
@@ -238,6 +238,8 @@ export const Identifier = {
 	 *    a user definition, so a local `sd()` stays bare.
 	 *
 	 * Returns `undefined` when none apply. Steps 2 and 3 need the call's `name`.
+	 * @param origins      - the origins of the call to qualify
+	 * @param name         - the name the call was written with, needed by steps 2 and 3
 	 * @param qualifyBaseR - whether to also qualify a bare base-R call from its exporting package (default `true`)
 	 * @see {@link Dataflow.qualify} - the compact form, if you have the call's id and its graph
 	 */
@@ -301,9 +303,11 @@ export const enum PkgName {
 	/* CRAN / third-party */
 	AssertThat   = 'assertthat',
 	Box          = 'box',
+	Car          = 'car',
 	Cli          = 'cli',
 	CohortBuilder = 'cohortBuilder',
 	DataTable    = 'data.table',
+	Dbi          = 'DBI',
 	Devtools     = 'devtools',
 	Dplyr        = 'dplyr',
 	Fs           = 'fs',
@@ -315,9 +319,12 @@ export const enum PkgName {
 	Inferference = 'inferference',
 	Janitor      = 'janitor',
 	Lattice      = 'lattice',
+	LmTest       = 'lmtest',
 	Magick       = 'magick',
 	Magrittr     = 'magrittr',
 	Msgr         = 'msgr',
+	Multcomp     = 'multcomp',
+	NorTest      = 'nortest',
 	PkgLoad      = 'pkgload',
 	Plyr         = 'plyr',
 	Purrr        = 'purrr',
@@ -329,6 +336,7 @@ export const enum PkgName {
 	Rlang        = 'rlang',
 	RmethodsS3   = 'R.methodsS3',
 	Roo          = 'R.oo',
+	Rstatix      = 'rstatix',
 	RstudioApi   = 'rstudioapi',
 	Rutils       = 'R.utils',
 	S7           = 'S7',
@@ -346,6 +354,7 @@ export const enum PkgName {
 	Stringr      = 'stringr',
 	TinyPlot     = 'tinyplot',
 	TryCatchLog  = 'tryCatchLog',
+	Tseries      = 'tseries',
 	Withr        = 'withr',
 	Forecats     = 'forcats',
 	Readr        = 'readr'
@@ -383,7 +392,12 @@ export enum ReferenceType {
 	/** Prefix to identify S3 methods, use this, to for example dispatch a call to `f` which will then link to `f.*` */
 	S3MethodPrefix = 1 << 8,
 	/** Prefix to identify S7 methods, use this, to for example dispatch a call to `f` which will then link to `f<7>*` */
-	S7MethodPrefix = 1 << 9
+	S7MethodPrefix = 1 << 9,
+	/**
+	 * Only ever a lookup target, never the type of a definition: everything a value position may see.
+	 * `id` in `id > 2` names data, so a function `id` in scope is not what the comparison reads.
+	 */
+	NonFunction = 1 << 10
 }
 
 /** Reverse mapping of the reference types so you can get the name from the bitmask (useful for debugging) */
@@ -401,7 +415,7 @@ export function isReferenceType(t: ReferenceType, target: ReferenceType): boolea
  * default definition for the assignment operator `<-`).
  * @see {@link InGraphIdentifierDefinition} - for the definition of an identifier within the graph
  */
-export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction>;
+export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction | ReferenceType.NonFunction>;
 
 /**
  * An identifier reference points to a variable like `a` in `b <- a`.

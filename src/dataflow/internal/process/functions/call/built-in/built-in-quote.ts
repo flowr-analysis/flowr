@@ -3,11 +3,10 @@ import type { DataflowInformation } from '../../../../../info';
 import { markArgumentsAsNonStandardEvaluation, processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { recoverName } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { VertexType } from '../../../../../graph/vertex';
+import { VertexType, FunctionCallVertex } from '../../../../../graph/vertex';
 import { dataflowLogger } from '../../../../../logger';
 import { Dataflow } from '../../../../../graph/df-helper';
 import type { IdentifierReference } from '../../../../../environments/identifier';
@@ -17,6 +16,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { FunctionArgument } from '../../../../../graph/graph';
 import { Nse, Unquote } from '../nse';
 import { linkInputs } from '../../../../linker';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 interface QuoteConfig extends ForceArguments {
 	quoteArgumentsWithIndex: number
@@ -55,7 +55,7 @@ export function processQuote<OtherInfo>(
 	const unknownRefs: IdentifierReference[] = [];
 
 	const quotedArg = args[config.quoteArgumentsWithIndex];
-	const evaluated = Nse.unquoted(quotedArg === EmptyArgument ? undefined : quotedArg?.value, config.unquote ?? Unquote.None);
+	const evaluated = Nse.unquoted(RArgument.isEmpty(quotedArg) ? undefined : quotedArg?.value, config.unquote ?? Unquote.None);
 
 	for(let i = 0; i < args.length; i++) {
 		const processedArg = processedArguments[i];
@@ -118,7 +118,7 @@ function applyEnvListReplacement(information: DataflowInformation, env: Dataflow
 	try {
 		/* traverse the env processed DFG to find list calls (prefix-aware handling) */
 		Dataflow.visitDfg(env.graph, env.entryPoint, (vtx) => {
-			if(vtx.tag !== VertexType.FunctionCall) {
+			if(!FunctionCallVertex.is(vtx)) {
 				return;
 			}
 			if(!vtx.origin.includes(BuiltInProcName.List)) {

@@ -1,4 +1,4 @@
-**[💮 _flowR_ Home](https://github.com/flowr-analysis/flowr/wiki)**
+**[💮 _flowR_ Home](https://github.com/flowr-analysis/flowr/wiki)** ([Landing Page](https://flowr-analysis.github.io/flowr/))
 * [🧑‍💻 Developer Onboarding](https://github.com/flowr-analysis/flowr/wiki/Onboarding)
 * [💻 Setup](https://github.com/flowr-analysis/flowr/wiki/Setup)
 * [👓 Overview](https://github.com/flowr-analysis/flowr/wiki/Overview)
@@ -13,7 +13,7 @@
   * [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)
   * [Control Flow Graph (CFG)](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph)
   * [Dataflow Graph (DFG)](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph)
-  * [Signature Database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database)
+  * [Signature Database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) ([Search](https://flowr-analysis.github.io/flowr/wiki/sigdb/))
   * [Supported Features/Capabilities](https://github.com/flowr-analysis/flowr/wiki/Capabilities)
 * [🧹 Testing & Linting](https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing) ([Benchmark Page](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark))
 * [⁉️ FAQ](https://github.com/flowr-analysis/flowr/wiki/FAQ)

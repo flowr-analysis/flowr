@@ -142,7 +142,7 @@ export function fixCasing(identifier: string, convention: CasingConvention, igno
 			return s.toUpperCase();
 		}
 
-		return `${s[0].toUpperCase()}${s.substring(1)}`;
+		return `${s[0].toUpperCase()}${s.slice(1)}`;
 	};
 
 	switch(convention) {

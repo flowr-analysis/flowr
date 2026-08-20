@@ -1,5 +1,4 @@
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { resolveByName } from '../environments/resolve-by-name';
 import { isReferenceType, ReferenceType } from '../environments/identifier';
 import type { DataflowGraph } from '../graph/graph';
 import {
@@ -14,6 +13,8 @@ import { NodeValue } from '../eval/resolve/node-value';
 import { VariableResolve } from '../../config';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+import { Resolve } from '../environments/resolve-helper';
+import { NoEdges } from '../graph/graph';
 
 function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): boolean {
 	const workingQueue: DataflowGraphVertexArgument[] = def.exitPoints.map(d => graph.getVertex(d.nodeId)).filter(isNotUndefined);
@@ -27,7 +28,7 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 		if(FunctionDefinitionVertex.is(current)) {
 			return true;
 		}
-		const next = graph.outgoingEdges(current.id) ?? [];
+		const next = graph.outgoingEdges(current.id) ?? NoEdges;
 		for(const [t, e] of next) {
 			if(DfEdge.includesType(e, EdgeType.Returns)) {
 				const v = graph.getVertex(t);
@@ -45,11 +46,11 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
  * hence no `function-definition` value to resolve to.
  */
 function readsBuiltInFunction(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
-	for(const [target, edge] of graph.outgoingEdges(id) ?? []) {
+	for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
 		if(!DfEdge.includesType(edge, EdgeType.Reads) || !NodeId.isBuiltIn(target)) {
 			continue;
 		}
-		const defs = resolveByName(NodeId.fromBuiltIn(target), ctx.env.makeCleanEnv(), ReferenceType.Function);
+		const defs = Resolve.byNameAndType(NodeId.fromBuiltIn(target), ctx.env.makeCleanEnv(), ReferenceType.Function);
 		if(defs?.some(d => isReferenceType(d.type, ReferenceType.BuiltInFunction))) {
 			return true;
 		}

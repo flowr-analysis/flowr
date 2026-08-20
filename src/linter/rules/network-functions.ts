@@ -27,7 +27,7 @@ export interface NetworkFunction extends MergeableRecord{
 	name:                     Identifier,
 	/**
 	 * The {@link FunctionInfo} to use for querying the argument whose value should match {@link onlyTriggerWithArgument}.
-	 * If this is not specified, flowR's default database of functions ({@link ReadFunctions}, {@link SourceFunctions} and {@link WriteFunctions}) is queried for appropriate information on the function's read argument.
+	 * If this is not specified, flowR's default database of functions ({@link ReadFunctions}, {@link SourceFunctions}, and {@link WriteFunctions}) is queried for appropriate information on the function's read argument.
 	 */
 	info?:                    Omit<FunctionInfo, 'name'>
 	/**

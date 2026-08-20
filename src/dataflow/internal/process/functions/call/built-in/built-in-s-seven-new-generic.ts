@@ -1,3 +1,4 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -6,12 +7,10 @@ import type {
 	PotentiallyEmptyRArgument,
 	RFunctionCall
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { resolveFunctionArgument } from './built-in-apply';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { pMatch } from '../../../../linker';
 import { convertFnArguments } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -23,10 +22,10 @@ import { isNotUndefined } from '../../../../../../util/assert';
 import type { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { Identifier } from '../../../../../environments/identifier';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
-import { isValue } from '../../../../../eval/values/r-value';
-import { VertexType } from '../../../../../graph/vertex';
+import { VertexType, UseVertex, FunctionDefinitionVertex } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /** e.g. new_generic(name, dispatch_args, fun=NULL) */
 interface S7GenericDispatchConfig {
@@ -59,20 +58,12 @@ export function processS7NewGeneric<OtherInfo>(
 	}
 	params[config.args.fun] = 'fun';
 	params['...'] = '...';
-	const argMaps = pMatch(convertFnArguments(args), params);
+	const argMaps = MatchArgs.toSpec(convertFnArguments(args), params);
 	const genName = unpackArg(RArgument.getWithId(args, argMaps.get('name')?.[0]));
 	if(!genName) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const n = NodeValue.of(genName.info.id, data);
-	const accessedIdentifiers: string[] = [];
-	if(n.type === 'set') {
-		for(const elem of n.elements) {
-			if(elem.type === 'string' && isValue(elem.value)) {
-				accessedIdentifiers.push(elem.value.str);
-			}
-		}
-	}
+	const accessedIdentifiers = NodeValue.knownStringsOf(genName.info.id, data);
 	if(accessedIdentifiers.length === 0) {
 		dataflowLogger.warn('s7 new_generic non-resolvable skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
@@ -93,7 +84,7 @@ export function processS7NewGeneric<OtherInfo>(
 	info.graph.addEdge(rootId, funArg, EdgeType.Returns);
 	info.entryPoint = funArg;
 	const fArg = info.graph.getVertex(funArg);
-	if(fArg?.tag === VertexType.FunctionDefinition) {
+	if(FunctionDefinitionVertex.is(fArg)) {
 		fArg.mode ??= ['s4', 's7'];
 	}
 	return info;
@@ -118,7 +109,7 @@ export function processMakeConstructor<OtherInfo>(
 	info.graph.addEdge(rootId, funId, EdgeType.Returns);
 	info.entryPoint = funId;
 	const fArg = info.graph.getVertex(funId);
-	if(fArg?.tag === VertexType.FunctionDefinition && config?.mode) {
+	if(FunctionDefinitionVertex.is(fArg) && config?.mode) {
 		fArg.mode ??= config.mode.slice();   // copy: mode is mutated in place later, config.mode is shared
 	}
 	if(config?.wrapIndex !== undefined) {
@@ -142,7 +133,7 @@ function linkWrappedFunction<OtherInfo>(
 	if(wrapped === undefined) {
 		let pos = 0;
 		for(const a of args) {
-			if(a === EmptyArgument || a.name) {
+			if(RArgument.isEmpty(a) || a.name) {
 				continue;
 			}
 			if(pos === wrapIndex) {
@@ -152,7 +143,7 @@ function linkWrappedFunction<OtherInfo>(
 			pos++;
 		}
 	}
-	if(wrapped === undefined || wrapped === EmptyArgument || !wrapped.value) {
+	if(wrapped === undefined || RArgument.isEmpty(wrapped) || !wrapped.value) {
 		return;
 	}
 	const resolved = resolveFunctionArgument(wrapped.value, data, {});
@@ -160,7 +151,7 @@ function linkWrappedFunction<OtherInfo>(
 		return;
 	}
 	const vertex = info.graph.getVertex(resolved.functionId);
-	if(vertex?.tag !== VertexType.Use) {
+	if(!UseVertex.is(vertex)) {
 		return;
 	}
 	info.graph.updateToFunctionCall({

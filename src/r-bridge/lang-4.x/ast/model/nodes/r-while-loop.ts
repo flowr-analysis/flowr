@@ -22,6 +22,7 @@ export const RWhileLoop = {
 	name: 'RWhileLoop',
 	/**
 	 * Type guard for {@link RWhileLoop} nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RWhileLoop<Info> {
 		return node?.type === RType.WhileLoop;

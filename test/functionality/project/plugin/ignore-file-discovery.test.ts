@@ -4,7 +4,6 @@ import os from 'os';
 import path from 'path';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { FlowrConfig } from '../../../../src/config';
-import { arraysGroupBy } from '../../../../src/util/collections/arrays';
 import {
 	FlowrAnalyzerGitignoreProjectDiscoveryPlugin,
 	FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin,
@@ -38,7 +37,7 @@ function project(files: Record<string, string>): string {
  * We read the plugin's result directly, as the context keeps R sources as parse requests rather than files.
  */
 function discovered(plugin: FlowrAnalyzerProjectDiscoveryPlugin, root: string): string[] {
-	const ctx = new FlowrAnalyzerContext(FlowrConfig.default(), arraysGroupBy([plugin], p => p.type));
+	const ctx = new FlowrAnalyzerContext(FlowrConfig.default(), [plugin]);
 	return plugin.processor(ctx, { request: 'project', content: root })
 		.map(r => isParseRequest(r) && r.request === 'file' ? r.content : (r as FlowrFile<string>).path())
 		.map(p => path.relative(root, p).replaceAll(path.sep, '/'))

@@ -1,22 +1,24 @@
 import type { DataflowGraph } from '../../../../../graph/graph';
-import { VertexType, type DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
+import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EnvType, type Environment, type REnvironmentInformation } from '../../../../../environments/environment';
 import type { FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { attachDependencyToEnvironment, attachExportVertex } from './built-in-library';
 import { define } from '../../../../../environments/define';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
 import type { IdentifierReference, InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import type { BuiltInMemory } from '../../../../../environments/built-in';
+import { FunctionCallVertex, FunctionDefinitionVertex } from '../../../../../graph/vertex';
+import { Resolve } from '../../../../../environments/resolve-helper';
+import { NoEdges } from '../../../../../graph/graph';
 
 /**
  * The function-definition vertices a `call` resolves to (via {@link EdgeType.Calls}).
  */
 function calledDefinitions(graph: DataflowGraph, call: NodeId): NodeId[] {
 	const targets: NodeId[] = [];
-	for(const [target, edge] of graph.outgoingEdges(call) ?? []) {
-		if((edge.types & EdgeType.Calls) !== 0 && graph.getVertex(target)?.tag === VertexType.FunctionDefinition) {
+	for(const [target, edge] of graph.outgoingEdges(call) ?? NoEdges) {
+		if(DfEdge.includesType(edge, EdgeType.Calls) && FunctionDefinitionVertex.is(graph.getVertex(target))) {
 			targets.push(target);
 		}
 	}
@@ -28,18 +30,19 @@ function calledDefinitions(graph: DataflowGraph, call: NodeId): NodeId[] {
  * @param graph - the fully linked dataflow graph
  * @param own   - the effects a single function definition produces itself (its contribution to the summary)
  * @returns a map from each function-definition vertex to its transitive-effect summary
+ * @useInstead {@link Dataflow.sideEffects.callGraphSummaries}
  */
 export function computeCallGraphSummaries<T>(this: void, graph: DataflowGraph, own: (id: NodeId, fdef: DataflowGraphVertexFunctionDefinition) => Iterable<T>): Map<NodeId, Set<T>> {
 	const summary = new Map<NodeId, Set<T>>();
 	const callees = new Map<NodeId, NodeId[]>();
 	for(const [id, vertex] of graph.vertices(true)) {
-		if(vertex.tag !== VertexType.FunctionDefinition) {
+		if(!FunctionDefinitionVertex.is(vertex)) {
 			continue;
 		}
 		summary.set(id, new Set(own(id, vertex)));
 		const targets: NodeId[] = [];
 		for(const node of vertex.subflow.graph) {
-			if(graph.getVertex(node)?.tag === VertexType.FunctionCall) {
+			if(FunctionCallVertex.is(graph.getVertex(node))) {
 				targets.push(...calledDefinitions(graph, node));
 			}
 		}
@@ -94,6 +97,20 @@ export function computeCallGraphSummaries<T>(this: void, graph: DataflowGraph, o
  * Only vertices created on demand (exports actually referenced) get an edge, keeping the graph small.
  */
 export function linkMaterializedExportsToLoaders(graph: DataflowGraph, environment: REnvironmentInformation): void {
+	/* the attached namespaces hold every export of every package, far more than the graph ever materializes, so the
+	 * cheap direction is to ask the graph first: an export earns an edge only if it is a vertex or the target of a
+	 * `calls` edge. Both are read off the graph once here instead of per export binding. */
+	const called = new Set<NodeId>();
+	for(const [id] of graph.vertices(true)) {
+		called.add(id);
+	}
+	for(const [, outgoing] of graph.edges()) {
+		for(const [target, edge] of outgoing) {
+			if(DfEdge.includesType(edge, EdgeType.Calls)) {
+				called.add(target);
+			}
+		}
+	}
 	// export node id -> its loading `library()`/`use()` call, from the final environment
 	const loaders = new Map<NodeId, NodeId>();
 	for(let e: Environment | undefined = environment.current; e !== undefined && !e.builtInEnv; e = e.parent) {
@@ -102,19 +119,16 @@ export function linkMaterializedExportsToLoaders(graph: DataflowGraph, environme
 		}
 		for(const defs of e.memory.values()) {
 			for(const d of defs) {
-				if(!NodeId.isBuiltIn(d.definedAt)) {
+				if(called.has(d.nodeId) && !NodeId.isBuiltIn(d.definedAt)) {
 					loaders.set(d.nodeId, d.definedAt);
 				}
 			}
 		}
 	}
-	// only exports actually called (a materialized vertex or the target of a `calls` edge) get a loader edge
+	/* the loader targets are `library()` call ids, never export ids, so the edges added here never make a further
+	 * export qualify -- the lazy checks this replaces could not have observed one either */
 	for(const [id, loadedAt] of loaders) {
-		const called = graph.hasVertex(id)
-			|| [...graph.ingoingEdges(id)?.values() ?? []].some(e => DfEdge.includesType(e, EdgeType.Calls));
-		if(called) {
-			graph.addEdge(id, loadedAt, EdgeType.Reads | EdgeType.Calls);
-		}
+		graph.addEdge(id, loadedAt, EdgeType.Reads | EdgeType.Calls);
 	}
 }
 
@@ -157,7 +171,17 @@ function escapedDefinitions(this: void): (id: NodeId, fdef: DataflowGraphVertexF
 		for(const e of escapeTargetFrames(fdef)) {
 			let escaped = perFrame.get(e.memory);
 			if(escaped === undefined) {
-				escaped = [...e.memory.values()].flatMap(ds => ds.filter(d => !NodeId.isBuiltIn(d.nodeId)).map(d => d.nodeId));
+				/* a package frame holds thousands of entries and keeps none of them, so this walks them in place
+				 * rather than through a spread/flatMap/filter/map chain that allocates an array per step */
+				const collected: NodeId[] = [];
+				for(const ds of e.memory.values()) {
+					for(const d of ds) {
+						if(!NodeId.isBuiltIn(d.nodeId)) {
+							collected.push(d.nodeId);
+						}
+					}
+				}
+				escaped = collected;
 				perFrame.set(e.memory, escaped);
 			}
 			for(const d of escaped) {
@@ -172,7 +196,7 @@ function escapedDefinitions(this: void): (id: NodeId, fdef: DataflowGraphVertexF
 function propagateTransitiveDefinitions(graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext): void {
 	const summary = computeCallGraphSummaries(graph, escapedDefinitions());
 	for(const [id, vertex] of graph.vertices(true)) {
-		if(vertex.tag !== VertexType.FunctionCall) {
+		if(!FunctionCallVertex.is(vertex)) {
 			continue;
 		}
 		for(const target of calledDefinitions(graph, id)) {
@@ -196,7 +220,7 @@ function propagateTransitivePackages(graph: DataflowGraph, environment: REnviron
 	const summary = computeCallGraphSummaries(graph, attachedPackages);
 	const reachable = new Map<string, NodeId>();   // package -> its loading `library()` call
 	for(const [id, vertex] of graph.vertices(true)) {
-		if(vertex.tag !== VertexType.FunctionCall || !graph.isRoot(id)) {
+		if(!FunctionCallVertex.is(vertex) || !graph.isRoot(id)) {
 			continue;
 		}
 		for(const target of calledDefinitions(graph, id)) {
@@ -227,7 +251,7 @@ function escapedDefinitionMap(graph: DataflowGraph): Map<NodeId, InGraphIdentifi
 	const map = new Map<NodeId, InGraphIdentifierDefinition & { name: string }>();
 	const seen = new Set<BuiltInMemory>();
 	for(const [, vertex] of graph.vertices(true)) {
-		if(vertex.tag !== VertexType.FunctionDefinition) {
+		if(!FunctionDefinitionVertex.is(vertex)) {
 			continue;
 		}
 		for(const e of escapeTargetFrames(vertex)) {
@@ -258,7 +282,7 @@ function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment
 	const names = new Set<string>();
 	let grew = false;
 	for(const [id, vertex] of graph.vertices(true)) {
-		if(vertex.tag !== VertexType.FunctionCall || !graph.isRoot(id)) {
+		if(!FunctionCallVertex.is(vertex) || !graph.isRoot(id)) {
 			continue;
 		}
 		for(const target of calledDefinitions(graph, id)) {
@@ -268,7 +292,7 @@ function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment
 					continue;
 				}
 				names.add(def.name);
-				if(resolveByName(def.name, environment, def.type)?.some(d => d.nodeId === nodeId)) {
+				if(Resolve.byNameAndType(def.name, environment, def.type)?.some(d => d.nodeId === nodeId)) {
 					continue;
 				}
 				environment = define(def, false, environment);
@@ -285,7 +309,7 @@ export function reResolveOpenReferences(this: void, graph: DataflowGraph, enviro
 		if(ref.name === undefined || !escapedNames.has(String(ref.name))) {
 			continue;
 		}
-		for(const { nodeId } of resolveByName(ref.name, environment, ref.type) ?? []) {
+		for(const { nodeId } of Resolve.byNameAndType(ref.name, environment, ref.type) ?? []) {
 			if(!NodeId.isBuiltIn(nodeId) && nodeId !== ref.nodeId) {
 				graph.addEdge(ref.nodeId, nodeId, EdgeType.Reads);
 			}
@@ -296,6 +320,7 @@ export function reResolveOpenReferences(this: void, graph: DataflowGraph, enviro
 /**
  * Propagates every function's escaped side effects (attached packages and `<<-` definitions) to its transitive callers.
  * @returns the enriched top-level environment and whether it grew (so the extractor can re-link and re-run to a fixpoint).
+ * @useInstead {@link Dataflow.sideEffects.propagateTransitive}
  */
 export function propagateTransitiveSideEffects(this: void, graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext): { environment: REnvironmentInformation, grew: boolean, escapedNames: Set<string> } {
 	propagateTransitiveDefinitions(graph, environment, ctx);

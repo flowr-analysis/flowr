@@ -7,7 +7,7 @@ import { FlowrDescriptionFile } from '../../../src/project/plugins/file-plugins/
 
 /** a context holding the given files; a `DESCRIPTION` entry is lifted so its `Type` field is readable */
 function contextWith(...files: [name: string, content: string, description?: boolean][]): FlowrAnalyzerContext {
-	const ctx = new FlowrAnalyzerContext(FlowrConfig.default(), new Map());
+	const ctx = new FlowrAnalyzerContext(FlowrConfig.default());
 	for(const [name, content, description] of files) {
 		ctx.addFile(description
 			? FlowrDescriptionFile.from(new FlowrInlineTextFile(name, content), FileRole.Description)
@@ -52,7 +52,7 @@ describe('Project kind', () => {
 	});
 
 	test('an empty context is unknown', () => {
-		assert.strictEqual(new FlowrAnalyzerContext(FlowrConfig.default(), new Map()).projectKind(), ProjectKind.Unknown);
+		assert.strictEqual(new FlowrAnalyzerContext(FlowrConfig.default()).projectKind(), ProjectKind.Unknown);
 	});
 
 	test('a notebook is detected by its extension', () => {

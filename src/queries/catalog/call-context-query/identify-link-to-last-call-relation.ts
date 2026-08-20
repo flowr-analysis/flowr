@@ -3,10 +3,9 @@ import { type DataflowGraph, FunctionArgument } from '../../../dataflow/graph/gr
 import { visitCfgInReverseOrder } from '../../../control-flow/simple-visitor';
 import { type DataflowGraphVertexFunctionCall, FunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
-import { resolveByNameAnyType } from '../../../dataflow/environments/resolve-by-name';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { assertUnreachable } from '../../../util/assert';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import type { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { LinkToLastCall } from './call-context-query-format';
 import { CascadeAction } from './cascade-action';
@@ -14,6 +13,8 @@ import type { PromotedCallTest, PromotedLinkTo } from './call-context-query-exec
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import { CfgKind } from '../../../project/cfg-kind';
 import type { ControlFlowGraph } from '../../../control-flow/control-flow-graph';
+import { Resolve } from '../../../dataflow/environments/resolve-helper';
+import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 type KnownCalls = Map<NodeId, Required<DataflowGraphVertexFunctionCall>>;
 
@@ -60,7 +61,7 @@ export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, grap
          * for performance and scoping reasons, flowR will not identify the global linkage,
          * including any potential built-in mapping.
          */
-		const reResolved = resolveByNameAnyType(info.name, info.environment);
+		const reResolved = Resolve.byName(info.name, info.environment);
 		if(reResolved?.some(t => NodeId.isBuiltIn(t.definedAt))) {
 			builtIn = true;
 		}
@@ -117,7 +118,7 @@ export function getValueOfArgument<Types extends readonly RType[] = readonly RTy
 		return undefined;
 	}
 	let valueNode = graph.idMap?.get(refAtIndex);
-	if(valueNode?.type === RType.Argument) {
+	if(RArgument.is(valueNode)) {
 		valueNode = valueNode.value;
 	}
 	if(valueNode) {

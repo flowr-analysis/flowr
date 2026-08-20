@@ -69,7 +69,7 @@ export function resolveSliceCriteria(criteria: SlicingCriteria, ast: NormalizedA
 	return ids;
 }
 
-/** Reconstruct the given `nodes` of `ast`, honoring the inlining, per-file and magic-comment options. */
+/** Reconstruct the given `nodes` of `ast`, honoring the inlining, per-file, and magic-comment options. */
 export function reconstructSlice(ast: NormalizedAst, graph: DataflowGraph, nodes: ReadonlySet<NodeId>, options: SliceQueryOptions): ReconstructionResult {
 	const { inlineSources, inlineFull, perFile, noMagicComments } = options;
 	const inlining = inlineSources || inlineFull;

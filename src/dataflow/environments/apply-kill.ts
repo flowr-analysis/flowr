@@ -77,7 +77,7 @@ function weakenName(env: Environment, name: Identifier, cds: readonly ControlDep
 				current.cache?.delete(plainName);
 			}
 		}
-		current = current.parent;
+		current = current.writableParent;
 	}
 }
 
@@ -116,10 +116,30 @@ function removeAllInFrame(env: Environment, except?: ReadonlySet<BrandedIdentifi
 	env.cache?.clear();
 }
 
+/** Groups the `named` kills by the name they remove, so removals from separate branches are decided together. */
+function groupNamedKills(kills: readonly KillReference[]): Map<Identifier, IdentifierReference[]> {
+	const named = new Map<Identifier, IdentifierReference[]>();
+	for(const kill of kills) {
+		if(kill.kind !== 'named' || kill.reference.name === undefined) {
+			continue;
+		}
+		const group = named.get(kill.reference.name);
+		if(group) {
+			group.push(kill.reference);
+		} else {
+			named.set(kill.reference.name, [kill.reference]);
+		}
+	}
+	return named;
+}
+
+/** A removal is certain if one of its references is unconditional or if they together cover every branch. */
+function isCertainRemoval(refs: readonly IdentifierReference[]): boolean {
+	return refs.some(r => happensInEveryBranch(r.cds)) || happensInEveryBranch(refs.flatMap(r => r.cds ?? []));
+}
+
 function applyNamedKill(env: Environment, name: Identifier, refs: readonly IdentifierReference[]): void {
-	// certain if any kill is unconditional or the kills together cover every branch
-	const certain = refs.some(r => happensInEveryBranch(r.cds)) || happensInEveryBranch(refs.flatMap(r => r.cds ?? []));
-	if(certain) {
+	if(isCertainRemoval(refs)) {
 		env.remove(name);
 	} else {
 		// the definition survives unless the killing branch executed
@@ -139,33 +159,18 @@ export function applyKills(env: REnvironmentInformation, kills: readonly KillRef
 		return env;
 	}
 	const current = env.current.clone(true);
-	// group named kills by name so removals that together cover all branches become a hard removal
-	const named = new Map<Identifier, IdentifierReference[]>();
 	for(const kill of kills) {
-		switch(kill.kind) {
-			case 'named':
-				if(kill.reference.name !== undefined) {
-					const group = named.get(kill.reference.name);
-					if(group) {
-						group.push(kill.reference);
-					} else {
-						named.set(kill.reference.name, [kill.reference]);
-					}
-				}
-				break;
-			case 'all':
-				if(happensInEveryBranch(kill.cds)) {
-					removeAllInFrame(current, kill.except);
-				} else {
-					weakenAll(current, (kill.cds ?? []).map(negateControlDependency), kill.except);
-				}
-				break;
-			case 'unknown':
-				weakenAll(current, kill.cds ?? [], kill.except);
-				break;
+		if(kill.kind === 'all') {
+			if(happensInEveryBranch(kill.cds)) {
+				removeAllInFrame(current, kill.except);
+			} else {
+				weakenAll(current, (kill.cds ?? []).map(negateControlDependency), kill.except);
+			}
+		} else if(kill.kind === 'unknown') {
+			weakenAll(current, kill.cds ?? [], kill.except);
 		}
 	}
-	for(const [name, refs] of named) {
+	for(const [name, refs] of groupNamedKills(kills)) {
 		applyNamedKill(current, name, refs);
 	}
 	return { current, level: env.level };
@@ -181,5 +186,33 @@ export function makeKillsMaybe(kills: readonly KillReference[] | undefined, cds:
 			return { kind: 'named', reference: { ...k.reference, cds: withCds(k.reference.cds, cds) } };
 		}
 		return { ...k, cds: withCds(k.cds, cds) };
+	});
+}
+
+/**
+ * Drops the writes that a still-effective removal undid: a definite `named` kill takes out its own name and a
+ * definite wholesale kill takes out every name it did not spare. Conditional and `unknown` kills leave the (now
+ * maybe) definition in place, as it may still be visible afterwards.
+ */
+export function dropKilledWrites(out: readonly IdentifierReference[], kills: readonly KillReference[] | undefined): readonly IdentifierReference[] {
+	if(!kills?.length || out.length === 0) {
+		return out;
+	}
+	const removed = new Set<BrandedIdentifier>();
+	for(const [name, refs] of groupNamedKills(kills)) {
+		if(isCertainRemoval(refs)) {
+			removed.add(Identifier.getName(name));
+		}
+	}
+	const cleared = kills.flatMap(k => k.kind === 'all' && happensInEveryBranch(k.cds) ? [k.except] : []);
+	if(removed.size === 0 && cleared.length === 0) {
+		return out;
+	}
+	return out.filter(ref => {
+		if(ref.name === undefined) {
+			return true;
+		}
+		const name = Identifier.getName(ref.name);
+		return !removed.has(name) && !cleared.some(except => !except?.has(name));
 	});
 }

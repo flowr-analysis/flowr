@@ -3,11 +3,10 @@ import type { VisitingQueue } from './visiting-queue';
 import { guard } from '../../util/assert';
 import { envFingerprint, type Fingerprint } from './fingerprint';
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker';
-import {
-	type DataflowGraphVertexFunctionCall,
-	type DataflowGraphVertexFunctionDefinition,
-	type DataflowGraphVertexInfo,
-	VertexType
+import type {
+	DataflowGraphVertexFunctionCall,
+	DataflowGraphVertexFunctionDefinition,
+	DataflowGraphVertexInfo
 } from '../../dataflow/graph/vertex';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import {
@@ -26,8 +25,9 @@ import { updatePotentialAddition } from './static-slicer';
 import type { DataflowInformation } from '../../dataflow/info';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { FunctionDefinitionVertex } from '../../dataflow/graph/vertex';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 /**
  * Returns the function call targets (definitions) by the given caller
@@ -121,7 +121,7 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 export function findEnclosingFunctionDefinition(id: NodeId, idMap: AstIdMap): NodeId | undefined {
 	let node = idMap.get(id);
 	while(node !== undefined) {
-		if(node.type === RType.FunctionDefinition) {
+		if(RFunctionDefinition.is(node)) {
 			return node.info.id;
 		}
 		node = node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
@@ -138,7 +138,7 @@ export function findEnclosingFunctionDefinition(id: NodeId, idMap: AstIdMap): No
  */
 export function sliceReachesFunctionInterface(fnDefId: NodeId, graph: DataflowGraph, queue: VisitingQueue, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	const vertex = graph.getVertex(fnDefId);
-	if(vertex === undefined || vertex.tag !== VertexType.FunctionDefinition) {
+	if(vertex === undefined || !FunctionDefinitionVertex.is(vertex)) {
 		return false;
 	}
 	// (a) the slice reaches a parameter of this definition

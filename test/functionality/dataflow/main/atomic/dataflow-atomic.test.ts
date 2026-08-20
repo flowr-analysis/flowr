@@ -26,7 +26,7 @@ function getSuperAssignOrigin(op: string): { origin: BuiltInProcName[] } | objec
 	return op === '<<-' || op === '->>' ? { origin: [BuiltInProcName.SuperAssignment] } : {};
 }
 
-describe.sequential('Atomic (dataflow information)', withShell(shell => {
+describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell => {
 	describe('Uninteresting Leafs', () => {
 		for(const [input, id] of [
 			['42', 'numbers'],

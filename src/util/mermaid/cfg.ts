@@ -194,5 +194,5 @@ function limitTo(str: string, limit: number): string {
 		return str;
 	}
 
-	return `${str.substring(0, limit)}...`;
+	return `${str.slice(0, Math.max(0, limit))}...`;
 }

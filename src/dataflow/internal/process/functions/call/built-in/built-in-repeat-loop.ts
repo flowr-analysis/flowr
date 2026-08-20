@@ -10,15 +10,16 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
-	EmptyArgument,
-	type PotentiallyEmptyRArgument
+import type {
+	PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { Identifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { applyKills } from '../../../../../environments/apply-kill';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 /**
  * Process a built-in repeat loop function call like `repeat { ... }`.
@@ -34,7 +35,7 @@ export function processRepeatLoop<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	if(args.length !== 1 || args[0] === EmptyArgument) {
+	if(args.length !== 1 || RArgument.isEmpty(args[0])) {
 		dataflowLogger.warn(`Repeat-Loop ${Identifier.toString(name.content)} does not have 1 argument, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
@@ -64,6 +65,13 @@ export function processRepeatLoop<OtherInfo>(
 
 	information.exitPoints = filterOutLoopExitPoints(information.exitPoints);
 
-	/* the body is evaluated in the enclosing environment, so its definitions have to bubble up */
-	return { ...information, out: information.out.concat(body.out) };
+	/* the body is evaluated in the enclosing environment, so its definitions and removals have to bubble up */
+	const kill = body.kill?.length ? body.kill : undefined;
+	return {
+		...information,
+		out:         information.out.concat(body.out),
+		/* the body always runs at least once, so a removal within it is certain */
+		environment: applyKills(information.environment, kill),
+		kill
+	};
 }

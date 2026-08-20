@@ -5,19 +5,18 @@ import { FunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import type { RAccess, RIndexAccess, RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { RAccess, type RIndexAccess, type RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import { resolveIdToArgStringVector, resolveIdToArgValue, resolveIdToArgValueSymbolName } from '../resolve-args';
 import { ConstraintType } from '../semantics';
 import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../shape-inference';
 import { isStringBasedAccess } from './access-mapper';
 import { isDataFrameArgument, isRNull } from './arguments';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { BuiltInProcName } from '../../../dataflow/environments/built-in-proc-name';
+import { Resolve } from '../../../dataflow/environments/resolve-helper';
 
 /** Mapper for mapping the supported data frame replacement functions to mapper functions */
 const DataFrameReplacementFunctionMapper = {
@@ -64,15 +63,15 @@ export function mapDataFrameReplacementFunction(
 	const parent = hasParentReplacement(node, dfg) ? dfg.idMap?.get(node.info.parent) : undefined;
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx };
 
-	if(node.type === RType.Access) {
-		if(node.access.every(arg => arg === EmptyArgument)) {
+	if(RAccess.is(node)) {
+		if(node.access.every(arg => RArgument.isEmpty(arg))) {
 			return mapDataFrameContentAssignment(node, expression, inference);
 		} else if(isStringBasedAccess(node)) {
 			return mapDataFrameNamedColumnAssignment(node, expression, inference, resolveInfo);
 		} else {
 			return mapDataFrameIndexColRowAssignment(node, expression, inference, resolveInfo);
 		}
-	} else if(node.type === RType.FunctionCall && node.named && node.arguments.length === 1 && node.arguments[0] !== EmptyArgument) {
+	} else if(RFunctionCall.isNamed(node) && node.arguments.length === 1 && node.arguments[0] !== EmptyArgument) {
 		const n = Identifier.getName(node.functionName.content);
 		if(isDataFrameReplacement(n)) {
 			const mapper = DataFrameReplacementFunctionMapper[n];
@@ -92,7 +91,7 @@ function isDataFrameReplacement(functionName: string): functionName is DataFrame
 function hasParentReplacement(node: RNode<ParentInformation>, dfg: DataflowGraph): node is RNode<ParentInformation & { parent: NodeId }> {
 	const parentVertex = node.info.parent ? dfg.getVertex(node.info.parent) : undefined;
 
-	return FunctionCallVertex.is(parentVertex) && parentVertex.origin.includes(BuiltInProcName.Replacement);
+	return FunctionCallVertex.hasOrigin(parentVertex, BuiltInProcName.Replacement);
 }
 
 function mapDataFrameContentAssignment(
@@ -132,7 +131,7 @@ function mapDataFrameNamedColumnAssignment(
 	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
 	}
-	const colname = resolveIdToArgValueSymbolName(access.access[0], info);
+	const colname = Resolve.argument.symbolName(access.access[0], info);
 
 	if(isRNull(expression)) {
 		return [{
@@ -160,7 +159,7 @@ function mapDataFrameIndexColRowAssignment(
 	const dataFrame = access.accessed;
 	const args = access.access.filter(arg => RArgument.isEmpty(arg) || RArgument.isUnnamed(arg));
 
-	if(!isDataFrameArgument(dataFrame, inference) || args.every(arg => arg === EmptyArgument)) {
+	if(!isDataFrameArgument(dataFrame, inference) || args.every(arg => RArgument.isEmpty(arg))) {
 		return;
 	}
 	const result: DataFrameOperations = [];
@@ -168,7 +167,7 @@ function mapDataFrameIndexColRowAssignment(
 	const colArg = args.length < 2 ? args[0] : args[1];
 
 	if(rowArg !== undefined && rowArg !== EmptyArgument) {
-		const rowValue = resolveIdToArgValue(rowArg, info);
+		const rowValue = Resolve.argument.value(rowArg, info);
 		let rows: number[] | undefined = undefined;
 
 		if(typeof rowValue === 'number') {
@@ -183,7 +182,7 @@ function mapDataFrameIndexColRowAssignment(
 		});
 	}
 	if(colArg !== undefined && colArg !== EmptyArgument) {
-		const colValue = resolveIdToArgValue(colArg, info);
+		const colValue = Resolve.argument.value(colArg, info);
 		let columns: string[] | number[] | undefined = undefined;
 
 		if(typeof colValue === 'string') {
@@ -223,7 +222,7 @@ function mapDataFrameColNamesAssignment(
 		return;
 	}
 	const argument = info.idMap !== undefined ? toUnnamedArgument(expression, info.idMap) : EmptyArgument;
-	const assignedNames = resolveIdToArgStringVector(argument, info);
+	const assignedNames = Resolve.argument.stringVector(argument, info);
 
 	return [{
 		operation: 'setColNames',

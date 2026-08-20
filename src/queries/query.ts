@@ -71,6 +71,11 @@ import type {
 import {
 	InspectRecursionQueryDefinition
 } from './catalog/inspect-recursion-query/inspect-recursion-query-format';
+import type {
+	InspectStrictnessQuery } from './catalog/inspect-strictness-query/inspect-strictness-query-format';
+import {
+	InspectStrictnessQueryDefinition
+} from './catalog/inspect-strictness-query/inspect-strictness-query-format';
 import type { DoesCallQuery } from './catalog/does-call-query/does-call-query-format';
 import { DoesCallQueryDefinition } from './catalog/does-call-query/does-call-query-format';
 import type {
@@ -117,6 +122,7 @@ export type Query = CallContextQuery
 	| InspectExceptionQuery
     | InspectHigherOrderQuery
 	| InspectRecursionQuery
+	| InspectStrictnessQuery
 	| ResolveValueQuery
 	| ProjectQuery
 	| SignatureQuery
@@ -194,6 +200,7 @@ export const SupportedQueries = {
 	'inspect-exception':    InspectExceptionQueryDefinition,
 	'inspect-higher-order': InspectHigherOrderQueryDefinition,
 	'inspect-recursion':    InspectRecursionQueryDefinition,
+	'inspect-strictness':   InspectStrictnessQueryDefinition,
 	'resolve-value':        ResolveValueQueryDefinition,
 	'project':              ProjectQueryDefinition,
 	'signature':            SignatureQueryDefinition,

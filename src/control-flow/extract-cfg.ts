@@ -11,13 +11,13 @@ import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-lo
 import type { RForLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { EmptyArgument, type RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
 import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
-import { FunctionCallVertex, FunctionDefinitionVertex, VertexType } from '../dataflow/graph/vertex';
+import { FunctionCallVertex, FunctionDefinitionVertex } from '../dataflow/graph/vertex';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { type CfgExpressionVertex,
 	CfgEdge, CfgVertex,
@@ -30,8 +30,7 @@ import { CfgBuilder } from './cfg-builder';
 import { guard } from '../util/assert';
 import type { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
-import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
-import { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
@@ -473,7 +472,7 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: CfgFoldIn
 		graph.addEdge(CfgVertex.toExitId(callId), exit, CfgEdge.makeFd());
 	}
 
-	if(call.named && call.functionName.content === 'return') {
+	if(call.named && Identifier.getName(call.functionName.content) === 'return') {
 		if(down[1]) {
 			info.returns.push(CfgVertex.toExitId(callId));
 			info.exitPoints.length = 0;
@@ -580,11 +579,11 @@ const OriginToFoldTypeMap: Partial<Record<BuiltInProcName, (folds: StatefulFoldF
 function cfgFunctionCallWithDataflow(graph: DataflowGraph, folds: StatefulFoldFunctions<ParentInformation, CfgDownState, CfgFoldInformation>): typeof cfgFunctionCall {
 	return (call: RFunctionCall<ParentInformation>, name: CfgFoldInformation, args: (CfgFoldInformation | typeof EmptyArgument)[], down: CfgDownState): CfgFoldInformation => {
 		const vtx = graph.getVertex(call.info.id);
-		if(vtx?.tag === VertexType.FunctionCall && vtx.onlyBuiltin && vtx.origin.length === 1) {
+		if(FunctionCallVertex.is(vtx) && vtx.onlyBuiltin && vtx.origin.length === 1) {
 			const origin = vtx.origin[0];
 			const mayMap = OriginToFoldTypeMap[origin as BuiltInProcName];
 			// ifelse/fifelse/if_else share the IfThenElse origin but are eager calls, so only fold a real `if` node
-			if(mayMap && (call as RNodeWithParent).type === RType.IfThenElse) {
+			if(mayMap && RIfThenElse.is(call)) {
 				return mayMap(folds, call, args, down, vtx);
 			}
 			if(origin === BuiltInProcName.Switch) {
@@ -701,7 +700,7 @@ function cfgBinaryOp(binOp: RBinaryOp<ParentInformation> | RPipe<ParentInformati
 		graph.addEdge(binExit, exitPoint, fd);
 	}
 	// `&&`/`||` short-circuit: the exit stays reachable via the lhs even when the rhs jumps
-	if(binOp.type === RType.BinaryOp && (binOp.operator === '&&' || binOp.operator === '||')) {
+	if(RBinaryOp.is(binOp) && (binOp.operator === '&&' || binOp.operator === '||')) {
 		for(const exitPoint of lhs.exitPoints) {
 			graph.addEdge(binExit, exitPoint, fd);
 		}

@@ -1,22 +1,22 @@
 import {
-	EmptyArgument,
 	RFunctionCall,
 	type PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import type { DataflowInformation } from '../../../../../info';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { ReferenceType } from '../../../../../environments/identifier';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { define } from '../../../../../environments/define';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { pushLocalEnvironment } from '../../../../../environments/scoping';
+import { Resolve } from '../../../../../environments/resolve-helper';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 /**
  * Process a list call.
@@ -46,12 +46,12 @@ export function resolveListToEnvState<OtherInfo>(
 	let envState = pushLocalEnvironment(data.environment);
 	let found = false;
 	for(const arg of source.arguments) {
-		if(arg === EmptyArgument || arg.name === undefined || arg.value === undefined) {
+		if(RArgument.isEmpty(arg) || arg.name === undefined || arg.value === undefined) {
 			continue;
 		}
 		const value = arg.value;
-		const isFn = value.type === RType.FunctionDefinition
-			|| (value.type === RType.Symbol && (resolveByName(value.content, data.environment, ReferenceType.Function)?.length ?? 0) > 0);
+		const isFn = RFunctionDefinition.is(value)
+			|| (RSymbol.is(value) && (Resolve.byNameAndType(value.content, data.environment, ReferenceType.Function)?.length ?? 0) > 0);
 		if(!isFn) {
 			continue;
 		}

@@ -9,7 +9,7 @@ import { describe } from 'vitest';
  * A data-masked argument is evaluated in a frame whose parent is the caller, so a name that is not a column of the
  * data resolves to the enclosing binding and has to survive the slice.
  */
-describe.sequential('Data Masking', withShell(shell => {
+describe('Data Masking', { concurrent: false }, withShell(shell => {
 	const capabilities: SupportedFlowrCapabilityId[] = ['name-normal', 'call-normal', 'numbers',
 		'unnamed-arguments', 'named-arguments', ...OperatorDatabase['<-'].capabilities];
 

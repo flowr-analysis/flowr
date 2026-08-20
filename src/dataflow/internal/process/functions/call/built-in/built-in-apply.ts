@@ -6,12 +6,11 @@ import {
 	type PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { MergeableRecord } from '../../../../../../util/objects';
 import { dataflowLogger } from '../../../../../logger';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { VertexType } from '../../../../../graph/vertex';
+import { VertexType, FunctionDefinitionVertex } from '../../../../../graph/vertex';
 import type { FunctionArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -25,6 +24,8 @@ import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 /** the function reference extracted from an argument passed to a higher-order call */
 export interface ResolvedFunctionArgument {
@@ -43,10 +44,10 @@ export function resolveFunctionArgument<OtherInfo>(
 	if(opts.unquoteFunction && RString.is(val)) {
 		return { functionId: val.info.id, functionName: val.content.str, anonymous: false, asString: true };
 	}
-	if(val.type === RType.FunctionDefinition) {
+	if(RFunctionDefinition.is(val)) {
 		return { functionId: val.info.id, functionName: `${UnnamedFunctionCallPrefix}${val.info.id}`, anonymous: true, asString: false };
 	}
-	if(val.type !== RType.Symbol) {
+	if(!RSymbol.is(val)) {
 		return undefined;
 	}
 	const functionName = opts.resolveValue
@@ -124,7 +125,7 @@ export function processApply<OtherInfo>(
 
 	const arg = args[index];
 
-	if(arg === EmptyArgument || !arg.value || (!unquoteFunction && arg.value.type !== RType.Symbol && arg.value.type !== RType.FunctionDefinition)) {
+	if(RArgument.isEmpty(arg) || !arg.value || (!unquoteFunction && !RSymbol.is(arg.value) && !RFunctionDefinition.is(arg.value))) {
 		dataflowLogger.warn(`Expected symbol as argument at index ${index}, but got ${JSON.stringify(arg)} instead.`);
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
 		return information;
@@ -183,7 +184,7 @@ export function processApply<OtherInfo>(
 			]
 		};
 		const dfVert = information.graph.getVertex(rootId);
-		if(dfVert && dfVert.tag === VertexType.FunctionDefinition) {
+		if(dfVert && FunctionDefinitionVertex.is(dfVert)) {
 			ClosureRefs.resolveOpenIngoing(information.graph, rootId, dfVert, data.environment);
 		}
 	} else {

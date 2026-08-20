@@ -4,17 +4,17 @@ import type { ParentInformation } from '../../../../r-bridge/lang-4.x/ast/model/
 import { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
 import type { IdentifierReference } from '../../../environments/identifier';
 import { DataflowGraph } from '../../../graph/graph';
-import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../graph/edge';
-import type { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { VertexType } from '../../../graph/vertex';
+import { RFunctionDefinition } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 /**
  * Links all reads that occur before the argument to the argument root node.
  */
 export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentInformation>, ingoingRefs: readonly IdentifierReference[], graph: DataflowGraph) {
 	const rid = root.info.id;
-	const allIdsBeforeArguments = new Set(RNode.collectAllIdsWithStop(root, n => n.type === RType.Argument && n.info.id !== rid));
+	const allIdsBeforeArguments = new Set(RNode.collectAllIdsWithStop(root, n => RArgument.is(n) && n.info.id !== rid));
 	const ingoingBeforeArgs = ingoingRefs.filter(r => allIdsBeforeArguments.has(r.nodeId));
 
 	for(const ref of ingoingBeforeArgs) {
@@ -57,7 +57,7 @@ export function processFunctionArgument<OtherInfo>(
 
 	const ingoingRefs = value ? value.unknownReferences.concat(value.in, name?.in ?? []) : name?.in;
 
-	if(entryPoint && argument.value?.type === RType.FunctionDefinition) {
+	if(entryPoint && RFunctionDefinition.is(argument.value)) {
 		graph.addEdge(entryPoint, argument.value.info.id, EdgeType.Reads);
 	} else if(argumentName && ingoingRefs) {
 		// we only need to link against those which are not already bound to another function call argument
@@ -73,6 +73,7 @@ export function processFunctionArgument<OtherInfo>(
 		environment:       value?.environment ?? data.environment,
 		entryPoint:        entryPoint ?? argument.info.id,
 		exitPoints:        value?.exitPoints ?? name?.exitPoints ?? [{ nodeId: argument.info.id, type: ExitPointType.Default, cds: data.cds }],
-		hooks:             []
+		hooks:             [],
+		kill:              value?.kill
 	};
 }

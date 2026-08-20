@@ -4,8 +4,8 @@
  *
  * Run it with `npm run setup:dev`.
  */
-import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { spawnSync } from 'child_process';
+import { existsSync } from 'fs';
 import { FlowrGithubRef, FlowrWikiBaseRef } from '../src/documentation/doc-util/doc-files';
 import { NewQuestionUrl } from '../src/documentation/doc-util/doc-issue';
 import { minimumNodeMajor } from '../src/util/node-version';

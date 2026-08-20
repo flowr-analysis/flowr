@@ -2,6 +2,7 @@ import { assert, beforeAll, describe, test } from 'vitest';
 import { withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import { uniqueArray } from '../../../../../src/util/collections/arrays';
 
 /**
  * The R semantics flowR's modelling of non-standard evaluation rests on, asserted against a real R.
@@ -120,10 +121,10 @@ const Claims: readonly Claim[] = [
 		capabilities: ['built-in-quoting'] }
 ];
 
-describe.sequential('R semantics we model', withShell(shell => {
+describe('R semantics we model', { concurrent: false }, withShell(shell => {
 	let missing: ReadonlySet<string> = new Set();
 	beforeAll(async() => {
-		const needed = [...new Set(Claims.flatMap(c => c.needs ?? []))];
+		const needed = uniqueArray(Claims.flatMap(c => c.needs ?? []));
 		const [line] = await shell.sendCommandWithOutput(
 			`cat(paste0(Filter(function(p) !requireNamespace(p, quietly = TRUE), c(${needed.map(p => `"${p}"`).join(',')})), collapse = ","), "\\n")`
 		);

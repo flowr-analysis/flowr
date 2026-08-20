@@ -1,13 +1,13 @@
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { FlowrFile } from '../../project/context/flowr-file';
 import type { MermaidGraphPrinterInfo } from './info';
 import { MermaidDefaultMarkStyle } from './info';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { Mermaid } from './mermaid';
+import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 function identifyMermaidDirection(prefix: string): string {
 	const directionMatch = prefix.match(/flowchart (TD|LR|RL|BT)/);
@@ -37,7 +37,7 @@ export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeW
 			const roleSuffix = context.role === RoleInParent.ExpressionListChild || context.role === RoleInParent.FunctionCallArgument || context.role === RoleInParent.FunctionDefinitionParameter ? `-${context.index}` : '';
 			output += `    n${n.info.parent} -->|"${context.role}${roleSuffix}"| n${n.info.id}\n`;
 		}
-		if(n.type === RType.ExpressionList && n.grouping !== undefined) {
+		if(RExpressionList.is(n) && n.grouping !== undefined) {
 			output += `    n${n.info.id} -.-|"group-open"| n${n.grouping[0].info.id}\n`;
 			output += `    n${n.info.id} -.-|"group-close"| n${n.grouping[1].info.id}\n`;
 		}
@@ -56,7 +56,7 @@ export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeW
 		});
 	}
 
-	if(ast.type === RType.Project) {
+	if(RProject.is(ast)) {
 		for(const f of ast.files) {
 			// add a subgraph for each file
 			if(ast.files.length !== 1 || (f.filePath && f.filePath !== FlowrFile.INLINE_PATH)) {

@@ -15,7 +15,6 @@ import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role'
 import { FileRole } from '../../project/context/flowr-file';
 import { getExportedNames } from '../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { Identifier } from '../../dataflow/environments/identifier';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { removeRQuotes } from '../../r-bridge/retriever';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
@@ -23,6 +22,8 @@ import { CallProp } from '../../dataflow/environments/built-in-props';
 import { RGroupGenerics } from '../../dataflow/environments/default-builtin-config';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { NoEdges } from '../../dataflow/graph/graph';
+import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 
 export interface UnusedDefinitionResult extends LintingResult {
 	variableName?: string
@@ -204,7 +205,7 @@ function buildQuickFix(variable: RNode<ParentInformation>, dfg: DataflowGraph, a
 	const definedBys = getDefinitionArguments(variable.info.id, dfg);
 
 	const hasImportantArgs = definedBys.some(d => dfg.unknownSideEffects.has(d))
-		|| definedBys.flatMap(e => Array.from(dfg.outgoingEdges(e) ?? []))
+		|| definedBys.flatMap(e => Array.from(dfg.outgoingEdges(e) ?? NoEdges))
 			.some(([target, e]) => {
 				return DfEdge.includesType(e, InterestingEdgesTargets) || dfg.unknownSideEffects.has(target);
 			});
@@ -221,9 +222,13 @@ function buildQuickFix(variable: RNode<ParentInformation>, dfg: DataflowGraph, a
 		variable.info.fullRange ?? variable.location]
 	);
 
+	if(totalRangeToRemove === undefined) {
+		/* a fix that names no place cannot be carried out, so none is offered */
+		return undefined;
+	}
 	return [{
 		type:        'remove',
-		loc:         totalRangeToRemove ?? SourceLocation.invalid(),
+		loc:         totalRangeToRemove,
 		description: `Remove unused definition of \`${variable.lexeme}\``
 	}];
 }
@@ -253,10 +258,10 @@ function isWithinPromise(node: RNode<ParentInformation>, idMap: AstIdMap): boole
 		if(parent === undefined) {
 			return false;
 		}
-		if(parent.type === RType.Parameter && parent.defaultValue?.info.id === child.info.id) {
+		if(RParameter.is(parent) && parent.defaultValue?.info.id === child.info.id) {
 			return true;
 		}
-		if(parent.type === RType.FunctionCall && parent.named && Identifier.getName(parent.functionName.content) === 'delayedAssign') {
+		if(RFunctionCall.isNamed(parent) && Identifier.getName(parent.functionName.content) === 'delayedAssign') {
 			return true;
 		}
 		child = parent;

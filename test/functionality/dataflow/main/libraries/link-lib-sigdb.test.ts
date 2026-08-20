@@ -7,7 +7,6 @@ import type { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tr
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { DefaultAssumedRVersion, FlowrConfig, VersionSelection } from '../../../../../src/config';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName, sigDbLog } from '../../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
-import { getOriginInDfg } from '../../../../../src/dataflow/origin/dfg-get-origin';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { baseRExportOwner } from '../../../../../src/util/r-base-packages';
 import { executeCallContextQueries } from '../../../../../src/queries/catalog/call-context-query/call-context-query-executor';
@@ -92,7 +91,7 @@ function originProcs(res: Awaited<ReturnType<typeof analyze>>, callName: string)
 	const dfg = res.df.graph;
 	for(const [id, v] of dfg.vertices(true)) {
 		if(FunctionCallVertex.is(v) && Identifier.getName(v.name) === callName) {
-			return (getOriginInDfg(dfg, id) ?? []).flatMap(o => 'proc' in o ? [o.proc] : []);
+			return (Dataflow.origin(dfg, id) ?? []).flatMap(o => 'proc' in o ? [o.proc] : []);
 		}
 	}
 	return [];

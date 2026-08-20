@@ -75,13 +75,6 @@ export function partitionArray<T>(arr: readonly T[], predicate: (elem: T) => boo
 }
 
 /**
- * {@link partitionArray} for a mutable array.
- */
-export function partition<T>(arr: T[], predicate: (elem: T) => boolean): [T[], T[]] {
-	return partitionArray(arr, predicate);
-}
-
-/**
  * Generate all permutations of the given array using Heap's algorithm (with its non-recursive variant).
  * @param arr - The array to permute
  * @see getUniqueCombinationsOfSize
@@ -155,8 +148,8 @@ export function *getUniqueCombinationsOfSize<T>(array: T[], minSize = 0, maxSize
  */
 export function arraySum(arr: readonly number[]): number {
 	let sum = 0;
-	for(const elem of arr) {
-		sum += elem;
+	for(let i = 0, n = arr.length; i < n; i++) {
+		sum += arr[i];
 	}
 	return sum;
 }
@@ -235,11 +228,7 @@ export function cartesianProduct<T>(...arrays: T[][]): T[][] {
 
 /** merge two arrays, removing duplicates */
 export function uniqueArrayMerge<T>(left: readonly T[], right: readonly T[]): T[] {
-	const result = new Set<T>(left);
-	for(const elem of right) {
-		result.add(elem);
-	}
-	return Array.from(result);
+	return Array.from(new Set<T>(left).union(new Set<T>(right)));
 }
 
 /**
@@ -253,15 +242,5 @@ export function uniqueArray<T>(a: Iterable<T>): T[] {
  * Groups the elements of the given array by the key returned by the given key function.
  */
 export function arraysGroupBy<T, K>(arr: readonly T[], keyFn: (elem: T) => K): Map<K, T[]> {
-	const result = new Map<K, T[]>();
-	for(const elem of arr) {
-		const key = keyFn(elem);
-		const group = result.get(key);
-		if(group) {
-			group.push(elem);
-		} else {
-			result.set(key, [elem]);
-		}
-	}
-	return result;
+	return Map.groupBy(arr, keyFn);
 }

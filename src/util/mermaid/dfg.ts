@@ -9,14 +9,14 @@ import {
 } from '../../dataflow/environments/identifier';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { DfEdge, type EdgeType } from '../../dataflow/graph/edge';
-import { type DataflowGraphVertexInfo, VertexType, FunctionCallVertex } from '../../dataflow/graph/vertex';
-import { getOriginInDfg } from '../../dataflow/origin/dfg-get-origin';
+import { VariableDefinitionVertex, FunctionDefinitionVertex, type DataflowGraphVertexInfo, VertexType, FunctionCallVertex } from '../../dataflow/graph/vertex';
 import type { IEnvironment } from '../../dataflow/environments/environment';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { MermaidDefaultMarkStyle, type MermaidMarkdownMark, type MermaidMarkStyle } from './info';
 import { SourceRange } from '../range';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { DataflowInformation } from '../../dataflow/info';
+import { Dataflow } from '../../dataflow/graph/df-helper';
+import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
 /**
  * Internal representation of a mermaid graph in flowR
@@ -183,7 +183,7 @@ function builtInDisplayName(builtInId: NodeId): string {
 }
 
 function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, mark: ReadonlySet<NodeId> | undefined, includeOnlyIds: ReadonlySet<NodeId> | undefined): void {
-	const fCall = info.tag === VertexType.FunctionCall;
+	const fCall = FunctionCallVertex.is(info);
 	const { open, close } = mermaidNodeBrackets(info.tag);
 	const origId = id;
 	id = Mermaid.escapeId(id);
@@ -209,11 +209,11 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	}
 
 	const node = mermaid.rootGraph.idMap?.get(info.id);
-	const lexeme = node?.lexeme ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0]?.lexeme : '') ?? '??';
+	const lexeme = node?.lexeme ?? (RExpressionList.is(node) ? node?.grouping?.[0]?.lexeme : '') ?? '??';
 
 	let display = lexeme;
 	if(fCall && FunctionCallVertex.is(info)) {
-		const q = Identifier.toQualified(getOriginInDfg(mermaid.rootGraph, origId), info.name, mermaid.qualifyBaseR !== false);
+		const q = Identifier.toQualified(Dataflow.origin(mermaid.rootGraph, origId), info.name, mermaid.qualifyBaseR !== false);
 		const qs = q !== undefined ? Identifier.toString(q) : undefined;
 		if(qs !== undefined && qs !== lexeme) {
 			display = qs;
@@ -228,11 +228,11 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		const escapedName = node ? `*${Mermaid.escape(`[${node.type}]`)}* ${boldLexeme(lexeme, display)}` : '??';
 		const deps = info.cds ? ', ' + info.cds.map(c => Mermaid.escapeId(c.id) + (c.when ? '+' : '-')).join(', ') : '';
 		const lnks = info.link?.origin ? ', links: ' + info.link.origin.map(o => Mermaid.escapeId(o)).join(', ') : '';
-		const source = info.tag === VertexType.VariableDefinition ? info.source : undefined;
+		const source = VariableDefinitionVertex.is(info) ? info.source : undefined;
 		const sources = source ? ', v: ' + source.map(s => Mermaid.escapeId(s)).join(', ') : '';
-		const n = node?.info.fullRange ?? node?.location ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0].location : undefined);
+		const n = node?.info.fullRange ?? node?.location ?? (RExpressionList.is(node) ? node?.grouping?.[0].location : undefined);
 		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\n      *${SourceRange.format(n)}* (**id: ${id}**${deps}${lnks}${sources})${
-			fCall ? displayFunctionArgMapping(info.args) : '' + (info.tag === VertexType.FunctionDefinition && info.mode && info.mode.length > 0 ? Mermaid.escape(JSON.stringify(info.mode)) : '')
+			fCall ? displayFunctionArgMapping(info.args) : '' + (FunctionDefinitionVertex.is(info) && info.mode && info.mode.length > 0 ? Mermaid.escape(JSON.stringify(info.mode)) : '')
 		}\`"${close}`);
 	}
 	if(mark?.has(id)) {
@@ -241,7 +241,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	if(mermaid.rootGraph.unknownSideEffects.values().some(l => NodeId.normalize(l as string) === NodeId.normalize(origId))) {
 		mermaid.nodeLines.push(`    style ${idPrefix}${id} stroke:red,stroke-width:5px; `);
 	}
-	if(info.tag === VertexType.FunctionDefinition) {
+	if(FunctionDefinitionVertex.is(info)) {
 		subflowToMermaid(origId, info.subflow, mermaid, idPrefix);
 	}
 	const edges = mermaid.rootGraph.outgoingEdges(NodeId.normalize(origId));

@@ -4,24 +4,23 @@ import { RValue } from '../../../../../eval/values/r-value';
 import type { DataflowInformation } from '../../../../../info';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument  } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { unpackArg } from '../argument/unpack-argument';
-import { signatureParameterNames } from '../../../../../../project/sigdb/decode';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
 import type { IdentifierDefinition, InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { Identifier, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { define } from '../../../../../environments/define';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { DefaultAttachPosition, REnvironment } from '../../../../../environments/environment';
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
 import { resolveNodeToStackEnv } from './built-in-stack-env';
-import { resolveIdToSingleString } from '../../../../../eval/resolve/alias-tracking';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { foldStringCall, PasteLikeCalls } from '../../../../../eval/resolve/resolve-strings';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { dataflowLogger } from '../../../../../logger';
+import { Resolve } from '../../../../../environments/resolve-helper';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 /** A tracked env is a real stack environment (not a private custom env) when its current layer is the global or the built-in/base env. */
 function isStackEnvState(envState: REnvironmentInformation): boolean {
@@ -40,7 +39,7 @@ export interface EnvirResolution<OtherInfo> {
 	readonly isStackEnv?: boolean;
 }
 
-/** Maps a list of identifier definitions (from {@link resolveByName}) to an {@link EnvirResolution}, merging the envStates of multiple reaching definitions. */
+/** Maps a list of identifier definitions (from {@link Resolve.byNameAndType}) to an {@link EnvirResolution}, merging the envStates of multiple reaching definitions. */
 function resolveDefsToEnvirResolution<OtherInfo>(
 	defs:   readonly IdentifierDefinition[] | undefined,
 	nodeId: NodeId,
@@ -90,8 +89,7 @@ export function signatureParamNames<OtherInfo>(
 	id:       Identifier,
 	fallback: readonly string[]
 ): readonly string[] {
-	const sig = data.ctx.deps.signatureOf(id)?.signature;
-	const names = sig ? signatureParameterNames(sig) : [];
+	const names = data.ctx.deps.signatures().parametersOf(id) ?? [];
 	return names.length > 0 ? names : fallback;
 }
 
@@ -104,7 +102,7 @@ export function resolveConstantString<OtherInfo>(
 	const unshadowed = new Map<string, boolean>();
 	const fold = (n: RNode<OtherInfo & ParentInformation>): string | undefined => {
 		if(!RFunctionCall.isNamed(n)) {
-			return resolveIdToSingleString(n.info.id, info);
+			return Resolve.toSingleString(n.info.id, info);
 		}
 		const fnName = Identifier.getName(n.functionName.content);
 		if(!PasteLikeCalls.has(fnName)) {
@@ -112,8 +110,7 @@ export function resolveConstantString<OtherInfo>(
 		}
 		let ok = unshadowed.get(fnName);
 		if(ok === undefined) {
-			const defs = resolveByName(n.functionName.content, data.environment, ReferenceType.Function);
-			ok = defs === undefined || defs.every(d => isReferenceType(d.type, ReferenceType.BuiltInFunction));
+			ok = Resolve.isBuiltIn(n.functionName.content, data.environment, ReferenceType.Function);
 			unshadowed.set(fnName, ok);
 		}
 		const folded = ok ? foldStringCall(n, fold) : undefined;
@@ -132,7 +129,7 @@ export function resolveArgToEnvir<OtherInfo>(
 	arg:  PotentiallyEmptyRArgument<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): EnvirResolution<OtherInfo> | undefined {
-	if(arg === EmptyArgument) {
+	if(RArgument.isEmpty(arg)) {
 		return undefined;
 	}
 	const node = unpackArg(arg);
@@ -141,10 +138,10 @@ export function resolveArgToEnvir<OtherInfo>(
 	if(stackEnv !== undefined && node !== undefined) {
 		return stackEnvirResolution(stackEnv, node.info.id, node.lexeme ?? '', data);
 	}
-	if(node?.type !== RType.Symbol) {
+	if(!RSymbol.is(node)) {
 		return undefined;
 	}
-	return resolveDefsToEnvirResolution(resolveByName(node.content, data.environment, ReferenceType.Variable), node.info.id, data);
+	return resolveDefsToEnvirResolution(Resolve.byNameAndType(node.content, data.environment, ReferenceType.Variable), node.info.id, data);
 }
 
 /** Builds an {@link EnvirResolution} for an environment obtained directly (not via a holder variable), e.g. `globalenv()` / `.GlobalEnv`. */
@@ -185,7 +182,7 @@ export function resolveSymbolToEnvir<OtherInfo>(
 	nodeId:     NodeId,
 	data:       DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): EnvirResolution<OtherInfo> | undefined {
-	return resolveDefsToEnvirResolution(resolveByName(symbolName, data.environment, ReferenceType.Variable), nodeId, data);
+	return resolveDefsToEnvirResolution(Resolve.byNameAndType(symbolName, data.environment, ReferenceType.Variable), nodeId, data);
 }
 
 /** Moves definitions written into a custom environment from the caller's scope into `envDef`'s tracked `envState`, re-defining the holder variable. */

@@ -1,7 +1,7 @@
 import type { NormalizerData } from '../../normalizer-data';
 import { getWithTokenType, retrieveMetaStructure } from '../../normalize-meta';
 import { tryNormalizeAccess } from '../normalize-access';
-import { partition } from '../../../../../../../util/collections/arrays';
+import { partitionArray } from '../../../../../../../util/collections/arrays';
 import type { RNode } from '../../../../model/model';
 import { normalizeExpressions, splitComments } from '../structure/normalize-expressions';
 import { tryNormalizeFunctionCall } from '../functions/normalize-call';
@@ -49,7 +49,7 @@ export function normalizeExpression(data: NormalizerData, entry: JsonEntry): RNo
 
 	const children = normalizeExpressions(childData, childrenSource);
 
-	const [delimiters, nodes] = partition(children, x => RDelimiter.is(x) || RComment.is(x));
+	const [delimiters, nodes] = partitionArray(children, x => RDelimiter.is(x) || RComment.is(x));
 
 	if(nodes.length === 1) {
 		const result = nodes[0] as RNode;

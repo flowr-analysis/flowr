@@ -1,6 +1,6 @@
 import type { AstIdMap } from './decorate';
 import type { DataflowGraph } from '../../../../../dataflow/graph/graph';
-import { VertexType } from '../../../../../dataflow/graph/vertex';
+import { FunctionCallVertex, UseVertex } from '../../../../../dataflow/graph/vertex';
 import { removeRQuotes } from '../../../../retriever';
 import { Identifier } from '../../../../../dataflow/environments/identifier';
 import { RNode } from '../model';
@@ -94,7 +94,7 @@ export const NodeId = {
 	mapBuiltInProc<T extends BuiltInProcName>(this: void, proc: T): T extends `builtin:${infer S}` ? BuiltIn<S> : BuiltIn<T> {
 		const bi = 'builtin:';
 		return NodeId.toBuiltIn(
-			proc.startsWith(bi) ? proc.substring(bi.length) : proc
+			proc.startsWith(bi) ? proc.slice(bi.length) : proc
 		) as never;
 	},
 	/**
@@ -123,7 +123,7 @@ export function recoverName(id: NodeId, idMap?: AstIdMap): string | undefined {
  */
 export function recoverContent(id: NodeId, graph: DataflowGraph): string | undefined {
 	const vertex = graph.getVertex(id);
-	if(vertex && vertex.tag === VertexType.FunctionCall && vertex.name) {
+	if(vertex && FunctionCallVertex.is(vertex) && vertex.name) {
 		return Identifier.toString(vertex.name);
 	}
 	const node = graph.idMap?.get(id);
@@ -131,7 +131,7 @@ export function recoverContent(id: NodeId, graph: DataflowGraph): string | undef
 		return undefined;
 	}
 	const lexeme = node.lexeme ?? node.info.fullLexeme ?? '';
-	if(vertex?.tag === VertexType.Use) {
+	if(UseVertex.is(vertex)) {
 		return removeRQuotes(lexeme);
 	}
 	return lexeme;

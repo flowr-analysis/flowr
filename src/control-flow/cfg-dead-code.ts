@@ -4,7 +4,7 @@ import { CfgVertex, CfgEdge } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Ternary } from '../util/logic';
 import type { CfgPassInfo } from './cfg-simplification';
-import { SemanticCfgGuidedVisitor } from './semantic-cfg-guided-visitor';
+import { SemanticCfgGuidedVisitor, type OnCall } from './semantic-cfg-guided-visitor';
 import { FunctionCallVertex, type DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import { FunctionArgument } from '../dataflow/graph/graph';
 import { NodeValue } from '../dataflow/eval/resolve/node-value';
@@ -14,7 +14,8 @@ import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-c
 import { isValue } from '../dataflow/eval/values/r-value';
 import { visitCfgInOrder } from './simple-visitor';
 import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
-import { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 
 type CachedValues<Val> = Map<NodeId, Val>;
 
@@ -51,9 +52,9 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	/** a parameter default is forced on access if at all, so a jump within it must not cut the function body */
 	private inParameterDefault(id: NodeId): boolean {
 		for(let node = this.getNormalizedAst(id); node !== undefined; node = this.getNormalizedAst(node.info.parent)) {
-			if(node.type === RType.Parameter) {
+			if(RParameter.is(node)) {
 				return true;
-			} else if(node.type === RType.FunctionDefinition) {
+			} else if(RFunctionDefinition.is(node)) {
 				return false;
 			}
 		}
@@ -112,7 +113,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		this.storeDefiniteValue(id, Boolean(value.value));
 	}
 
-	private handleWithCondition(data: { call: DataflowGraphVertexFunctionCall, condition?: FunctionArgument | NodeId }) {
+	private handleWithCondition(data: OnCall & { condition?: FunctionArgument | NodeId }) {
 		const id = data.call.id;
 		if(data.condition === undefined || data.condition === EmptyArgument) {
 			this.unableToCalculateValue(id);
@@ -121,19 +122,19 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		this.handleValuesFor(id, typeof data.condition === 'object' ? data.condition.nodeId : data.condition);
 	}
 
-	protected onIfThenElseCall(data: { call: DataflowGraphVertexFunctionCall, condition?: NodeId }) {
+	protected onIfThenElseCall(data: OnCall & { condition?: NodeId }) {
 		this.handleWithCondition(data);
 	}
 
-	protected onWhileLoopCall(data: { call: DataflowGraphVertexFunctionCall, condition: FunctionArgument }) {
+	protected onWhileLoopCall(data: OnCall & { condition: FunctionArgument }) {
 		this.handleWithCondition(data);
 	}
 
-	protected onStopCall(data: { call: DataflowGraphVertexFunctionCall }): void {
+	protected onStopCall(data: OnCall): void {
 		this.cachedStatements.set(data.call.id, true);
 	}
 
-	protected onStopIfNotCall(data: { call: DataflowGraphVertexFunctionCall }): void {
+	protected onStopIfNotCall(data: OnCall): void {
 		if(this.cachedStatements.has(data.call.id)) {
 			return;
 		}
@@ -157,7 +158,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		});
 	}
 
-	protected onTryCall(data: { call: DataflowGraphVertexFunctionCall }): void {
+	protected onTryCall(data: OnCall): void {
 		if(data.call.args.length < 1 || data.call.args[0] === EmptyArgument) {
 			return;
 		}

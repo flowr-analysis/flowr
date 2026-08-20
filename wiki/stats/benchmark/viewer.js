@@ -31,13 +31,14 @@
 		}
 		try {
 			localStorage.setItem('flowr-bench-theme', mode);
+			localStorage.setItem('flowr-theme', mode === 'system' ? '' : mode);
 		} catch{ /* private mode, keep going */ }
 	}
 
 	function initTheme() {
 		let stored = 'system';
 		try {
-			stored = localStorage.getItem('flowr-bench-theme') || 'system';
+			stored = localStorage.getItem('flowr-bench-theme') || localStorage.getItem('flowr-theme') || 'system';
 		} catch{ /* ignore */ }
 		ui.theme.value = ['light', 'dark', 'system'].includes(stored) ? stored : 'system';
 		setTheme(ui.theme.value);
@@ -975,17 +976,20 @@
 		fillOptions(ui.engine, [...new Set(parts.map(p => p.engine))], 'tree-sitter');
 	}
 
+	/** the newest run decides, so that a renamed calibration wins over the one it replaced */
 	function calibrationMetric(runs) {
-		for(const name of metricsOf(runs).keys()) {
-			if(name.toLowerCase().includes('calibration')) {
-				return name;
+		for(let i = runs.length - 1; i >= 0; i--) {
+			for(const b of runs[i].benches) {
+				if(String(b.name).toLowerCase().includes('calibration')) {
+					return b.name;
+				}
 			}
 		}
 		return null;
 	}
 
-	/** a calibration measured this rarely, or one that never moved at all, would divide every run by the same number */
-	const CALIBRATION_MIN_RUNS = 2, CALIBRATION_MIN_SPREAD = 1.001;
+	/** a calibration that never moved at all would divide every run by the same number */
+	const CALIBRATION_MIN_SPREAD = 0.001;
 
 	/**
 	 * Only a duration scales with the machine, so counts, sizes, and ratios keep their raw value
@@ -995,19 +999,13 @@
 		return unit === 'ms' && name !== calib;
 	}
 
-	/**
-	 * The name of the calibration if dividing by it would change the picture, null otherwise: it needs
-	 * at least two runs to compare and a machine that actually differed between them.
-	 */
+	/** the name of the calibration if dividing by it would change the picture, null otherwise */
 	function usableCalibration(runs, name) {
 		if(!name) {
 			return null;
 		}
-		const values = runs.map(r => valueOf(r, name)).filter(v => typeof v === 'number' && v > 0);
-		if(values.length < CALIBRATION_MIN_RUNS) {
-			return null;
-		}
-		return Math.max(...values) / Math.min(...values) >= CALIBRATION_MIN_SPREAD ? name : null;
+		const factors = S.calibrationFactors(runs.map(r => valueOf(r, name)));
+		return factors.some(f => Math.abs(f - 1) >= CALIBRATION_MIN_SPREAD) ? name : null;
 	}
 
 	/**
@@ -1282,14 +1280,22 @@
 			b, at: axis.x(b.index), text: b.kind === 'major' ? 'v' + b.version : b.version.replace(/\.\d+$/, '')
 		}));
 		// roughly five pixels per character, enough to keep the labels apart
-		const fits = S.fitLabels(marks.map(m => [m.at, m.text.length * 5 + 6]));
+		for(const m of marks) {
+			m.width = m.text.length * 5 + 6;
+			// the newest release sits at the border, so its label hangs to the left instead of being cut off
+			m.flip = m.at + m.width > W;
+			m.x = m.flip ? m.at - 3 : m.at + 3;
+		}
+		const fits = S.fitLabels(marks.map(m => [m.flip ? m.at - m.width : m.at, m.width]));
 		marks.forEach((m, k) => {
 			const guide = tag('line', { class: 'marker ' + m.b.kind, x1: m.at, x2: m.at, y1: PAD_T - 6, y2: H - PAD_B });
 			guide.appendChild(tag('title', {}, (m.b.kind === 'major' ? 'major release ' : 'minor release ') + m.b.version
 				+ ', ' + fmtDate(runs[m.b.index].date)));
 			svg.appendChild(guide);
 			if(fits[k]) {
-				svg.appendChild(tag('text', { class: 'axis release ' + m.b.kind, x: m.at + 3, y: PAD_T - 8 }, m.text));
+				svg.appendChild(tag('text', {
+					class: 'axis release ' + m.b.kind, x: m.x, y: PAD_T - 8, ...(m.flip ? { 'text-anchor': 'end' } : {})
+				}, m.text));
 			}
 		});
 	}
@@ -2110,13 +2116,40 @@
 			return;
 		}
 		const label = S.runLabel(run);
-		const name = run.commit.url
-			? dom('a', { className: 'version', href: run.commit.url, textContent: label, target: '_blank', rel: 'noopener' })
+		const tag = /^\d+\.\d+\.\d+$/.test(label) ? 'v' + label : null;
+		const href = tag ? 'https://github.com/flowr-analysis/flowr/releases/tag/' + tag : run.commit.url;
+		const name = href
+			? dom('a', { className: 'version', href: href, textContent: tag || label, target: '_blank', rel: 'noopener' })
 			: dom('span', { className: 'version', textContent: label });
-		/* the line has room for the number and no more, so the rest of what it says waits for a hover */
+		/* the tag has room for the number and no more, so the rest of what it says waits for a hover */
 		name.title = 'newest release, ' + fmtDate(run.date) + ': ' + S.commitTitle(run.commit.message);
+		if(tag) {
+			releaseName(name, tag);
+		}
 		ui.latest.hidden = false;
 		ui.latest.replaceChildren(name);
+	}
+
+	/** the name a release carries only lives on GitHub, so it is fetched once someone asks for it */
+	function releaseName(tagEl, tag) {
+		let asked = false;
+		const ask = () => {
+			if(asked) {
+				return;
+			}
+			asked = true;
+			fetch('https://api.github.com/repos/flowr-analysis/flowr/releases/tags/' + tag)
+				.then(r => r.ok ? r.json() : Promise.reject(r.status))
+				.then(release => {
+					if(release.name) {
+						const when = release.published_at ? fmtDate(release.published_at) : '';
+						tagEl.title = when ? release.name + ', released ' + when : release.name;
+					}
+				})
+				.catch(() => { /* the title it already carries says enough */ });
+		};
+		tagEl.addEventListener('pointerenter', ask);
+		tagEl.addEventListener('focus', ask);
 	}
 
 	/**
@@ -2162,8 +2195,9 @@
 		/* the box keeps its state while it is away, so a suite that carries a calibration again is normalised again */
 		if(calib) {
 			ui.calibrationNote.textContent = 'A fixed synthetic workload runs in the same CI job, so "' + calib
-				+ '" measures how fast or loaded that machine was. Dividing the timings by it cancels the machine out, '
-				+ 'while counts, sizes, and ratios stay as measured.';
+				+ '" measures how fast or loaded that machine was. Whatever else the runner did can only add time, '
+				+ 'so the fastest run of a scale is the reference and every other timing has that added time taken '
+				+ 'back off, never put on. The correction is bounded, and counts, sizes, and ratios stay as measured.';
 		}
 
 		const factors = calib && ui.calibrate.checked ? S.calibrationFactors(runs.map(r => valueOf(r, calib))) : null;

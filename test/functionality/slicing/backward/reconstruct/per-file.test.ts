@@ -43,7 +43,7 @@ const twoFiles = {
 	'helper.R': 'f <- function() 1\n'
 };
 
-describe.sequential('Reconstruct a slice per file', () => {
+describe('Reconstruct a slice per file', { concurrent: false }, () => {
 	afterAll(() => {
 		for(const dir of dirs) {
 			fs.rmSync(dir, { recursive: true, force: true });

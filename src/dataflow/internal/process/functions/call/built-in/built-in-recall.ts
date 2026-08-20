@@ -3,10 +3,9 @@ import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { log } from '../../../../../../util/log';
 import { EdgeType } from '../../../../../graph/edge';
@@ -45,7 +44,7 @@ export function processRecall<OtherInfo>(
 		const v = RFunctionCall.soleArgument(args)?.value;
 		if(v) {
 			// only allow the normal recall handling if the single arg is the literal 0
-			if(!(v.type === RType.Number && (v as RNumber).content.num === 0)) {
+			if(!(RNumber.is(v) && (v as RNumber).content.num === 0)) {
 				handleUnknownSideEffect(information.graph, information.environment, rootId);
 				return information;
 			}

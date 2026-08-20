@@ -202,7 +202,7 @@ export const DEPRECATED_FUNCTIONS = {
 			const name = Identifier.toString(qualified);
 			let deprecated = deprecatedByName.get(name);
 			if(deprecated === undefined) {
-				deprecated = deps.signatureOf(qualified)?.props.includes('deprecated') === true;
+				deprecated = deps.signatures().functionOf(qualified)?.props.includes('deprecated') === true;
 				deprecatedByName.set(name, deprecated);
 			}
 			if(!deprecated) {

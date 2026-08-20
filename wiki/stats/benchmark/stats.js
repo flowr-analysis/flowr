@@ -174,16 +174,61 @@
 		return values.map(v => num(v) === null ? null : (v / baseline - 1) * 100);
 	}
 
+	const CALIBRATION_BREAK = 3;
+	/*
+	 * How far a single run may be scaled. The break above says "this is a different workload"; this says
+	 * "this is the same workload on a machine that was this much faster or slower". A calibration is one
+	 * noisy sample of a shared runner, so a wide bound lets its noise, rather than the machine, decide
+	 * where a measurement is drawn.
+	 */
+	const CALIBRATION_MAX_FACTOR = 1.5;
+	const CALIBRATION_MIN_SEGMENT = 4;
+
+	/** splits the calibration series wherever its scale breaks, holes stay with the scale around them */
+	function calibrationScales(calibration) {
+		const scales = [];
+		let current = [];
+		for(const raw of calibration || []) {
+			const v = num(raw) !== null && raw > 0 ? raw : null;
+			if(v === null) {
+				current.push(null);
+				continue;
+			}
+			const ref = median(current);
+			if(isFinite(ref) && ref > 0 && (v / ref >= CALIBRATION_BREAK || ref / v >= CALIBRATION_BREAK)) {
+				scales.push(current);
+				current = [];
+			}
+			current.push(v);
+		}
+		scales.push(current);
+		return scales;
+	}
+
 	/**
-	 * Machine speed factor per run, relative to the median run of the calibration series.
-	 * A factor above one means the runner was slower than usual.
+	 * Machine speed factor per run, relative to the *fastest* run measured on the same calibration scale.
+	 * Whatever else a shared runner is doing can only ever add time, never take it away, so the fastest
+	 * run is the one that saw the machine and every other one carries interference on top. Against the
+	 * median instead, half the runs come out below the reference, and dividing by a factor under one
+	 * inflates a clean run into a regression that never happened. Every factor here is at least one, so
+	 * normalizing only ever takes added time back off.
 	 */
 	function calibrationFactors(calibration) {
-		const med = median(calibration);
-		if(!isFinite(med) || med === 0) {
-			return calibration.map(() => 1);
+		const factors = new Array((calibration || []).length).fill(1);
+		let at = 0;
+		for(const scale of calibrationScales(calibration)) {
+			const seen = scale.filter(v => v !== null);
+			const ref = Math.min.apply(null, seen);
+			const usable = seen.length >= CALIBRATION_MIN_SEGMENT && isFinite(ref) && ref > 0;
+			for(let i = 0; i < scale.length; i++) {
+				const v = scale[i];
+				if(usable && v !== null) {
+					factors[at + i] = Math.min(CALIBRATION_MAX_FACTOR, v / ref);
+				}
+			}
+			at += scale.length;
 		}
-		return calibration.map(v => num(v) !== null && v > 0 ? v / med : 1);
+		return factors;
 	}
 
 	/** divide out the machine speed, keeping the original unit */
@@ -669,7 +714,7 @@
 	}
 
 	root.BenchStats = {
-		median, rollingMedian, rollingSmooth, baselineOf, toPercentDelta, calibrationFactors, applyFactors,
+		median, rollingMedian, rollingSmooth, baselineOf, toPercentDelta, calibrationScales, calibrationFactors, applyFactors,
 		parseVersion, runLabel, commitTitle, shortName, tagLabel, releaseBumps, segments, smoothPath, ticks, groupOf, betterOf,
 		logTicks, tickIndices, fitLabels, stateChanges, pickColors, mergeInfoSuites, encodeGroups, decodeGroups, GROUPS
 	};

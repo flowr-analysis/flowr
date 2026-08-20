@@ -43,7 +43,7 @@ function testRename(shell: RShell, name: string, input: string, symbol: SlicingC
 
 		for(const range of replacements) {
 			const line = newInput[range[0] - 1];
-			newInput[range[0] - 1] = line.substring(0, range[1] - 1) + 'FooBar' + line.substring(range[3]);
+			newInput[range[0] - 1] = line.slice(0, Math.max(0, range[1] - 1)) + 'FooBar' + line.slice(Math.max(0, range[3]));
 		}
 
 		// Generate original output
@@ -58,17 +58,17 @@ function testRename(shell: RShell, name: string, input: string, symbol: SlicingC
 	});
 }
 
-describe.sequential('Get Symbol Refs IO Tests (1)', withShell(shell => {
+describe('Get Symbol Refs IO Tests (1)', { concurrent: false }, withShell(shell => {
 	testRename(shell, 'Simple',      'test<-1\nprint(test)',                             '2@test', ['1@test', '2@test']);
 	testRename(shell, 'Named Arg',   'f <- function(foo) foo\ny <- f(foo=12)\nprint(y)', '1@foo',  ['$1', '$3', '$11']);
 }));
 
-describe.sequential('Get Symbol Refs IO Tests (2)', withShell(shell => {
+describe('Get Symbol Refs IO Tests (2)', { concurrent: false }, withShell(shell => {
 	testRename(shell, 'Inside Scope', 'y <- 2 \n f <- function() { y <- 5\nprint(y) }',   '2@y',    ['2@y', '3@y']);
 	testRename(shell, 'Outside Scope', 'y <- 2 \n f <- function() { y <- 5\nprint(y) }',   '1@y',    ['1@y']);
 }));
 
-describe.sequential('Get Symbol Refs IO Tests (3)', withShell(shell => {
+describe('Get Symbol Refs IO Tests (3)', { concurrent: false }, withShell(shell => {
 	const testCode = `f <- function() {
   x <- 2
   function() { x <<- 1 } 

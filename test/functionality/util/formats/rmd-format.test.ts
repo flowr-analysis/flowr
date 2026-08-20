@@ -13,7 +13,7 @@ import { FlowrConfig } from '../../../../src/config';
 describe('rmd', () => {
 
 	test('load with child', () => {
-		const ctx = new FlowrAnalyzerContext(FlowrConfig.default(), new Map());
+		const ctx = new FlowrAnalyzerContext(FlowrConfig.default());
 		const file = FlowrRMarkdownFile.from(new FlowrTextFile('test/testfiles/notebook/parent.Rmd'), ctx);
 		const content = file.content();
 		assert.equal(content, `
@@ -132,7 +132,7 @@ print(x)
 
 
 	test('load simple', () => {
-		const data = FlowrRMarkdownFile.from(new FlowrTextFile('test/testfiles/notebook/example.Rmd'), new FlowrAnalyzerContext(FlowrConfig.default(), new Map()));
+		const data = FlowrRMarkdownFile.from(new FlowrTextFile('test/testfiles/notebook/example.Rmd'), new FlowrAnalyzerContext(FlowrConfig.default()));
 		assert.deepEqual({ blocks: data.rmd.blocks, options: data.rmd.options }, {
 			blocks: [
 				{
@@ -195,7 +195,7 @@ test: 1
 \`\`\`{r}
 print(42)
 \`\`\`
-		`), new FlowrAnalyzerContext(FlowrConfig.default(), new Map()));
+		`), new FlowrAnalyzerContext(FlowrConfig.default()));
 
 		assert.deepEqual({ blocks: data.rmd.blocks, options: data.rmd.options }, {
 			blocks: [
@@ -230,7 +230,7 @@ print(42)
 \`\`\`{python}
 print(42)
 \`\`\`
-		`), new FlowrAnalyzerContext(FlowrConfig.default(), new Map()));
+		`), new FlowrAnalyzerContext(FlowrConfig.default()));
 
 		assert.deepEqual({ blocks: data.rmd.blocks, options: data.rmd.options }, {
 			blocks: [
@@ -262,7 +262,7 @@ print(42)
 \`\`\`{r}
 print(42)
 \`\`\`
-		`), new FlowrAnalyzerContext(FlowrConfig.default(), new Map()));
+		`), new FlowrAnalyzerContext(FlowrConfig.default()));
 
 		assert.deepEqual(data.executableCells, [
 			{
@@ -285,7 +285,7 @@ stop("no")
 \`\`\`{r}
 write.csv(1, "out.csv")
 \`\`\`
-`), new FlowrAnalyzerContext(FlowrConfig.default(), new Map()));
+`), new FlowrAnalyzerContext(FlowrConfig.default()));
 
 		assert.equal(data.content(), '\n'.repeat(5) + 'write.csv(1, "out.csv")\n\n');
 	});
@@ -299,7 +299,7 @@ stop("no")
 \`\`\`{r}
 write.csv(1, "out.csv")
 \`\`\`
-`), new FlowrAnalyzerContext(FlowrConfig.default(), new Map()));
+`), new FlowrAnalyzerContext(FlowrConfig.default()));
 
 		assert.equal(data.content(), '\n'.repeat(6) + 'write.csv(1, "out.csv")\n\n');
 	});
@@ -307,7 +307,7 @@ write.csv(1, "out.csv")
 	describe('global chunk options', () => {
 		/** the code of every chunk that survives the eval resolution */
 		const executed = (content: string) => FlowrRMarkdownFile.from(
-			new FlowrInlineTextFile('foo.Rmd', content), new FlowrAnalyzerContext(FlowrConfig.default(), new Map())
+			new FlowrInlineTextFile('foo.Rmd', content), new FlowrAnalyzerContext(FlowrConfig.default())
 		).executableCells.map(c => c.code.trim());
 
 		test('quarto frontmatter execute defaults', () => {
@@ -349,7 +349,7 @@ kept()
 
 	describe('error tolerant chunks', () => {
 		const merge = (content: string) => FlowrRMarkdownFile.from(
-			new FlowrInlineTextFile('foo.Rmd', content), new FlowrAnalyzerContext(FlowrConfig.default(), new Map())
+			new FlowrInlineTextFile('foo.Rmd', content), new FlowrAnalyzerContext(FlowrConfig.default())
 		).content().toString();
 
 		test.each([
@@ -395,7 +395,7 @@ write.csv(1, "out.csv")
 
 	describe('quarto include shortcodes', () => {
 		test('an include is resolved like a knitr child', () => {
-			const ctx = new FlowrAnalyzerContext(FlowrConfig.default(), new Map());
+			const ctx = new FlowrAnalyzerContext(FlowrConfig.default());
 			const file = FlowrRMarkdownFile.from(new FlowrTextFile('test/testfiles/notebook/include-parent.qmd'), ctx);
 			assert.equal(file.content(), '\n\n\n\n\nx <- "the cake is"\n\n\n\nx <- paste(x, "a lie")\n\nprint(x)\n\n');
 		});

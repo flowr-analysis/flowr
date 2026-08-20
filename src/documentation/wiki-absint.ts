@@ -5,10 +5,10 @@ import { IntervalDomain, IntervalTop } from '../abstract-interpretation/domains/
 import { BottomSymbol, Top } from '../abstract-interpretation/domains/lattice';
 import { MultiValueDomain, MultiValueStateDomain } from '../abstract-interpretation/domains/multi-value-state-domain';
 import { StateAbstractDomain } from '../abstract-interpretation/domains/state-abstract-domain';
-import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
+import { SemanticCfgGuidedVisitor, type OnCall } from '../control-flow/semantic-cfg-guided-visitor';
 import { Identifier } from '../dataflow/environments/identifier';
 import { FunctionArgument } from '../dataflow/graph/graph';
-import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexValue } from '../dataflow/graph/vertex';
+import type { DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import { CfgKind } from '../project/cfg-kind';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
@@ -31,7 +31,7 @@ export class IntervalInferenceVisitor extends AbstractInterpretationVisitor<Stat
 		this.currentState.set(node.info.id, interval);
 	}
 
-	protected override onFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
+	protected override onFunctionCall({ call }: OnCall): void {
 		super.onFunctionCall({ call });
 
 		if(call.args.length === 2 && call.args.every(FunctionArgument.isNotEmpty)) {
@@ -138,7 +138,7 @@ All boxes link to their respective implementation in the source code.
 ${codeBlock('mermaid', ctx.mermaid(AbstractDomain))}
 `.trim())}
 
-The ${ctx.link('Top')} and ${ctx.link('Bottom')} symbols can be used to explicitly represent the top or bottom elment of an abstract domain. Additionally, for value abstract domains, there is the ${ctx.link('SatisfiableDomain')} interface that provides the function ${ctx.link('SatisfiableDomain:::satisfies')} to check whether the current abstract value of the abstract domain satisfies a concrete value (see also ${ctx.link('NumericalComparator')} and ${ctx.link('SetComparator')}).
+The ${ctx.link('Top')} and ${ctx.link('Bottom')} symbols can be used to explicitly represent the top or bottom elment of an abstract domain. Additionally, for value abstract domains, there is the ${ctx.link('ValueDomain')} interface that provides the function ${ctx.link('ValueDomain:::satisfies')} to check whether the current abstract value of the abstract domain satisfies a concrete value (see also ${ctx.link('NumericalComparator')} and ${ctx.link('SetComparator')}).
 
 _flowR_ already provides different abstract domains for abstract interpretation in ${linkFlowRSourceFile('src/abstract-interpretation/domains')}. Many of the abstract domains are generic and can be used for differend kinds of analyses. The existing abstract domains are presented in the following. Some of the listed abstract domains can be expanded to show the inherited abstract domains.
 

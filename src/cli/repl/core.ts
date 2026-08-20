@@ -261,7 +261,7 @@ async function executeStatement(output: ReplOutput, statement: string, analyzer:
 						const args = processor.argsParser(remainingLine);
 						if(args.rCode) {
 							const rawPath = args.rCode.startsWith(fileProtocol)
-								? args.rCode.substring(fileProtocol.length)
+								? args.rCode.slice(fileProtocol.length)
 								: undefined;
 							const alreadyKnown = rawPath !== undefined
 								&& analyzer.context().files.getFileByPath(rawPath) !== undefined;
@@ -393,8 +393,8 @@ export interface FlowrReplOptions extends MergeableRecord {
  * The repl allows for two kinds of inputs:
  * - Starting with a colon `:`, indicating a command (probe `:help`, and refer to {@link commands}) </li>
  * - Starting with anything else, indicating default R code to be directly executed. If you kill the underlying shell, that is on you! </li>
- * @param options - The options for the repl. See {@link FlowrReplOptions} for more information.
  *
+ * It takes a single {@link FlowrReplOptions} object, which it destructures; see there for what each option does.
  * For the execution, this function makes use of {@link replProcessAnswer}.
  */
 export async function repl(

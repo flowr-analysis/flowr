@@ -4,7 +4,7 @@ import type { NamedGraph } from '../../util/diff-graph';
 import { GraphDifferenceReport, initDiffContext } from '../../util/diff-graph';
 import type { GenericDiffConfiguration } from '../../util/diff';
 import { diffDataflowGraph } from './diff-dataflow-graph';
-import { DataflowGraph, UnknownSideEffect } from './graph';
+import { NoEdges, DataflowGraph, UnknownSideEffect } from './graph';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -15,10 +15,9 @@ import { DfEdge } from './edge';
 import { DefaultMap } from '../../util/collections/defaultmap';
 
 /**
- * The underlying functions which work for any graph* like view
- * **Please do not use this object directly but use the helpers**
- * - {@link Dataflow}
- * - {@link CallGraph}
+ * The underlying functions which work for any graph* like view.
+ * Use {@link Dataflow} for the dataflow graph and {@link CallGraph} for the call graph, both spread this object in.
+ * @useInstead {@link Dataflow}
  */
 export const GraphHelper = {
 	name:      'GraphHelper',
@@ -131,7 +130,7 @@ export const GraphHelper = {
 				return true;
 			}
 			visited.add(currentId);
-			for(const [tar] of graph.outgoingEdges(currentId) ?? []) {
+			for(const [tar] of graph.outgoingEdges(currentId) ?? NoEdges) {
 				toVisit.push(tar);
 			}
 		}

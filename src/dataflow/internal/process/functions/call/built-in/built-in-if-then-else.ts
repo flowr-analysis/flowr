@@ -1,3 +1,4 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { alwaysExits, type DataflowInformation, type KillReference } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -16,7 +17,6 @@ import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import { pMatch } from '../../../../linker';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
@@ -44,7 +44,7 @@ function getArguments<OtherInfo>(config: IfThenElseConfig | undefined, args: rea
 			[config.args.no]:   'no',
 			'...':              '...'
 		};
-		const argMaps = pMatch(convertFnArguments(args), params);
+		const argMaps = MatchArgs.toSpec(convertFnArguments(args), params);
 		condArg = unpackArg(RArgument.getWithId(args, argMaps.get('cond')?.[0]));
 		thenArg = unpackArg(RArgument.getWithId(args, argMaps.get('yes')?.[0]));
 		otherwiseArg = unpackArg(RArgument.getWithId(args, argMaps.get('no')?.[0]));

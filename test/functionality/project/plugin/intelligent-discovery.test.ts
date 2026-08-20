@@ -4,7 +4,6 @@ import os from 'os';
 import path from 'path';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { FlowrConfig } from '../../../../src/config';
-import { arraysGroupBy } from '../../../../src/util/collections/arrays';
 import { FlowrAnalyzerDefaultProjectDiscoveryPlugin } from '../../../../src/project/plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { isParseRequest } from '../../../../src/r-bridge/retriever';
 import type { FlowrFile } from '../../../../src/project/context/flowr-file';
@@ -30,7 +29,7 @@ function project(files: Record<string, string>): string {
 /** the root-relative posix paths the intelligent plugin discovers under `config` */
 function discovered(root: string, config: FlowrConfig = FlowrConfig.default()): string[] {
 	const plugin = new FlowrAnalyzerDefaultProjectDiscoveryPlugin();
-	const ctx = new FlowrAnalyzerContext(config, arraysGroupBy([plugin], p => p.type));
+	const ctx = new FlowrAnalyzerContext(config, [plugin]);
 	return plugin.processor(ctx, { request: 'project', content: root })
 		.map(r => isParseRequest(r) && r.request === 'file' ? r.content : (r as FlowrFile<string>).path())
 		.map(p => path.relative(root, p).replaceAll(path.sep, '/'))

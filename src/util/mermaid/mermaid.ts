@@ -1,3 +1,5 @@
+import { toBase64 } from '../text/url-encoding';
+
 
 /**
  * Global mermaid helper object with useful functions.
@@ -79,6 +81,7 @@ export const Mermaid = {
 				autoSync: true
 			}
 		};
-		return `https://mermaid.live/${edit ? 'edit' : 'view'}#base64:${Buffer.from(JSON.stringify(obj)).toString('base64')}`;
+		/* `btoa` rather than a `Buffer`, so the pages flowR ships can build this url as well */
+		return `https://mermaid.live/${edit ? 'edit' : 'view'}#base64:${toBase64(new TextEncoder().encode(JSON.stringify(obj)))}`;
 	}
 } as const;

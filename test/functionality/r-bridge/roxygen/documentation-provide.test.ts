@@ -1,10 +1,10 @@
 import { assert, describe, test } from 'vitest';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { Documentation } from '../../../../src/r-bridge/roxygen2/documentation-provider';
-import { getDocumentationOf } from '../../../../src/r-bridge/roxygen2/documentation-provider';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { withTreeSitter } from '../../_helper/shell';
 import { KnownRoxygenTags } from '../../../../src/r-bridge/roxygen2/roxygen-ast';
+import { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
 
 
 describe('Provide Comments', withTreeSitter(ts => {
@@ -14,7 +14,7 @@ describe('Provide Comments', withTreeSitter(ts => {
 			analyzer.addRequest(code);
 			const normalize = await analyzer.normalize();
 			const criterion = SlicingCriterion.parse(request as SlicingCriterion, normalize.idMap);
-			const docs = getDocumentationOf(criterion, normalize.idMap);
+			const docs = RNode.documentation(criterion, normalize.idMap);
 			assert.deepStrictEqual(docs, expect);
 		});
 	}

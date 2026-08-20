@@ -29,7 +29,14 @@ export enum ArgProp {
 	 * the result is one of this argument's values, like `choices` in `match.arg(arg, choices)`. The bounding
 	 * argument of a {@link CallProp.Narrows} call; without one such a call yields a value of its own making.
 	 */
-	Bounds   = 1 << 10
+	Bounds   = 1 << 10,
+	/**
+	 * only atomic data works here, never a closure, as with `e1` in `e1 > e2`. A bare symbol in such an
+	 * argument therefore names a variable even when a function of that name is in scope.
+	 */
+	Atomic   = 1 << 11,
+	/** the open handle the call acts on, like `con` in `close(con)` */
+	Handle   = 1 << 12
 }
 
 /**
@@ -105,8 +112,12 @@ export enum CallProp {
 	Glob       = 1 << 25,
 	/** hands back what the program was invoked with, as `commandArgs` and the option parsers built on it do */
 	CommandLine = 1 << 26,
-	/** function is makred for removal, and a better alternative is available. */
-	Deprecated = 1 << 27
+	/** hands back a handle the program is expected to close again, like `file` or `DBI::dbConnect` */
+	Opens       = 1 << 27,
+	/** performs a statistical test, so its result is the test statistic a reader is meant to see (`t.test`, `anova`) */
+	Statistics  = 1 << 28,
+	/** marked for removal, with a better alternative available, like `dplyr::funs` */
+	Deprecated  = 1 << 29
 }
 
 /**
@@ -116,7 +127,7 @@ export enum CallProp {
 export const ImpureProps = CallProp.MayPure | CallProp.Scope | CallProp.NonDet | CallProp.Random | CallProp.Ambient
 	| CallProp.File | CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang
 	| CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes | CallProp.Prints
-	| CallProp.Configures | CallProp.Closes | CallProp.CommandLine;
+	| CallProp.Configures | CallProp.Closes | CallProp.Opens | CallProp.CommandLine;
 
 /**
  * Which {@link CallProp} bits rule each other out, as `[bit, everything stating it forbids]`. A definition
@@ -183,6 +194,20 @@ export const FnSig = {
 	/** The positions carrying any of the given roles; see {@link argsWith}. */
 	posWith: argsWith
 } as const;
+
+/** the {@link CallProp} bits as the words a reader wants, in the order they are declared */
+const CallPropNames: readonly (readonly [CallProp, string])[] = [
+	[CallProp.Pure, 'pure'], [CallProp.Throws, 'can throw'], [CallProp.Invisible, 'invisible'],
+	[CallProp.Generic, 'generic'], [CallProp.Method, 's3 method'], [CallProp.Scope, 'changes scope'],
+	[CallProp.NonDet, 'non deterministic'], [CallProp.Random, 'random'], [CallProp.Ambient, 'ambient state'],
+	[CallProp.File, 'file system'], [CallProp.Reads, 'reads'], [CallProp.Writes, 'writes'],
+	[CallProp.Network, 'network'], [CallProp.Prints, 'prints']
+];
+
+/** What a call states about itself, as words rather than as a bit mask, for anything showing it to a reader. */
+export function callPropWords(props: CallProps | undefined): string[] {
+	return props === undefined ? [] : CallPropNames.filter(([bit]) => (props & bit) !== 0).map(([, word]) => word);
+}
 
 /**
  * Semantics of a built-in that hold no matter which processor handles the call. The remaining facts already

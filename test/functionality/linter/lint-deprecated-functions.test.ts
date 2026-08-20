@@ -66,17 +66,25 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ builtin: 1, sigdb: 0 },
 			{ always: ['cat'] }
 		);
-		/* Using the default linter configuration, a function such as `all_equal` should be marked as deprecated */
+		/* Using the default linter configuration, a function such as `all_equal` should be marked as deprecated.
+		   Nothing attaches dplyr here, so the call may be any `all_equal` and the finding is a guess */
 		assertLinter('with defaults', parser, 'all_equal(foo)',
 			'deprecated-functions', [
-				{ certainty: LintingResultCertainty.Certain, function: 'all_equal', loc: [1, 1, 1, 14], type: 'deprecated-function' }
+				{ certainty: LintingResultCertainty.Uncertain, function: 'all_equal', loc: [1, 1, 1, 14], type: 'deprecated-function' }
 			],
 			{ builtin: 1, sigdb: 0 }
 		);
 		/* We should find deprecated functions even if they are nested in other function calls */
 		assertLinter('with defaults nested', parser, 'foo(all_equal(foo))',
 			'deprecated-functions', [
-				{ certainty: LintingResultCertainty.Certain, function: 'all_equal', loc: [1, 5, 1, 18], type: 'deprecated-function' }
+				{ certainty: LintingResultCertainty.Uncertain, function: 'all_equal', loc: [1, 5, 1, 18], type: 'deprecated-function' }
+			],
+			{ builtin: 1, sigdb: 0 }
+		);
+		/* attaching the package the name belongs to settles which function it is */
+		assertLinter('with defaults, package attached', parser, 'library(dplyr)\nall_equal(foo)',
+			'deprecated-functions', [
+				{ certainty: LintingResultCertainty.Certain, function: 'all_equal', loc: [2, 1, 2, 14], type: 'deprecated-function' }
 			],
 			{ builtin: 1, sigdb: 0 }
 		);
@@ -122,7 +130,8 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					function:     'testFn',
 					state:        DeprecationState.Deprecated,
 					sinceVersion: undefined,
-					loc:          [1, 8, 1, 13]
+					loc:          [1, 8, 1, 13],
+					quickFix:     undefined
 				}],
 				{ builtin: 1, sigdb: 0 },
 				{ always: [], conditionally: { 'testFn': { whenArgs: [{ argName: 'badArg', ifValue: 'not hehe', state: DeprecationState.Deprecated }] } } }
@@ -147,7 +156,8 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					function:     'testFn',
 					state:        DeprecationState.Deprecated,
 					sinceVersion: undefined,
-					loc:          [1, 8, 1, 13]
+					loc:          [1, 8, 1, 13],
+					quickFix:     [{ type: 'replace', description: 'Replace argument `badArg` with `foo`', replacement: 'foo', loc: [1, 8, 1, 13] }]
 				}],
 				{ builtin: 1, sigdb: 0 },
 				{ always: [], conditionally: {  'testFn': { whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo' }] } } }
@@ -171,10 +181,11 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					function:     'testFn',
 					state:        DeprecationState.Deprecated,
 					sinceVersion: RRange.parse('>=1.0.0'),
-					loc:          [2, 8, 2, 13]
+					loc:          [2, 8, 2, 13],
+					quickFix:     [{ type: 'replace', description: 'Replace argument `badArg` with `foo`', replacement: 'foo', loc: [2, 8, 2, 13] }]
 				}],
 				{ builtin: 1, sigdb: 0 },
-				{ always: [], conditionally: { 'testFn': { package: 'testPkg', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>=1.0.0') }] } } }
+				{ always: [], conditionally: { 'testPkg::testFn': { whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>=1.0.0') }] } } }
 			);
 
 			assertLinter('(arg) version resolved and constraint satisfied', parser, 'library(testPkg)\ntestFn(badArg=5)',
@@ -187,12 +198,13 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					function:     Identifier.make('testFn', 'testPkg'),
 					state:        DeprecationState.Deprecated,
 					sinceVersion: RRange.parse('>=1.0.0'),
-					loc:          [2, 8, 2, 13]
+					loc:          [2, 8, 2, 13],
+					quickFix:     [{ type: 'replace', description: 'Replace argument `badArg` with `foo`', replacement: 'foo', loc: [2, 8, 2, 13] }]
 				}],
 				{ builtin: 1, sigdb: 0 },
 				{
 					always:        [],
-					conditionally: { 'testFn': { package: 'testPkg', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>=1.0.0') }] } },
+					conditionally: { 'testPkg::testFn': { whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>=1.0.0') }] } },
 					sigDb:         db
 				}
 			);
@@ -203,7 +215,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 				{ builtin: 0, sigdb: 0 },
 				{
 					always:        [],
-					conditionally: { 'testFn': { package: 'testPkg', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>=3.0.0') }] } },
+					conditionally: { 'testPkg::testFn': { whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>=3.0.0') }] } },
 					sigDb:         db
 				}
 			);
@@ -219,10 +231,11 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					state:        DeprecationState.Defunct,
 					sinceVersion: RRange.parse('>=1.0.0'),
 					replacedBy:   undefined,
-					loc:          [2, 1, 2, 8]
+					loc:          [2, 1, 2, 8],
+					quickFix:     undefined
 				}],
 				{ builtin: 1, sigdb: 0 },
-				{ always: [], conditionally: { 'testFn': { package: 'testPkg', sinceVersion: RRange.parse('>=1.0.0'), state: DeprecationState.Defunct } } }
+				{ always: [], conditionally: { 'testPkg::testFn': { sinceVersion: RRange.parse('>=1.0.0'), state: DeprecationState.Defunct } } }
 			);
 
 			assertLinter('(fn) version resolved and constraint satisfied', parser, 'library(testPkg)\ntestFn()',
@@ -234,12 +247,13 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					state:        DeprecationState.Defunct,
 					sinceVersion: RRange.parse('>=1.0.0'),
 					replacedBy:   undefined,
-					loc:          [2, 1, 2, 8]
+					loc:          [2, 1, 2, 8],
+					quickFix:     undefined
 				}],
 				{ builtin: 1, sigdb: 0 },
 				{
 					always:        [],
-					conditionally: { 'testFn': { package: 'testPkg', sinceVersion: RRange.parse('>=1.0.0'), state: DeprecationState.Defunct } },
+					conditionally: { 'testPkg::testFn': { sinceVersion: RRange.parse('>=1.0.0'), state: DeprecationState.Defunct } },
 					sigDb:         db
 				}
 			);
@@ -251,7 +265,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 				{ builtin: 0, sigdb: 0 },
 				{
 					always:        [],
-					conditionally: { 'testFn': { package: 'testPkg', sinceVersion: RRange.parse('>= 3.0.0'), state: DeprecationState.Defunct } },
+					conditionally: { 'testPkg::testFn': { sinceVersion: RRange.parse('>= 3.0.0'), state: DeprecationState.Defunct } },
 					sigDb:         db
 				}
 			);
@@ -260,7 +274,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 		describe('a call the signature database marks deprecated is flagged even outside the builtin list', () => {
 			assertLinter('sigdb-deprecated function not in fns', parser, 'library(dplyr)\nold_verb(x)',
 				'deprecated-functions',
-				[{ type: 'deprecated-function', certainty: LintingResultCertainty.Certain, function: 'dplyr::old_verb', loc: [2, 1, 2, 11] }],
+				[{ type: 'deprecated-function', certainty: LintingResultCertainty.Certain, function: Identifier.make('old_verb', PkgName.Dplyr), loc: [2, 1, 2, 11] }],
 				{ builtin: 0, sigdb: 1 },
 				{ fns: [], sigDb: sigDbWithDeprecatedFn('dplyr', 'old_verb') }
 			);
@@ -268,6 +282,45 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 				'deprecated-functions', [],
 				{ builtin: 0, sigdb: 0 },
 				{ fns: [], noSigDb: true }
+			);
+		});
+
+		describe('a positional argument is matched the way R fills it', () => {
+			const positional = { always: [], conditionally: { 'testFn': { whenArgs: [{ argIdx: 0, replacedBy: 'newArg', state: DeprecationState.Deprecated }] } } };
+			assertLinter('first argument', parser, 'testFn(99)',
+				'deprecated-functions',
+				[{ type:         'deprecated-argument', certainty:    LintingResultCertainty.Certain, arg:          0, replacedBy:   'newArg',
+					function:     'testFn', state:        DeprecationState.Deprecated, sinceVersion: undefined, loc:          [1, 8, 1, 9], quickFix:     undefined }],
+				{ builtin: 1, sigdb: 0 }, positional
+			);
+			/* a name binds its argument wherever it stands, so `99` still fills the first position */
+			assertLinter('first argument behind a named one', parser, 'testFn(other = 1, 99)',
+				'deprecated-functions',
+				[{ type:         'deprecated-argument', certainty:    LintingResultCertainty.Certain, arg:          0, replacedBy:   'newArg',
+					function:     'testFn', state:        DeprecationState.Deprecated, sinceVersion: undefined, loc:          [1, 19, 1, 20], quickFix:     undefined }],
+				{ builtin: 1, sigdb: 0 }, positional
+			);
+		});
+
+		describe('a call naming another package is another function', () => {
+			assertLinter('the package the entry names', parser, 'dplyr::all_equal(x)',
+				'deprecated-functions',
+				[{ type: 'deprecated-function', certainty: LintingResultCertainty.Certain, function: Identifier.make('all_equal', PkgName.Dplyr), loc: [1, 1, 1, 19] }],
+				{ builtin: 1, sigdb: 0 }
+			);
+			assertLinter('some other package', parser, 'someOther::all_equal(x)',
+				'deprecated-functions', [],
+				{ builtin: 0, sigdb: 0 }
+			);
+		});
+
+		describe('a deprecated argument offers the replacement as a quick fix', () => {
+			assertLinter('ggplot2 size becomes linewidth', parser, 'library(ggplot2)\nelement_line(size = 1)',
+				'deprecated-functions',
+				[{ type:         'deprecated-argument', certainty:    LintingResultCertainty.Uncertain, arg:          'size', replacedBy:   'linewidth',
+					function:     'element_line', state:        DeprecationState.Deprecated, sinceVersion: RRange.parse('>= 3.4.0'), loc:          [2, 14, 2, 17],
+					quickFix:     [{ type: 'replace', description: 'Replace argument `size` with `linewidth`', replacement: 'linewidth', loc: [2, 14, 2, 17] }] }],
+				{ builtin: 1, sigdb: 0 }
 			);
 		});
 	});

@@ -247,29 +247,6 @@ function markGenerics(definitions: BuiltInDefinitions): BuiltInDefinitions {
 	});
 }
 
-function plotCreateIgnoreIf(source: DataflowGraphVertexFunctionCall, graph: DataflowGraph) {
-	/* map with add = true appends to an existing plot */
-	return (PlotFunctionsWithAddParam.has(Identifier.getName(source.name)) && getValueOfArgument(graph, source, {
-		index: -1,
-		name:  'add'
-	}, [RType.Logical])?.content === true);
-}
-
-function plotAddonsIgnoreIf(source: NodeId, graph: DataflowGraph) {
-	const sourceVertex = graph.getVertex(source) as DataflowGraphVertexFunctionCall;
-
-	/* map with add = true appends to an existing plot */
-	return (PlotFunctionsWithAddParam.has(Identifier.getName(sourceVertex.name)) && getValueOfArgument(graph, sourceVertex, {
-		index: -1,
-		name:  'add'
-	}, [RType.Logical])?.content !== true);
-}
-
-export const KnownStaticCallbacks: Record<string, (...args: never[]) => unknown> = {
-	'plot-create-ignore-if': plotCreateIgnoreIf,
-	'plot-addons-ignore-if': plotAddonsIgnoreIf
-};
-
 /**
  * Contains the built-in definitions recognized by flowR, as they are written down: {@link DefaultBuiltinConfig}
  * is what {@link markGenerics} makes of them, and a test checks that this is all it changes.
@@ -577,7 +554,13 @@ export const WrittenBuiltinDefinitions = [
 			forceArgs:             'all',
 			hasUnknownSideEffects: {
 				type:     'link-to-last-call',
-				ignoreIf: plotCreateIgnoreIf,
+				ignoreIf: (source: DataflowGraphVertexFunctionCall, graph: DataflowGraph) => {
+					/* map with add = true appends to an existing plot */
+					return (PlotFunctionsWithAddParam.has(Identifier.getName(source.name)) && getValueOfArgument(graph, source, {
+						index: -1,
+						name:  'add'
+					}, [RType.Logical])?.content === true);
+				},
 				callName: toRegex(GraphicDeviceOpen)
 			},
 			props: CallProp.Graphics
@@ -590,9 +573,17 @@ export const WrittenBuiltinDefinitions = [
 				'facet_grid': ['labeller']
 			},
 			hasUnknownSideEffects: {
-				type:      'link-to-last-call',
-				callName:  toRegex(PlotCreate.concat(PlotAddons)),
-				ignoreIf:  plotAddonsIgnoreIf,
+				type:     'link-to-last-call',
+				callName: toRegex(PlotCreate.concat(PlotAddons)),
+				ignoreIf: (source: NodeId, graph: DataflowGraph) => {
+					const sourceVertex = graph.getVertex(source) as DataflowGraphVertexFunctionCall;
+
+					/* map with add = true appends to an existing plot */
+					return (PlotFunctionsWithAddParam.has(Identifier.getName(sourceVertex.name)) && getValueOfArgument(graph, sourceVertex, {
+						index: -1,
+						name:  'add'
+					}, [RType.Logical])?.content !== true);
+				},
 				cascadeIf: (target: DataflowGraphVertexFunctionCall, _: NodeId, graph: DataflowGraph) => {
 					/* map with add = true appends to an existing plot */
 					return Identifier.getName(target.name) ? (getValueOfArgument(graph, target, {
@@ -747,8 +738,6 @@ export const WrittenBuiltinDefinitions = [
 		processor:       BuiltInProcName.Assignment, config:          { canBeReplacement: true, props: CallProp.Scope | CallProp.Invisible }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from([':=', PkgName.DataTable])],
 		processor:       BuiltInProcName.Assignment, config:          { props: CallProp.Invisible | CallProp.Scope }, assumePrimitive: true },
-	{ type:            'function', names:           [':=-table'],
-		processor:       BuiltInProcName.TableAssignmentPlaceholder, config:          {}, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['assign', PkgName.Base])],
 		processor:       BuiltInProcName.Assignment, config:          { targetVariable: true, mayHaveMoreArgs: true, environmentArg: 'envir', props: CallProp.Scope | CallProp.Invisible, sig: [['x', ArgProp.Value], ['value', ArgProp.Value], ['pos', ArgProp.Flag], ['envir', ArgProp.Written], ['inherits', ArgProp.Flag]] }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['setValidity', PkgName.Methods])],

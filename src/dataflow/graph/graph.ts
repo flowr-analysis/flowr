@@ -11,14 +11,23 @@ import {
 } from './vertex';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { BrandedIdentifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
+import type { BrandedIdentifier, IdentifierDefinition, IdentifierReference
+} from '../environments/identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Environment, type EnvType, type IEnvironment, type REnvironmentInformation } from '../environments/environment';
+import {
+	type Jsonified,
+	Environment,
+	type EnvType,
+	type IEnvironment,
+	type REnvironmentInformation,
+	isDefaultBuiltInEnvironment
+} from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { Writable } from 'ts-essentials';
 import type { BuiltInMemory } from '../environments/built-in';
+import { Packr } from 'msgpackr';
 
 /**
  * Describes the information we store per function body.
@@ -679,6 +688,204 @@ export class DataflowGraph<
 			graph._unknownSideEffects.add(unknown);
 		}
 		return graph;
+	}
+
+	public persist(builtInEnv: IEnvironment, emptyBuiltInEnv: IEnvironment): Buffer {
+		return packr.pack(this.toPersistedJson(builtInEnv, emptyBuiltInEnv));
+	}
+
+	public toPersistedJson(builtInEnv: IEnvironment, emptyBuiltInEnv: IEnvironment): IPersistedDataflowGraph {
+		const serializer = new PersistedEnvironmentSerializer(builtInEnv, emptyBuiltInEnv);
+		const json = this.toJSON();
+		const vertexInformation = json.vertexInformation.map(([id, vertex]): [NodeId, DataflowGraphVertexInfo] => {
+			const v = { ...vertex } as Writable<DataflowGraphVertexInfo>;
+			if(v.environment) {
+				v.environment = serializer.renv(v.environment) as unknown as REnvironmentInformation;
+			}
+			if(v.tag === VertexType.FunctionCall && v.newEnvParent) {
+				v.newEnvParent = serializer.renv(v.newEnvParent) as unknown as REnvironmentInformation;
+			}
+			if(v.tag === VertexType.FunctionDefinition) {
+				if(v.subflow?.environment) {
+					v.subflow = { ...v.subflow, environment: serializer.renv(v.subflow.environment) as unknown as REnvironmentInformation };
+				}
+				if(v.returnEnvState) {
+					v.returnEnvState = serializer.renv(v.returnEnvState) as unknown as REnvironmentInformation;
+				}
+			}
+			return [id, v];
+		});
+		return { ...json, vertexInformation, types: [...this.types], _idMap: this._idMap };
+	}
+
+	public static fromPersisted(data: Buffer, builtInEnv: IEnvironment, emptyBuiltInEnv: IEnvironment): DataflowGraph {
+		const json = packr.unpack(data) as IPersistedDataflowGraph;
+		return this.revive(json, builtInEnv, emptyBuiltInEnv);
+	}
+
+	public static revive(data: IPersistedDataflowGraph, builtInEnv: IEnvironment, emptyBuiltInEnv: IEnvironment): DataflowGraph {
+		const reviver = new PersistedEnvironmentReviver(builtInEnv, emptyBuiltInEnv);
+		const graph = new DataflowGraph(data._idMap);
+		graph.rootVertices = new Set<NodeId>(data.rootVertices);
+		graph.vertexInformation = new Map<NodeId, DataflowGraphVertexInfo>(data.vertexInformation);
+
+		for(const [, vertex] of graph.vertexInformation) {
+			if(vertex.environment) {
+				(vertex.environment as Writable<REnvironmentInformation>) = reviver.renv(vertex.environment);
+			}
+			if(vertex.tag === VertexType.FunctionCall && vertex.newEnvParent) {
+				(vertex.newEnvParent as Writable<REnvironmentInformation>) = reviver.renv(vertex.newEnvParent);
+			}
+			if(vertex.tag === VertexType.FunctionDefinition) {
+				if(vertex.subflow?.environment) {
+					(vertex.subflow.environment as Writable<REnvironmentInformation>) = reviver.renv(vertex.subflow.environment);
+				}
+				if(vertex.returnEnvState) {
+					(vertex.returnEnvState as Writable<REnvironmentInformation>) = reviver.renv(vertex.returnEnvState);
+				}
+			}
+		}
+
+		graph.edgeInformation = new Map<NodeId, OutgoingEdges>(data.edgeInformation.map(([id, edges]) => [id, new Map<NodeId, DfEdge>(edges)]));
+
+		for(const unknown of data._unknownSideEffects) {
+			graph._unknownSideEffects.add(unknown);
+		}
+
+		for(const [tag, ids] of data.types) {
+			graph.types.set(tag, ids);
+		}
+
+		return graph;
+	}
+}
+
+const packr = new Packr({
+	structuredClone: true,
+});
+
+interface IPersistedDataflowGraph extends DataflowGraphJson {
+	readonly types: [DataflowGraphVertexInfo['tag'], NodeId[]][];
+	_idMap:         AstIdMap | undefined;
+}
+
+interface IPersistedEnvironmentJson extends IEnvironmentJson {
+	c?:              NodeId;
+	fullBuiltInEnv?: boolean;
+}
+
+class PersistedEnvironmentSerializer {
+	constructor(
+		private readonly builtInEnv: IEnvironment,
+		private readonly emptyBuiltInEnv: IEnvironment
+	) {}
+
+	public renv(renv: REnvironmentInformation | undefined): { current: Jsonified & { c?: NodeId }, level: number } | undefined {
+		if(renv === undefined) {
+			return undefined;
+		}
+		return { current: this.env(renv.current) as Jsonified & { c?: NodeId }, level: renv.level };
+	}
+
+	private env(env: Environment | undefined): (Jsonified & { c?: NodeId }) | undefined {
+		if(env === undefined) {
+			return undefined;
+		}
+		if(isDefaultBuiltInEnvironment(env)) {
+			if(env === this.builtInEnv) {
+				return { fullBuiltInEnv: true } as unknown as Jsonified & { c?: NodeId };
+			}
+			if(env === this.emptyBuiltInEnv) {
+				return { fullBuiltInEnv: false } as unknown as Jsonified & { c?: NodeId };
+			}
+		}
+
+		const json = env.toPersistedJSON();
+		const result = { ...json } as Jsonified & { c?: NodeId };
+
+		const memory: Record<string, IdentifierDefinition[]> = {};
+		for(const [key, defs] of env.memory) {
+			memory[key] = defs.map(def => {
+				const rec = { ...def } as Record<'envState' | 'returnsEnvState', REnvironmentInformation | undefined>;
+				if(rec.envState) {
+					rec.envState = this.renv(rec.envState) as unknown as REnvironmentInformation;
+				}
+				if(rec.returnsEnvState) {
+					rec.returnsEnvState = this.renv(rec.returnsEnvState) as unknown as REnvironmentInformation;
+				}
+				return rec as unknown as IdentifierDefinition;
+			});
+		}
+		result.memory = memory as unknown as BuiltInMemory;
+		result.parent = this.env(env.parent);
+		return result;
+	}
+}
+
+class PersistedEnvironmentReviver {
+	private readonly builtInLookup = new Map<string, IdentifierDefinition>();
+
+	constructor(
+		private readonly builtInEnv: IEnvironment,
+		private readonly emptyBuiltInEnv: IEnvironment
+	) {
+		for(const defs of builtInEnv.memory.values()) {
+			for(const d of defs) {
+				this.builtInLookup.set(PersistedEnvironmentReviver.lookupKey(d.nodeId, d.name), d);
+			}
+		}
+	}
+
+	private static lookupKey(nodeId: NodeId, name: unknown): string {
+		return `${nodeId}::${JSON.stringify(name)}`;
+	}
+
+	public renv(renv: REnvironmentInformation): REnvironmentInformation {
+		return this.renvFromJson(renv as unknown as REnvironmentInformationJson);
+	}
+
+	private renvFromJson(json: REnvironmentInformationJson): REnvironmentInformation {
+		return { current: this.envFromJson(json.current), level: json.level };
+	}
+
+	private envFromJson(json: IPersistedEnvironmentJson): Environment {
+		if(json.fullBuiltInEnv !== undefined){
+			if(json.fullBuiltInEnv) {
+				return this.builtInEnv as Environment;
+			} else {
+				return this.emptyBuiltInEnv as Environment;
+			}
+		}
+
+		const parent = json.parent ? this.envFromJson(json.parent) : undefined;
+		const rawMemory: BuiltInMemory = json.memory instanceof Map
+			? json.memory
+			: new Map(Object.entries(json.memory));
+		const memory: BuiltInMemory = new Map();
+		for(const [key, defs] of rawMemory) {
+			memory.set(key, defs.map(def => {
+				const canonical = this.builtInLookup.get(PersistedEnvironmentReviver.lookupKey(def.nodeId, def.name));
+				const rec = { ...(canonical ?? def) } as Record<'envState' | 'returnsEnvState', REnvironmentInformation | undefined>;
+				if(rec.envState) {
+					rec.envState = this.renv(rec.envState);
+				}
+				if(rec.returnsEnvState) {
+					rec.returnsEnvState = this.renv(rec.returnsEnvState);
+				}
+				return rec as unknown as IdentifierDefinition;
+			}));
+		}
+		const obj: Writable<IEnvironment> = new Environment(parent as Environment, json.builtInEnv);
+		(obj as { id: NodeId }).id = json.id;
+		obj.memory = memory;
+		const env = obj as Environment;
+		env.n = json.n;
+		env.t = json.t;
+		env.globalEnv = json.globalEnv;
+		if(json.c !== undefined) {
+			env.setClosureNodeId(json.c);
+		}
+		return env;
 	}
 }
 

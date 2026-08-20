@@ -37,7 +37,7 @@ export enum EnvType{
 	LoadedNamespace = 'lns'
 }
 
-interface Jsonified {
+export interface Jsonified {
 	id:          NodeId;
 	parent:      Jsonified | undefined;
 	builtInEnv?: true;
@@ -461,6 +461,13 @@ export class Environment implements IEnvironment {
 			n:         this.n,
 			t:         this.t,
 			globalEnv: this.globalEnv,
+		};
+	}
+
+	toPersistedJSON(): Jsonified & { c?: NodeId } {
+		return {
+			...this.toJSON(),
+			c: this.c
 		};
 	}
 }

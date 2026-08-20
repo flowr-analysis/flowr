@@ -92,8 +92,6 @@ export enum BuiltInProcName {
 	StopIfNot = 'builtin:stopifnot',
 	/** support for `:=` in subsetting assignments, see {@link processAccess} */
 	TableAssignment = 'table:assign',
-	/** Placeholder for `:=-table` (see {@link tableAssignmentProcessor}) */
-	TableAssignmentPlaceholder = 'builtin:table-assign',
 	/** for `try` calls, see {@link processTryCatch} */
 	Try = 'builtin:try',
 	/** for `attach` calls that inject environment contents into the search path, see {@link processAttach} */

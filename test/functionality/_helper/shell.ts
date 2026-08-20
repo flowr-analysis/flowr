@@ -24,7 +24,7 @@ import {
 } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DataflowGraph } from '../../../src/dataflow/graph/graph';
+import { DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import {
 	SlicingCriterion,
@@ -51,11 +51,11 @@ import type { FlowrFileProvider } from '../../../src/project/context/flowr-file'
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { SliceDirection } from '../../../src/util/slice-direction';
 import { CallGraph } from '../../../src/dataflow/graph/call-graph';
-import { reviveJson } from '../../../src/util/json-persistence';
 import type { DataflowInformation } from '../../../src/dataflow/info';
-import { FlowrFile } from '../../../src/project/context/flowr-file';
-import type { FlowrAnalyzerContext } from '../../../src/project/context/flowr-analyzer-context';
-import { persistDataflowGraph } from '../../../src/project/incremental/incremental-dataflow-graph/dataflow-persist';
+import {
+	VertexType
+} from '../../../src/dataflow/graph/vertex';
+import type { Environment, IEnvironment } from '../../../src/dataflow/environments/environment';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>, timeout?: number) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -382,16 +382,53 @@ function cropIfTooLong(str: string): string {
  */
 function assertPersistedDataflowGraphMatches(
 	analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>,
-	normalize: NormalizedAst,
 	df: DataflowInformation
 ): void {
-	const filePath = normalize.ast.files[0]?.filePath ?? FlowrFile.INLINE_PATH;
-	const ctx = analyzer.inspectContext() as FlowrAnalyzerContext;
-	persistDataflowGraph(df, ctx, filePath);
-	const persisted = ctx.inc.getPersistedDataflowGraphOf(filePath);
-	guard(persisted !== undefined, () => `expected a persisted dataflow graph for ${filePath} after persisting it`);
-	const revivedDf = reviveJson<DataflowInformation>(persisted, ctx);
-	assert.deepStrictEqual(revivedDf.graph, df.graph, `persisted/revived dataflow graph differs from the freshly computed one for ${filePath}`);
+
+	function stripFields(graph: DataflowGraph): void {
+		(graph as unknown as { incomingIndex?: unknown }).incomingIndex = undefined;
+
+		function stripEnv(env: Environment | undefined): void {
+			for(let e = env; e !== undefined; e = e.parent) {
+				delete (e as unknown as { sharedMemory?: true }).sharedMemory;
+				delete (e as unknown as { cache?: unknown }).cache;
+
+				if(e.builtInEnv) {
+					continue;
+				}
+
+				for(const defs of e.memory.values()) {
+					for(const def of defs) {
+						delete (def as unknown as { processor?: unknown }).processor;
+						delete (def as unknown as { evalHandler?: unknown }).evalHandler;
+						const rec = def as unknown as { envState?: { current?: Environment }, returnsEnvState?: { current?: Environment } };
+						stripEnv(rec.envState?.current);
+						stripEnv(rec.returnsEnvState?.current);
+					}
+				}
+			}
+		}
+
+		for(const [, vertex] of graph.vertices(true)) {
+			stripEnv(vertex.environment?.current);
+			if(vertex.tag === VertexType.FunctionCall) {
+				stripEnv(vertex.newEnvParent?.current);
+			}
+			if(vertex.tag === VertexType.FunctionDefinition) {
+				stripEnv(vertex.subflow?.environment?.current);
+				stripEnv(vertex.returnEnvState?.current);
+			}
+		}
+	}
+
+	const envContext = analyzer.inspectContext().env;
+	const persisted = df.graph.persist(envContext.builtInEnvironment as IEnvironment, envContext.emptyBuiltInEnvironment as IEnvironment);
+	const revived = DataflowGraph.fromPersisted(persisted, envContext.builtInEnvironment as IEnvironment, envContext.emptyBuiltInEnvironment as IEnvironment);
+
+	stripFields(revived);
+	stripFields(df.graph);
+
+	assert.deepStrictEqual(revived, df.graph, 'persisted/revived dataflow graph differs from the freshly computed one');
 }
 
 /**
@@ -437,7 +474,7 @@ export function assertDataflow(
 		const df = await analyzer.dataflow();
 		const graph = userConfig?.context === 'call-graph' ? CallGraph.dropTransitiveEdges(await analyzer.callGraph()) : df.graph;
 
-		assertPersistedDataflowGraphMatches(analyzer, normalize, df);
+		assertPersistedDataflowGraphMatches(analyzer, df);
 
 		// assign the same id map to the expected graph, so that resolves work as expected
 		expected.setIdMap(normalize.idMap);

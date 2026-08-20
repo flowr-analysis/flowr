@@ -266,6 +266,22 @@ export class FlowRServerConnection {
 		return analyzer;
 	}
 
+	/**
+	 * Looks up the analysis stored for the given file token, answering with an error message if there is none.
+	 */
+	private getAnalyzedFile(request: { id?: string, filetoken: string }) {
+		const fileInformation = this.fileMap.get(request.filetoken);
+		if(!fileInformation) {
+			sendMessage<FlowrErrorMessage>(this.socket, {
+				id:     request.id,
+				type:   'error',
+				fatal:  false,
+				reason: `The file token ${request.filetoken} has never been analyzed.`
+			});
+		}
+		return fileInformation;
+	}
+
 	private async handleSliceRequest(base: SliceRequestMessage): Promise<void> {
 		const requestResult = validateMessage(base, requestSliceMessage);
 		if(requestResult.type === 'error') {
@@ -276,14 +292,8 @@ export class FlowRServerConnection {
 		const request = requestResult.message;
 		this.logger.info(`[${request.filetoken}] Received ${request.direction ?? SliceDirection.Backward} slice request with criteria ${JSON.stringify(request.criterion)}`);
 
-		const fileInformation = this.fileMap.get(request.filetoken);
+		const fileInformation = this.getAnalyzedFile(request);
 		if(!fileInformation) {
-			sendMessage<FlowrErrorMessage>(this.socket, {
-				id:     request.id,
-				type:   'error',
-				fatal:  false,
-				reason: `The file token ${request.filetoken} has never been analyzed.`
-			});
 			return;
 		}
 
@@ -362,14 +372,8 @@ export class FlowRServerConnection {
 		const request = requestResult.message;
 		this.logger.info(`[${this.name}] Received query request`);
 
-		const fileInformation = this.fileMap.get(request.filetoken);
+		const fileInformation = this.getAnalyzedFile(request);
 		if(!fileInformation) {
-			sendMessage<FlowrErrorMessage>(this.socket, {
-				id:     request.id,
-				type:   'error',
-				fatal:  false,
-				reason: `The file token ${request.filetoken} has never been analyzed.`
-			});
 			return;
 		}
 

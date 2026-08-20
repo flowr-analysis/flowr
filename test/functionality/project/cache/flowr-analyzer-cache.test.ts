@@ -14,7 +14,7 @@ describe('Analyzer Cache', withTreeSitter( (shell) => {
 	function createCache(request: string) {
 		const data = {
 			parser:  shell,
-			context: new FlowrAnalyzerContext(FlowrConfig.default(), new Map()),
+			context: new FlowrAnalyzerContext(FlowrConfig.default()),
 		};
 		data.context.addRequests([requestFromInput(request)]);
 		return data;

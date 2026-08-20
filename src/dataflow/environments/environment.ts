@@ -112,11 +112,6 @@ export class Environment implements IEnvironment {
 	}
 
 	/**
-	 * This environment's {@link memory}, ready to be written to. Every in-place write must go through this
-	 * rather than through {@link memory} directly, as {@link clone} hands the map itself to the clone and only
-	 * the first writer of either side copies it (copy-on-write).
-	 */
-	/**
 	 * The parent, unshared first when a write is about to go through it. A `clone(true)` hands out the original
 	 * chain and lets it materialize one frame at a time here, because a removal usually reaches a frame or two,
 	 * not the ~20 an attached-package search path is deep.
@@ -131,6 +126,11 @@ export class Environment implements IEnvironment {
 		return this.parent;
 	}
 
+	/**
+	 * This environment's {@link memory}, ready to be written to. Every in-place write must go through this
+	 * rather than through {@link memory} directly, as {@link clone} hands the map itself to the clone and only
+	 * the first writer of either side copies it (copy-on-write).
+	 */
 	public get writableMemory(): BuiltInMemory {
 		if(this.sharedMemory) {
 			this.memory = new Map(this.memory);

@@ -238,6 +238,8 @@ export const Identifier = {
 	 *    a user definition, so a local `sd()` stays bare.
 	 *
 	 * Returns `undefined` when none apply. Steps 2 and 3 need the call's `name`.
+	 * @param origins      - the origins of the call to qualify
+	 * @param name         - the name the call was written with, needed by steps 2 and 3
 	 * @param qualifyBaseR - whether to also qualify a bare base-R call from its exporting package (default `true`)
 	 * @see {@link Dataflow.qualify} - the compact form, if you have the call's id and its graph
 	 */

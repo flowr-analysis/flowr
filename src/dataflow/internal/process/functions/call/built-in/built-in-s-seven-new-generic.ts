@@ -22,7 +22,6 @@ import { isNotUndefined } from '../../../../../../util/assert';
 import type { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { Identifier } from '../../../../../environments/identifier';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
-import { isValue } from '../../../../../eval/values/r-value';
 import { VertexType, UseVertex, FunctionDefinitionVertex } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
@@ -64,15 +63,7 @@ export function processS7NewGeneric<OtherInfo>(
 	if(!genName) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const n = NodeValue.of(genName.info.id, data);
-	const accessedIdentifiers: string[] = [];
-	if(n.type === 'set') {
-		for(const elem of n.elements) {
-			if(elem.type === 'string' && isValue(elem.value)) {
-				accessedIdentifiers.push(elem.value.str);
-			}
-		}
-	}
+	const accessedIdentifiers = NodeValue.knownStringsOf(genName.info.id, data);
 	if(accessedIdentifiers.length === 0) {
 		dataflowLogger.warn('s7 new_generic non-resolvable skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;

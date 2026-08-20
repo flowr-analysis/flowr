@@ -412,6 +412,7 @@ function linkSuperAssignmentsToOuterDefinitions(
  * Update the closure links of all nested function calls, this is probably to be done once at the end of the script
  * @param graph          - dataflow graph to collect the function calls from and to update the closure links for
  * @param outEnvironment - active environment on resolving closures (i.e., exit of the function definition)
+ * @param ctx            - the analyzer context to resolve against
  * @lintIgnore vertex-has-origin
  */
 export function updateNestedFunctionCalls(

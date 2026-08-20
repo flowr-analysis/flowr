@@ -283,7 +283,7 @@ export const CfgVertex = {
 	/**
 	 * Get the root id of a vertex, i.e., the id of the AST node it corresponds to.
 	 * For normal vertices, this is the same as the id of the vertex itself, for end marker vertices, this is the root id stored in the vertex.
-	 * @see {@link CfgVertex#unpackRoot|unpackRoot()} - for a way to unpack the root id of a marker vertex
+	 * @see {@link CfgVertex#unpackRootId|unpackRootId()} - for a way to unpack the root id of a marker vertex
 	 */
 	getRootId(this: void, vertex: CfgVertex): NodeId {
 		return CfgVertex.isMarker(vertex) ? CfgVertex.unpackRootId(vertex) : vertex[1];
@@ -593,7 +593,7 @@ export interface ReadOnlyControlFlowGraph {
 	/**
 	 * Provide a view of all vertices in the graph.
 	 * @param includeBasicBlockElements - if true, the elements of basic block elements are included in the result, otherwise only the basic blocks themselves are included
-	 * @see {@link ReadOnlyControlFlowGraph#rootVertexIds|rootVertexIds()} - for a way to get the root vertices of the graph.
+	 * @see {@link ReadOnlyControlFlowGraph#rootIds|rootIds()} - for a way to get the root vertices of the graph.
 	 * @see {@link ReadOnlyControlFlowGraph#getVertex|getVertex()} - for a way to get a specific vertex by its id.
 	 * @see {@link ReadOnlyControlFlowGraph#edges|edges()} - for a way to get all edges in the graph.
 	 */
@@ -648,7 +648,7 @@ export interface ReadOnlyControlFlowGraph {
 
 /**
  * This class represents the control flow graph of an R program.
- * The control flow may be hierarchical when confronted with function definitions (see {@link CfgVertex} and {@link CFG#rootVertexIds|rootVertexIds()}).
+ * The control flow may be hierarchical when confronted with function definitions (see {@link CfgVertex} and {@link ControlFlowGraph#rootIds|rootIds()}).
  *
  * There are two very simple visitors to traverse a CFG:
  * - {@link visitCfgInOrder} visits the graph in the order of the vertices

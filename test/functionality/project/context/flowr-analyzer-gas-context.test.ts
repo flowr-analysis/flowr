@@ -4,7 +4,6 @@ import { FlowrConfig } from '../../../../src/config';
 import { type FlowrGasThresholds, GasFeatureKey, type GasHeapStatistics, GasLevel } from '../../../../src/gas';
 import { InvalidationEventType } from '../../../../src/project/cache/flowr-cache';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
-import { arraysGroupBy } from '../../../../src/util/collections/arrays';
 import { FlowrAnalyzerGasPlugin } from '../../../../src/project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { PluginType } from '../../../../src/project/plugins/flowr-analyzer-plugin';
 import { SemVer } from 'semver';
@@ -33,7 +32,7 @@ function makeContext(plugins: FlowrAnalyzerGasPlugin[], gasFeatures: Record<stri
 		...base,
 		gas: { ...base.gas, features: gasFeatures, heapProvider, ...(thresholds ? { thresholds } : {}) }
 	};
-	return new FlowrAnalyzerContext(config, arraysGroupBy(plugins, p => p.type));
+	return new FlowrAnalyzerContext(config, plugins);
 }
 
 /** A context whose slicer may run for `slicerMs` while everything else may run for `defaultMs`. */

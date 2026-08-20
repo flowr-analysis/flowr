@@ -2,7 +2,7 @@ import type { NormalizerData } from '../../normalizer-data';
 import { assureTokenType } from '../../normalize-meta';
 import { normalizeExpressions } from './normalize-expressions';
 import { log } from '../../../../../../../util/log';
-import { partition } from '../../../../../../../util/collections/arrays';
+import { partitionArray } from '../../../../../../../util/collections/arrays';
 import { RawRType, RType } from '../../../../model/type';
 import type { RNode } from '../../../../model/model';
 import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
@@ -32,7 +32,7 @@ export function normalizeRootObjToAst(
 		log.debug('no children found, assume empty input');
 	}
 
-	const [delimiters, nodes] = partition(parsedChildren, x => RDelimiter.is(x) || RComment.is(x));
+	const [delimiters, nodes] = partitionArray(parsedChildren, x => RDelimiter.is(x) || RComment.is(x));
 
 	return {
 		type:  RType.Project,

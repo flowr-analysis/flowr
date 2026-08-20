@@ -17,7 +17,7 @@ import { FunctionDefinitionVertex, FunctionCallVertex } from './vertex';
 
 /**
  * This is the underlying function to calculate the difference based on a given context.
- * Use {@link Dataflow.diff} to calculate the diff of two graphs.
+ * Use {@link Dataflow.diffGraphs} to calculate the diff of two graphs.
  */
 export function diffDataflowGraph(ctx: GraphDiffContext): void {
 	diffRootVertices(ctx);

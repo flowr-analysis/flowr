@@ -1,5 +1,5 @@
 import { type CfgExpressionVertex, type CfgStatementVertex, CfgVertex, type ControlFlowInformation } from '../control-flow/control-flow-graph';
-import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
+import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration, type OnCall } from '../control-flow/semantic-cfg-guided-visitor';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import type { DataflowGraph } from '../dataflow/graph/graph';
@@ -277,7 +277,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 		}
 	}
 
-	protected override onAssignmentCall({ target, source }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
+	protected override onAssignmentCall({ target, source }: OnCall & { target?: NodeId, source?: NodeId }): void {
 		if(target === undefined || source === undefined) {
 			return;
 		}
@@ -292,7 +292,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 		this.trace.set(target, this.currentState);
 	}
 
-	protected override onReplacementCall({ target }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
+	protected override onReplacementCall({ target }: OnCall & { target?: NodeId, source?: NodeId }): void {
 		if(target !== undefined) {
 			this.unassigned.delete(target);
 		}
@@ -307,7 +307,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 	 * This bundles all function calls that are no conditions, loops, assignments, replacement calls, and access operations.
 	 * @protected
 	 */
-	protected onFunctionCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onFunctionCall(_data: OnCall) {}
 
 	/** Gets all AST nodes for the predecessor vertices that are leaf nodes and exit vertices */
 	protected getPredecessorNodes(vertexId: NodeId): NodeId[] {

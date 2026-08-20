@@ -440,15 +440,6 @@ export function getAllLinkedFunctionDefinitions(
 }
 
 /**
- * This method links a set of read variables to definitions in an environment.
- * @param referencesToLinkAgainstEnvironment - The set of references to link against the environment
- * @param environmentInformation             - The environment information to link against
- * @param givenInputs                        - The existing list of inputs that might be extended
- * @param graph                              - The graph to enter the found links
- * @param maybeForRemaining                  - Each input that can not be linked, will be added to `givenInputs`. If this flag is `true`, it will be marked as `maybe`.
- * @returns the given inputs, possibly extended with the remaining inputs (those of `referencesToLinkAgainstEnvironment` that could not be linked against the environment)
- */
-/**
  * Links every name in the expression rooted at `expr` against `environment`, as if it were written there, and
  * hands back what stays unresolved. This is how an expression that was captured elsewhere is read here.
  * @useInstead {@link Quoted.evaluateIn}

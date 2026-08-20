@@ -166,10 +166,11 @@ header p.lead { max-width: 44rem; margin: .6rem auto 1rem; font-size: clamp(.95r
 .cta a.primary { border-color: transparent; color: var(--accent-fg); background: var(--accent); }
 
 .demo { overflow: hidden; }
-.tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: .2rem; padding: .4rem .1rem 0; background: var(--sunk); border-bottom: 1px solid var(--border); }
+.tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: .2rem; padding: .4rem .4rem 0; background: var(--sunk); border-bottom: 1px solid var(--border); }
 .tabs::-webkit-scrollbar { display: none; }
 .tabs button {
-	white-space: nowrap; font: inherit; font-size: .9rem; font-weight: 600; padding: .6rem .9rem; cursor: pointer;
+	/* .4rem strip padding + .6rem here puts the label on the same 1rem line as the code and the file name below */
+	white-space: nowrap; font: inherit; font-size: .9rem; font-weight: 600; padding: .6rem .6rem; cursor: pointer;
 	border: 0; border-bottom: 2px solid transparent; border-radius: .4rem .4rem 0 0;
 	background: none; color: var(--muted); transition: color .12s, border-color .12s, background .12s;
 }
@@ -267,16 +268,11 @@ header p.lead { max-width: 44rem; margin: .6rem auto 1rem; font-size: clamp(.95r
 .demo .panels > section { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .demo .panels > section[hidden] { display: none; }
 .demo .panels > section > .code { flex: 1 1 auto; }
-.demo .panels { min-width: 0; }
 .demo .lede { margin: 0; color: var(--fg); font-size: .95rem; }
 .demo .more { margin: .6rem 0 0; color: var(--muted); font-size: .88rem; }
 @media (max-width: 46rem) {
 	.demo .demobody { grid-template-columns: 1fr; min-height: 0; }
 	.demo .explain { grid-column: 1; grid-row: 2; border-left: 0; border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
-	.demo .panels { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; min-width: 0; }
-.demo .panels > section { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-.demo .panels > section[hidden] { display: none; }
-.demo .panels > section > .code { flex: 1 1 auto; }
 }
 .demo .picking .out .line { opacity: .35; }
 .demo .picking .out .line.lit { opacity: 1; }

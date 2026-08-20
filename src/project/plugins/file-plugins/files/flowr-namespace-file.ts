@@ -359,15 +359,7 @@ function handleUseDynLibCall(g: NamespaceFormat, args: readonly PotentiallyEmpty
 	}
 	const pkg = unquoteName(pkgArg.lexeme);
 	if(!g[pkg]) {
-		g[pkg] = {
-			exportedSymbols:      [],
-			exportedFunctions:    [],
-			exportS3Generics:     new Map<string, string[]>(),
-			exportedPatterns:     [],
-			importedPackages:     new Map<string, string[] | 'all'>(),
-			callable:             [],
-			loadsWithSideEffects: false,
-		};
+		g[pkg] = emptyNamespaceInfo();
 	}
 	g[pkg].loadsWithSideEffects = true;
 	return g;
@@ -382,18 +374,21 @@ function handleExportClassesCall(g: NamespaceFormat, args: readonly PotentiallyE
 }
 const cleanLineCommentRegex = /^#.*$/gm;
 
-function getEmptyNamespaceFormat(): NamespaceFormat {
+/** A namespace that neither exports nor imports anything yet. */
+function emptyNamespaceInfo(): NamespaceInfo {
 	return {
-		current: {
-			exportedSymbols:      [] as string[],
-			exportedFunctions:    [] as string[],
-			exportS3Generics:     new Map<string, string[]>(),
-			exportedPatterns:     [] as string[],
-			importedPackages:     new Map<string, string[] | 'all'>(),
-			callable:             [] as string[],
-			loadsWithSideEffects: false,
-		},
+		exportedSymbols:      [] as string[],
+		exportedFunctions:    [] as string[],
+		exportS3Generics:     new Map<string, string[]>(),
+		exportedPatterns:     [] as string[],
+		importedPackages:     new Map<string, string[] | 'all'>(),
+		callable:             [] as string[],
+		loadsWithSideEffects: false,
 	};
+}
+
+function getEmptyNamespaceFormat(): NamespaceFormat {
+	return { current: emptyNamespaceInfo() };
 }
 function mergeNamespaceFormat(target: NamespaceFormat, source: NamespaceFormat): NamespaceFormat {
 	return {
@@ -541,15 +536,7 @@ function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 				}
 				const [pkg] = parts;
 				if(!result[pkg]) {
-					result[pkg] = {
-						exportedSymbols:      [],
-						exportedFunctions:    [],
-						exportS3Generics:     new Map<string, string[]>(),
-						exportedPatterns:     [],
-						importedPackages:     new Map<string, string[] | 'all'>(),
-						callable:             [],
-						loadsWithSideEffects: false,
-					};
+					result[pkg] = emptyNamespaceInfo();
 				}
 				result[pkg].loadsWithSideEffects = true;
 				break;

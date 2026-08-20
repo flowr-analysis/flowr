@@ -7,7 +7,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flow
 import type { ResolveInfo, ResolveResult } from './alias-tracking';
 import { soleValue, valueSetGuard } from '../values/general';
 import { collectStrings } from '../values/string/string-constants';
-import type { Value, ValueSet } from '../values/r-value';
+import { isValue, type Value, type ValueSet } from '../values/r-value';
 
 /** The node to resolve, given either by id or directly. */
 type Target = NodeId | RNodeWithParent | undefined;
@@ -59,6 +59,17 @@ export const NodeValue = {
 	stringsOf<OtherInfo>(this: void, id: Target, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, overrides?: Partial<ResolveInfo>): string[] | undefined {
 		const resolved = valueSetGuard(Resolve.toValue(id, infoOf(data, overrides)));
 		return resolved ? collectStrings(resolved.elements) : undefined;
+	},
+	/** The strings the node may hold, dropping every value that is not one (in contrast to {@link NodeValue.stringsOf}, which gives up on them). */
+	knownStringsOf<OtherInfo>(this: void, id: Target, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, overrides?: Partial<ResolveInfo>): string[] {
+		const resolved = valueSetGuard(Resolve.toValue(id, infoOf(data, overrides)));
+		const strings: string[] = [];
+		for(const element of resolved?.elements ?? []) {
+			if(element.type === 'string' && isValue(element.value)) {
+				strings.push(element.value.str);
+			}
+		}
+		return strings;
 	},
 	/** The single string the node resolves to, `undefined` if it is not exactly one. */
 	singleStringOf<OtherInfo>(this: void, id: Target, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, overrides?: Partial<ResolveInfo>): string | undefined {

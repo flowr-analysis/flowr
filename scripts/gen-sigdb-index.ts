@@ -32,9 +32,24 @@ async function ranker(): Promise<string> {
 	return `${bundled.outputFiles[0].text}\nconst rankName = NameRank.rankName;`;
 }
 
+const SiteUrl = 'https://flowr-analysis.github.io/flowr';
 const Target = path.join('wiki', 'sigdb');
 
 const group = (n: number): string => n.toLocaleString('en-US');
+
+/**
+ * The OpenSearch description, used by browsers to offer the page as a search engine
+ */
+const OpenSearchDescription = `<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+	<ShortName>flowR sigdb</ShortName>
+	<Description>Search the R functions flowR knows across base R and CRAN packages.</Description>
+	<InputEncoding>UTF-8</InputEncoding>
+	<Image height="16" width="16" type="image/svg+xml">${SiteUrl}/wiki/img/flowR-mark-red.svg</Image>
+	<Url type="text/html" method="get" template="${SiteUrl}/wiki/sigdb/?q={searchTerms}"/>
+	<Url type="application/opensearchdescription+xml" rel="self" template="${SiteUrl}/wiki/sigdb/opensearch.xml"/>
+</OpenSearchDescription>
+`;
 
 async function main(): Promise<void> {
 	/* the wiki job copies `wiki/` into the wiki repository, which has no business carrying megabytes;
@@ -68,6 +83,10 @@ async function main(): Promise<void> {
 	const target = path.join(Target, 'index.html');
 	fs.writeFileSync(target, page);
 	console.log(`  wrote ${target} (${group(index.packages.length)} packages, ${group(blobs.count)} names, ${group(index.stated.size)} flowR signatures, ${group(index.formals.size)} base R signatures, ${(page.length / 1024 / 1024).toFixed(1)} MB, not committed)`);
+
+	const descriptionTarget = path.join(Target, 'opensearch.xml');
+	fs.writeFileSync(descriptionTarget, OpenSearchDescription);
+	console.log(`  wrote ${descriptionTarget}`);
 }
 
 const Template = fs.readFileSync(path.join('scripts', 'landing-sigdb-template.html'), 'utf8');

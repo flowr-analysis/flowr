@@ -123,7 +123,9 @@ export enum CallProp {
 	/** dynamically executes R code or returns the value of dynamically computed identifiers, like `eval`, `do.call`, or `get` */
 	Eval        = 1 << 29,
 	/** produces raw HTML or JavaScript, such as `shiny::HTML` */
-	Html        = 1 << 30
+	Html        = 1 << 30,
+	/** produces raw JavaScript code, such as `shiny::HTML` */
+	JavaScript  = 1 << 31
 }
 
 /**

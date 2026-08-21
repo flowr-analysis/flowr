@@ -35,20 +35,13 @@ export enum UnescapedArgumentCategory {
 	System = 'system',
 	/** Functions dynamically evaluating R code, e.g. `eval` */
 	Eval = 'eval',
-	/** Functions querying databases, e.g. `dbGetQuery` */
+	/** Functions querying databases, e.g. `DBI::dbGetQuery` */
 	Database = 'database',
-	/** Functions producing raw HTML or JavaScript, e.g. Shiny `HTML` */
-	Html = 'html'
+	/** Functions producing raw HTML, e.g. `shiny::HTML` */
+	Html = 'html',
+	/** Functions generating/running JavaScript code, e.g. `shinyjs::runjs` */
+	JavaScript = 'javascript'
 }
-
-const UnescapedArgumentCategories: readonly UnescapedArgumentCategory[] = Record.values(UnescapedArgumentCategory);
-
-const CategoryReaches: Record<UnescapedArgumentCategory, string> = {
-	[UnescapedArgumentCategory.System]:   'a system command',
-	[UnescapedArgumentCategory.Eval]:     'an evaluation of R code',
-	[UnescapedArgumentCategory.Database]: 'a database query',
-	[UnescapedArgumentCategory.Html]:     'raw HTML/JavaScript output'
-};
 
 /** Maximum depth to descent to find unescaped part of argument */
 const MaxDescentDepth = 5;
@@ -58,6 +51,30 @@ const AcceptedInputs: readonly InputType[] = [InputType.Constant, InputType.Deri
 
 /** Input types that may be critical (uncertain) */
 const UncertainInputs: readonly InputType[] = [InputType.Unknown, InputType.Parameter, InputType.Scope];
+
+interface UnescapedArgumentsEntry {
+	/**
+	 * The call properties of critical functions calls that perform a critical operation
+	 * @see {@link CallProps}
+	 */
+	readonly criticalCalls: CallProps;
+	/**
+	 * The argument properties of critical arguments of critical functions
+	 * @see {@link ArgProps}
+	 */
+	readonly criticalArgs:  ArgProps;
+	/**
+	 * The functions that escape an unescaped argument of a critical function
+	 */
+	readonly sanitizers:    readonly Identifier[];
+	/**
+	 * The function to wrap an unescaped expression in as quick fix
+	 * @see {@link EscapeQuickFix}
+	 */
+	readonly quickFix?:     EscapeQuickFix;
+}
+
+const UnescapedArgumentCategories: readonly UnescapedArgumentCategory[] = Record.values(UnescapedArgumentCategory);
 
 /** A quick fix to escape an unescaped expression */
 export interface EscapeQuickFix extends MergeableRecord {
@@ -71,11 +88,13 @@ export interface EscapeQuickFix extends MergeableRecord {
 
 export interface UnescapedArgumentsResult extends LintingResult {
 	/** The category of the critical function call */
-	category: UnescapedArgumentCategory;
+	readonly category: UnescapedArgumentCategory;
 	/** The identifier of the critical function call */
-	function: Identifier;
+	readonly function: Identifier;
 	/** The unescaped input sources reaching the critical function call */
-	sources:  InputSources;
+	readonly sources:  InputSources;
+	/** The critical input types reaching the argument */
+	readonly input:    readonly InputType[];
 }
 
 export interface UnescapedArgumentsMetadata extends MergeableRecord {
@@ -87,34 +106,23 @@ export interface UnescapedArgumentsMetadata extends MergeableRecord {
 
 export interface UnescapedArgumentsConfig extends MergeableRecord {
 	/**
+	 * The target, critical functions, critical arguments, sanitizers and quick fixes for each category
+	 */
+	readonly categories:         Record<UnescapedArgumentCategory, UnescapedArgumentsEntry>;
+	/**
 	 * The categories that should be disabled and not checked
 	 * @see {@link UnescapedArgumentCategory}
 	 */
 	readonly disabledCategories: readonly UnescapedArgumentCategory[];
 	/**
-	 * The call properties of critical function calls for a category that perform a critical operation
-	 * @see {@link CallProps}
-	 */
-	readonly criticalCalls:      Readonly<Record<UnescapedArgumentCategory, CallProps>>;
-	/**
-	 * The argument properties of critical arguments of critical functions
-	 * @see {@link ArgProps}
-	 */
-	readonly criticalArgs:       ArgProps;
-	/**
-	 * The functions that escape an unescaped value for a category
-	 */
-	readonly sanitizers:         Readonly<Record<UnescapedArgumentCategory, readonly Identifier[]>>;
-	/**
-	 * The functions to wrap an unescaped expression for a category in as quick fixes
-	 * @see {@link EscapeQuickFix}
-	 */
-	readonly quickFixes:         Readonly<Partial<Record<UnescapedArgumentCategory, EscapeQuickFix>>>;
-	/**
 	 * The input types that count as already escaped
 	 * @see {@link InputType}
 	 */
 	readonly acceptedInputs:     readonly InputType[];
+	/**
+	 * The maximum depth to descent to find unescaped parts of an argument
+	 */
+	readonly maxDecentDepth:     number;
 }
 
 interface CriticalCallEntry {
@@ -156,13 +164,14 @@ function getEnabledCriticalCalls(config: UnescapedArgumentsConfig, index: BuiltI
 	const result: CriticalCallEntry[] = [];
 
 	for(const category of UnescapedArgumentCategories) {
-		const criticalProps = config.criticalCalls[category] ?? 0;
+		const criticalCallProps = config.categories[category].criticalCalls;
+		const criticalArgProps = config.categories[category].criticalArgs;
 
-		if(criticalProps === 0 || config.disabledCategories.includes(category)) {
+		if(criticalCallProps === 0 || config.disabledCategories.includes(category)) {
 			continue;
 		}
 		for(const { name, props = 0, sig: signature } of index.entries) {
-			if((props & criticalProps) !== 0 && signature?.some(([, prop]) => (prop & config.criticalArgs) !== 0)) {
+			if((props & criticalCallProps) !== 0 && signature?.some(([, prop]) => (prop & criticalArgProps) !== 0)) {
 				result.push({ category, name, signature });
 			}
 		}
@@ -207,7 +216,7 @@ function getCriticalTargets(
 			if(!Identifier.matches(name, call.name) && !Identifier.matches(call.name, name)) {
 				continue;
 			}
-			for(const arg of findArgumentsWithProps(call, signature, config.criticalArgs)) {
+			for(const arg of findArgumentsWithProps(call, signature, config.categories[category].criticalArgs)) {
 				const location = SourceLocation.fromNode(graph.idMap?.get(arg));
 				const key = `${category}-${call.id}-${arg}`;
 
@@ -253,7 +262,7 @@ async function getUnescapedSources(
 	data: ReadonlyFlowrAnalysisProvider,
 	graph: DataflowGraph
 ): Promise<Map<CriticalTarget, InputSource[]>> {
-	const sanitizers = (config.sanitizers[category] ?? []).map(call => ({ call }));
+	const sanitizers = (config.categories[category].sanitizers ?? []).map(call => ({ call }));
 	const queryConfig = { narrowing: [...narrowingFunctions(), ...sanitizers] };
 	const found = new Map<CriticalTarget, InputSource[]>();
 	let entries: CriticalTargetEntry[] = targets.map(target => ({ target, call: target.call.id, only: new Set([target.arg]), depth: 0 }));
@@ -317,7 +326,7 @@ function escapeFix(fix: EscapeQuickFix, target: CriticalTarget, source: InputSou
 }
 
 function createResult(target: CriticalTarget, sources: InputSource[], config: UnescapedArgumentsConfig, idMap: AstIdMap): UnescapedArgumentsResult {
-	const fix = config.quickFixes[target.category];
+	const fix = config.categories[target.category].quickFix;
 	const quickFix = fix === undefined ? [] : sources.map(source => escapeFix(fix, target, source, idMap)).filter(isNotUndefined);
 
 	return {
@@ -327,12 +336,9 @@ function createResult(target: CriticalTarget, sources: InputSource[], config: Un
 		category:   target.category,
 		function:   Identifier.toString(target.call.name),
 		sources,
+		input:      [...new Set(sources.flatMap(source => source.types).filter(type => !config.acceptedInputs.includes(type)))],
 		...(quickFix.length > 0 ? { quickFix } : {})
 	};
-}
-
-function printCriticalInputs(sources: InputSources): string {
-	return [...new Set(sources.flatMap(source => source.types).filter(type => !AcceptedInputs.includes(type)))].join(', ');
 }
 
 export const UNESCAPED_ARGUMENTS = {
@@ -376,7 +382,7 @@ export const UNESCAPED_ARGUMENTS = {
 		[LintingPrettyPrintContext.Query]: result =>
 			`Unescaped ${result.category} argument of \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)}`,
 		[LintingPrettyPrintContext.Full]: result =>
-			`The argument of \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)} reaches ${CategoryReaches[result.category]} unescaped (input: ${printCriticalInputs(result.sources)})`
+			`The argument of \`${Identifier.toString(result.function)}\` at ${SourceLocation.format(result.loc)} reaches a ${result.category} call unescaped (input: ${result.input.join(', ')})`
 	},
 	info: {
 		name:          'Unescaped Arguments',
@@ -384,39 +390,58 @@ export const UNESCAPED_ARGUMENTS = {
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Detects arguments of critical system, evaluation, database, and HTML/JavaScript calls that are not properly escaped.',
 		defaultConfig: {
+			categories: {
+				[UnescapedArgumentCategory.System]: {
+					criticalCalls: CallProp.Process,
+					criticalArgs:  ArgProp.Injectable,
+					sanitizers:    [Identifier.from(['shQuote', PkgName.Base])],
+					quickFix:      { call: 'shQuote' }
+				},
+				[UnescapedArgumentCategory.Eval]: {
+					criticalCalls: CallProp.Eval,
+					criticalArgs:  ArgProp.Injectable,
+					sanitizers:    [
+						Identifier.from(['match.arg', PkgName.Base]),
+						Identifier.from(['make.names', PkgName.Base]),
+						Identifier.from(['arg_match', PkgName.Rlang])
+					]
+				},
+				[UnescapedArgumentCategory.Database]: {
+					criticalCalls: CallProp.Database,
+					criticalArgs:  ArgProp.Injectable,
+					sanitizers:    [
+						'dbQuoteLiteral', 'dbQuoteString', 'dbQuoteIdentifier', 'sqlInterpolate',
+						Identifier.from(['glue_sql', PkgName.Glue]),
+						Identifier.from(['glue_data_sql', PkgName.Glue])
+					],
+					quickFix: { call: Identifier.from(['dbQuoteLiteral', PkgName.Dbi]), firstArg: ArgProp.Handle, partsOnly: true }
+				},
+				[UnescapedArgumentCategory.Html]: {
+					criticalCalls: CallProp.Html,
+					criticalArgs:  ArgProp.Injectable,
+					sanitizers:    [
+						Identifier.from(['htmlEscape', PkgName.HtmlTools]),
+						Identifier.from(['html_escape', 'xfun']),
+						Identifier.from(['toJSON', 'jsonlite']),
+						Identifier.from(['URLencode', PkgName.Utils])
+					],
+					quickFix: { call: Identifier.from(['htmlEscape', PkgName.HtmlTools]) }
+				},
+				[UnescapedArgumentCategory.JavaScript]: {
+					criticalCalls: CallProp.JavaScript,
+					criticalArgs:  ArgProp.Injectable,
+					sanitizers:    [
+						Identifier.from(['toJSON', 'jsonlite']),
+						Identifier.from(['serializeJSON', 'jsonlite']),
+						Identifier.from(['toJSON', 'RJSONIO']),
+						Identifier.from(['toJSON', 'rjson'])
+					],
+					quickFix: { call: Identifier.from(['toJSON', 'jsonlite']), partsOnly: true }
+				}
+			},
 			disabledCategories: [],
-			criticalCalls:      {
-				[UnescapedArgumentCategory.System]:   CallProp.Process,
-				[UnescapedArgumentCategory.Eval]:     CallProp.Eval,
-				[UnescapedArgumentCategory.Database]: CallProp.Database,
-				[UnescapedArgumentCategory.Html]:     CallProp.Html
-			},
-			criticalArgs: ArgProp.Injectable,
-			sanitizers:   {
-				[UnescapedArgumentCategory.System]: [Identifier.from(['shQuote', PkgName.Base])],
-				[UnescapedArgumentCategory.Eval]:   [
-					Identifier.from(['match.arg', PkgName.Base]),
-					Identifier.from(['make.names', PkgName.Base]),
-					Identifier.from(['arg_match', PkgName.Rlang])
-				],
-				[UnescapedArgumentCategory.Database]: [
-					'dbQuoteLiteral', 'dbQuoteString', 'dbQuoteIdentifier', 'sqlInterpolate',
-					Identifier.from(['glue_sql', PkgName.Glue]),
-					Identifier.from(['glue_data_sql', PkgName.Glue])
-				],
-				[UnescapedArgumentCategory.Html]: [
-					Identifier.from(['htmlEscape', PkgName.HtmlTools]),
-					Identifier.from(['html_escape', 'xfun']),
-					Identifier.from(['toJSON', 'jsonlite']),
-					Identifier.from(['URLencode', PkgName.Utils])
-				]
-			},
-			quickFixes: {
-				[UnescapedArgumentCategory.System]:   { call: 'shQuote' },
-				[UnescapedArgumentCategory.Database]: { call: Identifier.from(['dbQuoteLiteral', PkgName.Dbi]), firstArg: ArgProp.Handle, partsOnly: true },
-				[UnescapedArgumentCategory.Html]:     { call: Identifier.from(['htmlEscape', PkgName.HtmlTools]) }
-			},
-			acceptedInputs: AcceptedInputs
+			acceptedInputs:     AcceptedInputs,
+			maxDecentDepth:     MaxDescentDepth
 		}
 	}
 } as const satisfies LintingRule<UnescapedArgumentsResult, UnescapedArgumentsMetadata, UnescapedArgumentsConfig>;

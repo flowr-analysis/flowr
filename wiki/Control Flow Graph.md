@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's control flow graph">Generated</span> from '[wiki-cfg.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-cfg.ts "src/documentation/wiki-cfg.ts")' on 2026-08-20, 23:49:24 UTC (v2.14.1, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's control flow graph">Generated</span> from '[wiki-cfg.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-cfg.ts "src/documentation/wiki-cfg.ts")' on 2026-08-21, 14:30:57 UTC (v2.14.2, R v4.6.1), please do not edit directly._
 
 
 _flowR_ produces three main perspectives of the program: 1)&nbsp;a [normalized version of the AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST), 
@@ -77,7 +77,7 @@ flowchart LR
 ```
 
 	
-_(The analysis required _4.4 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+_(The analysis required _7.5 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	)_
 
@@ -121,7 +121,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _1.6 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _4.4 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -174,7 +174,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _1.8 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _5.0 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -252,7 +252,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _2.5 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _6.9 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplifications: `unique-cf-sets`, `to-basic-blocks` .
 	
 
@@ -296,7 +296,7 @@ if(y) #123; #125;`"]]
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _1.7 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _6.0 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplifications: `unique-cf-sets`, `to-basic-blocks`  and render a simplified/compacted version.
 	
 
@@ -351,7 +351,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _1.4 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _8.9 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -430,7 +430,7 @@ Blocks are visualized as boxes around the contained vertices.
 
 
 > [!NOTE]
-> Every CFG vertex has a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L10"><code><span title="The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types.">NodeId</span></code></a> that links it to the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) (although basic blocks will find no counterpart as they are a structuring element of the CFG).
+> Every CFG vertex has a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L14"><code><span title="The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. The default ids are numeric, but we use a branded type to avoid confusion with other numeric types. Custom ids or scoped ids can be strings, but they will be normalized to numbers if they are numeric strings.">NodeId</span></code></a> that links it to the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) (although basic blocks will find no counterpart as they are a structuring element of the CFG).
 > 	Additionally, it may provide information on the called functions (in case that the current element is a function call).
 > 	Additionally, a function definition names the vertices of its body as children, which is the only way into that region.
 
@@ -459,7 +459,7 @@ flowchart LR
 ```
 
 	
-_(The analysis required _4.7 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+_(The analysis required _4.2 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	)_
 
@@ -537,7 +537,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _3.5 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _4.3 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -579,7 +579,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _1.4 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _3.6 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -626,7 +626,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _1.3 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _7.3 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -679,7 +679,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _1.3 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _4.9 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -733,7 +733,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _1.3 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _4.2 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -792,7 +792,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _1.1 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _6.9 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -806,7 +806,7 @@ f <- function() b; f()
 
 
 
-A _calls_ attribute attached to the function call vertex holds the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L10"><code><span title="The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types.">NodeId</span></code></a> of the function definitions that
+A _calls_ attribute attached to the function call vertex holds the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/node-id.ts#L14"><code><span title="The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. The default ids are numeric, but we use a branded type to avoid confusion with other numeric types. Custom ids or scoped ids can be strings, but they will be normalized to numbers if they are numeric strings.">NodeId</span></code></a> of the function definitions that
 are called from this vertex, taken from the `calls` edges the dataflow analysis resolved.
 
 For built-in functions that are provided by flowR's built-in configuration (see the [interface wiki page](https://github.com/flowr-analysis/flowr/wiki/Interface)) the CFG does not contain
@@ -831,7 +831,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _0.8 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _4.2 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -873,7 +873,7 @@ print`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.8 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _2.9 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered unknown side effects (with ids: 3 (linked)) during the analysis.
 
 
@@ -912,7 +912,7 @@ x #60;#45; 2 #42; 3 #43; 1`"]]
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _1.2 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _13.7 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplifications: `unique-cf-sets`, `to-basic-blocks`  and render a simplified/compacted version.
 	
 
@@ -958,7 +958,7 @@ flowchart LR
 ```
 
 	
-_(The analysis required _1.1 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+_(The analysis required _3.9 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	)_
 
@@ -1000,7 +1000,7 @@ flowchart LR
 ```
 
 	
-_(The analysis required _1.3 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+_(The analysis required _3.7 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplifications: `unique-cf-sets`, `to-basic-blocks` .
 	)_
 
@@ -1057,14 +1057,18 @@ f #60;#45; function(a, b=3) #123; #125;
 print(f(21) #43; f(42))`"]]
     nbb-1 -.->|"branch on a #62; b (10) if T"| nbb-14
     nbb-1 -.->|"branch on a #62; b (10) if F"| nbb-22
+    nbb-14 -->|"flows to"| nbb-19
+    nbb-14 -->|"flows to"| nbb-41
     nbb-22 -.->|"branch on a #60; b (24) if T"| nbb-28
     nbb-22 -.->|"branch on a #60; b (24) if F"| nbb-33
     nbb-28 -->|"flows to"| nbb-22
+    nbb-33 -->|"flows to"| nbb-39
+    nbb-33 -->|"flows to"| nbb-41
     style nbb-42 stroke:cyan,stroke-width:6.5px;    style nbb-42 stroke:green,stroke-width:6.5px;
 ```
 
 	
-_(The analysis required _3.5 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+_(The analysis required _12.2 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplifications: `unique-cf-sets`, `to-basic-blocks`  and render a simplified/compacted version.
 	)_
 
@@ -1081,11 +1085,8 @@ Now, without basic blocks, this is a different story...
 
 ```mermaid
 flowchart LR
-    n19(["`RExpressionList (19)`"])
-    n39(["`RExpressionList (39)`"])
     n40["`RIfThenElse (40)
 **if(a #62; b) #123; return(a #42; b); #125; else #123; while(a #60; b) #123; a #60;#45; a #43; 1; #125; return(a); #125;**`"]
-    n41(["`RExpressionList (41)`"])
     n42(["`RFunctionDefinition (42)
 **function(a, b = 3) #123; if(a #62; b) #123; return(a #42; b); #125; else #123; while(a #60; b) #123; a #60;#45; a #43; 1; #125; return(a); #125; #125;**`"])
     subgraph n42-body ["body of function(a, b = 3) #123;
@@ -1116,6 +1117,8 @@ flowchart LR
 **a**`"])
     n37["`RFunctionCall (37)
 **return(a)**`"]
+    n41(["`RExpressionList (41)`"])
+    n39(["`RExpressionList (39)`"])
     n28(["`RSymbol (28)
 **a**`"])
     n29(["`RNumber (29)
@@ -1135,6 +1138,7 @@ flowchart LR
 **a #42; b**`"])
     n18["`RFunctionCall (18)
 **return(a #42; b)**`"]
+    n19(["`RExpressionList (19)`"])
     end
     n0(["`RSymbol (0)
 **f**`"])
@@ -1163,6 +1167,8 @@ flowchart LR
     n14 -->|"flows to"| n15
     n16 -->|"flows to"| n18
     n15 -->|"flows to"| n16
+    n18 -->|"flows to"| n19
+    n18 -->|"flows to"| n41
     n22 -->|"flows to"| n23
     n24 -.->|"branch on a #60; b (24) if T"| n28
     n24 -.->|"branch on a #60; b (24) if F"| n33
@@ -1175,6 +1181,8 @@ flowchart LR
     n27 -->|"flows to"| n31
     n32 -->|"flows to"| n22
     n35 -->|"flows to"| n37
+    n37 -->|"flows to"| n39
+    n37 -->|"flows to"| n41
     n1 -->|"flows to"| n4
     n43 -->|"flows to"| n46
     n42 -->|"flows to"| n0
@@ -1189,7 +1197,7 @@ flowchart LR
 ```
 
 	
-_(The analysis required _3.1 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+_(The analysis required _11.5 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	)_
 
@@ -1205,7 +1213,7 @@ There is a plethora of functions that you can use the traverse the [normalized A
 Similarly, flowR provides you with a set of utility functions and classes that you can use to interact with the control flow graph:
 
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/simple-visitor.ts#L57"><code><span title="Visit all nodes reachable from the start node in the control flow graph, traversing the dependencies in execution order but ignoring cycles.">visitCfgInOrder</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/simple-visitor.ts#L17"><code><span title="Visit all nodes reachable from the start node in the control flow graph, traversing the dependencies but ignoring cycles.">visitCfgInReverseOrder</span></code></a> for simple traversals
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/basic-cfg-guided-visitor.ts#L25"><code><span title="In contrast to visitCfgInOrder and visitCfgInReverseOrder , this visitor is not a simple visitor and serves as the basis for a variety of more complicated visiting orders of the control flow graph. It includes features to provide additional information using the NormalizedAst and the DataflowGraph . Use BasicCfgGuidedVisitor#start to start the traversal.">BasicCfgGuidedVisitor</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/syntax-cfg-guided-visitor.ts#L53"><code><span title="This visitor extends on the BasicCfgGuidedVisitor by dispatching visitors based on the AST type of the node. Use BasicCfgGuidedVisitor#start to start the traversal.">SyntaxAwareCfgGuidedVisitor</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/dfg-cfg-guided-visitor.ts#L48"><code><span title="This visitor extends on the BasicCfgGuidedVisitor by dispatching visitors based on the dataflow graph. Use BasicCfgGuidedVisitor#start to start the traversal.">DataflowAwareCfgGuidedVisitor</span></code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L75"><code>SemanticCfgGuidedVisitor</code></a> for more sophisticated traversals
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/basic-cfg-guided-visitor.ts#L25"><code><span title="In contrast to visitCfgInOrder and visitCfgInReverseOrder , this visitor is not a simple visitor and serves as the basis for a variety of more complicated visiting orders of the control flow graph. It includes features to provide additional information using the NormalizedAst and the DataflowGraph . Use BasicCfgGuidedVisitor#start to start the traversal.">BasicCfgGuidedVisitor</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/syntax-cfg-guided-visitor.ts#L53"><code><span title="This visitor extends on the BasicCfgGuidedVisitor by dispatching visitors based on the AST type of the node. Use BasicCfgGuidedVisitor#start to start the traversal.">SyntaxAwareCfgGuidedVisitor</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/dfg-cfg-guided-visitor.ts#L48"><code><span title="This visitor extends on the BasicCfgGuidedVisitor by dispatching visitors based on the dataflow graph. Use BasicCfgGuidedVisitor#start to start the traversal.">DataflowAwareCfgGuidedVisitor</span></code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L75"><code><span title="This visitor extends on the DataflowAwareCfgGuidedVisitor by dispatching visitors for separate function calls as well, providing more information! In a way, this is the mixin of syntactic and dataflow guided visitation. Overwrite the functions starting with on to implement your logic. In general, there is just one special case that you need to be aware of: In the context of a function call, flowR ...">SemanticCfgGuidedVisitor</span></code></a> for more sophisticated traversals
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L266"><code><span title="Helper object for CfgEdge - an edge in the ControlFlowGraph .">CfgEdge</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/control-flow-graph.ts#L82"><code><span title="Helper object for CfgVertex - a vertex in the ControlFlowGraph .">CfgVertex</span></code></a> for easy access to the properties of the CFG and its vertices and edges
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/cfg-properties.ts#L108"><code><span title="Check if the given CFG satisfies all properties.">assertCfgSatisfiesProperties</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/cfg-properties.ts#L10"><code><span title="The collection of properties that can be checked on a control flow graph.">CfgProperties</span></code></a> to check for properties of the CFG
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/diff-cfg.ts#L13"><code><span title="Compare two control flow graphs and return a report on the differences. If you simply want to check whether they equal, use <result>.isEqual() .">diffOfControlFlowGraphs</span></code></a> to diff two CFGs
@@ -1401,7 +1409,7 @@ Again, executing it with the CFG and Dataflow of the expression `x - 1 + 2L * 3`
 
 <h4 id="cfg-traversal-semantic">Semantic CFG Visitor</h4>
 
-The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L75"><code>SemanticCfgGuidedVisitor</code></a> class is flowR's most advanced visitor that combines the syntactic and dataflow information.
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/control-flow/semantic-cfg-guided-visitor.ts#L75"><code><span title="This visitor extends on the DataflowAwareCfgGuidedVisitor by dispatching visitors for separate function calls as well, providing more information! In a way, this is the mixin of syntactic and dataflow guided visitation. Overwrite the functions starting with on to implement your logic. In general, there is just one special case that you need to be aware of: In the context of a function call, flowR ...">SemanticCfgGuidedVisitor</span></code></a> class is flowR's most advanced visitor that combines the syntactic and dataflow information.
 The main idea is simple, it provides special handlers for assignments, conditionals, and other R semantics but still follows
 the structure of the CFG.
 
@@ -1841,7 +1849,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _2.2 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _4.7 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 
@@ -1888,7 +1896,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the CFG</summary>
 
-The analysis required _1.6 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
+The analysis required _3.3 ms_ (including the dataflow analysis, normalization, and parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.
 We used the following simplification: `unique-cf-sets` .
 	
 

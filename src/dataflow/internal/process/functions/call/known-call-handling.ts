@@ -198,23 +198,24 @@ export function processKnownFunctionCall<OtherInfo>(
 
 	// if force args is not none, we need to collect all non-default exit points from our arguments!
 	let exitPoints: ExitPoint[] | undefined = undefined;
-	if(forceArgs === 'all') {
-		const nonDefaults = processedArguments.flatMap(p => p ? p.exitPoints.filter(ep => ep.type !== ExitPointType.Default) : []);
-		if(nonDefaults.length > 0) {
-			exitPoints = nonDefaults;
-		}
-	} else if(forceArgs) {
-		for(let i = 0; i < forceArgs.length; i++) {
-			if(forceArgs[i]) {
-				const p = processedArguments[i];
-				if(p) {
-					const nonDefaults = p.exitPoints.filter(ep => ep.type !== ExitPointType.Default);
-					if(nonDefaults.length > 0) {
-						exitPoints ??= [];
-						exitPoints.push(...nonDefaults);
-					}
+	/* a jump that only happens under a condition still lets the call complete, so its default exit has to stay */
+	let alwaysJumps = false;
+	if(forceArgs) {
+		for(let i = 0; i < processedArguments.length; i++) {
+			const p = processedArguments[i];
+			if(p === undefined || (forceArgs !== 'all' && !forceArgs[i])) {
+				continue;
+			}
+			const before = exitPoints?.length ?? 0;
+			for(const exit of p.exitPoints) {
+				if(exit.type !== ExitPointType.Default) {
+					(exitPoints ??= []).push(exit);
 				}
 			}
+			alwaysJumps ||= (exitPoints?.length ?? 0) > before && ControlFlow.alwaysExits(p);
+		}
+		if(exitPoints !== undefined && !alwaysJumps) {
+			exitPoints.push({ nodeId: rootId, type: ExitPointType.Default, cds: data.cds });
 		}
 	}
 
@@ -230,7 +231,11 @@ export function processKnownFunctionCall<OtherInfo>(
 		 */
 		for(const argument of processedArguments) {
 			for(const exit of argument?.exitPoints ?? []) {
-				/* a `return` leaves the enclosing function whatever the call around it does with the argument */
+				/*
+				 * A jump within an argument the call does not pass on resumes at the call. A `return` leaves the
+				 * enclosing function wherever the argument runs at all, so only a call that never evaluates it
+				 * may catch one (see `processQuote`).
+				 */
 				if(exit.type !== ExitPointType.Default && exit.type !== ExitPointType.Return && !exitPoints?.includes(exit)) {
 					finalGraph.addEdge(exit.nodeId, rootId, EdgeType.FlowEdge);
 				}

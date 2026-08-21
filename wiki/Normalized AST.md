@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-08-20, 23:50:00 UTC (v2.14.1, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-08-21, 10:01:47 UTC (v2.14.2, R v4.6.1), please do not edit directly._
 
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST),
@@ -54,7 +54,7 @@ x"])
 
 ```
 	
-(The analysis required _0.9 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+(The analysis required _0.7 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 
 
 
@@ -125,11 +125,11 @@ click Record href "https://github.com/flowr-analysis/flowr/tree/main/src/util/re
 class string{
     <<variable>>
 }
-click string href "https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts#L91" ""
+click string href "https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts#L92" ""
 class domain{
     <<variable>>
 }
-click domain href "https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts#L89" ""
+click domain href "https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts#L90" ""
 class unknown{
     <<variable>>
 }

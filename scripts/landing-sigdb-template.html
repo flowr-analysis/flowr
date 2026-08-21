@@ -156,9 +156,22 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 #hits .detail .links { display: flex; gap: 1.2rem; margin-top: .6rem; }
 #hits .detail .links a { font-size: .85rem; }
 #hits .owns { display: grid; gap: .1rem; max-height: 19rem; overflow-y: auto; }
+#hits .src {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .72rem;
+	color: var(--muted); text-decoration: none; justify-self: end;
+	min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 16rem;
+}
+#hits .src:hover { color: var(--accent); text-decoration: underline; }
+/* the same separator the version already uses between itself and its download count */
+#hits .own .src + .ver::before { content: '· '; }
+#hits .src.nofile { font-style: italic; opacity: .7; }
+#hits .own .pkg, #hits .own .go { text-decoration: none; color: inherit; }
+#hits .own .pkg:hover { color: var(--accent); }
 #hits .own {
-	display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto minmax(4.2rem, auto) 1rem; gap: .8rem; align-items: baseline;
+	display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto) auto minmax(4.2rem, auto) 1rem;
+	gap: .8rem; align-items: baseline;
 	padding: .3rem .5rem; border-radius: .4rem; text-decoration: none; color: var(--fg); font-size: .85rem;
+	cursor: pointer;
 }
 #hits .own:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 #hits .own.undocumented { color: var(--muted); opacity: .55; }
@@ -175,16 +188,22 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 #hits .flags { display: flex; flex-wrap: wrap; gap: .3rem; }
 #hits .pkghit { border-style: dashed; }
 #hits .pkghit .owners { color: var(--muted); font-size: .78rem; }
+/* every badge is the same pill whatever it says, so only its colour carries the difference */
+#hits .kindtag, #hits .flag {
+	display: inline-flex; align-items: center; white-space: nowrap;
+	padding: .1rem .5rem; border-radius: 1rem; border: 1px solid transparent;
+	font-size: .7rem; line-height: 1.35; letter-spacing: .02em;
+}
 #hits .kindtag {
-	padding: .05rem .5rem; border-radius: 1rem; font-size: .72rem; font-weight: 600;
+	font-weight: 600;
 	color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent);
-	border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+	border-color: color-mix(in srgb, var(--accent) 35%, transparent);
 }
 #hits .generic { font-size: .74rem; text-decoration: none; color: var(--muted); }
 #hits .generic:hover { color: var(--accent); text-decoration: underline; }
 #hits .flag {
-	padding: 0 .4rem; border-radius: 1rem; font-size: .68rem; letter-spacing: .02em;
-	color: var(--muted); background: var(--sunk); border: 1px solid var(--border);
+	font-weight: 500;
+	color: var(--muted); background: var(--sunk); border-color: var(--border);
 }
 #hits .ask {
 	display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; margin: .5rem 0 0;
@@ -202,7 +221,7 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 #hits .kindtag.flowr { color: var(--muted); background: var(--panel); border-color: var(--border); font-weight: 500; }
 #hits .kindtag.gone { color: #d55e00; background: color-mix(in srgb, #d55e00 10%, transparent); border-color: color-mix(in srgb, #d55e00 35%, transparent); }
 /* what flowR states about the name, next to what the database says about it */
-#hits .kindtag.props { border-style: dashed; padding: 0 .35rem; opacity: .8; }
+#hits .kindtag.props { border-style: dashed; opacity: .8; }
 #hits .flag.stated { border-style: dashed; color: var(--accent); }
 #hits .own .stated { max-width: 26rem; }
 #hits .stated {
@@ -232,7 +251,7 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 <main>
 
 <div class="bar">
-	<h2><a class="brand" href="../../"><img class="mark" src="../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><span class="where">Signature DB</span><a class="version" id="version" href="https://github.com/flowr-analysis/flowr/releases/tag/<!--VERSION-->" target="_blank" rel="noopener" title="the release notes of flowR <!--VERSION-->"><!--VERSION--></a></h2>
+	<h2><a class="brand" href="../../"><img class="mark" src="../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><span class="where">Signature DB</span><a class="version" id="version" data-release="<!--VERSION-RELEASE-->" href="<!--VERSION-HREF-->" target="_blank" rel="noopener" title="<!--VERSION-TITLE-->"><!--VERSION-LABEL--></a></h2>
 	<nav>
 		<a href="../../" target="_blank" rel="noopener">Landing Page</a>
 		<a href="../playground/" target="_blank" rel="noopener">Playground</a>
@@ -286,6 +305,7 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 <script type="text/plain" id="data"><!--DATA--></script>
 <script type="application/json" id="kinds">"<!--KINDS-->"</script>
 <script type="application/json" id="stated">"<!--STATED-->"</script>
+<script type="application/json" id="topics">"<!--TOPICS-->"</script>
 <script type="application/json" id="formals">"<!--FORMALS-->"</script>
 <script>
 /* the ranker the playground shares, written in from `src/util/text/name-rank.ts` by the build */
@@ -317,12 +337,20 @@ async function unpack() {
 
 const q = document.getElementById('q'), mode = document.getElementById('mode');
 const sort = document.getElementById('sort');
+/** each filter, with what it says when the pointer rests on it */
 const Filters = [
-	['only', 'package', 'package'], ['pkg', 'archived', 'archived'],
-	['flag', 't', 'throws'], ['flag', 'n', 'non-deterministic'], ['flag', '3', 'S3 method'],
-	['flag', 'x', 'deprecated'], ['flag', 'd', 'calls deprecated'], ['flag', 'v', 'value'],
-	['kind', 'read', 'reads'], ['kind', 'write', 'writes'],
-	['kind', 'visualize', 'plots'], ['kind', 'library', 'loads']
+	['only', 'package', 'package', 'list packages rather than the names they export'],
+	['pkg', 'archived', 'archived', 'names from a package CRAN no longer carries'],
+	['flag', 't', 'throws', 'may raise an error, so a caller cannot count on getting a value back'],
+	['flag', 'n', 'non-deterministic', 'may answer differently for the same arguments, like random draws or the clock'],
+	['flag', '3', 'S3 method', 'an implementation of a generic for one class, like print.data.frame'],
+	['flag', 'x', 'deprecated', 'marked as deprecated by the package itself'],
+	['flag', 'd', 'calls deprecated', 'calls something deprecated, so it may stop working when that goes'],
+	['flag', 'v', 'value', 'a value rather than a function, like pi or LETTERS'],
+	['kind', 'read', 'reads', 'reads data from somewhere outside the program, like read.csv'],
+	['kind', 'write', 'writes', 'writes data out of the program, like write.csv'],
+	['kind', 'visualize', 'plots', 'draws something, like plot or ggsave'],
+	['kind', 'library', 'loads', 'attaches a package, like library or require']
 ];
 const active = new Set();
 const filters = document.getElementById('filters');
@@ -334,10 +362,11 @@ scope.addEventListener('click', () => {
 const picks = [...document.querySelectorAll('.pick')];
 let how = 'all';
 const buttons = new Map();
-for(const [what, key, label] of Filters) {
+for(const [what, key, label, about] of Filters) {
 	const button = document.createElement('button');
 	button.type = 'button';
 	button.textContent = label;
+	button.title = about;
 	button.setAttribute('aria-pressed', 'false');
 	button.addEventListener('click', () => {
 		const id = what + ':' + key;
@@ -445,9 +474,53 @@ function knownNames() {
 }
 
 /** a name with the matched part marked, built as nodes so a function name can never inject markup */
-/** `%o%` and friends have no `man/<name>.html`, so nothing is linked for them */
-function documented(name, flags) {
-	return /^[A-Za-z.][A-Za-z0-9._-]*$/.test(name) && !flags.includes('u');
+/**
+ * Whether a manual page can be named for this one. `%o%` and friends have no `man/<name>.html`, and a name the
+ * database says nothing about (`?`) is only safe to guess at where an alias table settles it.
+ */
+function documented(name, flags, index) {
+	if(flags.includes('u')) {
+		return false;
+	}
+	/* what a link would name: the topic when one is recorded, else the name itself */
+	const page = topics.get(packages[index]?.[0] + '::' + name) ?? name;
+	if(!/^[A-Za-z.][A-Za-z0-9._-]*$/.test(page)) {
+		return false;
+	}
+	/*
+	 * `?` says the database holds nothing about it. For base R that is no obstacle: the alias table names
+	 * every page whose name is not the name, so one it does not name is documented under the name itself.
+	 * Anywhere else there is nothing to go on, and guessing only produces a dead link.
+	 */
+	return !flags.includes('?') || packages[index]?.[2] === '1';
+}
+
+/**
+ * Where the code of a package lives. Base R sits in the read-only mirror of R's own sources, which carries a
+ * branch per release series rather than a tag; everything else is on the read-only CRAN mirror, at its version.
+ */
+/** the file of a package an export lives in, `undefined` where the database records none */
+function sourceFile(index, file) {
+	return file === undefined ? undefined : (packages[index][8] ?? '').split('|')[file] || undefined;
+}
+
+/**
+ * Where the code of an export lives. Base R sits in the read-only mirror of R's own sources, which carries a
+ * branch per release series rather than a tag; everything else is on the read-only CRAN mirror, at its version.
+ * Without a file of its own, the package's sources are as close as this gets.
+ */
+function sourceUrl(pkg, version, base, file, line) {
+	const at = line === undefined ? '' : '#L' + line;
+	if(base) {
+		const series = /^(\d+)\.(\d+)/.exec(version ?? '');
+		const ref = series ? 'R-' + series[1] + '-' + series[2] + '-branch' : 'trunk';
+		const root = 'https://github.com/wch/r-source/' + (file ? 'blob' : 'tree') + '/' + ref
+			+ '/src/library/' + encodeURIComponent(pkg);
+		return file ? root + '/' + file + at : root + '/R';
+	}
+	const root = 'https://github.com/cran/' + encodeURIComponent(pkg) + '/' + (file ? 'blob' : 'tree') + '/'
+		+ encodeURIComponent(version ?? 'master');
+	return file ? root + '/' + file + at : root;
 }
 
 /** where a package documents itself, for a name that has no page of its own */
@@ -461,7 +534,7 @@ function packageDocUrl(index) {
 function docUrl(name, entry) {
 	const { index, topic } = typeof entry === 'object' ? entry : { index: entry };
 	const [pkg, , base] = packages[index];
-	const page = encodeURIComponent(topic ?? name);
+	const page = encodeURIComponent(topic ?? topics.get(pkg + '::' + name) ?? name);
 	return base === '1' ? 'https://rdrr.io/r/' + encodeURIComponent(pkg) + '/' + page + '.html'
 		: 'https://rdrr.io/cran/' + encodeURIComponent(pkg) + '/man/' + page + '.html';
 }
@@ -543,14 +616,16 @@ const FlagNames = {
 	h: 'higher order', x: 'deprecated', v: 'value', u: 'no docs'
 };
 
-/** an owner reads `12`, or `12:tn:4:topic`: package, flags, parameter count, and the help topic */
+/** an owner reads `12`, or `12:tn:4:topic:5:2g`: package, flags, parameters, topic, and file and line in base 36 */
 function owner(entry) {
-	const [index, flags, params, topic] = String(entry).split(':');
+	const [index, flags, params, topic, file, line] = String(entry).split(':');
 	return {
 		index:  Number(index),
 		flags:  [...(flags ?? '')],
 		params: Number(params) || 0,
-		topic:  topic ? decodeURIComponent(topic) : undefined
+		topic:  topic ? decodeURIComponent(topic) : undefined,
+		file:   file ? parseInt(file, 36) : undefined,
+		line:   line ? parseInt(line, 36) : undefined
 	};
 }
 
@@ -558,6 +633,8 @@ function owner(entry) {
 const kinds = new Map(Object.entries(JSON.parse(document.getElementById('kinds').textContent)));
 /* `name -> [call, props]`: what flowR states about the functions it carries a definition for */
 const stated = new Map(Object.entries(JSON.parse(document.getElementById('stated').textContent)));
+/* `package::alias -> topic`, for the base R names that are documented under another name (`sin` under `Trig`) */
+const topics = new Map(Object.entries(JSON.parse(document.getElementById('topics').textContent)));
 /* `name -> [package, parameters][]`: what base R itself declares, which flowR states nothing about */
 const formals = new Map(Object.entries(JSON.parse(document.getElementById('formals').textContent)));
 /** how flowR describes what one of its known functions does */
@@ -597,16 +674,16 @@ function detail(name, owners) {
 	const list = document.createElement('div');
 	list.className = 'owns';
 	for(const entry of owners) {
-		const { index, flags, topic } = owner(entry);
+		const { index, flags, topic, file, line } = owner(entry);
 		if(packages[index] === undefined) {
 			continue;   // an index the table does not have: never expected, never fatal
 		}
 		const [pkg, version, base, downloads] = packages[index];
-		const row = document.createElement('a');
+		const row = document.createElement('div');
 		row.className = 'own';
 		row.target = '_blank';
 		row.rel = 'noopener';
-		if(documented(name, flags)) {
+		if(documented(name, flags, index)) {
 			row.href = docUrl(name, { index, topic });
 			row.title = 'the manual page for ' + name + ' in ' + pkg;
 		} else {
@@ -615,9 +692,12 @@ function detail(name, owners) {
 			row.classList.add('undocumented');
 			row.title = name + ' has no manual page in ' + pkg + ', so this links to the package documentation';
 		}
-		const who = document.createElement('span');
+		/* the name and the arrow open the manual page; the row is not one link so the source can sit within it */
+		const docs = [];
+		const who = document.createElement('a');
 		who.className = 'pkg';
 		who.textContent = pkg;
+		docs.push(who);
 		row.append(who);
 		const marks = document.createElement('span');
 		marks.className = 'flags';
@@ -654,10 +734,44 @@ function detail(name, owners) {
 			one.title = 'flowR states this about ' + pkg + '::' + name;
 			marks.append(one);
 		}
-		const go = document.createElement('span');
+		const go = document.createElement('a');
 		go.className = 'go';
 		go.textContent = '↗';
-		row.append(marks, ver, tag, go);
+		for(const link of docs) {
+			link.target = '_blank';
+			link.rel = 'noopener';
+			if(documented(name, flags, index)) {
+				link.href = docUrl(name, { index, topic });
+				link.title = 'the manual page for ' + name + ' in ' + pkg;
+			} else {
+				/* no page of its own, so the package's documentation is the next best thing */
+				link.href = packageDocUrl(index);
+				row.classList.add('undocumented');
+				link.title = 'no manual page is recorded for ' + name + ' in ' + pkg + ', so this links to the package documentation';
+			}
+		}
+		/* where this very function is written, which the manual page never shows */
+		const where = sourceFile(index, file);
+		const src = document.createElement('a');
+		src.className = 'src';
+		src.target = '_blank';
+		src.rel = 'noopener';
+		src.href = sourceUrl(pkg, version, base === '1', where, line);
+		src.textContent = where === undefined ? '' : where + (line === undefined ? '' : ':' + line);
+		src.title = where === undefined
+			? 'the database records no file for ' + name + ' in ' + pkg + ', so this links to its sources'
+			: 'where ' + pkg + '::' + name + ' is written, in ' + pkg + ' ' + version;
+		if(where === undefined) {
+			src.classList.add('nofile');
+			src.textContent = 'sources';
+		}
+		row.append(marks, src, ver, tag, go);
+		/* the row reads as one thing, so anything on it that is not a link of its own opens the manual page */
+		row.addEventListener('click', event => {
+			if(!event.target.closest('a')) {
+				window.open(who.href, '_blank', 'noopener');
+			}
+		});
 		list.append(row);
 	}
 	const note = document.createElement('p');
@@ -794,8 +908,9 @@ function withStatedOwner(name, owners) {
 	}
 	const already = new Set(owners.map(entry => packages[owner(entry).index]?.[0]));
 	const missing = mine.map(entry => entry[0]).filter(pkg => !already.has(pkg));
+	/* `?` says the database holds nothing about it, so nothing about its manual page is guessed either */
 	const found = missing.map(pkg => packages.findIndex(entry => entry[0] === pkg)).filter(at => at >= 0);
-	return found.length === 0 ? owners : [...found.map(String), ...owners];
+	return found.length === 0 ? owners : [...found.map(at => at + ':?'), ...owners];
 }
 
 /** `name(params)`, the one shape a signature is drawn in wherever it comes from */
@@ -990,8 +1105,9 @@ async function search() {
 	/* a package was named, so only the names it exports count */
 	scope.hidden = true;
 	const wanted = inPackage === undefined ? undefined : byName.get(inPackage);
+	/* `base::sin` is base R's whatever the database holds, so the scope asks the same owners a row shows */
 	const inScope = wanted === undefined ? matches
-		: matches.filter(([, , owners]) => owners.split(',').some(entry => owner(entry).index === wanted));
+		: matches.filter(([name, , owners]) => withStatedOwner(name, owners.split(',')).some(entry => owner(entry).index === wanted));
 	/* the packages whose own name matches; `packages` asks for those alone */
 	const onlyPackages = active.has('only:package') || (needle.length === 0 && active.size === 0 && inPackage === undefined);
 	const allPackages = inPackage !== undefined || (active.size > 0 && !onlyPackages) ? [] : packages
@@ -1073,30 +1189,6 @@ const ready = unpack().then(() => search(), error => {
 });
 q.addEventListener('change', () => history.replaceState(null, '', q.value ? '?q=' + encodeURIComponent(q.value) : location.pathname));
 </script>
-<script>
-	/* the tag says the number, the name that release carries only lives on GitHub, so it is fetched once someone asks for it */
-	(function() {
-		const tag = document.getElementById('version');
-		if(!tag) { return; }
-		let asked = false;
-		const name = () => {
-			if(asked || !tag.textContent) { return; }
-			asked = true;
-			fetch('https://api.github.com/repos/flowr-analysis/flowr/releases/tags/' + tag.textContent)
-				.then(r => r.ok ? r.json() : Promise.reject(r.status))
-				.then(release => {
-				if(release.name) {
-					const when = release.published_at
-						? new Date(release.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-						: '';
-					tag.title = when ? release.name + ', released ' + when : release.name;
-				}
-			})
-				.catch(() => { /* the title it already carries says enough */ });
-		};
-		tag.addEventListener('pointerenter', name);
-		tag.addEventListener('focus', name);
-	})();
-</script>
+<!--VERSION-SCRIPT-->
 </body>
 </html>

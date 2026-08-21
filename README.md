@@ -56,7 +56,7 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    Query: linter (4 ms)
+    Query: linter (12 ms)
        ╰ Deprecated Functions (deprecated-functions): no findings
        ╰ File Path Validity (file-path-validity): no findings
        ╰ Seeded Randomness (seeded-randomness): no findings
@@ -73,7 +73,7 @@ It offers a wide variety of features, for example:
        ╰ Undefined Symbol (undefined-symbol): no findings
        ╰ Unused Import (unused-import): no findings
        ╰ Unclosed Connection (unclosed-connection): no findings
-    All queries together required ≈4 ms (1ms accuracy, total 4 ms)
+    All queries together required ≈12 ms (1ms accuracy, total 14 ms)
     ```
     
     
@@ -95,17 +95,17 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (6 ms)\
+    Query: **linter** (542 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 0, processTimeMs: 1\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 5, processTimeMs: 2\
     &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 1, processTimeMs: 0\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 1, processTimeMs: 1\
     &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation): _no findings_\
@@ -118,11 +118,11 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Unused Import** (unused-import): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
-    _All queries together required ≈7 ms (1ms accuracy, total 7 ms)_
+    _All queries together required ≈542 ms (1ms accuracy, total 548 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _7.0 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis required _548.5 ms_ (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -139,8 +139,8 @@ It offers a wide variety of features, for example:
             ".meta": {
               "builtin": 0,
               "sigdb": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 1
+              "searchTimeMs": 178,
+              "processTimeMs": 313
             }
           },
           "file-path-validity": {
@@ -162,8 +162,8 @@ It offers a wide variety of features, for example:
               "totalUnknown": 0,
               "totalWritesBeforeAlways": 0,
               "totalValid": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 1
+              "searchTimeMs": 5,
+              "processTimeMs": 2
             }
           },
           "seeded-randomness": {
@@ -174,7 +174,7 @@ It offers a wide variety of features, for example:
               "callsWithAssignmentProducers": 0,
               "callsWithNonConstantProducers": 0,
               "callsWithOtherBranchProducers": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 2,
               "processTimeMs": 0
             }
           },
@@ -195,7 +195,7 @@ It offers a wide variety of features, for example:
               "totalConsidered": 1,
               "totalUnknown": 0,
               "searchTimeMs": 1,
-              "processTimeMs": 0
+              "processTimeMs": 1
             }
           },
           "unused-definitions": {
@@ -211,8 +211,8 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalCalls": 0,
               "totalFunctionDefinitions": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
+              "searchTimeMs": 1,
+              "processTimeMs": 1
             }
           },
           "dataframe-access-validation": {
@@ -222,13 +222,13 @@ It offers a wide variety of features, for example:
               "numAccesses": 0,
               "totalAccessed": 0,
               "searchTimeMs": 0,
-              "processTimeMs": 1
+              "processTimeMs": 4
             }
           },
           "dead-code": {
             "results": [],
             ".meta": {
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -283,7 +283,7 @@ It offers a wide variety of features, for example:
                 "subscript": 0
               },
               "searchTimeMs": 0,
-              "processTimeMs": 2
+              "processTimeMs": 29
             }
           },
           "unused-import": {
@@ -293,8 +293,8 @@ It offers a wide variety of features, for example:
               "totalUnresolved": 0,
               "totalMultiPackage": 0,
               "totalUnused": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
+              "searchTimeMs": 1,
+              "processTimeMs": 1
             }
           },
           "unclosed-connection": {
@@ -308,11 +308,11 @@ It offers a wide variety of features, for example:
           }
         },
         ".meta": {
-          "timing": 6
+          "timing": 542
         }
       },
       ".meta": {
-        "timing": 7
+        "timing": 542
       }
     }
     ```
@@ -392,7 +392,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈2 ms (1ms accuracy, total 2 ms)
+    All queries together required ≈15 ms (1ms accuracy, total 16 ms)
     ```
     
     
@@ -752,7 +752,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _2.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+    (The analysis required _7.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
     
     
     
@@ -763,18 +763,6 @@ It offers a wide variety of features, for example:
        
     
     </details>
-
-Every ▶&nbsp;_Explore in Browser_ link above opens [flowR's playground](https://flowr-analysis.github.io/flowr/wiki/playground/#c=zDYSwRgTghhCeAUATADsWECUAoLBnAxlMAKYD6ALgPakC2UAHgAQA8AtIwGYCuAdvuSEo949DIyYB6RnXojsWaAHdGKlW0aIo5KADoO0GsXghEjALyMAjAC4AbABpGANyJdi5xvngBmRwA5HAHZHACZHAE5HABYMbHwSKB5VdQ4QYHJiCHglRxdgN0YAPkYQuISeABICImJTdWqSCmoZeHjiRIq8t3lcLho6OFJcbXJcFnZe-pgQXCM2xMdDRI8l4Qba2KxeLlnEJu1gNQm%2B7KhFTtdieUUIEAydfFwneEmB2CGR3EcAIleYWAeT2%2B2FQlHIrXKVUIJEQIMoIB4owh7UqJgwQA),
-which runs the whole analysis locally in your browser, with no setup at all. Once it is open:
-
-| in the playground | what it does |
-| ----------------- | ------------ |
-| hover a name | what flowR knows about it: its value, its shape, its signature, and what the linter said |
-| ctrl-click a name | jump to where it is defined |
-| click a dependency | slice the script for it |
-| alt-click anything (or <kbd>alt</kbd>+<kbd>m</kbd>) | highlight it, so a link points at it; hold <kbd>shift</kbd> to highlight more than one |
-| _Copy link_ | hand the script, the highlights, and the layout to someone else as one url |
-| the _flowR repl_ drawer | every command the [repl](https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl) carries, over the script above |
 
 If you want to use flowR and the features it provides, feel free to check out the:
 

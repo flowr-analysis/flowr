@@ -4,6 +4,7 @@ import { BoundedSetDomain } from '../abstract-interpretation/domains/bounded-set
 import { IntervalDomain, IntervalTop } from '../abstract-interpretation/domains/interval-domain';
 import { BottomSymbol, Top } from '../abstract-interpretation/domains/lattice';
 import { MultiValueDomain, MultiValueStateDomain } from '../abstract-interpretation/domains/multi-value-state-domain';
+import { DataFrameShapeInferenceVisitor } from '../abstract-interpretation/data-frame/shape-inference';
 import { StateAbstractDomain } from '../abstract-interpretation/domains/state-abstract-domain';
 import { BasicCfgGuidedVisitor } from '../control-flow/basic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor, type OnCall } from '../control-flow/semantic-cfg-guided-visitor';
@@ -161,8 +162,12 @@ Joining the predecessors goes through ${ctx.link(`${AbstractInterpretationVisito
 For \`if(u) 3 else 2\` the step onto \`3\` reports the condition \`u\` as the predecessor and the \`if\` as the branch, together with the outcome \`u\` had, so an analysis can pin the condition down on the way into a branch.
 The other direction is ${ctx.link(`${BasicCfgGuidedVisitor.name}::getDecidedConstructs`)}: standing on \`u\`, it names the \`if\` that \`u\` decides.
 
-Calls are not followed by default. Overriding ${ctx.link(`${AbstractInterpretationVisitor.name}::shouldEnterCall`)} makes the visitor step into what a call dispatches to and continue with the state at the exit points of those functions, using ${ctx.link(`${AbstractInterpretationVisitor.name}::enterCall`)}.
-A function that is already being interpreted is not entered again, so a recursive call stops at the second entry.
+The analysis is interprocedural: it steps into what a call dispatches to and continues with the state at the exit points of those functions, using ${ctx.link(`${AbstractInterpretationVisitor.name}::enterCall`)}.
+This is what the ${ctx.linkConfig('abstractInterpretation.followCalls')} configuration switches off, and ${ctx.link(`${AbstractInterpretationVisitor.name}::shouldEnterCall`)} is the hook to decide it per call.
+Each call site hands its own arguments to the parameters of the function it enters, so what a function is worth depends on where it is called, and every definition a call may reach is entered with the state at the call, so what the call is worth is what either of them leaves behind.
+A definition that calls itself is run until what it leaves behind and what its parameters are worth both stop moving: \`shrink(head(x, nrow(x) - 1))\` hands over fewer rows than it was given, so the parameters are as much part of the fixpoint as the result is, and both are widened once the rounds pass the threshold so that they must stop.
+What a call is worth is only known when every way out of every definition it reaches is: a function that leaves a frame behind on one path and something else on another says nothing about its result, the same way \`if(u) df else 42\` does not.
+This is how a ${ctx.link(DataFrameShapeInferenceVisitor)} shape flows through the functions a program defines.
 
 To implement a custom abstract interpretation analysis, we can just create a new class and extend the ${ctx.link(AbstractInterpretationVisitor)}. The abstract interpretation visitor uses a \`StateDomain\` (e.g., a ${ctx.link(StateAbstractDomain)}) to capture the current abstract state at each vertex in the control flow graph. We can then extend the callback functions of the ${ctx.link(AbstractInterpretationVisitor)} to implement the abstract semantics of expressions, such as ${ctx.link(`${SemanticCfgGuidedVisitor.name}:::onNumberConstant`)}, ${ctx.link(`${AbstractInterpretationVisitor.name}:::onFunctionCall`)} and ${ctx.link(`${SemanticCfgGuidedVisitor.name}:::onReplacementCall`)} (make sure to still call the respective super function). The abstract interpretation visitor provides the following functions to retrieve the currently inferred values:
 

@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import type { DataflowInformation } from '../../../../../info';
+import { type DataflowInformation, ExitPointType } from '../../../../../info';
 import { markArgumentsAsNonStandardEvaluation, processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -68,6 +68,15 @@ export function processQuote<OtherInfo>(
 
 	const quotedProcessed = processedArguments[config.quoteArgumentsWithIndex];
 	if(quotedProcessed) {
+		/*
+		 * The expression is held on to rather than evaluated, so a `return` within it never runs and control
+		 * arrives at the call. Every other jump the call catches already.
+		 */
+		for(const exit of quotedProcessed.exitPoints) {
+			if(exit.type === ExitPointType.Return) {
+				information.graph.addEdge(exit.nodeId, rootId, EdgeType.FlowEdge);
+			}
+		}
 		markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, [config.quoteArgumentsWithIndex], { evaluated });
 		if(evaluated) {
 			/* the argument was processed in a clean env, so the escaped reads need linking by hand */

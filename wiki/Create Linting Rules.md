@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's creating linting rules">Generated</span> from '[wiki-create-linting-rules.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-create-linting-rules.ts "src/documentation/wiki-create-linting-rules.ts")' on 2026-08-20, 14:21:51 UTC (v2.14.1, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's creating linting rules">Generated</span> from '[wiki-create-linting-rules.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-create-linting-rules.ts "src/documentation/wiki-create-linting-rules.ts")' on 2026-08-21, 14:31:04 UTC (v2.14.2, R v4.6.1), please do not edit directly._
 
 
 # Create Linting Rules
@@ -8,7 +8,7 @@ This page explains how to add a new linting rule to flowR. For an overview of th
 ## Step 1: Create the new rule file
 
 To add a new linting rule, create a dedicated rule file next to the existing rule implementations. The file name should correspond to the exported linting rule object, for example `my-new-rule.ts` for a rule object named `MY_NEW_RULE`.
-Existing rules such as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/deprecated-functions.ts#L225"><code>DEPRECATED_FUNCTIONS</code></a> can be used as references.
+Existing rules such as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/deprecated-functions.ts#L227"><code>DEPRECATED_FUNCTIONS</code></a> can be used as references.
 Before implementing a new linting rule, open a corresponding [linting rule issue](https://github.com/flowr-analysis/flowr/issues/new?template=linting-rule.yaml) using the accompanying issue template.
 
 ## Step 2: Define the types for the rule

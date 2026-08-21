@@ -377,15 +377,15 @@ export interface OpenSyncFromOptions extends SigDbOpenOptions, OpenSyncOptions {
 	hash?: string;
 }
 
+/** the {@link SigDatabase.fd} of a database that has no file behind it (see {@link SigDatabase.fromMemory}) */
+const NoFile = -1;
+
 /**
  * Fast, partial reader for a single bundle. `open()`/`openSync()` load the string dictionary + `.idx`
  * once (a single ranged read of the dictionary section, no full parse), then every query seeks straight
  * to one package blob on demand. `open()` additionally decompresses a `.br`/`.gz` source into a
  * hash-keyed cache and reuses it on later startups. Implements {@link PackageSignatureSource}.
  */
-/** the {@link SigDatabase.fd} of a database that has no file behind it (see {@link SigDatabase.fromMemory}) */
-const NoFile = -1;
-
 export class SigDatabase implements PackageSignatureSource {
 	private closed = false;
 	/** parsed blobs by blob index so repeated lookups skip the re-read + JSON.parse; FIFO-bounded to cap memory */

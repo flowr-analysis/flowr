@@ -4,6 +4,8 @@ import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default
 import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 import { extractCfg, CfgEdge  } from '../../../src/control-flow/control-flow-graph';
 import { assertCfgSatisfiesProperties } from '../../../src/control-flow/cfg-properties';
+import { visitCfgInOrder } from '../../../src/control-flow/simple-visitor';
+import { VertexType } from '../../../src/dataflow/graph/vertex';
 import { FlowrConfig } from '../../../src/config';
 
 /**
@@ -25,6 +27,8 @@ const criticalPrograms: Record<string, string> = {
 	'tryCatch with finally':         'tryCatch({ stop("x") }, error = function(e) 1, finally = { cleanup() })\nprint(2)',
 	'on.exit':                       'f <- function() { on.exit(cleanup())\nif(u) return(1)\n2 }\nf()',
 	'closure that jumps':            'lapply(1:3, function(i) { if(i > 1) return(i)\n0 })',
+	'return in an argument':         'f(u, { if(u) return()\n1 })\nprint(2)',
+	'return in every argument':      'f({ if(u) return() }, { if(v) return() })\nprint(2)',
 	'pipe chain':                    'x |> f() |> g() |> h()',
 	'if else if chain':              'if(a) 1 else if(b) 2 else if(c) 3 else 4',
 	'loop that only jumps':          'while(u) { next }\nprint(1)',
@@ -66,5 +70,78 @@ describe.sequential('Control Flow Graph', withTreeSitter(parser => {
 			const properties = assertCfgSatisfiesProperties(cfg, ['single-entry-and-exit', 'entry-reaches-all', 'exit-reaches-all']);
 			assert.isTrue(properties, `cfg fails ${properties}`);
 		});
+	});
+
+	/** A jump within an argument leaves the call only when it always happens, so the default exit stays. */
+	describe('a conditional jump within an argument still lets the call complete', () => {
+		const programs: Record<string, string> = {
+			'return in one argument':      'f(u, { if(u) return()\n1 })\nprint(2)',
+			'return in every argument':    'f({ if(u) return() }, { if(v) return() })\nprint(2)',
+			'return behind a condition':   'observeEvent(u, { if(is.null(u)) { return() }\nx <- 1 })\ny <- 2\nprint(y)',
+			'break in one argument':       'while(u) { f({ if(u) break\n1 })\nprint(1) }\nprint(2)',
+			'next in one argument':        'for(i in 1:3) { f({ if(u) next\n1 })\nprint(1) }\nprint(2)',
+			'nested calls that return':    'f(g({ if(u) return()\n1 }))\nprint(2)',
+			'a jump in a named argument':  'f(x = { if(u) return()\n1 }, y = 2)\nprint(2)',
+			'stop in an argument':         'f({ if(u) stop("x")\n1 })\nprint(2)',
+			'a jump within a replacement': 'df$a[if(u) 1 else 2] <- 3\nprint(2)',
+			'a jump within an assignment': 'x <<- { if(u) return()\n1 }\nprint(2)',
+			/* the expression is held on to, never evaluated, so what it says about control flow says nothing */
+			'a return within a quote':     'e <- quote({ return(1) })\nprint(2)',
+			'a return within bquote':      'e <- bquote({ return(1) })\nprint(2)',
+			'an always-jumping quote':     'e <- quote(return(1))\nprint(2)',
+			/* an error the block raises is what the handler is there for, so it has to be able to run */
+			'tryCatch with a handler':     'tryCatch({ stop("x") }, error = function(e) 1)\nprint(2)',
+			'tryCatch with a finally':     'tryCatch({ stop("x") }, error = function(e) 1, finally = { cleanup() })\nprint(2)',
+			'tryCatch without a handler':  'tryCatch({ stop("x") }, finally = { cleanup() })\nprint(2)'
+		};
+
+		test.each(Object.entries(programs))('%s', async(_name, code) => {
+			const context = contextFromInput(code, FlowrConfig.default());
+			const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
+			const cfg = extractCfg(result.dataflow);
+			const reached = visitCfgInOrder(cfg.graph, cfg.entryPoints, () => { /* only collect */ });
+
+			assert.isTrue(reached.has(cfg.exitPoints[0]), 'the program can still be run to its end');
+		});
+	});
+
+	/** Nothing a program is made of sits beside the control flow with no edge leading to it at all. */
+	test.each([
+		['break in a block', 'while(u) { if(v) { break } }\nprint(2)'],
+		['next in a block',  'for(i in 1:3) { if(v) { next } }\nprint(2)'],
+		['stop in a block',  'if(u) { stop("x") }\nprint(2)'],
+		['return in a block', 'f <- function() { if(u) { return(1) }\n2 }\nf()'],
+		['nested blocks',    'while(u) { if(v) { { break } } }\nprint(2)']
+	])('no vertex is left beside the control flow (%s)', async(_name, code) => {
+		const context = contextFromInput(code, FlowrConfig.default());
+		const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
+		const cfg = extractCfg(result.dataflow);
+		const orphans = [...cfg.graph.rootIds()].filter(id =>
+			[...cfg.graph.predecessors(id)].length === 0 && [...cfg.graph.successors(id)].length === 0
+			&& !cfg.entryPoints.includes(id) && !cfg.exitPoints.includes(id));
+
+		assert.deepStrictEqual(orphans, [], 'every vertex is wired into the flow');
+	});
+
+	/** The handler of a `tryCatch` is what an error the block raises is for, so the error has to reach it. */
+	test('a caught error reaches the handler', async() => {
+		const context = contextFromInput('tryCatch({ stop("x") }, error = function(e) 1, finally = { cleanup() })\nprint(2)', FlowrConfig.default());
+		const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
+		const cfg = extractCfg(result.dataflow);
+		const reached = visitCfgInOrder(cfg.graph, cfg.entryPoints, () => { /* only collect */ });
+		const handlers = [...result.dataflow.graph.verticesOfType(VertexType.FunctionDefinition)].map(([id]) => id);
+
+		assert.lengthOf(handlers, 1, 'the handler is the only function the program defines');
+		assert.isTrue(reached.has(handlers[0]), 'and the error the block always raises gets to it');
+	});
+
+	/** An argument that always jumps does leave the call, so what follows is dead. */
+	test('an unconditional jump within an argument does leave the call', async() => {
+		const context = contextFromInput('f({ return() })\nprint(2)', FlowrConfig.default());
+		const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
+		const cfg = extractCfg(result.dataflow);
+		const reached = visitCfgInOrder(cfg.graph, cfg.entryPoints, () => { /* only collect */ });
+
+		assert.isFalse(reached.has(cfg.exitPoints[0]), 'what follows the call is dead');
 	});
 }));

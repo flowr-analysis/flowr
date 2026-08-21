@@ -1,5 +1,6 @@
 import { beforeAll, describe } from 'vitest';
-import { Top } from '../../../../src/abstract-interpretation/domains/lattice';
+import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
+import { FlowrConfig } from '../../../../src/config';
 import { PosIntervalTop } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
 import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { MIN_VERSION_LAMBDA, MIN_VERSION_PIPE } from '../../../../src/r-bridge/lang-4.x/ast/model/versions';
@@ -41,6 +42,41 @@ describe('Data Frame Shape Inference', { concurrent: false }, withShell(shell =>
 			shell,
 			'x <- 42',
 			{ '1@x': undefined }
+		);
+
+		/* every arm of the chain joins at a different time, which must not cost the arms behind the first */
+		testMappedDataFrameOperations(
+			`
+df <- data.frame(id = 1:3, name = 4:6)
+for(i in 1:3) {
+	if(df$id[i] == 1) {
+		df$a[i] <- 1
+	} else if(df$name[i] == 2) {
+		df$a[i] <- 2
+	} else if(df$id[i] == 3) {
+		df$a[i] <- 3
+	}
+}
+			`,
+			{
+				'3@$': [{ operation: 'accessCols', columns: ['id'] }],
+				'5@$': [{ operation: 'accessCols', columns: ['name'] }],
+				'7@$': [{ operation: 'accessCols', columns: ['id'] }]
+			},
+			{ name: 'an if/else if chain within a loop' }
+		);
+
+		/* the `return` only leaves the enclosing function when it happens, so the call still completes */
+		testInferredDataFrameShape(
+			shell,
+			`
+df <- data.frame(id = 1:5)
+handler(u, { if(u) return()
+	1 })
+print(df)
+			`,
+			{ '4@df': { colnames: [['id'], []], cols: [1, 1], rows: [5, 5] } },
+			{ name: 'a conditional return within an argument', skipRun: true }
 		);
 
 		testInferredDataFrameShape(
@@ -386,6 +422,425 @@ print(df1)
 				['4@df']
 			);
 		});
+	});
+
+	/** The inference steps into what a program defines, unless `abstractInterpretation.followCalls` is off. */
+	describe('Interprocedural', () => {
+		const intraprocedural = FlowrConfig.amend(FlowrConfig.default(), c => {
+			c.abstractInterpretation.followCalls = false;
+		});
+
+		const returnsAShape = `
+select_first <- function(x) x[, "a", drop = FALSE]
+df <- data.frame(a = 1:3, b = 4:6)
+result <- select_first(df)
+print(result)
+		`;
+
+		testInferredDataFrameShape(
+			shell,
+			returnsAShape,
+			{ '4@result': { colnames: [['a'], []], cols: [1, 1], rows: [3, 3] } },
+			{ name: 'a call is worth what the function it calls returns' }
+		);
+
+		testInferredDataFrameShape(
+			shell,
+			returnsAShape,
+			{ '4@result': undefined },
+			{ name: 'and is worth nothing without following the call', config: intraprocedural, skipRun: true }
+		);
+
+		/* whatever the call reaches, `followCalls` decides whether the traversal steps into it at all */
+		describe('and nothing is stepped into with followCalls off', () => {
+			const cases: Record<string, string> = {
+				'a filter on a parameter': 'keep <- function(x) x[x$a < 2, ]\ndf <- data.frame(a = 1:5)\nresult <- keep(df)',
+				'a frame of its own':      'make <- function() data.frame(a = 1:3)\ndf <- data.frame(b = 1)\nresult <- make()',
+				'an explicit return':      'first <- function(x) {\n\treturn(x[, "a", drop = FALSE])\n}\ndf <- data.frame(a = 1:3)\nresult <- first(df)',
+				'a parameter default':     'head_of <- function(x = data.frame(a = 1:9)) head(x, 3)\ndf <- data.frame(b = 1)\nresult <- head_of()',
+				'a recursion':             'shrink <- function(x) if(nrow(x) <= 1) x else shrink(head(x, nrow(x) - 1))\ndf <- data.frame(a = 1:3)\nresult <- shrink(df)'
+			};
+
+			for(const [name, code] of Object.entries(cases)) {
+				const at = `${code.trim().split('\n').length}@result`;
+				testInferredDataFrameShape(shell, code, { [at]: undefined }, { name, config: intraprocedural, skipRun: true });
+			}
+		});
+
+		testInferredDataFrameShape(
+			shell,
+			`
+first_two <- function(x) head(x, 2)
+df1 <- data.frame(a = 1:3)
+df2 <- data.frame(b = 1:5, c = 2:6)
+r1 <- first_two(df1)
+r2 <- first_two(df2)
+print(r1)
+print(r2)
+			`,
+			{
+				'6@r1': { colnames: [['a'], []], cols: [1, 1], rows: [2, 2] },
+				'7@r2': { colnames: [['b', 'c'], []], cols: [2, 2], rows: [2, 2] }
+			},
+			{ name: 'every call site hands over its own arguments' }
+		);
+
+		/* what a function does to a frame it is handed is seen at the call site */
+		testInferredDataFrameShape(
+			shell,
+			`
+add_column <- function(x) { x$extra <- 1
+	x }
+df <- data.frame(a = 1:3)
+result <- add_column(df)
+print(result)
+			`,
+			{ '5@result': { colnames: [['a', 'extra'], []], cols: [2, 2], rows: [3, 3] } },
+			{ name: 'a function that changes a frame is followed into' }
+		);
+
+		/* the functions a call may dispatch to are all of them, so the shape is what either one leaves */
+		testInferredDataFrameShape(
+			shell,
+			`
+if(u) { pick <- function(x) x[, "a", drop = FALSE] } else { pick <- function(x) x[, c("a", "b"), drop = FALSE] }
+df <- data.frame(a = 1:3, b = 4:6)
+result <- pick(df)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a'], ['b']], cols: [1, 2], rows: [3, 3] } },
+			{ name: 'a call with several definitions joins what each one leaves', skipRun: true }
+		);
+
+		/* a call two levels deep is stepped into as well */
+		testInferredDataFrameShape(
+			shell,
+			`
+inner <- function(x) head(x, 2)
+outer <- function(x) inner(x)
+df <- data.frame(a = 1:5)
+result <- outer(df)
+print(result)
+			`,
+			{ '5@result': { colnames: [['a'], []], cols: [1, 1], rows: [2, 2] } },
+			{ name: 'a call within a called function is followed too' }
+		);
+
+		/* a frame the function makes itself owes nothing to the call site */
+		testInferredDataFrameShape(
+			shell,
+			`
+make <- function() data.frame(a = 1:3, b = 4:6)
+result <- make()
+print(result)
+			`,
+			{ '3@result': { colnames: [['a', 'b'], []], cols: [2, 2], rows: [3, 3] } },
+			{ name: 'a function that creates a frame of its own' }
+		);
+
+		/* an explicit return leaves with the shape it names */
+		testInferredDataFrameShape(
+			shell,
+			`
+first_col <- function(x) {
+	return(x[, "a", drop = FALSE])
+}
+df <- data.frame(a = 1:4, b = 5:8)
+result <- first_col(df)
+print(result)
+			`,
+			{ '6@result': { colnames: [['a'], []], cols: [1, 1], rows: [4, 4] } },
+			{ name: 'a function that leaves through an explicit return' }
+		);
+
+		/* both arms of the function are exits, so the call is worth either of them */
+		testInferredDataFrameShape(
+			shell,
+			`
+pick <- function(x, wide) if(wide) x else x[, "a", drop = FALSE]
+df <- data.frame(a = 1:3, b = 4:6)
+result <- pick(df, u)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a'], ['b']], cols: [1, 2], rows: [3, 3] } },
+			{ name: 'a function with two exits is worth either of them', skipRun: true }
+		);
+
+		/* a parameter the call passes nothing for is worth what its default names */
+		testInferredDataFrameShape(
+			shell,
+			`
+head_of <- function(x = data.frame(a = 1:9)) head(x, 3)
+result <- head_of()
+print(result)
+			`,
+			{ '3@result': { colnames: [['a'], []], cols: [1, 1], rows: [3, 3] } },
+			{ name: 'a parameter falls back to its default' }
+		);
+
+		/* an argument the call does pass wins over the default */
+		testInferredDataFrameShape(
+			shell,
+			`
+head_of <- function(x = data.frame(a = 1:9)) head(x, 3)
+df <- data.frame(b = 1:5, c = 6:10)
+result <- head_of(df)
+print(result)
+			`,
+			{ '4@result': { colnames: [['b', 'c'], []], cols: [2, 2], rows: [3, 3] } },
+			{ name: 'an argument wins over the default' }
+		);
+
+		/* a default that names an earlier parameter follows it */
+		testInferredDataFrameShape(
+			shell,
+			`
+narrow <- function(x, y = x[, "a", drop = FALSE]) y
+df <- data.frame(a = 1:3, b = 4:6)
+result <- narrow(df)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a'], []], cols: [1, 1], rows: [3, 3] } },
+			{ name: 'a default that reads another parameter' }
+		);
+
+		/* the argument is matched by name, not by where it stands */
+		testInferredDataFrameShape(
+			shell,
+			`
+take <- function(n, x) head(x, n)
+df <- data.frame(a = 1:10, b = 1:10)
+result <- take(x = df, n = 2)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a', 'b'], []], cols: [2, 2], rows: [2, 2] } },
+			{ name: 'an argument is handed over by name' }
+		);
+
+		/* the frame reaches the function through a pipe */
+		testInferredDataFrameShape(
+			shell,
+			`
+drop_b <- function(x) x[, "a", drop = FALSE]
+df <- data.frame(a = 1:3, b = 4:6)
+result <- df |> drop_b()
+print(result)
+			`,
+			{ '4@result': { colnames: [['a'], []], cols: [1, 1], rows: [3, 3] } },
+			{ name: 'a frame handed over through a pipe', minRVersion: MIN_VERSION_PIPE }
+		);
+
+		/* a closure sees what the function around it was handed */
+		testInferredDataFrameShape(
+			shell,
+			`
+outer <- function(x) {
+	inner <- function() x[, "a", drop = FALSE]
+	inner()
+}
+df <- data.frame(a = 1:3, b = 4:6)
+result <- outer(df)
+print(result)
+			`,
+			{ '7@result': { colnames: [['a'], []], cols: [1, 1], rows: [3, 3] } },
+			{ name: 'a closure reads what encloses it' }
+		);
+
+		/* the same function called over and over says the same thing */
+		testInferredDataFrameShape(
+			shell,
+			`
+add_row <- function(x) rbind(x, data.frame(a = 1))
+df <- data.frame(a = 1:2)
+for(i in 1:3) {
+	df <- add_row(df)
+}
+print(df)
+			`,
+			['6@df'],
+			{ name: 'a call within a loop still terminates' }
+		);
+
+		/* the function filters the rows of the frame it is handed, and the call is worth the result */
+		testInferredDataFrameShape(
+			shell,
+			`
+keep_small <- function(x) x[x$a < 2, ]
+df <- data.frame(a = 1:5, b = 6:10)
+result <- keep_small(df)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a', 'b'], []], cols: [2, 2], rows: [0, 5] } },
+			{ name: 'a filter on a parameter, read back at the call site' }
+		);
+
+		/* the same, with the verb the tidyverse uses for it */
+		testInferredDataFrameShape(
+			shell,
+			`
+keep_small <- function(x) dplyr::filter(x, a < 2)
+df <- data.frame(a = 1:5, b = 6:10)
+result <- keep_small(df)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a', 'b'], []], cols: [2, 2], rows: [0, 5] } },
+			{ name: 'a dplyr filter on a parameter, read back at the call site', skipRun: skipLibraries }
+		);
+
+		/* what the function narrows the frame to is what the call is worth, columns and rows alike */
+		testInferredDataFrameShape(
+			shell,
+			`
+narrow <- function(x) {
+	kept <- x[x$a > 1, c("a", "b")]
+	kept
+}
+df <- data.frame(a = 1:4, b = 5:8, c = 9:12)
+result <- narrow(df)
+print(result)
+			`,
+			{ '6@result': { colnames: [['a', 'b'], []], cols: [2, 2], rows: [0, 4] } },
+			{ name: 'a function that narrows both ways' }
+		);
+
+		/* the result of one call is filtered again by the next */
+		testInferredDataFrameShape(
+			shell,
+			`
+keep_small <- function(x) x[x$a < 3, ]
+first_col <- function(x) x[, "a", drop = FALSE]
+df <- data.frame(a = 1:5, b = 6:10)
+result <- first_col(keep_small(df))
+print(result)
+			`,
+			{ '5@result': { colnames: [['a'], []], cols: [1, 1], rows: [0, 5] } },
+			{ name: 'the result of one call is handed to the next' }
+		);
+
+		/* a way out that leaves something else than a frame is a way out all the same */
+		testInferredDataFrameShape(
+			shell,
+			`
+pick <- function(x, u) if(u) x else 42
+df <- data.frame(a = 1:3)
+result <- pick(df, v)
+print(result)
+			`,
+			{ '4@result': undefined },
+			{ name: 'a function that does not always leave a frame behind', skipRun: true }
+		);
+
+		/* the same, where the two ways out are a return and the end of the body */
+		testInferredDataFrameShape(
+			shell,
+			`
+pick <- function(x, u) {
+	if(u) {
+		return(x)
+	}
+	42
+}
+df <- data.frame(a = 1:3)
+result <- pick(df, v)
+print(result)
+			`,
+			{ '9@result': undefined },
+			{ name: 'a function that returns a frame on one way out only', skipRun: true }
+		);
+
+		/* one of the definitions the call may reach leaves something else behind */
+		testInferredDataFrameShape(
+			shell,
+			`
+if(u) { f <- function(x) x } else { f <- function(x) 42 }
+df <- data.frame(a = 1:3)
+result <- f(df)
+print(result)
+			`,
+			{ '4@result': undefined },
+			{ name: 'one of the definitions does not leave a frame behind', skipRun: true }
+		);
+
+		/*
+		 * A definition that calls itself is run until what it leaves behind and what its parameters are worth
+		 * both stop moving, so what it settles on holds for any number of steps. Each of these runs in R too.
+		 */
+		testInferredDataFrameShape(
+			shell,
+			`
+shrink <- function(x) if(nrow(x) <= 1) x else shrink(head(x, nrow(x) - 1))
+df <- data.frame(a = 1:3)
+result <- shrink(df)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a'], []], cols: [1, 1], rows: [0, 3] } },
+			{ name: 'a recursion that drops rows keeps the columns it started with' }
+		);
+
+		testInferredDataFrameShape(
+			shell,
+			`
+drop_rows <- function(x) if(nrow(x) <= 1) x else drop_rows(x[-1, ])
+df <- data.frame(a = 1:4, b = 5:8)
+result <- drop_rows(df)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a', 'b'], []], cols: [2, 2], rows: [0, 4] } },
+			{ name: 'a recursion that shrinks its frame' }
+		);
+
+		/* adding a column at a time: the count cannot be pinned down, so it is bounded from below only */
+		testInferredDataFrameShape(
+			shell,
+			`
+widen <- function(x, n) if(n <= 0) x else widen(cbind(x, data.frame(extra = 1)), n - 1)
+df <- data.frame(a = 1:3)
+result <- widen(df, 3)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a'], Top], cols: [1, PosIntervalTop[1]], rows: [3, 3] } },
+			{ name: 'a recursion that widens its frame' }
+		);
+
+		/* doubling the rows every step, which is what the widening of the row count is for */
+		testInferredDataFrameShape(
+			shell,
+			`
+grow <- function(x) if(nrow(x) > 10) x else grow(rbind(x, x))
+df <- data.frame(a = 1)
+result <- grow(df)
+print(result)
+			`,
+			{ '4@result': { colnames: [['a'], []], cols: [1, 1], rows: [1, PosIntervalTop[1]] } },
+			{ name: 'a recursion that grows its frame' }
+		);
+
+		/* two functions that call each other, one dropping rows and the other columns */
+		testInferredDataFrameShape(
+			shell,
+			`
+even <- function(x, n) if(n <= 0) x else odd(head(x, nrow(x) - 1), n - 1)
+odd <- function(x, n) if(n <= 0) x else even(x[, -1, drop = FALSE], n - 1)
+df <- data.frame(a = 1:4, b = 5:8, c = 9:12)
+result <- even(df, 3)
+print(result)
+			`,
+			{ '5@result': { colnames: [[], ['a', 'b', 'c']], cols: [0, 3], rows: [0, 4] } },
+			{ name: 'two functions that call each other still settle' }
+		);
+
+		/* the recursion never reaches a base case, so no shape ever comes back out of it */
+		testInferredDataFrameShape(
+			shell,
+			`
+forever <- function(x) forever(x)
+df <- data.frame(a = 1:3)
+result <- forever(df)
+print(result)
+			`,
+			{ '4@result': { colnames: Bottom, cols: Bottom, rows: Bottom } },
+			{ name: 'a recursion without a base case still terminates', skipRun: true }
+		);
 	});
 
 	describe('Create', () => {

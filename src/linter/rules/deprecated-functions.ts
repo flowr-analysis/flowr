@@ -134,8 +134,10 @@ interface Metadata extends MergeableRecord {
 	builtin: number
 }
 
-/** `size` names the stroke width of every line-based geom until ggplot2 4.0.0 renamed it. */
-/** `size` gained `linewidth` beside it in ggplot2 3.4.0; 4.0.0 drops `size`. */
+/**
+ * `size` names the stroke width of every line-based geom until ggplot2 4.0.0 renamed it: it gained
+ * `linewidth` beside it in 3.4.0, and 4.0.0 drops `size`.
+ */
 const GgplotLinewidth: DeprecatedFunctionInformation = {
 	whenArgs: [{ argName: 'size', state: DeprecationState.Deprecated, replacedBy: 'linewidth', sinceVersion: RRange.parse('>= 3.4.0') }]
 };

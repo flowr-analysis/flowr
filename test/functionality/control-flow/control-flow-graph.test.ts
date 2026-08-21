@@ -117,6 +117,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 					.addVertex(CfgVertex.makeExpression(10))
 					.addVertex(CfgVertex.makeStatement(11))
 					.addEdge(6, 0, CfgEdge.makeFd())
+					.addEdge(6, 7, CfgEdge.makeFd())
 					.addEdge(8, 9, CfgEdge.makeFd())
 					.addEdge(3, 6, CfgEdge.makeCdTrue(8))
 					.addEdge(3, 8, CfgEdge.makeCdFalse(8))
@@ -139,6 +140,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 					.addVertex(CfgVertex.makeExpression(10))
 					.addVertex(CfgVertex.makeStatement(11))
 					.addEdge(6, 11, CfgEdge.makeFd())
+					.addEdge(6, 7, CfgEdge.makeFd())
 					.addEdge(8, 9, CfgEdge.makeFd())
 					.addEdge(3, 6, CfgEdge.makeCdTrue(8))
 					.addEdge(3, 8, CfgEdge.makeCdFalse(8))
@@ -210,6 +212,8 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				.addEdge(5, 6, CfgEdge.makeFd())
 				.addEdge(6, 11, CfgEdge.makeFd())
 				.addEdge(11, 13, CfgEdge.makeFd())
+				/* the `return` leaves the `{` it sits in, which the loop then carries on from */
+				.addEdge(13, 14, CfgEdge.makeFd())
 				.addEdge(0, 17, CfgEdge.makeFd())
 		}, { excludeProperties: ['entry-reaches-all', 'exit-reaches-all'] });
 
@@ -282,10 +286,14 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 					CfgVertex.makeExpression(10),
 					CfgVertex.makeExpression(0)
 				]))
+				.addVertex(CfgVertex.makeBlock('bb-7', [
+					CfgVertex.makeExpression(7)
+				]))
 				.addVertex(CfgVertex.makeBlock('bb-11', [
 					CfgVertex.makeStatement(11)
 				]))
 				.addEdge('bb-6', 'bb-11', CfgEdge.makeFd())
+				.addEdge('bb-6', 'bb-7', CfgEdge.makeFd())
 				.addEdge('bb-3', 'bb-6', CfgEdge.makeCdTrue(8))
 				.addEdge('bb-3', 'bb-8', CfgEdge.makeCdFalse(8))
 				.addEdge('bb-8', 'bb-3', CfgEdge.makeCdTrue(11))

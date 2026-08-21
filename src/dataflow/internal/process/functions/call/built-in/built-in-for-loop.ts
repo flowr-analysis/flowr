@@ -1,5 +1,5 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { alwaysExits, type DataflowInformation, ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
+import { type DataflowInformation, ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
 import {
 	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,
@@ -53,7 +53,7 @@ export function processForLoop<OtherInfo>(
 
 	guard(variableArg !== undefined && vectorArg !== undefined && bodyArg !== undefined, () => `For-Loop ${JSON.stringify(args)} has missing arguments! Bad!`);
 	const vector = processDataflowFor(vectorArg, data);
-	if(alwaysExits(vector)) {
+	if(ControlFlow.alwaysExits(vector)) {
 		dataflowLogger.warn(`For-Loop ${rootId} forces exit in vector, skipping rest`);
 		return vector;
 	}

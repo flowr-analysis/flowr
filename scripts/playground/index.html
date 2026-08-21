@@ -230,23 +230,22 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 .cm-valuetip { padding: .35rem .55rem; color: var(--fg); font-size: .8rem; max-width: 34rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .cm-valuetip .tcall { font-weight: 600; }
 .cm-valuetip .tabout, .cm-valuetip .tsaid { color: var(--muted); font-size: .76rem; margin-top: .15rem; }
-.cm-valuetip .tlint, #pointed .plint {
+.cm-valuetip .tlint {
 	display: flex; align-items: baseline; gap: .35rem; min-width: 0;
 	color: var(--muted); font-size: .76rem; margin-top: .25rem;
 }
-#pointed .plint { margin-top: 0; font-size: .8rem; overflow: hidden; }
-.cm-valuetip .tlint .rule, #pointed .plint .rule {
+.cm-valuetip .tlint .rule {
 	--hue: var(--muted); flex: none; padding: 0 .4rem; border-radius: 1rem; font-size: .68rem; font-weight: 600;
 	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 	color: color-mix(in srgb, var(--hue) 78%, var(--muted));
 	border: 1px solid color-mix(in srgb, var(--hue) 22%, var(--border));
 	background: color-mix(in srgb, var(--hue) 6%, transparent);
 }
-.cm-valuetip .tlint .rule[data-category="security"], #pointed .plint .rule[data-category="security"] { --hue: #cc0000; }
-.cm-valuetip .tlint .rule[data-category="bug"], #pointed .plint .rule[data-category="bug"] { --hue: #b45309; }
-.cm-valuetip .tlint .rule[data-category="reproducibility"], #pointed .plint .rule[data-category="reproducibility"] { --hue: #7b3294; }
-.cm-valuetip .tlint .rule[data-category="robustness"], #pointed .plint .rule[data-category="robustness"] { --hue: #0072b2; }
-.cm-valuetip .tlint .rule[data-category="deprecated"], #pointed .plint .rule[data-category="deprecated"] { --hue: #8a6a1f; }
+.cm-valuetip .tlint .rule[data-category="security"] { --hue: #cc0000; }
+.cm-valuetip .tlint .rule[data-category="bug"] { --hue: #b45309; }
+.cm-valuetip .tlint .rule[data-category="reproducibility"] { --hue: #7b3294; }
+.cm-valuetip .tlint .rule[data-category="robustness"] { --hue: #0072b2; }
+.cm-valuetip .tlint .rule[data-category="deprecated"] { --hue: #8a6a1f; }
 .cm-editor { height: 100%; }
 .cm-editor.cm-focused { outline: none; }
 .right { min-height: 0; min-width: 0; display: flex; flex-direction: column; background: var(--sunk); }
@@ -507,7 +506,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 	<span class="ident">
 		<a class="brand" href="../../"><img class="mark" src="../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a>
 		<span class="where">Playground</span>
-		<a class="version" id="version" href="https://github.com/flowr-analysis/flowr/releases/tag/<!--VERSION-->" target="_blank" rel="noopener" title="the release notes of flowR <!--VERSION-->"><!--VERSION--></a>
+		<a class="version" id="version" data-release="<!--VERSION-RELEASE-->" href="<!--VERSION-HREF-->" target="_blank" rel="noopener" title="<!--VERSION-TITLE-->"><!--VERSION-LABEL--></a>
 	</span>
 	<span class="grow"></span>
 	<span class="note">Fully local, selected features, use the
@@ -529,7 +528,7 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 
 <div class="tools">
 	<button type="button" data-sample="survey">Reset the example</button>
-	<button type="button" id="share" title="The address bar already holds this script; this copies it">Copy link</button>
+	<button type="button" id="share" title="The address bar already holds this script; this copies it (ctrl+s)">Copy link</button>
 	<button type="button" id="clearmarks" hidden title="alt-click highlights what a link points at; this clears every highlight">Clear highlights</button>
 	<span class="sharenote" id="sharenote"></span>
 	<span class="preview">This is a feature preview</span>
@@ -576,30 +575,6 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospac
 <script type="application/json" id="pkgs"><!--PKGS--></script>
 <script type="application/json" id="cfgdocs"><!--CFGDOCS--></script>
 <script src="bundle.js"></script>
-<script>
-	/* the tag says the number, the name that release carries only lives on GitHub, so it is fetched once someone asks for it */
-	(function() {
-		const tag = document.getElementById('version');
-		if(!tag) { return; }
-		let asked = false;
-		const name = () => {
-			if(asked || !tag.textContent) { return; }
-			asked = true;
-			fetch('https://api.github.com/repos/flowr-analysis/flowr/releases/tags/' + tag.textContent)
-				.then(r => r.ok ? r.json() : Promise.reject(r.status))
-				.then(release => {
-				if(release.name) {
-					const when = release.published_at
-						? new Date(release.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-						: '';
-					tag.title = when ? release.name + ', released ' + when : release.name;
-				}
-			})
-				.catch(() => { /* the title it already carries says enough */ });
-		};
-		tag.addEventListener('pointerenter', name);
-		tag.addEventListener('focus', name);
-	})();
-</script>
+<!--VERSION-SCRIPT-->
 </body>
 </html>

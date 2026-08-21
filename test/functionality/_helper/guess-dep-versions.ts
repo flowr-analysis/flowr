@@ -14,6 +14,7 @@ import { RRange, RVersion } from '../../../src/util/r-version';
 import { Package } from '../../../src/project/plugins/package-version-plugins/package';
 import { expFn, sigdbAnalyzer } from './sigdb';
 import { SigDatabase } from '../../../src/project/sigdb/reader';
+import { uniqueArray } from '../../../src/util/collections/arrays';
 
 /** one version of a package in a scenario: when it was released, which functions (with which parameters) it exports, and what it depends on */
 export interface ScenarioVersion {
@@ -21,8 +22,10 @@ export interface ScenarioVersion {
 	readonly date?:      string;
 	/** exported function to its parameter names (use `'...'` for a variadic) */
 	readonly fns?:       Readonly<Record<string, readonly string[]>>;
-	/** declared dependency to its version constraint (e.g. `>= 1.0.0`) */
+	/** declared dependency to its version constraint (e.g. `>= 1.0.0`), recorded as an `Imports` */
 	readonly deps?:      Readonly<Record<string, string>>;
+	/** like {@link deps}, but recorded as a `Suggests`, which a load does not have to satisfy */
+	readonly suggests?:  Readonly<Record<string, string>>;
 	readonly cran?:      boolean;
 	/** S3 classes this version OWNS (must also be an exported function name in {@link fns}); see {@link FnProp.S3Owner} */
 	readonly s3Classes?: readonly string[];
@@ -68,7 +71,10 @@ function versionInfo(v: ScenarioVersion): SigVersionInfo {
 	return {
 		cran: v.cran ?? true,
 		functions,
-		...(v.deps ? { dependencies: Object.entries(v.deps).map(([name, constraint]) => ({ name, type: DepType.Imports, constraint })) } : {}),
+		...(v.deps || v.suggests ? { dependencies: [
+			...Object.entries(v.deps ?? {}).map(([name, constraint]) => ({ name, type: DepType.Imports, constraint })),
+			...Object.entries(v.suggests ?? {}).map(([name, constraint]) => ({ name, type: DepType.Suggests, constraint }))
+		] } : {}),
 		...(v.date ? { date: dayMs(v.date) } : {})
 	};
 }
@@ -116,5 +122,5 @@ export async function guessDep(ts: TreeSitterExecutor, scenario: GuessScenario, 
 
 /** the deduplicated `bound` values a given evidence source contributes to a dependency (e.g. every `>=` a signature raised) */
 export function boundsFrom(dep: GuessedDependency | undefined, source: GuessEvidenceSource): string[] {
-	return [...new Set((dep?.evidence ?? []).filter(e => e.source === source).map(e => e.bound).filter((b): b is string => b !== undefined))];
+	return uniqueArray((dep?.evidence ?? []).filter(e => e.source === source).map(e => e.bound).filter((b): b is string => b !== undefined));
 }

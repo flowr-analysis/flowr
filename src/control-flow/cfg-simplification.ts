@@ -6,6 +6,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { visitCfgInOrder } from './simple-visitor';
 import { cfgAnalyzeDeadCode } from './cfg-dead-code';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import { uniqueArray } from '../util/collections/arrays';
 
 export interface CfgPassInfo {
 	ast?: NormalizedAst,
@@ -64,11 +65,11 @@ function cfgRemoveDeadCode(cfg: ControlFlowInformation, _info?: CfgPassInfo): Co
 
 function uniqueControlFlowSets(cfg: ControlFlowInformation, _info?: CfgPassInfo): ControlFlowInformation {
 	return {
-		returns:     Array.from(new Set(cfg.returns)),
-		entryPoints: Array.from(new Set(cfg.entryPoints)),
-		exitPoints:  Array.from(new Set(cfg.exitPoints)),
-		breaks:      Array.from(new Set(cfg.breaks)),
-		nexts:       Array.from(new Set(cfg.nexts)),
+		returns:     uniqueArray(cfg.returns),
+		entryPoints: uniqueArray(cfg.entryPoints),
+		exitPoints:  uniqueArray(cfg.exitPoints),
+		breaks:      uniqueArray(cfg.breaks),
+		nexts:       uniqueArray(cfg.nexts),
 		graph:       cfg.graph
 	};
 }

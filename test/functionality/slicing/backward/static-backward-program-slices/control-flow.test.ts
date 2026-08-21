@@ -4,7 +4,7 @@ import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { describe } from 'vitest';
 
-describe.sequential('Control flow', withShell(shell => {
+describe('Control flow', { concurrent: false }, withShell(shell => {
 	describe('Branch Coverage', () => {
 		assertSliced(label('nested if', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'if', 'unnamed-arguments']),
 			shell, `x <- 1
@@ -34,7 +34,9 @@ ${loop} {
    x <- 2;
    break
 }
-print(x)`, ['6@x'], `x <- 1\n${loop} x <- 2\nx`);
+print(x)`, ['6@x'], `x <- 1\n${loop} x <- 2\nx`,
+				/* the block always breaks, so the vertex that would mark its completion is never reached */
+				{ cfgExcludeProperties: ['entry-reaches-all', 'exit-reaches-all'] });
 			assertSliced(label('Break in condition', [...caps, 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
 				shell, `x <- 1
 ${loop} {

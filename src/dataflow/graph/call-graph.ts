@@ -1,10 +1,10 @@
-import { DataflowGraph } from './graph';
+import { NoEdges, DataflowGraph } from './graph';
 import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
 	DataflowGraphVertexInfo
 } from './vertex';
-import { VertexType } from './vertex';
+import { VertexType, FunctionDefinitionVertex, FunctionCallVertex, UseVertex } from './vertex';
 import type { REnvironmentInformation } from '../environments/environment';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { getAllFunctionCallTargets } from '../internal/linker';
@@ -12,6 +12,11 @@ import { DfEdge, EdgeType } from './edge';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { DefaultMap } from '../../util/collections/defaultmap';
 import { GraphHelper } from './graph-helper';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { Identifier } from '../environments/identifier';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 /**
  * A call graph is a dataflow graph where all vertices are function calls.
@@ -61,7 +66,7 @@ function fallbackUntargetedCall(vtx: Required<DataflowGraphVertexFunctionCall>, 
 			continue;
 		}
 		let addedNew = false;
-		for(const [tar, e] of graph.outgoingEdges(currentId) ?? []) {
+		for(const [tar, e] of graph.outgoingEdges(currentId) ?? NoEdges) {
 			if(DfEdge.includesType(e, UntargetedCallFollow) && DfEdge.doesNotIncludeType(e, UntargetedCallAvoid)) {
 				addedNew = true;
 				toVisit.push(tar);
@@ -101,7 +106,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 			continue;
 		}
 		const targetVtx = graph.getVertex(tar);
-		if(targetVtx?.tag !== VertexType.FunctionDefinition) {
+		if(!FunctionDefinitionVertex.is(targetVtx)) {
 			continue;
 		}
 		addedTarget = true;
@@ -112,7 +117,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 			if(origs.startsWith('builtin:')) {
 				addedTarget = true;
 				result.addEdge(vid, NodeId.toBuiltIn(
-					origs.substring('builtin:'.length)
+					origs.slice('builtin:'.length)
 				), EdgeType.Calls);
 			}
 		}
@@ -126,7 +131,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 			}
 			result.addEdge(vid, ori, EdgeType.Calls);
 			const name = graph.idMap?.get(ori);
-			if(name?.lexeme && oriVtx.tag === VertexType.Use) {
+			if(name?.lexeme && UseVertex.is(oriVtx)) {
 				result.addVertex({
 					...oriVtx,
 					tag:         VertexType.FunctionCall,
@@ -140,7 +145,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 	}
 
 	// handle arguments, traversing the 'reads' and the 'returns' edges
-	for(const [tar, e] of graph.outgoingEdges(vtx.id) ?? []) {
+	for(const [tar, e] of graph.outgoingEdges(vtx.id) ?? NoEdges) {
 		if(DfEdge.doesNotIncludeType(e, EdgeType.Reads | EdgeType.Returns | EdgeType.Argument)) {
 			continue;
 		}
@@ -189,14 +194,86 @@ function processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefi
 }
 
 
+/** Follows the `Calls` edges from `seeds`, collecting everything they reach in `reached`. */
+function followCalls(graph: CallGraph, seeds: Iterable<NodeId>, reached: Set<NodeId>): void {
+	const toVisit = Array.from(seeds);
+	while(toVisit.length > 0) {
+		const current = toVisit.pop() as NodeId;
+		if(reached.has(current)) {
+			continue;
+		}
+		reached.add(current);
+		for(const [target, edge] of graph.outgoingEdges(current) ?? NoEdges) {
+			if(DfEdge.includesType(edge, EdgeType.Calls)) {
+				toVisit.push(target);
+			}
+		}
+	}
+}
+
+/** The names the reached calls go by, which are the generics a method of the program may be dispatched to for. */
+function reachedCallNames(graph: CallGraph, reached: ReadonlySet<NodeId>): Set<string> {
+	const names = new Set<string>();
+	for(const id of reached) {
+		const vertex = graph.getVertex(id);
+		if(FunctionCallVertex.is(vertex)) {
+			names.add(Identifier.getName(vertex.name));
+		}
+	}
+	return names;
+}
+
+/** Whether `name` is a `<generic>.<class>` of a generic that is called, as `print.foo` is when `print` is. */
+function mayBeDispatchedTo(name: string, generics: ReadonlySet<string>): boolean {
+	for(let dot = name.indexOf('.'); dot > 0; dot = name.indexOf('.', dot + 1)) {
+		if(generics.has(name.slice(0, dot))) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * The unreached function definitions that may still run: one the code hands to another call (a callback, an
+ * S4 method, a shiny handler), and one bound to a `<generic>.<class>` name of a generic the program calls.
+ */
+function mayRunAnyway(graph: CallGraph, reached: ReadonlySet<NodeId>): NodeId[] {
+	const idMap = graph.idMap;
+	if(idMap === undefined) {
+		return [];
+	}
+	const seeds: NodeId[] = [];
+	let generics: Set<string> | undefined;
+	for(const [id, vertex] of graph.vertices(true)) {
+		if(!FunctionDefinitionVertex.is(vertex) || reached.has(id)) {
+			continue;
+		}
+		const node = idMap.get(id);
+		if(node === undefined) {
+			continue;
+		}
+		const parent = RNode.directParent(node, idMap);
+		if(RArgument.is(parent)) {
+			seeds.push(id);
+			continue;
+		}
+		const bound = RBinaryOp.is(parent) ? RNode.lexeme(parent.lhs) : undefined;
+		generics ??= reachedCallNames(graph, reached);
+		if(bound !== undefined && mayBeDispatchedTo(bound, generics)) {
+			seeds.push(id);
+		}
+	}
+	return seeds;
+}
+
 /**
  * Helper object for call-graphs, you can compute new call graphs based on {@link CallGraph.compute}.
  * @see {@link Dataflow}
  * @see {@link CallGraph}
  */
 export const CallGraph = {
-	name: 'CallGraph',
 	...GraphHelper,
+	name: 'CallGraph',
 	/**
 	 * Extracts the sub call graph from the given call graph, starting from the given entry points.
 	 */
@@ -216,7 +293,7 @@ export const CallGraph = {
 				continue;
 			}
 			result.addVertex(currentVtx, undefined as unknown as REnvironmentInformation, true);
-			for(const [tar, e] of graph.outgoingEdges(currentId) ?? []) {
+			for(const [tar, e] of graph.outgoingEdges(currentId) ?? NoEdges) {
 				if(DfEdge.includesType(e, EdgeType.Calls)) {
 					result.addEdge(currentId, tar, EdgeType.Calls);
 					toVisit.push(tar);
@@ -225,6 +302,38 @@ export const CallGraph = {
 		}
 
 		return result;
+	},
+
+	/** The calls the program makes on its own: those outside of any function definition. */
+	entryPoints(this: void, graph: CallGraph): Set<NodeId> {
+		const entries = new Set<NodeId>();
+		const idMap = graph.idMap;
+		if(idMap === undefined) {
+			return entries;
+		}
+		for(const [id, vertex] of graph.vertices(true)) {
+			const node = FunctionCallVertex.is(vertex) ? idMap.get(id) : undefined;
+			if(node !== undefined && RFunctionDefinition.wrappingFunctionDefinition(node, idMap) === undefined) {
+				entries.add(id);
+			}
+		}
+		return entries;
+	},
+
+	/**
+	 * The calls no execution starting at the top level reaches: those in a function nothing (transitively) calls.
+	 * What {@link mayRunAnyway} may still run is left out, so a call reported here really does not run.
+	 */
+	unreachableCalls(this: void, graph: CallGraph): NodeId[] {
+		const reached = new Set<NodeId>();
+		followCalls(graph, CallGraph.entryPoints(graph), reached);
+		for(let seeds = mayRunAnyway(graph, reached); seeds.length > 0; seeds = mayRunAnyway(graph, reached)) {
+			followCalls(graph, seeds, reached);
+		}
+		return graph.vertices(true)
+			.filter(([id, vertex]) => FunctionCallVertex.is(vertex) && !reached.has(id))
+			.map(([id]) => id)
+			.toArray();
 	},
 
 	/**
@@ -263,9 +372,9 @@ export const CallGraph = {
 			potentials: []
 		};
 		for(const [,vert] of graph.vertices(false)) {
-			if(vert.tag === VertexType.FunctionCall) {
+			if(FunctionCallVertex.is(vert)) {
 				processCall(vert, undefined, graph, result, state);
-			} else if(vert.tag === VertexType.FunctionDefinition) {
+			} else if(FunctionDefinitionVertex.is(vert)) {
 				processFunctionDefinition(vert, undefined, graph, result, state);
 			}
 		}
@@ -275,7 +384,7 @@ export const CallGraph = {
 					const v = graph.getVertex(to);
 					if(v) {
 						processUnknown(v, from, graph, result, state);
-						if(v.tag === VertexType.FunctionDefinition) {
+						if(FunctionDefinitionVertex.is(v)) {
 							processFunctionDefinition(v, from, graph, result, state);
 						}
 					}

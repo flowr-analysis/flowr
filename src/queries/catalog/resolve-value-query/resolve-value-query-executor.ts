@@ -1,8 +1,8 @@
 import type { ResolveValueQuery, ResolveValueQueryResult } from './resolve-value-query-format';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
-import { resolveIdToValue } from '../../../dataflow/eval/resolve/alias-tracking';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
+import { Resolve } from '../../../dataflow/environments/resolve-helper';
 
 
 /**
@@ -31,7 +31,7 @@ export async function executeResolveValueQuery({ analyzer }: BasicQueryData, que
 
 		const values = query.criteria
 			.map(criteria => SlicingCriterion.parse(criteria, idMap))
-			.flatMap(ident => resolveIdToValue(ident, { graph, full: true, idMap, resolve: analyzer.flowrConfig.solver.variables, ctx: analyzer.inspectContext() }));
+			.flatMap(ident => Resolve.toValue(ident, { graph, full: true, idMap, resolve: analyzer.flowrConfig.solver.variables, ctx: analyzer.inspectContext() }));
 
 		results[key] = {
 			values: values

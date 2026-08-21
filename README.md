@@ -1,4 +1,4 @@
-[![flowR logo](https://raw.githubusercontent.com/wiki/flowr-analysis/flowr/img/flowR.png)](https://github.com/flowr-analysis/flowr/wiki)\
+[![flowR logo](https://raw.githubusercontent.com/wiki/flowr-analysis/flowr/img/flowR.png)](https://flowr-analysis.github.io/flowr/)\
 [![QA (and potentially deploy)](https://github.com/flowr-analysis/flowr/actions/workflows/qa.yaml/badge.svg)](https://github.com/flowr-analysis/flowr/actions/workflows/qa.yaml)
 [![codecov](https://codecov.io/gh/flowr-analysis/flowr/graph/badge.svg)](https://codecov.io/gh/flowr-analysis/flowr)
 [![Docker Image Version (latest semver)](https://img.shields.io/docker/v/eagleoutice/flowr?logo=docker&logoColor=white&label=dockerhub)](https://hub.docker.com/r/eagleoutice/flowr)
@@ -13,11 +13,13 @@ and [Docker](https://hub.docker.com/r/eagleoutice/flowr).
 It offers a wide variety of features, for example:
 
 * 📚 **dependency analysis**\
-  Given your analysis project, flowR offers a plethora of so-called [queries](https://github.com/flowr-analysis/flowr/wiki/query-api) to get more information about your code.
+  Given your analysis project, flowR offers a plethora of so-called [queries](https://github.com/flowr-analysis/flowr/wiki/Query-API) to get more information about your code.
   An important query is the [dependencies query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dependencies), which shows you the library your project needs,
   the data files it reads, the scripts it sources, and the data it outputs.
   Building on it, the [guess dependency versions query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Guess-Dependency-Versions) narrows down the version range each
   of these libraries has to have, by combining the constraints your project declares with the functions your code actually calls.
+  (&nbsp;[▶&nbsp;Explore in Browser](https://flowr-analysis.github.io/flowr/wiki/playground/#c=zDYSwRgTghhCeAUATADsWECUAoLBnAxlMAKYD6ALgPakC2UAHgAQA8AtIwGYCuAdvuSEo949DIyYB6RnXojsWaAHdGKlW0aIo5KADoO0GsXghEjALyMAjAC4AbABpGANyJdi5xvngBmRwA5HAHZHACZHAE5HABYMbHwSKB5VdQ4QYHJiCHglRxdgN0YAPkYQuISeABICImJTdWqSCmoZeHjiRIq8t3lcLho6OFJcbXJcFnZe-pgQXCM2xMdDRI8l4Qba2KxeLlnEJu1gNQm%2B7KhFTtdieUUIEAydfFwneEmB2CGR3EcAIleYWAeT2%2B2FQlHIrXKVUIJEQIMoIB4owh7UqJgwQA&h=deps&p=12:1 "run the dependency example in flowR's playground, no setup")&nbsp;)
+
   
       
     <details><summary>Example: Dependency Analysis with flowR</summary>
@@ -32,18 +34,20 @@ It offers a wide variety of features, for example:
     </details> 
 
 * 🐞 **code linting**\
-   Analyze your R scripts for common issues and potential bugs (see the [wiki page](https://github.com/flowr-analysis/flowr/wiki/linter) for more information on the currently supported linters).
+   Analyze your R scripts for common issues and potential bugs (see the [wiki page](https://github.com/flowr-analysis/flowr/wiki/Linter) for more information on the currently supported linters).
+   (&nbsp;[▶&nbsp;Explore in Browser](https://flowr-analysis.github.io/flowr/wiki/playground/#c=zDYSwRgTghhCeAUATADsWECUAoLBnAxlMAKYD6ALgPakC2UAHgAQA8AtIwGYCuAdvuSEo949DIyYB6RnXojsWaAHdGKlW0aIo5KADoO0GsXghEjALyMAjAC4AbABpGANyJdi5xvngBmRwA5HAHZHACZHAE5HABYMbHwSKB5VdQ4QYHJiCHglRxdgN0YAPkYQuISeABICImJTdWqSCmoZeHjiRIq8t3lcLho6OFJcbXJcFnZe-pgQXCM2xMdDRI8l4Qba2KxeLlnEJu1gNQm%2B7KhFTtdieUUIEAydfFwneEmB2CGR3EcAIleYWAeT2%2B2FQlHIrXKVUIJEQIMoIB4owh7UqJgwQA&h=lint:unused-definitions&f=deps&p=10:1 "run the linter example in flowR's playground, no setup")&nbsp;)
+
 
 	    
     <details><summary>Example: Linting code with flowR</summary>
     
-    To lint your code, you can use the [REPL](https://github.com/flowr-analysis/flowr/wiki/interface#using-the-repl) or the [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr) (see [vscode-flowr#283](https://github.com/flowr-analysis/vscode-flowr/pull/283)).
+    To lint your code, you can use the [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl) or the [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr) (see [vscode-flowr#283](https://github.com/flowr-analysis/vscode-flowr/pull/283)).
     	
     
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl v2.13.7, R grammar v14 (tree-sitter engine)
+    flowR repl v2.14.2, R grammar v14 (tree-sitter engine)
     R> :query @linter "read.csv(\"/root/x.txt\")"
     ```
     
@@ -52,17 +56,11 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    Query: linter (6 ms)
+    Query: linter (4 ms)
        ╰ Deprecated Functions (deprecated-functions): no findings
-       ╰ File Path Validity (file-path-validity):
-           ╰ certain:
-               ╰ Path `/root/x.txt` at 1.1-23
-           ╰ Metadata: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 0, processTimeMs: 1
+       ╰ File Path Validity (file-path-validity): no findings
        ╰ Seeded Randomness (seeded-randomness): no findings
-       ╰ Absolute Paths (absolute-file-paths):
-           ╰ certain:
-               ╰ Path `/root/x.txt` at 1.1-23
-           ╰ Metadata: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 1, processTimeMs: 0
+       ╰ Absolute Paths (absolute-file-paths): no findings
        ╰ Unused Definitions (unused-definitions): no findings
        ╰ Network Functions (network-functions): no findings
        ╰ Dataframe Access Validation (dataframe-access-validation): no findings
@@ -73,7 +71,9 @@ It offers a wide variety of features, for example:
        ╰ Roxygen Arguments (roxygen-arguments): no findings
        ╰ No Leaked Credentials (no-leaked-credentials): no findings
        ╰ Undefined Symbol (undefined-symbol): no findings
-    All queries together required ≈6 ms (1ms accuracy, total 6 ms)
+       ╰ Unused Import (unused-import): no findings
+       ╰ Unclosed Connection (unclosed-connection): no findings
+    All queries together required ≈4 ms (1ms accuracy, total 4 ms)
     ```
     
     
@@ -95,17 +95,17 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (8 ms)\
+    Query: **linter** (6 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 1, processTimeMs: 1\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 0, processTimeMs: 1\
     &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 0, processTimeMs: 1\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 1, processTimeMs: 0\
     &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation): _no findings_\
@@ -116,11 +116,13 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Roxygen Arguments** (roxygen-arguments): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **No Leaked Credentials** (no-leaked-credentials): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol): _no findings_\
-    _All queries together required ≈8 ms (1ms accuracy, total 8 ms)_
+    &nbsp;&nbsp;&nbsp;╰ **Unused Import** (unused-import): _no findings_\
+    &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
+    _All queries together required ≈7 ms (1ms accuracy, total 7 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _8.4 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis required _7.0 ms_ (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -135,10 +137,10 @@ It offers a wide variety of features, for example:
           "deprecated-functions": {
             "results": [],
             ".meta": {
-              "totalCalls": 0,
-              "totalFunctionDefinitions": 0,
-              "searchTimeMs": 2,
-              "processTimeMs": 0
+              "builtin": 0,
+              "sigdb": 0,
+              "searchTimeMs": 0,
+              "processTimeMs": 1
             }
           },
           "file-path-validity": {
@@ -160,7 +162,7 @@ It offers a wide variety of features, for example:
               "totalUnknown": 0,
               "totalWritesBeforeAlways": 0,
               "totalValid": 0,
-              "searchTimeMs": 1,
+              "searchTimeMs": 0,
               "processTimeMs": 1
             }
           },
@@ -192,8 +194,8 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalConsidered": 1,
               "totalUnknown": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 1
+              "searchTimeMs": 1,
+              "processTimeMs": 0
             }
           },
           "unused-definitions": {
@@ -220,7 +222,7 @@ It offers a wide variety of features, for example:
               "numAccesses": 0,
               "totalAccessed": 0,
               "searchTimeMs": 0,
-              "processTimeMs": 0
+              "processTimeMs": 1
             }
           },
           "dead-code": {
@@ -283,14 +285,34 @@ It offers a wide variety of features, for example:
               "searchTimeMs": 0,
               "processTimeMs": 2
             }
+          },
+          "unused-import": {
+            "results": [],
+            ".meta": {
+              "totalConsidered": 0,
+              "totalUnresolved": 0,
+              "totalMultiPackage": 0,
+              "totalUnused": 0,
+              "searchTimeMs": 0,
+              "processTimeMs": 0
+            }
+          },
+          "unclosed-connection": {
+            "results": [],
+            ".meta": {
+              "totalOpened": 0,
+              "totalClosed": 0,
+              "searchTimeMs": 0,
+              "processTimeMs": 0
+            }
           }
         },
         ".meta": {
-          "timing": 8
+          "timing": 6
         }
       },
       ".meta": {
-        "timing": 8
+        "timing": 7
       }
     }
     ```
@@ -318,17 +340,19 @@ It offers a wide variety of features, for example:
 * 🍕 **program slicing**\
    Given a point of interest like the visualization of a plot, _flowR_ reduces the program to just the parts which are relevant
    for the computation of the point of interest.
+   (&nbsp;[▶&nbsp;Explore in Browser](https://flowr-analysis.github.io/flowr/wiki/playground/#c=zM4VwtgBAPAtBAMAoADgJwPYBMQGMAu0cAjIgO6EQDsiAchUUogGbqoQAUAlhJwHYREAXOxowiASnEQA3oggRQkWAvAQA1D3URSciGiy4Cy-dnwQAVD0QBfRIhwBDPOwBEAZXCCXAGhVhfLgA6vC7i9k6uAAoYpnheviaGAcGhiEA&h=slice&f=deps&v=,,d&p=11:13 "run the slicing example in flowR's playground, no setup")&nbsp;)
+
 
     
     <details><summary>Example: Slicing with flowR</summary>
     
     
     The simplest way to retrieve slices is with flowR's [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr).
-    However, you can slice using the [REPL](https://github.com/flowr-analysis/flowr/wiki/interface#using-the-repl) as well.
+    However, you can slice using the [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl) as well.
     This can help you if you want to reuse specific parts of an existing analysis within another context or if you want to understand
     what is happening in the code.
     
-    For this, let's have a look at the example file, located at [test/testfiles/example.R](https://github.com/flowr-analysis/flowr/tree/main//test/testfiles/example.R):
+    For this, let's have a look at the example file, located at [test/testfiles/example.R](https://github.com/flowr-analysis/flowr/tree/main/test/testfiles/example.R):
     
     
     ```r
@@ -354,7 +378,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl v2.13.7, R grammar v14 (tree-sitter engine)
+    flowR repl v2.14.2, R grammar v14 (tree-sitter engine)
     R> :query @static-slice (11@sum) file://test/testfiles/example.R
     ```
     
@@ -368,7 +392,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈4 ms (1ms accuracy, total 4 ms)
+    All queries together required ≈2 ms (1ms accuracy, total 2 ms)
     ```
     
     
@@ -383,16 +407,18 @@ It offers a wide variety of features, for example:
     </details>
 
 * 🚀 **fast call-graph, data-, and control-flow graphs**\
-  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">105.1 ms</span></i> (as of Aug 1, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark), 
+  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">109.2 ms</span></i> (as of Aug 21, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark),
   _flowR_ can analyze the data- and control-flow of the average real-world R&nbsp;script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
-  and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) for more details on the [dataflow graphs](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) as well as [call graphs](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph#perspectives-cg).
+  and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) for more details on the [dataflow graphs](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) as well as [call graphs](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg).
+  (&nbsp;[▶&nbsp;Explore in Browser](https://flowr-analysis.github.io/flowr/wiki/playground/#c=zDYSwRgTghhCeAUATADsWECUAoLBnAxlMAKYD6ALgPakC2UAHgAQA8AtIwGYCuAdvuSEo949DIyYB6RnXojsWaAHdGKlW0aIo5KADoO0GsXghEjALyMAjAC4AbABpGANyJdi5xvngBmRwA5HAHZHACZHAE5HABYMbHwSKB5VdQ4QYHJiCHglRxdgN0YAPkYQuISeABICImJTdWqSCmoZeHjiRIq8t3lcLho6OFJcbXJcFnZe-pgQXCM2xMdDRI8l4Qba2KxeLlnEJu1gNQm%2B7KhFTtdieUUIEAydfFwneEmB2CGR3EcAIleYWAeT2%2B2FQlHIrXKVUIJEQIMoIB4owh7UqJgwQA&p=13:1 "run this script in flowR's playground, no setup")&nbsp;)
+
 
     
     <details><summary>Example: Generating a dataflow graph with flowR</summary>
     
     
-    You can investigate flowR's analyses using the [REPL](https://github.com/flowr-analysis/flowr/wiki/interface#using-the-repl).
-    Commands like <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the dataflow graph (aliases: :d*, :df*)">`:dataflow*`</span> allow you to view a [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) for a given R script.
+    You can investigate flowR's analyses using the [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl).
+    Commands like <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the dataflow graph (aliases: :d*, :df*)">`:dataflow*`</span> allow you to view a [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) for a given R script.
     
     Let's have a look at the following example:
     
@@ -413,13 +439,13 @@ It offers a wide variety of features, for example:
     ```
     
     
-    To get the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) for this script, you can use the following command:
+    To get the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) for this script, you can use the following command:
     
     
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl v2.13.7, R grammar v14 (tree-sitter engine)
+    flowR repl v2.14.2, R grammar v14 (tree-sitter engine)
     R> :dataflow* test/testfiles/example.R
     ```
     
@@ -429,7 +455,7 @@ It offers a wide variety of features, for example:
     
     ```text
     'test/testfiles/example.R' looks like a path, analyzing file://test/testfiles/example.R (repl.autoUseFileProtocol is set).
-    https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMXt7XCJgKiM5MTtSTnVtYmVyIzkzOyogKiowKipcbiAgICAgICoxLjgqICgqKmlkOiAxKiopYFwifX1cbiAgICUlIE5vIGVkZ2VzIGZvdW5kIGZvciAxXG4gICAgMFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKnN1bSoqXG4gICAgICAqMS4xLTMqICgqKmlkOiAwKiosIHY6IDEpYFwiXVxuICAgIDJbW1wiYCojOTE7UkJpbmFyeU9wIzkzOyogYmFzZSM1ODsjNTg7KiojNjA7IzQ1OyoqXG4gICAgICAqMS4xLTgqICgqKmlkOiAyKiopXG4gICAgYXJnOiAoMCwgMSlgXCJdXVxuICAgIGJ1aWx0LWluOl8tW1wiYEJ1aWx0LUluOlxuIzYwOyM0NTtgXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46Xy0gc3Ryb2tlOmdyYXksZmlsbDpncmF5LHN0cm9rZS13aWR0aDoycHgsb3BhY2l0eTouODtcbiAgICA0e3tcImAqIzkxO1JOdW1iZXIjOTM7KiAqKjEqKlxuICAgICAgKjIuMTIqICgqKmlkOiA0KiopYFwifX1cbiAgICUlIE5vIGVkZ2VzIGZvdW5kIGZvciA0XG4gICAgM1tcImAqIzkxO1JTeW1ib2wjOTM7KiAqKnByb2R1Y3QqKlxuICAgICAgKjIuMS03KiAoKippZDogMyoqLCB2OiA0KWBcIl1cbiAgICA1W1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzYwOyM0NTsqKlxuICAgICAgKjIuMS0xMiogKCoqaWQ6IDUqKilcbiAgICBhcmc6ICgzLCA0KWBcIl1dXG4gICAgN3t7XCJgKiM5MTtSTnVtYmVyIzkzOyogKio3KipcbiAgICAgICozLjYqICgqKmlkOiA3KiopYFwifX1cbiAgICUlIE5vIGVkZ2VzIGZvdW5kIGZvciA3XG4gICAgNltcImAqIzkxO1JTeW1ib2wjOTM7KiAqKncqKlxuICAgICAgKjMuMSogKCoqaWQ6IDYqKiwgdjogNylgXCJdXG4gICAgOFtbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM2MDsjNDU7KipcbiAgICAgICozLjEtNiogKCoqaWQ6IDgqKilcbiAgICBhcmc6ICg2LCA3KWBcIl1dXG4gICAgMTB7e1wiYCojOTE7Uk51bWJlciM5MzsqICoqMTAqKlxuICAgICAgKjQuNi03KiAoKippZDogMTAqKilgXCJ9fVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDEwXG4gICAgOVtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKk4qKlxuICAgICAgKjQuMSogKCoqaWQ6IDkqKiwgdjogMTApYFwiXVxuICAgIDExW1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzYwOyM0NTsqKlxuICAgICAgKjQuMS03KiAoKippZDogMTEqKilcbiAgICBhcmc6ICg5LCAxMClgXCJdXVxuICAgIDEyW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqaSoqXG4gICAgICAqNi42KiAoKippZDogMTIqKiwgdjogMjApYFwiXVxuICAgIDEze3tcImAqIzkxO1JOdW1iZXIjOTM7KiAqKjEqKlxuICAgICAgKjYuMTEqICgqKmlkOiAxMyoqKWBcIn19XG4gICAlJSBObyBlZGdlcyBmb3VuZCBmb3IgMTNcbiAgICAxNihbXCJgKiM5MTtSU3ltYm9sIzkzOyogKipOKipcbiAgICAgICo2LjE0KiAoKippZDogMTYqKilgXCJdKVxuICAgIDE3e3tcImAqIzkxO1JOdW1iZXIjOTM7KiAqKjEqKlxuICAgICAgKjYuMTYqICgqKmlkOiAxNyoqKWBcIn19XG4gICAlJSBObyBlZGdlcyBmb3VuZCBmb3IgMTdcbiAgICAxOFtbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM0NTsqKlxuICAgICAgKjYuMTQtMTYqICgqKmlkOiAxOCoqKVxuICAgIGFyZzogKDE2LCAxNylgXCJdXVxuICAgIGJ1aWx0LWluOi1bXCJgQnVpbHQtSW46XG4jNDU7YFwiXVxuICAgIHN0eWxlIGJ1aWx0LWluOi0gc3Ryb2tlOmdyYXksZmlsbDpncmF5LHN0cm9rZS13aWR0aDoycHgsb3BhY2l0eTouODtcbiAgICAxOVtbXCJgKiM5MTtSRXhwcmVzc2lvbkxpc3QjOTM7KiBiYXNlIzU4OyM1ODsqKigqKlxuICAgICAgKjYuMTMqICgqKmlkOiAxOSoqKVxuICAgIGFyZzogKDE4KWBcIl1dXG4gICAgMjBbW1wiYCojOTE7UkJpbmFyeU9wIzkzOyogYmFzZSM1ODsjNTg7KiojNTg7KipcbiAgICAgICo2LjExLTE3KiAoKippZDogMjAqKilcbiAgICBhcmc6ICgxMywgMTkpYFwiXV1cbiAgICBidWlsdC1pbjo6W1wiYEJ1aWx0LUluOlxuIzU4O2BcIl1cbiAgICBzdHlsZSBidWlsdC1pbjo6IHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMjQoW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqc3VtKipcbiAgICAgICo3LjEwLTEyKiAoKippZDogMjQqKiwgMzYrKWBcIl0pXG4gICAgMjUoW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqaSoqXG4gICAgICAqNy4xNiogKCoqaWQ6IDI1KiosIDM2KylgXCJdKVxuICAgIDI2W1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzQzOyoqXG4gICAgICAqNy4xMC0xNiogKCoqaWQ6IDI2KiosIDM2KylcbiAgICBhcmc6ICgyNCwgMjUpYFwiXV1cbiAgICBidWlsdC1pbjpfW1wiYEJ1aWx0LUluOlxuIzQzO2BcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpfIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMjcoW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqdyoqXG4gICAgICAqNy4yMCogKCoqaWQ6IDI3KiosIDM2KylgXCJdKVxuICAgIDI4W1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzQzOyoqXG4gICAgICAqNy4xMC0yMCogKCoqaWQ6IDI4KiosIDM2KylcbiAgICBhcmc6ICgyNiwgMjcpYFwiXV1cbiAgICAyM1tcImAqIzkxO1JTeW1ib2wjOTM7KiAqKnN1bSoqXG4gICAgICAqNy4zLTUqICgqKmlkOiAyMyoqLCAzNissIHY6IDI4KWBcIl1cbiAgICAyOVtbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM2MDsjNDU7KipcbiAgICAgICo3LjMtMjAqICgqKmlkOiAyOSoqLCAzNispXG4gICAgYXJnOiAoMjMsIDI4KWBcIl1dXG4gICAgMzEoW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqcHJvZHVjdCoqXG4gICAgICAqOC4xNC0yMCogKCoqaWQ6IDMxKiosIDM2KylgXCJdKVxuICAgIDMyKFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKmkqKlxuICAgICAgKjguMjQqICgqKmlkOiAzMioqLCAzNispYFwiXSlcbiAgICAzM1tbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM0MjsqKlxuICAgICAgKjguMTQtMjQqICgqKmlkOiAzMyoqLCAzNispXG4gICAgYXJnOiAoMzEsIDMyKWBcIl1dXG4gICAgMzBbXCJgKiM5MTtSU3ltYm9sIzkzOyogKipwcm9kdWN0KipcbiAgICAgICo4LjMtOSogKCoqaWQ6IDMwKiosIDM2KywgdjogMzMpYFwiXVxuICAgIDM0W1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzYwOyM0NTsqKlxuICAgICAgKjguMy0yNCogKCoqaWQ6IDM0KiosIDM2KylcbiAgICBhcmc6ICgzMCwgMzMpYFwiXV1cbiAgICAzNVtbXCJgKiM5MTtSRXhwcmVzc2lvbkxpc3QjOTM7KiBiYXNlIzU4OyM1ODsqKiMxMjM7KipcbiAgICAgICo2LjIwKiAoKippZDogMzUqKiwgMzYrKVxuICAgIGFyZzogKDI5LCAzNClgXCJdXVxuICAgIDM2W1tcImAqIzkxO1JGb3JMb29wIzkzOyogYmFzZSM1ODsjNTg7Kipmb3IqKlxuICAgICAgKjYuMS05LjEqICgqKmlkOiAzNioqKVxuICAgIGFyZzogKDEyLCAyMCwgMzUpYFwiXV1cbiAgICBidWlsdC1pbjpmb3JbXCJgQnVpbHQtSW46XG5mb3JgXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46Zm9yIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMzh7e1wiYCojOTE7UlN0cmluZyM5MzsqICoqIzM0O1N1bSM1ODsjMzQ7KipcbiAgICAgICoxMS41LTEwKiAoKippZDogMzgqKilgXCJ9fVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDM4XG4gICAgNDAoW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqc3VtKipcbiAgICAgICoxMS4xMy0xNSogKCoqaWQ6IDQwKiopYFwiXSlcbiAgICBidWlsdC1pbjpzdW1bXCJgQnVpbHQtSW46XG5zdW1gXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46c3VtIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgNDJ7e1wiYCojOTE7UlN0cmluZyM5MzsqICoqIzM0O1xuIzM0OyoqXG4gICAgICAqMTEuMTgtMjEqICgqKmlkOiA0MioqKWBcIn19XG4gICAlJSBObyBlZGdlcyBmb3VuZCBmb3IgNDJcbiAgICA0NFtbXCJgKiM5MTtSRnVuY3Rpb25DYWxsIzkzOyogYmFzZSM1ODsjNTg7KipjYXQqKlxuICAgICAgKjExLjEtMjIqICgqKmlkOiA0NCoqKVxuICAgIGFyZzogKDM4LCA0MCwgNDIpYFwiXV1cbiAgICBidWlsdC1pbjpjYXRbXCJgQnVpbHQtSW46XG5jYXRgXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46Y2F0IHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgNDZ7e1wiYCojOTE7UlN0cmluZyM5MzsqICoqIzM0O1Byb2R1Y3QjNTg7IzM0OyoqXG4gICAgICAqMTIuNS0xNCogKCoqaWQ6IDQ2KiopYFwifX1cbiAgICUlIE5vIGVkZ2VzIGZvdW5kIGZvciA0NlxuICAgIDQ4KFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKnByb2R1Y3QqKlxuICAgICAgKjEyLjE3LTIzKiAoKippZDogNDgqKilgXCJdKVxuICAgIDUwe3tcImAqIzkxO1JTdHJpbmcjOTM7KiAqKiMzNDtcbiMzNDsqKlxuICAgICAgKjEyLjI2LTI5KiAoKippZDogNTAqKilgXCJ9fVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDUwXG4gICAgNTJbW1wiYCojOTE7UkZ1bmN0aW9uQ2FsbCM5MzsqIGJhc2UjNTg7IzU4OyoqY2F0KipcbiAgICAgICoxMi4xLTMwKiAoKippZDogNTIqKilcbiAgICBhcmc6ICg0NiwgNDgsIDUwKWBcIl1dXG4gICAgMCAtLT58XCJkZWZpbmVkLWJ5XCJ8IDFcbiAgICAwIC0tPnxcImRlZmluZWQtYnlcInwgMlxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ1wifCAxXG4gICAgMiAtLT58XCJyZXR1cm5zLCBhcmdcInwgMFxuICAgIDIgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpfLVxuICAgIGxpbmtTdHlsZSA0IHN0cm9rZTpncmF5O1xuICAgIDMgLS0+fFwiZGVmaW5lZC1ieVwifCA0XG4gICAgMyAtLT58XCJkZWZpbmVkLWJ5XCJ8IDVcbiAgICA1IC0tPnxcInJlYWRzLCBhcmdcInwgNFxuICAgIDUgLS0+fFwicmV0dXJucywgYXJnXCJ8IDNcbiAgICA1IC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46Xy1cbiAgICBsaW5rU3R5bGUgOSBzdHJva2U6Z3JheTtcbiAgICA2IC0tPnxcImRlZmluZWQtYnlcInwgN1xuICAgIDYgLS0+fFwiZGVmaW5lZC1ieVwifCA4XG4gICAgOCAtLT58XCJyZWFkcywgYXJnXCJ8IDdcbiAgICA4IC0tPnxcInJldHVybnMsIGFyZ1wifCA2XG4gICAgOCAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl8tXG4gICAgbGlua1N0eWxlIDE0IHN0cm9rZTpncmF5O1xuICAgIDkgLS0+fFwiZGVmaW5lZC1ieVwifCAxMFxuICAgIDkgLS0+fFwiZGVmaW5lZC1ieVwifCAxMVxuICAgIDExIC0tPnxcInJlYWRzLCBhcmdcInwgMTBcbiAgICAxMSAtLT58XCJyZXR1cm5zLCBhcmdcInwgOVxuICAgIDExIC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46Xy1cbiAgICBsaW5rU3R5bGUgMTkgc3Ryb2tlOmdyYXk7XG4gICAgMTIgLS0+fFwiZGVmaW5lZC1ieVwifCAyMFxuICAgIDE2IC0tPnxcInJlYWRzXCJ8IDlcbiAgICAxOCAtLT58XCJyZWFkcywgYXJnXCJ8IDE2XG4gICAgMTggLS0+fFwicmVhZHMsIGFyZ1wifCAxN1xuICAgIDE4IC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46LVxuICAgIGxpbmtTdHlsZSAyNCBzdHJva2U6Z3JheTtcbiAgICAxOSAtLT58XCJyZXR1cm5zLCBhcmdcInwgMThcbiAgICAyMCAtLT58XCJyZWFkcywgYXJnXCJ8IDEzXG4gICAgMjAgLS0+fFwicmVhZHMsIGFyZ1wifCAxOVxuICAgIDIwIC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46OlxuICAgIGxpbmtTdHlsZSAyOCBzdHJva2U6Z3JheTtcbiAgICAyNCAtLT58XCJyZWFkc1wifCAwXG4gICAgMjQgLS0+fFwicmVhZHNcInwgMjNcbiAgICAyNCAtLT58XCJDRC1UcnVlXCJ8IDM2XG4gICAgbGlua1N0eWxlIDMxIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMjUgLS0+fFwicmVhZHNcInwgMTJcbiAgICAyNSAtLT58XCJDRC1UcnVlXCJ8IDM2XG4gICAgbGlua1N0eWxlIDMzIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMjYgLS0+fFwicmVhZHMsIGFyZ1wifCAyNFxuICAgIDI2IC0tPnxcInJlYWRzLCBhcmdcInwgMjVcbiAgICAyNiAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl9cbiAgICBsaW5rU3R5bGUgMzYgc3Ryb2tlOmdyYXk7XG4gICAgMjYgLS0+fFwiQ0QtVHJ1ZVwifCAzNlxuICAgIGxpbmtTdHlsZSAzNyBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDI3IC0tPnxcInJlYWRzXCJ8IDZcbiAgICAyNyAtLT58XCJDRC1UcnVlXCJ8IDM2XG4gICAgbGlua1N0eWxlIDM5IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMjggLS0+fFwicmVhZHMsIGFyZ1wifCAyNlxuICAgIDI4IC0tPnxcInJlYWRzLCBhcmdcInwgMjdcbiAgICAyOCAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl9cbiAgICBsaW5rU3R5bGUgNDIgc3Ryb2tlOmdyYXk7XG4gICAgMjggLS0+fFwiQ0QtVHJ1ZVwifCAzNlxuICAgIGxpbmtTdHlsZSA0MyBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDIzIC0tPnxcImRlZmluZWQtYnlcInwgMjhcbiAgICAyMyAtLT58XCJkZWZpbmVkLWJ5XCJ8IDI5XG4gICAgMjMgLS0+fFwiQ0QtVHJ1ZVwifCAzNlxuICAgIGxpbmtTdHlsZSA0NiBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDI5IC0tPnxcInJlYWRzLCBhcmdcInwgMjhcbiAgICAyOSAtLT58XCJyZXR1cm5zLCBhcmdcInwgMjNcbiAgICAyOSAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl8tXG4gICAgbGlua1N0eWxlIDQ5IHN0cm9rZTpncmF5O1xuICAgIDI5IC0tPnxcIkNELVRydWVcInwgMzZcbiAgICBsaW5rU3R5bGUgNTAgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAzMSAtLT58XCJyZWFkc1wifCAzXG4gICAgMzEgLS0+fFwicmVhZHNcInwgMzBcbiAgICAzMSAtLT58XCJDRC1UcnVlXCJ8IDM2XG4gICAgbGlua1N0eWxlIDUzIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMzIgLS0+fFwicmVhZHNcInwgMTJcbiAgICAzMiAtLT58XCJDRC1UcnVlXCJ8IDM2XG4gICAgbGlua1N0eWxlIDU1IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMzMgLS0+fFwicmVhZHMsIGFyZ1wifCAzMVxuICAgIDMzIC0tPnxcInJlYWRzLCBhcmdcInwgMzJcbiAgICAzMyAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl9cbiAgICBsaW5rU3R5bGUgNTggc3Ryb2tlOmdyYXk7XG4gICAgMzMgLS0+fFwiQ0QtVHJ1ZVwifCAzNlxuICAgIGxpbmtTdHlsZSA1OSBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDMwIC0tPnxcImRlZmluZWQtYnlcInwgMzNcbiAgICAzMCAtLT58XCJkZWZpbmVkLWJ5XCJ8IDM0XG4gICAgMzAgLS0+fFwiQ0QtVHJ1ZVwifCAzNlxuICAgIGxpbmtTdHlsZSA2MiBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDM0IC0tPnxcInJlYWRzLCBhcmdcInwgMzNcbiAgICAzNCAtLT58XCJyZXR1cm5zLCBhcmdcInwgMzBcbiAgICAzNCAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl8tXG4gICAgbGlua1N0eWxlIDY1IHN0cm9rZTpncmF5O1xuICAgIDM0IC0tPnxcIkNELVRydWVcInwgMzZcbiAgICBsaW5rU3R5bGUgNjYgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAzNSAtLT58XCJhcmdcInwgMjlcbiAgICAzNSAtLT58XCJyZXR1cm5zLCBhcmdcInwgMzRcbiAgICAzNSAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl9cbiAgICBsaW5rU3R5bGUgNjkgc3Ryb2tlOmdyYXk7XG4gICAgMzUgLS0+fFwiQ0QtVHJ1ZVwifCAzNlxuICAgIGxpbmtTdHlsZSA3MCBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDM2IC0tPnxcImFyZ1wifCAxMlxuICAgIDM2IC0tPnxcInJlYWRzLCBhcmdcInwgMjBcbiAgICAzNiAtLT58XCJhcmcsIG5vbi1zdGFuZGFyZC1ldmFsdWF0aW9uXCJ8IDM1XG4gICAgMzYgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpmb3JcbiAgICBsaW5rU3R5bGUgNzQgc3Ryb2tlOmdyYXk7XG4gICAgNDAgLS0+fFwicmVhZHNcInwgMFxuICAgIDQwIC0tPnxcInJlYWRzXCJ8IDIzXG4gICAgNDAgLS4tPnxcInJlYWRzXCJ8IGJ1aWx0LWluOnN1bVxuICAgIGxpbmtTdHlsZSA3NyBzdHJva2U6Z3JheTtcbiAgICA0NCAtLT58XCJyZWFkcywgYXJnXCJ8IDM4XG4gICAgNDQgLS0+fFwicmVhZHMsIGFyZ1wifCA0MFxuICAgIDQ0IC0tPnxcInJlYWRzLCBhcmdcInwgNDJcbiAgICA0NCAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOmNhdFxuICAgIGxpbmtTdHlsZSA4MSBzdHJva2U6Z3JheTtcbiAgICA0OCAtLT58XCJyZWFkc1wifCAzXG4gICAgNDggLS0+fFwicmVhZHNcInwgMzBcbiAgICA1MiAtLT58XCJyZWFkcywgYXJnXCJ8IDQ2XG4gICAgNTIgLS0+fFwicmVhZHMsIGFyZ1wifCA0OFxuICAgIDUyIC0tPnxcInJlYWRzLCBhcmdcInwgNTBcbiAgICA1MiAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOmNhdFxuICAgIGxpbmtTdHlsZSA4NyBzdHJva2U6Z3JheTsiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=
+    https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMXt7XCJgKiM5MTtSTnVtYmVyIzkzOyogKiowKipcbiAgICAgICoxLjgqICgqKmlkOiAxKiopYFwifX1cbiAgICAwW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqc3VtKipcbiAgICAgICoxLjEtMyogKCoqaWQ6IDAqKiwgdjogMSlgXCJdXG4gICAgMltbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM2MDsjNDU7KipcbiAgICAgICoxLjEtOCogKCoqaWQ6IDIqKilcbiAgICBhcmc6ICgwLCAxKWBcIl1dXG4gICAgYnVpbHQtaW46Xy1bXCJgQnVpbHQtSW46XG4jNjA7IzQ1O2BcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpfLSBzdHJva2U6Z3JheSxmaWxsOmdyYXksc3Ryb2tlLXdpZHRoOjJweCxvcGFjaXR5Oi44O1xuICAgIDR7e1wiYCojOTE7Uk51bWJlciM5MzsqICoqMSoqXG4gICAgICAqMi4xMiogKCoqaWQ6IDQqKilgXCJ9fVxuICAgIDNbXCJgKiM5MTtSU3ltYm9sIzkzOyogKipwcm9kdWN0KipcbiAgICAgICoyLjEtNyogKCoqaWQ6IDMqKiwgdjogNClgXCJdXG4gICAgNVtbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM2MDsjNDU7KipcbiAgICAgICoyLjEtMTIqICgqKmlkOiA1KiopXG4gICAgYXJnOiAoMywgNClgXCJdXVxuICAgIDd7e1wiYCojOTE7Uk51bWJlciM5MzsqICoqNyoqXG4gICAgICAqMy42KiAoKippZDogNyoqKWBcIn19XG4gICAgNltcImAqIzkxO1JTeW1ib2wjOTM7KiAqKncqKlxuICAgICAgKjMuMSogKCoqaWQ6IDYqKiwgdjogNylgXCJdXG4gICAgOFtbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM2MDsjNDU7KipcbiAgICAgICozLjEtNiogKCoqaWQ6IDgqKilcbiAgICBhcmc6ICg2LCA3KWBcIl1dXG4gICAgMTB7e1wiYCojOTE7Uk51bWJlciM5MzsqICoqMTAqKlxuICAgICAgKjQuNi03KiAoKippZDogMTAqKilgXCJ9fVxuICAgIDlbXCJgKiM5MTtSU3ltYm9sIzkzOyogKipOKipcbiAgICAgICo0LjEqICgqKmlkOiA5KiosIHY6IDEwKWBcIl1cbiAgICAxMVtbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM2MDsjNDU7KipcbiAgICAgICo0LjEtNyogKCoqaWQ6IDExKiopXG4gICAgYXJnOiAoOSwgMTApYFwiXV1cbiAgICAxMltcImAqIzkxO1JTeW1ib2wjOTM7KiAqKmkqKlxuICAgICAgKjYuNiogKCoqaWQ6IDEyKiosIHY6IDIwKWBcIl1cbiAgICAxM3t7XCJgKiM5MTtSTnVtYmVyIzkzOyogKioxKipcbiAgICAgICo2LjExKiAoKippZDogMTMqKilgXCJ9fVxuICAgIDE2KFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKk4qKlxuICAgICAgKjYuMTQqICgqKmlkOiAxNioqKWBcIl0pXG4gICAgMTd7e1wiYCojOTE7Uk51bWJlciM5MzsqICoqMSoqXG4gICAgICAqNi4xNiogKCoqaWQ6IDE3KiopYFwifX1cbiAgICAxOFtbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM0NTsqKlxuICAgICAgKjYuMTQtMTYqICgqKmlkOiAxOCoqKVxuICAgIGFyZzogKDE2LCAxNylgXCJdXVxuICAgIGJ1aWx0LWluOi1bXCJgQnVpbHQtSW46XG4jNDU7YFwiXVxuICAgIHN0eWxlIGJ1aWx0LWluOi0gc3Ryb2tlOmdyYXksZmlsbDpncmF5LHN0cm9rZS13aWR0aDoycHgsb3BhY2l0eTouODtcbiAgICAxOVtbXCJgKiM5MTtSRXhwcmVzc2lvbkxpc3QjOTM7KiBiYXNlIzU4OyM1ODsqKigqKlxuICAgICAgKjYuMTMqICgqKmlkOiAxOSoqKVxuICAgIGFyZzogKDE4KWBcIl1dXG4gICAgMjBbW1wiYCojOTE7UkJpbmFyeU9wIzkzOyogYmFzZSM1ODsjNTg7KiojNTg7KipcbiAgICAgICo2LjExLTE3KiAoKippZDogMjAqKilcbiAgICBhcmc6ICgxMywgMTkpYFwiXV1cbiAgICBidWlsdC1pbjo6W1wiYEJ1aWx0LUluOlxuIzU4O2BcIl1cbiAgICBzdHlsZSBidWlsdC1pbjo6IHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMjQoW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqc3VtKipcbiAgICAgICo3LjEwLTEyKiAoKippZDogMjQqKiwgMzYrKWBcIl0pXG4gICAgMjUoW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqaSoqXG4gICAgICAqNy4xNiogKCoqaWQ6IDI1KiosIDM2KylgXCJdKVxuICAgIDI2W1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzQzOyoqXG4gICAgICAqNy4xMC0xNiogKCoqaWQ6IDI2KiosIDM2KylcbiAgICBhcmc6ICgyNCwgMjUpYFwiXV1cbiAgICBidWlsdC1pbjpfW1wiYEJ1aWx0LUluOlxuIzQzO2BcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpfIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMjcoW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqdyoqXG4gICAgICAqNy4yMCogKCoqaWQ6IDI3KiosIDM2KylgXCJdKVxuICAgIDI4W1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzQzOyoqXG4gICAgICAqNy4xMC0yMCogKCoqaWQ6IDI4KiosIDM2KylcbiAgICBhcmc6ICgyNiwgMjcpYFwiXV1cbiAgICAyM1tcImAqIzkxO1JTeW1ib2wjOTM7KiAqKnN1bSoqXG4gICAgICAqNy4zLTUqICgqKmlkOiAyMyoqLCAzNissIHY6IDI4KWBcIl1cbiAgICAyOVtbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM2MDsjNDU7KipcbiAgICAgICo3LjMtMjAqICgqKmlkOiAyOSoqLCAzNispXG4gICAgYXJnOiAoMjMsIDI4KWBcIl1dXG4gICAgMzEoW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqcHJvZHVjdCoqXG4gICAgICAqOC4xNC0yMCogKCoqaWQ6IDMxKiosIDM2KylgXCJdKVxuICAgIDMyKFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKmkqKlxuICAgICAgKjguMjQqICgqKmlkOiAzMioqLCAzNispYFwiXSlcbiAgICAzM1tbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM0MjsqKlxuICAgICAgKjguMTQtMjQqICgqKmlkOiAzMyoqLCAzNispXG4gICAgYXJnOiAoMzEsIDMyKWBcIl1dXG4gICAgMzBbXCJgKiM5MTtSU3ltYm9sIzkzOyogKipwcm9kdWN0KipcbiAgICAgICo4LjMtOSogKCoqaWQ6IDMwKiosIDM2KywgdjogMzMpYFwiXVxuICAgIDM0W1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzYwOyM0NTsqKlxuICAgICAgKjguMy0yNCogKCoqaWQ6IDM0KiosIDM2KylcbiAgICBhcmc6ICgzMCwgMzMpYFwiXV1cbiAgICAzNVtbXCJgKiM5MTtSRXhwcmVzc2lvbkxpc3QjOTM7KiBiYXNlIzU4OyM1ODsqKiMxMjM7KipcbiAgICAgICo2LjIwKiAoKippZDogMzUqKiwgMzYrKVxuICAgIGFyZzogKDI5LCAzNClgXCJdXVxuICAgIDM2W1tcImAqIzkxO1JGb3JMb29wIzkzOyogYmFzZSM1ODsjNTg7Kipmb3IqKlxuICAgICAgKjYuMS05LjEqICgqKmlkOiAzNioqKVxuICAgIGFyZzogKDEyLCAyMCwgMzUpYFwiXV1cbiAgICBidWlsdC1pbjpmb3JbXCJgQnVpbHQtSW46XG5mb3JgXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46Zm9yIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMzh7e1wiYCojOTE7UlN0cmluZyM5MzsqICoqIzM0O1N1bSM1ODsjMzQ7KipcbiAgICAgICoxMS41LTEwKiAoKippZDogMzgqKilgXCJ9fVxuICAgIDQwKFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKnN1bSoqXG4gICAgICAqMTEuMTMtMTUqICgqKmlkOiA0MCoqKWBcIl0pXG4gICAgYnVpbHQtaW46c3VtW1wiYEJ1aWx0LUluOlxuc3VtYFwiXVxuICAgIHN0eWxlIGJ1aWx0LWluOnN1bSBzdHJva2U6Z3JheSxmaWxsOmdyYXksc3Ryb2tlLXdpZHRoOjJweCxvcGFjaXR5Oi44O1xuICAgIDQye3tcImAqIzkxO1JTdHJpbmcjOTM7KiAqKiMzNDtcbiMzNDsqKlxuICAgICAgKjExLjE4LTIxKiAoKippZDogNDIqKilgXCJ9fVxuICAgIDQ0W1tcImAqIzkxO1JGdW5jdGlvbkNhbGwjOTM7KiBiYXNlIzU4OyM1ODsqKmNhdCoqXG4gICAgICAqMTEuMS0yMiogKCoqaWQ6IDQ0KiopXG4gICAgYXJnOiAoMzgsIDQwLCA0MilgXCJdXVxuICAgIGJ1aWx0LWluOmNhdFtcImBCdWlsdC1JbjpcbmNhdGBcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpjYXQgc3Ryb2tlOmdyYXksZmlsbDpncmF5LHN0cm9rZS13aWR0aDoycHgsb3BhY2l0eTouODtcbiAgICA0Nnt7XCJgKiM5MTtSU3RyaW5nIzkzOyogKiojMzQ7UHJvZHVjdCM1ODsjMzQ7KipcbiAgICAgICoxMi41LTE0KiAoKippZDogNDYqKilgXCJ9fVxuICAgIDQ4KFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKnByb2R1Y3QqKlxuICAgICAgKjEyLjE3LTIzKiAoKippZDogNDgqKilgXCJdKVxuICAgIDUwe3tcImAqIzkxO1JTdHJpbmcjOTM7KiAqKiMzNDtcbiMzNDsqKlxuICAgICAgKjEyLjI2LTI5KiAoKippZDogNTAqKilgXCJ9fVxuICAgIDUyW1tcImAqIzkxO1JGdW5jdGlvbkNhbGwjOTM7KiBiYXNlIzU4OyM1ODsqKmNhdCoqXG4gICAgICAqMTIuMS0zMCogKCoqaWQ6IDUyKiopXG4gICAgYXJnOiAoNDYsIDQ4LCA1MClgXCJdXVxuICAgIDEgLS4tPnxcImZsb3dcInwgMFxuICAgIGxpbmtTdHlsZSAwIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMCAtLT58XCJkZWZpbmVkLWJ5LCBmbG93XCJ8IDJcbiAgICAwIC0tPnxcImRlZmluZWQtYnlcInwgMVxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ1wifCAxXG4gICAgMiAtLT58XCJyZXR1cm5zLCBhcmdcInwgMFxuICAgIDIgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpfLVxuICAgIGxpbmtTdHlsZSA1IHN0cm9rZTpncmF5O1xuICAgIDIgLS4tPnxcImZsb3dcInwgNFxuICAgIGxpbmtTdHlsZSA2IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgNCAtLi0+fFwiZmxvd1wifCAzXG4gICAgbGlua1N0eWxlIDcgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAzIC0tPnxcImRlZmluZWQtYnksIGZsb3dcInwgNVxuICAgIDMgLS0+fFwiZGVmaW5lZC1ieVwifCA0XG4gICAgNSAtLT58XCJyZWFkcywgYXJnXCJ8IDRcbiAgICA1IC0tPnxcInJldHVybnMsIGFyZ1wifCAzXG4gICAgNSAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl8tXG4gICAgbGlua1N0eWxlIDEyIHN0cm9rZTpncmF5O1xuICAgIDUgLS4tPnxcImZsb3dcInwgN1xuICAgIGxpbmtTdHlsZSAxMyBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDcgLS4tPnxcImZsb3dcInwgNlxuICAgIGxpbmtTdHlsZSAxNCBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDYgLS0+fFwiZGVmaW5lZC1ieSwgZmxvd1wifCA4XG4gICAgNiAtLT58XCJkZWZpbmVkLWJ5XCJ8IDdcbiAgICA4IC0tPnxcInJlYWRzLCBhcmdcInwgN1xuICAgIDggLS0+fFwicmV0dXJucywgYXJnXCJ8IDZcbiAgICA4IC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46Xy1cbiAgICBsaW5rU3R5bGUgMTkgc3Ryb2tlOmdyYXk7XG4gICAgOCAtLi0+fFwiZmxvd1wifCAxMFxuICAgIGxpbmtTdHlsZSAyMCBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDEwIC0uLT58XCJmbG93XCJ8IDlcbiAgICBsaW5rU3R5bGUgMjEgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICA5IC0tPnxcImRlZmluZWQtYnksIGZsb3dcInwgMTFcbiAgICA5IC0tPnxcImRlZmluZWQtYnlcInwgMTBcbiAgICAxMSAtLT58XCJyZWFkcywgYXJnXCJ8IDEwXG4gICAgMTEgLS0+fFwicmV0dXJucywgYXJnXCJ8IDlcbiAgICAxMSAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl8tXG4gICAgbGlua1N0eWxlIDI2IHN0cm9rZTpncmF5O1xuICAgIDExIC0uLT58XCJmbG93XCJ8IDEzXG4gICAgbGlua1N0eWxlIDI3IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMTIgLS0+fFwiZGVmaW5lZC1ieVwifCAyMFxuICAgIDEyIC0uLT58XCJicmFuY2ggKHdoZW46IHRydWUpXCJ8IDI0XG4gICAgbGlua1N0eWxlIDI5IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMTIgLS4tPnxcImJyYW5jaCAod2hlbjogZmFsc2UpXCJ8IDM2XG4gICAgbGlua1N0eWxlIDMwIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMTMgLS4tPnxcImZsb3dcInwgMTZcbiAgICBsaW5rU3R5bGUgMzEgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAxNiAtLT58XCJyZWFkc1wifCA5XG4gICAgMTYgLS4tPnxcImZsb3dcInwgMTdcbiAgICBsaW5rU3R5bGUgMzMgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAxNyAtLi0+fFwiZmxvd1wifCAxOFxuICAgIGxpbmtTdHlsZSAzNCBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDE4IC0tPnxcInJlYWRzLCBhcmdcInwgMTZcbiAgICAxOCAtLT58XCJyZWFkcywgYXJnXCJ8IDE3XG4gICAgMTggLS4tPnxcImZsb3dcInwgMTlcbiAgICBsaW5rU3R5bGUgMzcgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAxOCAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOi1cbiAgICBsaW5rU3R5bGUgMzggc3Ryb2tlOmdyYXk7XG4gICAgMTkgLS0+fFwicmV0dXJucywgYXJnXCJ8IDE4XG4gICAgMTkgLS4tPnxcImZsb3dcInwgMjBcbiAgICBsaW5rU3R5bGUgNDAgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAyMCAtLT58XCJyZWFkcywgYXJnXCJ8IDEzXG4gICAgMjAgLS0+fFwicmVhZHMsIGFyZ1wifCAxOVxuICAgIDIwIC0uLT58XCJmbG93XCJ8IDEyXG4gICAgbGlua1N0eWxlIDQzIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMjAgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjo6XG4gICAgbGlua1N0eWxlIDQ0IHN0cm9rZTpncmF5O1xuICAgIDI0IC0tPnxcInJlYWRzXCJ8IDBcbiAgICAyNCAtLi0+fFwiZmxvd1wifCAyNVxuICAgIGxpbmtTdHlsZSA0NiBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDI0IC0tPnxcInJlYWRzXCJ8IDIzXG4gICAgMjUgLS0+fFwicmVhZHNcInwgMTJcbiAgICAyNSAtLi0+fFwiZmxvd1wifCAyNlxuICAgIGxpbmtTdHlsZSA0OSBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDI2IC0tPnxcInJlYWRzLCBhcmdcInwgMjRcbiAgICAyNiAtLT58XCJyZWFkcywgYXJnXCJ8IDI1XG4gICAgMjYgLS4tPnxcImZsb3dcInwgMjdcbiAgICBsaW5rU3R5bGUgNTIgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAyNiAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl9cbiAgICBsaW5rU3R5bGUgNTMgc3Ryb2tlOmdyYXk7XG4gICAgMjcgLS0+fFwicmVhZHNcInwgNlxuICAgIDI3IC0uLT58XCJmbG93XCJ8IDI4XG4gICAgbGlua1N0eWxlIDU1IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMjggLS0+fFwicmVhZHMsIGFyZ1wifCAyNlxuICAgIDI4IC0tPnxcInJlYWRzLCBhcmdcInwgMjdcbiAgICAyOCAtLi0+fFwiZmxvd1wifCAyM1xuICAgIGxpbmtTdHlsZSA1OCBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDI4IC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSA1OSBzdHJva2U6Z3JheTtcbiAgICAyMyAtLT58XCJkZWZpbmVkLWJ5LCBmbG93XCJ8IDI5XG4gICAgMjMgLS0+fFwiZGVmaW5lZC1ieVwifCAyOFxuICAgIDI5IC0tPnxcInJlYWRzLCBhcmdcInwgMjhcbiAgICAyOSAtLT58XCJyZXR1cm5zLCBhcmdcInwgMjNcbiAgICAyOSAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl8tXG4gICAgbGlua1N0eWxlIDY0IHN0cm9rZTpncmF5O1xuICAgIDI5IC0uLT58XCJmbG93XCJ8IDMxXG4gICAgbGlua1N0eWxlIDY1IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMzEgLS0+fFwicmVhZHNcInwgM1xuICAgIDMxIC0uLT58XCJmbG93XCJ8IDMyXG4gICAgbGlua1N0eWxlIDY3IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMzEgLS0+fFwicmVhZHNcInwgMzBcbiAgICAzMiAtLT58XCJyZWFkc1wifCAxMlxuICAgIDMyIC0uLT58XCJmbG93XCJ8IDMzXG4gICAgbGlua1N0eWxlIDcwIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMzMgLS0+fFwicmVhZHMsIGFyZ1wifCAzMVxuICAgIDMzIC0tPnxcInJlYWRzLCBhcmdcInwgMzJcbiAgICAzMyAtLi0+fFwiZmxvd1wifCAzMFxuICAgIGxpbmtTdHlsZSA3MyBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDMzIC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSA3NCBzdHJva2U6Z3JheTtcbiAgICAzMCAtLT58XCJkZWZpbmVkLWJ5LCBmbG93XCJ8IDM0XG4gICAgMzAgLS0+fFwiZGVmaW5lZC1ieVwifCAzM1xuICAgIDM0IC0tPnxcInJlYWRzLCBhcmdcInwgMzNcbiAgICAzNCAtLT58XCJyZXR1cm5zLCBhcmdcInwgMzBcbiAgICAzNCAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl8tXG4gICAgbGlua1N0eWxlIDc5IHN0cm9rZTpncmF5O1xuICAgIDM0IC0uLT58XCJmbG93XCJ8IDM1XG4gICAgbGlua1N0eWxlIDgwIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMzUgLS0+fFwiYXJnXCJ8IDI5XG4gICAgMzUgLS0+fFwicmV0dXJucywgYXJnXCJ8IDM0XG4gICAgMzUgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpfXG4gICAgbGlua1N0eWxlIDgzIHN0cm9rZTpncmF5O1xuICAgIDM1IC0uLT58XCJmbG93XCJ8IDEyXG4gICAgbGlua1N0eWxlIDg0IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMzYgLS0+fFwiYXJnXCJ8IDEyXG4gICAgMzYgLS0+fFwicmVhZHMsIGFyZ1wifCAyMFxuICAgIDM2IC0tPnxcImFyZywgbm9uLXN0YW5kYXJkLWV2YWx1YXRpb25cInwgMzVcbiAgICAzNiAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOmZvclxuICAgIGxpbmtTdHlsZSA4OCBzdHJva2U6Z3JheTtcbiAgICAzNiAtLi0+fFwiZmxvd1wifCAzOFxuICAgIGxpbmtTdHlsZSA4OSBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDM4IC0uLT58XCJmbG93XCJ8IDQwXG4gICAgbGlua1N0eWxlIDkwIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgNDAgLS0+fFwicmVhZHNcInwgMFxuICAgIDQwIC0tPnxcInJlYWRzXCJ8IDIzXG4gICAgNDAgLS4tPnxcInJlYWRzXCJ8IGJ1aWx0LWluOnN1bVxuICAgIGxpbmtTdHlsZSA5MyBzdHJva2U6Z3JheTtcbiAgICA0MCAtLi0+fFwiZmxvd1wifCA0MlxuICAgIGxpbmtTdHlsZSA5NCBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDQyIC0uLT58XCJmbG93XCJ8IDQ0XG4gICAgbGlua1N0eWxlIDk1IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgNDQgLS0+fFwicmVhZHMsIGFyZ1wifCAzOFxuICAgIDQ0IC0tPnxcInJlYWRzLCBhcmdcInwgNDBcbiAgICA0NCAtLT58XCJyZWFkcywgYXJnXCJ8IDQyXG4gICAgNDQgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpjYXRcbiAgICBsaW5rU3R5bGUgOTkgc3Ryb2tlOmdyYXk7XG4gICAgNDQgLS4tPnxcImZsb3dcInwgNDZcbiAgICBsaW5rU3R5bGUgMTAwIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgNDYgLS4tPnxcImZsb3dcInwgNDhcbiAgICBsaW5rU3R5bGUgMTAxIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgNDggLS0+fFwicmVhZHNcInwgM1xuICAgIDQ4IC0tPnxcInJlYWRzXCJ8IDMwXG4gICAgNDggLS4tPnxcImZsb3dcInwgNTBcbiAgICBsaW5rU3R5bGUgMTA0IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgNTAgLS4tPnxcImZsb3dcInwgNTJcbiAgICBsaW5rU3R5bGUgMTA1IHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgNTIgLS0+fFwicmVhZHMsIGFyZ1wifCA0NlxuICAgIDUyIC0tPnxcInJlYWRzLCBhcmdcInwgNDhcbiAgICA1MiAtLT58XCJyZWFkcywgYXJnXCJ8IDUwXG4gICAgNTIgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpjYXRcbiAgICBsaW5rU3R5bGUgMTA5IHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==
     ```
     
     
@@ -443,7 +469,6 @@ It offers a wide variety of features, for example:
     flowchart LR
         1{{"`*#91;RNumber#93;* **0**
           *1.8* (**id: 1**)`"}}
-       %% No edges found for 1
         0["`*#91;RSymbol#93;* **sum**
           *1.1-3* (**id: 0**, v: 1)`"]
         2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -454,7 +479,6 @@ It offers a wide variety of features, for example:
         style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
         4{{"`*#91;RNumber#93;* **1**
           *2.12* (**id: 4**)`"}}
-       %% No edges found for 4
         3["`*#91;RSymbol#93;* **product**
           *2.1-7* (**id: 3**, v: 4)`"]
         5[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -462,7 +486,6 @@ It offers a wide variety of features, for example:
         arg: (3, 4)`"]]
         7{{"`*#91;RNumber#93;* **7**
           *3.6* (**id: 7**)`"}}
-       %% No edges found for 7
         6["`*#91;RSymbol#93;* **w**
           *3.1* (**id: 6**, v: 7)`"]
         8[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -470,7 +493,6 @@ It offers a wide variety of features, for example:
         arg: (6, 7)`"]]
         10{{"`*#91;RNumber#93;* **10**
           *4.6-7* (**id: 10**)`"}}
-       %% No edges found for 10
         9["`*#91;RSymbol#93;* **N**
           *4.1* (**id: 9**, v: 10)`"]
         11[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -480,12 +502,10 @@ It offers a wide variety of features, for example:
           *6.6* (**id: 12**, v: 20)`"]
         13{{"`*#91;RNumber#93;* **1**
           *6.11* (**id: 13**)`"}}
-       %% No edges found for 13
         16(["`*#91;RSymbol#93;* **N**
           *6.14* (**id: 16**)`"])
         17{{"`*#91;RNumber#93;* **1**
           *6.16* (**id: 17**)`"}}
-       %% No edges found for 17
         18[["`*#91;RBinaryOp#93;* base#58;#58;**#45;**
           *6.14-16* (**id: 18**)
         arg: (16, 17)`"]]
@@ -544,7 +564,6 @@ It offers a wide variety of features, for example:
         style built-in:for stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
         38{{"`*#91;RString#93;* **#34;Sum#58;#34;**
           *11.5-10* (**id: 38**)`"}}
-       %% No edges found for 38
         40(["`*#91;RSymbol#93;* **sum**
           *11.13-15* (**id: 40**)`"])
         built-in:sum["`Built-In:
@@ -553,7 +572,6 @@ It offers a wide variety of features, for example:
         42{{"`*#91;RString#93;* **#34;
     #34;**
           *11.18-21* (**id: 42**)`"}}
-       %% No edges found for 42
         44[["`*#91;RFunctionCall#93;* base#58;#58;**cat**
           *11.1-22* (**id: 44**)
         arg: (38, 40, 42)`"]]
@@ -562,133 +580,175 @@ It offers a wide variety of features, for example:
         style built-in:cat stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
         46{{"`*#91;RString#93;* **#34;Product#58;#34;**
           *12.5-14* (**id: 46**)`"}}
-       %% No edges found for 46
         48(["`*#91;RSymbol#93;* **product**
           *12.17-23* (**id: 48**)`"])
         50{{"`*#91;RString#93;* **#34;
     #34;**
           *12.26-29* (**id: 50**)`"}}
-       %% No edges found for 50
         52[["`*#91;RFunctionCall#93;* base#58;#58;**cat**
           *12.1-30* (**id: 52**)
         arg: (46, 48, 50)`"]]
+        1 -.->|"flow"| 0
+        linkStyle 0 stroke:gray,color:gray;
+        0 -->|"defined-by, flow"| 2
         0 -->|"defined-by"| 1
-        0 -->|"defined-by"| 2
         2 -->|"reads, arg"| 1
         2 -->|"returns, arg"| 0
         2 -.->|"reads, calls"| built-in:_-
-        linkStyle 4 stroke:gray;
+        linkStyle 5 stroke:gray;
+        2 -.->|"flow"| 4
+        linkStyle 6 stroke:gray,color:gray;
+        4 -.->|"flow"| 3
+        linkStyle 7 stroke:gray,color:gray;
+        3 -->|"defined-by, flow"| 5
         3 -->|"defined-by"| 4
-        3 -->|"defined-by"| 5
         5 -->|"reads, arg"| 4
         5 -->|"returns, arg"| 3
         5 -.->|"reads, calls"| built-in:_-
-        linkStyle 9 stroke:gray;
+        linkStyle 12 stroke:gray;
+        5 -.->|"flow"| 7
+        linkStyle 13 stroke:gray,color:gray;
+        7 -.->|"flow"| 6
+        linkStyle 14 stroke:gray,color:gray;
+        6 -->|"defined-by, flow"| 8
         6 -->|"defined-by"| 7
-        6 -->|"defined-by"| 8
         8 -->|"reads, arg"| 7
         8 -->|"returns, arg"| 6
         8 -.->|"reads, calls"| built-in:_-
-        linkStyle 14 stroke:gray;
+        linkStyle 19 stroke:gray;
+        8 -.->|"flow"| 10
+        linkStyle 20 stroke:gray,color:gray;
+        10 -.->|"flow"| 9
+        linkStyle 21 stroke:gray,color:gray;
+        9 -->|"defined-by, flow"| 11
         9 -->|"defined-by"| 10
-        9 -->|"defined-by"| 11
         11 -->|"reads, arg"| 10
         11 -->|"returns, arg"| 9
         11 -.->|"reads, calls"| built-in:_-
-        linkStyle 19 stroke:gray;
+        linkStyle 26 stroke:gray;
+        11 -.->|"flow"| 13
+        linkStyle 27 stroke:gray,color:gray;
         12 -->|"defined-by"| 20
+        12 -.->|"branch (when: true)"| 24
+        linkStyle 29 stroke:gray,color:gray;
+        12 -.->|"branch (when: false)"| 36
+        linkStyle 30 stroke:gray,color:gray;
+        13 -.->|"flow"| 16
+        linkStyle 31 stroke:gray,color:gray;
         16 -->|"reads"| 9
+        16 -.->|"flow"| 17
+        linkStyle 33 stroke:gray,color:gray;
+        17 -.->|"flow"| 18
+        linkStyle 34 stroke:gray,color:gray;
         18 -->|"reads, arg"| 16
         18 -->|"reads, arg"| 17
+        18 -.->|"flow"| 19
+        linkStyle 37 stroke:gray,color:gray;
         18 -.->|"reads, calls"| built-in:-
-        linkStyle 24 stroke:gray;
+        linkStyle 38 stroke:gray;
         19 -->|"returns, arg"| 18
+        19 -.->|"flow"| 20
+        linkStyle 40 stroke:gray,color:gray;
         20 -->|"reads, arg"| 13
         20 -->|"reads, arg"| 19
+        20 -.->|"flow"| 12
+        linkStyle 43 stroke:gray,color:gray;
         20 -.->|"reads, calls"| built-in::
-        linkStyle 28 stroke:gray;
+        linkStyle 44 stroke:gray;
         24 -->|"reads"| 0
+        24 -.->|"flow"| 25
+        linkStyle 46 stroke:gray,color:gray;
         24 -->|"reads"| 23
-        24 -->|"CD-True"| 36
-        linkStyle 31 stroke:gray,color:gray;
         25 -->|"reads"| 12
-        25 -->|"CD-True"| 36
-        linkStyle 33 stroke:gray,color:gray;
+        25 -.->|"flow"| 26
+        linkStyle 49 stroke:gray,color:gray;
         26 -->|"reads, arg"| 24
         26 -->|"reads, arg"| 25
+        26 -.->|"flow"| 27
+        linkStyle 52 stroke:gray,color:gray;
         26 -.->|"reads, calls"| built-in:_
-        linkStyle 36 stroke:gray;
-        26 -->|"CD-True"| 36
-        linkStyle 37 stroke:gray,color:gray;
+        linkStyle 53 stroke:gray;
         27 -->|"reads"| 6
-        27 -->|"CD-True"| 36
-        linkStyle 39 stroke:gray,color:gray;
+        27 -.->|"flow"| 28
+        linkStyle 55 stroke:gray,color:gray;
         28 -->|"reads, arg"| 26
         28 -->|"reads, arg"| 27
+        28 -.->|"flow"| 23
+        linkStyle 58 stroke:gray,color:gray;
         28 -.->|"reads, calls"| built-in:_
-        linkStyle 42 stroke:gray;
-        28 -->|"CD-True"| 36
-        linkStyle 43 stroke:gray,color:gray;
+        linkStyle 59 stroke:gray;
+        23 -->|"defined-by, flow"| 29
         23 -->|"defined-by"| 28
-        23 -->|"defined-by"| 29
-        23 -->|"CD-True"| 36
-        linkStyle 46 stroke:gray,color:gray;
         29 -->|"reads, arg"| 28
         29 -->|"returns, arg"| 23
         29 -.->|"reads, calls"| built-in:_-
-        linkStyle 49 stroke:gray;
-        29 -->|"CD-True"| 36
-        linkStyle 50 stroke:gray,color:gray;
+        linkStyle 64 stroke:gray;
+        29 -.->|"flow"| 31
+        linkStyle 65 stroke:gray,color:gray;
         31 -->|"reads"| 3
+        31 -.->|"flow"| 32
+        linkStyle 67 stroke:gray,color:gray;
         31 -->|"reads"| 30
-        31 -->|"CD-True"| 36
-        linkStyle 53 stroke:gray,color:gray;
         32 -->|"reads"| 12
-        32 -->|"CD-True"| 36
-        linkStyle 55 stroke:gray,color:gray;
+        32 -.->|"flow"| 33
+        linkStyle 70 stroke:gray,color:gray;
         33 -->|"reads, arg"| 31
         33 -->|"reads, arg"| 32
+        33 -.->|"flow"| 30
+        linkStyle 73 stroke:gray,color:gray;
         33 -.->|"reads, calls"| built-in:_
-        linkStyle 58 stroke:gray;
-        33 -->|"CD-True"| 36
-        linkStyle 59 stroke:gray,color:gray;
+        linkStyle 74 stroke:gray;
+        30 -->|"defined-by, flow"| 34
         30 -->|"defined-by"| 33
-        30 -->|"defined-by"| 34
-        30 -->|"CD-True"| 36
-        linkStyle 62 stroke:gray,color:gray;
         34 -->|"reads, arg"| 33
         34 -->|"returns, arg"| 30
         34 -.->|"reads, calls"| built-in:_-
-        linkStyle 65 stroke:gray;
-        34 -->|"CD-True"| 36
-        linkStyle 66 stroke:gray,color:gray;
+        linkStyle 79 stroke:gray;
+        34 -.->|"flow"| 35
+        linkStyle 80 stroke:gray,color:gray;
         35 -->|"arg"| 29
         35 -->|"returns, arg"| 34
         35 -.->|"reads, calls"| built-in:_
-        linkStyle 69 stroke:gray;
-        35 -->|"CD-True"| 36
-        linkStyle 70 stroke:gray,color:gray;
+        linkStyle 83 stroke:gray;
+        35 -.->|"flow"| 12
+        linkStyle 84 stroke:gray,color:gray;
         36 -->|"arg"| 12
         36 -->|"reads, arg"| 20
         36 -->|"arg, non-standard-evaluation"| 35
         36 -.->|"reads, calls"| built-in:for
-        linkStyle 74 stroke:gray;
+        linkStyle 88 stroke:gray;
+        36 -.->|"flow"| 38
+        linkStyle 89 stroke:gray,color:gray;
+        38 -.->|"flow"| 40
+        linkStyle 90 stroke:gray,color:gray;
         40 -->|"reads"| 0
         40 -->|"reads"| 23
         40 -.->|"reads"| built-in:sum
-        linkStyle 77 stroke:gray;
+        linkStyle 93 stroke:gray;
+        40 -.->|"flow"| 42
+        linkStyle 94 stroke:gray,color:gray;
+        42 -.->|"flow"| 44
+        linkStyle 95 stroke:gray,color:gray;
         44 -->|"reads, arg"| 38
         44 -->|"reads, arg"| 40
         44 -->|"reads, arg"| 42
         44 -.->|"reads, calls"| built-in:cat
-        linkStyle 81 stroke:gray;
+        linkStyle 99 stroke:gray;
+        44 -.->|"flow"| 46
+        linkStyle 100 stroke:gray,color:gray;
+        46 -.->|"flow"| 48
+        linkStyle 101 stroke:gray,color:gray;
         48 -->|"reads"| 3
         48 -->|"reads"| 30
+        48 -.->|"flow"| 50
+        linkStyle 104 stroke:gray,color:gray;
+        50 -.->|"flow"| 52
+        linkStyle 105 stroke:gray,color:gray;
         52 -->|"reads, arg"| 46
         52 -->|"reads, arg"| 48
         52 -->|"reads, arg"| 50
         52 -.->|"reads, calls"| built-in:cat
-        linkStyle 87 stroke:gray;
+        linkStyle 109 stroke:gray;
     ```
     
     	
@@ -704,12 +764,24 @@ It offers a wide variety of features, for example:
     
     </details>
 
+Every ▶&nbsp;_Explore in Browser_ link above opens [flowR's playground](https://flowr-analysis.github.io/flowr/wiki/playground/#c=zDYSwRgTghhCeAUATADsWECUAoLBnAxlMAKYD6ALgPakC2UAHgAQA8AtIwGYCuAdvuSEo949DIyYB6RnXojsWaAHdGKlW0aIo5KADoO0GsXghEjALyMAjAC4AbABpGANyJdi5xvngBmRwA5HAHZHACZHAE5HABYMbHwSKB5VdQ4QYHJiCHglRxdgN0YAPkYQuISeABICImJTdWqSCmoZeHjiRIq8t3lcLho6OFJcbXJcFnZe-pgQXCM2xMdDRI8l4Qba2KxeLlnEJu1gNQm%2B7KhFTtdieUUIEAydfFwneEmB2CGR3EcAIleYWAeT2%2B2FQlHIrXKVUIJEQIMoIB4owh7UqJgwQA),
+which runs the whole analysis locally in your browser, with no setup at all. Once it is open:
+
+| in the playground | what it does |
+| ----------------- | ------------ |
+| hover a name | what flowR knows about it: its value, its shape, its signature, and what the linter said |
+| ctrl-click a name | jump to where it is defined |
+| click a dependency | slice the script for it |
+| alt-click anything (or <kbd>alt</kbd>+<kbd>m</kbd>) | highlight it, so a link points at it; hold <kbd>shift</kbd> to highlight more than one |
+| _Copy link_ | hand the script, the highlights, and the layout to someone else as one url |
+| the _flowR repl_ drawer | every command the [repl](https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl) carries, over the script above |
+
 If you want to use flowR and the features it provides, feel free to check out the:
 
 - [Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr)/[Positron](https://open-vsx.org/extension/code-inspect/vscode-flowr): provides access to flowR directly in VS Code and Positron (or [vscode.dev](https://vscode.dev/))
 - [RStudio Addin](https://github.com/flowr-analysis/rstudio-addin-flowr): integrates flowR into [RStudio](https://posit.co/downloads/)
 - [R package](https://github.com/flowr-analysis/flowr-r-adapter): use flowR in your R scripts
-- [Docker image](https://hub.docker.com/r/eagleoutice/flowr): run flowR in a container, this also includes [flowR's server](https://github.com/flowr-analysis/flowr/wiki/interface#communicating-with-the-server)
+- [Docker image](https://hub.docker.com/r/eagleoutice/flowr): run flowR in a container, this also includes [flowR's server](https://github.com/flowr-analysis/flowr/wiki/Interface#communicating-with-the-server)
 - [NPM package](https://www.npmjs.com/package/@eagleoutice/flowr): include flowR in your TypeScript and JavaScript projects
  
 
@@ -718,8 +790,8 @@ If you are already using flowR and want to give feedback, please consider fillin
  
 ## ⭐ Getting Started
 
-To get started with _flowR_ and its features, please check out the [Overview](https://github.com/flowr-analysis/flowr/wiki/overview) wiki page. 
-The [Setup](https://github.com/flowr-analysis/flowr/wiki/setup) wiki page explains how you can download and setup _flowR_ on your system. 
+To get started with _flowR_ and its features, please check out the [Overview](https://github.com/flowr-analysis/flowr/wiki/Overview) wiki page. 
+The [Setup](https://github.com/flowr-analysis/flowr/wiki/Setup) wiki page explains how you can download and setup _flowR_ on your system. 
 With docker&nbsp;🐳️, the following line should be enough (and drop you directly into the read-eval-print loop):
 
 
@@ -747,7 +819,7 @@ If you want to use the same commands:
 ## 📜 More Information
 
 For more details on how to use _flowR_ please refer to the [wiki pages](https://github.com/flowr-analysis/flowr/wiki),
-as well as the deployed [code documentation](https://flowr-analysis.github.io/flowr/docs).
+as well as the deployed [code documentation](https://flowr-analysis.github.io/flowr/doc/).
 To cite flowR, please check out the publications below. To specifically refer to the source code, 
 please check out flowR's [Zenodo archive](https://zenodo.org/doi/10.5281/zenodo.13319290).
 
@@ -873,7 +945,10 @@ please check out the following publications (if you find that a paper is missing
 
 ## 🚀 Contributing
 
-We welcome every contribution! Please check out the [developer onboarding](https://github.com/flowr-analysis/flowr/wiki/onboarding) section in the wiki for all the information you will need.
+We welcome every contribution! The [developer onboarding](https://github.com/flowr-analysis/flowr/wiki/Onboarding) page has everything you need to get started.
+With **R** and **Node.js** installed, `npm run setup:dev` checks your prerequisites, installs the dependencies, and configures the git hooks.
+The [contributing guidelines](https://github.com/flowr-analysis/flowr/tree/main/.github/CONTRIBUTING.md) explain our commit conventions,
+and [Linting and Testing](https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing) shows how to run the tests.
 
 ### Contributors
 
@@ -892,6 +967,6 @@ and received an unrestricted gift from [Posit](https://posit.co/), the open-sour
 
 ### Generation Notice
 
-Please notice that this file was generated automatically using the file [src/documentation/doc-readme.ts](https://github.com/flowr-analysis/flowr/tree/main//src/documentation/doc-readme.ts) as a source.\
+Please notice that this file was generated automatically using the file [doc-readme.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/doc-readme.ts "src/documentation/doc-readme.ts") as a source.\
 If you want to make changes please edit the source file (the CI will take care of the rest).
 In fact, many files in the [wiki](https://github.com/flowr-analysis/flowr/wiki) are generated, so make sure to check for the source file if you want to make changes.

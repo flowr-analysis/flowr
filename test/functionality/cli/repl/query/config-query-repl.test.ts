@@ -35,7 +35,8 @@ describe('Config Query REPL Parser', () => {
 	}
 
 	test('a `**` glob inspects matching keys at any depth', () => {
-		assert.deepStrictEqual(inspectsOf('**.enabled'), [['solver', 'sigdb', 'enabled']]);
+		assert.deepStrictEqual(inspectsOf('**.enabled'),
+			[['solver', 'sigdb', 'enabled'], ['solver', 'sigdb', 'installedLibrary', 'enabled']]);
 	});
 
 	test('a `*` glob stays within one segment, `**` spans them', () => {
@@ -143,7 +144,7 @@ describe('Config Query REPL Completions', () => {
 		label:               'fuzzy-completes a key with no prefix match',
 		startingNewArg:      false,
 		splitLine:           ['+sg'],
-		expectedCompletions: ['+specializeConfig', '+incrementalParsing'],
+		expectedCompletions: ['+specializeConfig'],
 	});
 	assertReplCompletions({ completer,
 		label:               'adds a dot after a full root node',
@@ -246,7 +247,8 @@ describe('Config Query REPL completion', () => {
 	}
 
 	test('a glob completes to the keys it matches, which share no prefix with it', () => {
-		assert.deepStrictEqual(completionsFor(':query @config **.enab'), ['solver.sigdb.enabled']);
+		assert.deepStrictEqual(completionsFor(':query @config **.enab'),
+			['solver.sigdb.enabled', 'solver.sigdb.installedLibrary.enabled']);
 	});
 
 	test('a `*` glob completes to direct children only', () => {

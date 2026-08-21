@@ -3,15 +3,19 @@ import { codeBlock } from './doc-util/doc-code';
 import {
 	FlowrCodecovRef,
 	FlowrGithubBaseRef,
-	FlowrSiteBaseRef,
 	FlowrWikiBaseRef,
 	getFilePathMd,
+	linkFlowRSourceFile,
 	RemoteFlowrFilePathBaseRef
 } from './doc-util/doc-files';
 import { block } from './doc-util/doc-structure';
 import { getCliLongOptionOf } from './doc-util/doc-cli-option';
+import { DfEdge } from '../dataflow/graph/edge';
+import { Resolve } from '../dataflow/environments/resolve-helper';
+import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
+
 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing
@@ -24,7 +28,7 @@ export class WikiLintingAndTesting extends DocMaker<'wiki/Linting and Testing.md
 	protected text({ ctx }: DocMakerArgs): string {
 		return `
 For the latest code coverage information, see [codecov.io](${FlowrCodecovRef}), 
-for the latest benchmark results, see the [benchmark results](${FlowrSiteBaseRef}/wiki/stats/benchmark) wiki page.
+for the latest benchmark results, see the ${ctx.linkPage('flowr:benchmarks', 'benchmark results')} wiki page.
 
 - [🏨 Testing Suites](#testing-suites)
   - [🧪 Functionality Tests](#functionality-tests)
@@ -40,6 +44,11 @@ for the latest benchmark results, see the [benchmark results](${FlowrSiteBaseRef
 - [🪈 CI Pipeline](#ci-pipeline)
 - [🧹 Linting](#linting)
   - [Oh no, the linter fails](#oh-no-the-linter-fails)
+  - [flowR-Specific Rules](#flowr-specific-rules)
+    - [Pointing at a Helper with \`@useInstead\`](#pointing-at-a-helper-with-useinstead)
+    - [Replacement Patterns](#replacement-patterns)
+    - [Suppressing a Rule](#suppressing-a-rule)
+    - [A Part of unicorn](#a-part-of-unicorn)
   - [License Checker](#license-checker)
 - [🐛 Debugging](#debugging)
   - [VS Code](#vs-code-1)
@@ -78,7 +87,7 @@ ${codeBlock('shell', 'npm run test -- --no-watch')}
 
 To run all tests, including a coverage report and label summary, run:
 
-${codeBlock('shell', 'npm run test-full')}
+${codeBlock('shell', 'npm run test:full')}
 
 However, depending on your local version of&nbsp;R, your network connection, and other factors (each test may have a set of criteria), 
 some tests may be skipped automatically as they do not apply to your current system setup (or cannot be tested with the current prerequisites). 
@@ -88,7 +97,7 @@ It is up to the [ci](#ci-pipeline) to run the tests on different systems to ensu
 <a id='test-structure'></a>
 #### 🏗️ Test Structure
 
-All functionality tests are to be located under [test/functionality](${RemoteFlowrFilePathBaseRef}/test/functionality).
+All functionality tests are to be located under [test/functionality](${RemoteFlowrFilePathBaseRef}test/functionality).
 
 This folder contains three special and important elements:
 
@@ -100,8 +109,12 @@ ${block({
 	type:    'WARNING',
 	content: `
 We name all test files using the \`.test.ts\` suffix and try to run them in parallel.
-Whenever this is impossible (e.g., when using ${ctx.link('withShell')}), please use _\`describe.sequential\`_
-to disable parallel execution for the respective test (otherwise, such tests are flaky).
+Whenever this is impossible (e.g., when using ${ctx.link('withShell')}), pass \`{ concurrent: false }\` to the
+\`describe\` to disable parallel execution for the respective test (otherwise, such tests are flaky):
+
+${codeBlock('typescript', 'describe(\'my suite\', { concurrent: false }, withShell(shell => { /* ... */ }));')}
+
+Vitest deprecated the \`describe.sequential\` form in favour of that option, so please do not reintroduce it.
 `
 })}
 
@@ -127,7 +140,7 @@ and it is probably best to have a look at existing tests in that area to get an 
 Various helper functions are available to ease in writing tests with common behaviors, like testing for dataflow, slicing or query results. 
 These can be found in [the \`_helper\` subdirectory](${RemoteFlowrFilePathBaseRef}test/functionality/_helper).
 
-For example, an [existing test](${RemoteFlowrFilePathBaseRef}test/functionality/dataflow/processing-of-elements/atomic/dataflow-atomic.test.ts) that tests the dataflow graph of a simple variable looks like this:
+For example, an [existing test](${RemoteFlowrFilePathBaseRef}test/functionality/dataflow/main/atomic/dataflow-atomic.test.ts) that tests the dataflow graph of a simple variable looks like this:
 ${codeBlock('typescript', `
 assertDataflow(label('simple variable', ['name-normal']), shell,
 	'x', emptyGraph().use('0', 'x')
@@ -184,9 +197,9 @@ Although we measure wall time in the CI (which is subject to rather large variat
 Furthermore, the respective scripts can be used locally as well.
 To run them, issue:
 
-${codeBlock('shell', 'npm run performance-test')}
+${codeBlock('shell', 'npm run test:performance')}
 
-See [test/performance](${RemoteFlowrFilePathBaseRef}test/performance) for more information on the suites, how to run them, and their results. If you are interested in the results of the benchmarks, see [here](${FlowrSiteBaseRef}/wiki/stats/benchmark).
+See ${linkFlowRSourceFile('test/performance')} for more information on the suites, how to run them, and their results. If you are interested in the results of the benchmarks, see ${ctx.linkPage('flowr:benchmarks', 'here')}.
 
 <a id='testing-within-your-ide'></a>
 ### 📝 Testing Within Your IDE
@@ -214,18 +227,18 @@ Otherwise, the tests will not be instantiated.
 <a id='ci-pipeline'></a>
 ## 🪈 CI Pipeline
 
-We have several workflows defined in [.github/workflows](${RemoteFlowrFilePathBaseRef}/.github/workflows/).
+We have several workflows defined in ${linkFlowRSourceFile('.github/workflows')}.
 We explain the most important workflows in the following:
 
-- [qa.yaml](${RemoteFlowrFilePathBaseRef}/.github/workflows/qa.yaml) is the main workflow that will run different steps depending on several factors. It is responsible for:
+- ${linkFlowRSourceFile('.github/workflows/qa.yaml')} is the main workflow that will run different steps depending on several factors. It is responsible for:
   - running the [functionality](#functionality-tests) and [performance tests](#performance-tests)
-    - uploading the results to the [benchmark page](${FlowrSiteBaseRef}/wiki/stats/benchmark) for releases
+    - uploading the results to the ${ctx.linkPage('flowr:benchmarks', 'benchmark page')} for releases
     - running the [functionality tests](#functionality-tests) on different operating systems (Windows, macOS, Linux) and with different versions of R
     - reporting code coverage
   - running the [linter](#linting) and reporting its results
-  - deploying the documentation to [GitHub Pages](${FlowrSiteBaseRef}/doc/)
-- [release.yaml](${RemoteFlowrFilePathBaseRef}/.github/workflows/release.yaml) is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to ${ctx.linkPage('flowr:docker', 'docker hub')}.
-- [broken-links-and-wiki.yaml](${RemoteFlowrFilePathBaseRef}/.github/workflows/broken-links-and-wiki.yaml) repeatedly tests that all links are not dead!
+  - deploying the documentation to ${ctx.linkPage('flowr:docs', 'GitHub Pages')}
+- ${linkFlowRSourceFile('.github/workflows/release.yaml')} is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to ${ctx.linkPage('flowr:docker', 'docker hub')}.
+- ${linkFlowRSourceFile('.github/workflows/broken-links-and-wiki.yaml')} repeatedly tests that all links are not dead!
  
 <a id='linting'></a>
 ## 🧹 Linting
@@ -235,11 +248,11 @@ The main one:
 
 ${codeBlock('shell', 'npm run lint')}
 
-And a weaker version of the first (allowing for *todo* comments) which is run automatically in the [pre-push githook](${RemoteFlowrFilePathBaseRef}/.githooks/pre-push) as explained in the [CONTRIBUTING.md](${RemoteFlowrFilePathBaseRef}/.github/CONTRIBUTING.md):
+And a weaker version of the first (allowing for *todo* comments) which is run automatically in the [pre-push githook](${RemoteFlowrFilePathBaseRef}.githooks/pre-push) as explained in the [CONTRIBUTING.md](${RemoteFlowrFilePathBaseRef}.github/CONTRIBUTING.md):
 
 ${codeBlock('shell', 'npm run lint-local')}
 
-Besides checking coding style (as defined in the [package.json](${RemoteFlowrFilePathBaseRef}/package.json)), the *full* linter runs the [license checker](#license-checker).
+Besides checking coding style (as defined in the [package.json](${RemoteFlowrFilePathBaseRef}package.json)), the *full* linter runs the [license checker](#license-checker).
 
 In case you are unaware,
 eslint can automatically fix several linting problems[](https://eslint.org/docs/latest/use/command-line-interface#fix-problems).
@@ -255,11 +268,72 @@ it is usually best if you (when necessary) read the respective description and f
 Rules in this project cover general JavaScript issues [using regular ESLint](https://eslint.org/docs/latest/rules), TypeScript-specific issues [using typescript-eslint](https://typescript-eslint.io/rules/), and code formatting [with ESLint Stylistic](https://eslint.style/packages/default#rules).
 
 However, in case you think that the linter is wrong, please do not hesitate to open a [new issue](${FlowrGithubBaseRef}/flowr/issues/new/choose).
- 
+
+<a id='flowr-specific-rules'></a>
+### 🧭 flowR-Specific Rules
+
+flowR groups its functions in helper objects (${ctx.link(DfEdge)}, ${ctx.link(Resolve)}, ${ctx.link(NodeId)}, and
+friends) so that there is one obvious entry point per topic. Two rules of the
+[\`flowr\` plugin](${FlowrGithubBaseRef}/flowr-lint) keep the code on those entry points, both part of \`npm run lint\`.
+Each is fixed on the spot where the replacement is already imported, and offered as an editor suggestion otherwise.
+
+<a id='pointing-at-a-helper-with-useinstead'></a>
+#### Pointing at a Helper with \`@useInstead\`
+
+A function that only exists to be wired into a helper object names its replacement, and every reference outside its own
+file is then reported:
+
+${codeBlock('ts', `/**
+ * Every definition the identifier may refer to.
+ * @useInstead {@link Resolve.byName}
+ */
+export function resolveByNameAnyType(/* ... */) { /* ... */ }`)}
+
+Never reported are the references that make the replacement exist: the wiring in an object literal
+(${ctx.linkO(Resolve, 'byName')} pointing at \`resolveByNameAnyType\`), re-exports, and files declaring the helper itself.
+
+<a id='replacement-patterns'></a>
+#### Replacement Patterns
+
+Some replacements are a shape of code rather than a renamed function, such as \`edge.types === EdgeType.Reads\`, which
+reads like "has this type" (${ctx.linkO(DfEdge, 'includesType')}) but holds only if it is the *only* type
+(${ctx.linkO(DfEdge, 'isOnlyType')}). These are matched with [esquery](https://github.com/estools/esquery) selectors,
+the language \`no-restricted-syntax\` uses.
+
+The [flowr-lint README](${FlowrGithubBaseRef}/flowr-lint#flowrreplacement-pattern) documents the fields of a pattern,
+and \`npx eslint\` names the id of whichever one fires.
+To propose a new pattern or a change to any of them, open an issue with the replacement pattern template in
+[that repository](${FlowrGithubBaseRef}/flowr-lint/issues/new/choose).
+
+<a id='suppressing-a-rule'></a>
+#### Suppressing a Rule
+
+A tag on a declaration covers everything below it, a header comment above the imports covers the whole file.
+
+| | silences |
+| :-- | :-- |
+| \`// eslint-disable-next-line\` | the next line, as usual |
+| \`@lintIgnore <ids>\` | the named rules or pattern ids, all of them when given none |
+
+Put the reason in the prose above the tag, a hot path that has to keep the raw form is as good a reason as any.
+
+<a id='a-part-of-unicorn'></a>
+#### A Part of unicorn
+
+The configuration also enables a hand-picked part of [unicorn](https://github.com/sindresorhus/eslint-plugin-unicorn):
+the rules naming a shape with a clearer equivalent (\`prefer-includes\`, \`prefer-string-slice\`, and friends), not its
+opinions on naming or style. Three are left out on purpose:
+
+- \`prefer-array-flat\` rewrites \`.flatMap(f => f)\` on an iterator, which has no \`.flat()\`.
+- \`prefer-structured-clone\` does not know that a \`JSON\` round-trip is sometimes the point.
+- \`prefer-node-protocol\` is inverted, \`no-restricted-imports\` forbids the \`node:\` prefix instead: flowR is bundled for
+  the browser as well (the web build of the ${ctx.linkPage('flowr:vscode', 'VS Code extension')}), where the core modules
+  are swapped for polyfills by their bare name, and a \`node:\` specifier matches none of those bundler keys.
+
 <a id='license-checker'></a>
 ### 🪪 License Checker
 
-*flowR* is licensed under the [GPLv3 License](${FlowrGithubBaseRef}/flowr/blob/main/LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [\`license-compat\`](${RemoteFlowrFilePathBaseRef}/package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](${FlowrGithubBaseRef}/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).
+*flowR* is licensed under the [GPLv3 License](${FlowrGithubBaseRef}/flowr/blob/main/LICENSE) requiring us to only rely on [compatible licenses](https://www.gnu.org/licenses/license-list.en.html). For now, this list is hardcoded as part of the npm [\`license-compat\`](${RemoteFlowrFilePathBaseRef}package.json) script so it can very well be that a new dependency you add causes the checker to fail &mdash; *even though it is compatible*. In that case, please either open a [new issue](${FlowrGithubBaseRef}/flowr/issues/new/choose) or directly add the license to the list (including a reference to why it is compatible).
 
 <a id='debugging'></a>
 ## 🐛 Debugging

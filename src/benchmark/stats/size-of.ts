@@ -1,6 +1,7 @@
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { type DataflowGraphVertexInfo, VertexType } from '../../dataflow/graph/vertex';
+import type { ControlFlowGraph } from '../../control-flow/control-flow-graph';
+import { FunctionDefinitionVertex, type DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import {
 	type BrandedIdentifier,
 	type IdentifierDefinition,
@@ -36,7 +37,10 @@ function killBuiltInEnv(env: IEnvironment | undefined): IEnvironment {
 	};
 }
 
-/** Returns the size of the given df graph in bytes (without sharing in-memory) */
+/**
+ * The memory the dataflow graph occupies, including the control flow it carries
+ * (see {@link getSizeOfCfGraph} for what a separate control flow graph costs on top of that).
+ */
 export function getSizeOfDfGraph(df: DataflowGraph): number {
 	const verts = [];
 	for(const [, v] of df.vertices(true)) {
@@ -52,7 +56,7 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
 			} as DataflowGraphVertexInfo;
 		}
 
-		if(vertex.tag === VertexType.FunctionDefinition) {
+		if(FunctionDefinitionVertex.is(vertex)) {
 			vertex = {
 				...vertex,
 				subflow: {
@@ -75,6 +79,15 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
 	}
 
 	return safeSizeOf([...verts, ...df.edges()]);
+}
+
+/**
+ * The memory the control flow graph occupies on top of the dataflow graph it is a view on.
+ * Asking for it projects the view, so this is the cost of holding the control flow separately rather than
+ * walking it on the dataflow graph.
+ */
+export function getSizeOfCfGraph(cfg: ControlFlowGraph): number {
+	return safeSizeOf([...cfg.vertices(true).values(), ...cfg.edges()]);
 }
 
 /**

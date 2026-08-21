@@ -21,6 +21,7 @@ export const RExpressionList = {
 	name: 'RExpressionList',
 	/**
 	 * Type guard for {@link RExpressionList} nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RExpressionList<Info> {
 		return node?.type === RType.ExpressionList;

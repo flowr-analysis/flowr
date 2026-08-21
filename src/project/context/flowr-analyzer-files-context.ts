@@ -4,7 +4,7 @@ import type {
 	RParseRequest,
 	RParseRequestFromFile } from '../../r-bridge/retriever';
 import { isParseRequest } from '../../r-bridge/retriever';
-import { assertUnreachable, guard } from '../../util/assert';
+import { guard } from '../../util/assert';
 import type {
 	FlowrAnalyzerLoadingOrderContext,
 	ReadOnlyFlowrAnalyzerLoadingOrderContext
@@ -28,7 +28,7 @@ import { classifyProjectKind, resolveClassifyOptions, type ContentReader } from 
 import { FlowrAnalyzer } from '../flowr-analyzer';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
-import { InvalidationEventType } from '../cache/flowr-cache';
+import { resetOnFullInvalidation } from '../cache/flowr-cache';
 
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
@@ -156,6 +156,25 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * folder for a single-file request. Useful to report back which inputs did not resolve to anything.
 	 */
 	getRequestedRoots(): readonly string[];
+
+	/**
+	 * The total number of files known to this context (every file added via {@link addFile}, both disk-backed and inline).
+	 *
+	 * This is unrelated to {@link getFilesByRole}: A file counted here may have no role, one role, or several
+	 * (summing `getFilesByRole(role).length` over all roles can both over-count (multi-role files) and under-count (roleless files) relative to this method).
+	 *
+	 * Files that were merely considered during dataflow analysis (see {@link consideredFilesList}) but never actually added to the context are not included.
+	 * @returns The number of files currently held by this context.
+	 */
+	getFileCount(): number;
+}
+
+/**
+ * Whether the file system says the path is there. Where there is none, as in a browser, the stub standing
+ * in for `fs` answers every question with itself, so only a real `true` counts as an answer.
+ */
+function onDisk(path: string): boolean {
+	return fs.existsSync(path) === true;
 }
 
 /**
@@ -228,19 +247,9 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		return root === undefined ? filePath : relativeTo(root, filePath);
 	}
 
+	/* only the content of a known file changes the file set, so revisit once we add dedicated FileAdded / FileRemoved events */
 	receive(event: InvalidationEvent): void {
-		const type = event.type;
-		switch(type) {
-			case InvalidationEventType.Full:
-				this.reset();
-				break;
-			case InvalidationEventType.SingleFileInvalidate:
-				// only the content of a known file changed, so the file set stays valid -> nothing to do.
-				// revisit once we add dedicated FileAdded / FileRemoved events.
-				break;
-			default:
-				assertUnreachable(type);
-		}
+		resetOnFullInvalidation(this, event);
 	}
 
 	/**
@@ -356,7 +365,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			return;
 		}
 		this.implicitSourceDirs.add(dir);
-		if(!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
+		if(!onDisk(dir) || !fs.statSync(dir).isDirectory()) {
 			return;
 		}
 		const matchers = implicit.map(entry => globMatcher(entry));
@@ -419,7 +428,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	}
 
 	public hasFile(path: string): boolean {
-		return this.hasCached(path) || (this.ctx.config.project.resolveUnknownPathsOnDisk && fs.existsSync(path));
+		return this.hasCached(path) || (this.ctx.config.project.resolveUnknownPathsOnDisk && onDisk(path));
 	}
 
 	public exists(p: string, ignoreCase: boolean): string | undefined {
@@ -446,12 +455,12 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			}
 			if(this.ctx.config.project.resolveUnknownPathsOnDisk) {
 				let files: string[] | undefined;
-				if(fs.existsSync(dir)) {
+				if(onDisk(dir)) {
 					files = fs.readdirSync(dir);
 				} else {
 					// try to find a dir in parent
 					const parentDir = path.dirname(dir);
-					if(fs.existsSync(parentDir)) {
+					if(onDisk(parentDir)) {
 						const parentFiles = fs.readdirSync(parentDir);
 						const foundDir = parentFiles.find(f => f.toLowerCase() === path.basename(dir).toLowerCase());
 						if(foundDir) {
@@ -497,7 +506,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		}
 		if(this.ctx.config.project.resolveUnknownPathsOnDisk) {
 			fileLog.debug(`File ${path} not found in context, trying to load from disk.`);
-			if(fs.existsSync(path)) {
+			if(onDisk(path)) {
 				return this.addFile(new FlowrTextFile(path));
 			}
 		}
@@ -540,5 +549,9 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	public getFileByPath(path: string): FlowrFileProvider | undefined {
 		return this.files.get(path) ?? this.inlineFiles.find(f => f.path() === path);
+	}
+
+	public getFileCount(): number {
+		return this.files.size + this.inlineFiles.length;
 	}
 }

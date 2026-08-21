@@ -8,7 +8,8 @@ set -eu
 
 reset() {
   echo "Cleaning up and return control"
-  rm -r "$flowrtmpdir"
+  # the symlinked node_modules must not be followed when removing the throwaway clone
+  rm -rf "$flowrtmpdir"
   cd "$curdir"
 }
 
@@ -27,7 +28,8 @@ if [ -n "$(git status --porcelain)" ]; then
   echo "Cloning copy..." # cloning obeys gitignore
   git clone . "$flowrtmpdir"
   echo "Keep installed packages..."
-  cp -r node_modules/ "$flowrtmpdir/node_modules"
+  # a symlink keeps the push fast, the clone only needs to run the installed tools
+  ln -s "$(pwd)/node_modules" "$flowrtmpdir/node_modules" 2>/dev/null || cp -r node_modules/ "$flowrtmpdir/node_modules"
   cd "$flowrtmpdir"
 
   git reset --hard

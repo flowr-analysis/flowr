@@ -4,7 +4,6 @@ import type { AnyAbstractDomain } from '../../../src/abstract-interpretation/dom
 import type { AnyStateDomain } from '../../../src/abstract-interpretation/domains/state-domain-like';
 import { FlowrConfig } from '../../../src/config';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
-import { CfgKind } from '../../../src/project/cfg-kind';
 import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { RSymbol } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -77,7 +76,7 @@ export async function runInference<Inference extends AbstractInterpretationVisit
 
 	const ast = await analyzer.normalize();
 	const dfg = (await analyzer.dataflow()).graph;
-	const cfg = await analyzer.controlflow(undefined, CfgKind.NoFunctionDefs);
+	const cfg = await analyzer.controlflow(undefined);
 	const ctx = analyzer.inspectContext();
 
 	const visitor = inference({ controlFlow: cfg, dfg: dfg, normalizedAst: ast, ctx: ctx });
@@ -251,9 +250,10 @@ export async function validateInferredValues<Domain extends AnyAbstractDomain>(
 	for(const { criterion, inferred } of testEntries) {
 		const marker = createMarker(criterion);
 
-		for(const line of output.filter(line => line.includes(marker))) {
-			guard(isNotUndefined(line), `Cannot parse output of instrumented code for ${criterion}`);
+		const marked = output.filter(line => line.includes(marker));
+		guard(marked.length > 0, `Cannot parse output of instrumented code for ${criterion}`);
 
+		for(const line of marked) {
 			const expected = parseOutput(line);
 			assertInferredValue(criterion, inferred, expected, options?.matchingType ?? DomainMatchingType.Overapproximation);
 		}

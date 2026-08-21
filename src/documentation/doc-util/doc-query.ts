@@ -32,6 +32,8 @@ export interface ShowQueryOptions {
 	readonly ctx?:            GeneralDocContext;
 	/** additional in-memory files registered before the request, e.g. the targets of `source(...)` calls */
 	readonly files?:          readonly { readonly name: string, readonly content: string }[];
+	/** hook to configure the analyzer, e.g. to pin a version so the generated output does not follow the generating machine */
+	readonly prepare?:        (builder: FlowrAnalyzerBuilder) => void;
 }
 
 /**
@@ -43,10 +45,12 @@ export async function showQuery<
 >(
 	parser: KnownParser, code: string,
 	queries: Queries<Base, VirtualArguments>,
-	{ showCode, collapseResult, collapseQuery, shorthand, ctx, files }: ShowQueryOptions = {}
+	{ showCode, collapseResult, collapseQuery, shorthand, ctx, files, prepare }: ShowQueryOptions = {}
 ): Promise<string> {
 	const now = performance.now();
-	const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+	const builder = new FlowrAnalyzerBuilder().setParser(parser);
+	prepare?.(builder);
+	const analyzer = await builder.build();
 	for(const file of files ?? []) {
 		analyzer.addFile(new FlowrInlineTextFile(file.name, file.content));
 	}

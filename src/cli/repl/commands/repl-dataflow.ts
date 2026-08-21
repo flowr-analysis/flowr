@@ -2,6 +2,7 @@ import type { ReplCodeCommand, ReplOutput } from './repl-main';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 import { handleString } from '../core';
+import { ReplClipboard } from './repl-clipboard';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { dfgToAscii } from '../../../util/simple-df/dfg-ascii';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
@@ -17,35 +18,95 @@ function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInfo
 		{ color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
 }
 
-function formatReference(output: ReplOutput, ref: IdentifierReference, idMap: AstIdMap): string {
-	const id = output.formatter.format(`$${ref.nodeId}`, { color: Colors.Cyan, effect: ColorEffect.Foreground });
+interface ReferenceRow {
+	readonly id:     string;
+	readonly name:   string;
+	readonly type:   string;
+	readonly detail: string;
+}
+
+type ReferenceLine = ReferenceRow | string;
+
+interface ReferenceSection {
+	readonly title: string;
+	readonly lines: readonly ReferenceLine[];
+}
+
+function referenceRow(ref: IdentifierReference, idMap: AstIdMap): ReferenceRow {
 	const name = ref.name === undefined ? '<anonymous>' : Identifier.toString(ref.name);
 	const node = idMap.get(ref.nodeId);
 	const sl = SourceLocation.fromNode(node);
 	const loc = sl ? ` [${SourceLocation.format(sl)}]` : '';
-	const detail = node ? ` "${node.lexeme ?? name}"${loc}` : '';
-	return `${id} ${name} (${ReferenceType[ref.type]})${detail}`;
+	return {
+		id:     `$${ref.nodeId}`,
+		name,
+		type:   ReferenceType[ref.type],
+		detail: node ? `"${node.lexeme ?? name}"${loc}` : ''
+	};
 }
 
-/** Formats a single {@link KillReference}, which unlike a plain reference may kill the whole (or an unknown part of the) scope */
-function formatKill(output: ReplOutput, kill: KillReference, idMap: AstIdMap): string {
+function killRow(kill: KillReference, idMap: AstIdMap): ReferenceLine {
 	switch(kill.kind) {
-		case 'named':   return formatReference(output, kill.reference, idMap);
+		case 'named':   return referenceRow(kill.reference, idMap);
 		case 'all':     return 'kills entire scope';
 		case 'unknown': return 'kills unknown, not statically resolvable references';
 	}
 }
 
-/**
- * Prints the reference sets, listing each non-empty one and collapsing all empty ones into a single trailing
- * line, as a screen full of `(0):` headers says nothing.
- */
-function printReferenceSections(output: ReplOutput, sections: readonly { title: string, lines: readonly string[] }[]): void {
+function printCounts(output: ReplOutput, rows: readonly { label: string, value: number, indent?: boolean }[]): void {
+	const labels = rows.map(r => `${r.indent ? ' - ' : ''}${r.label}:`);
+	const labelWidth = Math.max(...labels.map(l => l.length));
+	const valueWidth = Math.max(...rows.map(r => String(r.value).length));
+	rows.forEach((r, i) => {
+		const value = output.formatter.format(String(r.value).padStart(valueWidth), { color: Colors.Cyan, effect: ColorEffect.Foreground });
+		output.stdout(`${labels[i].padEnd(labelWidth)} ${value}`);
+	});
+}
+
+const MaxDetailedReferences = 4;
+const MaxCompactReferences = 12;
+const MaxIdsPerName = 3;
+
+/** Lists each non-empty reference set and collapses all empty ones into a single trailing line */
+function printReferenceSections(output: ReplOutput, sections: readonly ReferenceSection[]): void {
 	const count = (n: number) => output.formatter.format(String(n), { color: Colors.Cyan, effect: ColorEffect.Foreground });
+	const rows = sections.flatMap(s => s.lines.slice(0, MaxDetailedReferences)).filter(l => typeof l !== 'string');
+	const width = (get: (row: ReferenceRow) => string) => Math.max(0, ...rows.map(r => get(r).length));
+	const idWidth = width(r => r.id);
+	const nameWidth = width(r => r.name);
+	const typeWidth = width(r => r.type);
+	const line = (l: ReferenceLine) => {
+		if(typeof l === 'string') {
+			return l;
+		}
+		const id = output.formatter.format(l.id.padStart(idWidth), { color: Colors.Cyan, effect: ColorEffect.Foreground });
+		const type = output.formatter.format(l.type.padEnd(typeWidth), { color: Colors.Magenta, effect: ColorEffect.Foreground });
+		return `${id}  ${l.name.padEnd(nameWidth)}  ${type}  ${l.detail}`.trimEnd();
+	};
+	const compact = (lines: readonly ReferenceLine[]) => {
+		const byName = new Map<string, string[]>();
+		for(const l of lines) {
+			const name = typeof l === 'string' ? l : l.name;
+			const ids = byName.get(name) ?? [];
+			if(typeof l !== 'string') {
+				ids.push(l.id);
+			}
+			byName.set(name, ids);
+		}
+		return Array.from(byName, ([name, ids]) => ids.length === 0 ? name :
+			`${name} (${ids.slice(0, MaxIdsPerName).join(', ')}${ids.length > MaxIdsPerName ? ', ...' : ''})`);
+	};
 	for(const { title, lines } of sections.filter(s => s.lines.length > 0)) {
 		output.stdout(`${title} (${count(lines.length)}):`);
-		for(const line of lines) {
-			output.stdout(' - ' + line);
+		for(const l of lines.slice(0, MaxDetailedReferences)) {
+			output.stdout(' - ' + line(l));
+		}
+		const rest = lines.slice(MaxDetailedReferences);
+		if(rest.length > 0) {
+			const shown = rest.slice(0, MaxCompactReferences);
+			const hidden = rest.length - shown.length;
+			output.stdout(' - ' + output.formatter.format(compact(shown).join(', ') + (hidden > 0 ? `, ... ${hidden} more` : ''),
+				{ color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic }));
 		}
 	}
 	const empty = sections.filter(s => s.lines.length === 0);
@@ -64,15 +125,7 @@ export const dataflowCommand: ReplCodeCommand = {
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
 		const mermaid = Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false, qualifyBaseR: isSigDbEnabled(analyzer.flowrConfig) }).string;
-		output.stdout(mermaid);
-		if(output.allowClipboard !== false) {
-			try {
-				const clipboard = await import('clipboardy');
-				clipboard.default.writeSync(mermaid);
-				output.stdout(formatInfo(output, 'mermaid code', result));
-			} catch{ /* do nothing this is a service thing */
-			}
-		}
+		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid code', result));
 	}
 };
 
@@ -86,14 +139,7 @@ export const dataflowStarCommand: ReplCodeCommand = {
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
 		const mermaid = Dataflow.visualize.mermaid.url(result.graph, false, undefined, false, isSigDbEnabled(analyzer.flowrConfig));
-		output.stdout(mermaid);
-		if(output.allowClipboard !== false) {
-			try {
-				const clipboard = await import('clipboardy');
-				clipboard.default.writeSync(mermaid);
-				output.stdout(formatInfo(output, 'mermaid url', result));
-			} catch{ /* do nothing this is a service thing */ }
-		}
+		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid url', result));
 	}
 };
 
@@ -123,26 +169,24 @@ export const dataflowSilentCommand: ReplCodeCommand = {
 		const numOfVertices = Array.from(result.graph.vertices(true)).length;
 		output.stdout(
 			output.formatter.format(`Dataflow calculated in ${result['.meta'].timing}ms.`,
-				{ color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic }) + '\n' +
-            'Edges:    ' + output.formatter.format(`${String(numOfEdges).padStart(12)}`, { color: Colors.Cyan, effect: ColorEffect.Foreground }) + '\n' +
-            // number of vertices and edges
-            'Vertices: ' + output.formatter.format(`${String(numOfVertices).padStart(12)}`, { color: Colors.Cyan, effect: ColorEffect.Foreground })
+				{ color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic })
 		);
-		const longestVertexType = Math.max(...Object.keys(VertexType).map(vt => vt.length));
-		for(const vertType of Object.values(VertexType)) {
-			const vertsOfType = Array.from(result.graph.verticesOfType(vertType));
-			const longVertexName = Object.entries(VertexType).find(([, v]) => v === vertType)?.[0] ?? vertType;
-			output.stdout(
-				` - ${(longVertexName + ':').padEnd(longestVertexType + 1)} ` + output.formatter.format(`${String(vertsOfType.length).padStart(8)}`, { color: Colors.Cyan, effect: ColorEffect.Foreground }).padStart(9, ' ')
-			);
-		}
+		printCounts(output, [
+			{ label: 'Edges', value: numOfEdges },
+			{ label: 'Vertices', value: numOfVertices },
+			...Object.entries(VertexType).map(([name, vertType]) => ({
+				label:  name,
+				value:  Array.from(result.graph.verticesOfType(vertType)).length,
+				indent: true
+			}))
+		]);
 
 		const { idMap } = await analyzer.normalize();
 		printReferenceSections(output, [
-			{ title: 'In', lines: result.in.map(r => formatReference(output, r, idMap)) },
-			{ title: 'Out', lines: result.out.map(r => formatReference(output, r, idMap)) },
-			{ title: 'Unknown References', lines: result.unknownReferences.map(r => formatReference(output, r, idMap)) },
-			{ title: 'Kill', lines: (result.kill ?? []).map(k => formatKill(output, k, idMap)) }
+			{ title: 'In', lines: result.in.map(r => referenceRow(r, idMap)) },
+			{ title: 'Out', lines: result.out.map(r => referenceRow(r, idMap)) },
+			{ title: 'Unknown References', lines: result.unknownReferences.map(r => referenceRow(r, idMap)) },
+			{ title: 'Kill', lines: (result.kill ?? []).map(k => killRow(k, idMap)) }
 		]);
 	}
 };
@@ -158,14 +202,7 @@ export const dataflowSimplifiedCommand: ReplCodeCommand = {
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
 		const mermaid = Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false, simplified: true, qualifyBaseR: isSigDbEnabled(analyzer.flowrConfig) }).string;
-		output.stdout(mermaid);
-		if(output.allowClipboard !== false) {
-			try {
-				const clipboard = await import('clipboardy');
-				clipboard.default.writeSync(mermaid);
-				output.stdout(formatInfo(output, 'mermaid code', result));
-			} catch{ /* do nothing this is a service thing */ }
-		}
+		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid code', result));
 	}
 };
 
@@ -179,13 +216,6 @@ export const dataflowSimpleStarCommand: ReplCodeCommand = {
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
 		const mermaid = Dataflow.visualize.mermaid.url(result.graph, false, undefined, true, isSigDbEnabled(analyzer.flowrConfig));
-		output.stdout(mermaid);
-		if(output.allowClipboard !== false) {
-			try {
-				const clipboard = await import('clipboardy');
-				clipboard.default.writeSync(mermaid);
-				output.stdout(formatInfo(output, 'mermaid url', result));
-			} catch{ /* do nothing this is a service thing */ }
-		}
+		await ReplClipboard.print(output, mermaid, formatInfo(output, 'mermaid url', result));
 	}
 };

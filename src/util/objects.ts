@@ -1,4 +1,5 @@
 import type { DeepPartial, DeepReadonly, DeepRequired } from 'ts-essentials';
+import { guard } from './assert';
 import { jsonReplacer } from './json';
 import { expensiveTrace } from './log';
 import type { ILogObj, Logger } from 'tslog';
@@ -249,4 +250,65 @@ export function looselyCompareObjects(obj: Record<string, unknown>, expected: Re
 
 	expensiveTrace(logger, () => `Object ${JSON.stringify(obj)} matches ${JSON.stringify(expected)}`);
 	return true;
+}
+
+/** Segments that would let a dotted path reach into the prototype chain. */
+const magicPathSegments = new Set(['__proto__', 'prototype', 'constructor']);
+
+/**
+ * Splits a dot-separated path into its segments, turning integral segments into numbers
+ * so that `a.0.b` indexes an array rather than an object with the key `'0'`.
+ */
+function pathSegments(path: string): (string | number)[] {
+	return path.split('.').map(segment => {
+		guard(!magicPathSegments.has(segment), () => `refusing to walk the magic property '${segment}' in path '${path}'`);
+		const asInt = parseInt(segment);
+		return String(asInt) === segment ? asInt : segment;
+	});
+}
+
+/**
+ * Reads the value at the given dot-separated `path` of `obj` (e.g. `solver.sigdb.additionalPaths`),
+ * or `undefined` if any segment along the way is missing.
+ * @see {@link setOnPath} for the counterpart that writes such a path
+ */
+export function getOnPath(obj: unknown, path: string): unknown {
+	let at: unknown = obj;
+	for(const segment of pathSegments(path)) {
+		if(at === null || typeof at !== 'object' || !Object.prototype.hasOwnProperty.call(at, segment)) {
+			return undefined;
+		}
+		at = (at as Record<string | number, unknown>)[segment];
+	}
+	return at;
+}
+
+/**
+ * Writes `value` at the given dot-separated `path` of `obj`, creating the intermediate steps that do not exist yet.
+ * An intermediate is created as an array if the segment indexing it is a number, and as an object otherwise.
+ * @see {@link getOnPath} for the counterpart that reads such a path
+ */
+export function setOnPath(obj: object, path: string, value: unknown): void {
+	const segments = pathSegments(path);
+	let at = obj as Record<string | number, unknown>;
+	for(let i = 0; i < segments.length - 1; i++) {
+		const segment = segments[i];
+		if(at[segment] === undefined) {
+			at[segment] = typeof segments[i + 1] === 'number' ? [] : {};
+		}
+		at = at[segment] as Record<string | number, unknown>;
+	}
+	at[segments[segments.length - 1]] = value;
+}
+
+/**
+ * The members of an enum as name-value pairs.
+ * A numeric enum maps its values back to their names as well, which this leaves out.
+ * @example
+ * ```ts
+ * enumMembers(CfgVertexType) // [['Statement', 1], ['Expression', 2], ['Block', 3]]
+ * ```
+ */
+export function enumMembers<T extends object>(enumObject: T): [name: string, value: T[keyof T]][] {
+	return Object.entries(enumObject).filter(([name]) => Number.isNaN(Number(name))) as [string, T[keyof T]][];
 }

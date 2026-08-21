@@ -19,7 +19,9 @@ describe('Docker version extraction', () => {
 		assert.include(versionOutput, 'R:', `version output should include R version information:\n${versionOutput}`);
 	});
 
-	test('CI bash pipeline extracts version correctly', async() => {
+	/* the pipeline this mirrors is the one the Dockerfile runs, and it is GNU: `grep -oP` is not in BSD grep and
+	 * there is no shell for it on windows, so it is asserted where it actually ships */
+	test.skipIf(process.platform !== 'linux')('CI bash pipeline extracts version correctly', async() => {
 		const bashPipeline = 'npx ts-node --transpile-only src/cli/flowr.ts --version 2>&1 | sed \'s/\\x1b]8;;[^\\x07]*\\x07//g; s/\\x1b\\[[0-9;]*m//g\' | grep -oP \'flowR\\s*:\\s*\\K[^ ]+\' | head -n1';
 		const extractedVersion = await run(bashPipeline);
 

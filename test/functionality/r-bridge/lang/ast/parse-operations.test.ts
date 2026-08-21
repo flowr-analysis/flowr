@@ -9,7 +9,7 @@ import type { RShell } from '../../../../../src/r-bridge/shell';
 import { describe } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
 
-describe.sequential('Parse simple operations', withShell(shell => {
+describe('Parse simple operations', { concurrent: false }, withShell(shell => {
 	describe('unary operations', () => {
 		for(const op of UnaryOperatorPool) {
 			const simpleInput = `${op}42`;

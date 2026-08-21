@@ -17,6 +17,18 @@ export interface NodeToSlice {
 }
 
 /**
+ * How far a traversal got before it was cut short, so a caller can judge a truncated slice instead of
+ * having to drop it: a `frontier` of `0` means the queue drained after all, and a small `frontier` next to
+ * a large `visited` says little is missing.
+ */
+export interface SliceProgress {
+	/** queue entries the traversal expanded */
+	readonly visited:  number;
+	/** entries still queued when it stopped */
+	readonly frontier: number;
+}
+
+/**
  * The result of the slice step
  */
 export interface SliceResult {
@@ -34,4 +46,16 @@ export interface SliceResult {
 	 * The ids of the nodes in the normalized ast that were used as seed ids for slicing. This is a subset of {@link result}.
 	 */
 	readonly slicedFor:         readonly NodeId[]
+	/**
+	 * Set when the {@link GasFeatureKey.Slicer|gas guard} stopped the traversal before the queue drained, so
+	 * {@link result} is what was reached until then and not the complete slice.
+	 */
+	readonly stoppedEarly?:     boolean
+	/** How far the traversal got, set exactly when {@link stoppedEarly} is. */
+	readonly progress?:         SliceProgress
+	/**
+	 * The names the slice reads without defining them, so running it on its own would fail with
+	 * `object 'x' not found`. Empty when the slice is closed under the names it uses.
+	 */
+	readonly freeNames?:        readonly string[]
 }

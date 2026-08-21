@@ -23,6 +23,7 @@ export class FlowrRMarkdownFile extends FlowrFile {
 	/**
 	 * Prefer the static {@link FlowrRMarkdownFile.from} method
 	 * @param file - the file to load as R Markdown
+	 * @param ctx  - the analyzer context the chunks are read with
 	 */
 	constructor(file: FlowrFileProvider<string>, ctx: FlowrAnalyzerContext) {
 		super(file.path(), file.roles ? [...file.roles, FileRole.Source] : [FileRole.Source]);
@@ -291,7 +292,7 @@ const OptionsRegex = /([\w_.-]*)\s*[:=]\s*["']?([^,"']*)/g;
 export function parseCodeBlockOptions(header: string, content: string): CodeBlockOptions {
 	const headerOpts = header.length === 3 // '{r}' => header.length=3 (no options in header)
 		? ''
-		: header.substring(3, header.length - 1).trim();
+		: header.slice(3, -1).trim();
 
 	const cellLines: string[] = [];
 	for(const line of content.split('\n')) {
@@ -299,7 +300,7 @@ export function parseCodeBlockOptions(header: string, content: string): CodeBloc
 			break;
 		}
 		// keep the indentation, yaml block scalars rely on it
-		cellLines.push(line.trim().substring(2).replace(/^ /, ''));
+		cellLines.push(line.trim().slice(2).replace(/^ /, ''));
 	}
 
 	const options = parseOptionString(headerOpts);

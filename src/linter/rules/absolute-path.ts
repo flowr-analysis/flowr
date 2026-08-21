@@ -79,12 +79,14 @@ function inferWd(file: string | undefined, wd: SupportedWd, ctx: ReadOnlyFlowrAn
 
 // this can be improved by respecting raw strings and supporting more scenarios
 function buildQuickFix(str: RNode | undefined, filePath: string, wd: string | undefined): LintQuickFixReplacement[] | undefined {
-	if(!wd || !str || !RString.is(str)) {
+	const loc = SourceLocation.fromNode(str);
+	if(!wd || !str || !RString.is(str) || loc === undefined) {
+		/* a fix that names no place cannot be carried out, so none is offered */
 		return undefined;
 	}
 	return [{
 		type:        'replace',
-		loc:         SourceLocation.fromNode(str) ?? SourceLocation.invalid(),
+		loc,
 		description: `Replace with a relative path to \`${filePath}\``,
 		replacement: str.content.quotes + '.' + path.sep + path.relative(wd, filePath) + str.content.quotes
 	}];

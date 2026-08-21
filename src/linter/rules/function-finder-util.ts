@@ -8,6 +8,7 @@ import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/proces
 import type { MergeableRecord } from '../../util/objects';
 import { isNotUndefined } from '../../util/assert';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
+import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { FunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
@@ -16,6 +17,7 @@ import { Identifier } from '../../dataflow/environments/identifier';
 import { Ternary } from '../../util/logic';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import type { AsyncOrSync } from 'ts-essentials';
+import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 
 export interface FunctionsResult extends LintingResult {
@@ -105,35 +107,55 @@ export const functionFinderUtil = {
 	): Promise<Ternary> {
 		const dataflow = await analyzer.dataflow();
 		const identifier = Dataflow.qualify(element.node.info.id, dataflow.graph, true) ?? (element.node.lexeme !== undefined ? Identifier.parse(element.node.lexeme) : undefined);
+
 		/* if we have no additional info, we assume they always access the network */
-		if(identifier === undefined) {
+		if(identifier === undefined || requireValue === undefined) {
 			return Ternary.Always;
 		}
+
 		// we allow our function pool to contain non-namespaced functions
 		const info = pool.get(Identifier.toString(identifier)) ?? pool.get(Identifier.getName(identifier));
 		if(info === undefined) {
 			return Ternary.Always;
 		}
+
 		const vert = dataflow.graph.getVertex(element.node.info.id);
-		if(FunctionCallVertex.is(vert)){
-			const args = getArgumentStringValue(
-				analyzer.flowrConfig.solver.variables,
-				dataflow.graph,
-				vert,
-				info.argIdx,
-				info.argName,
-				info.resolveValue,
-				analyzer.inspectContext());
-			// we obtain all values, at least one of them has to trigger for the request
-			const argValues: string[] = args ? args.values().flatMap(s => Array.from(s)).filter(isNotUndefined).toArray() : [];
-			if(argValues.length === 0){
-				return Ternary.Maybe;
-			} else if(argValues.some(v => requireValue instanceof RegExp ? requireValue.test(v) : v === requireValue)){
-				return Ternary.Always;
-			} else if(argValues.some(v => v === Unknown)) {
-				return Ternary.Maybe;
-			}
+		if(FunctionCallVertex.is(vert)) {
+			return hasArgumentValue(requireValue, vert, analyzer, dataflow.graph, info.resolveValue, info.argName, info.argIdx);
 		}
+
 		return Ternary.Never;
 	}
 };
+
+/**
+ * Test if a function call has an argument with a specific value
+ */
+export function hasArgumentValue(
+	test: RegExp | string,
+	fnVertex: DataflowGraphVertexFunctionCall,
+	analyzer: ReadonlyFlowrAnalysisProvider,
+	dataflow: DataflowGraph,
+	resolveValue: boolean | 'library' | undefined,
+	argName?: string,
+	argIdx?: number | 'unnamed'): Ternary {
+	const args = getArgumentStringValue(
+		analyzer.flowrConfig.solver.variables,
+		dataflow,
+		fnVertex,
+		argIdx,
+		argName,
+		resolveValue,
+		analyzer.inspectContext());
+	// we obtain all values, at least one of them has to trigger for the request
+	const argValues: string[] = args ? args.values().flatMap(s => Array.from(s)).filter(isNotUndefined).toArray() : [];
+	if(argValues.length === 0){
+		return Ternary.Maybe;
+	} else if(argValues.some(v => test instanceof RegExp ? test.test(v) : v === test)){
+		return Ternary.Always;
+	} else if(argValues.includes(Unknown)) {
+		return Ternary.Maybe;
+	}
+
+	return Ternary.Never;
+}

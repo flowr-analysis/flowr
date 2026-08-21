@@ -1,8 +1,8 @@
-import type { DataflowGraph } from './graph/graph';
+import type { DataflowGraph, IngoingEdges } from './graph/graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfEdge, EdgeType } from './graph/edge';
-import { VertexType } from './graph/vertex';
 import { guard } from '../util/assert';
+import { FunctionDefinitionVertex } from './graph/vertex';
 
 export type DataflowGraphClusters = DataflowGraphCluster[];
 export interface DataflowGraphCluster {
@@ -28,44 +28,76 @@ export interface DataflowGraphCluster {
 export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
 	const clusters: DataflowGraphClusters = [];
 	// we reverse the vertices since dependencies usually point "backwards" from later nodes
-	const notReached = new Set<NodeId>(graph.vertices(true).map(([id]) => id).toArray().reverse());
-	while(notReached.size > 0){
-		const [startNode] = notReached;
-		notReached.delete(startNode);
+	const ids = graph.vertices(true).map(([id]) => id).toArray().reverse();
+	/* walking the ids picks the same start nodes in the same order as draining the set did, without re-opening an
+	 * iterator over the shrinking set for every cluster */
+	const notReached = new Set<NodeId>(ids);
+	/* `graph.ingoingEdges` rebuilds the reverse adjacency by scanning every edge of the graph, and clustering asks
+	 * for it once per node; building it a single time turns that quadratic sweep into one pass */
+	const incoming = new Map<NodeId, IngoingEdges>();
+	for(const [source, outgoing] of graph.edges()) {
+		for(const [target, edge] of outgoing) {
+			if(DfEdge.isOnlyControlFlow(edge)) {
+				continue;
+			}
+			const into = incoming.get(target);
+			if(into === undefined) {
+				incoming.set(target, new Map([[source, edge]]));
+			} else {
+				into.set(source, edge);
+			}
+		}
+	}
+	for(const startNode of ids) {
+		if(!notReached.delete(startNode)) {
+			continue;
+		}
 		clusters.push({
 			startNode:             startNode,
-			members:               Array.from(makeCluster(graph, startNode, notReached)),
+			members:               Array.from(makeCluster(graph, startNode, notReached, incoming)),
 			hasUnknownSideEffects: graph.unknownSideEffects.has(startNode)
 		});
 	}
 	return clusters;
 }
 
-function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>): Set<NodeId> {
-	const info = graph.getVertex(from);
-	guard(info !== undefined, () => `Vertex ${from} not found in graph`);
+/* one shared accumulator, filled iteratively: merging a set per node cost a copy of the whole cluster per member
+ * (quadratic in the cluster size), and the recursion ran as deep as the cluster was large */
+function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>, incoming: ReadonlyMap<NodeId, IngoingEdges>): Set<NodeId> {
 	const nodes = new Set<NodeId>([from]);
+	const pending: NodeId[] = [from];
 
-	// cluster function def exit points
-	if(info.tag === VertexType.FunctionDefinition) {
-		for(const { nodeId } of info.exitPoints){
-			if(notReached.delete(nodeId)) {
-				for(const m of makeCluster(graph, nodeId, notReached)) {
-					nodes.add(m);
-				}
+	while(pending.length > 0) {
+		const current = pending.pop() as NodeId;
+		const info = graph.getVertex(current);
+		guard(info !== undefined, () => `Vertex ${current} not found in graph`);
+
+		function reach(dest: NodeId): void {
+			if(notReached.delete(dest)) {
+				nodes.add(dest);
+				pending.push(dest);
 			}
 		}
-	}
 
-	// cluster adjacent edges
-	for(const edges of [graph.outgoingEdges(from), graph.ingoingEdges(from)] as const) {
-		for(const [dest, e] of edges ?? []) {
-			// don't cluster for function content if it isn't returned
-			if(DfEdge.doesNotIncludeType(e, EdgeType.Returns) && info.onlyBuiltin && info.name === '{') {
-				continue;
+		// cluster function def exit points
+		if(FunctionDefinitionVertex.is(info)) {
+			for(const { nodeId } of info.exitPoints){
+				reach(nodeId);
 			}
-			if(notReached.delete(dest)) {
-				makeCluster(graph, dest, notReached).forEach(n => nodes.add(n));
+		}
+
+		// cluster adjacent edges
+		for(const edges of [graph.outgoingEdges(current), incoming.get(current)] as const) {
+			for(const [dest, e] of edges ?? []) {
+				/* control flow connects every statement of a program, so clustering along it would yield one cluster */
+				if(DfEdge.isOnlyControlFlow(e)) {
+					continue;
+				}
+				// don't cluster for function content if it isn't returned
+				if(DfEdge.doesNotIncludeType(e, EdgeType.Returns) && info.onlyBuiltin && info.name === '{') {
+					continue;
+				}
+				reach(dest);
 			}
 		}
 	}

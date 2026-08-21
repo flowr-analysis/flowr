@@ -18,8 +18,8 @@ const CfgProperties = {
     'at-most-one-out-fd':    c => checkFdIOCount(c, 'out', 'at-most', 1),
     'exactly-one-out-fd':    c => checkFdIOCount(c, 'out', 'exact', 1),
     */
-	'no-direct-fd-cycles':   c => checkNoDirectCycles(c, CfgEdgeType.Fd),
-	'no-direct-cd-cycles':   c => checkNoDirectCycles(c, CfgEdgeType.Cd),
+	'no-direct-fd-cycles':   c => checkNoDirectCycles(c, CfgEdgeType.Flow),
+	'no-direct-cd-cycles':   c => checkNoDirectCycles(c, CfgEdgeType.Control),
 } as const satisfies Record<string, (cfg: ControlFlowInformation) => boolean>;
 
 export type CfgProperty = keyof typeof CfgProperties;

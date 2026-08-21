@@ -31,14 +31,16 @@ export interface StaticSliceQuery extends BaseQueryFormat, SliceQueryOptions {
 export interface StaticSliceQueryResult extends BaseQueryResult {
 	/**
 	 * only contains the results of the slice steps to not repeat ourselves, this does not contain the reconstruction
-	 * if you set the {@link SliceQuery#noReconstruction|noReconstruction} flag.
+	 * if you set the {@link SliceQueryOptions#noReconstruction|noReconstruction} flag.
 	 *
 	 * The keys are serialized versions of the used queries (i.e., the result of `JSON.stringify`).
 	 * This implies that multiple slice queries with the same query configuration will _not_ be re-executed.
 	 */
 	results: Record<string,
-		Omit<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>, keyof PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>> |
-		Omit<PipelineOutput<typeof DEFAULT_SLICE_WITHOUT_RECONSTRUCT_PIPELINE>, keyof PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>>
+		(Omit<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>, keyof PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>> |
+		Omit<PipelineOutput<typeof DEFAULT_SLICE_WITHOUT_RECONSTRUCT_PIPELINE>, keyof PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>>)
+		/** the packages the slice calls into, only set with {@link SliceQueryOptions#reportPackages} */
+		& { packages?: readonly string[] }
 	>
 }
 
@@ -48,6 +50,7 @@ const SliceCriterionHelp = [
 	'  <line>@[<n>]<name>  the n-th occurrence of <name> in line <line> (e.g. 2@[2]x, 2@[-1]x)',
 	'  <line>:<col>        the element starting at line <line>, column <col> (e.g. 2:5)',
 	'  <line>~<col>        the innermost element containing line <line>, column <col> (e.g. 2~5)',
+	'  <line>^             the top-level statement line <line> belongs to (e.g. 2^)',
 	'  $<id>               the normalized node with the id <id> (e.g. $42)',
 	'A negative <line> counts from the end; a trailing (file-regex) restricts to a file (e.g. 2@x(tmp/.*)).',
 	`Append flags after the ")": ${describeSliceFlags(StaticSliceFlags)}.`,

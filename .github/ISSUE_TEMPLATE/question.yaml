@@ -1,0 +1,43 @@
+name: Question
+description: Ask a question about flowR that the wiki does not answer
+title: "[Question]: "
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for asking! Please have a quick look at the [FAQ](https://github.com/flowr-analysis/flowr/wiki/FAQ) and the rest of the [wiki](https://github.com/flowr-analysis/flowr/wiki) first. If your question is not answered there, ask away. Answers frequently end up in the FAQ, so your question helps the next person as well.
+  - type: textarea
+    id: question
+    attributes:
+      label: What would you like to know?
+      description: The more concrete the question is, the better we can answer it.
+      placeholder: I want to do X with flowR, but I do not know how to ...
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What have you tried or read so far?
+      description: Wiki pages you looked at, commands you ran, or code you wrote. This tells us where the documentation could be clearer.
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Code or output that helps to understand the question
+      description: Any R code, flowR output, or logs. This is formatted automatically, so no backticks are needed.
+      render: Shell
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of flowR is the question about?
+      options:
+        - Using flowR (CLI, REPL, server, or docker)
+        - The analysis results (dataflow, slicing, or linting)
+        - Developing on flowR
+        - Something else
+    validations:
+      required: false

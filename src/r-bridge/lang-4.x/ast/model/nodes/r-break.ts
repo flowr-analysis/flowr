@@ -17,6 +17,7 @@ export const RBreak = {
 	name: 'RBreak',
 	/**
 	 * Type guard for {@link RBreak} nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: unknown): node is RBreak<Info> {
 		return typeof node === 'object' && node !== null && (node as RBreak<Info>).type === RType.Break;

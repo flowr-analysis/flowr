@@ -6,7 +6,7 @@ import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model
 import { describe } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
 
-describe.sequential('Parse function definitions', withShell(shell => {
+describe('Parse function definitions', { concurrent: false }, withShell(shell => {
 	describe('without parameters', () => {
 		assertAst(label('Noop', ['normal-definition', 'grouping']),
 			shell, 'function() { }', exprList({

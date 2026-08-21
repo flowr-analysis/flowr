@@ -80,6 +80,8 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	readonly resolvedRVersion: string;
 	/** Whether {@link resolvedRVersion} is a genuine signal (a config pin, project metadata, or an engine-detected version) rather than the fallback default. */
 	readonly rVersionKnown:    boolean;
+	/** Where {@link resolvedRVersion} comes from, as only {@link RVersionOrigin.Config} and {@link RVersionOrigin.Metadata} say anything about the analyzed code. */
+	readonly rVersionOrigin:   RVersionOrigin;
 	/** Classify the {@link ProjectKind} of the project, see {@link ReadOnlyFlowrAnalyzerFilesContext#projectKind}. */
 	projectKind(): ProjectKind;
 	/** The versions a dependency can possibly have, see {@link ReadOnlyFlowrAnalyzerDependenciesContext#inferredRange}. */
@@ -93,6 +95,18 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	readonly gas:              ReadOnlyFlowrAnalyzerGasContext;
 }
 
+/** Where the R version an analysis assumes comes from, see {@link ReadOnlyFlowrAnalyzerContext.rVersionOrigin}. */
+export const enum RVersionOrigin {
+	/** pinned via `solver.sigdb.assumedRVersion` */
+	Config   = 'config',
+	/** stated by the project itself (e.g. a `DESCRIPTION` `Depends: R (>= x)`) */
+	Metadata = 'metadata',
+	/** detected from the R installation running the analysis, which says nothing about the analyzed code */
+	Engine   = 'engine',
+	/** nothing said anything, so the fallback default is used */
+	Default  = 'default'
+}
+
 /**
  * This summarizes the other context layers used by the {@link FlowrAnalyzer}.
  * Have a look at the attributes and layers listed below (e.g., {@link files} and {@link deps})
@@ -100,8 +114,8 @@ export interface ReadOnlyFlowrAnalyzerContext {
  * Besides these, this layer only orchestrates the different steps and layers, providing a collection of convenience methods.
  * In general, you do not have to worry about these details, as the {@link FlowrAnalyzerBuilder} and {@link FlowrAnalyzer} take care of them.
  *
- * To inspect, e.g., the loading order, you can do so via {@link files.loadingOrder.getLoadingOrder}. To get information on a specific library, use
- * {@link deps.getDependency}.
+ * To inspect, e.g., the loading order, you can do so via {@link ReadOnlyFlowrAnalyzerLoadingOrderContext#getLoadingOrder|files.loadingOrder.getLoadingOrder}.
+ * To get information on a specific library, use {@link ReadOnlyFlowrAnalyzerDependenciesContext#getDependency|deps.getDependency}.
  * If you are just interested in inspecting the context, you can use {@link ReadOnlyFlowrAnalyzerContext} instead (e.g., via {@link inspect}).
  */
 export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, InvalidationEventReceiver {
@@ -222,19 +236,25 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		}
 	}
 
-	constructor(config: FlowrConfig, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>) {
+	/**
+	 * @param config  - The configuration to analyze with.
+	 * @param plugins - The plugins to run, either already grouped by their {@link PluginType} or as a plain list.
+	 */
+	constructor(config: FlowrConfig, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]> | readonly FlowrAnalyzerPlugin[] = []) {
+		const byType = Array.isArray(plugins) ? arraysGroupBy(plugins as readonly FlowrAnalyzerPlugin[], p => p.type)
+			: plugins as ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>;
 		this.baseConfig = config;
 		this._config = config;
-		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
-		this.files = new FlowrAnalyzerFilesContext(this, loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
-			(plugins.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
+		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, byType.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
+		this.files = new FlowrAnalyzerFilesContext(this, loadingOrder, (byType.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
+			(byType.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
 		this.env = new FlowrAnalyzerEnvironmentContext(this);
 		this.inc = new FlowrAnalyzerIncrementalAnalysisContext(this);
 		const functions = new FlowrAnalyzerFunctionsContext(this);
-		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
+		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (byType.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 		// the plugins contributing the metadata are the ones the dependency context runs on demand
 		this.meta = new FlowrAnalyzerMetaContext(() => this.deps.ensureStaticsLoaded());
-		this.gas  = new FlowrAnalyzerGasContext(this, config.gas, (plugins.get(PluginType.Gas) ?? []) as FlowrAnalyzerGasPlugin[]);
+		this.gas  = new FlowrAnalyzerGasContext(this, config.gas, (byType.get(PluginType.Gas) ?? []) as FlowrAnalyzerGasPlugin[]);
 	}
 
 	/**
@@ -262,10 +282,20 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 
 	/** Whether {@link resolvedRVersion} is a genuine signal (a config pin, project metadata, or engine detection) rather than the fallback default. */
 	public get rVersionKnown(): boolean {
+		return this.rVersionOrigin !== RVersionOrigin.Default;
+	}
+
+	/** Where {@link resolvedRVersion} comes from, which decides what it says about the analyzed code. */
+	public get rVersionOrigin(): RVersionOrigin {
 		const setting = this.config.solver.sigdb.assumedRVersion;
-		return (setting !== undefined && setting !== 'auto')
-			|| this.meta.getRVersion() !== undefined
-			|| (this._detectedR !== undefined && this._detectedR !== 'none' && this._detectedR !== 'unknown');
+		if(setting !== undefined && setting !== 'auto') {
+			return RVersionOrigin.Config;
+		} else if(this.meta.getRVersion() !== undefined) {
+			return RVersionOrigin.Metadata;
+		} else if(this._detectedR !== undefined && this._detectedR !== 'none' && this._detectedR !== 'unknown') {
+			return RVersionOrigin.Engine;
+		}
+		return RVersionOrigin.Default;
 	}
 
 	/** Classify the {@link ProjectKind} of the project (delegates to the cached {@link FlowrAnalyzerFilesContext#projectKind}). */
@@ -281,14 +311,17 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	/** delegate request addition */
 	public addRequests(requests: readonly RAnalysisRequest[]): void {
 		this.files.addRequests(requests);
+		this.gas.reset();
 	}
 
 	public addFile(f: string | FlowrFileProvider | RParseRequestFromFile): void {
 		this.files.addFile(f);
+		this.gas.reset();
 	}
 
 	public addFiles(f: (string | FlowrFileProvider | RParseRequestFromFile)[]): void {
 		this.files.addFiles(f);
+		this.gas.reset();
 	}
 
 	/**
@@ -317,6 +350,8 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		this.files.receive(event);
 		this.deps.receive(event);
 		this.inc.receive(event);
+		/* what became stale is analyzed again, and that gets the full contingent */
+		this.gas.receive(event);
 	}
 }
 
@@ -332,10 +367,7 @@ export function contextFromInput(
 	config = FlowrConfig.default(),
 	plugins?: FlowrAnalyzerPlugin[],
 ): FlowrAnalyzerContext {
-	const context = new FlowrAnalyzerContext(
-		config,
-		arraysGroupBy(plugins ?? [], (p) => p.type)
-	);
+	const context = new FlowrAnalyzerContext(config, plugins);
 	if(typeof input === 'string' || Array.isArray(input) && input.every(i => typeof i === 'string')) {
 		const requests = requestFromInput(input);
 		context.addRequests(Array.isArray(requests) ? requests : [requests] );
@@ -359,10 +391,7 @@ export function contextFromSources(
 	config = FlowrConfig.default(),
 	plugins?: FlowrAnalyzerPlugin[],
 ): FlowrAnalyzerContext {
-	const context = new FlowrAnalyzerContext(
-		config,
-		arraysGroupBy(plugins ?? [], (p) => p.type)
-	);
+	const context = new FlowrAnalyzerContext(config, plugins);
 
 	for(const [p, c] of Object.entries(sources)) {
 		context.addFile(new FlowrInlineTextFile(p, c));

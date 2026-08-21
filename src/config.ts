@@ -1,7 +1,9 @@
 import { type MergeableRecord,
 	deepMergeObject,
 	deepClonePreserveUnclonable,
-	isPlainObject
+	isPlainObject,
+	getOnPath,
+	setOnPath
 } from './util/objects';
 import path from 'path';
 import fs from 'fs';
@@ -16,11 +18,11 @@ import type { DataflowProcessors } from './dataflow/processor';
 import type { ParentInformation } from './r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrAnalyzerContext } from './project/context/flowr-analyzer-context';
 import { ProjectKind } from './project/context/project-kind';
-import objectPath from 'object-path';
 import type { BuiltInFlowrPluginArgs, BuiltInFlowrPluginName } from './project/plugins/plugin-registry';
 import { type FlowrGasConfig, GasWikiRef } from './gas';
 import type { InputClassifierConfig } from './queries/catalog/input-sources-query/simple-input-classifier';
 import { InputType } from './queries/catalog/input-sources-query/input-types';
+import { uniqueArray } from './util/collections/arrays';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -179,6 +181,12 @@ export interface FlowrConfig extends MergeableRecord {
 		/** Overwrite the {@link ProjectKind} flowR would otherwise infer from the analyzed files, e.g. when auto-detection guesses wrong. */
 		useProjectType?:           ProjectKind
 		/**
+		 * Whether the top level of the analyzed code is echoed, so that every visible result printed there counts as an
+		 * output (the `print` category of the dependencies query). Defaults to `true` and is set to `false` for a
+		 * {@link ProjectKind.Package}, whose top-level code runs at install time.
+		 */
+		assumeImplicitEcho?:       boolean
+		/**
 		 * The packages considered part of R itself, used e.g. by the project query to classify dependencies. If
 		 * unset, flowR derives them (for the assumed R version) from the signature database via `baseRPackages`.
 		 */
@@ -290,6 +298,25 @@ export interface FlowrConfig extends MergeableRecord {
 			readonly versionSelection?:           VersionSelection
 			/** Force an exact version for specific packages (mapping a package name to a version), overriding both the project constraint and the {@link versionSelection} policy; a version missing from the database falls back with a warning (default `{}`). */
 			readonly versionOverrides?:           Record<string, string>
+			/**
+			 * Recovering a package no signature database knows (a CRAN-archived one like `maptools`) from the copy
+			 * installed on this machine: its `DESCRIPTION` states the version, its `NAMESPACE` the exports. Opt-in,
+			 * as it reads directories outside the analyzed project and ties the analysis to what is installed here.
+			 */
+			readonly installedLibrary?:           {
+				/** Consult installed packages at all (default `false`). */
+				readonly enabled:            boolean
+				/** The library directories to search; when empty they are discovered as configured below (default `[]`). */
+				readonly paths?:             string[]
+				/** Search the libraries `R_LIBS_USER`/`R_LIBS`/`R_LIBS_SITE` name (default `true`, ignored when {@link paths} is given). */
+				readonly useEnvironment?:    boolean
+				/** Search a project-local `renv`/`packrat` library (default `true`, ignored when {@link paths} is given). */
+				readonly useProjectLibrary?: boolean
+				/** How far to descend into the nested layout of a project-local library (default `3`). */
+				readonly maxDepth?:          number
+				/** Only recover packages whose name matches one of these regular expressions; empty means any (default `[]`). */
+				readonly packages?:          string[]
+			}
 		}
 		/** Policies for reasoning about dependency versions (independent of how the signature database is loaded). */
 		readonly versionManagement?: {
@@ -357,8 +384,39 @@ export interface FlowrConfig extends MergeableRecord {
 		}
 	}
 
-	readonly incrementalParsing: {
-		readonly activated: boolean;
+	readonly incremental: {
+		/**
+		 * Always take the incremental path, regardless of heuristics
+		 */
+		readonly alwaysIncremental: boolean;
+
+		readonly parsing: {
+			readonly activated: boolean;
+
+			readonly heuristics: {
+				readonly activated:       boolean;
+				/**
+				 * Skip reparsing entirely if the file's modification time is unchanged since the last parse
+				 */
+				readonly mtime:           boolean;
+				/**
+				 * Only consider incremental parsing for files with at least this many lines
+				 */
+				readonly linesFrom:       number;
+				/**
+				 * Only consider incremental parsing for files with at least this many bytes
+				 */
+				readonly bytesFrom:       number;
+				/**
+				 * Always take the incremental path whenever there is a computed edit region, regardless of the other thresholds
+				 */
+				readonly alwaysWithEdits: boolean;
+				/**
+				 * Only apply these heuristics once the project has at least this many files loaded
+				 */
+				readonly minFiles:        number
+			}
+		}
 	}
 
 	/**
@@ -437,6 +495,7 @@ export const FlowrDefaultPlugins = [
 	'file:description',
 	'versions:description',
 	'versions:sigdb',
+	'versions:library',
 	'versions:namespace',
 	'versions:renv',
 	'versions:rv',
@@ -528,6 +587,40 @@ function mergeConfigOntoDefaults(base: FlowrConfig, addon: DeepPartial<FlowrConf
 	return merge(base, addon) as FlowrConfig;
 }
 
+/** The shortest start of `key` that none of its `siblings` share, which is how a path stays short and readable. */
+function shortestPrefix(key: string, siblings: readonly string[] = []): string {
+	for(let length = 1; length < key.length; length++) {
+		const prefix = key.slice(0, length);
+		if(!siblings.some(other => other !== key && other.startsWith(prefix))) {
+			return prefix;
+		}
+	}
+	return key;
+}
+
+/**
+ * The full path a possibly shortened one names, walking `within` a segment at a time: a segment that names a
+ * key outright is that key, otherwise it has to start exactly one of them.
+ */
+function expandPath(path: string, within: unknown): string | undefined {
+	const full: string[] = [];
+	let at: unknown = within;
+	for(const segment of path.split('.')) {
+		if(at === null || typeof at !== 'object') {
+			return undefined;
+		}
+		const keys = Object.keys(at);
+		const key = keys.includes(segment) ? segment : keys.filter(other => other.startsWith(segment));
+		if(typeof key !== 'string' && key.length !== 1) {
+			return undefined;
+		}
+		const found = typeof key === 'string' ? key : key[0];
+		full.push(found);
+		at = (at as Record<string, unknown>)[found];
+	}
+	return full.length > 0 ? full.join('.') : undefined;
+}
+
 export const FlowrConfig = {
 	name: 'FlowrConfig',
 	/**
@@ -558,13 +651,15 @@ export const FlowrConfig = {
 			},
 			project: {
 				resolveUnknownPathsOnDisk: true,
-				failOnInaccessiblePath:    false
+				failOnInaccessiblePath:    false,
+				assumeImplicitEcho:        true
 			},
 			linter: {
 				disabledRules: []
 			},
 			specializeConfig: {
-				[ProjectKind.Package]:  { solver: { resolveSource: { assumeFilesExist: true } } },
+				/* a package's top-level code runs at install time, its results are not echoed to anyone */
+				[ProjectKind.Package]:  { project: { assumeImplicitEcho: false }, solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.Project]:  { solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.ShinyApp]: {
 					/* shiny evaluates global.R before the supporting files in R/, and the app itself last */
@@ -581,7 +676,7 @@ export const FlowrConfig = {
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
-				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, linkBaseRCalls: false, linkPackageCalls: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {} },
+				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, linkBaseRCalls: false, linkPackageCalls: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {}, installedLibrary: { enabled: false, paths: [], useEnvironment: true, useProjectLibrary: true, maxDepth: 3, packages: [] } },
 				versionManagement: { linkedVersionGroups: [] },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
@@ -609,8 +704,19 @@ export const FlowrConfig = {
 					}
 				}
 			},
-			incrementalParsing: {
-				activated: false,
+			incremental: {
+				alwaysIncremental: false,
+				parsing:           {
+					activated:  false,
+					heuristics: {
+						activated:       true,
+						mtime:           true,
+						linesFrom:       500,
+						bytesFrom:       50_000,
+						alwaysWithEdits: false,
+						minFiles:        1,
+					}
+				}
 			},
 			gas: {
 				thresholds: {
@@ -652,6 +758,7 @@ export const FlowrConfig = {
 			basePackages:              Joi.array().items(Joi.string()).optional().description('The packages considered part of R itself (base and recommended); if unset, flowR uses its built-in list.'),
 			implicitSources:           Joi.array().items(Joi.string()).optional().description('Files a framework loads on its own, without any source() call (e.g. global.R in a shiny app), in the order they are loaded; flowR orders the matching project files accordingly and analyzes them as one program. Entries are case-insensitive globs matched against the file path, a plain name matches any file with that name, and entries matching no project file are warned about. Usually set per project kind via specializeConfig.'),
 			useProjectType:            Joi.string().valid(...Object.values(ProjectKind)).optional().description('Overwrite the project kind flowR would otherwise infer from the analyzed files, e.g. when auto-detection guesses wrong.'),
+			assumeImplicitEcho:        Joi.boolean().optional().description('Whether the top level of the analyzed code is echoed, so that every visible result printed there is collected as an output by the dependencies query (default true, false for a package).'),
 			discovery:                 Joi.object({
 				full:    Joi.boolean().optional().description('Collect every file below the project root (greedy) instead of only the files the detected project kind needs (default false).'),
 				perKind: Joi.object().pattern(Joi.string().valid(...Object.values(ProjectKind)), Joi.object({
@@ -711,8 +818,16 @@ export const FlowrConfig = {
 				additionalPaths:             Joi.array().items(Joi.string()).optional().description('Extra directories or bundle/manifest files searched for signature databases (alongside the shipped default and $FLOWR_SIGDB_DIR); a downloaded full-history bundle placed here is mounted automatically.'),
 				downloadRepo:                Joi.string().optional().description('GitHub owner/repo the full-history bundle is downloaded from via ":signature download" (default "flowr-analysis/flowr", release tag "sigdb-v<flowR-version>").'),
 				autoSync:                    Joi.boolean().optional().description('On startup, re-download shards whose committed sigdb.remote.json hash no longer matches the cache, in the background (default false; opt-in network sync after a git pull).'),
-				versionSelection:            Joi.string().valid(...Object.values(VersionSelection)).optional().description('When a project constrains a dependency, resolve to the newest (default), oldest, or system-installed version satisfying it; system needs R and falls back to newest. Base-R packages always resolve against the assumed R version.'),
-				versionOverrides:            Joi.object().pattern(Joi.string(), Joi.string()).optional().description('Force an exact version for specific packages (name -> version), overriding both the project constraint and the versionSelection policy (default {}).')
+				installedLibrary:            Joi.object({
+					enabled:           Joi.boolean().required().description('Recover packages no signature database knows from their installed copy (default false).'),
+					paths:             Joi.array().items(Joi.string()).optional().description('Library directories to search; when empty they are discovered from the environment and the project.'),
+					useEnvironment:    Joi.boolean().optional().description('Search the libraries R_LIBS_USER/R_LIBS/R_LIBS_SITE name (default true).'),
+					useProjectLibrary: Joi.boolean().optional().description('Search a project-local renv/packrat library (default true).'),
+					maxDepth:          Joi.number().optional().description('How far to descend into the nested layout of a project-local library (default 3).'),
+					packages:          Joi.array().items(Joi.string()).optional().description('Only recover packages whose name matches one of these regular expressions; empty means any.')
+				}).optional().description('Recovering packages no signature database knows from the copy installed on this machine.'),
+				versionSelection: Joi.string().valid(...Object.values(VersionSelection)).optional().description('When a project constrains a dependency, resolve to the newest (default), oldest, or system-installed version satisfying it; system needs R and falls back to newest. Base-R packages always resolve against the assumed R version.'),
+				versionOverrides: Joi.object().pattern(Joi.string(), Joi.string()).optional().description('Force an exact version for specific packages (name -> version), overriding both the project constraint and the versionSelection policy (default {}).')
 			}).description('Resolving library exports from a signature database.'),
 			versionManagement: Joi.object({
 				linkedVersionGroups: Joi.array().items(Joi.array().items(Joi.string())).optional().description('Groups of packages that must resolve to the same version; version guessing intersects each group so its members stay mutually compatible (default []).')
@@ -744,21 +859,38 @@ export const FlowrConfig = {
 				}).description('Configuration options for reading data frame shapes from loaded external data files, such as CSV files.')
 			}).description('The configuration of the shape inference for data frames.')
 		}).description('The configuration options for abstract interpretation.'),
-		incrementalParsing: Joi.object({
-			activated: Joi.boolean().description('If set, incremental parsing will be used.')
+		incremental: Joi.object({
+			alwaysIncremental: Joi.boolean().description('Always take the incremental path, regardless of heuristics.'),
+			parsing:           Joi.object({
+				activated:  Joi.boolean().description('If set, incremental parsing will be used.'),
+				heuristics: Joi.object({
+					activated:       Joi.boolean().optional().description('If set, the heuristics for incremental parsing will be used.'),
+					mtime:           Joi.boolean().optional().description('Skip reparsing entirely if the file\'s modification time is unchanged since the last parse.'),
+					linesFrom:       Joi.number().min(0).optional().description('Only consider incremental parsing for files with at least this many lines.'),
+					bytesFrom:       Joi.number().min(0).optional().description('Only consider incremental parsing for files with at least this many bytes.'),
+					alwaysWithEdits: Joi.boolean().optional().description('Always take the incremental path whenever there is a computed edit region, regardless of the other thresholds.'),
+					minFiles:        Joi.number().min(1).optional().description('Only apply these heuristics once the project has at least this many files loaded.'),
+				}),
+			}),
 		}),
 		gas: Joi.object({
 			thresholds: Joi.object({
 				memory: Joi.object({
-					problematic: Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Problematic is returned.'),
-					critical:    Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Critical is returned.')
-				}).optional().description('Heap-usage fraction thresholds (0-1).'),
+					problematic: Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Problematic is returned, for every feature without an entry of its own.'),
+					critical:    Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Critical is returned, for every feature without an entry of its own.')
+				}).pattern(Joi.string(), Joi.object({
+					problematic: Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Problematic is returned for this feature.'),
+					critical:    Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Critical is returned for this feature.')
+				})).optional().description('Heap-usage fraction thresholds (0-1), either shared or given per feature key (with `default` covering the rest).'),
 				timeMs: Joi.object({
-					problematic: Joi.number().min(0).optional().description('Elapsed ms above which Problematic is returned.'),
-					critical:    Joi.number().min(0).optional().description('Elapsed ms above which Critical is returned.')
-				}).optional().description('Elapsed analysis time thresholds in milliseconds.')
-			}).optional().description('Shared thresholds for all gas checks (scaled by per-feature factor).'),
-			features:     Joi.object().pattern(Joi.string(), Joi.number().min(0).optional()).optional().description('Per-feature sensitivity factors. 0 or absent disables gas checking for that feature. A factor of 2 makes the feature twice as sensitive. Recognised keys: `source`, `side-effect-linking`, `linter`.'),
+					problematic: Joi.number().min(0).optional().description('Elapsed ms above which Problematic is returned, for every feature without an entry of its own.'),
+					critical:    Joi.number().min(0).optional().description('Elapsed ms above which Critical is returned, for every feature without an entry of its own.')
+				}).pattern(Joi.string(), Joi.object({
+					problematic: Joi.number().min(0).optional().description('Elapsed ms above which Problematic is returned for this feature.'),
+					critical:    Joi.number().min(0).optional().description('Elapsed ms above which Critical is returned for this feature.')
+				})).optional().description('Elapsed analysis time thresholds in milliseconds, either shared or given per feature key (with `default` covering the rest).')
+			}).optional().description('Thresholds for all gas checks (scaled by per-feature factor), boundable per feature.'),
+			features:     Joi.object().pattern(Joi.string(), Joi.number().min(0).optional()).optional().description('Per-feature sensitivity factors. 0 or absent disables gas checking for that feature. A factor of 2 makes the feature twice as sensitive. Recognised keys: `source`, `side-effect-linking`, `linter`, `slicer`.'),
 			heapProvider: Joi.function().optional().description('Custom heap statistics source (programmatic configs only), overriding the built-in v8/performance.memory detection.')
 		}).optional().description(`Resource-usage guard (gas) configuration. All feature factors default to 0 (disabled). See ${GasWikiRef}.`)
 	}).description('The configuration file format for flowR.'),
@@ -840,6 +972,54 @@ export const FlowrConfig = {
 		}
 	},
 	/**
+	 * Every key `config` changed against the {@link FlowrConfig.default|default}, as `a.b.c=<json>` lines.
+	 * A whole configuration is a long document while an edit to it is usually one line, which is what makes
+	 * this the form to hand around: a link, a command line, a bug report.
+	 * @see {@link FlowrConfig.applyPaths} - to read them back
+	 * @example
+	 * ```ts
+	 * FlowrConfig.changedPaths(config); // ['solver.sigdb.enabled=false']
+	 * ```
+	 */
+	changedPaths(this: void, config: FlowrConfig): string[] {
+		const found: string[] = [];
+		const walk = (current: unknown, base: unknown, path: string[], siblings: readonly string[][]): void => {
+			if(current !== null && base !== null && typeof current === 'object' && typeof base === 'object'
+				&& !Array.isArray(current) && !Array.isArray(base)) {
+				const keys = uniqueArray([...Object.keys(current), ...Object.keys(base)]);
+				for(const key of keys) {
+					walk((current as Record<string, unknown>)[key], (base as Record<string, unknown>)[key],
+						[...path, key], [...siblings, keys]);
+				}
+			} else if(JSON.stringify(current) !== JSON.stringify(base)) {
+				const short = path.map((key, at) => shortestPrefix(key, siblings[at]));
+				found.push(`${short.join('.')}=${JSON.stringify(current)}`);
+			}
+		};
+		walk(config, FlowrConfig.default(), [], []);
+		return found;
+	},
+
+	/**
+	 * The inverse of {@link FlowrConfig.changedPaths}: the default configuration with those keys set again.
+	 * A line that names no known key, or whose value is not readable, is skipped rather than guessed at.
+	 */
+	applyPaths(this: void, paths: Iterable<string>, base: FlowrConfig = FlowrConfig.default()): FlowrConfig {
+		const config = structuredClone(base);
+		for(const line of paths) {
+			const at = line.indexOf('=');
+			const key = at < 0 ? undefined : expandPath(line.slice(0, at), config);
+			if(key === undefined) {
+				continue;
+			}
+			try {
+				setOnPath(config, key, JSON.parse(line.slice(at + 1)));
+			} catch{ /* a value nobody can read is one to leave alone */ }
+		}
+		return config;
+	},
+
+	/**
 	 * Returns a new config object with the given value set at the given key, where the key is a dot-separated path to the value in the config object.
 	 * @see {@link setInConfigInPlace} for a version that modifies the config object in place instead of returning a new one.
 	 * @example
@@ -852,7 +1032,7 @@ export const FlowrConfig = {
 	 */
 	setInConfig<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: PathValue<FlowrConfig, Path>): FlowrConfig {
 		const clone = FlowrConfig.clone(config);
-		objectPath.set(clone, key, value);
+		setOnPath(clone, key, value);
 		return clone;
 	},
 	/**
@@ -860,7 +1040,7 @@ export const FlowrConfig = {
 	 * @see {@link setInConfig} for a version that returns a new config object instead of modifying the given one in place.
 	 */
 	setInConfigInPlace<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: PathValue<FlowrConfig, Path>): void {
-		objectPath.set(config, key, value);
+		setOnPath(config, key, value);
 	},
 } as const;
 
@@ -882,9 +1062,9 @@ export function persistSigDbPathToGlobalConfig(dbPath: string): string {
 	} catch(e) {
 		log.warn(`Could not read global config ${file}, recreating it: ${(e as Error).message}`);
 	}
-	const current: unknown = objectPath.get(raw, 'solver.sigdb.additionalPaths');
+	const current: unknown = getOnPath(raw, 'solver.sigdb.additionalPaths');
 	const paths = Array.isArray(current) ? current as string[] : [];
-	objectPath.set(raw, 'solver.sigdb.additionalPaths', [...new Set([...paths, dbPath])]);
+	setOnPath(raw, 'solver.sigdb.additionalPaths', uniqueArray([...paths, dbPath]));
 	fs.mkdirSync(path.dirname(file), { recursive: true });
 	fs.writeFileSync(file, JSON.stringify(raw, null, '\t') + '\n');
 	return file;

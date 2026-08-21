@@ -3,16 +3,14 @@ import type { DecodedFunction } from '../../../../src/project/sigdb/decode';
 import type { PackageSignatureSource } from '../../../../src/project/sigdb/reader';
 import type { BuiltInDefinitions, BuiltInFunctionDefinition } from '../../../../src/dataflow/environments/built-in-config';
 import { getDefaultBuiltInDefinitions } from '../../../../src/dataflow/environments/built-in-config';
-import type { BuiltInFnInfo, CallProps, FnSig } from '../../../../src/dataflow/environments/built-in-props';
+import type { BuiltInFnInfo, CallProps } from '../../../../src/dataflow/environments/built-in-props';
 import {
 	ArgProp,
-	argProp,
-	argsWith,
 	CallProp,
 	ExclusiveCallProps,
+	FnSig,
 	fnInfoFromSignature,
-	InputProps,
-	sigLayout
+	InputProps
 } from '../../../../src/dataflow/environments/built-in-props';
 import { builtInNames, BuiltInIndex, inferFnProps, queryFnProps } from '../../../../src/dataflow/environments/query-fn-props';
 import { DefaultBuiltinConfig, WrittenBuiltinDefinitions } from '../../../../src/dataflow/environments/default-builtin-config';
@@ -20,6 +18,7 @@ import { Identifier, PkgName } from '../../../../src/dataflow/environments/ident
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
 import { defaultEnv } from '../../_helper/dataflow/environment-builder';
 import { label } from '../../_helper/label';
+import { uniqueArray } from '../../../../src/util/collections/arrays';
 
 /** a handful of definitions to query, so the assertions do not depend on the default configuration */
 const TestDefinitions = [
@@ -54,44 +53,45 @@ const ExpectedLabels: readonly (readonly [Identifier, CallProps])[] = [
 	[Identifier.from(['print', PkgName.Base]), CallProp.Invisible | CallProp.Generic | CallProp.Prints],
 	[Identifier.from(['stop', PkgName.Base]), CallProp.Throws],
 	[Identifier.from(['rm', PkgName.Base]), CallProp.Invisible | CallProp.Scope],
-	[Identifier.from(['set.seed', PkgName.Base]), CallProp.Invisible | CallProp.Random],
+	[Identifier.from(['set.seed', PkgName.Base]), CallProp.Invisible | CallProp.Random | CallProp.Configures],
 	[Identifier.from(['png', PkgName.GrDevices]), CallProp.Invisible | CallProp.Graphics | CallProp.File | CallProp.Writes]
 ];
 
 /** and the shapes a signature comes in */
 const ExpectedSigs: readonly (readonly [Identifier, FnSig])[] = [
-	[Identifier.from(['+', PkgName.Base]), [['e1', ArgProp.Value], ['e2', ArgProp.Value]]],
+	[Identifier.from(['+', PkgName.Base]), [['e1', ArgProp.Value | ArgProp.Atomic], ['e2', ArgProp.Value | ArgProp.Atomic]]],
 	[Identifier.from(['sum', PkgName.Base]), [['...', ArgProp.Value]]],
 	[Identifier.from(['missing', PkgName.Base]), [['x', ArgProp.Presence]]],
 	/* `Alias` is what states the argument handed back, so these have to keep declaring it */
 	[Identifier.from(['identity', PkgName.Base]), [['x', ArgProp.Alias | ArgProp.Forced]]],
 	[Identifier.from(['match.arg', PkgName.Base]), [['arg', ArgProp.Value], ['choices', ArgProp.Bounds]]],
-	[Identifier.from(['read.csv', PkgName.Utils]), [['file', ArgProp.Resource]]]
+	[Identifier.from(['read.csv', PkgName.Utils]), [['file', ArgProp.Resource], ['header', ArgProp.Flag], ['sep', ArgProp.Value],
+		['quote', ArgProp.Value], ['dec', ArgProp.Value], ['fill', ArgProp.Flag], ['comment.char', ArgProp.Value], ['...', ArgProp.Value]]]
 ];
 
 describe('Built-in properties', () => {
 	describe('Signature layout', () => {
 		test(label('resolves the declared positions', ['name-normal'], ['other']), () => {
-			const layout = sigLayout(TestSig as NonNullable<typeof TestSig>);
-			assert.strictEqual(argProp(layout, 0), ArgProp.Value);
+			const layout = FnSig.layout(TestSig as NonNullable<typeof TestSig>);
+			assert.strictEqual(FnSig.propAt(layout, 0), ArgProp.Value);
 			assert.strictEqual(layout.rest, 1);
 			assert.strictEqual(layout.alias, -1);
 		});
 		test(label('`...` covers every position from where it appears', ['name-normal'], ['other']), () => {
-			const layout = sigLayout(TestSig as NonNullable<typeof TestSig>);
+			const layout = FnSig.layout(TestSig as NonNullable<typeof TestSig>);
 			/* the `na.rm` entry sits behind the `...`, so it is never matched by position */
 			for(const i of [1, 2, 7]) {
-				assert.strictEqual(argProp(layout, i), ArgProp.Value | ArgProp.Forced, `argument ${i}`);
+				assert.strictEqual(FnSig.propAt(layout, i), ArgProp.Value | ArgProp.Forced, `argument ${i}`);
 			}
-			assert.deepStrictEqual(argsWith(layout, 4, ArgProp.Forced), [1, 2, 3]);
-			assert.deepStrictEqual(argsWith(layout, 4, ArgProp.Alias), []);
+			assert.deepStrictEqual(FnSig.posWith(layout, 4, ArgProp.Forced), [1, 2, 3]);
+			assert.deepStrictEqual(FnSig.posWith(layout, 4, ArgProp.Alias), []);
 		});
 		test(label('an undeclared position states nothing', ['name-normal'], ['other']), () => {
-			assert.strictEqual(argProp(sigLayout([['x', ArgProp.Value]]), 3), 0);
+			assert.strictEqual(FnSig.propAt(FnSig.layout([['x', ArgProp.Value]]), 3), 0);
 		});
 		test(label('the layout is cached per signature object', ['name-normal'], ['other']), () => {
 			const sig = TestSig as NonNullable<typeof TestSig>;
-			assert.strictEqual(sigLayout(sig), sigLayout(sig));
+			assert.strictEqual(FnSig.layout(sig), FnSig.layout(sig));
 		});
 	});
 
@@ -150,7 +150,7 @@ describe('Built-in properties', () => {
 		test(label('resolving in an environment finds the built-in', ['name-normal'], ['other']), () => {
 			const info = queryFnProps('nchar', { environment: defaultEnv() });
 			assert.strictEqual((info?.props ?? 0) & CallProp.Pure, CallProp.Pure);
-			assert.deepStrictEqual(info?.sig, [['x', ArgProp.Shape]]);
+			assert.deepStrictEqual(info?.sig, [['x', ArgProp.Shape], ['type', ArgProp.Value], ['allowNA', ArgProp.Flag], ['keepNA', ArgProp.Flag]]);
 		});
 		test(label('a definition in the code shadows the built-in', ['name-normal', 'normal-definition'], ['other']), () => {
 			const env = defaultEnv().defineFunction('nchar', '0', '0');
@@ -227,7 +227,7 @@ describe('Built-in properties', () => {
 		test(label('a signature names each parameter once, with at most one `...`', ['name-normal'], ['other']), () => {
 			for(const [names, { sig = [] }] of withInfo) {
 				const declared = sig.map(([n]) => n);
-				assert.deepStrictEqual(declared, Array.from(new Set(declared)), `${names.map(Identifier.toString).join(', ')} repeats a parameter`);
+				assert.deepStrictEqual(declared, uniqueArray(declared), `${names.map(Identifier.toString).join(', ')} repeats a parameter`);
 				assert.isAtMost(declared.filter(n => n === '...').length, 1, `${names.map(Identifier.toString).join(', ')} has two dots`);
 			}
 		});

@@ -8,6 +8,7 @@ PARALLEL="${1-1}"
 RUNS="${2-1}"
 ONLY_SUITE="${3-}"
 PARSER="${4-"r-shell"}"
+EXTRA="${5-}"
 
 
 SUITE_PREFIX="suite-"
@@ -26,7 +27,7 @@ fi
 
 for SUITE in "${SUITES[@]}"; do
   mkdir -p "${OUTPUT_DIR}/${SUITE}"
-  CMD=(bash run-suite.sh "${SUITE}" "$(pwd)/${OUTPUT_DIR}/${SUITE}/${SUITE}" "${PARALLEL}" "${RUNS}" "${PARSER}")
+  CMD=(bash run-suite.sh "${SUITE}" "$(pwd)/${OUTPUT_DIR}/${SUITE}/${SUITE}" "${PARALLEL}" "${RUNS}" "${PARSER}" "${EXTRA}")
   echo -e "Suite-Command: \"${CMD[*]}\"..."
   "${CMD[@]}"
 done

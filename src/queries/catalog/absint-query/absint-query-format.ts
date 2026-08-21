@@ -7,7 +7,7 @@ import type { StateAbstractDomain } from '../../../abstract-interpretation/domai
 import type { ValueDomain } from '../../../abstract-interpretation/domains/state-domain-like';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/core';
-import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import type { FlowrConfig } from '../../../config';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import { SlicingCriterion, type SlicingCriteria } from '../../../slicing/criterion/parse';
@@ -71,7 +71,7 @@ function absintQueryLineParser(output: ReplOutput, line: readonly string[], _con
 		output.stderr(output.formatter.format(`Invalid slicing criteria "${line[1]}"`, { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
 		return { query: [] };
 	}
-	const code = criteria ? line[2] : line[1];
+	const code = queryLineCode(line, criteria ? 2 : 1);
 
 	return {
 		query: {

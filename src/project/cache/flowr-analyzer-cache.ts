@@ -13,7 +13,6 @@ import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
 import { assertUnreachable, guard } from '../../util/assert';
 import type { CfgSimplificationPassName } from '../../control-flow/cfg-simplification';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
-import type { CfgKind } from '../cfg-kind';
 import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
 import { FlowrAnalyzerControlFlowCache } from './flowr-analyzer-controlflow-cache';
 import type { Tree } from 'web-tree-sitter';
@@ -108,6 +107,11 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		if(force) {
 			this.reset();
 		}
+		/* the contingent belongs to the analysis, so stepping the tape starts one of its own */
+		return this.args.context.gas.withGas(undefined, () => this.stepTapeUntil(until));
+	}
+
+	private async stepTapeUntil<T>(until: () => T | undefined): Promise<T> {
 		let g: T | undefined;
 		while((g = until()) === undefined && this.pipeline.hasNextStep()) {
 			await this.pipeline.nextStep();
@@ -190,27 +194,24 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	/**
 	 * Get the control flow graph (CFG) for the request, computing if necessary.
 	 * @param force           - Do not use the cache, instead force new analyses.
-	 * @param kind            - The kind of CFG that is requested.
 	 * @param simplifications - Simplification passes to be applied to the CFG.
 	 */
-	public async controlflow(force: boolean | undefined, kind: CfgKind, simplifications?: readonly CfgSimplificationPassName[]): Promise<ControlFlowInformation> {
+	public async controlflow(force: boolean | undefined, simplifications?: readonly CfgSimplificationPassName[]): Promise<ControlFlowInformation> {
 		const cfgInfo = {
-			ctx:      this.args.context,
-			cfgQuick: this.peekDataflow()?.cfgQuick,
-			ast:      async() => await this.normalize(),
-			dfg:      async() => await this.dataflow()
+			ctx: this.args.context,
+			ast: async() => await this.normalize(),
+			dfg: async() => await this.dataflow()
 		};
-		return this.controlFlowCache.get(force, kind, cfgInfo, simplifications);
+		return this.controlFlowCache.get(force, cfgInfo, simplifications);
 	}
 
 	/**
 	 * Get the control flow graph (CFG) for the request if already available, otherwise return `undefined`.
-	 * @param kind            - The kind of CFG that is requested.
 	 * @param simplifications - Simplification passes to be applied to the CFG.
 	 * @see {@link FlowrAnalyzerCache#controlflow} - to get the control flow graph, computing if necessary.
 	 */
-	public peekControlflow(kind: CfgKind, simplifications: readonly CfgSimplificationPassName[] | undefined): ControlFlowInformation | undefined {
-		return this.controlFlowCache.peek(kind, simplifications);
+	public peekControlflow(simplifications: readonly CfgSimplificationPassName[] | undefined): ControlFlowInformation | undefined {
+		return this.controlFlowCache.peek(simplifications);
 	}
 
 	/**

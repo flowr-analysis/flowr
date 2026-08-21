@@ -79,7 +79,7 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 			sourceCode = request.content;
 		}
 
-		if(request.filePath === undefined || !ctx.config.incrementalParsing.activated) {
+		if(request.filePath === undefined || !ctx.inc.handleShouldReparse(request.filePath, ctx)) {
 			return this.parser.parse(sourceCode);
 		}
 

@@ -2,9 +2,9 @@
 // downloadable shard's sha256 + size, which the runtime uses to fetch and verify them.
 //   npm run gen:sigdb-remote -- --tag=sigdb-v2.11.2 [--repo=flowr-analysis/flowr]
 
-import fs from 'node:fs';
-import path from 'node:path';
-import https from 'node:https';
+import fs from 'fs';
+import path from 'path';
+import https from 'https';
 import { sha256File, SigDbRemoteFileName, type SigDbRemote } from '../src/project/sigdb/sigdb-download';
 import { info } from './script-log';
 

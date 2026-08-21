@@ -1,17 +1,21 @@
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { Identifier } from '../../environments/identifier';
 import { isRNumberValue, unliftRValue } from '../../../util/r-value';
 import type { BuiltInEvalHandlerArgs } from '../../environments/built-in';
 import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-constants';
 import { Top, type Value } from '../values/r-value';
 import { valueSetGuard } from '../values/general';
-import { resolveIdToValue } from './alias-tracking';
+import { Resolve } from '../../environments/resolve-helper';
+import { NodeValue } from './node-value';
+import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RExpressionList } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RUnaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 
 /** the scalar an operand folds to, with a logical counting as its `0`/`1` just like R would coerce it */
 function operand(node: RNodeWithParent, args: BuiltInEvalHandlerArgs): number | string | undefined {
-	const value = unliftRValue(resolveIdToValue(node, args));
+	const value = unliftRValue(Resolve.toValue(node, args));
 	if(typeof value === 'boolean') {
 		return Number(value);
 	} else if(isRNumberValue(value)) {
@@ -20,7 +24,7 @@ function operand(node: RNodeWithParent, args: BuiltInEvalHandlerArgs): number | 
 	return typeof value === 'object' && value !== null && 'str' in value ? value.str : undefined;
 }
 
-/** as a condition, R takes any non-zero number for `TRUE`; `NA`, strings and everything else do not fold */
+/** as a condition, R takes any non-zero number for `TRUE`; `NA`, strings, and everything else do not fold */
 function asLogical(node: RNodeWithParent, args: BuiltInEvalHandlerArgs): boolean | undefined {
 	const value = operand(node, args);
 	return typeof value === 'number' && !Number.isNaN(value) ? value !== 0 : undefined;
@@ -29,13 +33,13 @@ function asLogical(node: RNodeWithParent, args: BuiltInEvalHandlerArgs): boolean
 /** the operands of a binary operator and its entry in `ops`, with R presenting the `%.%` ones as an infix call */
 function binary<T>(node: RNodeWithParent, ops: Record<string, T>): { op: T, lhs: RNodeWithParent, rhs: RNodeWithParent } | undefined {
 	let name: string, lhs: RNodeWithParent | undefined, rhs: RNodeWithParent | undefined;
-	if(node.type === RType.BinaryOp) {
+	if(RBinaryOp.is(node)) {
 		[name, lhs, rhs] = [node.operator, node.lhs, node.rhs];
-	} else if(node.type === RType.FunctionCall && node.named && node.arguments.length === 2) {
+	} else if(RFunctionCall.isNamed(node) && node.arguments.length === 2) {
 		const [l, r] = node.arguments;
 		name = Identifier.getName(node.functionName.content);
 		/* a named argument may swap the operands, as in `` `-`(e2 = 1, e1 = 5) ``, so we only take positional ones */
-		[lhs, rhs] = [l === EmptyArgument || l.name ? undefined : l.value, r === EmptyArgument || r.name ? undefined : r.value];
+		[lhs, rhs] = [RArgument.isEmpty(l) || l.name ? undefined : l.value, RArgument.isEmpty(r) || r.name ? undefined : r.value];
 	} else {
 		return undefined;
 	}
@@ -88,7 +92,7 @@ export const LogicalOps = {
  */
 export function resolveAsLogical(args: BuiltInEvalHandlerArgs): Value {
 	const node = args.node;
-	if(node.type === RType.UnaryOp) {
+	if(RUnaryOp.is(node)) {
 		const value = node.operator === '!' ? asLogical(node.operand, args) : undefined;
 		return value === undefined ? Top : logicalValue(!value);
 	}
@@ -106,10 +110,9 @@ export function resolveAsLogical(args: BuiltInEvalHandlerArgs): Value {
 /** Resolves `(x)` to the {@link Value} of `x`, so that a parenthesized sub-expression folds like the expression itself. */
 export function resolveAsGroup(args: BuiltInEvalHandlerArgs): Value {
 	const node = args.node;
-	if(node.type !== RType.ExpressionList || node.children.length !== 1) {
+	if(!RExpressionList.is(node) || node.children.length !== 1) {
 		return Top;
 	}
 	/* unwrap the set again, as the caller of a handler wraps the returned value in one */
-	const values = valueSetGuard(resolveIdToValue(node.children[0], args));
-	return values?.elements.length === 1 ? values.elements[0] : Top;
+	return NodeValue.sole(valueSetGuard(Resolve.toValue(node.children[0], args))) ?? Top;
 }

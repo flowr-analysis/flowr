@@ -30,6 +30,7 @@ export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLif
 	protected readonly setType: typeof Set<T>;
 
 	/**
+	 * @param value   - The abstract value to start from.
 	 * @param limit   - A limit for the maximum number of elements to store in the set
 	 * @param setType - An optional set constructor for the domain elements if the type `T` is not storable in a HashSet
 	 */

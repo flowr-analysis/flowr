@@ -4,20 +4,18 @@ import { FunctionCallVertex, UseVertex } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import {
-	type PotentiallyEmptyRArgument,
-	type RFunctionCall,
-	EmptyArgument
-} from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument, type RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import type { RParseRequest } from '../../../r-bridge/retriever';
 import { assertUnreachable } from '../../../util/assert';
 import { readLineByLineSync } from '../../../util/files';
-import { resolveIdToArgName, resolveIdToArgValue, unescapeSpecialChars, unquoteArgument } from '../resolve-args';
+import { unescapeSpecialChars, unquoteArgument } from '../resolve-args';
 import type { DataFrameShapeInferenceVisitor } from '../shape-inference';
 import { Identifier } from '../../../dataflow/environments/identifier';
+import { Resolve } from '../../../dataflow/environments/resolve-helper';
+import { Nse } from '../../../dataflow/internal/process/functions/call/nse';
 
 /** Regular expression representing valid columns names, e.g. for `data.frame` */
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
@@ -103,7 +101,7 @@ export function getArgumentValue<T>(
 	const arg = getFunctionArgument(args, argument, info);
 	const defaultValue = typeof argument !== 'string' ? argument.default : undefined;
 
-	return arg !== undefined ? resolveIdToArgValue(arg, info) : defaultValue;
+	return arg !== undefined ? Resolve.argument.value(arg, info) : defaultValue;
 }
 
 /**
@@ -136,7 +134,7 @@ export function getFunctionArgument(
 	let arg = undefined;
 
 	if(name !== undefined) {
-		arg = args.find(arg => resolveIdToArgName(arg, info) === name);
+		arg = args.find(arg => Resolve.argument.toName(arg, info) === name);
 	}
 	const hasArgPos = arg === undefined && pos >= 0 && pos < args.length && args[pos] !== EmptyArgument && args[pos].name === undefined;
 
@@ -178,7 +176,7 @@ export function getUnresolvedSymbolsInExpression(
 	expression: RNode<ParentInformation> | typeof EmptyArgument | undefined,
 	dfg?: DataflowGraph
 ): Identifier[] {
-	if(expression === undefined || expression === EmptyArgument || dfg === undefined) {
+	if(expression === undefined || RArgument.isEmpty(expression) || dfg === undefined) {
 		return [];
 	}
 	const unresolvedSymbols: Identifier[] = [];
@@ -189,7 +187,8 @@ export function getUnresolvedSymbolsInExpression(
 			const symbolName = Identifier.mapName(node.content, unquoteArgument);
 
 			// ignore symbols named ".", as they are used as argument placeholder in magrittr pipe operations
-			if(UseVertex.is(vertex?.[0]) && vertex[1].size === 0 && symbolName !== '.') {
+			/* the mask read the dataflow adds to a column keeps the name a column, so ask the mark rather than the edges */
+			if(UseVertex.is(vertex?.[0]) && symbolName !== '.' && (vertex[1].size === 0 || Nse.maskedName(dfg, node.info.id))) {
 				unresolvedSymbols.push(symbolName);
 			}
 		}
@@ -215,7 +214,7 @@ export function hasCriticalArgument(
 		if(arg === undefined) {
 			continue;
 		} else if(typeof param !== 'string' && param.default !== undefined) {
-			const value = resolveIdToArgValue(arg, info);
+			const value = Resolve.argument.value(arg, info);
 
 			if(value !== undefined && value === param.default) {
 				continue;

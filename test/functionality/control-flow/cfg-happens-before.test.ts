@@ -3,7 +3,7 @@ import { withShell } from '../_helper/shell';
 import { Ternary } from '../../../src/util/logic';
 import { assertHappensBefore } from '../_helper/controlflow/happens-before';
 
-describe.sequential('Happens Before', withShell(shell => {
+describe('Happens Before', { concurrent: false }, withShell(shell => {
 	assertHappensBefore(shell, 'x <- 1\ny <- 2', '1@<-', '2@<-', Ternary.Always);
 	assertHappensBefore(shell, 'x <- 1\nprint(x)\ny <- 2\nprint(y)', '1@<-', '3@<-', Ternary.Always);
 	for(const criteria of ['1@x', '1@<-', '1@4'] as const) {

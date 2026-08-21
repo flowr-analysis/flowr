@@ -7,11 +7,11 @@ import type {
 import { availableVersionEntries, getSharedSigSourceSync, SigDatabaseSet, type AvailableVersion, type PackageSignatureSource, type ShardStatus } from '../../../project/sigdb/reader';
 import { isDateBound, releaseDateBound } from '../../../project/sigdb/sigdb-version';
 import { DepType, DepTypeNames, type LibraryExports } from '../../../project/sigdb/schema';
+import { attachedAlongside } from '../../../project/attached-packages';
 import { defaultSigDbPaths } from '../../../project/sigdb/manifest';
 import type { DecodedFunction } from '../../../project/sigdb/decode';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
 import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
-import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
 import type { BuiltInFnInfo } from '../../../dataflow/environments/built-in-props';
 import { ArgProp, CallProp } from '../../../dataflow/environments/built-in-props';
 import { Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
@@ -19,6 +19,8 @@ import { RVersion } from '../../../util/r-version';
 import { baseRPackages, baseRExportOwner } from '../../../util/r-base-packages';
 import { Mermaid } from '../../../util/mermaid/mermaid';
 import type { CommandCompletions } from '../../../cli/repl/core';
+import { Resolve } from '../../../dataflow/environments/resolve-helper';
+import { uniqueArray } from '../../../util/collections/arrays';
 
 /** the CRAN package landing page (only meaningful for CRAN packages, not base R) */
 export function cranPageUrl(pkg: string): string {
@@ -131,7 +133,7 @@ export function rSourceRef(version: string | undefined): string {
 }
 
 /** deep-link a base-R definition into the R sources mirror at the release series of `version` */
-function rSourceUrl(pkg: string, version: string | undefined, file: string, line?: number): string {
+export function rSourceUrl(pkg: string, version: string | undefined, file: string, line?: number): string {
 	const anchor = line !== undefined && line >= 0 ? `#L${line}` : '';
 	return `${RSourceMirror}/blob/${rSourceRef(version)}/src/library/${encodeURIComponent(pkg)}/${file}${anchor}`;
 }
@@ -242,7 +244,7 @@ function flowrOnlyFunctionInfo(env: REnvironmentInformation | undefined, pkg: st
 	if(env === undefined) {
 		return undefined;
 	}
-	const resolved = resolveByName(pkg === undefined ? name : Identifier.make(name, pkg), env, ReferenceType.Function);
+	const resolved = Resolve.byNameAndType(pkg === undefined ? name : Identifier.make(name, pkg), env, ReferenceType.Function);
 	const definition = resolved?.find(d => d.type === ReferenceType.BuiltInFunction);
 	if(definition === undefined) {
 		return undefined;
@@ -251,9 +253,13 @@ function flowrOnlyFunctionInfo(env: REnvironmentInformation | undefined, pkg: st
 	if(info === undefined || (info.props === undefined && info.sig === undefined)) {
 		return undefined;
 	}
+	const namespace = definition.name === undefined ? undefined : Identifier.getNamespace(definition.name);
+	if(pkg !== undefined && namespace !== undefined && namespace !== pkg) {
+		return undefined;
+	}
 	return {
 		name,
-		package:    pkg ?? (definition.name === undefined ? undefined : Identifier.getNamespace(definition.name)) ?? 'base',
+		package:    namespace ?? pkg ?? 'base',
 		flowrOnly:  true,
 		exported:   true,
 		properties: [],
@@ -476,6 +482,7 @@ export function signaturePackageInfo(src: PackageSignatureSource, pkg: string, r
 	const deps = (src.dependencies(pkg, resolved) ?? src.dependencies(pkg) ?? [])
 		.map(d => ({ type: DepTypeNames[d.type], name: d.name, ...(d.constraint ? { constraint: d.constraint } : {}) }));
 	const release = src.releaseDate(pkg, resolved);
+	const attaches = attachedAlongside(pkg, [src], resolved);
 	return {
 		name:          pkg,
 		version:       exports.version,
@@ -492,6 +499,7 @@ export function signaturePackageInfo(src: PackageSignatureSource, pkg: string, r
 		deprecated:    exports.deprecated,
 		...(base && src.coreVersions(pkg) ? { coreVersions: src.coreVersions(pkg)?.map(v => v.str) } : {}),
 		dependencies:  deps,
+		...(attaches.length > 0 ? { attaches } : {}),
 		functions:     fns.map(f => decodedToView(pkg, f, exports.version, { cran: exports.cran, base }))
 	};
 }
@@ -602,7 +610,7 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 	const owningOf = (pkg: string) => sources.filter(s => s.has(pkg));
 	// the versions of `pkg` matching the spec, unioned across all owning sources (so a `3.*`/date filter reaches history)
 	const matchingVersions = (owners: readonly PackageSignatureSource[], pkg: string, m: (e: AvailableVersion) => boolean) =>
-		[...new Set(owners.flatMap(s => availableVersionEntries(s, pkg).filter(m).map(e => e.version)))];
+		uniqueArray(owners.flatMap(s => availableVersionEntries(s, pkg).filter(m).map(e => e.version)));
 
 	const paramPred = parameterFilter(q);
 	// a parameter filter (with no function name) still means "search functions", not "list packages"
@@ -748,10 +756,10 @@ export function signatureQueryCompleter(line: readonly string[], startingNewArg:
 		const stride = all.length / MaxCompletions;
 		return Array.from({ length: MaxCompletions }, (_, i) => all[Math.floor(i * stride)]);
 	};
-	const packageNames = (): string[] => [...new Set(sources.flatMap(s => s.packageNames()))].sort();
+	const packageNames = (): string[] => uniqueArray(sources.flatMap(s => s.packageNames())).sort();
 	const functionsOf = (pkg: string): string[] => {
 		const src = sources.find(s => s.has(pkg));
-		return src ? [...new Set((src.functions(pkg) ?? []).map(f => f.name))].sort() : [];
+		return src ? uniqueArray((src.functions(pkg) ?? []).map(f => f.name)).sort() : [];
 	};
 
 	// first token: a package spec (`pkg`, `pkg::fn`, `pkg@ver`)

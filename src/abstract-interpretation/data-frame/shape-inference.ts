@@ -1,4 +1,4 @@
-import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
+import type { OnCall } from '../../control-flow/semantic-cfg-guided-visitor';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -71,7 +71,7 @@ export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisito
 		return id !== undefined ? this.operations?.get(id) : undefined;
 	}
 
-	protected override onFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
+	protected override onFunctionCall({ call }: OnCall): void {
 		super.onFunctionCall({ call });
 
 		const node = this.getNormalizedAst(call.id);
@@ -83,7 +83,7 @@ export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisito
 		this.applyDataFrameExpression(node, operations);
 	}
 
-	protected override onReplacementCall({ call, target, source }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
+	protected override onReplacementCall({ call, target, source }: OnCall & { target?: NodeId, source?: NodeId }): void {
 		super.onReplacementCall({ call, target, source });
 
 		const node = this.getNormalizedAst(call.id);
@@ -97,7 +97,7 @@ export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisito
 		this.applyDataFrameExpression(node, operations);
 	}
 
-	protected override onAccessCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
+	protected override onAccessCall({ call }: OnCall): void {
 		super.onAccessCall({ call });
 
 		const node = this.getNormalizedAst(call.id);

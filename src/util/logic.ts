@@ -16,9 +16,9 @@ export const TernaryLogic = {
 		return Ternary.Maybe;
 	},
 	or(this: void, ...values: Ternary[]): Ternary {
-		if(values.some(value => value === Ternary.Always)) {
+		if(values.includes(Ternary.Always)) {
 			return Ternary.Always;
-		} else if(values.some(value => value === Ternary.Maybe)) {
+		} else if(values.includes(Ternary.Maybe)) {
 			return Ternary.Maybe;
 		}
 		return Ternary.Never;

@@ -3,9 +3,9 @@
  * database), reading/writing it, and discovering the bundled manifests/bundles on flowR's search path. Split
  * out of `../sigdb` as pure format + filesystem discovery, with no dependency on the reader/writer classes.
  */
-import fs from 'node:fs';
-import path from 'node:path';
-import { SigDbExt, type SigDbPkgMeta, type SigDbShard, type SigDbTier } from './schema';
+import fs from 'fs';
+import path from 'path';
+import { SigDbExt, type SigDbPkgMetaIndex, type SigDbShard, type SigDbTier } from './schema';
 import type { ByteRange, SigDbIndexWire, SigShardIndexWire } from './index-format';
 import { CompressedExtPattern, compressedExtOf, decompressSyncFor, readableExtsPreferred, stripCompressedExt, writeCodecs } from './codec';
 import { sigDbCacheDir } from './decompress';
@@ -45,7 +45,7 @@ export interface SigDbManifest {
 	generated: number;
 	cranBase?: string;
 	/** package metadata, hoisted here once and shared by every shard (they hold overlapping package sets) */
-	meta?:     Record<string, SigDbPkgMeta>;
+	meta?:     SigDbPkgMetaIndex;
 	/** shared string dictionaries; a shard references one by id (they are stored once, not per shard) */
 	dicts?:    SigDbDictRef[];
 	shards:    SigDbShardRef[];
@@ -95,18 +95,26 @@ export function readManifestDate(manifestFile: string): string | undefined {
 export type SigDbScope = 'base' | 'current' | 'full';
 /** richest first: a container shipping the full set uses it, else the slim `current`, else the `base` floor */
 const SigDbScopeOrder: readonly SigDbScope[] = ['full', 'current', 'base'];
-/** layouts a bundled sigdb may sit in, relative to a search root -- the root itself (e.g. a `$FLOWR_SIGDB_DIR` data mount), then the dev `src`, build `dist` and data-dir layouts */
+/** layouts a bundled sigdb may sit in, relative to a search root -- the root itself (e.g. a `$FLOWR_SIGDB_DIR` data mount), then the dev `src`, build `dist`, and data-dir layouts */
 const SigDbSubDirs = ['', 'data/sigdb', 'src/data/sigdb', 'dist/src/data/sigdb'];
 
-function sigDbBundleDirs(): string[] {
+/** a `<scope>.manifest.json`, in any of the codecs we can read */
+const ManifestFilePattern = new RegExp(`\\.manifest\\.json${CompressedExtPattern}$`);
+/** a `<name>.sigs.ndjson` bundle, in any of the codecs we can read */
+const BundleFilePattern = new RegExp(`${SigDbExt.replace(/\./g, '\\.')}${CompressedExtPattern}$`);
+
+function sigDbBundleDirs(watched?: [string, number][]): string[] {
 	if(typeof fs?.readdirSync !== 'function') {
 		return [];
 	}
 	try {
 		const bundles = path.join(sigDbCacheDir(undefined, false), 'bundles');
-		return fs.readdirSync(bundles, { withFileTypes: true })
+		const mtimeMs = fs.statSync(bundles).mtimeMs;
+		const dirs = fs.readdirSync(bundles, { withFileTypes: true })
 			.filter(e => e.isDirectory())
 			.map(e => path.join(bundles, e.name));
+		watched?.push([bundles, mtimeMs]);   // a bundle directory appearing here has to be picked up too
+		return dirs;
 	} catch{
 		return [];
 	}
@@ -130,7 +138,7 @@ function sigDbSearchRoots(extra?: readonly string[]): string[] {
 
 /**
  * Location of a bundled sigdb **manifest**, found by walking up from several roots (this module,
- * `$FLOWR_SIGDB_DIR`, the working directory) across the dev (`src`), build (`dist`) and data-mount
+ * `$FLOWR_SIGDB_DIR`, the working directory) across the dev (`src`), build (`dist`), and data-mount
  * layouts. With no `scope` it returns the richest available (`full` &gt; `current` &gt; `base`), so a
  * container that ships the full set uses it automatically while a plain npm install falls back to the
  * bundled `base`. Node only (needs `fs`); pass `searchRoots` to override where it looks.
@@ -176,6 +184,33 @@ export function defaultSigDbPath(scope?: SigDbScope, searchRoots?: readonly stri
 }
 
 /**
+ * Memo for {@link defaultSigDbPaths}, keyed by the resolved search roots. The scan costs ~70 `readdirSync` calls
+ * to answer with a handful of paths and an analyzer asks for it once on construction, so a per-analyzer run
+ * repeats it for nothing. Kept honest by remembering the modification time of every directory the scan read: a
+ * bundle dropped next to the shipped ones bumps that directory and the next call rescans.
+ */
+const defaultSigDbPathsMemo = new Map<string, { paths: readonly string[], watched: readonly (readonly [string, number])[] }>();
+
+/** Forget what {@link defaultSigDbPaths} discovered, so the next call scans the filesystem again. */
+export function clearDefaultSigDbPathsMemo(): void {
+	defaultSigDbPathsMemo.clear();
+}
+
+/** Whether every directory the memoized scan read still carries the modification time it had back then */
+function memoizedScanStillCurrent(watched: readonly (readonly [string, number])[]): boolean {
+	for(const [dir, mtimeMs] of watched) {
+		try {
+			if(fs.statSync(dir).mtimeMs !== mtimeMs) {
+				return false;
+			}
+		} catch{
+			return false;   // the directory went away
+		}
+	}
+	return true;
+}
+
+/**
  * Every distinct sigdb bundle discoverable in the search dirs (see {@link defaultSigDbPath}) -- not just the
  * richest scope. So dropping an extra bundle next to the shipped default (a downloaded full-history
  * `full.manifest.json.br`, a custom `*.manifest.json`, or a standalone `*.sigs.ndjson`) makes flowR mount it
@@ -186,6 +221,14 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 	if(typeof fs?.readdirSync !== 'function') {
 		return [];
 	}
+	const roots = sigDbSearchRoots(searchRoots);
+	const memoKey = roots.join('\0');
+	const memoized = defaultSigDbPathsMemo.get(memoKey);
+	if(memoized !== undefined && memoizedScanStillCurrent(memoized.watched)) {
+		return [...memoized.paths];
+	}
+	/** every directory the scan below read, with its modification time taken _before_ the read so a concurrent write invalidates rather than sticks */
+	const watched: [string, number][] = [];
 	const manifests = new Map<string, string>();    // `<name>.manifest.json` (ignoring compression ext) -> first-found path
 	const standalones = new Map<string, string>();   // `<name>.sigs.ndjson` (ignoring compression ext) -> first-found path
 	const foundIn = new Map<string, string>();       // where a key was first found, to only compare codecs within one directory
@@ -201,23 +244,25 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 	};
 	const scanDir = (base: string): void => {
 		for(const sub of SigDbSubDirs) {
+			const dir = path.join(base, sub);
 			let entries: string[];
 			try {
-				entries = fs.readdirSync(path.join(base, sub));
+				const mtimeMs = fs.statSync(dir).mtimeMs;
+				entries = fs.readdirSync(dir);
+				watched.push([dir, mtimeMs]);
 			} catch{
 				continue;   // directory does not exist on this root
 			}
 			for(const file of entries) {
-				const full = path.join(base, sub, file);
-				if(new RegExp(`\\.manifest\\.json${CompressedExtPattern}$`).test(file)) {
-					keep(manifests, stripCompressedExt(file), full, path.join(base, sub));
-				} else if(new RegExp(`${SigDbExt.replace(/\./g, '\\.')}${CompressedExtPattern}$`).test(file) && !file.includes('.dict' + SigDbExt)) {
-					keep(standalones, stripCompressedExt(file), full, path.join(base, sub));
+				if(ManifestFilePattern.test(file)) {
+					keep(manifests, stripCompressedExt(file), path.join(dir, file), dir);
+				} else if(BundleFilePattern.test(file) && !file.includes('.dict' + SigDbExt)) {
+					keep(standalones, stripCompressedExt(file), path.join(dir, file), dir);
 				}
 			}
 		}
 	};
-	for(const root of sigDbSearchRoots(searchRoots)) {
+	for(const root of roots) {
 		for(let dir = root, i = 0; i < 10; i++) {
 			scanDir(dir);
 			const parent = path.dirname(dir);
@@ -227,7 +272,7 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 			dir = parent;
 		}
 	}
-	for(const bundle of sigDbBundleDirs()) {
+	for(const bundle of sigDbBundleDirs(watched)) {
 		scanDir(bundle);
 	}
 	// a standalone bundle is a `.sigs.ndjson` that is not a shard of a discovered manifest (`<manifest>.<shard>...`)
@@ -243,5 +288,7 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 	const orderedManifests = [...manifests.entries()]
 		.sort((a, b) => scopeRank(a[0]) - scopeRank(b[0]) || a[0].localeCompare(b[0])).map(([, p]) => p);
 	const bundles = standalones.entries().filter(([name]) => !isShard(name)).map(([, p]) => p);
-	return [...orderedManifests, ...bundles];
+	const paths = [...orderedManifests, ...bundles];
+	defaultSigDbPathsMemo.set(memoKey, { paths, watched });
+	return [...paths];
 }

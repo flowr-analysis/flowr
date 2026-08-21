@@ -6,7 +6,7 @@ import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { describe } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
 
-describe.sequential('Parse Larger Snippets', withShell(shell => {
+describe('Parse Larger Snippets', { concurrent: false }, withShell(shell => {
 	describe('if-then, assignments, symbols, and comparisons', () => {
 		assertAst(label('Manual Max Function', [
 			'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['='].capabilities, ...OperatorDatabase['->'].capabilities, ...OperatorDatabase['<<-'].capabilities, ...OperatorDatabase['->>'].capabilities, 'numbers', 'if', ...OperatorDatabase['>'].capabilities, 'grouping', 'newlines'

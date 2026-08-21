@@ -1,6 +1,6 @@
 /**
- * On-disk schema of the `flowr-sigdb` database (schema 5): the constants, enums, numeric tuple forms and
- * data interfaces that define the serialized format and its read view. The reader/writer/builder logic that
+ * On-disk schema of the `flowr-sigdb` database (schema 5): the constants, enums, numeric tuple forms,
+ * and data interfaces that define the serialized format and its read view. The reader/writer/builder logic that
  * operates on these lives in `./sigdb` (which re-exports this module, so `./sigdb` stays the single entry point).
  */
 
@@ -147,6 +147,9 @@ export type PkgBlobTuple = [Sig[], number[][], SigFn[], Record<string, number[]>
  */
 export type SigDbPkgMeta = [latest: string, archived: number, downloads: number, core?: number];
 
+/** Every package the database knows, mapped from its name to its {@link SigDbPkgMeta}. */
+export type SigDbPkgMetaIndex = Record<string, SigDbPkgMeta>;
+
 /**
  * Temporal tier of a bundle's packages:
  * - `current` -- only each package's latest version.
@@ -191,7 +194,7 @@ export interface SigDb {
 	/** package name to its index into {@link SigDb.blobs} */
 	pkgs:      Record<string, number>;
 	/** package name to its {@link SigDbPkgMeta} */
-	meta:      Record<string, SigDbPkgMeta>;
+	meta:      SigDbPkgMetaIndex;
 }
 
 export interface SigParamInfo {

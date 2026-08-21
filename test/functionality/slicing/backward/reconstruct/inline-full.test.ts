@@ -54,7 +54,7 @@ const shinyApp = {
 	'server.R': 'function(input, output) { TITLE }\n'
 };
 
-describe.sequential('Reconstruct inline-full', () => {
+describe('Reconstruct inline-full', { concurrent: false }, () => {
 	afterAll(() => {
 		for(const dir of dirs) {
 			fs.rmSync(dir, { recursive: true, force: true });

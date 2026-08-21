@@ -7,10 +7,10 @@ import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processin
 import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from './linter-rules';
 import type { AsyncOrSync, DeepPartial, DeepReadonly } from 'ts-essentials';
 import type { LintingRuleTag } from './linter-tags';
-import type { SourceLocation } from '../util/range';
+import { SourceLocation } from '../util/range';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { isNotUndefined } from '../util/assert';
+import { assertUnreachable, isNotUndefined } from '../util/assert';
 
 export interface LinterRuleInformation<Config extends MergeableRecord = never> {
 	/** Human-Readable name of the linting rule. */
@@ -98,6 +98,36 @@ export interface LintQuickFixRemove extends BaseQuickFix {
 export type LintQuickFix = LintQuickFixReplacement | LintQuickFixRemove;
 
 /**
+ * Helper for working with {@link LintQuickFix|quick fixes}.
+ */
+export const LintQuickFix = {
+	name: 'LintQuickFix',
+	/**
+	 * Whether the fix names a span that can be changed at all. A rule that cannot locate its finding falls back
+	 * to {@link SourceLocation.invalid}, and carrying that out would cut somewhere else entirely. An insertion is
+	 * a span of no width, written with its end one column before its start, so only the lines have to be real.
+	 */
+	isPlaced(this: void, fix: LintQuickFix): boolean {
+		const [startLine, startColumn, endLine, endColumn] = SourceLocation.getRange(fix.loc);
+		return startLine > 0 && endLine > 0 && startColumn > 0 && endColumn >= 0;
+	},
+	/**
+	 * The text that takes the place of the span the fix covers, which is what carrying it out amounts to.
+	 * Every kind of fix is named here, so a new one cannot quietly inherit the behaviour of another.
+	 */
+	inserted(this: void, fix: LintQuickFix): string {
+		switch(fix.type) {
+			case 'replace':
+				return fix.replacement;
+			case 'remove':
+				return '';
+			default:
+				assertUnreachable(fix);
+		}
+	}
+} as const;
+
+/**
  * A linting result for a single linting rule match.
  */
 export interface LintingResult {
@@ -147,6 +177,7 @@ export type LintingResults<Name extends LintingRuleNames> = LintingResultsSucces
  * Helper functions for working with {@link LintingResults}.
  */
 export const LintingResults = {
+	name: 'LintingResults',
 	/**
 	 * Checks whether the given linting results represent an error.
 	 * @see {@link LintingResultsError}

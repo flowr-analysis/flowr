@@ -21,6 +21,7 @@ export const RUnaryOp = {
 	name: 'RUnaryOp',
 	/**
 	 * Type guard for {@link RUnaryOp} nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RUnaryOp<Info> {
 		return node?.type === RType.UnaryOp;

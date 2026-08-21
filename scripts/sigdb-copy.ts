@@ -1,7 +1,7 @@
 // Copy the committed sigdb (`.br`/`.zst` shards, manifests, `sigdb.remote.json`) into dist so it ships with npm;
 // discovered at runtime by `defaultSigDbPath`. Skips plain/`.gz`/`.idx` files and drops stale copies.
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from 'fs';
+import path from 'path';
 import { info } from './script-log';
 // ship the two persisted codecs (brotli/zstd); `.gz` is a build-time byproduct and never shipped
 const ShippedExts = ['.br', '.zst'] as const;

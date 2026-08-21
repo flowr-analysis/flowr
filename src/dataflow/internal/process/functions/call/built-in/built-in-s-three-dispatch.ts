@@ -1,3 +1,4 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
 import { DataflowInformation, alwaysExits } from '../../../../../info';
@@ -7,16 +8,15 @@ import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { pMatch } from '../../../../linker';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
-import { isValue } from '../../../../../eval/values/r-value';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { SourceRange } from '../../../../../../util/range';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { ControlFlow } from '../../../../control-flow';
 
 /** e.g. UseMethod(generic, object) */
 interface S3DispatchConfig {
@@ -48,7 +48,7 @@ export function processS3Dispatch<OtherInfo>(
 		[config.args.object]:  'object',
 		'...':                 '...'
 	};
-	const argMaps = pMatch(convertFnArguments(args), params);
+	const argMaps = MatchArgs.toSpec(convertFnArguments(args), params);
 	const generic = unpackArg(RArgument.getWithId(args, argMaps.get('generic')?.[0]));
 	if(!generic && !config.inferFromClosure) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
@@ -79,27 +79,22 @@ export function processS3Dispatch<OtherInfo>(
 		});
 		const ingoing = dfObj.in.concat(dfObj.unknownReferences);
 		ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
+		const cfgEntry = ControlFlow.inSequence(dfObj.graph, [dfObj], rootId);
 		return {
 			hooks:             dfObj.hooks,
 			environment:       dfObj.environment,
 			exitPoints:        dfObj.exitPoints,
 			graph:             dfObj.graph,
 			entryPoint:        rootId,
+			cfgEntry,
+			cfgExit:           rootId,
 			in:                ingoing,
 			out:               dfObj.out,
 			unknownReferences: []
 		};
 	}
 
-	const n = resolveIdToValue(generic.info.id, { environment: data.environment, resolve: data.ctx.config.solver.variables, idMap: data.completeAst.idMap, full: true, ctx: data.ctx });
-	const accessedIdentifiers: string[] = [];
-	if(n.type === 'set') {
-		for(const elem of n.elements) {
-			if(elem.type === 'string' && isValue(elem.value)) {
-				accessedIdentifiers.push(elem.value.str);
-			}
-		}
-	}
+	const accessedIdentifiers = NodeValue.knownStringsOf(generic.info.id, data);
 	if(accessedIdentifiers.length === 0) {
 		dataflowLogger.warn('s3 dispatch with non-resolvable generic, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
@@ -137,12 +132,16 @@ export function processS3Dispatch<OtherInfo>(
 	for(const id of accessedIdentifiers) {
 		ingoing.push({ nodeId: generic.info.id, name: id, cds: data.cds, type: ReferenceType.S3MethodPrefix });
 	}
+	const graph = dfObj.graph.mergeWith(dfGeneric.graph);
+	const cfgEntry = ControlFlow.inSequence(graph, [dfGeneric, dfObj], rootId);
 	return {
 		hooks:             dfGeneric.hooks.concat(dfObj?.hooks),
 		environment:       dfGeneric.environment,
 		exitPoints:        dfObj.exitPoints.concat(dfGeneric.exitPoints),
-		graph:             dfObj.graph.mergeWith(dfGeneric.graph),
+		graph,
 		entryPoint:        rootId,
+		cfgEntry,
+		cfgExit:           rootId,
 		in:                ingoing,
 		out:               dfGeneric.out.concat(dfObj.out),
 		unknownReferences: []

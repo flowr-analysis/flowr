@@ -1,6 +1,6 @@
+import { MatchArgs } from '../../../../src/dataflow/graph/match-args';
 import { assert, describe, test } from 'vitest';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
-import { linkArgumentsOnCall } from '../../../../src/dataflow/internal/linker';
 import type { FunctionArgument, OutgoingEdges } from '../../../../src/dataflow/graph/graph';
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -69,7 +69,7 @@ describe('Dataflow Linker - Argument Matching', () => {
 				defaultValue: undefined
 			} satisfies RParameter<ParentInformation>));
 
-			linkArgumentsOnCall(useArgs, useParams, graph);
+			MatchArgs.onCallAndLink(useArgs, useParams, graph);
 
 			const edges = new Map(graph.edges());
 			for(let i = 0; i < expected.length; i++) {
@@ -77,7 +77,7 @@ describe('Dataflow Linker - Argument Matching', () => {
 				if(exp === ' ') {
 					continue; // no link1
 				}
-				const paramIdx = params.findIndex(p => p === exp);
+				const paramIdx = params.indexOf(exp);
 				if(paramIdx === -1) {
 					throw new Error(`Test setup error: expected parameter ${exp} not found in params ${params.join(', ')}`);
 				}

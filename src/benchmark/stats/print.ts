@@ -181,6 +181,7 @@ Input:
 Dataflow:
   Number of nodes:               ${pad(stats.dataflow.numberOfNodes)}
   Number of edges:               ${pad(stats.dataflow.numberOfEdges)}
+  Number of control flow edges:  ${pad(stats.dataflow.numberOfControlFlowEdges)}
   Number of calls:               ${pad(stats.dataflow.numberOfCalls)}
   Number of function defs:       ${pad(stats.dataflow.numberOfFunctionDefinitions)}
   Size of graph:                 ${convertNumberToNiceBytes(stats.dataflow.sizeOfObject)}`;
@@ -252,6 +253,28 @@ Dataframe shape inference per token:  ${formatSummarizedTimeMeasure(stats.dataFr
 Dataframe shape inference per R token:${formatSummarizedTimeMeasure(stats.dataFrameShapeTimePerToken.raw)}`;
 	}
 
+	result += `
+
+Per 100 lines of input:
+  AST retrieval:                      ${formatSummarizedTimeMeasure(stats.retrieveTimePer100Lines)}
+  AST normalization:                  ${formatSummarizedTimeMeasure(stats.normalizeTimePer100Lines)}
+  Dataflow creation:                  ${formatSummarizedTimeMeasure(stats.dataflowTimePer100Lines)}
+  Control flow extraction:            ${formatSummarizedTimeMeasure(stats.controlFlowTimePer100Lines)}
+  Total common:                       ${formatSummarizedTimeMeasure(stats.totalCommonTimePer100Lines)}
+  Slice creation:                     ${formatSummarizedTimeMeasure(stats.sliceTimePer100Lines)}
+  Reconstruction:                     ${formatSummarizedTimeMeasure(stats.reconstructTimePer100Lines)}
+  Total per slice:                    ${formatSummarizedTimeMeasure(stats.totalPerSliceTimePer100Lines)}`;
+
+	if(stats.additionalMeasurements !== undefined && stats.additionalMeasurements.size > 0) {
+		result += `
+
+Additional phases (not part of the total):`;
+		for(const [name, measure] of stats.additionalMeasurements) {
+			result += `
+  ${name.padEnd(34, ' ')}${formatSummarizedTimeMeasure(measure)}`;
+		}
+	}
+
 	// Used Slice Criteria Sizes: ${formatSummarizedMeasure(stats.perSliceMeasurements.sliceCriteriaSizes)}
 	if(stats.totalSlices > 0) {
 		result += `
@@ -292,6 +315,7 @@ Input:
 Dataflow:
   Number of nodes:               ${formatSummarizedMeasure(stats.dataflow.numberOfNodes)}
   Number of edges:               ${formatSummarizedMeasure(stats.dataflow.numberOfEdges)}
+  Number of control flow edges:  ${formatSummarizedMeasure(stats.dataflow.numberOfControlFlowEdges)}
   Number of calls:               ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
   Number of function defs:       ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}
   Size of graph:                 ${formatSummarizedMeasure(stats.dataflow.sizeOfObject, convertNumberToNiceBytes)}`;

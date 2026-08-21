@@ -1,3 +1,5 @@
+import type { ControlDependency } from '../info';
+
 /**
  * An edge consist of only of the type (source and target are encoded with the Dataflow Graph).
  * Multiple edges are encoded by joining the respective type bits.
@@ -6,6 +8,16 @@
  */
 export interface DfEdge {
 	types: EdgeTypeBits
+}
+
+/**
+ * A {@link EdgeType.ControlEdge} additionally carries what decides whether its target runs.
+ * This is the very {@link ControlDependency} the vertices behind the edge carry in their `cds`, so the two
+ * never say different things about the same branch.
+ */
+export interface DFControlFlowEdge extends DfEdge {
+	types: EdgeType.ControlEdge,
+	cd:    ControlDependency
 }
 
 /**
@@ -36,7 +48,17 @@ export enum EdgeType {
 	/** The edge determines that the source is a side effect that happens when the target is called */
 	SideEffectOnCall = 1 << 7,
 	/** The Edge determines that the reference is affected by a non-standard evaluation (e.g., a for-loop body or a quotation) */
-	NonStandardEvaluation = 1 << 8
+	NonStandardEvaluation = 1 << 8,
+	/**
+	 * The edge points the way execution goes: the target is evaluated after the source.
+	 * @see {@link ControlFlowGraph} - the view these edges carry
+	 */
+	FlowEdge = 1 << 12,
+	/**
+	 * Like {@link EdgeType.FlowEdge}, pointing the way execution goes, but only taken when the condition the
+	 * edge names evaluates to the value it names (e.g. one branch of an if-else).
+	 */
+	ControlEdge = 1 << 13,
 }
 
 /**
@@ -51,10 +73,19 @@ export const enum EdgeTypeName {
 	DefinedByOnCall       = 'def-by-on-call',
 	Argument              = 'arg',
 	SideEffectOnCall      = 'side-effect-on-call',
-	NonStandardEvaluation = 'non-standard-evaluation'
+	NonStandardEvaluation = 'non-standard-evaluation',
+	FlowEdge              = 'flows-to',
+	ControlEdge           = 'branches-to'
 }
 
 export type EdgeTypeBits = number;
+
+/**
+ * The edge types that carry the control flow of the program, all of them pointing the way execution goes.
+ * The {@link ControlFlowGraph} is a view on them.
+ * @see {@link EdgeType.FlowEdge}, {@link EdgeType.ControlEdge}
+ */
+export const ControlFlowEdgeTypes: EdgeTypeBits = EdgeType.FlowEdge | EdgeType.ControlEdge;
 
 const edgeTypeToHumanReadableName: ReadonlyMap<EdgeType, EdgeTypeName> = new Map<EdgeType, EdgeTypeName>([
 	[EdgeType.Reads,                 EdgeTypeName.Reads                ],
@@ -65,7 +96,9 @@ const edgeTypeToHumanReadableName: ReadonlyMap<EdgeType, EdgeTypeName> = new Map
 	[EdgeType.DefinedByOnCall,       EdgeTypeName.DefinedByOnCall      ],
 	[EdgeType.Argument,              EdgeTypeName.Argument             ],
 	[EdgeType.SideEffectOnCall,      EdgeTypeName.SideEffectOnCall     ],
-	[EdgeType.NonStandardEvaluation, EdgeTypeName.NonStandardEvaluation]
+	[EdgeType.NonStandardEvaluation, EdgeTypeName.NonStandardEvaluation],
+	[EdgeType.FlowEdge,              EdgeTypeName.FlowEdge],
+	[EdgeType.ControlEdge,           EdgeTypeName.ControlEdge]
 ]);
 
 type DfEdgeLike = { types: number };
@@ -165,6 +198,18 @@ export const DfEdge = {
 	 */
 	isOnlyType(this: void, { types }: DfEdgeLike, only: EdgeType): boolean {
 		return types === only;
+	},
+	/**
+	 * Whether the edge carries nothing but control flow, i.e. it exists only because the
+	 * {@link ControlFlowGraph} is a view on the dataflow graph.
+	 * @see {@link ControlFlowEdgeTypes}
+	 */
+	isOnlyControlFlow(this: void, { types }: DfEdgeLike): boolean {
+		return (types & ~ControlFlowEdgeTypes) === 0;
+	},
+	/** The same edge without the given types, e.g. to look at the dataflow part of an edge on its own. */
+	without(this: void, { types }: DfEdgeLike, drop: EdgeTypeBits): DfEdge {
+		return { types: types & ~drop };
 	},
 } as const;
 

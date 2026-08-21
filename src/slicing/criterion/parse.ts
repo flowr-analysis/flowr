@@ -291,5 +291,3 @@ function nthOccurrenceToId<OtherInfo>(line: number, name: string, dataflowIdMap:
 	const index = nth < 0 ? columns.length + nth : nth - 1;
 	return index >= 0 && index < columns.length ? byColumn.get(columns[index])?.info.id : undefined;
 }
-
-

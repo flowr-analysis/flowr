@@ -6,6 +6,7 @@
  * without this script noticing.
  */
 import fs from 'fs';
+import { execSync } from 'child_process';
 import path from 'path';
 import { TreeSitterExecutor } from '../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { FlowrAnalyzerBuilder } from '../src/project/flowr-analyzer-builder';
@@ -335,6 +336,15 @@ function spark(series: readonly number[]): string {
 interface Benchmark { name: string, value: number, unit: string }
 interface BenchmarkData { entries: Record<string, { commit: { timestamp: string, message: string }, benches: Benchmark[] }[]> }
 
+/** when the page was last updated, taken from the repository so that rebuilding alone does not change it */
+function lastUpdated(): string {
+	try {
+		return execSync('git log -1 --format=%cI', { encoding: 'utf8' }).trim().slice(0, 16).replace('T', ', ');
+	} catch{
+		return new Date().toISOString().slice(0, 16).replace('T', ', ');
+	}
+}
+
 const escape = (text: string): string => text.replace(/[&<>"]/g, c =>
 	({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
 
@@ -504,6 +514,7 @@ function render(data: PageData): string {
 	const version = (JSON.parse(fs.readFileSync('package.json', 'utf8')) as { version: string }).version;
 	return Template
 		.replaceAll('<!--VERSION-->', `v${version}`)
+		.replace('<!--UPDATED-->', lastUpdated())
 		.replace('<!--TIMES-->', bars)
 		.replace('<!--BENCHFILES-->', measured?.files ?? '')
 		.replace('<!--BENCHLINES-->', measured?.lines ?? '')

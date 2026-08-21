@@ -15,7 +15,13 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('never', parser, 'if(FALSE) 1 else 2', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, loc: [1, 11, 1, 11] }
 			]);
-			assertLinter('no analysis', parser, 'if(FALSE) 1 else 2', 'dead-code', [], undefined, { simplificationPasses: DefaultCfgSimplificationOrder });
+			/*
+			 * The dataflow analysis already resolves a constant condition away, so the branch it drops is gone
+			 * from the control flow whether or not the dead code pass runs on top.
+			 */
+			assertLinter('no analysis', parser, 'if(FALSE) 1 else 2', 'dead-code', [
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 11, 1, 11] }
+			], undefined, { simplificationPasses: DefaultCfgSimplificationOrder });
 		});
 
 		describe('stop', () => {

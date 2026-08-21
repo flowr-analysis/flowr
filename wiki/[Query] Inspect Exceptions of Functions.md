@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[src/documentation/wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts)' on 2026-08-16, 06:15:25 UTC (v2.13.16), so please do not edit it directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-20, 22:53:36 UTC (v2.14.1), please do not edit directly._
 <h2 id="Inspect Exceptions of Functions Query">Inspect Exceptions of Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions throw exceptions (known to flowR)\
@@ -38,17 +38,17 @@ the following query returns the information for all identified function definiti
 
 _Results (prettified and summarized):_
 
-Query: **inspect-exception** (3ms)\
+Query: **inspect-exception** (4ms)\
 &nbsp;&nbsp;- Function **20** (1.12-4.1) throws exceptions:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Exception maybe thrown at id **11** "stop" (2.13-35, cds: true:2.3-3.14)\
 &nbsp;&nbsp;- Function **40** (8.13-30) does not throw exceptions.\
 &nbsp;&nbsp;- Function **44** (5.13-10.1) throws exceptions:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Exception maybe thrown at id **11** "stop" (2.13-35, cds: true:2.3-3.14)\
-_All queries together required ≈3 ms (1ms accuracy, total 4 ms)_
+_All queries together required ≈4 ms (1ms accuracy, total 5 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _4.0 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _5.0 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -60,7 +60,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "inspect-exception": {
     ".meta": {
-      "timing": 3
+      "timing": 4
     },
     "exceptions": {
       "20": [
@@ -89,7 +89,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 3
+    "timing": 4
   }
 }
 ```
@@ -121,7 +121,7 @@ safeFail <- function(x) {
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _1.8 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _3.4 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -138,7 +138,6 @@ subgraph "flow-20" [function 20]
       *2.6* (**id: 5**)`"])
     6{{"`*#91;RNumber#93;* **0**
       *2.10* (**id: 6**)`"}}
-   %% No edges found for 6
     7[["`*#91;RBinaryOp#93;* base#58;#58;**#60;**
       *2.6-10* (**id: 7**)
     arg: (5, 6)`"]]
@@ -147,7 +146,6 @@ subgraph "flow-20" [function 20]
     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     9{{"`*#91;RString#93;* **#34;Negative value!#34;**
       *2.18-34* (**id: 9**)`"}}
-   %% No edges found for 9
     11[["`*#91;RFunctionCall#93;* base#58;#58;**stop**
       *2.13-35* (**id: 11**, 18+)
     arg: (9)`"]]
@@ -172,7 +170,6 @@ if`"]
       *1.24* (**id: 19**)
     arg: (18)`"]]
 end
-   %% No edges found for 20
     0["`*#91;RSymbol#93;* **mayFail**
       *1.1-7* (**id: 0**, v: 20)`"]
     21[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -187,7 +184,6 @@ end
 subgraph "flow-44" [function 44]
     23["`*#91;RSymbol#93;* **x**
       *5.22* (**id: 23**, v: )`"]
-   %% No edges found for 23
     29(["`*#91;RSymbol#93;* **x**
       *7.13* (**id: 29**)`"])
     %% Environment of 31 [level: 1]:
@@ -208,10 +204,8 @@ subgraph "flow-44" [function 44]
 subgraph "flow-40" [function 40]
     34["`*#91;RSymbol#93;* **e**
       *8.22* (**id: 34**, v: )`"]
-   %% No edges found for 34
     38{{"`*#91;RSymbol#93;* **NA**
       *8.27-28* (**id: 38**)`"}}
-   %% No edges found for 38
     39[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *8.25* (**id: 39**)
     arg: (38)`"]]
@@ -221,7 +215,6 @@ subgraph "flow-40" [function 40]
     style 38 stroke:purple,stroke-width:4px; 
     style 39 stroke:purple,stroke-width:4px; 
 end
-   %% No edges found for 40
     41(["`*#91;RArgument#93;* **error**
       *8.5-9* (**id: 41**)`"])
     42[["`*#91;RFunctionCall#93;* base#58;#58;**tryCatch**
@@ -240,73 +233,108 @@ tryCatch`"]
     style 42 stroke:purple,stroke-width:4px; 
     style 43 stroke:purple,stroke-width:4px; 
 end
-   %% No edges found for 44
     22["`*#91;RSymbol#93;* **safeFail**
       *5.1-8* (**id: 22**, v: 44)`"]
     45[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *5.1-10.1* (**id: 45**)
     arg: (22, 44)`"]]
+    1 -.->|"flow"| 5
+    linkStyle 0 stroke:gray,color:gray;
     1 -->|"def-by-on-call"| 29
     5 -->|"reads"| 1
+    5 -.->|"flow"| 6
+    linkStyle 3 stroke:gray,color:gray;
+    6 -.->|"flow"| 7
+    linkStyle 4 stroke:gray,color:gray;
     7 -->|"reads, arg"| 5
     7 -->|"reads, arg"| 6
+    7 -.->|"branch (when: true)"| 9
+    linkStyle 7 stroke:gray,color:gray;
+    7 -.->|"branch (when: false)"| 14
+    linkStyle 8 stroke:gray,color:gray;
     7 -.->|"reads, calls"| built-in:_
-    linkStyle 4 stroke:gray;
+    linkStyle 9 stroke:gray;
+    9 -.->|"flow"| 11
+    linkStyle 10 stroke:gray,color:gray;
     11 -->|"arg"| 9
     11 -.->|"reads, calls"| built-in:stop
-    linkStyle 6 stroke:gray;
-    11 -->|"CD-True"| 18
-    linkStyle 7 stroke:gray,color:gray;
+    linkStyle 12 stroke:gray;
     14 -->|"reads"| 1
+    14 -.->|"flow"| 16
+    linkStyle 14 stroke:gray,color:gray;
     16 -->|"reads, arg"| 14
     16 -.->|"reads, calls"| built-in:sqrt
-    linkStyle 10 stroke:gray;
-    16 -->|"CD-False"| 18
-    linkStyle 11 stroke:gray,color:gray;
+    linkStyle 16 stroke:gray;
+    16 -.->|"flow"| 18
+    linkStyle 17 stroke:gray,color:gray;
     18 -->|"returns, arg"| 11
     18 -->|"returns, arg"| 16
     18 -->|"reads, arg"| 7
     18 -.->|"reads, calls"| built-in:if
-    linkStyle 15 stroke:gray;
+    linkStyle 21 stroke:gray;
+    18 -.->|"flow"| 19
+    linkStyle 22 stroke:gray,color:gray;
     19 -->|"returns, arg"| 18
     19 -.->|"reads, calls"| built-in:_
-    linkStyle 17 stroke:gray;
+    linkStyle 24 stroke:gray;
 20 -.-|function| flow-20
 
+    20 -.->|"flow"| 0
+    linkStyle 26 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 21
     0 -->|"defined-by"| 20
-    0 -->|"defined-by"| 21
     21 -->|"reads, arg"| 20
     21 -->|"returns, arg"| 0
     21 -.->|"reads, calls"| built-in:_-
-    linkStyle 23 stroke:gray;
+    linkStyle 31 stroke:gray;
+    21 -.->|"flow"| 44
+    linkStyle 32 stroke:gray,color:gray;
+    23 -.->|"flow"| 29
+    linkStyle 0 stroke:gray,color:gray;
     29 -->|"reads"| 23
+    29 -.->|"flow"| 31
+    linkStyle 2 stroke:gray,color:gray;
     29 -->|"def-on-call"| 1
     31 -->|"reads, arg"| 29
+    31 -.->|"flow"| 40
+    linkStyle 5 stroke:gray,color:gray;
     31 -->|"calls"| 20
     31 -->|"returns"| 11
     31 -->|"returns"| 18
+    34 -.->|"flow"| 38
+    linkStyle 0 stroke:gray,color:gray;
+    38 -.->|"flow"| 39
+    linkStyle 1 stroke:gray,color:gray;
     39 -->|"returns, arg"| 38
     39 -.->|"reads, calls"| built-in:_
-    linkStyle 1 stroke:gray;
+    linkStyle 3 stroke:gray;
 40 -.-|function| flow-40
 
+    40 -.->|"flow"| 41
+    linkStyle 14 stroke:gray,color:gray;
     41 -->|"reads, calls"| 40
+    41 -.->|"flow"| 42
+    linkStyle 16 stroke:gray,color:gray;
     42 -->|"returns, arg"| 31
     42 -->|"reads, calls, arg"| 41
     42 -->|"returns"| 38
     42 -.->|"reads, calls"| built-in:tryCatch
-    linkStyle 13 stroke:gray;
+    linkStyle 20 stroke:gray;
+    42 -.->|"flow"| 43
+    linkStyle 21 stroke:gray,color:gray;
     43 -->|"returns, arg"| 42
     43 -.->|"reads, calls"| built-in:_
-    linkStyle 15 stroke:gray;
+    linkStyle 23 stroke:gray;
 44 -.-|function| flow-44
 
+    44 -.->|"flow"| 22
+    linkStyle 58 stroke:gray,color:gray;
+    22 -->|"defined-by, flow"| 45
     22 -->|"defined-by"| 44
-    22 -->|"defined-by"| 45
     45 -->|"reads, arg"| 44
     45 -->|"returns, arg"| 22
     45 -.->|"reads, calls"| built-in:_-
-    linkStyle 45 stroke:gray;
+    linkStyle 63 stroke:gray;
 ```
 
 	

@@ -992,7 +992,7 @@ ${
 
 this produces: 
 
-${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'], ctx })}
+${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart LR\n', simplifications: ['to-basic-blocks'], ctx })}
 
 
 If, on the other hand, you want to prune dead code edges:
@@ -1007,7 +1007,7 @@ ${
 
 this produces:
 
-${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['analyze-dead-code'], ctx })}
+${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart LR\n', simplifications: ['analyze-dead-code'], ctx })}
 
 
 Or, completely remove dead code:
@@ -1022,7 +1022,7 @@ ${
 
 this produces:
 
-${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['analyze-dead-code', 'remove-dead-code'], ctx })}
+${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart LR\n', simplifications: ['analyze-dead-code', 'remove-dead-code'], ctx })}
 
 		`;
 	}

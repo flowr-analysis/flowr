@@ -1,5 +1,6 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { alwaysExits, type DataflowInformation, filterOutLoopExitPoints } from '../../../../../info';
+import type { ControlDependency, DataflowInformation } from '../../../../../info';
+import { alwaysExits, ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
 import {
 	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,
@@ -19,6 +20,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { dataflowLogger } from '../../../../../logger';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { EdgeType } from '../../../../../graph/edge';
+import { ControlFlow } from '../../../../control-flow';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
 import {
@@ -67,22 +69,27 @@ export function processWhileLoop<OtherInfo>(
 	/* we inject the cf-dependency of the while-loop after the condition */
 	const { information, processedArguments } = processKnownFunctionCall({
 		name,
-		args:      unpackedArgs as RNode<ParentInformation & OtherInfo>[],
+		args:              unpackedArgs as RNode<ParentInformation & OtherInfo>[],
 		rootId,
 		data,
-		markAsNSE: [1],
-		origin:    BuiltInProcName.WhileLoop
+		markAsNSE:         [1],
+		customControlFlow: true,
+		origin:            BuiltInProcName.WhileLoop
 	});
 	const [condition, body] = processedArguments;
 
 	// If the condition is always false, we don't include the body
 	if(condition !== undefined && conditionIsAlwaysFalse) {
 		information.graph.addEdge(nameId, condition.entryPoint, EdgeType.Reads);
+		/* the body never runs, but the condition is still evaluated before the loop is left */
+		ControlFlow.branchesTo(information.graph, condition, rootId, { id: nameId, when: false });
 		return {
 			unknownReferences: [],
 			in:                [{ nodeId: nameId, name: name.lexeme, cds: data.cds, type: ReferenceType.Function }],
 			out:               condition.out,
 			entryPoint:        nameId,
+			cfgEntry:          ControlFlow.entryOf(condition),
+			cfgExit:           rootId,
 			exitPoints:        [],
 			graph:             information.graph,
 			environment:       information.environment,
@@ -100,7 +107,8 @@ export function processWhileLoop<OtherInfo>(
 		return condition;
 	}
 
-	const cdTrue = [{ id: nameId, when: true }];
+	const whenTrue: ControlDependency = { id: nameId, when: true };
+	const cdTrue = [whenTrue];
 	const bodyRead = body.in.concat(body.unknownReferences);
 	applyCdsToAllInGraphButConstants(body.graph, bodyRead, cdTrue);
 	const remainingInputs = linkInputs(bodyRead,
@@ -112,6 +120,14 @@ export function processWhileLoop<OtherInfo>(
 
 	// as the while-loop always evaluates its condition
 	information.graph.addEdge(nameId, condition.entryPoint, EdgeType.Reads);
+
+	const graph = information.graph;
+	const conditionEntry = ControlFlow.entryOf(condition);
+	ControlFlow.branchesTo(graph, condition, ControlFlow.entryOf(body), whenTrue);
+	ControlFlow.branchesTo(graph, condition, rootId, { id: nameId, when: false });
+	ControlFlow.continuesWith(graph, body, conditionEntry);
+	ControlFlow.jumpsTo(graph, body, ExitPointType.Next, conditionEntry);
+	ControlFlow.jumpsTo(graph, body, ExitPointType.Break, rootId);
 	// the body's environment carries its side effects (e.g. a `library()` call), which must survive the loop
 	const bodyEnvironment = appendEnvironment(information.environment, body.environment);
 	// as we do not know whether the loop executes at all, we merge the original environment back in (the body may never run)
@@ -123,6 +139,8 @@ export function processWhileLoop<OtherInfo>(
 		in:                [{ nodeId: nameId, name: name.lexeme, cds: originalDependency, type: ReferenceType.Function }, ...remainingInputs],
 		out:               condition.out.concat(body.out),
 		entryPoint:        nameId,
+		cfgEntry:          conditionEntry,
+		cfgExit:           rootId,
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
 		graph:             information.graph,
 		environment:       loopKill ? applyKills(loopEnvironment, loopKill) : loopEnvironment,

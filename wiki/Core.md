@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-08-20, 12:21:18 UTC (v2.14.1, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-08-20, 23:50:00 UTC (v2.14.1, R v4.6.1), please do not edit directly._
 
 
 This wiki page provides an overview of the inner workings of _flowR_.
@@ -72,7 +72,7 @@ and the [Contributing Guidelines](https://github.com/flowr-analysis/flowr/tree/m
 ## Creating and Using a flowR Analyzer Instance
 
 The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L38"><code><span title="Builder for the FlowrAnalyzer , use it to configure all analysis aspects before creating the analyzer instance with .build() or .buildSync() . You can add new files and folders to analyze using the .addRequest() method on the resulting analyzer.">FlowrAnalyzerBuilder</span></code></a> class should be used as a starting point to create analyses in _flowR_.
-It provides a fluent interface for the configuration and creation of a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L192"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> instance:
+It provides a fluent interface for the configuration and creation of a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L190"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> instance:
 
 
 ```ts
@@ -97,7 +97,7 @@ const cfg = await analyzer.controlflow();
 ```
 
 
-The underlying <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L192"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> instance will take care of caching, updates, and running the appropriate steps.
+The underlying <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L190"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> instance will take care of caching, updates, and running the appropriate steps.
 It also exposes the [query API](https://github.com/flowr-analysis/flowr/wiki/Query-API):
 
 
@@ -112,7 +112,7 @@ async function sliceQueryExample(analyzer: FlowrAnalyzer) {
 ```
 
 
-One of the additional advantages of using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L192"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> is that it provides you with context information about the analysed files:
+One of the additional advantages of using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L190"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> is that it provides you with context information about the analysed files:
 
 
 ```ts
@@ -127,7 +127,7 @@ export function inspectContextExample(analyzer: FlowrAnalyzer) {
 
 ## Pipelines and their Execution
 
-At the core of every analysis done via a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L192"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> is the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/pipeline-executor.ts#L97"><code><span title="**Please note:** The PipelineExecutor is now considered to be a rather low-level API for flowR. While it still works and is the basis for all other layers, we strongly recommend using the FlowrAnalyzer and its builder to create and use an analyzer instance that is pre-configured for your use-case. The pipeline executor allows to execute arbitrary pipelines in a step-by-step fashion. If you are not...">PipelineExecutor</span></code></a> class which takes a sequence of analysis steps (in the form of a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/pipeline/pipeline.ts#L11"><code><span title="A pipeline is a collection of steps that are executed in a certain order . It is to be created createPipeline . If you want to get the type of all steps in the pipeline (given they are created canonically using const step names), refer to PipelineStepNames .">Pipeline</span></code></a>) and executes it
+At the core of every analysis done via a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L190"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> is the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/pipeline-executor.ts#L97"><code><span title="**Please note:** The PipelineExecutor is now considered to be a rather low-level API for flowR. While it still works and is the basis for all other layers, we strongly recommend using the FlowrAnalyzer and its builder to create and use an analyzer instance that is pre-configured for your use-case. The pipeline executor allows to execute arbitrary pipelines in a step-by-step fashion. If you are not...">PipelineExecutor</span></code></a> class which takes a sequence of analysis steps (in the form of a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/pipeline/pipeline.ts#L11"><code><span title="A pipeline is a collection of steps that are executed in a certain order . It is to be created createPipeline . If you want to get the type of all steps in the pipeline (given they are created canonically using const step names), refer to PipelineStepNames .">Pipeline</span></code></a>) and executes it
 on a given input. In general, these pipeline steps are analysis agnostic and may use arbitrary input and ordering. However, two important and predefined pipelines, 
 the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/pipeline/default-pipelines.ts#L30"><code><span title="The default pipeline for working with flowR, including the dataflow step. See the DEFAULT_NORMALIZE_PIPELINE for the pipeline without the dataflow step and the DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE for the pipeline with slicing and reconstructing steps">DEFAULT_DATAFLOW_PIPELINE</span></code></a> and the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/pipeline/default-pipelines.ts#L31"><code>TREE_SITTER_DATAFLOW_PIPELINE</code></a> adequately cover the most common analysis steps 
 (differentiated only by the [Engine](https://github.com/flowr-analysis/flowr/wiki/Engines) used).
@@ -153,7 +153,7 @@ const result = await executor.allRemainingSteps();
 ```
 
 
-This is, roughly, what the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/benchmark/slicer.ts#L82"><code><span title="the dataflow graph produced by the 'dataflow' step">dataflow</span></code></a> function does when using the [`tree-sitter` engine](https://github.com/flowr-analysis/flowr/wiki/Engines).
+This is, roughly, what the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/benchmark/slicer.ts#L84"><code><span title="the dataflow graph produced by the 'dataflow' step">dataflow</span></code></a> function does when using the [`tree-sitter` engine](https://github.com/flowr-analysis/flowr/wiki/Engines).
 We create a new <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/pipeline-executor.ts#L97"><code><span title="**Please note:** The PipelineExecutor is now considered to be a rather low-level API for flowR. While it still works and is the basis for all other layers, we strongly recommend using the FlowrAnalyzer and its builder to create and use an analyzer instance that is pre-configured for your use-case. The pipeline executor allows to execute arbitrary pipelines in a step-by-step fashion. If you are not...">PipelineExecutor</span></code></a> with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/pipeline/default-pipelines.ts#L31"><code>TREE_SITTER_DATAFLOW_PIPELINE</code></a> and then use 
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/pipeline-executor.ts#L231"><code>PipelineExecutor::<b>allRemainingSteps</b></code></a> 
 to cause the execution of all contained steps (in general, pipelines can be executed step-by-step, but this is usually not required if you just want the result).
@@ -165,7 +165,7 @@ automatically selects the correct pipeline based on the engine used.
 
 Everything that complies to the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/pipeline-step.ts#L70"><code><span title="Defines what is to be known of a single step in a pipeline. It wraps around a single processor function, providing additional information. Steps will be executed synchronously, in-sequence, based on their dependencies .">IPipelineStep</span></code></a> interface can be used as a step in a pipeline, with the most important definition being the
 `processor` function, which refers to the actual work performed by the step.
-For example, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/all/core/20-dataflow.ts#L32"><code>STATIC_DATAFLOW</code></a> step ultimately relies on the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/extractor.ts#L137"><code><span title="This is the main function to produce the dataflow graph from a given request and normalized AST. Note, that this requires knowledge of the active parser in case the dataflow analysis uncovers other files that have to be parsed and integrated into the analysis (e.g., in the event of a source call). For the actual, canonical fold entry point, see processDataflowFor .">produceDataFlowGraph</span></code></a> function to create a [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph)
+For example, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/all/core/20-dataflow.ts#L32"><code>STATIC_DATAFLOW</code></a> step ultimately relies on the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/extractor.ts#L136"><code><span title="This is the main function to produce the dataflow graph from a given request and normalized AST. Note, that this requires knowledge of the active parser in case the dataflow analysis uncovers other files that have to be parsed and integrated into the analysis (e.g., in the event of a source call). For the actual, canonical fold entry point, see processDataflowFor .">produceDataFlowGraph</span></code></a> function to create a [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph)
 using the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) of the program.
 
 ### Shape of a Pipeline Step
@@ -270,9 +270,9 @@ We can see that it relies on three steps:
 1. **<a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/all/core/00-parse.ts#L8">PARSE_WITH_R_SHELL_STEP</a>** ([parsing](#parsing)): Uses the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L143"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a> to parse the input program.\
    _Its main function linked as the processor is the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/parser.ts#L97"><span title="Takes an input program and parses it using the given parser.">parseRequests</span></a> function._
 2. **<a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/all/core/10-normalize.ts#L35">NORMALIZE</a>** ([normalization](#normalization)):  Normalizes the AST produced by the parser (to create a [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)).\
-   _Its main function linked as the processor is the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/benchmark/slicer.ts#L80"><span title="the normalized AST produced by the 'normalization' step, including its parent decoration">normalize</span></a> function._
+   _Its main function linked as the processor is the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/benchmark/slicer.ts#L82"><span title="the normalized AST produced by the 'normalization' step, including its parent decoration">normalize</span></a> function._
 3. **<a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/all/core/20-dataflow.ts#L32">STATIC_DATAFLOW</a>** ([dataflow](#dataflow-graph-generation)): Produces the actual [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) from the normalized AST.\
-   _Its main function linked as the processor is the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/extractor.ts#L137"><span title="This is the main function to produce the dataflow graph from a given request and normalized AST. Note, that this requires knowledge of the active parser in case the dataflow analysis uncovers other files that have to be parsed and integrated into the analysis (e.g., in the event of a source call). For the actual, canonical fold entry point, see processDataflowFor .">produceDataFlowGraph</span></a> function._
+   _Its main function linked as the processor is the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/extractor.ts#L136"><span title="This is the main function to produce the dataflow graph from a given request and normalized AST. Note, that this requires knowledge of the active parser in case the dataflow analysis uncovers other files that have to be parsed and integrated into the analysis (e.g., in the event of a source call). For the actual, canonical fold entry point, see processDataflowFor .">produceDataFlowGraph</span></a> function._
 
 To explore these steps, let's use the REPL with the (very simple and contrived) R code: `x <- 1; print(x)`.
 
@@ -358,7 +358,7 @@ x"])
 
 ```
 	
-(The analysis required _2.2 ms_ (including parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+(The analysis required _1.6 ms_ (including parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 
 
 
@@ -375,7 +375,7 @@ R> :dataflow* "x <- 1; print(x)"
 
 
 ```text
-https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMXt7XCJgKiM5MTtSTnVtYmVyIzkzOyogKioxKipcbiAgICAgICoxLjYqICgqKmlkOiAxKiopYFwifX1cbiAgICUlIE5vIGVkZ2VzIGZvdW5kIGZvciAxXG4gICAgMFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKngqKlxuICAgICAgKjEuMSogKCoqaWQ6IDAqKiwgdjogMSlgXCJdXG4gICAgMltbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM2MDsjNDU7KipcbiAgICAgICoxLjEtNiogKCoqaWQ6IDIqKilcbiAgICBhcmc6ICgwLCAxKWBcIl1dXG4gICAgYnVpbHQtaW46Xy1bXCJgQnVpbHQtSW46XG4jNjA7IzQ1O2BcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpfLSBzdHJva2U6Z3JheSxmaWxsOmdyYXksc3Ryb2tlLXdpZHRoOjJweCxvcGFjaXR5Oi44O1xuICAgIDQoW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqeCoqXG4gICAgICAqMS4xNSogKCoqaWQ6IDQqKilgXCJdKVxuICAgIDZbW1wiYCojOTE7UkZ1bmN0aW9uQ2FsbCM5MzsqIGJhc2UjNTg7IzU4OyoqcHJpbnQqKlxuICAgICAgKjEuOS0xNiogKCoqaWQ6IDYqKilcbiAgICBhcmc6ICg0KWBcIl1dXG4gICAgYnVpbHQtaW46cHJpbnRbXCJgQnVpbHQtSW46XG5wcmludGBcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpwcmludCBzdHJva2U6Z3JheSxmaWxsOmdyYXksc3Ryb2tlLXdpZHRoOjJweCxvcGFjaXR5Oi44O1xuICAgIDAgLS0+fFwiZGVmaW5lZC1ieVwifCAxXG4gICAgMCAtLT58XCJkZWZpbmVkLWJ5XCJ8IDJcbiAgICAyIC0tPnxcInJlYWRzLCBhcmdcInwgMVxuICAgIDIgLS0+fFwicmV0dXJucywgYXJnXCJ8IDBcbiAgICAyIC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46Xy1cbiAgICBsaW5rU3R5bGUgNCBzdHJva2U6Z3JheTtcbiAgICA0IC0tPnxcInJlYWRzXCJ8IDBcbiAgICA2IC0tPnxcInJlYWRzLCByZXR1cm5zLCBhcmdcInwgNFxuICAgIDYgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpwcmludFxuICAgIGxpbmtTdHlsZSA3IHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==
+https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMXt7XCJgKiM5MTtSTnVtYmVyIzkzOyogKioxKipcbiAgICAgICoxLjYqICgqKmlkOiAxKiopYFwifX1cbiAgICAwW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqeCoqXG4gICAgICAqMS4xKiAoKippZDogMCoqLCB2OiAxKWBcIl1cbiAgICAyW1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzYwOyM0NTsqKlxuICAgICAgKjEuMS02KiAoKippZDogMioqKVxuICAgIGFyZzogKDAsIDEpYFwiXV1cbiAgICBidWlsdC1pbjpfLVtcImBCdWlsdC1JbjpcbiM2MDsjNDU7YFwiXVxuICAgIHN0eWxlIGJ1aWx0LWluOl8tIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgNChbXCJgKiM5MTtSU3ltYm9sIzkzOyogKip4KipcbiAgICAgICoxLjE1KiAoKippZDogNCoqKWBcIl0pXG4gICAgNltbXCJgKiM5MTtSRnVuY3Rpb25DYWxsIzkzOyogYmFzZSM1ODsjNTg7KipwcmludCoqXG4gICAgICAqMS45LTE2KiAoKippZDogNioqKVxuICAgIGFyZzogKDQpYFwiXV1cbiAgICBidWlsdC1pbjpwcmludFtcImBCdWlsdC1JbjpcbnByaW50YFwiXVxuICAgIHN0eWxlIGJ1aWx0LWluOnByaW50IHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMSAtLi0+fFwiZmxvd1wifCAwXG4gICAgbGlua1N0eWxlIDAgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAwIC0tPnxcImRlZmluZWQtYnksIGZsb3dcInwgMlxuICAgIDAgLS0+fFwiZGVmaW5lZC1ieVwifCAxXG4gICAgMiAtLT58XCJyZWFkcywgYXJnXCJ8IDFcbiAgICAyIC0tPnxcInJldHVybnMsIGFyZ1wifCAwXG4gICAgMiAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl8tXG4gICAgbGlua1N0eWxlIDUgc3Ryb2tlOmdyYXk7XG4gICAgMiAtLi0+fFwiZmxvd1wifCA0XG4gICAgbGlua1N0eWxlIDYgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICA0IC0tPnxcInJlYWRzXCJ8IDBcbiAgICA0IC0uLT58XCJmbG93XCJ8IDZcbiAgICBsaW5rU3R5bGUgOCBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDYgLS0+fFwicmVhZHMsIHJldHVybnMsIGFyZ1wifCA0XG4gICAgNiAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOnByaW50XG4gICAgbGlua1N0eWxlIDEwIHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==
 ```
 
 
@@ -388,7 +388,6 @@ Following the link output should show the following:
 flowchart LR
     1{{"`*#91;RNumber#93;* **1**
       *1.6* (**id: 1**)`"}}
-   %% No edges found for 1
     0["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**, v: 1)`"]
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -405,20 +404,26 @@ flowchart LR
     built-in:print["`Built-In:
 print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 0
+    linkStyle 0 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 2
     0 -->|"defined-by"| 1
-    0 -->|"defined-by"| 2
     2 -->|"reads, arg"| 1
     2 -->|"returns, arg"| 0
     2 -.->|"reads, calls"| built-in:_-
-    linkStyle 4 stroke:gray;
+    linkStyle 5 stroke:gray;
+    2 -.->|"flow"| 4
+    linkStyle 6 stroke:gray,color:gray;
     4 -->|"reads"| 0
+    4 -.->|"flow"| 6
+    linkStyle 8 stroke:gray,color:gray;
     6 -->|"reads, returns, arg"| 4
     6 -.->|"reads, calls"| built-in:print
-    linkStyle 7 stroke:gray;
+    linkStyle 10 stroke:gray;
 ```
 
 	
-(The analysis required _2.2 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _1.4 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
@@ -526,7 +531,7 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 > 
 > ```
 > 	
-> (The analysis required _1.1 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+> (The analysis required _0.3 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 > 
 > 
 > 
@@ -543,7 +548,7 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 > 
 > 
 > ```text
-> https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMXt7XCJgKiM5MTtSTnVtYmVyIzkzOyogKioxKipcbiAgICAgICoxLjYqICgqKmlkOiAxKiopYFwifX1cbiAgICUlIE5vIGVkZ2VzIGZvdW5kIGZvciAxXG4gICAgMFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKngqKlxuICAgICAgKjEuMSogKCoqaWQ6IDAqKiwgdjogMSlgXCJdXG4gICAgMltbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM2MDsjNDU7KipcbiAgICAgICoxLjEtNiogKCoqaWQ6IDIqKilcbiAgICBhcmc6ICgwLCAxKWBcIl1dXG4gICAgYnVpbHQtaW46Xy1bXCJgQnVpbHQtSW46XG4jNjA7IzQ1O2BcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpfLSBzdHJva2U6Z3JheSxmaWxsOmdyYXksc3Ryb2tlLXdpZHRoOjJweCxvcGFjaXR5Oi44O1xuICAgIDQoW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqeCoqXG4gICAgICAqMS4xNSogKCoqaWQ6IDQqKilgXCJdKVxuICAgIDZbW1wiYCojOTE7UkZ1bmN0aW9uQ2FsbCM5MzsqIGJhc2UjNTg7IzU4OyoqcHJpbnQqKlxuICAgICAgKjEuOS0xNiogKCoqaWQ6IDYqKilcbiAgICBhcmc6ICg0KWBcIl1dXG4gICAgYnVpbHQtaW46cHJpbnRbXCJgQnVpbHQtSW46XG5wcmludGBcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpwcmludCBzdHJva2U6Z3JheSxmaWxsOmdyYXksc3Ryb2tlLXdpZHRoOjJweCxvcGFjaXR5Oi44O1xuICAgIDAgLS0+fFwiZGVmaW5lZC1ieVwifCAxXG4gICAgMCAtLT58XCJkZWZpbmVkLWJ5XCJ8IDJcbiAgICAyIC0tPnxcInJlYWRzLCBhcmdcInwgMVxuICAgIDIgLS0+fFwicmV0dXJucywgYXJnXCJ8IDBcbiAgICAyIC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46Xy1cbiAgICBsaW5rU3R5bGUgNCBzdHJva2U6Z3JheTtcbiAgICA0IC0tPnxcInJlYWRzXCJ8IDBcbiAgICA2IC0tPnxcInJlYWRzLCByZXR1cm5zLCBhcmdcInwgNFxuICAgIDYgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpwcmludFxuICAgIGxpbmtTdHlsZSA3IHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==
+> https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMXt7XCJgKiM5MTtSTnVtYmVyIzkzOyogKioxKipcbiAgICAgICoxLjYqICgqKmlkOiAxKiopYFwifX1cbiAgICAwW1wiYCojOTE7UlN5bWJvbCM5MzsqICoqeCoqXG4gICAgICAqMS4xKiAoKippZDogMCoqLCB2OiAxKWBcIl1cbiAgICAyW1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqIzYwOyM0NTsqKlxuICAgICAgKjEuMS02KiAoKippZDogMioqKVxuICAgIGFyZzogKDAsIDEpYFwiXV1cbiAgICBidWlsdC1pbjpfLVtcImBCdWlsdC1JbjpcbiM2MDsjNDU7YFwiXVxuICAgIHN0eWxlIGJ1aWx0LWluOl8tIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgNChbXCJgKiM5MTtSU3ltYm9sIzkzOyogKip4KipcbiAgICAgICoxLjE1KiAoKippZDogNCoqKWBcIl0pXG4gICAgNltbXCJgKiM5MTtSRnVuY3Rpb25DYWxsIzkzOyogYmFzZSM1ODsjNTg7KipwcmludCoqXG4gICAgICAqMS45LTE2KiAoKippZDogNioqKVxuICAgIGFyZzogKDQpYFwiXV1cbiAgICBidWlsdC1pbjpwcmludFtcImBCdWlsdC1JbjpcbnByaW50YFwiXVxuICAgIHN0eWxlIGJ1aWx0LWluOnByaW50IHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMSAtLi0+fFwiZmxvd1wifCAwXG4gICAgbGlua1N0eWxlIDAgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAwIC0tPnxcImRlZmluZWQtYnksIGZsb3dcInwgMlxuICAgIDAgLS0+fFwiZGVmaW5lZC1ieVwifCAxXG4gICAgMiAtLT58XCJyZWFkcywgYXJnXCJ8IDFcbiAgICAyIC0tPnxcInJldHVybnMsIGFyZ1wifCAwXG4gICAgMiAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl8tXG4gICAgbGlua1N0eWxlIDUgc3Ryb2tlOmdyYXk7XG4gICAgMiAtLi0+fFwiZmxvd1wifCA0XG4gICAgbGlua1N0eWxlIDYgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICA0IC0tPnxcInJlYWRzXCJ8IDBcbiAgICA0IC0uLT58XCJmbG93XCJ8IDZcbiAgICBsaW5rU3R5bGUgOCBzdHJva2U6Z3JheSxjb2xvcjpncmF5O1xuICAgIDYgLS0+fFwicmVhZHMsIHJldHVybnMsIGFyZ1wifCA0XG4gICAgNiAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOnByaW50XG4gICAgbGlua1N0eWxlIDEwIHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==
 > ```
 > 
 > 
@@ -556,7 +561,6 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 > flowchart LR
 >     1{{"`*#91;RNumber#93;* **1**
 >       *1.6* (**id: 1**)`"}}
->    %% No edges found for 1
 >     0["`*#91;RSymbol#93;* **x**
 >       *1.1* (**id: 0**, v: 1)`"]
 >     2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -573,20 +577,26 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 >     built-in:print["`Built-In:
 > print`"]
 >     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+>     1 -.->|"flow"| 0
+>     linkStyle 0 stroke:gray,color:gray;
+>     0 -->|"defined-by, flow"| 2
 >     0 -->|"defined-by"| 1
->     0 -->|"defined-by"| 2
 >     2 -->|"reads, arg"| 1
 >     2 -->|"returns, arg"| 0
 >     2 -.->|"reads, calls"| built-in:_-
->     linkStyle 4 stroke:gray;
+>     linkStyle 5 stroke:gray;
+>     2 -.->|"flow"| 4
+>     linkStyle 6 stroke:gray,color:gray;
 >     4 -->|"reads"| 0
+>     4 -.->|"flow"| 6
+>     linkStyle 8 stroke:gray,color:gray;
 >     6 -->|"reads, returns, arg"| 4
 >     6 -.->|"reads, calls"| built-in:print
->     linkStyle 7 stroke:gray;
+>     linkStyle 10 stroke:gray;
 > ```
 > 
 > 	
-> (The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+> (The analysis required _0.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 > 
 > 
 > 
@@ -651,7 +661,7 @@ If you are interested in the raw token types that we may encounter, have a look 
 
 ### Normalization
 
-The normalization function <a href="https://github.com/flowr-analysis/flowr/tree/main/src/benchmark/slicer.ts#L80"><code><span title="the normalized AST produced by the 'normalization' step, including its parent decoration">normalize</span></code></a> takes the output from the previous steps and uses the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/parser/json/format.ts#L137"><code><span title="Takes the raw RShell output and extracts the csv information contained">prepareParsedData</span></code></a> and 
+The normalization function <a href="https://github.com/flowr-analysis/flowr/tree/main/src/benchmark/slicer.ts#L82"><code><span title="the normalized AST produced by the 'normalization' step, including its parent decoration">normalize</span></code></a> takes the output from the previous steps and uses the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/parser/json/format.ts#L137"><code><span title="Takes the raw RShell output and extracts the csv information contained">prepareParsedData</span></code></a> and 
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/parser/json/format.ts#L177"><code><span title="Takes the CSV-Entries and maps them to the old json format for compatibility.">convertPreparedParsedData</span></code></a> functions to first transform the serialized parsing output to an object. 
 Next, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/parser/main/internal/structure/normalize-root.ts#L18"><code><span title="Takes the parse data as object and produces an undecorated, normalized AST.">normalizeRootObjToAst</span></code></a> transforms this object to a normalized AST and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/decorate.ts#L151"><code><span title="Covert the given AST into a doubly linked tree while assigning ids (so it stays serializable).">decorateAst</span></code></a> adds additional information to the AST (like roles, ids, depth, etc.).
 While looking at the mermaid visualization of such an AST is nice and usually sufficient, looking at the objects themselves shows you the full range of information the AST provides (all encompassed within the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L268"><code><span title="The RNode type is the union of all possible nodes in the R-ast. It should be used whenever you either not care what kind of node you are dealing with or if you want to handle all possible nodes.   All other subtypes (like RLoopConstructs ) listed above can be used to restrict the kind of node. They do not have to be exclusive, some nodes can appear in multiple subtypes.">RNode</span></code></a> type).
@@ -1078,11 +1088,11 @@ All ids conform to the <a href="https://github.com/flowr-analysis/flowr/tree/mai
 The core of the dataflow graph generation works as a "stateful [fold](https://en.wikipedia.org/wiki/Fold_(higher-order_function))", 
 which uses the tree-like structure of the AST to combine the dataflow information of the children, while tracking the currently active variables and control flow 
 information as a “backpack” (state).
-We use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/extractor.ts#L137"><code><span title="This is the main function to produce the dataflow graph from a given request and normalized AST. Note, that this requires knowledge of the active parser in case the dataflow analysis uncovers other files that have to be parsed and integrated into the analysis (e.g., in the event of a source call). For the actual, canonical fold entry point, see processDataflowFor .">produceDataFlowGraph</span></code></a> function as an entry point to the dataflow generation (the actual fold entry is in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/processor.ts#L86"><code><span title="Originally, dataflow processor was written as a two-way fold, but this produced problems when trying to resolve function calls which require information regarding the calling *and* definition context. While this only is a problem for late bindings as they happen with functions (and probably quote'd R-expressions), it is still a problem that must be dealt with. Therefore, the dataflow processor has...">processDataflowFor</span></code></a>).
+We use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/extractor.ts#L136"><code><span title="This is the main function to produce the dataflow graph from a given request and normalized AST. Note, that this requires knowledge of the active parser in case the dataflow analysis uncovers other files that have to be parsed and integrated into the analysis (e.g., in the event of a source call). For the actual, canonical fold entry point, see processDataflowFor .">produceDataFlowGraph</span></code></a> function as an entry point to the dataflow generation (the actual fold entry is in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/processor.ts#L86"><code><span title="Originally, dataflow processor was written as a two-way fold, but this produced problems when trying to resolve function calls which require information regarding the calling *and* definition context. While this only is a problem for late bindings as they happen with functions (and probably quote'd R-expressions), it is still a problem that must be dealt with. Therefore, the dataflow processor has...">processDataflowFor</span></code></a>).
 The function is mainly backed by its <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/extractor.ts#L46"><code><span title="The best friend of produceDataFlowGraph and processDataflowFor . Maps every RType in the normalized AST to a processor.">processors</span></code></a> object which maps each type in the normalized AST to an appropriate handler ("fold-function").
 
 To understand these handlers, let's start with the simplest one, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/process-uninteresting-leaf.ts#L11"><code><span title="Processes a leaf node that does not contribute to dataflow by initializing a clean dataflow information object for it. This can be used to ignore nodes that do not affect dataflow analysis.">processUninterestingLeaf</span></code></a> signals that 
-we do not care about this node and just produce an empty dataflow information (using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L251"><code><span title="Initializes an empty DataflowInformation object with the given entry point and data. This is to be used as a 'starting point' when processing leaf nodes during the dataflow extraction.">DataflowInformation::<b>initialize</b></span></code></a>). 
+we do not care about this node and just produce an empty dataflow information (using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L265"><code><span title="Initializes an empty DataflowInformation object with the given entry point and data. This is to be used as a 'starting point' when processing leaf nodes during the dataflow extraction.">DataflowInformation::<b>initialize</b></span></code></a>). 
 Looking at the function showcases the general structure of a processor:
 
  * [processUninterestingLeaf](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/process-uninteresting-leaf.ts#L11)   
@@ -1110,9 +1120,9 @@ Looking at the function showcases the general structure of a processor:
 Every processor has the same shape. It takes the normalized node (see the [normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) for more information),
 and a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/processor.ts#L16"><code>DataflowProcessorInformation</code></a> object which, as some kind of "backpack" carries global information
 to every handler. 
-This information is to be used to create a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L211"><code><span title="The dataflow information is one of the fundamental structures we have in the dataflow analysis. It is continuously updated during the dataflow analysis and holds its current state for the respective subtree processed. Each processor during the dataflow analysis may use the information from its children to produce a new state of the dataflow information. You may initialize a new dataflow informatio...">DataflowInformation</span></code></a>:
+This information is to be used to create a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L225"><code><span title="The dataflow information is one of the fundamental structures we have in the dataflow analysis. It is continuously updated during the dataflow analysis and holds its current state for the respective subtree processed. Each processor during the dataflow analysis may use the information from its children to produce a new state of the dataflow information. You may initialize a new dataflow informatio...">DataflowInformation</span></code></a>:
 
- * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L211)**   
+ * **[DataflowInformation](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L225)**   
    The dataflow information is one of the fundamental structures we have in the dataflow analysis.
    It is continuously updated during the dataflow analysis
    and holds its current state for the respective subtree processed.
@@ -1121,7 +1131,7 @@ This information is to be used to create a <a href="https://github.com/flowr-ana
    You may initialize a new dataflow information with
    <code>DataflowInformation.initialize</code>
    .
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L211">src/dataflow/info.ts#L211</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L225">src/dataflow/info.ts#L225</a></summary>
    
    
    ```ts
@@ -1182,6 +1192,20 @@ This information is to be used to create a <a href="https://github.com/flowr-ana
          /** The entry node into the subgraph */
          entryPoint: NodeId,
          /**
+          * The node control flow enters this subtree at.
+          * Control flow is modeled in post-order (operands are evaluated before the operator that consumes them),
+          * so for compound constructs this is not the {@link DataflowCfgInformation#entryPoint|entryPoint}
+          * (which names the value-producing node) but the first node that is actually evaluated.
+          * Left `undefined` whenever both coincide, which is the case for all leaves.
+          */
+         cfgEntry?:  NodeId,
+         /**
+          * The node control flow leaves this subtree at, joining the branches of the construct if it has any.
+          * Left `undefined` whenever the {@link DataflowCfgInformation#exitPoints|exitPoints} already name it,
+          * which is the case whenever the construct has a single point of exit.
+          */
+         cfgExit?:   NodeId,
+         /**
           * All already identified exit points (active 'return'/'break'/'next'-likes) of the respective structure.
           * This also tracks (local knowledge of) exceptions thrown within the structure.
           * See the {@link ExitPointType#Error|Error} type for more information.
@@ -1199,12 +1223,12 @@ This information is to be used to create a <a href="https://github.com/flowr-ana
     </details>
 
 Essentially, these processors should use the dataflow information from their children combined with their own semantics
-to produce a new dataflow information to pass upwards in the fold. The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L211"><code><span title="The dataflow information is one of the fundamental structures we have in the dataflow analysis. It is continuously updated during the dataflow analysis and holds its current state for the respective subtree processed. Each processor during the dataflow analysis may use the information from its children to produce a new state of the dataflow information. You may initialize a new dataflow informatio...">DataflowInformation</span></code></a> contains:
+to produce a new dataflow information to pass upwards in the fold. The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L225"><code><span title="The dataflow information is one of the fundamental structures we have in the dataflow analysis. It is continuously updated during the dataflow analysis and holds its current state for the respective subtree processed. Each processor during the dataflow analysis may use the information from its children to produce a new state of the dataflow information. You may initialize a new dataflow informatio...">DataflowInformation</span></code></a> contains:
 
 * the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L283"><code><span title="The dataflow graph holds the dataflow information found within the given AST. We differentiate the directed edges in EdgeType and the vertices indicated by DataflowGraphVertexArgument . The helper object associated with the DFG is Dataflow . The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the node ids of its subgraph. However, all *edge...">DataflowGraph</span></code></a> of the current subtree 
 * the currently active <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/environment.ts#L657"><code><span title="An environment describes a ( scoped ) mapping of names to their definitions ( BuiltIns ). The BuiltInEnvironment holds R's built-in functions and constants; during serialization use builtInEnvJsonReplacer to avoid inlining it.">REnvironmentInformation</span></code></a> as an abstraction of all active definitions linking to potential definition locations (see [Advanced R::Environments](https://adv-r.hadley.nz/environments.html))
 * control flow information in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L188"><code><span title="The control flow information for the current DataflowInformation.">DataflowCfgInformation</span></code></a> which is used to enrich the dataflow information with control flow information
-* sets of currently ingoing (read), outgoing (write), and unknown <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L434"><code><span title="An identifier reference points to a variable like a in b <- a. Without any surrounding code, a will produce the identifier reference a. Similarly, b will create a reference (although it will be an identifier definition which adds even more information). In general, references are merely pointers (with meta-information) to a vertex in the dataflow graph . In the context of the extractor, for exampl...">IdentifierReference</span></code></a>s.
+* sets of currently ingoing (read), outgoing (write), and unknown <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L435"><code><span title="An identifier reference points to a variable like a in b <- a. Without any surrounding code, a will produce the identifier reference a. Similarly, b will create a reference (although it will be an identifier definition which adds even more information). In general, references are merely pointers (with meta-information) to a vertex in the dataflow graph . In the context of the extractor, for exampl...">IdentifierReference</span></code></a>s.
 * and a set of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L179"><code><span title="A reference removed from scope within the current subtree (e.g., via rm). Like out references, kills bubble up so the enclosing scope can apply the removal at the right location.">KillReference</span></code></a>s which tracks variables that go out of scope within the current subtree (e.g., due to `rm`). Just like the reference sets above, kills are carried upwards in the fold so that the enclosing scope (expression list, branch, loop, or function body) can apply the removal (via <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/apply-kill.ts#L157"><code><span title="Applies the given kills to a copy of env. named kills remove (or, when conditional, weaken to maybe) a single definition; all kills clear the current frame; unknown kills weaken every in-scope definition to maybe. Returns env unchanged when there is nothing to apply.">applyKills</span></code></a>) at the correct location, even when the `rm` happens nested within a branch or block. This also covers clearing the whole environment with `rm(list=ls())` and conservatively handling removals whose target cannot be resolved statically.
 
 While all of them are essentially empty when processing an “uninteresting leaf”, handling a constant is slightly more interesting with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/process-value.ts#L14"><code><span title="Processes a value node in the AST for dataflow analysis. For example, literals like numbers.">processValue</span></code></a>:
@@ -1255,9 +1279,9 @@ By treating them like R, as function calls, we get support for these overwrites 
 But where are all the interesting things handled then? 
 For that, we want to have a look at the built-in environment, which can be freely configured using flowR's [configuration system](https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr).
 FlowR's heart and soul resides in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/default-builtin-config.ts#L1504"><code><span title="Contains the built-in definitions recognized by flowR">DefaultBuiltinConfig</span></code></a> object, which is used to configure the built-in environment
-by mapping function names to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in.ts#L342"><code>BuiltInProcessorMapper</code></a> functions.
+by mapping function names to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in.ts#L348"><code>BuiltInProcessorMapper</code></a> functions.
 There you can find functions like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-access.ts#L52"><code><span title="Processes different types of access operations.  Example:   a[i] a$foo a[[i]] a@foo  ">processAccess</span></code></a> which handles the (subset) access to a variable,
-or <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-for-loop.ts#L37"><code><span title="Processes a for-loop call: for(<variable> in <vector>) <body> desugared as:   for(<variable>, <vector>, <body>)  ">processForLoop</span></code></a> which handles the primitive for loop construct (whenever it is not overwritten).
+or <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-for-loop.ts#L38"><code><span title="Processes a for-loop call: for(<variable> in <vector>) <body> desugared as:   for(<variable>, <vector>, <body>)  ">processForLoop</span></code></a> which handles the primitive for loop construct (whenever it is not overwritten).
 
 Besides the processor, an entry states what the function does with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L217"><code><span title="Semantics of a built-in that hold no matter which processor handles the call. The remaining facts already have a home: the exit behavior in cfg, whether flowR can fold the call in the evalHandler of the definition, and the fallback for everything unmodelled in hasUnknownSideEffects.">BuiltInFnInfo</span></code></a> -- see
 [Labeling the Built-Ins](#labeling-the-built-ins) below for the labels it may carry.
@@ -1370,12 +1394,12 @@ parameter in that role.
 </details>
 
 
-Just as an example, we want to have a look at the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-repeat-loop.ts#L32"><code><span title="Process a built-in repeat loop function call like repeat { ... }.">processRepeatLoop</span></code></a> function, as it is one of the simplest built-in processors
+Just as an example, we want to have a look at the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-repeat-loop.ts#L33"><code><span title="Process a built-in repeat loop function call like repeat { ... }.">processRepeatLoop</span></code></a> function, as it is one of the simplest built-in processors
 we have:
 
- * [processRepeatLoop](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-repeat-loop.ts#L32)   
+ * [processRepeatLoop](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-repeat-loop.ts#L33)   
    Process a built-in repeat loop function call like `repeat { ... }`.
-   <details open><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-repeat-loop.ts#L32">src/dataflow/internal/process/functions/call/built-in/built-in-repeat-loop.ts#L32</a></summary>
+   <details open><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-repeat-loop.ts#L33">src/dataflow/internal/process/functions/call/built-in/built-in-repeat-loop.ts#L33</a></summary>
    
    
    ```ts
@@ -1411,8 +1435,9 @@ we have:
                }
                return d;
            },
-           markAsNSE: [0],
-           origin:    BuiltInProcName.RepeatLoop
+           markAsNSE:         [0],
+           customControlFlow: true,
+           origin:            BuiltInProcName.RepeatLoop
        });
    
        const body = processedArguments[0];
@@ -1423,10 +1448,23 @@ we have:
    
        information.exitPoints = filterOutLoopExitPoints(information.exitPoints);
    
+       const graph = information.graph;
+       const bodyEntry = ControlFlow.entryOf(body);
+       ControlFlow.continuesWith(graph, body, bodyEntry);
+       ControlFlow.jumpsTo(graph, body, ExitPointType.Next, bodyEntry);
+       ControlFlow.jumpsTo(graph, body, ExitPointType.Break, rootId);
+   
        /* the body is evaluated in the enclosing environment, so its definitions and removals have to bubble up */
        const kill = body.kill?.length ? body.kill : undefined;
+       const leftByBreak = body.exitPoints.some(e => e.type === ExitPointType.Break);
+       if(!leftByBreak) {
+           /* without a `break` the loop never terminates, so nothing ever reaches the repeat vertex */
+           information.exitPoints = information.exitPoints.filter(e => e.type !== ExitPointType.Default || e.nodeId !== rootId);
+       }
        return {
            ...information,
+           cfgEntry:    bodyEntry,
+           cfgExit:     leftByBreak ? rootId : undefined,
            out:         information.out.concat(body.out),
            /* the body always runs at least once, so a removal within it is certain */
            environment: applyKills(information.environment, kill),
@@ -1450,7 +1488,7 @@ For just the repeat loop the stitching is actually not necessary, but this way t
 
 Afterward, we take the `processedArguments`, perform another round of sanity checks and then use two special functions to apply the
 semantic effects of the repeat loop. We first use one of flowR's linkers to
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L463"><code><span title="all loops variables which are open read (not already bound by a redefinition within the loop) get a maybe read marker to their last definition within the loop e.g. with:   for(i in 1:10) {  x_1 <- x_2 + 1 }   x_2 must get a read marker to x_1 as x_1 is the active redefinition in the second loop iteration.  When environment is supplied the function uses it to discover ALL definitions that are still...">linkCircularRedefinitionsWithinALoop</span></code></a> and then retrieve the active exit points with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L330"><code><span title="Filters out exit points which end their cascade within a loop.">filterOutLoopExitPoints</span></code></a>.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/linker.ts#L470"><code><span title="all loops variables which are open read (not already bound by a redefinition within the loop) get a maybe read marker to their last definition within the loop e.g. with:   for(i in 1:10) {  x_1 <- x_2 + 1 }   x_2 must get a read marker to x_1 as x_1 is the active redefinition in the second loop iteration.  When environment is supplied the function uses it to discover ALL definitions that are still...">linkCircularRedefinitionsWithinALoop</span></code></a> and then retrieve the active exit points with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L344"><code><span title="Filters out exit points which end their cascade within a loop.">filterOutLoopExitPoints</span></code></a>.
 
 Feel free to have a look around and explore the other handlers for now. Each of them uses the results of its children alongside the active backpack 
 to produce a new dataflow information.
@@ -1576,7 +1614,7 @@ normalize, dataflow) and each <a href="https://github.com/flowr-analysis/flowr/t
 a project and then asking for twenty slices gives twenty-one contingents, not one clock the analysis spent.
 
 Anything beginning a new analysis restarts it too: an added file, a cache invalidation, a re-parse, or an
-explicit <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L231"><code>FlowrAnalyzer::<b>reset</b></code></a>. Operations in flight keep theirs, as restarting a running
+explicit <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L229"><code>FlowrAnalyzer::<b>reset</b></code></a>. Operations in flight keep theirs, as restarting a running
 traversal's clock would defeat the guard bounding it. To split your *own* phases, call
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L141"><code><span title="Restart the contingent, so what follows is measured from now. Supported API: call it between phases that should each get the full allowance (analyzer.context().gas.reset()).  flowR calls it itself whenever a new analysis begins, so a caller only has to split its *own* phases. Operations in flight keep their contingent, as restarting a running traversal's clock would defeat the guard bounding it.">FlowrAnalyzerGasContext::<i>reset</i></span></code></a> on the writeable
 context (`analyzer.context().gas.reset()`) - supported API, not an internal hook.
@@ -1595,8 +1633,8 @@ await analyzer.query([{ type: 'static-slice', criteria: ['12@product'] }], {
 
 Bare `problematic`/`critical` numbers are elapsed milliseconds; use `timeMs`/`memory` to be explicit and
 `factor` for the sensitivity. Naming a feature enables gas for it even when `config.gas.features` disables
-it (pass `factor: 0` to keep it off). <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L329"><code>FlowrAnalyzer::<b>runFull</b></code></a> and
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L356"><code>FlowrAnalyzer::<b>runSearch</b></code></a> take the same, and read-only holders of a context can derive a
+it (pass `factor: 0` to keep it off). <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L327"><code>FlowrAnalyzer::<b>runFull</b></code></a> and
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L354"><code>FlowrAnalyzer::<b>runSearch</b></code></a> take the same, and read-only holders of a context can derive a
 bounded view with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L179"><code>FlowrAnalyzerGasContext::<i>scope</i></code></a>.
 
 ### When the Slicer Runs Out

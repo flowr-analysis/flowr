@@ -16,6 +16,7 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { SourceRange } from '../../../../../../util/range';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { ControlFlow } from '../../../../control-flow';
 
 /** e.g. UseMethod(generic, object) */
 interface S3DispatchConfig {
@@ -78,12 +79,15 @@ export function processS3Dispatch<OtherInfo>(
 		});
 		const ingoing = dfObj.in.concat(dfObj.unknownReferences);
 		ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
+		const cfgEntry = ControlFlow.inSequence(dfObj.graph, [dfObj], rootId);
 		return {
 			hooks:             dfObj.hooks,
 			environment:       dfObj.environment,
 			exitPoints:        dfObj.exitPoints,
 			graph:             dfObj.graph,
 			entryPoint:        rootId,
+			cfgEntry,
+			cfgExit:           rootId,
 			in:                ingoing,
 			out:               dfObj.out,
 			unknownReferences: []
@@ -128,12 +132,16 @@ export function processS3Dispatch<OtherInfo>(
 	for(const id of accessedIdentifiers) {
 		ingoing.push({ nodeId: generic.info.id, name: id, cds: data.cds, type: ReferenceType.S3MethodPrefix });
 	}
+	const graph = dfObj.graph.mergeWith(dfGeneric.graph);
+	const cfgEntry = ControlFlow.inSequence(graph, [dfGeneric, dfObj], rootId);
 	return {
 		hooks:             dfGeneric.hooks.concat(dfObj?.hooks),
 		environment:       dfGeneric.environment,
 		exitPoints:        dfObj.exitPoints.concat(dfGeneric.exitPoints),
-		graph:             dfObj.graph.mergeWith(dfGeneric.graph),
+		graph,
 		entryPoint:        rootId,
+		cfgEntry,
+		cfgExit:           rootId,
 		in:                ingoing,
 		out:               dfGeneric.out.concat(dfObj.out),
 		unknownReferences: []

@@ -14,7 +14,7 @@ import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import { attachProject } from './internal/process/functions/call/built-in/built-in-library';
 import { type DataflowGraph, UnknownSideEffect } from './graph/graph';
-import { extractCfgQuick, getCallsInCfg } from '../control-flow/extract-cfg';
+import { ControlFlowGraph } from '../control-flow/control-flow-graph';
 import { EdgeType } from './graph/edge';
 import { identifyLinkToLastCallRelationSync
 } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
@@ -22,11 +22,11 @@ import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
 import { reResolveOpenReferences, linkMaterializedExportsToLoaders } from './internal/process/functions/call/built-in/transitive-side-effects';
 import type { REnvironmentInformation } from './environments/environment';
-import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrFile } from '../project/context/flowr-file';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
+import { VertexType } from './graph/vertex';
 
 /** Round cap for the transitive-side-effect fixpoint. */
 const transitiveSideEffectRounds = 32;
@@ -78,7 +78,7 @@ export const processors: DataflowProcessors<ParentInformation> = {
 };
 
 
-function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph, ctx: FlowrAnalyzerContext) {
+function resolveLinkToSideEffects(graph: DataflowGraph, ctx: FlowrAnalyzerContext) {
 	const gasLevel = ctx.gas.checkGas(GasFeatureKey.SideEffectLinking);
 	if(gasLevel >= GasLevel.Critical) {
 		dataflowLogger.warn('Skipping side-effect link resolution due to resource pressure (gas: critical). See ' + GasWikiRef);
@@ -86,7 +86,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph, ctx:
 	} else if(gasLevel >= GasLevel.Problematic) {
 		dataflowLogger.warn('Approaching resource limits during side-effect link resolution (gas: problematic). See ' + GasWikiRef);
 	}
-	let cf: ControlFlowInformation | undefined = undefined;
+	let cf: ControlFlowGraph | undefined = undefined;
 	let knownCalls: Map<NodeId, Required<DataflowGraphVertexFunctionCall>> | undefined;
 	let allCallNames: string[] = [];
 	const killedRegexes = new Set<string>();
@@ -96,10 +96,10 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph, ctx:
 			continue;
 		}
 		if(cf === undefined) {
-			cf = extractCfgQuick(ast);
+			/* the control flow is already in the graph, so this only projects it into the shape the walk expects */
+			cf = new ControlFlowGraph(graph);
 			if(graph.unknownSideEffects.size > 20) {
-				knownCalls = getCallsInCfg(cf, graph);
-
+				knownCalls = new Map(graph.verticesOfType(VertexType.FunctionCall) as MapIterator<[NodeId, Required<DataflowGraphVertexFunctionCall>]>);
 				allCallNames = uniqueArray(knownCalls.values().map(c => Identifier.toString(c.name)));
 			}
 		} else if(handled.has(s.id)) {
@@ -116,7 +116,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph, ctx:
 			continue;
 		}
 		/* this has to change whenever we add a new link to relations because we currently offer no abstraction for the type */
-		const potentials = identifyLinkToLastCallRelationSync(s.id, cf.graph, graph, s.linkTo as LinkToLastCall<RegExp>, knownCalls);
+		const potentials = identifyLinkToLastCallRelationSync(s.id, cf, graph, s.linkTo as LinkToLastCall<RegExp>, knownCalls);
 		for(const pot of potentials) {
 			graph.addEdge(s.id, pot, EdgeType.Reads);
 		}
@@ -125,7 +125,6 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph, ctx:
 		}
 	}
 
-	return cf;
 }
 
 /**
@@ -138,7 +137,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	parser:      Parser<KnownParserType>,
 	completeAst: NormalizedAst<OtherInfo & ParentInformation>,
 	ctx:         FlowrAnalyzerContext
-): DataflowInformation & { cfgQuick: ControlFlowInformation | undefined } {
+): DataflowInformation {
 
 	// we freeze the files here to avoid endless modifications during processing
 	const files = completeAst.ast.files.slice();
@@ -193,10 +192,9 @@ export function produceDataFlowGraph<OtherInfo>(
 	}
 	// link on-demand-materialized package exports back to their `library()` loaders
 	linkMaterializedExportsToLoaders(df.graph, df.environment);
-	Quoted.finalize(df.graph, completeAst.idMap, () => extractCfgQuick(completeAst).graph);
+	Quoted.finalize(df.graph, completeAst.idMap, () => new ControlFlowGraph(df.graph));
 
-	(df as { cfgQuick?: ControlFlowInformation }).cfgQuick = resolveLinkToSideEffects(completeAst, df.graph, ctx);
+	resolveLinkToSideEffects(df.graph, ctx);
 
-	// performance optimization: return cfgQuick as part of the result to avoid recomputation
-	return df as DataflowInformation & { cfgQuick: ControlFlowInformation | undefined };
+	return df;
 }

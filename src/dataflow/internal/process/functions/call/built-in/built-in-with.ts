@@ -13,6 +13,7 @@ import { resolveArgToEnvir, routeWrittenToCustomEnv, signatureParamNames } from 
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { patchFunctionCall } from '../common';
 import { EdgeType } from '../../../../../graph/edge';
+import { ControlFlow } from '../../../../control-flow';
 import { linkInputs } from '../../../../linker';
 
 /** Fallback formal parameter names for `with(data, expr, ...)` / `within(data, expr, ...)` when the signature database has no `base::with`. */
@@ -102,6 +103,7 @@ export function processWithEnv<OtherInfo>(
 
 	const merged = dfDataArg.graph.mergeWith(dfExpr.graph);
 	merged.addEdge(rootId, envirResolution.envirNodeId, EdgeType.Reads);
+	const cfgEntry = ControlFlow.inSequence(merged, [dfDataArg, dfExpr], rootId);
 
 	const ingoing = dfDataArg.in.concat(
 		dfExpr.in,
@@ -124,6 +126,8 @@ export function processWithEnv<OtherInfo>(
 		exitPoints:        dfDataArg.exitPoints.concat(dfExpr.exitPoints),
 		graph:             merged,
 		entryPoint:        rootId,
+		cfgEntry,
+		cfgExit:           rootId,
 		in:                ingoing,
 		out:               [],   /* writes are inside envState, not directly in outer scope */
 		unknownReferences: []

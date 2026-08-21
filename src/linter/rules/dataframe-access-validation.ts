@@ -3,7 +3,6 @@ import { DataFrameShapeInferenceVisitor, type DataFrameOperationType } from '../
 import { NumericalComparator, SetComparator } from '../../abstract-interpretation/domains/value-abstract-domain';
 import { FlowrConfig } from '../../config';
 import { Identifier } from '../../dataflow/environments/identifier';
-import { CfgKind } from '../../project/cfg-kind';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FlowrSearchElements } from '../../search/flowr-search';
@@ -69,7 +68,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 				return flowrConfig;
 			})
 		};
-		const cfg = await data.controlflow(undefined, CfgKind.NoFunctionDefs);
+		const cfg = await data.controlflow(undefined);
 		const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg: dataflow.graph, normalizedAst: normalize, ctx });
 		inference.start();
 

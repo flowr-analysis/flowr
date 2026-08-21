@@ -813,7 +813,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type:            'function', names:           [Identifier.from(['cat', PkgName.Base])],
 		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ }, props: CallProp.Invisible | CallProp.File | CallProp.Writes | CallProp.Prints, sig: [['...', ArgProp.Value | ArgProp.Forced], ['file', ArgProp.Resource]] }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['switch', PkgName.Base])],
-		processor:       BuiltInProcName.Default, config:          { forceArgs: [true], useAsProcessor: BuiltInProcName.Switch, props: CallProp.Pure }, assumePrimitive: false },
+		processor:       BuiltInProcName.Default, config:          { forceArgs: [true], alternativeArgsFrom: 1, useAsProcessor: BuiltInProcName.Switch, props: CallProp.Pure }, assumePrimitive: false },
 	{ type:            'function', names:           ['return'],
 		processor:       BuiltInProcName.Default, config:          { cfg: ExitPointType.Return, keepArgumentOut: true, useAsProcessor: BuiltInProcName.Return, props: CallProp.Pure, sig: [['value', ArgProp.Alias]] }, assumePrimitive: true },
 	{

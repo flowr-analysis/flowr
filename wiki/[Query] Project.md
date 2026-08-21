@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[src/documentation/wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts)' on 2026-08-16, 06:15:25 UTC (v2.13.16), so please do not edit it directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-20, 22:53:18 UTC (v2.14.1), please do not edit directly._
 <h2 id="Project Query">Project Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns information about the analyzed project\
@@ -86,7 +86,7 @@ x + 1
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _2.2 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _0.8 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -95,20 +95,22 @@ We encountered no unknown side effects during the analysis.
 flowchart LR
     0(["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**)`"])
-   %% No edges found for 0
     1{{"`*#91;RNumber#93;* **1**
       *1.5* (**id: 1**)`"}}
-   %% No edges found for 1
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.1-5* (**id: 2**)
     arg: (0, 1)`"]]
     built-in:_["`Built-In:
 #43;`"]
     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    0 -.->|"flow"| 1
+    linkStyle 0 stroke:gray,color:gray;
+    1 -.->|"flow"| 2
+    linkStyle 1 stroke:gray,color:gray;
     2 -->|"reads, arg"| 0
     2 -->|"reads, arg"| 1
     2 -.->|"reads, calls"| built-in:_
-    linkStyle 2 stroke:gray;
+    linkStyle 4 stroke:gray;
 ```
 
 	

@@ -5,7 +5,6 @@ import { Ternary } from '../../../util/logic';
 import { log } from '../../../util/log';
 import { happensBefore } from '../../../control-flow/happens-before';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
-import { CfgKind } from '../../../project/cfg-kind';
 
 /**
  * Execute happens-before queries on the given analyzer.
@@ -15,7 +14,7 @@ export async function executeHappensBefore({ analyzer }: BasicQueryData, queries
 	const start = Date.now();
 	const results: Record<string, Ternary> = {};
 	const ast = await analyzer.normalize();
-	const cfg = await analyzer.controlflow(undefined, CfgKind.Quick);
+	const cfg = await analyzer.controlflow(undefined);
 	for(const query of queries) {
 		const { a, b } = query;
 		const fingerprint = HappensBeforeKey.of(a, b);

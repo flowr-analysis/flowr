@@ -37,7 +37,10 @@ function killBuiltInEnv(env: IEnvironment | undefined): IEnvironment {
 	};
 }
 
-/** Returns the size of the given df graph in bytes (without sharing in-memory) */
+/**
+ * The memory the dataflow graph occupies, including the control flow it carries
+ * (see {@link getSizeOfCfGraph} for what a separate control flow graph costs on top of that).
+ */
 export function getSizeOfDfGraph(df: DataflowGraph): number {
 	const verts = [];
 	for(const [, v] of df.vertices(true)) {
@@ -79,8 +82,9 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
 }
 
 /**
- * Calculates the size of the control flow graph in bytes, counting its vertices and edges like
- * {@link getSizeOfDfGraph} does for the dataflow graph.
+ * The memory the control flow graph occupies on top of the dataflow graph it is a view on.
+ * Asking for it projects the view, so this is the cost of holding the control flow separately rather than
+ * walking it on the dataflow graph.
  */
 export function getSizeOfCfGraph(cfg: ControlFlowGraph): number {
 	return safeSizeOf([...cfg.vertices(true).values(), ...cfg.edges()]);

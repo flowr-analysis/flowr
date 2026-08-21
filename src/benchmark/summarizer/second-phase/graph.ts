@@ -217,6 +217,7 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 		['input tokens (normalized)', ultimate.input.numberOfNormalizedTokens],
 		['dataflow vertices', ultimate.dataflow.numberOfNodes],
 		['dataflow edges', ultimate.dataflow.numberOfEdges],
+		['dataflow control flow edges', ultimate.dataflow.numberOfControlFlowEdges],
 		['dataflow calls', ultimate.dataflow.numberOfCalls],
 		['dataflow function definitions', ultimate.dataflow.numberOfFunctionDefinitions],
 		['control flow vertices', ultimate.controlFlow?.numberOfVertices],

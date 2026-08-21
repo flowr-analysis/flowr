@@ -1,5 +1,6 @@
 import { MatchArgs } from '../../../../../graph/match-args';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
+import { ControlFlow } from '../../../../control-flow';
 import {
 	type DataflowInformation,
 	ExitPointType,
@@ -74,9 +75,11 @@ export function processFunctionDefinition<OtherInfo>(
 	let readInParameters: IdentifierReference[] = [];
 	const allParameterReads: IdentifierReference[] = [];
 	const paramIds: NodeId[] = [];
+	const processedParameters: DataflowInformation[] = [];
 	for(const param of parameters) {
 		guard(param !== EmptyArgument, () => `Empty param arg in function definition ${Identifier.toString(name.content)}, ${JSON.stringify(args)}`);
 		const processed = processDataflowFor(param, data);
+		processedParameters.push(processed);
 		if(RParameter.is(param.value)) {
 			paramIds.push(param.value.name.info.id);
 		}
@@ -191,11 +194,14 @@ export function processFunctionDefinition<OtherInfo>(
 		}
 		outEnvironment = overwriteEnvironment(outEnvironment, hookEnvironment);
 	}
+	const flowEntry = ControlFlow.inSequence(subgraph, processedParameters, ControlFlow.entryOf(body)) ?? ControlFlow.entryOf(body);
+
 	const flow: DataflowFunctionFlowInformation = {
 		unknownReferences: [],
 		in:                remainingRead,
 		out:               [],
 		entryPoint:        body.entryPoint,
+		cfgEntry:          flowEntry === body.entryPoint ? undefined : flowEntry,
 		graph:             new Set(subgraph.rootIds()),
 		environment:       outEnvironment,
 		hooks:             compactedHooks
@@ -274,6 +280,8 @@ export function processFunctionDefinition<OtherInfo>(
 		out:               [],
 		exitPoints:        [],
 		entryPoint:        name.info.id,
+		/* evaluating a function definition produces the closure, it does not run the body */
+		cfgExit:           name.info.id,
 		graph,
 		environment:       originalEnvironment,
 		hooks:             []

@@ -1,4 +1,4 @@
-import { type ControlFlowGraph, CfgVertex } from './control-flow-graph';
+import { type ControlFlowGraph, CfgVertex, NoNeighbors } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ArrayQueue } from '../util/collections/queue';
 
@@ -34,17 +34,13 @@ export function visitCfgInReverseOrder(
 		} else if(hasBb) {
 			const get = graph.getVertex(current);
 			if(CfgVertex.isBlock(get)) {
-				const elems = CfgVertex.getBasicBlockElements(get);
-				for(const e of elems.toReversed()) {
+				for(const e of CfgVertex.getBasicBlockElements(get)) {
 					queue.push(CfgVertex.getId(e));
 				}
 			}
 		}
-		const incoming = graph.outgoingEdges(current);
-		if(incoming) {
-			for(const c of incoming.keys()) {
-				queue.push(c);
-			}
+		for(const c of graph.predecessors(current)) {
+			queue.push(c);
 		}
 	}
 }
@@ -75,17 +71,20 @@ export function visitCfgInOrder(
 		visited.add(current);
 		if(visitor(current)) {
 			continue;
-		} else if(hasBb) {
-			const get = graph.getVertex(current);
-			if(CfgVertex.isBlock(get)) {
-				const elems = CfgVertex.getBasicBlockElements(get);
-				for(const e of elems.toReversed()) {
-					queue.enqueue(CfgVertex.getId(e));
+		} else {
+			if(hasBb) {
+				const get = graph.getVertex(current);
+				if(CfgVertex.isBlock(get)) {
+					for(const e of CfgVertex.getBasicBlockElements(get)) {
+						queue.enqueue(CfgVertex.getId(e));
+					}
 				}
 			}
+			for(const child of graph.childrenOf(current) ?? NoNeighbors) {
+				queue.enqueue(child);
+			}
 		}
-		const outgoing = graph.ingoingEdges(current) ?? [];
-		for(const [to] of outgoing) {
+		for(const to of graph.successors(current)) {
 			queue.enqueue(to);
 		}
 	}

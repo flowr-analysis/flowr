@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[src/documentation/wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts)' on 2026-08-16, 06:15:25 UTC (v2.13.16), so please do not edit it directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-20, 22:53:18 UTC (v2.14.1), please do not edit directly._
 <h2 id="Dataflow Query">Dataflow Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the dataflow graph of the given code.\
@@ -24,12 +24,12 @@ Using the example code `x + 1`, the following query returns the dataflow graph o
 _Results (prettified and summarized):_
 
 Query: **dataflow** (2 ms)\
-&nbsp;&nbsp;&nbsp;╰ [Dataflow Graph](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMChbXCJgKiM5MTtSU3ltYm9sIzkzOyogKip4KipcbiAgICAgICoxLjEqICgqKmlkOiAwKiopYFwiXSlcbiAgICUlIE5vIGVkZ2VzIGZvdW5kIGZvciAwXG4gICAgMXt7XCJgKiM5MTtSTnVtYmVyIzkzOyogKioxKipcbiAgICAgICoxLjUqICgqKmlkOiAxKiopYFwifX1cbiAgICUlIE5vIGVkZ2VzIGZvdW5kIGZvciAxXG4gICAgMltbXCJgKiM5MTtSQmluYXJ5T3AjOTM7KiBiYXNlIzU4OyM1ODsqKiM0MzsqKlxuICAgICAgKjEuMS01KiAoKippZDogMioqKVxuICAgIGFyZzogKDAsIDEpYFwiXV1cbiAgICBidWlsdC1pbjpfW1wiYEJ1aWx0LUluOlxuIzQzO2BcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpfIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMiAtLT58XCJyZWFkcywgYXJnXCJ8IDBcbiAgICAyIC0tPnxcInJlYWRzLCBhcmdcInwgMVxuICAgIDIgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpfXG4gICAgbGlua1N0eWxlIDIgc3Ryb2tlOmdyYXk7IiwibWVybWFpZCI6eyJhdXRvU3luYyI6dHJ1ZX19)\
-_All queries together required ≈2 ms (1ms accuracy, total 3 ms)_
+&nbsp;&nbsp;&nbsp;╰ [Dataflow Graph](https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IFREXG4gICAgMChbXCJgKiM5MTtSU3ltYm9sIzkzOyogKip4KipcbiAgICAgICoxLjEqICgqKmlkOiAwKiopYFwiXSlcbiAgICAxe3tcImAqIzkxO1JOdW1iZXIjOTM7KiAqKjEqKlxuICAgICAgKjEuNSogKCoqaWQ6IDEqKilgXCJ9fVxuICAgIDJbW1wiYCojOTE7UkJpbmFyeU9wIzkzOyogYmFzZSM1ODsjNTg7KiojNDM7KipcbiAgICAgICoxLjEtNSogKCoqaWQ6IDIqKilcbiAgICBhcmc6ICgwLCAxKWBcIl1dXG4gICAgYnVpbHQtaW46X1tcImBCdWlsdC1JbjpcbiM0MztgXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46XyBzdHJva2U6Z3JheSxmaWxsOmdyYXksc3Ryb2tlLXdpZHRoOjJweCxvcGFjaXR5Oi44O1xuICAgIDAgLS4tPnxcImZsb3dcInwgMVxuICAgIGxpbmtTdHlsZSAwIHN0cm9rZTpncmF5LGNvbG9yOmdyYXk7XG4gICAgMSAtLi0+fFwiZmxvd1wifCAyXG4gICAgbGlua1N0eWxlIDEgc3Ryb2tlOmdyYXksY29sb3I6Z3JheTtcbiAgICAyIC0tPnxcInJlYWRzLCBhcmdcInwgMFxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ1wifCAxXG4gICAgMiAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl9cbiAgICBsaW5rU3R5bGUgNCBzdHJva2U6Z3JheTsiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=)\
+_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _2.6 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _2.1 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -110,6 +110,28 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
               }
             ]
           ]
+        ],
+        [
+          0,
+          [
+            [
+              1,
+              {
+                "types": 4096
+              }
+            ]
+          ]
+        ],
+        [
+          1,
+          [
+            [
+              2,
+              {
+                "types": 4096
+              }
+            ]
+          ]
         ]
       ],
       "_unknownSideEffects": []
@@ -148,20 +170,22 @@ We encountered no unknown side effects during the analysis.
 flowchart LR
     0(["`*#91;RSymbol#93;* **x**
       *1.1* (**id: 0**)`"])
-   %% No edges found for 0
     1{{"`*#91;RNumber#93;* **1**
       *1.5* (**id: 1**)`"}}
-   %% No edges found for 1
     2[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
       *1.1-5* (**id: 2**)
     arg: (0, 1)`"]]
     built-in:_["`Built-In:
 #43;`"]
     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    0 -.->|"flow"| 1
+    linkStyle 0 stroke:gray,color:gray;
+    1 -.->|"flow"| 2
+    linkStyle 1 stroke:gray,color:gray;
     2 -->|"reads, arg"| 0
     2 -->|"reads, arg"| 1
     2 -.->|"reads, calls"| built-in:_
-    linkStyle 2 stroke:gray;
+    linkStyle 4 stroke:gray;
 ```
 
 	

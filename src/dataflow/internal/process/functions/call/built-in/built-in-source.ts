@@ -33,6 +33,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { ControlFlow } from '../../../../control-flow';
 
 /**
  * Infers working directories based on the given option and reference chain
@@ -320,11 +321,13 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 	data.ctx.files.addConsideredFile(filePath ?? '<inline>');
 
 	// update our graph with the sourced file's information
+	const graph = information.graph.mergeWith(dataflow.graph);
+	ControlFlow.continuesWith(graph, information, ControlFlow.entryOf(dataflow));
 
 	return {
 		...information,
 		environment:       overwriteEnvironment(information.environment, dataflow.environment),
-		graph:             information.graph.mergeWith(dataflow.graph),
+		graph,
 		in:                information.in.concat(dataflow.in),
 		out:               information.out.concat(dataflow.out),
 		unknownReferences: information.unknownReferences.concat(dataflow.unknownReferences),
@@ -363,6 +366,7 @@ export function mergeSourced(information: DataflowInformation, sourced: readonly
 	if(sourced.length === 0) {
 		return information;
 	}
+	/* the control flow into the evaluated code is wired by `sourceRequest`, which analyzed it */
 	return {
 		...information,
 		graph:             sourced.reduce((acc, r) => acc.mergeWith(r.graph), information.graph),

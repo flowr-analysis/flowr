@@ -14,6 +14,7 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { DataflowGraph } from '../../../../../graph/graph';
 import { Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
+import { ControlFlow } from '../../../../control-flow';
 import { type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment } from '../../../../../environments/scoping';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
@@ -348,6 +349,11 @@ export function processExpressionList<OtherInfo>(
 	}
 
 	const meId = withGroup ? rootId : (processedExpressions.find(isNotUndefined)?.entryPoint ?? rootId);
+
+	/* an empty group completes on the spot, otherwise the last expression has to be able to reach the end */
+	const reachesEnd = !!withGroup && (processedExpressions.length === 0 || exitPoints.some(e => e.type === ExitPointType.Default));
+	const cfgEntry = ControlFlow.inSequence(nextGraph, processedExpressions, reachesEnd ? rootId : undefined);
+
 	return {
 		/* no active nodes remain, they are consumed within the remaining read collection */
 		unknownReferences: [],
@@ -358,6 +364,8 @@ export function processExpressionList<OtherInfo>(
 		graph:             nextGraph,
 		/* if we have no group, we take the last evaluated expr */
 		entryPoint:        meId,
+		cfgEntry:          cfgEntry === meId ? undefined : cfgEntry,
+		cfgExit:           reachesEnd ? rootId : undefined,
 		exitPoints:        exitPoints,
 		hooks:             hooks ?? [],
 		kill:              killed,

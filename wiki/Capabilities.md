@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's flowR capabilities overview">Generated</span> from '[doc-capabilities.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/doc-capabilities.ts "src/documentation/doc-capabilities.ts")' on 2026-08-18, 23:26:42 UTC (v2.14.0, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's flowR capabilities overview">Generated</span> from '[doc-capabilities.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/doc-capabilities.ts "src/documentation/doc-capabilities.ts")' on 2026-08-20, 22:53:40 UTC (v2.14.1, R v4.6.1), please do not edit directly._
 
 
 Each capability has an id that can be used to link to it (use the link symbol to get a direct link to the capability).
@@ -66,7 +66,6 @@ Besides, we use colored bullets like this:
     > #123;`"]
     >     style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     > end
-    >    %% No edges found for 10
     >     0["`**#34;f#34;** (L. 1)
     > *RString*`"]
     >     11[["`base#58;#58;**#60;#45;** (L. 1)
@@ -76,7 +75,6 @@ Besides, we use colored bullets like this:
     >     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     >     13{{"`**2** (L. 2)
     > *RNumber*`"}}
-    >    %% No edges found for 13
     >     12["`**#96;y x#96;** (L. 2)
     > *RSymbol*`"]
     >     14[["`base#58;#58;**#60;#45;** (L. 2)
@@ -107,14 +105,14 @@ Besides, we use colored bullets like this:
     >     linkStyle 5 stroke:gray;
     > 10 -.-|function| flow-10
     > 
+    >     0 -->|"defined-by, flow"| 11
     >     0 -->|"defined-by"| 10
-    >     0 -->|"defined-by"| 11
     >     11 -->|"reads, arg"| 10
     >     11 -->|"returns, arg"| 0
     >     11 -.->|"reads, calls"| built-in:_-
     >     linkStyle 11 stroke:gray;
+    >     12 -->|"defined-by, flow"| 14
     >     12 -->|"defined-by"| 13
-    >     12 -->|"defined-by"| 14
     >     14 -->|"reads, arg"| 13
     >     14 -->|"returns, arg"| 12
     >     14 -.->|"reads, calls"| built-in:_-
@@ -139,7 +137,7 @@ Besides, we use colored bullets like this:
     > 
     > <summary style="color:gray">R Code of the (simplified) Dataflow Graph</summary>
     > 
-    > The analysis required _1.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+    > The analysis required _1.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
     > We encountered unknown side effects (with ids: 23 (linked)) during the analysis.
     > 
     > 

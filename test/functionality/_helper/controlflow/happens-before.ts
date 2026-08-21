@@ -3,8 +3,8 @@ import { assert, describe, test } from 'vitest';
 import { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { Ternary } from '../../../../src/util/logic';
 import type { RShell } from '../../../../src/r-bridge/shell';
-import { createNormalizePipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { extractCfg } from '../../../../src/control-flow/extract-cfg';
+import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
+import { extractCfg } from '../../../../src/control-flow/control-flow-graph';
 import { happensBefore } from '../../../../src/control-flow/happens-before';
 import { cfgToMermaidUrl } from '../../../../src/util/mermaid/cfg';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
@@ -22,10 +22,10 @@ export function assertHappensBefore(shell: RShell, code: string, a: SlicingCrite
 	return describe(code, () => {
 		test.each([shell, new TreeSitterExecutor()])('%s', async parser => {
 			const context = contextFromInput(code);
-			const result = await createNormalizePipeline(parser, {
+			const result = await createDataflowPipeline(parser, {
 				context
 			}).allRemainingSteps();
-			const cfg = extractCfg(result.normalize, context);
+			const cfg = extractCfg(result.dataflow);
 			const aResolved = SlicingCriterion.parse(a, result.normalize.idMap);
 			const bResolved = SlicingCriterion.parse(b, result.normalize.idMap);
 			try {

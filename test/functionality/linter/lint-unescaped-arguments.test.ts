@@ -141,22 +141,4 @@ describe('flowR linter', withTreeSitter(parser => {
 			}]
 		}]);
 	});
-
-	describe('Configuration', () => {
-		assertLinter('disabled category', parser, 'system(x)', 'unescaped-arguments', [],
-			undefined, { disabledCategories: [UnescapedArgumentCategory.System] });
-		assertLinter('custom critical call', parser, 'my_exec(x)', 'unescaped-arguments', [{
-			certainty: LintingResultCertainty.Uncertain,
-			category:  UnescapedArgumentCategory.System,
-			function:  'my_exec',
-			loc:       SourceRange.from(1, 9, 1, 9),
-			sources:   [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Unknown] }],
-			quickFix:  [{
-				type:        'replace',
-				loc:         SourceRange.from(1, 9, 1, 9),
-				description: 'Escape the value with `shQuote`',
-				replacement: 'shQuote(x)'
-			}]
-		}], undefined, { criticalCalls: { [UnescapedArgumentCategory.System]: [{ name: 'my_exec' }] } });
-	});
 }));

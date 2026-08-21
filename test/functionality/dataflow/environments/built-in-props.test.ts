@@ -54,7 +54,8 @@ const ExpectedLabels: readonly (readonly [Identifier, CallProps])[] = [
 	[Identifier.from(['stop', PkgName.Base]), CallProp.Throws],
 	[Identifier.from(['rm', PkgName.Base]), CallProp.Invisible | CallProp.Scope],
 	[Identifier.from(['set.seed', PkgName.Base]), CallProp.Invisible | CallProp.Random | CallProp.Configures],
-	[Identifier.from(['png', PkgName.GrDevices]), CallProp.Invisible | CallProp.Graphics | CallProp.File | CallProp.Writes]
+	[Identifier.from(['png', PkgName.GrDevices]), CallProp.Invisible | CallProp.Graphics | CallProp.File | CallProp.Writes],
+	[Identifier.from(['dbGetQuery', PkgName.Dbi]), CallProp.Database]
 ];
 
 /** and the shapes a signature comes in */
@@ -66,7 +67,8 @@ const ExpectedSigs: readonly (readonly [Identifier, FnSig])[] = [
 	[Identifier.from(['identity', PkgName.Base]), [['x', ArgProp.Alias | ArgProp.Forced]]],
 	[Identifier.from(['match.arg', PkgName.Base]), [['arg', ArgProp.Value], ['choices', ArgProp.Bounds]]],
 	[Identifier.from(['read.csv', PkgName.Utils]), [['file', ArgProp.Resource], ['header', ArgProp.Flag], ['sep', ArgProp.Value],
-		['quote', ArgProp.Value], ['dec', ArgProp.Value], ['fill', ArgProp.Flag], ['comment.char', ArgProp.Value], ['...', ArgProp.Value]]]
+		['quote', ArgProp.Value], ['dec', ArgProp.Value], ['fill', ArgProp.Flag], ['comment.char', ArgProp.Value], ['...', ArgProp.Value]]],
+	[Identifier.from(['dbGetQuery', PkgName.Dbi]), [['conn', ArgProp.Handle], ['statement', ArgProp.Value | ArgProp.Injectable], ['...', ArgProp.Value]]]
 ];
 
 describe('Built-in properties', () => {

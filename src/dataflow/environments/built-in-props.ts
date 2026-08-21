@@ -36,7 +36,11 @@ export enum ArgProp {
 	 */
 	Atomic   = 1 << 11,
 	/** the open handle the call acts on, like `con` in `close(con)` */
-	Handle   = 1 << 12
+	Handle   = 1 << 12,
+	/**
+	 * the argument is vulnerable to injection attacks and should be escaped, such as system commands, R expressions, database queries, or HTML/JS code.
+	 */
+	Injectable = 1 << 13
 }
 
 /**
@@ -115,7 +119,11 @@ export enum CallProp {
 	/** hands back a handle the program is expected to close again, like `file` or `DBI::dbConnect` */
 	Opens       = 1 << 27,
 	/** performs a statistical test, so its result is the test statistic a reader is meant to see (`t.test`, `anova`) */
-	Statistics  = 1 << 28
+	Statistics  = 1 << 28,
+	/** dynamically executes R code or returns the value of dynamically computed identifiers, like `eval`, `do.call`, or `get` */
+	Eval        = 1 << 29,
+	/** produces raw HTML or JavaScript, such as `shiny::HTML` */
+	Html        = 1 << 30
 }
 
 /**

@@ -1,12 +1,14 @@
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
+import type { ArgProps, CallProps } from '../../dataflow/environments/built-in-props';
+import { ArgProp, CallProp, FnSig } from '../../dataflow/environments/built-in-props';
 import { Identifier, PkgName } from '../../dataflow/environments/identifier';
+import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { FunctionCallVertex } from '../../dataflow/graph/vertex';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { CallTargets } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
-import type { FunctionArgInfo, FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { narrowingFunctions } from '../../queries/catalog/input-sources-query/input-source-functions';
 import type { InputSource, InputSources } from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { InputTraceType, InputType } from '../../queries/catalog/input-sources-query/simple-input-classifier';
@@ -16,7 +18,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { FlowrSearchElement } from '../../search/flowr-search';
 import { Q } from '../../search/flowr-search-builder';
 import { SlicingCriterion } from '../../slicing/criterion/parse';
-import { DotsParameterName, matchArgumentsToParameters } from '../../util/arg-matching';
+import { matchArgumentsToParameters } from '../../util/arg-matching';
 import { isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
@@ -61,8 +63,8 @@ const UncertainInputs: readonly InputType[] = [InputType.Unknown, InputType.Para
 export interface EscapeQuickFix extends MergeableRecord {
 	/** The escape function the unescaped expression should be wrapped in */
 	readonly call:       Identifier;
-	/** The argument of the critical function to use as first argument for the escape function */
-	readonly firstArg?:  FunctionArgInfo;
+	/** The role of the argument of the critical call to use as first argument for the escape function */
+	readonly firstArg?:  ArgProps;
 	/** Whether the fix should only be applied to parts of the critical argument and not the whole argument */
 	readonly partsOnly?: boolean;
 }
@@ -90,10 +92,15 @@ export interface UnescapedArgumentsConfig extends MergeableRecord {
 	 */
 	readonly disabledCategories: readonly UnescapedArgumentCategory[];
 	/**
-	 * The function calls with critical arguments for a category that perform a critical operation
-	 * @see {@link FunctionInfo}
+	 * The call properties of critical function calls for a category that perform a critical operation
+	 * @see {@link CallProps}
 	 */
-	readonly criticalCalls:      Readonly<Record<UnescapedArgumentCategory, readonly FunctionInfo[]>>;
+	readonly criticalCalls:      Readonly<Record<UnescapedArgumentCategory, CallProps>>;
+	/**
+	 * The argument properties of critical arguments of critical functions
+	 * @see {@link ArgProps}
+	 */
+	readonly criticalArgs:       ArgProps;
 	/**
 	 * The functions that escape an unescaped value for a category
 	 */
@@ -111,19 +118,20 @@ export interface UnescapedArgumentsConfig extends MergeableRecord {
 }
 
 interface CriticalCallEntry {
-	readonly category: UnescapedArgumentCategory;
+	readonly category:  UnescapedArgumentCategory;
 	/** The function performing the critical operation */
-	readonly name:     Identifier;
-	/** The arguments of the function that carry the critical value */
-	readonly args:     readonly FunctionArgInfo[];
+	readonly name:      Identifier;
+	/** The function signature of the critical function containing the parameters */
+	readonly signature: FnSig;
 }
 
 /** An argument of a critical function call */
 interface CriticalTarget {
-	readonly category: UnescapedArgumentCategory;
-	readonly call:     DataflowGraphVertexFunctionCall;
-	readonly arg:      NodeId;
-	readonly location: SourceLocation;
+	readonly category:  UnescapedArgumentCategory;
+	readonly call:      DataflowGraphVertexFunctionCall;
+	readonly signature: FnSig;
+	readonly arg:       NodeId;
+	readonly location:  SourceLocation;
 }
 
 interface CriticalTargetEntry {
@@ -133,56 +141,47 @@ interface CriticalTargetEntry {
 	readonly depth:  number;
 }
 
-function getParamNames(args: readonly FunctionArgInfo[]): (string | undefined)[] {
-	const formals: (string | undefined)[] = [];
+/** Find all arguments of a function call that have a given argument property using the function signature */
+function findArgumentsWithProps(call: DataflowGraphVertexFunctionCall, signature: FnSig, props: ArgProps): NodeId[] {
+	const layout = FnSig.layout(signature);
+	const bound = matchArgumentsToParameters(call.args.map(FunctionArgument.getName), signature.map(([param]) => param));
 
-	for(const arg of args) {
-		if(typeof arg.argIdx === 'number') {
-			formals[arg.argIdx] = arg.argName;
-		}
-	}
-	return Array.from(formals);
-}
-
-/** Finds the arguments of the function call matching the critical argument */
-function matchArguments(call: DataflowGraphVertexFunctionCall, arg: FunctionArgInfo, known: readonly FunctionArgInfo[]): readonly FunctionArgument[] {
-	if(arg.argIdx === undefined && arg.argName === undefined) {
-		return call.args;
-	} else if(arg.argIdx === 'unnamed') {
-		return call.args.filter(FunctionArgument.isUnnamed);
-	}
-	const formals = getParamNames([...known, arg]);
-	const target = arg.argIdx ?? formals.push(DotsParameterName, arg.argName) - 1;
-	const bound = matchArgumentsToParameters(call.args.map(FunctionArgument.getName), formals);
-
-	return call.args.filter((_, index) => bound[index] === target);
-}
-
-/** Finds the node IDs of the arguments of the function call matching the critical argument */
-function findArguments(call: DataflowGraphVertexFunctionCall, arg: FunctionArgInfo, known: readonly FunctionArgInfo[] = []): NodeId[] {
-	return matchArguments(call, arg, known).map(FunctionArgument.getReference).filter(isNotUndefined);
+	return call.args
+		.filter((_, index) => bound[index] !== undefined && (FnSig.propAt(layout, bound[index]) & props) !== 0)
+		.map(FunctionArgument.getReference).filter(isNotUndefined);
 }
 
 /** Get the critical calls of every category that is not disabled */
-function getEnabledCriticalCalls(config: UnescapedArgumentsConfig): { category: UnescapedArgumentCategory, info: FunctionInfo }[] {
-	return UnescapedArgumentCategories
-		.filter(category => !config.disabledCategories.includes(category))
-		.flatMap(category => (config.criticalCalls[category] ?? []).map(info => ({ category, info })));
+function getEnabledCriticalCalls(config: UnescapedArgumentsConfig, index: BuiltInIndex = BuiltInIndex.default()): CriticalCallEntry[] {
+	const result: CriticalCallEntry[] = [];
+
+	for(const category of UnescapedArgumentCategories) {
+		const criticalProps = config.criticalCalls[category] ?? 0;
+
+		if(criticalProps === 0 || config.disabledCategories.includes(category)) {
+			continue;
+		}
+		for(const { name, props = 0, sig: signature } of index.entries) {
+			if((props & criticalProps) !== 0 && signature?.some(([, prop]) => (prop & config.criticalArgs) !== 0)) {
+				result.push({ category, name, signature });
+			}
+		}
+	}
+	return result;
 }
 
 /** Index the critical calls of the enabled categories by function name */
 function indexCriticalCalls(config: UnescapedArgumentsConfig): Map<string, CriticalCallEntry[]> {
 	const index = new Map<string, CriticalCallEntry[]>();
 
-	for(const { category, info } of getEnabledCriticalCalls(config)) {
-		const args = [info, ...Record.values(info.additionalArgs ?? {})];
-		const call = { category, name: Identifier.make(info.name, info.package), args };
-		const known = index.get(info.name);
+	for(const call of getEnabledCriticalCalls(config)) {
+		const name = Identifier.getName(call.name);
+		const known = index.get(name);
 
 		if(known !== undefined) {
 			known.push(call);
 		} else {
-			index.set(info.name, [call]);
+			index.set(name, [call]);
 		}
 	}
 	return index;
@@ -199,22 +198,22 @@ function getCriticalTargets(
 	const seen = new Set<string>();
 
 	for(const { node } of elements) {
-		const vertex = graph.getVertex(node.info.id);
+		const call = graph.getVertex(node.info.id);
 
-		if(!FunctionCallVertex.is(vertex)) {
+		if(!FunctionCallVertex.is(call)) {
 			continue;
 		}
-		for(const { category, name, args } of criticalCalls.get(Identifier.getName(vertex.name)) ?? []) {
-			if(!Identifier.matches(name, vertex.name) && !Identifier.matches(vertex.name, name)) {
+		for(const { category, name, signature } of criticalCalls.get(Identifier.getName(call.name)) ?? []) {
+			if(!Identifier.matches(name, call.name) && !Identifier.matches(call.name, name)) {
 				continue;
 			}
-			for(const arg of args.flatMap(arg => findArguments(vertex, arg, args))) {
+			for(const arg of findArgumentsWithProps(call, signature, config.criticalArgs)) {
 				const location = SourceLocation.fromNode(graph.idMap?.get(arg));
-				const key = `${category}-${vertex.id}-${arg}`;
+				const key = `${category}-${call.id}-${arg}`;
 
 				if(location !== undefined && !seen.has(key)) {
 					seen.add(key);
-					targets.push({ category, call: vertex, arg, location });
+					targets.push({ category, call: call, signature, arg, location });
 				}
 			}
 		}
@@ -299,7 +298,7 @@ function escapeFix(fix: EscapeQuickFix, target: CriticalTarget, source: InputSou
 	let leading = '';
 
 	if(fix.firstArg !== undefined) {
-		const [arg] = findArguments(target.call, fix.firstArg);
+		const [arg] = findArgumentsWithProps(target.call, target.signature, fix.firstArg);
 		const first = arg === undefined || arg === target.arg ? undefined : RNode.lexeme(idMap.get(arg));
 
 		if(first === undefined) {
@@ -339,7 +338,7 @@ function printCriticalInputs(sources: InputSources): string {
 export const UNESCAPED_ARGUMENTS = {
 	createSearch: config => Q.fromQuery({
 		type:        'call-context',
-		callName:    getEnabledCriticalCalls(config).map(({ info }) => info.name),
+		callName:    [...new Set(getEnabledCriticalCalls(config).map(({ name }) => Identifier.getName(name)))],
 		callTargets: CallTargets.MustIncludeGlobal
 	}),
 	processSearchResult: async(elements, config, data) => {
@@ -387,49 +386,13 @@ export const UNESCAPED_ARGUMENTS = {
 		defaultConfig: {
 			disabledCategories: [],
 			criticalCalls:      {
-				[UnescapedArgumentCategory.System]: [
-					{ package: PkgName.Base, name: 'system',          argIdx: 0, argName: 'command' },
-					{ package: PkgName.Base, name: 'system2',         argIdx: 0, argName: 'command', additionalArgs: { args: { argIdx: 1, argName: 'args' } } },
-					{ package: PkgName.Base, name: 'shell',           argIdx: 0, argName: 'cmd' },
-					{ package: PkgName.Base, name: 'shell.exec',      argIdx: 0, argName: 'file' },
-					{ package: PkgName.Base, name: 'pipe',            argIdx: 0, argName: 'description' },
-					{ package: 'processx',   name: 'run',             argIdx: 0, argName: 'command', additionalArgs: { args: { argIdx: 1, argName: 'args' } } },
-					{ package: 'processx',   name: 'process',         argIdx: 0, argName: 'command', additionalArgs: { args: { argIdx: 1, argName: 'args' } } },
-					{ package: 'sys',        name: 'exec_wait',       argIdx: 0, argName: 'cmd',     additionalArgs: { args: { argIdx: 1, argName: 'args' } } },
-					{ package: 'sys',        name: 'exec_internal',   argIdx: 0, argName: 'cmd',     additionalArgs: { args: { argIdx: 1, argName: 'args' } } },
-					{ package: 'sys',        name: 'exec_background', argIdx: 0, argName: 'cmd',     additionalArgs: { args: { argIdx: 1, argName: 'args' } } }
-				],
-				[UnescapedArgumentCategory.Eval]: [
-					{ package: PkgName.Base,  name: 'eval',        argIdx: 0, argName: 'expr' },
-					{ package: PkgName.Base,  name: 'evalq',       argIdx: 0, argName: 'expr' },
-					{ package: PkgName.Base,  name: 'eval.parent', argIdx: 0, argName: 'expr' },
-					{ package: PkgName.Base,  name: 'do.call',     argIdx: 0, argName: 'what' },
-					{ package: PkgName.Base,  name: 'get',         argIdx: 0, argName: 'x' },
-					{ package: PkgName.Base,  name: 'get0',        argIdx: 0, argName: 'x' },
-					{ package: PkgName.Base,  name: 'match.fun',   argIdx: 0, argName: 'FUN' },
-					{ package: PkgName.Rlang, name: 'eval_tidy',   argIdx: 0, argName: 'expr' },
-					{ package: PkgName.Rlang, name: 'eval_bare',   argIdx: 0, argName: 'expr' }
-				],
-				[UnescapedArgumentCategory.Database]: [
-					{ name: 'dbGetQuery',      argIdx: 1, argName: 'statement' },
-					{ name: 'dbSendQuery',     argIdx: 1, argName: 'statement' },
-					{ name: 'dbSendStatement', argIdx: 1, argName: 'statement' },
-					{ name: 'dbExecute',       argIdx: 1, argName: 'statement' },
-					{ package: 'sqldf',       name: 'sqldf', argIdx: 0, argName: 'x' },
-					{ package: PkgName.Dplyr, name: 'sql' },
-					{ package: 'dbplyr',      name: 'sql' }
-				],
-				[UnescapedArgumentCategory.Html]: [
-					{ package: PkgName.Shiny,   name: 'HTML',          argIdx: 0, argName: 'text' },
-					{ package: 'htmltools',     name: 'HTML',          argIdx: 0, argName: 'text' },
-					{ package: PkgName.Shiny,   name: 'insertUI',      argIdx: 2, argName: 'ui' },
-					{ package: 'htmlwidgets',   name: 'JS' },
-					{ package: PkgName.ShinyJs, name: 'runjs',         argIdx: 0, argName: 'code' },
-					{ package: PkgName.ShinyJs, name: 'html',          argIdx: 1, argName: 'html' },
-					{ package: PkgName.ShinyJs, name: 'extendShinyjs', argIdx: 1, argName: 'text' }
-				]
+				[UnescapedArgumentCategory.System]:   CallProp.Process,
+				[UnescapedArgumentCategory.Eval]:     CallProp.Eval,
+				[UnescapedArgumentCategory.Database]: CallProp.Database,
+				[UnescapedArgumentCategory.Html]:     CallProp.Html
 			},
-			sanitizers: {
+			criticalArgs: ArgProp.Injectable,
+			sanitizers:   {
 				[UnescapedArgumentCategory.System]: [Identifier.from(['shQuote', PkgName.Base])],
 				[UnescapedArgumentCategory.Eval]:   [
 					Identifier.from(['match.arg', PkgName.Base]),
@@ -442,7 +405,7 @@ export const UNESCAPED_ARGUMENTS = {
 					Identifier.from(['glue_data_sql', PkgName.Glue])
 				],
 				[UnescapedArgumentCategory.Html]: [
-					Identifier.from(['htmlEscape', 'htmltools']),
+					Identifier.from(['htmlEscape', PkgName.HtmlTools]),
 					Identifier.from(['html_escape', 'xfun']),
 					Identifier.from(['toJSON', 'jsonlite']),
 					Identifier.from(['URLencode', PkgName.Utils])
@@ -450,8 +413,8 @@ export const UNESCAPED_ARGUMENTS = {
 			},
 			quickFixes: {
 				[UnescapedArgumentCategory.System]:   { call: 'shQuote' },
-				[UnescapedArgumentCategory.Database]: { call: Identifier.from(['dbQuoteLiteral', PkgName.Dbi]), firstArg: { argIdx: 0, argName: 'conn' }, partsOnly: true },
-				[UnescapedArgumentCategory.Html]:     { call: Identifier.from(['htmlEscape', 'htmltools']) }
+				[UnescapedArgumentCategory.Database]: { call: Identifier.from(['dbQuoteLiteral', PkgName.Dbi]), firstArg: ArgProp.Handle, partsOnly: true },
+				[UnescapedArgumentCategory.Html]:     { call: Identifier.from(['htmlEscape', PkgName.HtmlTools]) }
 			},
 			acceptedInputs: AcceptedInputs
 		}

@@ -105,7 +105,7 @@ describe('flowR linter', withTreeSitter(parser => {
 	describe('Unescaped Database Queries', () => {
 		assertLinter('constant statement', parser, 'dbGetQuery(con, "SELECT * FROM t")', 'unescaped-arguments', []);
 		assertLinter('interpolated statement', parser,
-			shinyServer('dbGetQuery(con, sqlInterpolate(con, "SELECT * FROM t WHERE x = ?x", x = input$x))'), 'unescaped-arguments', []);
+			shinyServer('dbGetQuery(con, DBI::sqlInterpolate(con, "SELECT * FROM t WHERE x = ?x", x = input$x))'), 'unescaped-arguments', []);
 		assertLinter('pasted user input', parser,
 			shinyServer('dbGetQuery(con, paste0("SELECT * FROM t WHERE x = \'", input$x, "\'"))'), 'unescaped-arguments', [{
 				certainty: LintingResultCertainty.Certain,

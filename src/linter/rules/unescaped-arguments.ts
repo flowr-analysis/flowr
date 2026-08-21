@@ -410,7 +410,10 @@ export const UNESCAPED_ARGUMENTS = {
 					criticalCalls: CallProp.Database,
 					criticalArgs:  ArgProp.Injectable,
 					sanitizers:    [
-						'dbQuoteLiteral', 'dbQuoteString', 'dbQuoteIdentifier', 'sqlInterpolate',
+						Identifier.from(['dbQuoteLiteral', PkgName.Dbi]),
+						Identifier.from(['dbQuoteString', PkgName.Dbi]),
+						Identifier.from(['dbQuoteIdentifier', PkgName.Dbi]),
+						Identifier.from(['sqlInterpolate', PkgName.Dbi]),
 						Identifier.from(['glue_sql', PkgName.Glue]),
 						Identifier.from(['glue_data_sql', PkgName.Glue])
 					],

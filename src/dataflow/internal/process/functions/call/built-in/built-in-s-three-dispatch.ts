@@ -1,7 +1,7 @@
 import { MatchArgs } from '../../../../../graph/match-args';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
-import { DataflowInformation, alwaysExits } from '../../../../../info';
+import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -56,7 +56,7 @@ export function processS3Dispatch<OtherInfo>(
 	const obj = unpackArg(RArgument.getWithId(args, argMaps.get('object')?.[0]));
 	const dfObj = obj ? processDataflowFor(obj, data) : DataflowInformation.initialize(rootId, data);
 
-	if(alwaysExits(dfObj)) {
+	if(ControlFlow.alwaysExits(dfObj)) {
 		patchFunctionCall({
 			nextGraph:             dfObj.graph,
 			rootId,

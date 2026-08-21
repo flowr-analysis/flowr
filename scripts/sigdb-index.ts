@@ -4,6 +4,9 @@
  * signature browser never disagree about what flowR knows.
  */
 import zlib from 'zlib';
+import fs from 'fs';
+import path from 'path';
+import { execFileSync } from 'child_process';
 import { MergedSignatureSource, SigDatabase, SigDatabaseSet, type PackageSignatureSource } from '../src/project/sigdb/reader';
 import { defaultSigDbPaths } from '../src/project/sigdb/manifest';
 /* the plain function lists rather than the query module, which would pull in half the analyzer */
@@ -14,8 +17,8 @@ import { WriteFunctions } from '../src/queries/catalog/dependencies-query/functi
 import { VisualizeFunctions } from '../src/queries/catalog/dependencies-query/function-info/visualize-functions';
 import { TestFunctions } from '../src/queries/catalog/dependencies-query/function-info/test-functions';
 import { statisticsFunctions } from '../src/queries/catalog/dependencies-query/function-info/statistics-functions';
-import { DefaultBuiltinConfig, statedSignatures, type StatedSignature } from '../src/dataflow/environments/default-builtin-config';
-import { Identifier } from '../src/dataflow/environments/identifier';
+import { BasePrimitiveTopics, DefaultBuiltinConfig, statedSignatures, type StatedSignature } from '../src/dataflow/environments/default-builtin-config';
+import { Identifier, PkgName } from '../src/dataflow/environments/identifier';
 
 export interface PackageEntry {
 	readonly name:      string;
@@ -30,6 +33,8 @@ export interface PackageEntry {
 	readonly archived:  boolean;
 	/** when its newest known release came out, as a timestamp */
 	readonly latest:    number;
+	/** the source files its exports live in, which each of them names by position rather than by path */
+	readonly files:     readonly string[];
 	/** every exported name, with what the database records about it */
 	readonly exports:   ReadonlyMap<string, ExportEntry>;
 }
@@ -46,6 +51,8 @@ export interface SigIndex {
 	readonly stated:   ReadonlyMap<string, StatedSignature[]>;
 	/** the formals the database records for base R, `name -> [package, parameters][]`, see {@link baseFormals} */
 	readonly formals:  ReadonlyMap<string, [pkg: string, params: string][]>;
+	/** the help topic documenting a base R name where it is not the name itself, see {@link baseTopics} */
+	readonly topics:   ReadonlyMap<string, string>;
 }
 
 /** one exported name, as much of it as fits in a page */
@@ -55,6 +62,9 @@ export interface ExportEntry {
 	readonly params: number;
 	/** the help topic documenting it, when that is not simply its name */
 	readonly topic?: string;
+	/** which of the package's {@link PackageEntry#files|files} holds it, and the line it starts on */
+	readonly file?:  number;
+	readonly line?:  number;
 }
 
 /**
@@ -71,7 +81,6 @@ export async function openDatabase(): Promise<PackageSignatureSource | undefined
 	return sources.length === 0 ? undefined : new MergedSignatureSource(sources);
 }
 
-/** Everything both pages need from the database, read once. */
 /**
  * The packages CRAN currently ships, from its own index. Anything the database knows that is missing
  * here was archived or removed; `undefined` when CRAN cannot be reached, and then the stored
@@ -87,9 +96,7 @@ async function currentOnCran(): Promise<Set<string> | undefined> {
 	}
 }
 
-/**
- *
- */
+/** Everything both pages need from the database, read once. */
 export async function readSigIndex(): Promise<SigIndex | undefined> {
 	const db = await openDatabase();
 	if(db === undefined) {
@@ -116,14 +123,21 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 			continue;
 		}
 		const exports = new Map<string, ExportEntry>();
+		/* the same handful of paths carry a whole package, so each is named once and pointed at by position */
+		const files = new Map<string, number>();
 		for(const fn of db.functions(name) ?? []) {
 			if(fn.exported) {
 				/* a constant has no body to point at: no file, and a line of -1 (`pi`, `LETTERS`) */
 				const isValue = fn.file === undefined && fn.line < 0;
+				if(fn.file !== undefined && !files.has(fn.file)) {
+					files.set(fn.file, files.size);
+				}
 				exports.set(fn.name, {
 					flags:  fn.props.map(p => letters[p] ?? '').join('') + (isValue ? 'v' : ''),
 					params: fn.signature.length,
-					topic:  fn.topic !== fn.name ? fn.topic : undefined
+					topic:  fn.topic !== fn.name ? fn.topic : undefined,
+					file:   fn.file !== undefined ? files.get(fn.file) : undefined,
+					line:   fn.file !== undefined && fn.line >= 0 ? fn.line : undefined
 				});
 			}
 		}
@@ -138,6 +152,7 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 		all.push({
 			archived:  !base && (onCran ? !onCran.has(name) : (library.cranUrl?.includes('/Archive/') ?? false)),
 			name, exports,
+			files:     [...files.keys()],
 			version:   library.version,
 			base,
 			downloads: db.downloads(name),
@@ -157,6 +172,7 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 			}
 		}
 	}
+	const topics = baseTopics(db.packageNames().filter(name => db.isBaseR(name)));
 	db.close();
 	all.sort((a, b) => Number(b.base) - Number(a.base) || b.downloads - a.downloads);
 	const newest = all.reduce((latest, p) => p.latest > latest ? p.latest : latest, 0);
@@ -166,6 +182,7 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 		kinds:    builtInKinds(),
 		stated:   statedSignatures(),
 		formals,
+		topics,
 		updated:  newest > 0 ? new Date(newest).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'an unknown date'
 	};
 }
@@ -208,31 +225,78 @@ function builtInKinds(): Map<string, string[]> {
 }
 
 /**
+ * Which manual page documents a base R name, for the many that are not documented under their own name:
+ * `sin` lives under `Trig`, `paste0` under `paste`. {@link BasePrimitiveTopics} carries the primitives, which
+ * the database cannot hold; a local R adds the rest from the plain `alias\ttopic` table it ships per package.
+ * @returns `package::alias -> topic`, holding only the names whose topic is not the name
+ */
+function baseTopics(packages: readonly string[]): ReadonlyMap<string, string> {
+	/* what flowR states itself, which is the part that never depends on an R being around */
+	const topics = new Map<string, string>(
+		Object.entries(BasePrimitiveTopics).map(([name, topic]) => [`${PkgName.Base}::${name}`, topic]));
+	let home: string;
+	try {
+		home = execFileSync('R', ['RHOME'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+	} catch{
+		return topics;
+	}
+	for(const pkg of packages) {
+		let table: string;
+		try {
+			table = fs.readFileSync(path.join(home, 'library', pkg, 'help', 'AnIndex'), 'utf8');
+		} catch{
+			continue;
+		}
+		for(const row of table.split('\n')) {
+			const [alias, topic] = row.split('\t');
+			if(alias && topic && alias !== topic) {
+				topics.set(pkg + '::' + alias, topic);
+			}
+		}
+	}
+	return topics;
+}
+
+/**
  * The two blobs a page searches: `name\tversion\tbase` per package, and `name\towner,owner` per
  * exported name. Plain text beats JSON by about a third here, and a page only has to `split` it.
  */
-export function encode(packages: readonly PackageEntry[]): { packages: string, names: string, count: number } {
+export function encode(packages: readonly PackageEntry[], stated: ReadonlyMap<string, unknown> = statedSignatures()): { packages: string, names: string, count: number } {
 	const owners = new Map<string, string[]>();
 	for(const [index, pkg] of packages.entries()) {
 		for(const [name, entry] of pkg.exports) {
 			const list = owners.get(name) ?? [];
 			owners.set(name, list);
-			/* `12` is package twelve; `12:tn:3:topic` adds its flags, its parameter count, and the help
-			   topic when that differs from the name. Trailing parts are left off when there is nothing to say. */
+			/* `12` is package twelve; `12:tn:3:topic:4:88` adds its flags, its parameter count, the help
+			   topic when that differs from the name, and which of the package's files holds it at which
+			   line, both in base 36. Trailing parts are left off when there is nothing to say. */
 			/* a topic can hold a comma or a colon (`[,hyperSpec-method`), which are exactly the separators
 			   this list uses, so it travels encoded */
+			/* the file and the line are read back as numbers either way, so they travel in the shortest base */
 			const parts = [String(index), entry.flags, entry.params > 0 ? String(entry.params) : '',
-				entry.topic ? encodeURIComponent(entry.topic) : ''];
+				entry.topic ? encodeURIComponent(entry.topic) : '',
+				entry.file !== undefined ? entry.file.toString(36) : '',
+				entry.line !== undefined ? entry.line.toString(36) : ''];
 			while(parts.length > 1 && parts[parts.length - 1] === '') {
 				parts.pop();
 			}
 			list.push(parts.join(':'));
 		}
 	}
+	/*
+	 * A name no package exports is in no list, and a search would never see it: `if` and `NULL` are R itself
+	 * rather than anything's export, and a primitive is in no NAMESPACE either. flowR states them, so they get
+	 * a row of their own with no owner, which the page fills in from what flowR says (see `withStatedOwner`).
+	 */
+	for(const name of stated.keys()) {
+		if(!owners.has(name)) {
+			owners.set(name, []);
+		}
+	}
 	owners.delete('');   // an empty name would split the blob apart when the page reads it back
 	return {
 		packages: packages.map(p => [p.name, p.version, p.base ? '1' : '0', p.downloads, p.exports.size,
-			p.releases, p.since, p.archived ? '1' : '0'].join('\t')).join('\n'),
+			p.releases, p.since, p.archived ? '1' : '0', p.files.join('|')].join('\t')).join('\n'),
 		/* alphabetical, which is what lets gzip fold the shared prefixes; a page ranks its own hits */
 		names: [...owners.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
 			.map(([name, list]) => `${name}\t${list.join(',')}`).join('\n'),

@@ -135,10 +135,6 @@ export interface QueryDataSearchContent extends MergeableRecord {
 	queries: { [QueryType in Query['type']]: Awaited<QueryResult<QueryType>> }
 }
 
-/**
- * The registry of enrichments that are currently supported by the search.
- * See {@link FlowrSearchBuilder.with} for more information on how to apply enrichments.
- */
 /** Roles a node can have without ever being executed on its own, which is why the control flow ignores them. */
 const StructuralRoles: ReadonlySet<RoleInParent> = new Set([
 	RoleInParent.FunctionCallName, RoleInParent.ArgumentName, RoleInParent.ParameterName
@@ -179,6 +175,10 @@ function isReachedByControlFlow(node: RNodeWithParent, alive: ReadonlySet<NodeId
 	return false;
 }
 
+/**
+ * The registry of enrichments that are currently supported by the search.
+ * See {@link FlowrSearchBuilder.with} for more information on how to apply enrichments.
+ */
 export const Enrichments = {
 	[Enrichment.CallTargets]: {
 		enrichSearch: async(_search, data, _args, prev) => prev ?? {

@@ -19,10 +19,10 @@ interface Claim {
 	readonly capabilities: readonly SupportedFlowrCapabilityId[]
 }
 
-/** lets a claim observe whether something was evaluated instead of arguing about it */
 /** what R says when the version at hand does not offer the function or argument a claim uses */
 const Unavailable = /could not find function|there is no package|unused argument|is not an exported object/;
 
+/** lets a claim observe whether something was evaluated instead of arguing about it */
 const Probe = 'hits <- character(0); probe <- function(tag, val = "a") { hits <<- c(hits, tag); val }; was <- function(tag) tag %in% hits; times <- function(tag) sum(hits == tag)';
 
 const Claims: readonly Claim[] = [

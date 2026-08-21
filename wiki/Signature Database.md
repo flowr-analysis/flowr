@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-08-20, 11:10:00 UTC (v2.14.1, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's bundled signature database that resolves `library()` calls">Generated</span> from '[wiki-signature-database.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-signature-database.ts "src/documentation/wiki-signature-database.ts")' on 2026-08-21, 14:31:02 UTC (v2.14.2, R v4.6.1), please do not edit directly._
 
 # Signature Database
 
@@ -142,11 +142,11 @@ build; the load column is the decompression time measured at generation time.
 
 | Shard | Contents | Versions kept | Packages | Versions | Size (`.br`) | Load (first touch) |
 |-------|----------|---------------|---------:|---------:|-------------:|-------------------:|
-| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | ≈ 420 µs |
-| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | ≈ 2.4 ms |
-| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | ≈ 6.7 ms |
-| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | ≈ 88 ms |
-| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | ≈ 180 ms |
+| `base-current` | base-R packages (`base`, `stats`, `graphics`, ...) | latest only | 23 | 23 | 104 KB | ≈ 680 µs |
+| `base-full` | base-R packages (`base`, `stats`, `graphics`, ...) | full history | 23 | 1,626 | 468 KB | ≈ 3.5 ms |
+| `current-top` | the 1,000 most-downloaded CRAN packages | latest only | 1,000 | 1,000 | 2.1 MB | ≈ 13 ms |
+| `current-rest` | the remaining CRAN packages | latest only | 22,742 | 22,742 | 15.1 MB | ≈ 370 ms |
+| `history-rest` | the remaining CRAN packages | full history | 18,466 | 140,128 | 30.7 MB | ≈ 380 ms |
 
 Which shard answers a lookup follows from the package and the version asked for. A base-R package comes from
 `base-current`, one of the 1,000 most-downloaded CRAN packages from `current-top`, and anything else from
@@ -164,7 +164,7 @@ The on-disk format is `flowr-sigdb` (schema 5). Beyond each version's exports it
 version, every function's signature (parameters, whether each is forced or optional, and its default) and
 call graph, together with that version's declared dependencies (`Depends`, `Imports`, ... with their
 version qualifiers). The layout is NDJSON: a header, then a shared string dictionary, then one
-self-contained blob per package, next to a sidecar `.idx`. A reader (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/reader.ts#L389"><code>SigDatabase</code></a>) therefore
+self-contained blob per package, next to a sidecar `.idx`. A reader (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/reader.ts#L389"><code><span title="Fast, partial reader for a single bundle. open()/openSync() load the string dictionary + .idx once (a single ranged read of the dictionary section, no full parse), then every query seeks straight to one package blob on demand. open() additionally decompresses a .br/.gz source into a hash-keyed cache and reuses it on later startups. Implements PackageSignatureSource .">SigDatabase</span></code></a>) therefore
 loads the dictionary once and then **seeks straight to the packages it needs**, never reading the rest.
 The bundle is written by <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/sigdb/build.ts#L209"><code><span title="Accumulates analyzed functions and serializes a SigDb . Feed it with addPackage and addVersion , then build . Pooling (dictionary, per-package blobs, whole-package dedup, frequency reordering) happens in build so the result is deterministic for identical inputs.">SigDbBuilder</span></code></a> and can be split into several small shards (current-only
 versus full history, top-N versus the rest) that a `flowr-sigdb-manifest` routes transparently

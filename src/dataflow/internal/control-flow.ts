@@ -1,8 +1,8 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../graph/graph';
 import { EdgeType } from '../graph/edge';
-import type { ControlDependency, DataflowCfgInformation } from '../info';
-import { ExitPointType } from '../info';
+import type { DataflowCfgInformation } from '../info';
+import { ControlDependency, ExitPointType } from '../info';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 
@@ -54,12 +54,35 @@ export const ControlFlow = {
 		return graph.idMap?.get(id) !== undefined && !ControlFlow.isStatement(graph, id);
 	},
 	/**
+	 * Whether the subtree always jumps away instead of being left normally, i.e. whether a non-default exit
+	 * point happens in every branch.
+	 * @example
+	 * ```r
+	 * { break }            # always exits
+	 * { if(u) break }      # only maybe
+	 * ```
+	 * @see {@link ControlFlow#canComplete|canComplete()} - for whether it can be left normally at all
+	 */
+	alwaysExits(this: void, info: DataflowCfgInformation): boolean {
+		let cds: ControlDependency[] = [];
+		for(const exit of info.exitPoints) {
+			if(exit.type !== ExitPointType.Default) {
+				if(exit.cds === undefined) {
+					return true;
+				}
+				cds = cds.concat(exit.cds);
+			}
+		}
+		return ControlDependency.happensInEveryBranch(cds);
+	},
+	/**
 	 * Whether the subtree can be left normally instead of always jumping away.
 	 * @example
 	 * ```r
 	 * { 1 }     # can complete
 	 * { break } # cannot
 	 * ```
+	 * @see {@link ControlFlow#alwaysExits|alwaysExits()} - for whether it always jumps away
 	 */
 	canComplete(this: void, info: DataflowCfgInformation): boolean {
 		if(info.cfgExit !== undefined) {

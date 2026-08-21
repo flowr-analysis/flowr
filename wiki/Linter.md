@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-20, 20:17:25 UTC (v2.14.1, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-21, 14:31:03 UTC (v2.14.2, R v4.6.1), please do not edit directly._
 
 This page describes the flowR linter, which is a tool that utilizes flowR's dataflow analysis to find common issues in R scripts. The linter can currently be used through the linter [query](https://github.com/flowr-analysis/flowr/wiki/Query-API).
 Some rules also draw on the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database).
@@ -8,7 +8,7 @@ For example:
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.14.1, R grammar v14 (tree-sitter engine)
+flowR repl v2.14.2, R grammar v14 (tree-sitter engine)
 R> :query @linter "read.csv(\"/root/x.txt\")"
 ```
 
@@ -17,7 +17,7 @@ R> :query @linter "read.csv(\"/root/x.txt\")"
 
 
 ```text
-Query: linter (3 ms)
+Query: linter (5 ms)
    ╰ Deprecated Functions (deprecated-functions): no findings
    ╰ File Path Validity (file-path-validity): no findings
    ╰ Seeded Randomness (seeded-randomness): no findings
@@ -34,7 +34,7 @@ Query: linter (3 ms)
    ╰ Undefined Symbol (undefined-symbol): no findings
    ╰ Unused Import (unused-import): no findings
    ╰ Unclosed Connection (unclosed-connection): no findings
-All queries together required ≈3 ms (1ms accuracy, total 3 ms)
+All queries together required ≈5 ms (1ms accuracy, total 5 ms)
 ```
 
 
@@ -56,7 +56,7 @@ Formatted more nicely, this returns:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (4 ms)\
+Query: **linter** (8 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -79,11 +79,11 @@ Query: **linter** (4 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Unused Import** (unused-import): _no findings_\
 &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
-_All queries together required ≈4 ms (1ms accuracy, total 5 ms)_
+_All queries together required ≈8 ms (1ms accuracy, total 9 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _5.0 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _9.1 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -101,7 +101,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "builtin": 0,
           "sigdb": 0,
           "searchTimeMs": 1,
-          "processTimeMs": 0
+          "processTimeMs": 1
         }
       },
       "file-path-validity": {
@@ -135,7 +135,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "callsWithAssignmentProducers": 0,
           "callsWithNonConstantProducers": 0,
           "callsWithOtherBranchProducers": 0,
-          "searchTimeMs": 0,
+          "searchTimeMs": 1,
           "processTimeMs": 0
         }
       },
@@ -164,7 +164,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ".meta": {
           "totalConsidered": 0,
           "searchTimeMs": 0,
-          "processTimeMs": 0
+          "processTimeMs": 1
         }
       },
       "network-functions": {
@@ -269,11 +269,11 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
       }
     },
     ".meta": {
-      "timing": 4
+      "timing": 8
     }
   },
   ".meta": {
-    "timing": 4
+    "timing": 8
   }
 }
 ```
@@ -313,7 +313,7 @@ The following linting rules are available:
 **[Dead Code](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Dead%20Code):** Marks areas of code that are never reached during execution. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/dead-code.ts#L29">src/linter/rules/dead-code.ts</a>]\
 	<span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>
 
-**[Deprecated Functions](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Deprecated%20Functions):** Marks deprecated functions and deprecated arguments of still-current functions, offering the replacement as a quick fix where one is known. A call to a bare name whose package the code never attaches is reported as uncertain, as any function of that name would answer to it. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/deprecated-functions.ts#L225">src/linter/rules/deprecated-functions.ts</a>]\
+**[Deprecated Functions](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20Deprecated%20Functions):** Marks deprecated functions and deprecated arguments of still-current functions, offering the replacement as a quick fix where one is known. A call to a bare name whose package the code never attaches is reported as uncertain, as any function of that name would answer to it. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/deprecated-functions.ts#L227">src/linter/rules/deprecated-functions.ts</a>]\
 	<span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This signals the use of deprecated functions or features."><a href='#deprecated'>![deprecated](https://img.shields.io/badge/deprecated-teal) </a></span> <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the (re-)usability of the code. For example, missing or incorrect error handling, or missing or incorrect user interface elements."><a href='#usability'>![usability](https://img.shields.io/badge/usability-teal) </a></span>
 
 **[File Path Validity](https://github.com/flowr-analysis/flowr/wiki/%5BLinting%20Rule%5D%20File%20Path%20Validity):** Checks whether file paths used in read and write operations are valid and point to existing files. [see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/file-path-validity.ts#L63">src/linter/rules/file-path-validity.ts</a>]\

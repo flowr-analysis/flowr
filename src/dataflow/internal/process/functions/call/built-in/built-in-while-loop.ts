@@ -1,6 +1,6 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation } from '../../../../../info';
-import { alwaysExits, ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
+import { ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
 import {
 	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,
@@ -101,7 +101,7 @@ export function processWhileLoop<OtherInfo>(
 	guard(condition !== undefined && body !== undefined, () => `While-Loop ${Identifier.toString(name.content)} has no condition or body, impossible!`);
 	const originalDependency = data.cds;
 
-	if(alwaysExits(condition)) {
+	if(ControlFlow.alwaysExits(condition)) {
 		dataflowLogger.warn(`While-Loop ${rootId} forces exit in condition, skipping rest`);
 		information.graph.addEdge(nameId, condition.entryPoint, EdgeType.Reads);
 		return condition;

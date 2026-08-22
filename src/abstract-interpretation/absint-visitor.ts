@@ -287,8 +287,10 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 
 		if(value !== undefined) {
 			this.currentState.set(target, value);
-			this.trace.set(target, this.currentState);
+		} else {
+			this.currentState.remove(target);
 		}
+		this.trace.set(target, this.currentState);
 	}
 
 	protected override onReplacementCall({ target }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {

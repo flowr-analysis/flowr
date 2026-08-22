@@ -110,7 +110,7 @@ export function testIntervalDomain(code: string, expected: IntervalTestExpected)
 			}
 
 			const errorContext = `expected inferred value ${inferredIntervalDomain?.toString()} to be ${criterionExpected.matching} 
-			match for ${criterionExpected.domain?.toString()} in final state ${visitor.getEndState().toString()} for ${code.trim().replaceAll('\n', ' \\n ')}`;
+			match for ${criterionExpected.domain?.toString()} (${targetId}) in trace \n${visitor.getAbstractTrace().entries().map(([key, value]) => `${key} => ${value.toString()}`).toArray().join('\n')}\nin final state ${visitor.getEndState().toString()}\nfor: ${code.trim().replaceAll('\n', ' \\n ')}`;
 
 			if(!isUndefined(inferredIntervalDomain) && !isUndefined(criterionExpected.domain)) {
 				if(criterionExpected.matching === DomainMatchingType.Equal) {

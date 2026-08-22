@@ -305,7 +305,9 @@ function complaint(found: { rule: string, message: string }, cls: string): HTMLE
 	return at;
 }
 
-/** what flowR can say about the name under the pointer: its value, its shape, or where it comes from */
+/**
+ * What flowR can say about the name under the pointer: its value, its shape, or where it comes from.
+ */
 const valueTips = hoverTooltip(async(view, pos) => {
 	const line = view.state.doc.lineAt(pos);
 	const found = targetAt(line.text, line.number, pos - line.from);
@@ -320,7 +322,7 @@ const valueTips = hoverTooltip(async(view, pos) => {
 		return {
 			pos:    line.from + found.from,
 			end:    line.from + found.to,
-			above:  true,
+			above:  false,
 			create: () => ({ dom: packageTip(info, lintsOver(line.from + found.from, line.from + found.to)) })
 		};
 	}
@@ -334,7 +336,7 @@ const valueTips = hoverTooltip(async(view, pos) => {
 	return said === undefined && known === undefined && complaints.length === 0 ? null : {
 		pos:    line.from + found.from,
 		end:    line.from + found.to,
-		above:  true,
+		above:  false,
 		create: () => ({ dom: tip(known, said, complaints) })
 	};
 });
@@ -1998,8 +2000,11 @@ document.querySelector('[data-sample]')?.addEventListener('click', () => {
 	showShared('the example is back');
 });
 
-/* the cursor is written here rather than in {@link remember}, so the address bar does not churn on every click */
-document.getElementById('share')?.addEventListener('click', () => {
+/**
+ * Copies the link that brings this playground back, which the button and `ctrl+s` both ask for.
+ * The cursor is written here rather than in {@link remember}, so the address bar does not churn on every click.
+ */
+function copyLink(): void {
 	const fields = shareFields();
 	const head = editor.state.selection.main.head;
 	const line = editor.state.doc.lineAt(head);
@@ -2019,6 +2024,16 @@ document.getElementById('share')?.addEventListener('click', () => {
 			}
 		}
 	);
+}
+
+document.getElementById('share')?.addEventListener('click', copyLink);
+
+/* there is nothing to save here, so `ctrl+s` keeps the script the only way this page can: as a link */
+document.addEventListener('keydown', event => {
+	if((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 's') {
+		event.preventDefault();
+		copyLink();
+	}
 });
 editor.dom.addEventListener('click', event => {
 	if(event.ctrlKey || event.metaKey) {

@@ -6,6 +6,7 @@
  * without this script noticing.
  */
 import fs from 'fs';
+import { fillVersion, versionMarker } from './version-marker';
 import { execSync } from 'child_process';
 import path from 'path';
 import { TreeSitterExecutor } from '../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
@@ -511,9 +512,7 @@ function render(data: PageData): string {
 		.map(([label, ms, trend]) => `\t\t<span class="timing">${escape(label)}${trend}<b>${escape(ms)} ms</b></span>`)
 		.join('\n');
 
-	const version = (JSON.parse(fs.readFileSync('package.json', 'utf8')) as { version: string }).version;
-	return Template
-		.replaceAll('<!--VERSION-->', `v${version}`)
+	return fillVersion(Template, versionMarker())
 		.replace('<!--UPDATED-->', lastUpdated())
 		.replace('<!--TIMES-->', bars)
 		.replace('<!--BENCHFILES-->', measured?.files ?? '')

@@ -10,6 +10,7 @@ import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { guard } from '../../../src/util/assert';
 import { runInference } from './inference';
+import { FlowrConfig } from '../../../src/config';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
 import { FunctionArgument } from '../../../src/dataflow/graph/graph';
 import type { OnCall } from '../../../src/control-flow/semantic-cfg-guided-visitor';
@@ -53,18 +54,23 @@ class BranchAwareVisitor extends AbstractInterpretationVisitor<StateAbstractDoma
 	}
 }
 
-/** Follows every call that has a definition to step into. */
+/** The configuration of an analysis that is not interprocedural unless it says so itself. */
+const Intraprocedural = FlowrConfig.amend(FlowrConfig.default(), c => {
+	c.abstractInterpretation.followCalls = false;
+});
+
+/** Steps into every call with a definition, which is what the configuration asks for by default. */
 class CallFollowingVisitor extends AbstractInterpretationVisitor<StateAbstractDomain<IntervalDomain>> {
-	constructor(config: AbsintVisitorConfiguration) {
+	constructor(config: AbsintVisitorConfiguration, private readonly alwaysEnter = false) {
 		super(config, StateAbstractDomain.top(IntervalDomain.top()));
+	}
+
+	protected override shouldEnterCall(call: DataflowGraphVertexFunctionCall): boolean {
+		return this.alwaysEnter || super.shouldEnterCall(call);
 	}
 
 	public stateAt(id: NodeId): StateAbstractDomain<IntervalDomain> | undefined {
 		return this.getAbstractState(id);
-	}
-
-	protected override shouldEnterCall(call: DataflowGraphVertexFunctionCall): boolean {
-		return this.getCallTargets(call.id).length > 0;
 	}
 
 	protected override onNumberConstant({ vertex, node }: { vertex: DataflowGraphVertexValue, node: RNumber<ParentInformation> }): void {
@@ -82,6 +88,20 @@ class CallFollowingVisitor extends AbstractInterpretationVisitor<StateAbstractDo
 				this.currentState.set(call.id, left.add(right));
 			}
 		}
+	}
+}
+
+/** Records every call the analysis is handed, whether or not the traversal steps into it. */
+class CallCountingVisitor extends AbstractInterpretationVisitor<StateAbstractDomain<IntervalDomain>> {
+	public readonly calls: string[] = [];
+
+	constructor(config: AbsintVisitorConfiguration) {
+		super(config, StateAbstractDomain.top(IntervalDomain.top()));
+	}
+
+	protected override onFunctionCall({ call }: OnCall): void {
+		super.onFunctionCall({ call });
+		this.calls.push(Identifier.getName(call.name) ?? '?');
 	}
 }
 
@@ -123,8 +143,8 @@ describe('Abstract Interpretation Visitor', () => {
 
 describe('Abstract Interpretation Visitor (interprocedural)', () => {
 	/** The value inferred for each variable at the end of the program */
-	async function valuesOf(code: string): Promise<Map<string, string | undefined>> {
-		const visitor = await runInference(code, config => new CallFollowingVisitor(config));
+	async function valuesOf(code: string, config?: FlowrConfig): Promise<Map<string, string | undefined>> {
+		const visitor = await runInference(code, c => new CallFollowingVisitor(c), { config });
 		const end = visitor.getEndState();
 		const values = new Map<string, string | undefined>();
 
@@ -157,5 +177,89 @@ describe('Abstract Interpretation Visitor (interprocedural)', () => {
 	test('a recursive call is not followed a second time', async() => {
 		const values = await valuesOf('f <- function() f()\nx <- f()');
 		assert.strictEqual(values.get('x'), undefined);
+	});
+
+	test('every definition a call may reach contributes', async() => {
+		const values = await valuesOf('if(u) { f <- function() 3 } else { f <- function() 8 }\nx <- f()');
+		assert.strictEqual(values.get('x'), '[3, 8]', 'the call is worth what either definition leaves');
+	});
+
+	test('the analysis is interprocedural unless the configuration says otherwise', () => {
+		assert.isTrue(FlowrConfig.default().abstractInterpretation.followCalls);
+		assert.isFalse(Intraprocedural.abstractInterpretation.followCalls);
+	});
+
+	test.each([
+		['a call is worth what its function returns', 'f <- function() 3\nx <- f()'],
+		['a call site hands over its own arguments', 'f <- function(a) a\nx <- f(3)'],
+		['a call within a called function',          'g <- function(a) a\nf <- function(a) g(a)\nx <- f(3)'],
+		['every definition a call may reach',        'if(u) { f <- function() 3 } else { f <- function() 3 }\nx <- f()'],
+		['a recursion that settles',                 'f <- function(n) if(n <= 0) 3 else f(n - 1)\nx <- f(2)']
+	])('%s, and nothing at all when the configuration does not follow it', async(_name, code) => {
+		assert.isDefined(await valuesOf(code).then(v => v.get('x')), 'the call is followed by default');
+		assert.strictEqual((await valuesOf(code, Intraprocedural)).get('x'), undefined,
+			'and is not followed when `followCalls` is off');
+	});
+
+	test('an analysis may still follow calls the configuration does not', async() => {
+		const visitor = await runInference('f <- function() 3\nx <- f()',
+			config => new CallFollowingVisitor(config, true), { config: Intraprocedural });
+		const end = visitor.getEndState();
+		const definition = [...visitor.config.dfg.verticesOfType(VertexType.VariableDefinition)]
+			.find(([id]) => visitor.config.normalizedAst.idMap.get(id)?.lexeme === 'x');
+
+		assert.isDefined(definition);
+		assert.strictEqual(end.isValue() ? end.value.get(definition[0])?.toString() : undefined, '[3, 3]',
+			'what the analysis decides wins over what the configuration defaults to');
+	});
+
+	test('an analysis is handed the calls it does not step into', async() => {
+		const visitor = await runInference('f <- function() 3\nx <- f()',
+			config => new CallCountingVisitor(config), { config: Intraprocedural });
+
+		assert.deepStrictEqual(visitor.calls, ['f'], 'a call that is not entered is still described by the analysis');
+	});
+});
+
+describe('Abstract Interpretation Visitor (join vertices)', () => {
+	/** A loop whose body is an `if`/`else if` chain of the given arms, with a value known before it. */
+	function loopWithArms(arms: number): string {
+		const chain = Array.from({ length: arms }, (_, i) => `${i === 0 ? 'if' : 'else if'}(i > ${i}) { y <- ${i + 20} }`).join(' ');
+		return `x <- 7\nfor(i in 1:3) { ${chain} }\nz <- x`;
+	}
+
+	function idWithLexeme(visitor: BranchAwareVisitor, lexeme: string): NodeId {
+		for(const [id, node] of visitor.config.normalizedAst.idMap) {
+			if(node.lexeme === lexeme) {
+				return id;
+			}
+		}
+		guard(false, () => `no node with lexeme ${lexeme}`);
+	}
+
+	test.each([
+		['while',  'while(u) { x <- 5 }'],
+		['for',    'for(i in 1:3) { x <- 5 }'],
+		['repeat', 'repeat { x <- 5\nif(u) break }']
+	])('a loop head still says what it says (%s)', async(_name, code) => {
+		const visitor = await runInference(code, config => new BranchAwareVisitor(config));
+		const state = visitor.stateAt(visitor.config.controlFlow.exitPoints[0]);
+
+		assert.isTrue(state?.get(idWithLexeme(visitor, '5'))?.equals(new IntervalDomain([5, 5])),
+			'the loop body is read even where the control flow comes back around');
+	});
+
+	test.each([1, 2, 3, 4])('a chain of %i arms within a loop keeps what its arms inferred', async(arms) => {
+		const visitor = await runInference(loopWithArms(arms), config => new BranchAwareVisitor(config));
+		const state = visitor.stateAt(visitor.config.controlFlow.exitPoints[0]);
+		assert.isDefined(state, 'the code after the loop is reached');
+
+		assert.isTrue(state?.get(idWithLexeme(visitor, '7'))?.equals(new IntervalDomain([7, 7])),
+			'what was known before the loop still is');
+		for(let arm = 0; arm < arms; arm++) {
+			const assigned = String(arm + 20);
+			assert.isTrue(state?.get(idWithLexeme(visitor, assigned))?.equals(new IntervalDomain([arm + 20, arm + 20])),
+				`what arm ${arm} assigned is still known after the loop`);
+		}
 	});
 });

@@ -125,9 +125,14 @@ export function processTryCatch<OtherInfo>(
 	 * raises is caught here as well, so it reaches the call rather than leaving it.
 	 */
 	(info as { cfgExit?: NodeId }).cfgExit = rootId;
-	/* a `finally` runs whether the block completed or raised, so an error lands there before leaving the call */
+	/*
+	 * An error the block raises lands on the handler when there is one, and the `finally` follows it, which the
+	 * arguments being in sequence already says. Without either, the error simply arrives at the call.
+	 */
+	const handler = res.processedArguments.find(arg => arg !== undefined && errorArg.has(arg.entryPoint));
 	const cleanup = res.processedArguments.find(arg => arg !== undefined && finallyArg.has(arg.entryPoint));
-	const caughtAt = cleanup === undefined ? rootId : ControlFlow.entryOf(cleanup);
+	const caughtAt = handler !== undefined ? ControlFlow.entryOf(handler)
+		: cleanup === undefined ? rootId : ControlFlow.entryOf(cleanup);
 	for(const arg of res.processedArguments) {
 		if(arg === undefined || errorArg.has(arg.entryPoint) || finallyArg.has(arg.entryPoint)) {
 			continue;

@@ -137,11 +137,13 @@ describe('Benchmark page helpers', () => {
 		assert.strictEqual(S.groupOf('built-in definitions (own handler)', '#'), 'builtins');
 		assert.strictEqual(S.groupOf('linting rules (smell)', '#'), 'features');
 		assert.strictEqual(S.groupOf('dataflow edges', '#'), 'graphs');
+		assert.strictEqual(S.groupOf('dataflow control flow edges', '#'), 'graphs', 'the control flow the graph carries is part of its size');
+		assert.strictEqual(S.shortName('dataflow control flow edges'), 'DF (control) edges');
 		assert.strictEqual(S.groupOf('data frame constraints', '#'), 'dataframes');
 		assert.strictEqual(S.groupOf('Infer data frame shapes', 'ms'), 'per-file', 'the phase stays with the phases');
 		assert.strictEqual(S.groupOf('memory (df-shapes)', 'KiB'), 'memory-detail', 'the memory chart is about the graphs');
-		assert.strictEqual(S.groupOf('something new', 'weird'), 'other', 'unknown metrics still get a home');
 		assert.ok(!S.GROUPS.some(g => g.id === 'totals'), 'the totals get no chart of their own');
+		assert.ok(!S.GROUPS.some(g => g.id === 'other'), 'a metric no rule claims stays off the page');
 		assert.deepStrictEqual(S.GROUPS.filter(g => g.perVersion).map(g => g.id), ['features', 'builtins', 'sigdb', 'tests'],
 			'only what the flowR version itself carries is independent of the suite');
 		assert.strictEqual(S.betterOf('data frame shapes (exact)', '#'), 'up');
@@ -180,7 +182,8 @@ describe('Benchmark page helpers', () => {
 		for(const [name, unit] of [
 			['Retrieve AST per 100 lines', 'ms'], ['Total common per 100 lines', 'ms'],
 			['reduction (lines)', '#'], ['reduction no fluff (characters)', '#'],
-			['memory (df-shapes)', 'KiB'], ['dataflow calls', '#'], ['control flow function definitions', '#']
+			['memory (df-shapes)', 'KiB'], ['dataflow calls', '#'], ['control flow function definitions', '#'],
+			['something new', 'weird']
 		] as const) {
 			assert.ok(!drawn.has(S.groupOf(name, unit)), `${name} is recorded, but it gets no chart`);
 		}
@@ -188,6 +191,7 @@ describe('Benchmark page helpers', () => {
 			['reduction (characters)', '#'], ['reduction (normalized tokens)', '#'], ['reduction (dataflow vertices)', '#'],
 			['memory (df-graph)', 'KiB'], ['memory (cfg-graph)', 'KiB'],
 			['dataflow vertices', '#'], ['dataflow edges', '#'], ['control flow vertices', '#'], ['control flow edges', '#'],
+			['dataflow control flow edges', '#'],
 			['Produce dataflow information', 'ms'], ['data frame constraints', '#'], ['number of files', '#']
 		] as const) {
 			assert.ok(drawn.has(S.groupOf(name, unit)), `${name} belongs on the page`);

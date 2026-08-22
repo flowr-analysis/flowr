@@ -123,7 +123,7 @@ export function doesExitPointPropagateCalls(type: ExitPointType): boolean {
  * This may be as innocent as the last expression or explicit with a `return`/`break`/`next`.
  * @see {@link ExitPointType} - for the different types of exit points
  * @see {@link addNonDefaultExitPoints} - to easily modify lists of exit points
- * @see {@link alwaysExits} - to check whether a list of control dependencies always triggers an exit
+ * @see {@link ControlFlow#alwaysExits|ControlFlow.alwaysExits()} - to check whether a subtree always jumps away
  * @see {@link filterOutLoopExitPoints} - to remove loop exit points from a list
  */
 export interface ExitPoint {
@@ -319,23 +319,6 @@ function coversSet(cds: ReadonlySet<ControlDependency> | readonly ControlDepende
  */
 export function happensInEveryBranchSet(cds: ReadonlySet<ControlDependency> | undefined): boolean {
 	return cds === undefined || (cds.size !== 0 && coversSet(cds));
-}
-
-/**
- * Checks whether the given dataflow information always exits (i.e., if there is a non-default exit point in every branch).
- * @see {@link ExitPoint} - for the different types of exit points
- */
-export function alwaysExits(data: DataflowInformation): boolean {
-	let cds: ControlDependency[] = [];
-	for(const e of data.exitPoints) {
-		if(e.type !== ExitPointType.Default) {
-			if(e.cds === undefined) {
-				return true;
-			}
-			cds = cds.concat(e.cds);
-		}
-	}
-	return happensInEveryBranch(cds);
 }
 
 /**

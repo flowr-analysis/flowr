@@ -3,7 +3,7 @@
  * @module
  */
 import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
-import { addNonDefaultExitPoints, alwaysExits, ExitPointType, happensInEveryBranch } from '../../../../../info';
+import { addNonDefaultExitPoints, ExitPointType, happensInEveryBranch } from '../../../../../info';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { getAllLinkedFunctionDefinitions, linkFunctionCalls } from '../../../../linker';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
@@ -299,7 +299,7 @@ export function processExpressionList<OtherInfo>(
 		}
 
 		/** if at least built-one of the exit points encountered happens unconditionally, we exit here (dead code)! */
-		if(alwaysExits(processed)) {
+		if(ControlFlow.alwaysExits(processed)) {
 			/* if there is an always-exit expression, there is no default return active anymore */
 			defaultReturnExpr = undefined;
 			break;
@@ -353,6 +353,15 @@ export function processExpressionList<OtherInfo>(
 	/* an empty group completes on the spot, otherwise the last expression has to be able to reach the end */
 	const reachesEnd = !!withGroup && (processedExpressions.length === 0 || exitPoints.some(e => e.type === ExitPointType.Default));
 	const cfgEntry = ControlFlow.inSequence(nextGraph, processedExpressions, reachesEnd ? rootId : undefined);
+	/*
+	 * `{ break }` is entered and never left, so its `{` is reached and goes nowhere. Saying only the second
+	 * half of that leaves the vertex beside the control flow, with nothing leading to it either.
+	 */
+	if(withGroup && !reachesEnd) {
+		for(const exit of exitPoints) {
+			nextGraph.addEdge(exit.nodeId, rootId, EdgeType.FlowEdge);
+		}
+	}
 
 	return {
 		/* no active nodes remain, they are consumed within the remaining read collection */

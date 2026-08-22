@@ -9,7 +9,7 @@ import { build, type Plugin } from 'esbuild';
 import { builtinModules } from 'module';
 import { openDatabase } from './sigdb-index';
 import { rSourceUrl, rdrrDocUrl } from '../src/queries/catalog/signature-query/signature-query-executor';
-import { flowrVersion } from '../src/util/version';
+import { fillVersion, versionMarker } from './version-marker';
 import { FlowrConfig } from '../src/config';
 import { DefaultBuiltinConfig } from '../src/dataflow/environments/default-builtin-config';
 import { Identifier } from '../src/dataflow/environments/identifier';
@@ -74,12 +74,6 @@ async function baseSignatures(): Promise<string> {
 	return rows.join('\n');
 }
 
-/**
- * The exports of every package the playground may attach, as `package -> [version, release, ...names]`. A browser can open no
- * database, so without this `library(dplyr)` brings nothing into scope and every call it should resolve
- * stays unknown. Base R plus the packages flowR carries definitions for is what a script typed into the
- * page actually loads, and their export lists are small enough to ride along.
- */
 /** how many of the most-downloaded packages ride along, by their exports alone */
 const TopPackages = 150;
 
@@ -93,6 +87,12 @@ function topPackages(): string[] {
 	}
 }
 
+/**
+ * The exports of every package the playground may attach, as `package -> [version, release, ...names]`. A browser can open no
+ * database, so without this `library(dplyr)` brings nothing into scope and every call it should resolve
+ * stays unknown. Base R plus the packages flowR carries definitions for is what a script typed into the
+ * page actually loads, and their export lists are small enough to ride along.
+ */
 async function packageExports(): Promise<string> {
 	const db = await openDatabase();
 	if(db === undefined) {
@@ -180,13 +180,12 @@ async function main(): Promise<void> {
 	const exports = await packageExports();
 	/* the script the page opens with, kept as an R file so the documentation links to the same one */
 	const sample = fs.readFileSync(path.join('scripts', 'playground', 'sample.R'), 'utf8').trim();
-	fs.writeFileSync(path.join(Target, 'index.html'), page
+	fs.writeFileSync(path.join(Target, 'index.html'), fillVersion(page
 		/* the text of a script element ends at `</`, and nothing else in it has to be escaped */
 		.replace('<!--SAMPLE-->', sample.replaceAll('</', '<\\/'))
 		.replace('<!--SIGS-->', signatures)
 		.replace('<!--PKGS-->', exports)
-		.replace('<!--CFGDOCS-->', configDocs())
-		.replaceAll('<!--VERSION-->', `v${flowrVersion().format()}`));
+		.replace('<!--CFGDOCS-->', configDocs()), versionMarker()));
 	const size = Object.values(result.metafile.outputs).reduce((sum, o) => sum + o.bytes, 0);
 	console.log(`  wrote ${Target} (${(size / 1024 / 1024).toFixed(1)} MB bundle, `
 		+ `${Math.round(signatures.length / 1024)} kB of base R signatures, `

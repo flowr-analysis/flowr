@@ -13,7 +13,7 @@ import fs from 'fs';
 import path from 'path';
 import { build } from 'esbuild';
 import { encode, pack, readSigIndex } from './sigdb-index';
-import { flowrVersion } from '../src/util/version';
+import { fillVersion, versionMarker } from './version-marker';
 
 /**
  * The name ranker as plain script, so this page orders its hits with the very function the playground's
@@ -45,6 +45,9 @@ const OpenSearchDescription = `<?xml version="1.0" encoding="UTF-8"?>
 	<ShortName>flowR sigdb</ShortName>
 	<Description>Search the R functions flowR knows across base R and CRAN packages.</Description>
 	<InputEncoding>UTF-8</InputEncoding>
+	<!-- browsers pick the first image they can draw, and most of them will not take an svg for this -->
+	<Image height="16" width="16" type="image/png">${SiteUrl}/wiki/img/flowR-mark-red-16.png</Image>
+	<Image height="32" width="32" type="image/png">${SiteUrl}/wiki/img/flowR-mark-red-32.png</Image>
 	<Image height="16" width="16" type="image/svg+xml">${SiteUrl}/wiki/img/flowR-mark-red.svg</Image>
 	<Url type="text/html" method="get" template="${SiteUrl}/wiki/sigdb/?q={searchTerms}"/>
 	<Url type="application/opensearchdescription+xml" rel="self" template="${SiteUrl}/wiki/sigdb/opensearch.xml"/>
@@ -68,8 +71,7 @@ async function main(): Promise<void> {
 	/* what flowR states about the names it defines, so a hit can show its signature next to the database's */
 	const stated = JSON.stringify(Object.fromEntries([...index.stated].map(([name, entries]) =>
 		[name, entries.map(({ pkg, params, props }) => [pkg, params ?? '', props.join(' ')])]))).replaceAll('</', '<\\/');
-	const page = Template
-		.replaceAll('<!--VERSION-->', `v${flowrVersion().format()}`)
+	const page = fillVersion(Template, versionMarker())
 		.replaceAll('<!--UPDATED-->', index.updated)
 		.replaceAll('<!--PACKAGES-->', group(index.packages.length))
 		.replaceAll('<!--FUNCTIONS-->', group(blobs.count))
@@ -77,6 +79,7 @@ async function main(): Promise<void> {
 		.replace('"<!--KINDS-->"', kinds)
 		.replace('"<!--STATED-->"', stated)
 		.replace('"<!--FORMALS-->"', JSON.stringify(Object.fromEntries(index.formals)).replaceAll('</', '<\\/'))
+		.replace('"<!--TOPICS-->"', JSON.stringify(Object.fromEntries(index.topics)).replaceAll('</', '<\\/'))
 		.replace('<!--DATA-->', pack(blobs.packages, blobs.names));
 
 	fs.mkdirSync(Target, { recursive: true });

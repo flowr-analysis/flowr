@@ -6,7 +6,11 @@ import { Identifier } from '../../../../../dataflow/environments/identifier';
 import { RNode } from '../model';
 import type { BuiltInProcName } from '../../../../../dataflow/environments/built-in-proc-name';
 
-/** The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. */
+/**
+ * The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types.
+ * The default ids are numeric, but we use a branded type to avoid confusion with other numeric types.
+ * Custom ids or scoped ids can be strings, but they will be normalized to numbers if they are numeric strings.
+ */
 export type NodeId<T extends string | number = string | number> = T & { __brand?: 'node-id' };
 
 /**
@@ -14,11 +18,6 @@ export type NodeId<T extends string | number = string | number> = T & { __brand?
  */
 export type BuiltIn<T extends string = string> = `built-in:${T}`;
 
-/**
- * The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types.
- * The default ids are numeric, but we use a branded type to avoid confusion with other numeric types.
- * Custom ids or scoped ids can be strings, but they will be normalized to numbers if they are numeric strings.
- */
 /** whether the id starts as a number does, which `+id` alone does not tell: it turns a blank string into `0` */
 function startsNumeric(id: string): boolean {
 	const c = id.charCodeAt(0);

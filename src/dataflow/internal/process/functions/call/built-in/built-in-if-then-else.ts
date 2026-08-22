@@ -1,7 +1,6 @@
 import { MatchArgs } from '../../../../../graph/match-args';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation, KillReference } from '../../../../../info';
-import { alwaysExits } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
@@ -82,7 +81,7 @@ export function processIfThenElse<OtherInfo>(
 
 	const cond = processDataflowFor(condArg, data);
 
-	if(alwaysExits(cond)) {
+	if(ControlFlow.alwaysExits(cond)) {
 		dataflowLogger.warn(`If-then-else ${rootId} forces exit in condition, skipping rest`);
 		return cond;
 	}

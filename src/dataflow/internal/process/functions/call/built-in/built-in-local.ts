@@ -1,7 +1,7 @@
 import { MatchArgs } from '../../../../../graph/match-args';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
-import { DataflowInformation, alwaysExits } from '../../../../../info';
+import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { ControlFlow } from '../../../../control-flow';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -56,7 +56,7 @@ export function processLocal<OtherInfo>(
 	const envirResolution = env ? resolveEnvirArg(args, data, config.args.env) : undefined;
 
 	const dfEnv = env ? processDataflowFor(env, data) : DataflowInformation.initialize(rootId, data);
-	if(alwaysExits(dfEnv)) {
+	if(ControlFlow.alwaysExits(dfEnv)) {
 		patchFunctionCall({
 			nextGraph:             dfEnv.graph,
 			rootId,

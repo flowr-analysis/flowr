@@ -197,6 +197,63 @@ export interface StatedSignature {
 }
 
 /**
+ * The manual page documenting a base R primitive, for the ones not documented under their own name.
+ *
+ * A primitive is written in C and has no R closure, so nothing extracts a signature, a source file or a help
+ * topic for it and the signature database holds no entry at all: `base::sin` is documented under `Trig`, and
+ * guessing `sin` only names a page that does not exist. flowR states these names itself, so it carries where
+ * they are documented as well. Written the way R documents them, one page and everything it covers.
+ */
+const PrimitivesPerTopic: Readonly<Record<string, readonly string[]>> = {
+	'Arithmetic':   ['%%', '%/%', '*', '+', '-', '/', '^'],
+	'assignOps':    ['<-', '<<-', '='],
+	'call':         ['as.call'],
+	'CallExternal': ['.Call', '.External'],
+	'character':    ['as.character', 'is.character'],
+	'Colon':        [':'],
+	'Comparison':   ['!=', '<', '<=', '==', '>', '>='],
+	'complex':      ['Arg', 'Conj', 'Im', 'Mod', 'Re', 'as.complex'],
+	'Control':      ['break', 'for', 'if', 'next', 'repeat', 'while'],
+	'crossprod':    ['tcrossprod'],
+	'cumsum':       ['cummax', 'cummin', 'cumprod'],
+	'double':       ['as.double'],
+	'environment':  ['baseenv', 'emptyenv', 'globalenv'],
+	'Extract':      ['$', '[', '[['],
+	'Extremes':     ['max', 'min'],
+	'Foreign':      ['.C', '.Fortran'],
+	'function':     ['return'],
+	'Hyperbolic':   ['acosh', 'asinh', 'atanh', 'cosh', 'sinh', 'tanh'],
+	'integer':      ['as.integer'],
+	'Internal':     ['.Internal'],
+	'is.finite':    ['is.infinite', 'is.nan'],
+	'list':         ['is.list'],
+	'Log':          ['exp', 'expm1', 'log', 'log10', 'log1p', 'log2'],
+	'Logic':        ['!', '&', '&&', '|', '||'],
+	'logical':      ['as.logical', 'is.logical'],
+	'MathFun':      ['abs', 'sqrt'],
+	'matmult':      ['%*%'],
+	'matrix':       ['is.matrix'],
+	'NA':           ['is.na'],
+	'nchar':        ['nzchar'],
+	'ns-dblcolon':  ['::', ':::'],
+	'NULL':         ['is.null'],
+	'numeric':      ['as.numeric', 'is.numeric'],
+	'Paren':        ['(', '{'],
+	'Primitive':    ['.Primitive'],
+	'raw':          ['as.raw'],
+	'Round':        ['ceiling', 'floor', 'round', 'signif', 'trunc'],
+	'seq':          ['seq.int', 'seq_along', 'seq_len'],
+	'slotOp':       ['@'],
+	'substitute':   ['quote'],
+	'tilde':        ['~'],
+	'Trig':         ['acos', 'asin', 'atan', 'cos', 'sin', 'tan'],
+};
+
+/** {@link PrimitivesPerTopic} the way a lookup wants it: the topic documenting a name. */
+export const BasePrimitiveTopics: Readonly<Record<string, string>> = Object.fromEntries(
+	Object.entries(PrimitivesPerTopic).flatMap(([topic, names]) => names.map(name => [name, topic])));
+
+/**
  * What flowR states about every function it carries a definition for, as `name -> signatures`. A name may be
  * defined for several packages (`filter` is dplyr's and cohortBuilder's), so all of them are here and the
  * caller picks by package; {@link statedSignatureOf} does that. The signature browser and the playground both
@@ -315,10 +372,6 @@ function markGenerics(definitions: BuiltInDefinitions): BuiltInDefinitions {
 	return out;
 }
 
-/**
- * Contains the built-in definitions recognized by flowR, as they are written down: {@link DefaultBuiltinConfig}
- * is what {@link markGenerics} makes of them, and a test checks that this is all it changes.
- */
 /** what creating a plot does; restated by the deprecated plot creators, which do the same but should not be used */
 const PlotCreateConfig = {
 	forceArgs:             'all',
@@ -338,6 +391,10 @@ const PlotCreateConfig = {
 	props: CallProp.Graphics
 } as const;
 
+/**
+ * Contains the built-in definitions recognized by flowR, as they are written down: {@link DefaultBuiltinConfig}
+ * is what {@link markGenerics} makes of them, and a test checks that this is all it changes.
+ */
 export const WrittenBuiltinDefinitions = [
 	{ type: 'constant', names: Identifier.fromAll(PkgName.Base, ['NULL', 'NA', 'NA_integer_', 'NA_real_', 'NA_complex_', 'NA_character_']), value: null, assumePrimitive: true },
 	{ type: 'constant', names: [Identifier.from(['NaN', PkgName.Base])], value: NaN, assumePrimitive: true },

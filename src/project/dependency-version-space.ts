@@ -155,7 +155,6 @@ export interface VersionAssignment {
 	readonly unverified?: readonly string[];
 }
 
-/** default safety cap on how many assignments {@link explodeDependencyVersions} yields */
 /** the dependency kinds a load has to satisfy, as `Suggests`/`Enhances` are not enforced when a package is attached */
 const LoadRelevantDeps: ReadonlySet<DepType> = new Set([DepType.Depends, DepType.Imports, DepType.LinkingTo]);
 
@@ -164,6 +163,7 @@ function loadRequirements(src: PackageSignatureSource | undefined, pkg: string, 
 	return (src?.dependencies(pkg, version) ?? []).filter(d => LoadRelevantDeps.has(d.type));
 }
 
+/** default safety cap on how many assignments {@link explodeDependencyVersions} yields */
 export const DefaultExplodeLimit = 256;
 
 /** the date cutoff (end of the named day/month/year) for a `YYYY.MM.DD` spec, or `undefined` if malformed */

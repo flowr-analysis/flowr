@@ -1,0 +1,332 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>CfgEdge | @eagleoutice/flowr - v2.14.4</title><meta name="description" content="Documentation for @eagleoutice/flowr"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="../index.html" class="title">@eagleoutice/flowr - v2.14.4</a>
+<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<ul role="listbox" id="tsd-search-results"></ul>
+<div id="tsd-search-status" aria-live="polite" aria-atomic="true">
+<div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<ul class="tsd-breadcrumb" aria-label="Breadcrumb">
+<li><a href="../modules/src_control-flow_control-flow-graph.html">src/control-flow/control-flow-graph</a></li>
+<li><a href="" aria-current="page">CfgEdge</a></li></ul>
+<h1>Variable CfgEdge</h1></div>
+<div class="tsd-signature"><span class="tsd-kind-variable">CfgEdge</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-symbol">{</span><br/>    <span class="tsd-kind-call-signature">equals</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">a</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">b</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">getCause</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">getType</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../enums/src_control-flow_control-flow-graph.CfgEdgeType.html" class="tsd-signature-type tsd-kind-enum">CfgEdgeType</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">getWhen</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;TRUE&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;FALSE&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">isControlDependency</span><span class="tsd-signature-symbol">(</span><br/>        <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>        <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-kind-parameter">edge</span> <span class="tsd-signature-keyword">is</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">isFlowDependency</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-kind-parameter">edge</span> <span class="tsd-signature-keyword">is</span> <a href="../enums/src_control-flow_control-flow-graph.CfgEdgeType.html#flow" class="tsd-signature-type tsd-kind-enum-member">Flow</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">isOfType</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">type</span><span class="tsd-signature-symbol">:</span> <a href="../enums/src_control-flow_control-flow-graph.CfgEdgeType.html" class="tsd-signature-type tsd-kind-enum">CfgEdgeType</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">makeCd</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">cd</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">makeCdFalse</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">controlId</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">makeCdTrue</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">controlId</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">makeFd</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../enums/src_control-flow_control-flow-graph.CfgEdgeType.html#flow" class="tsd-signature-type tsd-kind-enum-member">Flow</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-property">name</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;CfgEdge&quot;</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">toString</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">typeToString</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">unpackCause</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">;</span><br/>    <span class="tsd-kind-call-signature">unpackWhen</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;TRUE&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;FALSE&quot;</span><span class="tsd-signature-symbol">;</span><br/><span class="tsd-signature-symbol">}</span></div>
+<div class="tsd-comment tsd-typography"><p>Helper object for <a href="#" class="tsd-kind-variable">CfgEdge</a> - an edge in the <a href="../classes/src_control-flow_control-flow-graph.ControlFlowGraph.html" class="tsd-kind-class">ControlFlowGraph</a>.</p>
+</div>
+<div class="tsd-type-declaration">
+<h4>Type Declaration</h4>
+<ul class="tsd-parameters">
+<li class="tsd-parameter">
+<h5 id="equals"><span class="tsd-kind-method">equals</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="equals-1"><span class="tsd-kind-call-signature">equals</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">a</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">b</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#equals-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Check whether two edges are equal.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">a</span>: <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a></span></li>
+<li><span><span class="tsd-kind-parameter">b</span>: <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/4e1ef7aab08b35a8613ee4faccf89b3e19abd917/src/control-flow/control-flow-graph.ts#L354">src/control-flow/control-flow-graph.ts:354</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="getcause"><span class="tsd-kind-method">getCause</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getcause-1"><span class="tsd-kind-call-signature">getCause</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#getcause-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Get the cause of a control dependency edge, i.e., the id of the vertex that causes the control dependency.
+If the edge is not a control dependency edge, this returns undefined.</p>
+<p>This is the pendant of CfgEdge#isControlDependency|isControlDependency() on a <a href="#" class="tsd-kind-variable">CfgEdge</a>.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">edge</span>: <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see">See<a href="#see" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>CfgEdge#unpackCause|unpackCause() - for a version of this function that assumes the edge is a control dependency edge and hence does not return undefined</p>
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/4e1ef7aab08b35a8613ee4faccf89b3e19abd917/src/control-flow/control-flow-graph.ts#L318">src/control-flow/control-flow-graph.ts:318</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="gettype"><span class="tsd-kind-method">getType</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="gettype-1"><span class="tsd-kind-call-signature">getType</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../enums/src_control-flow_control-flow-graph.CfgEdgeType.html" class="tsd-signature-type tsd-kind-enum">CfgEdgeType</a><a href="#gettype-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Get the type of the given edge.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">edge</span>: <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../enums/src_control-flow_control-flow-graph.CfgEdgeType.html" class="tsd-signature-type tsd-kind-enum">CfgEdgeType</a></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see-1">See<a href="#see-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>CfgEdge#isOfType|isOfType() - for a version of this function that checks whether the edge is of a given type</p>
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/4e1ef7aab08b35a8613ee4faccf89b3e19abd917/src/control-flow/control-flow-graph.ts#L373">src/control-flow/control-flow-graph.ts:373</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="getwhen"><span class="tsd-kind-method">getWhen</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="getwhen-1"><span class="tsd-kind-call-signature">getWhen</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;TRUE&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;FALSE&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><a href="#getwhen-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Get whether the control dependency edge is satisfied with a true condition or is it negated (e.g., else-branch).
+If the edge is not a control dependency edge, this returns undefined.</p>
+<p>This is the pendant of CfgEdge#isControlDependency|isControlDependency() on a <a href="#" class="tsd-kind-variable">CfgEdge</a>.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">edge</span>: <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">&quot;TRUE&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;FALSE&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see-2">See<a href="#see-2" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>CfgEdge#unpackWhen|unpackWhen() - for a version of this function that assumes the edge is a control dependency edge and hence does not return undefined</p>
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/4e1ef7aab08b35a8613ee4faccf89b3e19abd917/src/control-flow/control-flow-graph.ts#L338">src/control-flow/control-flow-graph.ts:338</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="iscontroldependency"><span class="tsd-kind-method">isControlDependency</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="iscontroldependency-1"><span class="tsd-kind-call-signature">isControlDependency</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-kind-parameter">edge</span> <span class="tsd-signature-keyword">is</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><a href="#iscontroldependency-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Check whether the given edge is a control dependency edge.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">edge</span>: <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-kind-parameter">edge</span> <span class="tsd-signature-keyword">is</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/4e1ef7aab08b35a8613ee4faccf89b3e19abd917/src/control-flow/control-flow-graph.ts#L277">src/control-flow/control-flow-graph.ts:277</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="isflowdependency"><span class="tsd-kind-method">isFlowDependency</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="isflowdependency-1"><span class="tsd-kind-call-signature">isFlowDependency</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-kind-parameter">edge</span> <span class="tsd-signature-keyword">is</span> <a href="../enums/src_control-flow_control-flow-graph.CfgEdgeType.html#flow" class="tsd-signature-type tsd-kind-enum-member">Flow</a><a href="#isflowdependency-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Check whether the given edge is a flow dependency edge.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">edge</span>: <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">undefined</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-kind-parameter">edge</span> <span class="tsd-signature-keyword">is</span> <a href="../enums/src_control-flow_control-flow-graph.CfgEdgeType.html#flow" class="tsd-signature-type tsd-kind-enum-member">Flow</a></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/4e1ef7aab08b35a8613ee4faccf89b3e19abd917/src/control-flow/control-flow-graph.ts#L271">src/control-flow/control-flow-graph.ts:271</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="isoftype"><span class="tsd-kind-method">isOfType</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="isoftype-1"><span class="tsd-kind-call-signature">isOfType</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">type</span><span class="tsd-signature-symbol">:</span> <a href="../enums/src_control-flow_control-flow-graph.CfgEdgeType.html" class="tsd-signature-type tsd-kind-enum">CfgEdgeType</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">boolean</span><a href="#isoftype-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Check whether the given edge is of the given type.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">edge</span>: <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a></span></li>
+<li><span><span class="tsd-kind-parameter">type</span>: <a href="../enums/src_control-flow_control-flow-graph.CfgEdgeType.html" class="tsd-signature-type tsd-kind-enum">CfgEdgeType</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">boolean</span></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see-3">See<a href="#see-3" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>CfgEdge#getType|getType() - for a version of this function that returns the type of the edge instead of checking against a given type</p>
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/4e1ef7aab08b35a8613ee4faccf89b3e19abd917/src/control-flow/control-flow-graph.ts#L366">src/control-flow/control-flow-graph.ts:366</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="makecd"><span class="tsd-kind-method">makeCd</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="makecd-1"><span class="tsd-kind-call-signature">makeCd</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">cd</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><a href="#makecd-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Create a control dependency edge from the given control dependency, which is what the edge is.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">cd</span>: <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a></span>
+<div class="tsd-comment tsd-typography"><p>the decision the edge follows, i.e. the vertex that causes it and the outcome it takes</p>
+</div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see-4">See<a href="#see-4" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><ul>
+<li>CfgEdge#makeCdTrue|makeCdTrue() - to build one for a true condition from the causing id alone</li>
+<li>CfgEdge#makeCdFalse|makeCdFalse() - to build one for a negated condition (e.g., else-branch)</li>
+</ul>
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/4e1ef7aab08b35a8613ee4faccf89b3e19abd917/src/control-flow/control-flow-graph.ts#L292">src/control-flow/control-flow-graph.ts:292</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="makecdfalse"><span class="tsd-kind-method">makeCdFalse</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="makecdfalse-1"><span class="tsd-kind-call-signature">makeCdFalse</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">controlId</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><a href="#makecdfalse-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Create a control dependency edge with the given cause and a negated condition (e.g., else-branch).</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">controlId</span>: <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></span>
+<div class="tsd-comment tsd-typography"><p>the id of the vertex that causes the control dependency</p>
+</div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see-5">See<a href="#see-5" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>CfgEdge#makeCd|makeCd() - for a version of this function that allows to specify the condition as well</p>
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/4e1ef7aab08b35a8613ee4faccf89b3e19abd917/src/control-flow/control-flow-graph.ts#L308">src/control-flow/control-flow-graph.ts:308</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="makecdtrue"><span class="tsd-kind-method">makeCdTrue</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="makecdtrue-1"><span class="tsd-kind-call-signature">makeCdTrue</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">controlId</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><a href="#makecdtrue-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Create a control dependency edge with the given cause and a true condition.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">controlId</span>: <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></span>
+<div class="tsd-comment tsd-typography"><p>the id of the vertex that causes the control dependency</p>
+</div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see-6">See<a href="#see-6" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>CfgEdge#makeCd|makeCd() - for a version of this function that allows to specify the condition as well</p>
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/4e1ef7aab08b35a8613ee4faccf89b3e19abd917/src/control-flow/control-flow-graph.ts#L300">src/control-flow/control-flow-graph.ts:300</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="makefd"><span class="tsd-kind-method">makeFd</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="makefd-1"><span class="tsd-kind-call-signature">makeFd</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../enums/src_control-flow_control-flow-graph.CfgEdgeType.html#flow" class="tsd-signature-type tsd-kind-enum-member">Flow</a><a href="#makefd-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Create a flow dependency edge.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../enums/src_control-flow_control-flow-graph.CfgEdgeType.html#flow" class="tsd-signature-type tsd-kind-enum-member">Flow</a></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/4e1ef7aab08b35a8613ee4faccf89b3e19abd917/src/control-flow/control-flow-graph.ts#L283">src/control-flow/control-flow-graph.ts:283</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="name"><code class="tsd-tag">Readonly</code><span class="tsd-kind-property">name</span><span class="tsd-signature-symbol">: </span><span class="tsd-signature-type">&quot;CfgEdge&quot;</span></h5></li>
+<li class="tsd-parameter">
+<h5 id="tostring"><span class="tsd-kind-method">toString</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="tostring-1"><span class="tsd-kind-call-signature">toString</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><a href="#tostring-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Provide a string representation of the given edge, including its details (e.g., cause and condition for control dependency edges), e.g., for debugging or visualization purposes.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">edge</span>: <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see-7">See<a href="#see-7" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>CfgEdge#typeToString|typeToString() - for a version of this function that only includes the type of the edge</p>
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/4e1ef7aab08b35a8613ee4faccf89b3e19abd917/src/control-flow/control-flow-graph.ts#L387">src/control-flow/control-flow-graph.ts:387</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="typetostring"><span class="tsd-kind-method">typeToString</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="typetostring-1"><span class="tsd-kind-call-signature">typeToString</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><a href="#typetostring-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Provide a string representation of the given edge, e.g., for debugging or visualization purposes.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">edge</span>: <a href="../types/src_control-flow_control-flow-graph.CfgEdge.html" class="tsd-signature-type tsd-kind-type-alias">CfgEdge</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">string</span></h4>
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-see">
+<h4 class="tsd-anchor-link" id="see-8">See<a href="#see-8" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>CfgEdge#toString|toString() - for a version of this function that also includes the details of the edge (e.g., cause and condition for control dependency edges)</p>
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/4e1ef7aab08b35a8613ee4faccf89b3e19abd917/src/control-flow/control-flow-graph.ts#L380">src/control-flow/control-flow-graph.ts:380</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="unpackcause"><span class="tsd-kind-method">unpackCause</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="unpackcause-1"><span class="tsd-kind-call-signature">unpackCause</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a><a href="#unpackcause-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Get the cause of a control dependency edge, i.e., the id of the vertex that causes the control dependency.</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">edge</span>: <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/src_r-bridge_lang-4.x_ast_model_processing_node-id.NodeId.html" class="tsd-signature-type tsd-kind-type-alias">NodeId</a></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/4e1ef7aab08b35a8613ee4faccf89b3e19abd917/src/control-flow/control-flow-graph.ts#L328">src/control-flow/control-flow-graph.ts:328</a></li></ul></aside></div></li></ul></li>
+<li class="tsd-parameter">
+<h5 id="unpackwhen"><span class="tsd-kind-method">unpackWhen</span><span class="tsd-signature-symbol">:</span> function</h5>
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="unpackwhen-1"><span class="tsd-kind-call-signature">unpackWhen</span><span class="tsd-signature-symbol">(</span><span class="tsd-kind-parameter">this</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">void</span><span class="tsd-signature-symbol">,</span> <span class="tsd-kind-parameter">edge</span><span class="tsd-signature-symbol">:</span> <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">&quot;TRUE&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;FALSE&quot;</span><a href="#unpackwhen-1" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Get whether the control dependency edge is satisfied with a true condition or is it negated (e.g., else-branch).</p>
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">this</span>: <span class="tsd-signature-type">void</span></span></li>
+<li><span><span class="tsd-kind-parameter">edge</span>: <a href="../interfaces/src_dataflow_info.ControlDependency.html" class="tsd-signature-type tsd-kind-interface">ControlDependency</a></span></li></ul></div>
+<h4 class="tsd-returns-title">Returns <span class="tsd-signature-type">&quot;TRUE&quot;</span> <span class="tsd-signature-symbol">|</span> <span class="tsd-signature-type">&quot;FALSE&quot;</span></h4><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/4e1ef7aab08b35a8613ee4faccf89b3e19abd917/src/control-flow/control-flow-graph.ts#L348">src/control-flow/control-flow-graph.ts:348</a></li></ul></aside></div></li></ul></li></ul></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/4e1ef7aab08b35a8613ee4faccf89b3e19abd917/src/control-flow/control-flow-graph.ts#L261">src/control-flow/control-flow-graph.ts:261</a></li>
+<li>Defined in <a href="https://github.com/flowr-analysis/flowr/blob/4e1ef7aab08b35a8613ee4faccf89b3e19abd917/src/control-flow/control-flow-graph.ts#L266">src/control-flow/control-flow-graph.ts:266</a></li></ul></aside></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div>
+<div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="../modules.html">@eagleoutice/flowr - v2.14.4</a>
+<ul class="tsd-small-nested-navigation" id="tsd-nav-container">
+<li>Loading...</li></ul></nav></div></div></div><footer>
+<p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>
+<div class="overlay"></div></body></html>

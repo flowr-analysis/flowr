@@ -102,8 +102,9 @@ describe('taint-analysis evaluation', () => {
 				'8':  'top',
 				'10': 'bottom',
 				'19': 'bottom',
-				'28': 'top',
-				'32': 'top',
+				'22': 'File Input',
+				'28': 'File Input',
+				'32': 'File Input',
 			},
 			msg:      'User input potentially flowing to output',
 			findings: [

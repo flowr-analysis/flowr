@@ -2,7 +2,6 @@ import { describe, test } from 'vitest';
 import type { TaintAnalysisExpectation } from '../helper';
 import { testPredefinedTaintAnalysis } from '../helper';
 import { Random, Deterministic } from '../../../../src/taint-analysis/predefined/randomness-analysis';
-import { Top } from '../../../../src/abstract-interpretation/domains/lattice';
 
 const testRandomnessAnalysis =
 	(code: string, expectation: TaintAnalysisExpectation) => testPredefinedTaintAnalysis(code, 'randomness', expectation);
@@ -31,7 +30,7 @@ describe('Taint Analysis Randomness', () => {
 		{ '2@x': Random });
 	});
 
-	test('randomness generated inside a closure passed to sapply does not propagate to the result', async() => {
-		await testRandomnessAnalysis('y <- sapply(1:5, function(i) runif(1))', { '1@y': Top });
+	test('randomness generated inside a closure passed to sapply propagates to the result', async() => {
+		await testRandomnessAnalysis('y <- sapply(1:5, function(i) runif(1))', { '1@y': Random });
 	});
 });

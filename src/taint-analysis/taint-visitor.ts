@@ -6,9 +6,9 @@ import type { TaintMapper } from './function-mapper';
 import { mapFnCallToTaint, resolveTaint } from './function-mapper';
 import type { AnyStateDomain } from '../abstract-interpretation/domains/state-domain-like';
 import { StateAbstractDomain } from '../abstract-interpretation/domains/state-abstract-domain';
-import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FnCallHookInfo } from './builder/taint-analysis';
+import { RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /**
  * Resolves the inferred abstract taint of an argument node at the current program point, independent of any mapping
@@ -55,7 +55,7 @@ export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends Abs
 		super.onFunctionCall({ call });
 
 		const node = this.getNormalizedAst(call.id);
-		if(!node || node.type !== RType.FunctionCall || !node.named) {
+		if(!node || !RFunctionCall.is(node) || !node.named) {
 			return;
 		}
 

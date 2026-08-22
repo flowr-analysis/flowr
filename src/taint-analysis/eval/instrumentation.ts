@@ -3,10 +3,9 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { FnCallHookInfo } from '../builder/taint-analysis';
 import type { TaintRole } from '../function-mapper';
 import { getFunctionArguments } from '../../abstract-interpretation/data-frame/mappers/arguments';
-import { resolveIdToArgName, resolveIdToArgValue } from '../../abstract-interpretation/data-frame/resolve-args';
 import { VariableResolve } from '../../config';
 import type { RNamedFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument  } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -16,6 +15,7 @@ import type { ControlDependency } from '../../dataflow/info';
 import { happensInEveryBranch } from '../../dataflow/info';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import { Resolve } from '../../dataflow/environments/resolve-helper';
 
 export interface LoggedFnCallInfo {
 	mappedCalls:   MappedCallInfo[],
@@ -115,8 +115,8 @@ export class TaintAnalysisInstrumentation {
 			const resolvable = arg === EmptyArgument ? undefined : arg;
 			const valueId = resolvable?.value?.info?.id;
 			return {
-				name:  resolveIdToArgName(resolvable, resolveInfo),
-				value: resolveIdToArgValue(resolvable, resolveInfo),
+				name:  Resolve.argument.toName(resolvable, resolveInfo),
+				value: Resolve.argument.value(resolvable, resolveInfo),
 				taint: valueId === undefined ? undefined : projectArg(valueId)?.toJSON(),
 			};
 		});
@@ -170,7 +170,7 @@ function classifyControlConstruct(cd: ControlDependency, dfg: DataflowGraph): st
 	// the cd id is a governing expression (e.g., a `stopifnot` condition or a `tryCatch` block)
 	// the nearest enclosing named call names the construct (intermediate nodes are skipped)
 	for(let parent = parentNode(node, dfg); parent !== undefined; parent = parentNode(parent, dfg)) {
-		if(parent.type === RType.FunctionCall && parent.named) {
+		if(RFunctionCall.isNamed(parent)) {
 			return Identifier.toString(parent.functionName.content);
 		}
 	}

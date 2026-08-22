@@ -11,8 +11,8 @@
  * Usage:
  *   ts-node src/taint-analysis/eval/eval.ts <dataset-dir>
  */
-import fs from 'node:fs';
-import path from 'node:path';
+import fs from 'fs';
+import path from 'path';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
 import { fileProtocol } from '../../r-bridge/retriever';

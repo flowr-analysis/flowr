@@ -1,6 +1,5 @@
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { Identifier } from '../dataflow/environments/identifier';
 import type { AbstractValue, AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import { VariableResolve } from '../config';
@@ -13,7 +12,7 @@ import {
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { PotentiallyEmptyRArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { log } from '../util/log';
 import { Top } from '../abstract-interpretation/domains/lattice';
@@ -31,7 +30,7 @@ export function mapFnCallToTaint<Domain extends AnyAbstractDomain>(
 	dfg: DataflowGraph,
 	ctx: ReadOnlyFlowrAnalyzerContext
 ): ResolvedTaint<Domain> {
-	if(node.type !== RType.FunctionCall || !node.named) {
+	if(!RFunctionCall.is(node) || !node.named) {
 		return;
 	}
 

@@ -1,4 +1,4 @@
-import path from 'node:path';
+import path from 'path';
 import { assert, describe, test } from 'vitest';
 import { run } from '../utility/utility';
 import { allPredefinedTaintAnalysisNames } from '../../../src/taint-analysis/predefined/predefined';

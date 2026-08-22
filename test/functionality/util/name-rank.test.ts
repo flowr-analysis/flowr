@@ -14,6 +14,9 @@ describe('Name ranking', () => {
 		{ name: 'print', needle: 'pri', known: true }, { name: 'print.foo', needle: 'pri', s3: true });
 	beats('what was typed, exactly, before anything else',
 		{ name: 'filter', needle: 'filter' }, { name: 'filter_at', needle: 'filter', known: true });
+	beats('the exact spelling before the same name in another case, whatever else it has going for it',
+		{ name: 'Sin', needle: 'Sin', rank: 0 },
+		{ name: 'sin', needle: 'Sin', rank: 1, baseR: true, base: true, known: true, downloads: 5_000_000 });
 	beats('a name flowR knows before a spelling it does not',
 		{ name: 'ggplot', needle: 'plot', rank: 1, known: true }, { name: 'plotH', needle: 'plot' });
 	beats('a function before its replacement form',

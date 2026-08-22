@@ -19,6 +19,8 @@ import { TestFunctions } from '../src/queries/catalog/dependencies-query/functio
 import { statisticsFunctions } from '../src/queries/catalog/dependencies-query/function-info/statistics-functions';
 import { BasePrimitiveTopics, DefaultBuiltinConfig, statedSignatures, type StatedSignature } from '../src/dataflow/environments/default-builtin-config';
 import { Identifier, PkgName } from '../src/dataflow/environments/identifier';
+import { baseRExportOwner } from '../src/util/r-base-packages';
+import { S4GroupOfMember } from '../src/dataflow/environments/group-generics';
 
 export interface PackageEntry {
 	readonly name:      string;
@@ -41,18 +43,25 @@ export interface PackageEntry {
 
 export interface SigIndex {
 	/** the newest release the database knows (`Aug 2026`), which is how current it is */
-	readonly updated:  string;
+	readonly updated:        string;
 	/** base R first, then by downloads, so `read.csv` answers `utils` before anything else exporting it */
-	readonly packages: readonly PackageEntry[];
-	readonly names:    number;
+	readonly packages:       readonly PackageEntry[];
+	readonly names:          number;
 	/** what flowR itself treats a name as: `read`, `write`, `visualize`, ... (see {@link DefaultDependencyCategories}) */
-	readonly kinds:    ReadonlyMap<string, string[]>;
+	readonly kinds:          ReadonlyMap<string, string[]>;
 	/** what flowR states about the functions it defines itself, see {@link statedSignatures} */
-	readonly stated:   ReadonlyMap<string, StatedSignature[]>;
+	readonly stated:         ReadonlyMap<string, StatedSignature[]>;
 	/** the formals the database records for base R, `name -> [package, parameters][]`, see {@link baseFormals} */
-	readonly formals:  ReadonlyMap<string, [pkg: string, params: string][]>;
-	/** the help topic documenting a base R name where it is not the name itself, see {@link baseTopics} */
-	readonly topics:   ReadonlyMap<string, string>;
+	readonly formals:        ReadonlyMap<string, [pkg: string, params: string][]>;
+	/**
+	 * `package::alias -> topic` for every documented base R name, the topic empty where it is the name itself.
+	 * Doubles as the set of base R names that have a manual page at all, see {@link baseTopics}.
+	 */
+	readonly topics:         ReadonlyMap<string, string>;
+	/** whether {@link topics} is that full set: without an R to read the alias tables from it holds the primitives alone */
+	readonly topicsComplete: boolean;
+	/** the S4 group generic a name belongs to (`sin` to `Math`), see {@link S4GroupOfMember} */
+	readonly groups:         ReadonlyMap<string, string>;
 }
 
 /** one exported name, as much of it as fits in a page */
@@ -111,6 +120,8 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 		'calls-internal':    'i',
 		's3-owner':          'o',
 		's4-owner':          '4',
+		's4-method':         'm',
+		'value':             'c',
 		'higher-order':      'h',
 		'deprecated':        'x',
 		'no-doc':            'u'
@@ -127,13 +138,19 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 		const files = new Map<string, number>();
 		for(const fn of db.functions(name) ?? []) {
 			if(fn.exported) {
-				/* a constant has no body to point at: no file, and a line of -1 (`pi`, `LETTERS`) */
-				const isValue = fn.file === undefined && fn.line < 0;
+				/*
+				 * No body to point at. Usually a constant (`pi`, `LETTERS`) or a class object, but equally a
+				 * function the extractor could not locate because nothing wrote it down: an S4 generic that
+				 * `setGeneric` builds, a `Vectorize` result. Which of the two it is only the extractor knows
+				 * (`value` above, once the bundle carries it), so the flag says what is known and no more:
+				 * the database has no file and line for the name.
+				 */
+				const noLocation = fn.file === undefined && fn.line < 0;
 				if(fn.file !== undefined && !files.has(fn.file)) {
 					files.set(fn.file, files.size);
 				}
 				exports.set(fn.name, {
-					flags:  fn.props.map(p => letters[p] ?? '').join('') + (isValue ? 'v' : ''),
+					flags:  fn.props.map(p => letters[p] ?? '').join('') + (noLocation ? 'v' : ''),
 					params: fn.signature.length,
 					topic:  fn.topic !== fn.name ? fn.topic : undefined,
 					file:   fn.file !== undefined ? files.get(fn.file) : undefined,
@@ -143,7 +160,7 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 		}
 		for(const exported of library.exported) {
 			if(!exports.has(exported)) {
-				/* exported, but the database holds no function for it: a constant, a dataset, a class */
+				/* exported, but the database holds no entry for it at all, so there is no location either */
 				exports.set(exported, { flags: 'v', params: 0 });
 			}
 		}
@@ -172,7 +189,8 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 			}
 		}
 	}
-	const topics = baseTopics(db.packageNames().filter(name => db.isBaseR(name)));
+	const baseNames = db.packageNames().filter(name => db.isBaseR(name));
+	const { topics, complete: topicsComplete } = baseTopics(baseNames);
 	db.close();
 	all.sort((a, b) => Number(b.base) - Number(a.base) || b.downloads - a.downloads);
 	const newest = all.reduce((latest, p) => p.latest > latest ? p.latest : latest, 0);
@@ -180,11 +198,42 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 		packages: all,
 		names:    new Set(all.flatMap(p => [...p.exports.keys()])).size,
 		kinds:    builtInKinds(),
-		stated:   statedSignatures(),
+		stated:   statedWithRealPackages(new Set(baseNames), topics, topicsComplete),
 		formals,
 		topics,
+		topicsComplete,
+		groups:   S4GroupOfMember,
 		updated:  newest > 0 ? new Date(newest).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : 'an unknown date'
 	};
+}
+
+/**
+ * What flowR states, with the package corrected wherever its built-in configuration had to guess one.
+ *
+ * A definition that names no namespace is attributed to base R, which is right for the operators, primitives and
+ * reserved words and wrong for every name flowR merely recognizes: R has no `sinkplot`, plotrix does, and a page
+ * that believed the attribution offered a `base` chip and a dead manual link with it. A base attribution stands
+ * when a base package exports the name or R's own alias table documents it, moves when a different base package
+ * owns it (`setNames` is stats'), and otherwise names no package at all, which leaves what flowR says about the
+ * call intact while the packages that really export it are the only ones a reader is shown.
+ *
+ * Without an alias table to check against (no R at hand) nothing is corrected: the export lists alone would
+ * throw out `NULL`, `TRUE` and the rest of what R documents but no NAMESPACE carries.
+ */
+function statedWithRealPackages(baseNames: ReadonlySet<string>, topics: ReadonlyMap<string, string>, complete: boolean): ReadonlyMap<string, StatedSignature[]> {
+	const stated = statedSignatures();
+	if(!complete) {
+		return stated;
+	}
+	const settled = (name: string, entry: StatedSignature): StatedSignature => {
+		const owner = baseRExportOwner(name);
+		if(owner !== undefined) {
+			return owner === entry.pkg ? entry : { ...entry, pkg: owner };
+		}
+		return topics.has(entry.pkg + '::' + name) ? entry : { ...entry, pkg: '' };
+	};
+	return new Map([...stated].map(([name, entries]) =>
+		[name, entries.map(entry => baseNames.has(entry.pkg) ? settled(name, entry) : entry)]));
 }
 
 /**
@@ -225,12 +274,16 @@ function builtInKinds(): Map<string, string[]> {
 }
 
 /**
- * Which manual page documents a base R name, for the many that are not documented under their own name:
- * `sin` lives under `Trig`, `paste0` under `paste`. {@link BasePrimitiveTopics} carries the primitives, which
- * the database cannot hold; a local R adds the rest from the plain `alias\ttopic` table it ships per package.
- * @returns `package::alias -> topic`, holding only the names whose topic is not the name
+ * Which manual page documents a base R name: `sin` lives under `Trig`, `paste0` under `paste`, and most under
+ * their own name. {@link BasePrimitiveTopics} carries the primitives, which the database cannot hold; a local R
+ * adds the rest from the plain `alias\ttopic` table it ships per package.
+ *
+ * Every alias is in the result, those documented under their own name with an empty topic, so a caller can also
+ * use it the other way round: a base R name the map does not carry has no manual page, and linking to one only
+ * produces a dead link (flowR states `sinkplot`, R has never had it).
+ * @returns the map, and whether an alias table was read at all
  */
-function baseTopics(packages: readonly string[]): ReadonlyMap<string, string> {
+function baseTopics(packages: readonly string[]): { topics: ReadonlyMap<string, string>, complete: boolean } {
 	/* what flowR states itself, which is the part that never depends on an R being around */
 	const topics = new Map<string, string>(
 		Object.entries(BasePrimitiveTopics).map(([name, topic]) => [`${PkgName.Base}::${name}`, topic]));
@@ -238,8 +291,9 @@ function baseTopics(packages: readonly string[]): ReadonlyMap<string, string> {
 	try {
 		home = execFileSync('R', ['RHOME'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
 	} catch{
-		return topics;
+		return { topics, complete: false };
 	}
+	let read = false;
 	for(const pkg of packages) {
 		let table: string;
 		try {
@@ -247,14 +301,15 @@ function baseTopics(packages: readonly string[]): ReadonlyMap<string, string> {
 		} catch{
 			continue;
 		}
+		read = true;
 		for(const row of table.split('\n')) {
 			const [alias, topic] = row.split('\t');
-			if(alias && topic && alias !== topic) {
-				topics.set(pkg + '::' + alias, topic);
+			if(alias && topic) {
+				topics.set(pkg + '::' + alias, alias === topic ? '' : topic);
 			}
 		}
 	}
-	return topics;
+	return { topics, complete: read };
 }
 
 /**

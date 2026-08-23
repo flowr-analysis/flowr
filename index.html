@@ -150,9 +150,10 @@ code, pre, .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, m
 	:root:not([data-theme="light"]) #theme .moon { display: none; }
 }
 
-header { text-align: center; padding: 1.5rem 0 1rem; }
-header p.lead { max-width: 44rem; margin: .6rem auto 1rem; font-size: clamp(.95rem, 3.1vw, 1.12rem); color: var(--muted); }
-#meta { min-height: 1.6em; margin: .4rem 0 1.2rem; color: var(--muted); font-size: .9rem; }
+header { text-align: center; padding: 2.6rem 0 1.6rem; }
+header h1 { margin: 0 0 1.3rem; font-size: clamp(1.95rem, 6.8vw, 3rem); }
+header p.lead { max-width: 46rem; margin: 0 auto 1.6rem; font-size: clamp(1rem, 3.25vw, 1.18rem); color: var(--muted); }
+#meta { min-height: 1.6em; margin: 0 0 1.6rem; color: var(--muted); font-size: .9rem; }
 #meta b { color: var(--fg); }
 #meta a { color: inherit; text-decoration: none; }
 #meta a:hover { color: var(--accent); }
@@ -397,7 +398,7 @@ header p.lead { max-width: 44rem; margin: .6rem auto 1rem; font-size: clamp(.95r
 @media (prefers-reduced-motion: reduce) { .path li em { transition: none; } }
 .path li em code { background: var(--sunk); border: 1px solid var(--border); border-radius: .3rem; padding: 0 .3rem; font-size: .92em; }
 /* the platforms flowR ships for, introduced rather than dropped in */
-.available { margin: 1.4rem 0 .4rem; color: var(--muted); font-size: .82rem; letter-spacing: .06em; text-transform: uppercase; }
+.available { margin: 2.2rem 0 .5rem; color: var(--muted); font-size: .82rem; letter-spacing: .06em; text-transform: uppercase; }
 /* which way a slice runs: a question next to the explanation instead of a switch under the code */
 .demo .direction { margin-top: .9rem; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .demo .direction[hidden] { display: none; }
@@ -431,7 +432,7 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 <main>
 
 <div class="bar">
-	<h2><a class="brand" href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><a class="version" id="version" data-release="v2.14.3" href="https://github.com/flowr-analysis/flowr/commit/894669dedfab557cce8b8e6bb0004e9f0e89e204" target="_blank" rel="noopener" title="a development build of flowR, 2 commits after v2.14.3 (894669d)">v2.14.3*</a></h2>
+	<h2><a class="brand" href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><a class="version" id="version" data-release="v2.14.4" href="https://github.com/flowr-analysis/flowr/releases/tag/v2.14.4" target="_blank" rel="noopener" title="the release notes of flowR v2.14.4">v2.14.4</a></h2>
 	<nav>
 		<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
 		<a href="wiki/sigdb/" target="_blank" rel="noopener">Signature DB</a>
@@ -451,7 +452,7 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 	<h1>Program Analysis for R</h1>
 	<p class="lead">flowR is an open source static program analyzer for your R code. It helps you understand existing scripts,
 		find quality issues, improve reproducibility, and check the validity of your analyses.</p>
-	<p id="meta"><b>v2.14.3*</b> &middot; <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a></p>
+	<p id="meta"><b>v2.14.4</b> &middot; <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a></p>
 	<p class="cta">
 		<a class="primary" href="https://github.com/flowr-analysis/flowr/wiki/Setup" target="_blank" rel="noopener">Get started</a>
 		<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
@@ -783,7 +784,7 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 	<a href="https://posit.co/" target="_blank" rel="noopener">Posit</a>.
 </p>
 
-<p class="updated">Last updated 2026-08-22, 13:43</p>
+<p class="updated">Last updated 2026-08-22, 20:41</p>
 
 </main>
 <div id="tip" role="tooltip" aria-hidden="true"></div>

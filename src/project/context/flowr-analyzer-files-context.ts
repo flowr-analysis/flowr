@@ -23,7 +23,10 @@ import { globMatcher } from '../../util/glob';
 import type { FlowrNewsFile } from '../plugins/file-plugins/files/flowr-news-file';
 import type { FlowrNamespaceFile } from '../plugins/file-plugins/files/flowr-namespace-file';
 import type { FlowrManifestFile } from '../plugins/file-plugins/files/flowr-manifest-files';
-import type { FlowrRdFile, FlowrRdIndexFile } from '../plugins/file-plugins/files/flowr-rd-file';
+import type {
+	FlowrRdFile, FlowrRdIndexFile, FlowrRdMacroFile, FlowrRdMetaFile, FlowrRdTopicIndexFile, RdIndex
+} from '../plugins/file-plugins/files/flowr-rd-file';
+import { FlowrDataListFile, rdIndexOf } from '../plugins/file-plugins/files/flowr-rd-file';
 import type { ProjectKind } from './project-kind';
 import { classifyProjectKind, resolveClassifyOptions, type ContentReader } from './classify-project-kind';
 import { FlowrAnalyzer } from '../flowr-analyzer';
@@ -52,8 +55,8 @@ export type RoleBasedFiles = {
 	[FileRole.News]:          FlowrNewsFile[];
 	[FileRole.Namespace]:     FlowrNamespaceFile[];
 	[FileRole.Manifest]:      FlowrManifestFile[];
-	/** a `man/*.Rd` page ({@link FlowrRdFile}) or an installed package's `help/AnIndex` ({@link FlowrRdIndexFile}) */
-	[FileRole.Documentation]: (FlowrRdFile | FlowrRdIndexFile)[];
+	/** what states which manual page documents a name: the `man/` pages and macros, an `INDEX`, and an installed package's `help/AnIndex` or `Meta/Rd.rds` */
+	[FileRole.Documentation]: (FlowrRdFile | FlowrRdIndexFile | FlowrRdMacroFile | FlowrRdTopicIndexFile | FlowrRdMetaFile)[];
 	/* currently no special support */
 	[FileRole.Vignette]:      FlowrFileProvider[];
 	[FileRole.Test]:          FlowrFileProvider[];
@@ -63,7 +66,8 @@ export type RoleBasedFiles = {
 	[FileRole.Startup]:       FlowrFileProvider[];
 	[FileRole.Environment]:   FlowrFileProvider[];
 	[FileRole.Source]:        FlowrFileProvider[];
-	[FileRole.Data]:          FlowrFileProvider[];
+	/** a `data/datalist` ({@link FlowrDataListFile}) or any other data file, which has no special support */
+	[FileRole.Data]:          (FlowrDataListFile | FlowrFileProvider)[];
 	[FileRole.Other]:         FlowrFileProvider[];
 };
 
@@ -99,6 +103,23 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * ```
 	 */
 	getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role];
+
+	/**
+	 * The project's manual, built from every {@link FileRole.Documentation} file loaded: the `man/` pages with
+	 * their `macros/`, an `INDEX`, and an installed package's `help/AnIndex` or `Meta/Rd.rds`. Ask it which
+	 * page documents a name, and whether one documents it at all.
+	 *
+	 * Built on each call rather than kept, so hold on to the result while you need it instead of asking per name.
+	 */
+	documentation(): RdIndex;
+
+	/**
+	 * The R objects `data(<dataset>)` brings into scope, as the project's `data/datalist` states them. Empty
+	 * for a dataset no list mentions -- including every project that ships none, where R falls back to the
+	 * dataset's own name.
+	 * @param dataset - the name passed to `data()`
+	 */
+	datasetObjects(dataset: string): readonly string[];
 
 	/**
 	 * Get all files known to this context.
@@ -540,6 +561,22 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 */
 	public computeLoadingOrder(): readonly RParseRequest[] {
 		return this.loadingOrder.getLoadingOrder();
+	}
+
+	public documentation(): RdIndex {
+		return rdIndexOf(this.getFilesByRole(FileRole.Documentation));
+	}
+
+	public datasetObjects(dataset: string): readonly string[] {
+		for(const file of this.getFilesByRole(FileRole.Data)) {
+			if(file instanceof FlowrDataListFile) {
+				const objects = file.objectsOf(dataset);
+				if(objects.length > 0) {
+					return objects;
+				}
+			}
+		}
+		return [];
 	}
 
 	public getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role] {

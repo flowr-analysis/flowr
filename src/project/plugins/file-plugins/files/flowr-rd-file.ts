@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import type { FileRole, FlowrFileProvider } from '../../../context/flowr-file';
 import { FlowrFile, FlowrTextFile } from '../../../context/flowr-file';
+import { type RObject, type RObjectData, RDAParser, SexpType } from './flowr-rda-file';
+import { uniqueArray } from '../../../../util/collections/arrays';
 
 /**
  * One parsed `.Rd` manual page. A page documents every name it lists as an {@link RdPage.aliases|alias}, which is
@@ -68,6 +70,8 @@ export class RdIndex {
 	private readonly s4       = new Map<string, string>();
 	/** the distinct topics, grown as aliases arrive so {@link topics} never has to rebuild the union */
 	private readonly topicSet = new Set<string>();
+	/** topic to its title, from whatever source stated one (`INDEX`, `Meta/Rd.rds`, a page's `\title{}`) */
+	private readonly titles   = new Map<string, string>();
 	/** memoized {@link topics}, dropped whenever {@link topicSet} grows */
 	private topicList: readonly string[] | undefined;
 
@@ -77,6 +81,37 @@ export class RdIndex {
 		this.alias(page.name, page.name);
 		for(const alias of page.aliases) {
 			this.alias(alias, page.name);
+		}
+		if(page.title !== undefined) {
+			this.titles.set(page.name, page.title);
+		}
+		return this;
+	}
+
+	/**
+	 * Adds the `topic -> title` entries of an `INDEX` or a `demo/00Index`. Such a table states no aliases, so
+	 * every topic documents itself and nothing else.
+	 */
+	public addTopics(entries: Iterable<readonly [string, string]>): this {
+		for(const [topic, title] of entries) {
+			this.alias(topic, topic);
+			if(title.length > 0 && !this.titles.has(topic)) {
+				this.titles.set(topic, title);
+			}
+		}
+		return this;
+	}
+
+	/** Adds the pages of an installed package's `Meta/Rd.rds`, which states aliases and titles but no content. */
+	public addMeta(entries: Iterable<RdMetaEntry>): this {
+		for(const entry of entries) {
+			this.alias(entry.name, entry.name);
+			for(const alias of entry.aliases) {
+				this.alias(alias, entry.name);
+			}
+			if(entry.title !== undefined && !this.titles.has(entry.name)) {
+				this.titles.set(entry.name, entry.title);
+			}
 		}
 		return this;
 	}
@@ -111,6 +146,11 @@ export class RdIndex {
 	/** The parsed page of `topic`, `undefined` when only its aliases are known (an `AnIndex` without `man/`). */
 	public page(topic: string): RdPage | undefined {
 		return this.pages.get(topic);
+	}
+
+	/** The one-line title of `topic`, `undefined` when no source that stated the topic also stated one. */
+	public title(topic: string): string | undefined {
+		return this.titles.get(topic);
 	}
 
 	/** Whether the manual holds nothing at all, so no answer of it means "undocumented". */
@@ -192,6 +232,131 @@ export function parseAnIndex(content: string): [alias: string, topic: string][] 
 }
 
 /**
+ * Parses R's fixed-width topic table: a package's `INDEX`, and the `00Index` of its `demo/`. Each entry starts
+ * in the first column with the topic and continues with its title, which indented lines carry on.
+ *
+ * An installed package keeps this next to `help/AnIndex`, and a built one keeps it at its root, so it answers
+ * what a package documents even where no `man/` sources are around to read.
+ * @param content - the raw file content
+ */
+export function parseRdTopicIndex(content: string): [topic: string, title: string][] {
+	const entries: [string, string][] = [];
+	for(const line of content.split(/\r?\n/)) {
+		if(line.trim().length === 0) {
+			continue;
+		}
+		const previous = entries[entries.length - 1];
+		if(Whitespace.test(line[0])) {
+			/* an indented line continues the title of the entry above it */
+			if(previous !== undefined) {
+				previous[1] = `${previous[1]} ${line.trim()}`.trim();
+			}
+			continue;
+		}
+		const gap = line.search(Whitespace);
+		entries.push(gap < 0 ? [line.trim(), ''] : [line.slice(0, gap), line.slice(gap).trim()]);
+	}
+	return entries;
+}
+
+/**
+ * Parses a package's `data/datalist`: which R objects each of its datasets provides. A bare line names a
+ * dataset whose object shares its name, a `set: a b c` line one that provides several under other names, which
+ * is the only place that mapping is written down.
+ * @param content - the raw file content
+ */
+export function parseDataList(content: string): [dataset: string, objects: readonly string[]][] {
+	const sets: [string, readonly string[]][] = [];
+	for(const line of content.split(/\r?\n/)) {
+		const entry = line.trim();
+		if(entry.length === 0) {
+			continue;
+		}
+		const colon = entry.indexOf(':');
+		if(colon < 0) {
+			sets.push([entry, [entry]]);
+			continue;
+		}
+		const dataset = entry.slice(0, colon).trim();
+		const objects = entry.slice(colon + 1).split(Whitespace).map(o => o.trim()).filter(o => o.length > 0);
+		sets.push([dataset, objects.length > 0 ? objects : [dataset]]);
+	}
+	return sets;
+}
+
+/**
+ * One page of an installed package's `Meta/Rd.rds`, the table R builds its help system from. It states per
+ * page what the `man/` sources do -- the topic, its aliases, keywords and title -- so a package that ships
+ * only installed answers the same questions one checked out does.
+ */
+export interface RdMetaEntry {
+	/** the `\name{}` of the page */
+	readonly name:     string;
+	/** the `man/` file it was built from, e.g. `acf.Rd` */
+	readonly file?:    string;
+	readonly title?:   string;
+	/** the `\docType{}`, empty for an ordinary function page */
+	readonly type?:    string;
+	readonly aliases:  readonly string[];
+	readonly keywords: readonly string[];
+}
+
+/** the `Meta/Rd.rds` columns, in the order R writes them; `Encoding` and `Concepts` say nothing this needs */
+type RdMetaColumn = 'File' | 'Name' | 'Type' | 'Title' | 'Encoding' | 'Aliases' | 'Concepts' | 'Keywords';
+
+/**
+ * Reads the `Meta/Rd.rds` data frame an installed package carries into one {@link RdMetaEntry} per page.
+ * @param table - the deserialized object, i.e. what {@link RDAParser.parseObject} returns for the file
+ */
+export function rdMetaOf(table: RObject): RdMetaEntry[] {
+	const frame = table as RObjectData;
+	const columns = frame?.type === SexpType.VecSxp ? frame.value as RObjectData[] : undefined;
+	const names = stringsOf(attributeOf(frame, 'names'));
+	if(columns === undefined || names.length !== columns.length) {
+		return [];
+	}
+	const column = (of: RdMetaColumn): RObjectData | undefined => columns[names.indexOf(of)];
+	const text = (of: RdMetaColumn): readonly string[] => stringsOf(column(of));
+	const lists = (of: RdMetaColumn): readonly RObjectData[] =>
+		(column(of)?.value as RObjectData[] | undefined) ?? [];
+	const [files, topics, types, titles] = [text('File'), text('Name'), text('Type'), text('Title')];
+	const [aliases, keywords] = [lists('Aliases'), lists('Keywords')];
+	const entries: RdMetaEntry[] = [];
+	for(let row = 0; row < topics.length; row++) {
+		if(!topics[row]) {
+			continue;   // a page with no name is no topic anyone can ask for
+		}
+		entries.push({
+			name:     topics[row],
+			...(files[row] ? { file: files[row] } : {}),
+			...(titles[row] ? { title: titles[row] } : {}),
+			...(types[row] ? { type: types[row] } : {}),
+			aliases:  stringsOf(aliases[row]),
+			keywords: stringsOf(keywords[row])
+		});
+	}
+	return entries;
+}
+
+/** the value of the R attribute `name`, which hang off an object as a chain of pairlist cells */
+function attributeOf(obj: RObjectData | undefined, name: string): RObjectData | undefined {
+	let cell = obj?.attributes?.[0];
+	while(cell !== undefined) {
+		if((cell.tag as RObjectData | undefined)?.name === name) {
+			return cell.car as RObjectData | undefined;
+		}
+		const next = cell.cdr as RObjectData | undefined;
+		cell = next?.type === SexpType.ListSxp ? next : undefined;
+	}
+	return undefined;
+}
+
+/** the strings of a character vector, empty for anything that is not one */
+function stringsOf(obj: RObjectData | undefined): string[] {
+	return obj?.type === SexpType.StrSxp && Array.isArray(obj.value) ? obj.value as string[] : [];
+}
+
+/**
  * `text` with its Rd comments removed. A `%` starts one -- in every section, verbatim ones included -- unless
  * it is escaped, and only an *odd* run of backslashes escapes it (`\\%` is a literal backslash followed by a
  * comment). Newlines are kept, as a comment ends at one and the sections care about their line structure.
@@ -255,6 +420,12 @@ function macroGroups(text: string, macro: string): string[] {
 const RdEscapes = new Set(['%', '{', '}', '\\', '&', '$', '#', '_', '^', '~']);
 /** the macros that stand for an ellipsis rather than for markup around their argument */
 const RdEllipsisMacros = new Set(['dots', 'ldots']);
+/**
+ * How many of a macro's leading brace groups hold something other than text, and are therefore not rendered:
+ * `\Sexpr{}` holds R code the manual builder evaluates, and `\if{}`/`\ifelse{}` open with the output format
+ * their text is meant for. Without this the code, and the word `latex`, would end up in a title.
+ */
+const RdNonTextGroups: ReadonlyMap<string, number> = new Map([['Sexpr', 1], ['if', 1], ['ifelse', 1]]);
 
 /**
  * Rd markup reduced to the text it renders: escapes resolved to the characters they stand for, markup macros
@@ -297,6 +468,13 @@ function plainText(body: string): string {
 		if(option !== undefined) {
 			i += option.length;
 		}
+		for(let group = RdNonTextGroups.get(macro) ?? 0; group > 0; group--) {
+			const skipped = readGroupAfter(body, i + 1);
+			if(skipped === undefined) {
+				break;
+			}
+			i = skipped.end - 1;
+		}
 	}
 	return out.replace(/\s+/g, ' ').trim();
 }
@@ -311,6 +489,15 @@ const RdMacroOption = /\[[^\]]*\]/y;
 
 const Whitespace = /\s/;
 
+/** The brace group that follows `from`, skipping the whitespace between them; `undefined` when none does. */
+function readGroupAfter(text: string, from: number): { body: string, end: number } | undefined {
+	let at = from;
+	while(at < text.length && Whitespace.test(text[at])) {
+		at++;
+	}
+	return text[at] === '{' ? readGroup(text, at) : undefined;
+}
+
 /** `\arguments{ \item{a, b}{...} }` unfolded to one entry per argument name */
 function parseArguments(block: string | undefined): Map<string, string> {
 	const args = new Map<string, string>();
@@ -324,11 +511,7 @@ function parseArguments(block: string | undefined): Map<string, string> {
 		if(names === undefined) {
 			break;
 		}
-		let at = names.end;
-		while(at < block.length && Whitespace.test(block[at])) {
-			at++;
-		}
-		const description = block[at] === '{' ? readGroup(block, at) : undefined;
+		const description = readGroupAfter(block, names.end);
 		marker.lastIndex = description?.end ?? names.end;
 		const text = description === undefined ? '' : plainText(description.body);
 		/* `\item{x, y}{...}` documents both names with the one description */
@@ -411,13 +594,130 @@ function bracketDepth(code: string): number {
 	return depth;
 }
 
+/** One `\newcommand` of a `man/macros/` file: the text it stands for, and how many arguments it takes. */
+export interface RdMacro {
+	/** the highest `#n` the body uses, i.e. how many brace groups a use of the macro carries */
+	readonly params: number;
+	readonly body:   string;
+}
+
+/** Macro name (without its backslash) to what it expands to, see {@link parseRdMacros}. */
+export type RdMacros = ReadonlyMap<string, RdMacro>;
+
+/** a `\newcommand`/`\renewcommand` definition, whose two groups are the name and the body */
+const RdMacroDefinition = /\\(?:re)?newcommand\s*\{/g;
+/** the `#1`..`#9` placeholders a macro body substitutes its arguments into */
+const RdMacroParameter = /#([1-9])/g;
+/**
+ * How often {@link expandRdMacros} rescans its result. A definition may use another definition, but R allows
+ * no recursion among them, so a small bound covers every legal file and stops a malformed one from hanging.
+ */
+const MaxMacroExpansions = 4;
+
+/**
+ * Parses the `\newcommand{\name}{body}` definitions of a `man/macros/` file (installed: `help/macros/`).
+ * Such a file documents nothing itself; it states markup the package's *pages* use, which is why the pages
+ * have to be parsed {@link parseRdPage|with} it to read what they say.
+ * @param content - the raw macro file
+ */
+export function parseRdMacros(content: string): Map<string, RdMacro> {
+	const macros = new Map<string, RdMacro>();
+	const text = stripRdComments(content);
+	RdMacroDefinition.lastIndex = 0;
+	let match: RegExpExecArray | null;
+	while((match = RdMacroDefinition.exec(text)) !== null) {
+		const name = readGroup(text, match.index + match[0].length - 1);
+		const body = name === undefined ? undefined : readGroupAfter(text, name.end);
+		if(name === undefined || body === undefined) {
+			break;
+		}
+		RdMacroDefinition.lastIndex = body.end;
+		/* the name group holds the macro *with* its backslash, as it is written where it is used */
+		const declared = /^\s*\\([A-Za-z]+)\s*$/.exec(name.body)?.[1];
+		if(declared !== undefined) {
+			macros.set(declared, { params: highestMacroParameter(body.body), body: body.body });
+		}
+	}
+	return macros;
+}
+
+/** the highest `#n` a macro body uses, which is how many arguments a use of it carries */
+function highestMacroParameter(body: string): number {
+	let highest = 0;
+	RdMacroParameter.lastIndex = 0;
+	let match: RegExpExecArray | null;
+	while((match = RdMacroParameter.exec(body)) !== null) {
+		highest = Math.max(highest, Number(match[1]));
+	}
+	return highest;
+}
+
+/**
+ * `text` with every use of a {@link RdMacros|package-defined macro} replaced by what it stands for. A use that
+ * does not carry the groups its definition takes is left alone rather than half-applied.
+ * @param text   - the Rd source, comments already stripped
+ * @param macros - what {@link parseRdMacros} read from the package's macro files
+ */
+export function expandRdMacros(text: string, macros: RdMacros): string {
+	let out = text;
+	for(let round = 0; round < MaxMacroExpansions; round++) {
+		const next = expandMacrosOnce(out, macros);
+		if(next === out) {
+			break;
+		}
+		out = next;
+	}
+	return out;
+}
+
+/** one pass of {@link expandRdMacros}, so a body that itself uses a macro is caught by the next */
+function expandMacrosOnce(text: string, macros: RdMacros): string {
+	let out = '';
+	let kept = 0;
+	for(let i = 0; i < text.length; i++) {
+		if(text[i] !== '\\') {
+			continue;
+		}
+		RdMacroName.lastIndex = i + 1;
+		const name = RdMacroName.exec(text)?.[0];
+		if(name === undefined) {
+			continue;
+		}
+		const macro = macros.get(name);
+		if(macro === undefined) {
+			i += name.length;   // skip the name so its own letters are not rescanned for a backslash
+			continue;
+		}
+		let at = i + 1 + name.length;
+		const args: string[] = [];
+		for(let arg = 0; arg < macro.params; arg++) {
+			const group = readGroupAfter(text, at);
+			if(group === undefined) {
+				break;
+			}
+			args.push(group.body);
+			at = group.end;
+		}
+		if(args.length < macro.params) {
+			i = at;   // not enough groups to apply it, so this use stays as written
+			continue;
+		}
+		out += text.slice(kept, i) + macro.body.replace(RdMacroParameter, (m, n: string) => args[Number(n) - 1] ?? m);
+		kept = at;
+		i = at - 1;
+	}
+	return out + text.slice(kept);
+}
+
 /**
  * Parses one `.Rd` manual page.
  * @param content      - the raw page
  * @param fallbackName - the topic to assume when the page states no `\name{}` (usually the file's basename)
+ * @param macros       - the package's own `\newcommand`s, so a page using them states what it renders
  */
-export function parseRdPage(content: string, fallbackName = ''): RdPage {
-	const text = stripRdComments(content);
+export function parseRdPage(content: string, fallbackName = '', macros?: RdMacros): RdPage {
+	const stripped = stripRdComments(content);
+	const text = macros !== undefined && macros.size > 0 ? expandRdMacros(stripped, macros) : stripped;
 	const name = macroGroups(text, 'name')[0];
 	const title = macroGroups(text, 'title')[0];
 	const docType = macroGroups(text, 'docType')[0];
@@ -451,6 +751,17 @@ export class FlowrRdFile extends FlowrFile<RdPage> {
 
 	protected loadContent(): RdPage {
 		return parseRdPage(this.wrapped.content().toString(), topicOfPath(this.wrapped.path()));
+	}
+
+	/**
+	 * The page as {@link content} reads it, but with the package's own `\newcommand`s expanded. A page that
+	 * uses none is the cached {@link content} itself; one that does is parsed afresh, as the macros live in
+	 * other* files and so cannot be known when this one is loaded on its own.
+	 * @param macros - what {@link parseRdMacros} read from the package's `man/macros/` files
+	 */
+	public pageWith(macros: RdMacros): RdPage {
+		return macros.size === 0 ? this.content()
+			: parseRdPage(this.wrapped.content().toString(), topicOfPath(this.wrapped.path()), macros);
 	}
 
 	/** Lifts a file to a {@link FlowrRdFile}, reusing it if already one and assigning `role`. */
@@ -493,17 +804,149 @@ export class FlowrRdIndexFile extends FlowrFile<[alias: string, topic: string][]
 }
 
 /**
- * Collects every loaded manual page and help index into one {@link RdIndex}. Nothing is cached: pass the
- * result around for as long as you need it rather than asking again per name.
+ * Decorates a `man/macros/` file to expose the `\newcommand`s it defines for the package's pages.
+ * Prefer {@link FlowrRdMacroFile.from}, which avoids re-wrapping and handles roles.
+ */
+export class FlowrRdMacroFile extends FlowrFile<Map<string, RdMacro>> {
+	private readonly wrapped: FlowrFileProvider;
+
+	constructor(file: FlowrFileProvider) {
+		super(file.path(), file.roles);
+		this.wrapped = file;
+	}
+
+	protected loadContent(): Map<string, RdMacro> {
+		return parseRdMacros(this.wrapped.content().toString());
+	}
+
+	/** Lifts a file to a {@link FlowrRdMacroFile}, reusing it if already one and assigning `role`. */
+	public static from(file: FlowrFileProvider | FlowrRdMacroFile, role?: FileRole): FlowrRdMacroFile {
+		if(role) {
+			file.assignRole(role);
+		}
+		return file instanceof FlowrRdMacroFile ? file : new FlowrRdMacroFile(file);
+	}
+}
+
+/**
+ * Decorates an `INDEX` (or a `demo/00Index`) to expose its `topic -> title` table.
+ * Prefer {@link FlowrRdTopicIndexFile.from}, which avoids re-wrapping and handles roles.
+ */
+export class FlowrRdTopicIndexFile extends FlowrFile<[topic: string, title: string][]> {
+	private readonly wrapped: FlowrFileProvider;
+
+	constructor(file: FlowrFileProvider) {
+		super(file.path(), file.roles);
+		this.wrapped = file;
+	}
+
+	protected loadContent(): [string, string][] {
+		return parseRdTopicIndex(this.wrapped.content().toString());
+	}
+
+	/** Lifts a file to a {@link FlowrRdTopicIndexFile}, reusing it if already one and assigning `role`. */
+	public static from(file: FlowrFileProvider | FlowrRdTopicIndexFile, role?: FileRole): FlowrRdTopicIndexFile {
+		if(role) {
+			file.assignRole(role);
+		}
+		return file instanceof FlowrRdTopicIndexFile ? file : new FlowrRdTopicIndexFile(file);
+	}
+}
+
+/**
+ * Decorates an installed package's `Meta/Rd.rds` to expose the help table it serializes.
+ * Prefer {@link FlowrRdMetaFile.from}, which avoids re-wrapping and handles roles.
+ */
+export class FlowrRdMetaFile extends FlowrFile<RdMetaEntry[]> {
+	private readonly wrapped: FlowrFileProvider;
+
+	constructor(file: FlowrFileProvider) {
+		super(file.path(), file.roles);
+		this.wrapped = file;
+	}
+
+	protected loadContent(): RdMetaEntry[] {
+		try {
+			return rdMetaOf(new RDAParser(this.wrapped, false).parseObject());
+		} catch{
+			/* a bundle written by an R newer than the deserializer knows is no reason to fail the analysis */
+			return [];
+		}
+	}
+
+	/** Lifts a file to a {@link FlowrRdMetaFile}, reusing it if already one and assigning `role`. */
+	public static from(file: FlowrFileProvider | FlowrRdMetaFile, role?: FileRole): FlowrRdMetaFile {
+		if(role) {
+			file.assignRole(role);
+		}
+		return file instanceof FlowrRdMetaFile ? file : new FlowrRdMetaFile(file);
+	}
+}
+
+/**
+ * Decorates a `data/datalist` to expose which objects each of a package's datasets provides.
+ * Prefer {@link FlowrDataListFile.from}, which avoids re-wrapping and handles roles.
+ */
+export class FlowrDataListFile extends FlowrFile<[dataset: string, objects: readonly string[]][]> {
+	private readonly wrapped: FlowrFileProvider;
+
+	constructor(file: FlowrFileProvider) {
+		super(file.path(), file.roles);
+		this.wrapped = file;
+	}
+
+	protected loadContent(): [string, readonly string[]][] {
+		return parseDataList(this.wrapped.content().toString());
+	}
+
+	/** The objects `data(<dataset>)` brings into scope, empty for a dataset this file does not list. */
+	public objectsOf(dataset: string): readonly string[] {
+		return this.content().find(([name]) => name === dataset)?.[1] ?? [];
+	}
+
+	/** Every object any of the package's datasets provides. */
+	public objects(): string[] {
+		return uniqueArray(this.content().flatMap(([, objects]) => objects));
+	}
+
+	/** Lifts a file to a {@link FlowrDataListFile}, reusing it if already one and assigning `role`. */
+	public static from(file: FlowrFileProvider | FlowrDataListFile, role?: FileRole): FlowrDataListFile {
+		if(role) {
+			file.assignRole(role);
+		}
+		return file instanceof FlowrDataListFile ? file : new FlowrDataListFile(file);
+	}
+}
+
+/**
+ * Collects every loaded manual source into one {@link RdIndex}: the `man/` pages, the `INDEX` tables, an
+ * installed package's `help/AnIndex` and `Meta/Rd.rds`. Nothing is cached: pass the result around for as long
+ * as you need it rather than asking again per name.
+ *
+ * The `man/macros/` definitions are gathered first, as a page that uses one only states what it renders once
+ * they are known.
  * @param files - the documentation files of the project, i.e. `ctx.files.getFilesByRole(FileRole.Documentation)`
  */
 export function rdIndexOf(files: Iterable<FlowrFileProvider>): RdIndex {
+	const all = [...files];
+	const macros = new Map<string, RdMacro>();
+	for(const file of all) {
+		if(file instanceof FlowrRdMacroFile) {
+			for(const [name, macro] of file.content()) {
+				macros.set(name, macro);
+			}
+		}
+	}
 	const index = new RdIndex();
-	for(const file of files) {
+	for(const file of all) {
 		if(file instanceof FlowrRdFile) {
-			index.add(file.content());
+			index.add(file.pageWith(macros));
 		} else if(file instanceof FlowrRdIndexFile) {
 			index.addAliases(file.content());
+		} else if(file instanceof FlowrRdTopicIndexFile) {
+			index.addTopics(file.content());
+		} else if(file instanceof FlowrRdMetaFile) {
+			index.addMeta(file.content());
 		}
 	}
 	return index;

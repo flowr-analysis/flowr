@@ -132,6 +132,17 @@ const SerializationMagic: Readonly<Record<string, SerializationTypeTag>> = {
 	'RDX3\n': SerializationTypeTag.MagicXdrV3,
 };
 
+/** the format byte a bare serialization stream opens with, before its newline */
+const BareStreamFormats = new Set(['A', 'B', 'X']);
+
+/**
+ * Whether `buf` is a bare serialization stream rather than a saved workspace: an `.rds` written by `saveRDS`
+ * carries no `RDX3\n` magic and no pairlist of names, it starts straight at the format byte.
+ */
+function isBareSerializationStream(buf: Buffer): boolean {
+	return buf.length >= 2 && buf[1] === 0x0a && BareStreamFormats.has(String.fromCodePoint(buf[0]));
+}
+
 /** The variants {@link RDAParser.deserialize} handles. */
 const SupportedSerializationTypes: ReadonlySet<SerializationTypes> = new Set([
 	SerializationTypeTag.MagicAsciiV2, SerializationTypeTag.MagicBinaryV2, SerializationTypeTag.MagicXdrV2,
@@ -143,7 +154,7 @@ const VersionOneSerializationTypes: ReadonlySet<SerializationTypes> = new Set([
 	SerializationTypeTag.MagicAsciiV1, SerializationTypeTag.MagicBinaryV1, SerializationTypeTag.MagicXdrV1
 ]);
 
-type RObject = RValues.NilValue | RObjectData;
+export type RObject = RValues.NilValue | RObjectData;
 
 type Real = number | RValues.NilValue | RValues.NaReal | RValues.NaN | RValues.PosInf | RValues.NegInf;
 type Complex = { r: Real, i: Real };
@@ -302,15 +313,24 @@ export class RDAParser{
 	 * @returns List of found {@link RObjectData} or `null` if the file is empty.
 	 */
 	parse(): RObjectData[] | null {
-		const fileContent = fs.readFileSync(this.file.path());
-		const compressionType = this.detectCompression(fileContent);
-		this.buffer = this.decompress(fileContent, compressionType);
-		const result = this.deserialize2();
+		const result = this.parseObject();
 		if(result === RValues.NilValue) {
 			return null;
 		} else {
 			return this.flattenRObject(result, this.shortcut);
 		}
+	}
+
+	/**
+	 * Parses the file into the single R object it serializes, without the flattening {@link parse} applies.
+	 * This is what an `.rds` holds: `saveRDS` writes one object, where a workspace writes a pairlist of named
+	 * ones, and only the latter has anything to flatten.
+	 * @returns The deserialized object, {@link RValues.NilValue} for an empty file.
+	 */
+	parseObject(): RObject {
+		const fileContent = fs.readFileSync(this.file.path());
+		this.buffer = this.decompress(fileContent, this.detectCompression(fileContent));
+		return this.deserialize2();
 	}
 
 	/**
@@ -414,6 +434,10 @@ export class RDAParser{
 	 */
 	deserialize2(): RObject{
 		this.offset = 0;
+		/* an `.rds` holds a single object as a bare stream: no workspace magic, no pairlist of names */
+		if(isBareSerializationStream(this.buffer)) {
+			return this.deserialize();
+		}
 		const serializationType = this.determineSerializationType(this.buffer);
 		this.offset += 5;
 

@@ -140,8 +140,13 @@ const metadataFilePatterns = [
 	RenvironFilePattern
 ];
 const testOrVignetteDir = /(^|\/)(tests?|vignettes?)(\/|$)/i;
-/** a package's manual pages, which the Rd plugin reads to decide what documents a name */
-const manPageFile = /(^|[\\/])man[\\/][^\\/]+\.rd$/i;
+/** a package's manual pages and the `macros/` definitions they use, which the Rd plugins read */
+const manPageFile = /(^|[\\/])man[\\/](macros[\\/])?[^\\/]+\.rd$/i;
+/** the tables R keeps beside the pages: what a package documents, and what its datasets provide */
+const documentationTables = [
+	/^(INDEX|00Index)$/,
+	/^datalist$/i
+];
 
 interface KeepRules { readonly include: readonly ((p: string) => boolean)[]; readonly exclude: readonly ((p: string) => boolean)[] }
 
@@ -153,11 +158,11 @@ function resolveRules(override: { include?: string[], exclude?: string[] } | und
 	};
 }
 
-/** over-approximating default: R sources, role metadata, `tests/`/`vignettes/`, and `man/` pages are project files */
+/** over-approximating default: R sources, role metadata, `tests/`/`vignettes/`, and what documents a name */
 function keptByDefault(rel: string): boolean {
 	const base = path.basename(rel);
 	return discoverRSourcesRegex.test(rel) || metadataFilePatterns.some(p => p.test(base))
-		|| testOrVignetteDir.test(rel) || manPageFile.test(rel);
+		|| testOrVignetteDir.test(rel) || manPageFile.test(rel) || documentationTables.some(p => p.test(base));
 }
 
 /** whether root-relative `rel` is kept; an explicit `ignore` or `perKind` exclude wins over everything */

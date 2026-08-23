@@ -29,8 +29,12 @@ import { FlowrAnalyzerNamespaceFilesPlugin } from './file-plugins/flowr-analyzer
 import { FlowrAnalyzerPackageVersionsNamespaceFilePlugin } from './package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
 import { FlowrAnalyzerNewsFilePlugin } from './file-plugins/flowr-analyzer-news-file-plugin';
 import {
+	FlowrAnalyzerDataListFilePlugin,
 	FlowrAnalyzerRdFilePlugin,
-	FlowrAnalyzerRdIndexFilePlugin
+	FlowrAnalyzerRdIndexFilePlugin,
+	FlowrAnalyzerRdMacroFilePlugin,
+	FlowrAnalyzerRdMetaFilePlugin,
+	FlowrAnalyzerRdTopicIndexFilePlugin
 } from './file-plugins/flowr-analyzer-rd-file-plugin';
 import { FlowrAnalyzerRdaFilePlugin } from './file-plugins/flowr-analyzer-rda-file-plugin';
 import { FlowrAnalyzerMetaVignetteFilesPlugin } from './file-plugins/flowr-analyzer-vignette-file-plugin';
@@ -100,8 +104,13 @@ export const BuiltInPlugins = [
 	['file:namespace', FlowrAnalyzerNamespaceFilesPlugin],
 	['versions:namespace', FlowrAnalyzerPackageVersionsNamespaceFilePlugin],
 	['file:news', FlowrAnalyzerNewsFilePlugin],
+	/* the macro plugin comes first: it claims the `macros/` pages the page plugin deliberately skips */
+	['file:rd-macros', FlowrAnalyzerRdMacroFilePlugin],
 	['file:rd', FlowrAnalyzerRdFilePlugin],
 	['file:rd-index', FlowrAnalyzerRdIndexFilePlugin],
+	['file:rd-topics', FlowrAnalyzerRdTopicIndexFilePlugin],
+	['file:rd-meta', FlowrAnalyzerRdMetaFilePlugin],
+	['file:datalist', FlowrAnalyzerDataListFilePlugin],
 	['file:rda', FlowrAnalyzerRdaFilePlugin],
 	['file:license', FlowrAnalyzerLicenseFilePlugin],
 	['file:virtualenv', FlowrAnalyzerVirtualEnvFilePlugin],

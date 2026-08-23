@@ -533,6 +533,13 @@ export const FlowrDefaultPlugins = [
 	'file:ipynb',
 	'file:namespace',
 	'file:news',
+	/* the macro plugin before the page one, so `man/macros/` never reads as a page */
+	'file:rd-macros',
+	'file:rd',
+	'file:rd-index',
+	'file:rd-topics',
+	'file:rd-meta',
+	'file:datalist',
 	'file:rda',
 	'file:license',
 	'file:virtualenv',

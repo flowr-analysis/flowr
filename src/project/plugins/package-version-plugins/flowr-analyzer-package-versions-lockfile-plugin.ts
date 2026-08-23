@@ -7,6 +7,7 @@ import { platformBasename } from '../../../dataflow/internal/process/functions/c
 import { log } from '../../../util/log';
 import { parse as parseToml } from 'smol-toml';
 import { MetaPriority } from '../../context/flowr-analyzer-meta-context';
+import { parseDCFRecords } from '../file-plugins/files/flowr-description-file';
 
 export const lockfileLog = log.getSubLogger({ name: 'flowr-analyzer-package-versions-lockfile-plugin' });
 
@@ -44,35 +45,6 @@ export class FlowrAnalyzerPackageVersionsRenvPlugin extends FlowrAnalyzerPackage
 	}
 }
 
-/** Unlike a `DESCRIPTION`, a `packrat.lock` holds one record per package, so the records must not be merged. */
-function parseDCFRecords(content: string): Map<string, string>[] {
-	const records: Map<string, string>[] = [];
-	let current = new Map<string, string>();
-	let key: string | undefined;
-	for(const line of content.split(/\r?\n/)) {
-		if(line.trim().length === 0) {
-			if(current.size > 0) {
-				records.push(current);
-				current = new Map();
-			}
-			key = undefined;
-		} else if(/^\s/.test(line) && key !== undefined) {
-			current.set(key, `${current.get(key) ?? ''} ${line.trim()}`);
-		} else {
-			const colon = line.indexOf(':');
-			if(colon < 0) {
-				continue;
-			}
-			key = line.slice(0, colon).trim();
-			current.set(key, line.slice(colon + 1).trim());
-		}
-	}
-	if(current.size > 0) {
-		records.push(current);
-	}
-	return records;
-}
-
 /** Reads package versions from a `packrat.lock` (multi-record DCF, metadata first). packrat pins are exact. */
 export class FlowrAnalyzerPackageVersionsPackratPlugin extends FlowrAnalyzerPackageVersionsPlugin {
 	public readonly name        = 'flowr-analyzer-package-versions-packrat-plugin';
@@ -81,13 +53,13 @@ export class FlowrAnalyzerPackageVersionsPackratPlugin extends FlowrAnalyzerPack
 
 	public process(ctx: FlowrAnalyzerContext): void {
 		for(const file of virtualEnvFiles(ctx, 'packrat.lock')) {
-			for(const record of parseDCFRecords(file.content().toString())) {
-				const rVersion = record.get('RVersion');
+			for(const record of parseDCFRecords(file)) {
+				const rVersion = record.get('RVersion')?.[0];
 				if(rVersion) {
 					ctx.meta.contribute({ rVersion }, MetaPriority.Lockfile);
 				}
-				const name = record.get('Package');
-				const version = record.get('Version');
+				const name = record.get('Package')?.[0];
+				const version = record.get('Version')?.[0];
 				if(name && version) {
 					pin(ctx, name, version);
 				}

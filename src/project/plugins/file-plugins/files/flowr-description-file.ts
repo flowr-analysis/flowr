@@ -195,37 +195,72 @@ function emplaceDCF(key: string, val: string, result: Map<string, string[]>) {
 	result.set(key, values);
 }
 
+const dcfIndentRegex = /^\s/;
+const dcfFirstColonRegex = /:(.*)/s;
+/** a line that separates two records: empty, or the `.`-only line the format also allows */
+const dcfRecordBreakRegex = /^\s*\.?\s*$/;
+
 /**
- * Parses the given file in the 'Debian Control Format'.
- * @param file - The file to parse
+ * Walks `content` in the 'Debian Control Format', emitting one {@link DCF} per record. Records are separated
+ * by blank (or `.`-only) lines, which is what makes a repository `PACKAGES` index differ from a `DESCRIPTION`.
+ * @param content     - The raw text to parse
+ * @param singleRecord - Ignore the separators and fold everything into one record (what a `DESCRIPTION` wants)
  */
-function parseDCF(file: FlowrFileProvider): Map<string, string[]> {
-	const result = new Map<string, string[]>();
+function walkDCF(content: string, singleRecord: boolean): DCF[] {
+	const records: DCF[] = [];
+	// strip a leading UTF-8 BOM (U+FEFF): it matches the indent test (JS `\s` includes U+FEFF), so without this
+	// the first field (typically `Package:`) would be misread as a continuation line and silently dropped
+	const lines = (content.charCodeAt(0) === 0xFEFF ? content.slice(1) : content).split(/\r?\n/);
+	let result: DCF = new Map();
 	let currentKey = '';
 	let currentValue = '';
-	const indentRegex = new RegExp(/^\s/);
-	const firstColonRegex = new RegExp(/:(.*)/s);
 
-	// strip a leading UTF-8 BOM (U+FEFF): it matches `indentRegex` (JS `\s` includes U+FEFF), so without this
-	// the first field (typically `Package:`) would be misread as a continuation line and silently dropped
-	const raw = file.content().toString();
-	const fileContent = (raw.charCodeAt(0) === 0xFEFF ? raw.slice(1) : raw).split(/\r?\n/);
-
-	for(const line of fileContent) {
-		if(indentRegex.test(line)) {
+	for(const line of lines) {
+		if(!singleRecord && dcfRecordBreakRegex.test(line)) {
+			emplaceDCF(currentKey, currentValue, result);
+			currentKey = '';
+			currentValue = '';
+			if(result.size > 0) {
+				records.push(result);
+				result = new Map();
+			}
+		} else if(dcfIndentRegex.test(line)) {
 			currentValue += '\n' + line.trim();
 		} else {
 			emplaceDCF(currentKey, currentValue, result);
 
-			const [key, rest] = line.split(firstColonRegex).map(s => s.trim());
+			const [key, rest] = line.split(dcfFirstColonRegex).map(s => s.trim());
 			currentKey = key?.trim() ?? '';
 			currentValue = rest?.trim() ?? '';
 		}
 	}
-
 	emplaceDCF(currentKey, currentValue, result);
+	if(result.size > 0 || records.length === 0) {
+		records.push(result);
+	}
+	return records;
+}
 
-	return result;
+/**
+ * Parses the given file in the 'Debian Control Format' as a single record, the shape of a `DESCRIPTION`:
+ * blank lines do not separate, and a key given more than once keeps its last value.
+ * @param file - The file (or raw text) to parse
+ * @see {@link parseDCFRecords} - for control files that hold many records
+ */
+export function parseDCF(file: FlowrFileProvider | string): DCF {
+	return walkDCF(typeof file === 'string' ? file : file.content().toString(), true)[0];
+}
+
+/**
+ * Parses a control file that holds **many** records in the 'Debian Control Format', e.g. a repository
+ * `PACKAGES` index or a `packrat.lock`, where each record describes one package and must not be merged
+ * with its neighbors.
+ * @param file - The file (or raw text) to parse
+ * @see {@link parseDCF} - for the single-record shape of a `DESCRIPTION`
+ */
+export function parseDCFRecords(file: FlowrFileProvider | string): DCF[] {
+	return walkDCF(typeof file === 'string' ? file : file.content().toString(), false)
+		.filter(r => r.size > 0);
 }
 
 const splitRegex = /[\n\r]+/g;

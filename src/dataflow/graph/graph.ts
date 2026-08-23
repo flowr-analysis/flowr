@@ -22,6 +22,7 @@ import type { LinkTo } from '../../queries/catalog/call-context-query/call-conte
 import type { Writable } from 'ts-essentials';
 import type { BuiltInMemory } from '../environments/built-in';
 import { FunctionDefinitionVertex, ValueVertex, UseVertex, VariableDefinitionVertex } from './vertex';
+import { activeDataflowBudget } from '../../gas';
 
 /**
  * Describes the information we store per function body.
@@ -601,6 +602,9 @@ export class DataflowGraph<
 		// keep a clone of the original environment, isolating the snapshot from later updates
 		(vertex as { environment: REnvironmentInformation | undefined }).environment = vertex.environment ? cloneEnvironmentInformation(vertex.environment) : (vtag === VertexType.FunctionDefinition || (vtag === VertexType.FunctionCall && !vertex.onlyBuiltin) ? fallbackEnv : undefined);
 		this.vertexInformation.set(vid, vertex as Vertex);
+		if(activeDataflowBudget !== undefined) {
+			activeDataflowBudget.vertex();
+		}
 		const typeIds = this.types.get(vtag);
 		if(typeIds) {
 			typeIds.push(vid);

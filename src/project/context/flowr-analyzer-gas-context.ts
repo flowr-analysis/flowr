@@ -5,10 +5,14 @@ import {
 	GasLevel,
 	type GasOverrides,
 	type GasThresholdPair,
-	type GasThresholdSpec
+	type GasThresholdSpec,
+	type DataflowBudget,
+	DataflowBudgetTracker,
+	isBoundedBudget
 } from '../../gas';
 import type { FlowrAnalyzerGasPlugin } from '../plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
+import { DefaultCountedCheckEvery } from '../../config';
 import { log } from '../../util/log';
 import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
 
@@ -40,7 +44,8 @@ function tryGetHeapStatistics(): GasHeapStatistics | undefined {
 }
 
 type Bound = 'problematic' | 'critical';
-type Dimension = 'timeMs' | 'memory';
+/** the sampled dimensions {@link FlowrAnalyzerGasContext.checkGas} reads, plus the counted ones a budget arms */
+type Dimension = 'timeMs' | 'memory' | 'steps' | 'vertices';
 
 /** One contingent, one operation: a slice is not billed for the analysis that preceded it. */
 interface GasScope {
@@ -93,6 +98,12 @@ export interface ReadOnlyFlowrAnalyzerGasContext {
 	 * (see {@link GasThresholdSpec}), not one allowance shared by everything the analyzer does.
 	 */
 	checkGas(key: string): GasLevel;
+	/**
+	 * The counted bounds of `key`, resolved once against the current contingent, or `undefined` when the
+	 * feature is disabled or bounds nothing. This is the arming counterpart of {@link checkGas}, for the one
+	 * site that cannot afford to ask per step -- the dataflow fold, see {@link GasFeatureKey.Dataflow}.
+	 */
+	budget(key: string): DataflowBudgetTracker | undefined;
 	/**
 	 * A view with a fresh contingent, measured from this call, for one operation to run against.
 	 * The enclosing bounds still apply, `overrides` winning over them. Derives a new object rather than
@@ -189,6 +200,7 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 		return {
 			name:     `${this.name}:scope`,
 			checkGas: key => this.levelFor(key, scope),
+			budget:   key => this.budgetFor(key, scope),
 			scope:    o => this.viewOf(this.derive(o, scope))
 		};
 	}
@@ -264,6 +276,30 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 
 	public checkGas(key: string): GasLevel {
 		return this.levelFor(key, this.activeScope());
+	}
+
+	public budget(key: string): DataflowBudgetTracker | undefined {
+		return this.budgetFor(key, this.activeScope());
+	}
+
+	/**
+	 * The bounds `key` is armed with, already divided by its factor so the tracker only ever compares: gas
+	 * scales the *measured* value by the factor, and pre-scaling the bound is the same comparison without
+	 * a multiplication per step.
+	 */
+	private budgetFor(key: string, scope: GasScope): DataflowBudgetTracker | undefined {
+		const factor = this.factorFor(scope, key);
+		if(!factor) {
+			return undefined;   // disabled, which is what keeps an unarmed run free of the guard entirely
+		}
+		const cap = (dim: Dimension): number => {
+			const bound = this.bound(scope, key, dim, 'critical');
+			return Number.isFinite(bound) ? Math.max(1, Math.floor(bound / factor)) : 0;
+		};
+		const budget: DataflowBudget = { steps: cap('steps'), vertices: cap('vertices'), timeMs: cap('timeMs') };
+		return isBoundedBudget(budget)
+			? new DataflowBudgetTracker(budget, scope.startTime, this.config?.countedCheckEvery ?? DefaultCountedCheckEvery)
+			: undefined;
 	}
 
 	private levelFor(key: string, scope: GasScope): GasLevel {

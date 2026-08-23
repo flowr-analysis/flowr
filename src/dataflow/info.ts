@@ -9,6 +9,7 @@ import type { HookInformation } from './hooks';
 import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
+import type { DataflowBudgetExhaustion } from '../gas';
 
 
 /**
@@ -250,6 +251,11 @@ export interface DataflowInformation extends DataflowCfgInformation {
 	 * @see {@link KillReference}
 	 */
 	kill?:             readonly KillReference[]
+	/**
+	 * Set by {@link produceDataFlowGraph} when a {@link DataflowBudget} ended the extraction early. The
+	 * {@link graph} is then partial: everything processed before the bound was hit, and nothing after it.
+	 */
+	cutShort?:         DataflowBudgetExhaustion
 }
 
 /**

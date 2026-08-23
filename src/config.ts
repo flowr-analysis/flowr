@@ -329,6 +329,12 @@ export interface FlowrConfig {
 			/** Groups of packages that must resolve to the same version (like the base packages, which share the R version); version guessing intersects each group so its members stay mutually compatible (default `[]`). */
 			readonly linkedVersionGroups?: string[][]
 		}
+		/**
+		 * How many rounds the transitive side-effect fixpoint may run before it is cut off (default
+		 * {@link DefaultTransitiveSideEffectRounds}). The propagation stops on its own as soon as a round adds
+		 * nothing, so this only bounds a graph that keeps growing; lowering it trades precision for time.
+		 */
+		readonly transitiveSideEffectRounds?: number
 		/** These keys are only intended for use within code, allowing to instrument the dataflow analyzer! */
 		readonly instrument: {
 			/**
@@ -450,6 +456,19 @@ export type ValidFlowrConfigPaths = AutocompletablePaths<FlowrConfig>;
 export function isSigDbEnabled(config: FlowrConfig | undefined): boolean {
 	return config?.solver.sigdb.enabled === true;
 }
+
+/**
+ * Default of `gas.countedCheckEvery`: how many calls one accounting of an armed dataflow budget covers.
+ * A budget only has to catch work that has run away, so the sampling is deliberately coarse.
+ */
+export const DefaultCountedCheckEvery = 64;
+
+/**
+ * Default of `solver.transitiveSideEffectRounds`: the round cap for the transitive side-effect fixpoint in
+ * {@link produceDataFlowGraph}. The fixpoint stops as soon as a round adds nothing, so the cap only ever
+ * bounds a graph that keeps growing.
+ */
+export const DefaultTransitiveSideEffectRounds = 32;
 
 /**
  * R version assumed for analysis when `solver.sigdb.assumedRVersion` is `"auto"` and none could be detected.
@@ -709,7 +728,8 @@ export const FlowrConfig = {
 					repeatedSourceLimit:   2,
 					assumeFilesExist:      false
 				},
-				instrument: {
+				transitiveSideEffectRounds: DefaultTransitiveSideEffectRounds,
+				instrument:                 {
 					dataflowExtractors: undefined
 				},
 				slicer: {
@@ -856,7 +876,8 @@ export const FlowrConfig = {
 			versionManagement: Joi.object({
 				linkedVersionGroups: Joi.array().items(Joi.array().items(Joi.string())).optional().description('Groups of packages that must resolve to the same version; version guessing intersects each group so its members stay mutually compatible (default []).')
 			}).description('Policies for reasoning about dependency versions.'),
-			instrument: Joi.object({
+			transitiveSideEffectRounds: Joi.number().min(1).optional().description(`How many rounds the transitive side-effect fixpoint may run before it is cut off (default ${DefaultTransitiveSideEffectRounds}); the propagation stops on its own as soon as a round adds nothing.`),
+			instrument:                 Joi.object({
 				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
 			}),
 			resolveSource: Joi.object({
@@ -913,10 +934,25 @@ export const FlowrConfig = {
 				}).pattern(Joi.string(), Joi.object({
 					problematic: Joi.number().min(0).optional().description('Elapsed ms above which Problematic is returned for this feature.'),
 					critical:    Joi.number().min(0).optional().description('Elapsed ms above which Critical is returned for this feature.')
-				})).optional().description('Elapsed analysis time thresholds in milliseconds, either shared or given per feature key (with `default` covering the rest).')
+				})).optional().description('Elapsed analysis time thresholds in milliseconds, either shared or given per feature key (with `default` covering the rest).'),
+				steps: Joi.object({
+					problematic: Joi.number().min(0).optional().description('Processed AST nodes above which Problematic is returned, for every feature without an entry of its own.'),
+					critical:    Joi.number().min(0).optional().description('Processed AST nodes above which the extraction is cut short, for every feature without an entry of its own.')
+				}).pattern(Joi.string(), Joi.object({
+					problematic: Joi.number().min(0).optional().description('Processed AST nodes above which Problematic is returned for this feature.'),
+					critical:    Joi.number().min(0).optional().description('Processed AST nodes above which the extraction is cut short for this feature.')
+				})).optional().description('Processed-AST-node thresholds, counted rather than sampled; only a key that arms a budget (`dataflow`) reads them.'),
+				vertices: Joi.object({
+					problematic: Joi.number().min(0).optional().description('Created dataflow vertices above which Problematic is returned, for every feature without an entry of its own.'),
+					critical:    Joi.number().min(0).optional().description('Created dataflow vertices above which the extraction is cut short, for every feature without an entry of its own.')
+				}).pattern(Joi.string(), Joi.object({
+					problematic: Joi.number().min(0).optional().description('Created dataflow vertices above which Problematic is returned for this feature.'),
+					critical:    Joi.number().min(0).optional().description('Created dataflow vertices above which the extraction is cut short for this feature.')
+				})).optional().description('Created-dataflow-vertex thresholds, counted like `steps`.')
 			}).optional().description('Thresholds for all gas checks (scaled by per-feature factor), boundable per feature.'),
-			features:     Joi.object().pattern(Joi.string(), Joi.number().min(0).optional()).optional().description('Per-feature sensitivity factors. 0 or absent disables gas checking for that feature. A factor of 2 makes the feature twice as sensitive. Recognised keys: `source`, `side-effect-linking`, `linter`, `slicer`.'),
-			heapProvider: Joi.function().optional().description('Custom heap statistics source (programmatic configs only), overriding the built-in v8/performance.memory detection.')
+			features:          Joi.object().pattern(Joi.string(), Joi.number().min(0).optional()).optional().description('Per-feature sensitivity factors. 0 or absent disables gas checking for that feature. A factor of 2 makes the feature twice as sensitive. Recognised keys: `source`, `side-effect-linking`, `linter`, `slicer`, `dataflow`.'),
+			countedCheckEvery: Joi.number().min(1).optional().description(`How many counted steps pass between two clock reads while an armed budget also carries a timeMs bound (default ${DefaultCountedCheckEvery}); trades overshoot against the cost of reading the clock.`),
+			heapProvider:      Joi.function().optional().description('Custom heap statistics source (programmatic configs only), overriding the built-in v8/performance.memory detection.')
 		}).optional().description(`Resource-usage guard (gas) configuration. All feature factors default to 0 (disabled). See ${GasWikiRef}.`)
 	}).description('The configuration file format for flowR.'),
 	/**

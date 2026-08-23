@@ -2,6 +2,7 @@ import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { SlicingCriterion } from '../slicing/criterion/parse';
 import { VertexType } from '../dataflow/graph/vertex';
+import type { DataflowGraph } from '../dataflow/graph/graph';
 
 /** A query that may restrict the functions it inspects to a set of slicing criteria. */
 interface FunctionFilteringQuery {
@@ -47,6 +48,19 @@ export const QueryFunctionFilter = {
 			}
 		}
 		return filterFor;
+	},
+	/**
+	 * The definitions of `graph` a query answers for: the ones the analyzed code writes, narrowed to
+	 * `filterFor` when it holds anything. One pass, as every inspection query starts with this.
+	 */
+	definitions(this: void, graph: DataflowGraph, filterFor: ReadonlySet<NodeId>): NodeId[] {
+		const found: NodeId[] = [];
+		for(const [id] of graph.verticesOfType(VertexType.FunctionDefinition)) {
+			if(QueryFunctionFilter.written(id) && (filterFor.size === 0 || filterFor.has(id))) {
+				found.push(id);
+			}
+		}
+		return found;
 	},
 	/** The call graph together with the functions the given queries want to inspect. */
 	async inCallGraph(this: void, queries: readonly FunctionFilteringQuery[], analyzer: ReadonlyFlowrAnalysisProvider, onlyDefinitions = true) {

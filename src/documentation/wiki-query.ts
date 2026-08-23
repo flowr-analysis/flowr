@@ -48,9 +48,9 @@ import type { GeneralDocContext } from './wiki-mk/doc-context';
 import { executeFileQuery } from '../queries/catalog/files-query/files-query-executor';
 import { executeCallGraphQuery } from '../queries/catalog/call-graph-query/call-graph-query-executor';
 import { executeRecursionQuery } from '../queries/catalog/inspect-recursion-query/inspect-recursion-query-executor';
-import { executeStrictnessQuery } from '../queries/catalog/inspect-strictness-query/inspect-strictness-query-executor';
-import { executeArgRolesQuery } from '../queries/catalog/inspect-arg-roles-query/inspect-arg-roles-query-executor';
+import { executeFnPropsQuery } from '../queries/catalog/inspect-fn-props-query/inspect-fn-props-query-executor';
 import { executeDoesCallQuery } from '../queries/catalog/does-call-query/does-call-query-executor';
+import type { ArgProp, CallProp } from '../dataflow/environments/built-in-props';
 import { executeExceptionQuery } from '../queries/catalog/inspect-exceptions-query/inspect-exception-query-executor';
 import { SliceDirection } from '../util/slice-direction';
 import { executeProvenanceQuery } from '../queries/catalog/provenance-query/provenance-query-executor';
@@ -378,95 +378,48 @@ ${
 	}
 });
 
-registerQueryDocumentation('inspect-strictness', {
+registerQueryDocumentation('inspect-fn-props', {
 	type:             'active',
-	shortDescription: 'Determine whether functions force their arguments',
-	functionName:     executeStrictnessQuery.name,
-	functionFile:     '../queries/catalog/inspect-strictness-query/inspect-strictness-query-executor.ts',
-	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'f <- function(a, b, c) { print(a); if(runif(1) > .5) print(b); 42 }';
-		return `
-R hands arguments over as promises, so a parameter is only evaluated once something reads it.
-With this query you can find out which functions rely on that: a function is \`always\` strict if every call
-forces every one of its parameters, \`never\` strict if no call forces all of them, and \`conditionally\`
-strict if it depends on the path taken, on the caller, or on a function flowR could not resolve.
-The result carries the same verdict per parameter, keyed by the id of the parameter's name.
-
-Please note that a read that only hands the parameter to another function does not force it by itself.
-Whether it is forced then depends on the function receiving it, which is resolved through the call graph.
-A read within a nested function definition, within a loop, or under a condition leaves the parameter
-\`conditionally\` strict, as does a call whose target flowR does not know.
-
-What a built-in does with an argument is taken from what flowR states about it rather than from its name: an
-argument declared as quoted or as one whose presence alone matters (\`quote(expr)\`, \`missing(x)\`) is never
-evaluated, one declared as forced (\`force(x)\`) always is, and the calls that reach an argument only on the
-way the run happens to take are the ones flowR hands to the processor saying so (\`switch\` picking a branch,
-\`tryCatch\` reaching a handler, \`on.exit\` running at exit, and the short-circuiting \`&&\`/\`||\`).
-A definition of your own shadowing such a name is judged by its own body instead, as R would.
-A parameter read only in the default of another parameter is \`conditionally\` strict, as that default is
-evaluated only when the argument is left out. So is every parameter of a function reading its own call or frame
-(\`match.call()\`, \`nargs()\`, \`as.list(environment())\`), which reaches them without naming any.
-
-A generic mentions none of its arguments, so its verdict comes from the methods that S3 dispatch reaches: if
-they agree the answer is theirs, otherwise the parameter is \`conditionally\` strict. The object the dispatch
-is on is forced by the dispatch itself, which also covers \`standardGeneric\`. A \`NextMethod\` carries the
-question on to the methods it reaches, matched by the position the parameter is written in, and an argument
-travelling in \`...\` is followed to the parameter it binds to. The method of an object flowR cannot resolve,
-such as \`obj$m(x)\`, leaves the parameter \`conditionally\` strict:
-${
-	await showQuery(shell, 'f <- function(x, y) UseMethod("f")\nf.default <- function(x, y) x\nf.numeric <- function(x, y) y', [{
-		type: 'inspect-strictness',
-	}], { showCode: true, collapseQuery: true, ctx })
-}
-
-Using the example code \`${exampleCode}\` the following query returns the information for all identified
-function definitions whether they are strict:
-${
-	await showQuery(shell, exampleCode, [{
-		type: 'inspect-strictness',
-	}], { showCode: true, collapseQuery: true, ctx })
-}
-
-This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
-${
-	await showQuery(shell, exampleCode, [{
-		type:   'inspect-strictness',
-		filter: ['1@function']
-	}], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
-}
-		`;
-	}
-});
-
-registerQueryDocumentation('inspect-arg-roles', {
-	type:             'active',
-	shortDescription: 'Determine what functions do with their formals',
-	functionName:     executeArgRolesQuery.name,
-	functionFile:     '../queries/catalog/inspect-arg-roles-query/inspect-arg-roles-query-executor.ts',
+	shortDescription: 'Determine what functions and their formals do',
+	functionName:     executeFnPropsQuery.name,
+	functionFile:     '../queries/catalog/inspect-fn-props-query/inspect-fn-props-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'f <- function(x, xs, FUN, opt) { if(missing(opt)) print(length(xs)); lapply(xs, FUN); x }';
 		return `
-Where the ${linkToQueryOfName('inspect-strictness')} answers *whether* a formal is evaluated, this one answers
-*what for*: per function definition it returns the ${ctx.link('ArgProp')} bits of each formal, the same scheme
-flowR states its built-ins and the signature database stores its parameters with.
-Besides the formals, the query states what each function itself does, in the ${ctx.link('CallProp')} bits a
-built-in states about itself.
+Per function definition this states what each formal is used for, as ${ctx.link('ArgProp')} bits, and what the
+function itself does, as ${ctx.link('CallProp')} bits: the very scheme flowR states its built-ins and the
+signature database stores its parameters with.
+
+R hands arguments over as promises, so whether a parameter is evaluated at all is part of the answer:
+${ctx.linkE<typeof ArgProp>('ArgProp', 'Forced')} says every call forces it,
+${ctx.linkE<typeof ArgProp>('ArgProp', 'Lazy')} that none can, and neither of the two that it depends on the
+path taken, on the caller, or on a function flowR could not resolve. A function forcing every one of its
+parameters is ${ctx.linkE<typeof CallProp>('CallProp', 'Strict')} in turn. A read that only hands the parameter
+on is decided by the function receiving it, resolved through the call graph, while a read in a nested
+definition, in a loop, or under a condition leaves it open.
+
 A formal is an alias only if the function *always* returns it (\`return(x)\` under an \`if\` does not count),
 every other bit is the one the calls in the body state for what they are handed, and a formal carrying none at
 all is left out. A body reading its own call or frame (\`match.call()\`, \`nargs()\`,
 \`as.list(environment())\`) reaches every formal without naming one, so they all carry \`nse\`.
+What the function itself does is read off its body: what its calls do it does too, a dispatching body is a
+generic, and one whose result always comes from a call returning invisibly returns invisibly in turn.
 
-Using the example code \`${exampleCode}\` the following query returns the roles of all identified formals:
+With \`only\` the query infers just one half (\`arguments\` or \`function\`, skipping the other walk
+entirely), \`formals\` keeps the parameters written as one of the given names, and \`props\` keeps the
+properties named as the \`ArgProp\`/\`CallProp\` members they are.
+
+Using the example code \`${exampleCode}\` the following query returns what every identified function and formal does:
 ${
 	await showQuery(shell, exampleCode, [{
-		type: 'inspect-arg-roles',
+		type: 'inspect-fn-props',
 	}], { showCode: true, collapseQuery: true, ctx })
 }
 
 This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
 ${
 	await showQuery(shell, exampleCode, [{
-		type:   'inspect-arg-roles',
+		type:   'inspect-fn-props',
 		filter: ['1@function']
 	}], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
 }

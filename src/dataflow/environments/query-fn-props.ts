@@ -10,6 +10,7 @@ import { Identifier, ReferenceType } from './identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PackageSignatureSource } from '../../project/sigdb/reader';
 import { Resolve } from './resolve-helper';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { DataflowInformation } from '../info';
 import { FunctionCallVertex } from '../graph/vertex';
 import { Dataflow } from '../graph/df-helper';
@@ -100,6 +101,22 @@ export function queryFnProps(name: Identifier, { environment, builtIns, signatur
 		return info;
 	}
 	return { sig: info?.sig ?? known.sig, props: (info?.props ?? 0) | (known.props ?? 0), frame: info?.frame };
+}
+
+/**
+ * How to ask what flowR states about a built-in, answering every name once. The analyzer context decides, so a
+ * configured or overwritten built-in is what answers; without one the defaults do.
+ */
+export function builtInLookup(ctx?: ReadOnlyFlowrAnalyzerContext): (name: Identifier) => BuiltInFnInfo | undefined {
+	const environment = ctx?.env.makeCleanEnv();
+	const known = new Map<string, BuiltInFnInfo | undefined>();
+	return name => {
+		const key = Identifier.getName(name);
+		if(!known.has(key)) {
+			known.set(key, environment === undefined ? BuiltInIndex.default().get(name) : queryFnProps(name, { environment }));
+		}
+		return known.get(key);
+	};
 }
 
 /** What flowR states about the call `id` makes, together with the name the call resolved to. */

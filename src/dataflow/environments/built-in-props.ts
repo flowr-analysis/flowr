@@ -43,7 +43,9 @@ export enum ArgProp {
 	 */
 	Atomic    = 1 << 12,
 	/** the open handle the call acts on, like `con` in `close(con)` */
-	Handle    = 1 << 13
+	Handle    = 1 << 13,
+	/** never evaluated, the definite counterpart of {@link ArgProp.Forced}: no path of the body reads it */
+	Lazy      = 1 << 14
 }
 
 /**
@@ -124,7 +126,9 @@ export enum CallProp {
 	/** performs a statistical test, so its result is the test statistic a reader is meant to see (`t.test`, `anova`) */
 	Statistics  = 1 << 28,
 	/** marked for removal, with a better alternative available, like `dplyr::funs` */
-	Deprecated  = 1 << 29
+	Deprecated  = 1 << 29,
+	/** calling it forces every parameter, so nothing it is handed stays a promise (see {@link strictnessOfFunction}) */
+	Strict      = 1 << 30
 }
 
 /**
@@ -217,13 +221,24 @@ const ArgPropNames: Readonly<Record<ArgProp, string>> = {
 	[ArgProp.Presence]:  'presence',
 	[ArgProp.Bounds]:    'bounds',
 	[ArgProp.Atomic]:    'atomic',
-	[ArgProp.Handle]:    'handle'
+	[ArgProp.Handle]:    'handle',
+	[ArgProp.Lazy]:      'lazy'
 };
 
 /** What an argument is used for, as words rather than as a bit mask, for anything showing it to a reader. */
 function argPropWords(this: void, props: ArgProps | undefined): string[] {
 	return props === undefined ? [] : Object.entries(ArgPropNames)
 		.filter(([bit]) => (props & Number(bit)) !== 0).map(([, word]) => word);
+}
+
+/** The bitfield the given {@link ArgProp}/{@link CallProp} member names stand for, unknown ones ignored. */
+function maskOfNames(this: void, of: Record<string, string | number>, names: readonly string[]): number {
+	let mask = 0;
+	for(const name of names) {
+		const bit = of[name];
+		mask |= typeof bit === 'number' ? bit : 0;
+	}
+	return mask;
 }
 
 /**
@@ -234,7 +249,9 @@ export const ArgProps = {
 	/** the {@link ArgProp} bit to its name, in ascending bit order */
 	names: ArgPropNames,
 	/** What an argument is used for, as words; see {@link argPropWords}. */
-	words: argPropWords
+	words: argPropWords,
+	/** The mask the given {@link ArgProp} member names stand for; see {@link maskOfNames}. */
+	mask:  (names: readonly string[]): ArgProps => maskOfNames(ArgProp, names)
 } as const;
 
 /** the {@link CallProp} bits as the words a reader wants, in the order they are declared */
@@ -243,7 +260,7 @@ const CallPropNames: readonly (readonly [CallProp, string])[] = [
 	[CallProp.Generic, 'generic'], [CallProp.Method, 's3 method'], [CallProp.Scope, 'changes scope'],
 	[CallProp.NonDet, 'non deterministic'], [CallProp.Random, 'random'], [CallProp.Ambient, 'ambient state'],
 	[CallProp.File, 'file system'], [CallProp.Reads, 'reads'], [CallProp.Writes, 'writes'],
-	[CallProp.Network, 'network'], [CallProp.Prints, 'prints']
+	[CallProp.Network, 'network'], [CallProp.Prints, 'prints'], [CallProp.Strict, 'strict']
 ];
 
 /** What a call states about itself, as words rather than as a bit mask, for anything showing it to a reader. */
@@ -257,7 +274,9 @@ function callPropWords(this: void, props: CallProps | undefined): string[] {
 export const CallProps = {
 	name:  'CallProps',
 	/** What a call states about itself, as words; see {@link callPropWords}. */
-	words: callPropWords
+	words: callPropWords,
+	/** The mask the given {@link CallProp} member names stand for; see {@link maskOfNames}. */
+	mask:  (names: readonly string[]): CallProps => maskOfNames(CallProp, names)
 } as const;
 
 /**

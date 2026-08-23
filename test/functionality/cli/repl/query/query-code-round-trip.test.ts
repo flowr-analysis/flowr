@@ -23,11 +23,11 @@ const Prefixes: Partial<Record<SupportedQueryTypes, readonly string[]>> = {
 	'inspect-exception':    ['(1@x)'],
 	'inspect-higher-order': ['(1@x)'],
 	'inspect-recursion':    ['(1@x)'],
-	'inspect-strictness':   ['(1@x)']
+	'inspect-fn-props':     ['(1@x)']
 };
 
 /** The parsers reading no criteria at all, which take the code from the very first token. */
-const WithoutPrefix: readonly SupportedQueryTypes[] = ['location-map', 'inspect-exception', 'inspect-higher-order', 'inspect-recursion', 'inspect-strictness'];
+const WithoutPrefix: readonly SupportedQueryTypes[] = ['location-map', 'inspect-exception', 'inspect-higher-order', 'inspect-recursion', 'inspect-fn-props'];
 
 describe('The repl hands every query its complete code', () => {
 	for(const [type, query] of Object.entries(SupportedQueries)) {

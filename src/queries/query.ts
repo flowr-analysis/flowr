@@ -72,15 +72,10 @@ import {
 	InspectRecursionQueryDefinition
 } from './catalog/inspect-recursion-query/inspect-recursion-query-format';
 import type {
-	InspectStrictnessQuery } from './catalog/inspect-strictness-query/inspect-strictness-query-format';
+	InspectFnPropsQuery } from './catalog/inspect-fn-props-query/inspect-fn-props-query-format';
 import {
-	InspectStrictnessQueryDefinition
-} from './catalog/inspect-strictness-query/inspect-strictness-query-format';
-import type {
-	InspectArgRolesQuery } from './catalog/inspect-arg-roles-query/inspect-arg-roles-query-format';
-import {
-	InspectArgRolesQueryDefinition
-} from './catalog/inspect-arg-roles-query/inspect-arg-roles-query-format';
+	InspectFnPropsQueryDefinition
+} from './catalog/inspect-fn-props-query/inspect-fn-props-query-format';
 import type { DoesCallQuery } from './catalog/does-call-query/does-call-query-format';
 import { DoesCallQueryDefinition } from './catalog/does-call-query/does-call-query-format';
 import type {
@@ -127,8 +122,7 @@ export type Query = CallContextQuery
 	| InspectExceptionQuery
     | InspectHigherOrderQuery
 	| InspectRecursionQuery
-	| InspectStrictnessQuery
-	| InspectArgRolesQuery
+	| InspectFnPropsQuery
 	| ResolveValueQuery
 	| ProjectQuery
 	| SignatureQuery
@@ -184,37 +178,36 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = Base
 }
 
 export const SupportedQueries = {
-	'call-context':           CallContextQueryDefinition,
-	'config':                 ConfigQueryDefinition,
-	'control-flow':           ControlFlowQueryDefinition,
-	'call-graph':             CallGraphQueryDefinition,
-	'dataflow':               DataflowQueryDefinition,
-	'does-call':              DoesCallQueryDefinition,
-	'dataflow-lens':          DataflowLensQueryDefinition,
-	'absint':                 AbsintQueryDefinition,
-	'files':                  FilesQueryDefinition,
-	'id-map':                 IdMapQueryDefinition,
-	'normalized-ast':         NormalizedAstQueryDefinition,
-	'dataflow-cluster':       ClusterQueryDefinition,
-	'static-slice':           StaticSliceQueryDefinition,
-	'provenance':             ProvenanceQueryDefinition,
-	'input-sources':          InputSourcesDefinition,
-	'dependencies':           DependenciesQueryDefinition,
-	'location-map':           LocationMapQueryDefinition,
-	'search':                 SearchQueryDefinition,
-	'happens-before':         HappensBeforeQueryDefinition,
-	'inspect-exception':      InspectExceptionQueryDefinition,
-	'inspect-higher-order':   InspectHigherOrderQueryDefinition,
-	'inspect-recursion':      InspectRecursionQueryDefinition,
-	'inspect-strictness':     InspectStrictnessQueryDefinition,
-	'inspect-arg-roles': InspectArgRolesQueryDefinition,
-	'resolve-value':          ResolveValueQueryDefinition,
-	'project':                ProjectQueryDefinition,
-	'signature':              SignatureQueryDefinition,
-	'origin':                 OriginQueryDefinition,
-	'linter':                 LinterQueryDefinition,
-	'dice':                   DiceQueryDefinition,
-	'guess-dep-versions':     GuessDepVersionsQueryDefinition
+	'call-context':         CallContextQueryDefinition,
+	'config':               ConfigQueryDefinition,
+	'control-flow':         ControlFlowQueryDefinition,
+	'call-graph':           CallGraphQueryDefinition,
+	'dataflow':             DataflowQueryDefinition,
+	'does-call':            DoesCallQueryDefinition,
+	'dataflow-lens':        DataflowLensQueryDefinition,
+	'absint':               AbsintQueryDefinition,
+	'files':                FilesQueryDefinition,
+	'id-map':               IdMapQueryDefinition,
+	'normalized-ast':       NormalizedAstQueryDefinition,
+	'dataflow-cluster':     ClusterQueryDefinition,
+	'static-slice':         StaticSliceQueryDefinition,
+	'provenance':           ProvenanceQueryDefinition,
+	'input-sources':        InputSourcesDefinition,
+	'dependencies':         DependenciesQueryDefinition,
+	'location-map':         LocationMapQueryDefinition,
+	'search':               SearchQueryDefinition,
+	'happens-before':       HappensBeforeQueryDefinition,
+	'inspect-exception':    InspectExceptionQueryDefinition,
+	'inspect-higher-order': InspectHigherOrderQueryDefinition,
+	'inspect-recursion':    InspectRecursionQueryDefinition,
+	'inspect-fn-props':     InspectFnPropsQueryDefinition,
+	'resolve-value':        ResolveValueQueryDefinition,
+	'project':              ProjectQueryDefinition,
+	'signature':            SignatureQueryDefinition,
+	'origin':               OriginQueryDefinition,
+	'linter':               LinterQueryDefinition,
+	'dice':                 DiceQueryDefinition,
+	'guess-dep-versions':   GuessDepVersionsQueryDefinition
 } as const satisfies SupportedQueriesType;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

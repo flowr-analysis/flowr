@@ -5,14 +5,14 @@ import { MatchArgs } from '../graph/match-args';
 import { DfEdge, EdgeType } from '../graph/edge';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo } from '../graph/vertex';
 import { FunctionCallVertex, FunctionDefinitionVertex, UseVertex, VariableDefinitionVertex } from '../graph/vertex';
-import type { ArgProps, BuiltInFnInfo, FnSig } from '../environments/built-in-props';
+import type { ArgProps, FnSig } from '../environments/built-in-props';
 import { ArgProp } from '../environments/built-in-props';
-import { reflectiveRoles } from './frame-reflection';
-import { BuiltInIndex, queryFnProps } from '../environments/query-fn-props';
-import { Identifier } from '../environments/identifier';
+import { reflectiveRoles, type BuiltInLookup } from './frame-reflection';
+import { builtInLookup } from '../environments/query-fn-props';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RLogical } from '../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { happensInEveryBranch } from '../info';
 
@@ -71,28 +71,13 @@ export const ArgumentRoles = {
 /** What one run carries along, so the built-in lookups are shared between the definitions it answers. */
 interface RoleState {
 	readonly graph:    DataflowGraph
-	/** what flowR states about a built-in, asked once per name */
-	readonly known:    Map<string, BuiltInFnInfo | undefined>
-	/** how to ask, so a configured built-in is the one that answers */
-	readonly info:     (name: Identifier) => BuiltInFnInfo | undefined
+	/** what flowR states about a built-in, answered once per name */
+	readonly info:     BuiltInLookup
 	readonly maxDepth: number
 }
 
 function makeState(graph: DataflowGraph, { ctx, maxDepth = DefaultDepth }: ArgumentRolesOptions): RoleState {
-	const environment = ctx?.env.makeCleanEnv();
-	const info = environment === undefined
-		? (name: Identifier) => BuiltInIndex.default().get(name)
-		: (name: Identifier) => queryFnProps(name, { environment });
-	return { graph, known: new Map(), info, maxDepth };
-}
-
-/** What flowR states about the built-in of that name, asked once per name. */
-function infoOf(name: Identifier, state: RoleState): BuiltInFnInfo | undefined {
-	const key = Identifier.getName(name);
-	if(!state.known.has(key)) {
-		state.known.set(key, state.info(name));
-	}
-	return state.known.get(key);
+	return { graph, info: builtInLookup(ctx), maxDepth };
 }
 
 function rolesOf(id: NodeId, state: RoleState): FunctionArgumentRoles {
@@ -105,7 +90,7 @@ function rolesOf(id: NodeId, state: RoleState): FunctionArgumentRoles {
 	const returned = identityOf(unconditional, state);
 	const stated = statedRoles(definition, state);
 	/* reflection flowR could not follow reaches every formal alike */
-	const reflective = reflectiveRoles(definition, state.graph, name => infoOf(name, state));
+	const reflective = reflectiveRoles(definition, state.graph, state.info);
 	const roles: FunctionArgumentRoles = {};
 	for(const formal of Object.keys(definition.params)) {
 		const at = NodeId.normalize(formal);
@@ -179,6 +164,10 @@ function sameValueAs(node: NodeId, state: RoleState): [branches: NodeId[], steps
 		.map(([target]) => target);
 	if(FunctionCallVertex.is(vertex)) {
 		const alias = argumentsWith(vertex, state, ArgProp.Alias);
+		if(missesItsElse(vertex, state)) {
+			/* the other path hands back an invisible `NULL`, so what the branch yields is not what the call does */
+			return [[], []];
+		}
 		return returns.length > 1 ? [returns, alias] : [[], [...returns, ...alias]];
 	} else if(returns.length > 0) {
 		return returns.length > 1 ? [returns, []] : [[], returns];
@@ -192,6 +181,15 @@ function sameValueAs(node: NodeId, state: RoleState): [branches: NodeId[], steps
 			.map(([target]) => target)];
 	}
 	return [[], []];
+}
+
+/** Whether the call is an `if` that may skip its branch: no `else` was written and the condition is no `TRUE`. */
+function missesItsElse(vertex: DataflowGraphVertexFunctionCall, state: RoleState): boolean {
+	if(!vertex.origin.includes(BuiltInProcName.IfThenElse) || FunctionArgument.isNotEmpty(vertex.args[2])) {
+		return false;
+	}
+	const condition = vertex.args[0];
+	return !FunctionArgument.isNotEmpty(condition) || !RLogical.isTrue(state.graph.idMap?.get(condition.nodeId));
 }
 
 /** Whether the call hands back a part of what it was given (`x$a`, `x[1]`, `pkg::name`) rather than the thing. */
@@ -298,7 +296,7 @@ function argumentsWith(vertex: DataflowGraphVertexFunctionCall, state: RoleState
  * binds them, so a named argument is answered by its formal and everything falling to `...` by that entry.
  */
 function argumentProps(vertex: DataflowGraphVertexFunctionCall, state: RoleState): [props: ArgProps, argument: NodeId][] {
-	const sig: FnSig | undefined = infoOf(vertex.name, state)?.sig;
+	const sig: FnSig | undefined = state.info(vertex.name)?.sig;
 	if(sig === undefined) {
 		return [];
 	}

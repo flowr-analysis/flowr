@@ -55,6 +55,11 @@ export class MemorySignatureSource implements PackageSignatureSource {
 		return this.hasVersion(pkg, version);
 	}
 
+	/** an in-memory source states no repository */
+	public sourceOf(): undefined {
+		return undefined;
+	}
+
 	public lookup(pkg: string, version?: string): LibraryExports | undefined {
 		const found = this.packages.get(pkg);
 		/* a source given no version has one answer and gives it whatever is asked for: it cannot say no */

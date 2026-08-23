@@ -96,6 +96,8 @@ export interface PackageSignatureSource {
 	hasVersion(pkg: string, version: string): boolean;
 	/** whether a version is a current CRAN release (i.e. not in the package's `noncran`/removed set) */
 	isCranVersion(pkg: string, version: string): boolean;
+	/** the repository a version came from, `undefined` in bundles that record none */
+	sourceOf(pkg: string, version: string): string | undefined;
 	/**
 	 * The export view of a package version.
 	 * @param pkg     - The package to look up.
@@ -277,6 +279,9 @@ export class MergedSignatureSource implements PackageSignatureSource {
 	}
 	public isCranVersion(pkg: string, version: string): boolean {
 		return this.pick(pkg, version)?.isCranVersion(pkg, version) ?? false;
+	}
+	public sourceOf(pkg: string, version: string): string | undefined {
+		return this.pick(pkg, version)?.sourceOf(pkg, version);
 	}
 	public lookup(pkg: string, version?: string): LibraryExports | undefined {
 		return this.pick(pkg, version)?.lookup(pkg, version);
@@ -571,8 +576,7 @@ export class SigDatabase implements PackageSignatureSource {
 
 	/** recompute this bundle's self-contained content hash from its re-read data (matches {@link writeSignatureDb}) */
 	public contentHash(blobs = this.allBlobs()): string {
-		// use only this bundle's own package metadata, in package-index order, since a shared manifest may hoist a
-		// superset of metadata that the self-contained bundle was NOT hashed over
+		// only this bundle's own metadata: a shared manifest may hoist a superset it was not hashed over
 		const meta: SigDbPkgMetaIndex = {};
 		for(const pkg of Object.keys(this.index.pkgs)) {
 			meta[pkg] = this.index.meta[pkg];
@@ -588,6 +592,12 @@ export class SigDatabase implements PackageSignatureSource {
 	/** whether a version is a current CRAN release (not in the package's `noncran`/removed set) */
 	public isCranVersion(pkg: string, version: string): boolean {
 		return !this.blob(pkg)?.noncran?.includes(version);
+	}
+
+	/** the repository a version came from, when recorded */
+	public sourceOf(pkg: string, version: string): string | undefined {
+		const idx = this.blob(pkg)?.sources?.[version];
+		return idx === undefined ? undefined : this.strings[idx];
 	}
 
 	public lookup(pkg: string, version?: string): LibraryExports | undefined {
@@ -949,8 +959,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 			return ref ? ensurePlain(resolveSource(this.baseDir, ref.path), { cacheDir: this.cacheDir, hash: ref.hash, indexless: true }) : Promise.resolve('');
 		});
 		await Promise.all([...shardJobs, ...dictJobs]);
-		// open each shard from the now-decompressed cache (cheap; parses each shared dictionary once) so later
-		// synchronous queries, including historical pinned-version lookups, never block
+		// open each shard now so later synchronous queries never block
 		for(const i of need) {
 			this.shard(i);
 		}
@@ -988,6 +997,12 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	/** whether a version is a current CRAN release (not in the package's `noncran`/removed set) */
 	public isCranVersion(pkg: string, version: string): boolean {
 		return !this.historyBlob(pkg)?.noncran?.includes(version);
+	}
+
+	/** the repository a version came from, when recorded */
+	public sourceOf(pkg: string, version: string): string | undefined {
+		const shard = this.route(pkg, version)[0] ?? this.routes.get(pkg)?.[0];
+		return shard === undefined ? undefined : this.shard(shard).sourceOf(pkg, version);
 	}
 
 	public packageNames(): string[] {

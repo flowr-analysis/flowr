@@ -23,6 +23,7 @@ function sigDbWithDeprecatedFn(pkg: string, fnName: string): PackageSignatureSou
 		has:               p => p === pkg,
 		hasVersion:        (p, version) => p === pkg && version === '1.0.0',
 		isCranVersion:     () => true,
+		sourceOf:          () => undefined,
 		lookup:            p => p === pkg ? view : undefined,
 		classOwner:        () => undefined,
 		packagesExporting: name => name === fnName ? [pkg] : [],

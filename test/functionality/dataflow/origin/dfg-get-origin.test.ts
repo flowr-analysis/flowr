@@ -34,7 +34,8 @@ describe('Dataflow', withTreeSitter(ts => {
 							origins?.sort((a, b) => String(a.id).localeCompare(String(b.id)));
 							const wantMapped = want.map(e => ({
 								...e,
-								id: SlicingCriterion.parse(e.id as SlicingCriterion, (analysis as PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>).normalize.idMap)
+								/* a built-in id names no source location, so it is no criterion to resolve */
+								id: NodeId.isBuiltIn(e.id) ? e.id : SlicingCriterion.parse(e.id as SlicingCriterion, (analysis as PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>).normalize.idMap)
 							})).sort((a, b) => String(a.id).localeCompare(String(b.id)));
 							assert.deepStrictEqual(origins, wantMapped);
 						}
@@ -139,6 +140,25 @@ describe('Dataflow', withTreeSitter(ts => {
 			'2@g': [ro('1@g')]
 		});
 
+		describe('reads of built-ins', () => {
+			/* a built-in constant carries a value vertex, so the read of it is a constant origin */
+			chk('print(pi)', {
+				'1@pi': [co(NodeId.toBuiltIn('pi'))]
+			}, label('built-in constant', ['numbers'], ['dataflow']));
+			chk('x <- LETTERS', {
+				'1@LETTERS': [co(NodeId.toBuiltIn('LETTERS'))]
+			}, label('built-in vector constant', ['strings'], ['dataflow']));
+			chk('pi <- 3\nprint(pi)\nrm(pi)\nprint(pi)', {
+				'2@pi': [ro('1@pi')],
+				'4@pi': [co(NodeId.toBuiltIn('pi'))]
+			}, label('shadowed and restored by rm', ['numbers', 'lexicographic-scope'], ['dataflow']));
+			/* a built-in function named as a value has no vertex, so it stays a built-in origin */
+			chk('x <- print\nx("hey")', {
+				'1@print': [bo(NodeId.toBuiltIn('print'), 'print', '1@print')],
+				'2@x':     [ro('1@x'), bo(NodeId.toBuiltIn('print'), 'x', '2@x')]
+			}, label('built-in function as a value', ['function-calls'], ['dataflow']));
+		});
+
 		describe('unevaluated arguments have no origin', () => {
 			/* whether the marking comes from the quote processor or from a signature must not matter */
 			for(const [code, cap] of [
@@ -152,6 +172,24 @@ describe('Dataflow', withTreeSitter(ts => {
 			chk('x <- 1\nwhile(TRUE) print(x)', {
 				'2@x': [ro('1@x')]
 			}, label('a loop body is evaluated', ['while-loop'], ['dataflow']));
+			/* the call within the quotation is no more evaluated than a symbol within it */
+			chk('f <- function() 1\nquote(f())', {
+				'2@f': undefined
+			}, label('quoted call', ['built-in-quoting', 'function-calls'], ['dataflow']));
+			chk('quote(print(1))', {
+				'1@print': undefined
+			}, label('quoted built-in call', ['built-in-quoting', 'function-calls'], ['dataflow']));
+			chk('f <- function() substitute(g())\ng <- function() 1\nf()', {
+				'1@g': undefined
+			}, label('substituted call', ['built-in-quoting', 'function-calls'], ['dataflow']));
+			/* `quote` defines nothing, so its assignment target is written nowhere */
+			chk('f <- 3\nquote(f <- 2)\nf', {
+				'2@f': undefined,
+				'3@f': [ro('1@f')]
+			}, label('quoted definition', ['built-in-quoting', 'local-left-assignment'], ['dataflow']));
+			chk('f <- function() 1\nfor(i in 1:2) f()', {
+				'2@f': [fo('1@function'), ro('1@f')]
+			}, label('a loop body still calls', ['for-loop', 'function-calls'], ['dataflow']));
 		});
 	});
 }));

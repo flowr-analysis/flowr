@@ -254,7 +254,8 @@ export const Identifier = {
 				} else if(Identifier.getNamespace(origin.fn.name) !== undefined) {
 					return origin.fn.name;
 				}
-			} else {
+			} else if(!NodeId.isBuiltIn(origin.id)) {
+				/* a read that lands on a built-in (e.g. the constant `pi`) is no user definition and must not block step 3 */
 				sawUserDefinition = true;
 			}
 		}

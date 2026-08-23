@@ -1,6 +1,6 @@
 import { guard } from '../../util/assert';
-import type { DFControlFlowEdge, EdgeType } from './edge';
-import { DfEdge } from './edge';
+import type { DFControlFlowEdge } from './edge';
+import { DfEdge, EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
 import {
 	type DataflowGraphVertexArgument,
@@ -14,6 +14,7 @@ import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { BrandedIdentifier, Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { RLoopConstructs } from '../../r-bridge/lang-4.x/ast/model/model';
 import { Environment, type EnvType, type IEnvironment, type REnvironmentInformation } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
@@ -383,6 +384,27 @@ export class DataflowGraph<
 		/* the historic contract is an (possibly empty) map for every id, never `undefined`; the miss is the common
 		 * case in traversal loops, so it answers with the shared empty map rather than a fresh one */
 		return this.incomingIndex.get(id) ?? NoEdges;
+	}
+
+	/**
+	 * Whether the node is quoted, i.e., affected by a {@link EdgeType.NonStandardEvaluation} edge that actually
+	 * keeps it from being evaluated (as `quote` and `substitute` do).
+	 *
+	 * Loops mark their body as non-standard-evaluated as well, yet that body really is evaluated (and its symbols
+	 * really are read), so such an edge does not quote. Use this instead of testing for the edge type directly
+	 * whenever you want to know whether something is evaluated at all.
+	 * @param id           - The id of the node to check
+	 * @param withOutgoing - Whether to also consider the outgoing edges of the node (i.e., whether the node itself
+	 *                       quotes something), and not just the ingoing ones (i.e., whether it is quoted)
+	 */
+	public isQuoted(id: NodeId, withOutgoing = false): boolean {
+		/* an nse edge quotes iff it does not originate from a loop marking its body */
+		const quotes = (source: NodeId, e: DfEdge): boolean =>
+			DfEdge.includesType(e, EdgeType.NonStandardEvaluation) && !RLoopConstructs.is(this.idMap?.get(source));
+		if(this.ingoingEdges(id)?.entries().some(([source, e]) => quotes(source, e))) {
+			return true;
+		}
+		return withOutgoing && (this.outgoingEdges(id)?.values().some(e => quotes(id, e)) ?? false);
 	}
 
 	/**

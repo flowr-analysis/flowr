@@ -11,7 +11,6 @@ import type { DataflowGraphVertexInfo } from './vertex';
 import { FunctionCallVertex, ValueVertex } from './vertex';
 import { Identifier } from '../environments/identifier';
 import { Resolve } from '../environments/resolve-helper';
-import { RLoopConstructs } from '../../r-bridge/lang-4.x/ast/model/model';
 import { isBaseRPackage } from '../../util/r-base-packages';
 
 /**
@@ -246,13 +245,7 @@ export const Dataflow = {
 	 *                       quotes something), and not just the ingoing ones (i.e., whether it is quoted)
 	 */
 	isQuoted(this: void, id: NodeId, graph: DataflowGraph, withOutgoing = false): boolean {
-		/* an nse edge quotes iff it does not originate from a loop marking its body */
-		const quotes = (source: NodeId, e: DfEdge): boolean =>
-			DfEdge.includesType(e, EdgeType.NonStandardEvaluation) && !RLoopConstructs.is(graph.idMap?.get(source));
-		if(graph.ingoingEdges(id)?.entries().some(([source, e]) => quotes(source, e))) {
-			return true;
-		}
-		return withOutgoing && (graph.outgoingEdges(id)?.values().some(e => quotes(id, e)) ?? false);
+		return graph.isQuoted(id, withOutgoing);
 	},
 
 	/**

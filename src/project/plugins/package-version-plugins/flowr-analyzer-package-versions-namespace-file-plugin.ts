@@ -32,21 +32,23 @@ export class FlowrAnalyzerPackageVersionsNamespaceFilePlugin extends FlowrAnalyz
 					namespaceInfo: info
 				}
 			));
-			for(const exportedSymbol of info.exportedSymbols) {
-				ctx.deps.functionsContext.addFunctionInfo({
-					name:          exportedSymbol,
-					packageOrigin: pkg,
-					isExported:    true,
-					isS3Generic:   false,
-				});
-			}
-			for(const exportedFunction of info.exportedFunctions) {
-				ctx.deps.functionsContext.addFunctionInfo({
-					name:          exportedFunction,
-					packageOrigin: pkg,
-					isExported:    true,
-					isS3Generic:   false,
-				});
+			/* the S4 lists are exports as much as the other two, they just say *why* the name is exported */
+			const exportKinds = [
+				[info.exportedSymbols, {}],
+				[info.exportedFunctions, {}],
+				[info.exportedS4Methods, { isS4Method: true }],
+				[info.exportedS4Classes, { isS4Class: true }]
+			] as const;
+			for(const [names, kind] of exportKinds) {
+				for(const exported of names) {
+					ctx.deps.functionsContext.addFunctionInfo({
+						name:          exported,
+						packageOrigin: pkg,
+						isExported:    true,
+						isS3Generic:   false,
+						...kind
+					});
+				}
 			}
 			for(const [genericName, classes] of info.exportS3Generics.entries()) {
 				for(const s3TypeDispatch of classes) {

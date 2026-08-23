@@ -27,6 +27,15 @@ import { EmptyArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-f
 export interface NamespaceInfo {
 	exportedSymbols:      string[];
 	exportedFunctions:    string[];
+	/**
+	 * Names listed by `exportMethods()`: S4 methods the package registered for one of its classes, which is a
+	 * different claim than an ordinary export (the package answers a generic, it does not define the function).
+	 * Only the context-parsed path ({@link parseNamespaceComplex}) tells these apart; the regex fallback folds
+	 * them into {@link exportedFunctions}.
+	 */
+	exportedS4Methods:    string[];
+	/** Classes listed by `exportClasses()`: the S4 classes the package owns. Separated like {@link exportedS4Methods}. */
+	exportedS4Classes:    string[];
 	exportS3Generics:     Map<string, string[]>;
 	exportedPatterns:     string[];
 	importedPackages:     Map<string, string[] | 'all'>;
@@ -117,7 +126,8 @@ export function isExportedInNamespaceFormat(this: void, fmt: NamespaceFormat, na
  * @param nsInfo - The namespace info to check in
  */
 export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo): boolean | RNode<ParentInformation>[] {
-	if(nsInfo.exportedSymbols.includes(name) || nsInfo.exportedFunctions.includes(name)) {
+	if(nsInfo.exportedSymbols.includes(name) || nsInfo.exportedFunctions.includes(name)
+		|| nsInfo.exportedS4Methods.includes(name) || nsInfo.exportedS4Classes.includes(name)) {
 		return true;
 	}
 	if(name.includes('.')) {
@@ -218,8 +228,9 @@ function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContex
 					case 'useDynLib':
 						return handleUseDynLibCall(g, call.arguments);
 					case 'exportClasses':
+						return handleS4ExportCall(g, call.arguments, 'exportedS4Classes');
 					case 'exportMethods':
-						return handleExportClassesCall(g, call.arguments);
+						return handleS4ExportCall(g, call.arguments, 'exportedS4Methods');
 				}
 				return g;
 			}
@@ -235,7 +246,8 @@ export function getExportedNames(info: NamespaceInfo): string[] {
 			s3.push(`${g}.${m}`);
 		}
 	}
-	return uniqueArray([...info.exportedSymbols, ...info.exportedFunctions, ...info.exportedPatterns, ...s3]);
+	return uniqueArray([...info.exportedSymbols, ...info.exportedFunctions, ...info.exportedS4Methods,
+		...info.exportedS4Classes, ...info.exportedPatterns, ...s3]);
 }
 
 /** The names a package makes callable: the explicitly configured {@link NamespaceInfo#callable} subset, or all exports (see {@link getExportedNames}) by default. */
@@ -364,12 +376,9 @@ function handleUseDynLibCall(g: NamespaceFormat, args: readonly PotentiallyEmpty
 	g[pkg].loadsWithSideEffects = true;
 	return g;
 }
-function handleExportClassesCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
-	if(args.length !== 1) {
-		return g;
-	}
-	const classArgs = args.filter(a => a !== EmptyArgument).map(a => a.lexeme ? unquoteName(a.lexeme) : undefined).filter(isNotUndefined);
-	g.current.exportedFunctions.push(...classArgs);
+/** `exportClasses(A, B)` / `exportMethods(show, summary)`: a directive may list several names, and each goes to `into`. */
+function handleS4ExportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[], into: 'exportedS4Classes' | 'exportedS4Methods'): NamespaceFormat {
+	g.current[into].push(...args.filter(a => a !== EmptyArgument).map(a => a.lexeme ? unquoteName(a.lexeme) : undefined).filter(isNotUndefined));
 	return g;
 }
 const cleanLineCommentRegex = /^#.*$/gm;
@@ -379,6 +388,8 @@ function emptyNamespaceInfo(): NamespaceInfo {
 	return {
 		exportedSymbols:      [] as string[],
 		exportedFunctions:    [] as string[],
+		exportedS4Methods:    [] as string[],
+		exportedS4Classes:    [] as string[],
 		exportS3Generics:     new Map<string, string[]>(),
 		exportedPatterns:     [] as string[],
 		importedPackages:     new Map<string, string[] | 'all'>(),
@@ -452,6 +463,8 @@ function mergeNamespaceInfo(target: NamespaceInfo, source: NamespaceInfo): Names
 		callable:             [...target.callable, ...source.callable],
 		exportedSymbols:      [...target.exportedSymbols, ...source.exportedSymbols],
 		exportedFunctions:    [...target.exportedFunctions, ...source.exportedFunctions],
+		exportedS4Methods:    [...target.exportedS4Methods, ...source.exportedS4Methods],
+		exportedS4Classes:    [...target.exportedS4Classes, ...source.exportedS4Classes],
 		exportS3Generics:     mergedS3Generics,
 		exportedPatterns:     [...target.exportedPatterns, ...source.exportedPatterns],
 		importedPackages:     mergedImportedPackages,

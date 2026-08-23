@@ -588,6 +588,9 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		const namespaceInfo: NamespaceInfo = {
 			exportedSymbols:      exported,
 			exportedFunctions:    [],
+			exportedS4Methods:    [],
+			/* the database derives these from the very `exportClasses()` directives the field stands for */
+			exportedS4Classes:    info.s4Classes.slice(),
 			exportS3Generics:     reconstructS3Generics(exported),
 			exportedPatterns:     [],
 			importedPackages:     new Map(),

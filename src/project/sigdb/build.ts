@@ -8,7 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { once } from 'events';
 import {
-	DefaultCranBase, MaxDefaultLength, ParamFlag, SigDbExt, SigDbMagic, SigDbSchema,
+	DefaultCranBase, MaxDefaultLength, SigDbExt, SigDbMagic, SigDbSchema,
 	type PkgBlob, type Sig, type SigDb, type SigDbFeatures, type SigDbPkgMeta, type SigDbPkgMetaIndex, type SigDbShard, type SigDbTier,
 	type SigDep, type SigDependencyInfo, type SigFn, type SigFunctionInfo, type SigParamInfo, type SigVersionInfo } from './schema';
 import { RVersion } from '../../util/r-version';
@@ -137,16 +137,14 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 		}
 		const value: Sig = params.map(par => {
 			const nameI = strings.str(par.name);
-			const flags = (par.forced ? ParamFlag.Forced : 0) | (par.missing ? ParamFlag.Missing : 0);
+			const props = par.props ?? 0;
 			if(par.default !== undefined) {
-				// cap very long default expressions (e.g. a 7 KB `c(...)` column list): they are unique, so they never
-				// dedupe and bloat the dictionary. A truncation marker keeps "has a default" plus a preview. Newlines
-				// are flattened so the string is safe as a delimiter in the newline-blob dictionary.
+				// long defaults never dedupe, so truncate; newlines would split the dictionary
 				const d0 = par.default.replace(/[\r\n]+/g, ' ');
 				const def = d0.length > MaxDefaultLength ? d0.slice(0, MaxDefaultLength) + '…' : d0;
-				return [nameI, flags, strings.str(def)];
+				return [nameI, props, strings.str(def)];
 			}
-			return flags === 0 ? nameI : [nameI, flags];
+			return props === 0 ? nameI : [nameI, props];
 		});
 		return sigs.intern(JSON.stringify(value), value);
 	};
@@ -177,6 +175,7 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 	const depsByVersion: Record<string, number> = {};
 	const dates: Record<string, number> = {};
 	const noncran: string[] = [];
+	const sources: Record<string, number> = {};
 	let versionCount = 0;
 	let functionCount = 0;
 	for(const version of keptVersions(p, tier)) {
@@ -196,8 +195,11 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 		if(!info.cran) {
 			noncran.push(version);
 		}
+		if(info.source !== undefined) {
+			sources[version] = strings.str(info.source);
+		}
 	}
-	const blob: PkgBlob = { sigs: sigs.items, cgs: cgs.items, fns: fns.items, versions, noncran: noncran.length ? noncran : undefined, deps: deps.items, depsByVersion, dates };
+	const blob: PkgBlob = { sigs: sigs.items, cgs: cgs.items, fns: fns.items, versions, noncran: noncran.length ? noncran : undefined, deps: deps.items, depsByVersion, dates, sources: Object.keys(sources).length ? sources : undefined };
 	return { blob, versionCount, functionCount };
 }
 
@@ -429,8 +431,7 @@ class StringPool {
 	readonly strings: string[] = [];
 	private readonly idx = new Map<string, number>();
 	str(s: string): number {
-		// the dictionary is newline-delimited on disk, so a stored string must never contain one -- otherwise it splits
-		// on read and shifts every later index. Flatten defensively here so no field (name, file, topic, ...) can corrupt it.
+		// the dictionary is newline-delimited on disk, so a stored newline would shift every later index
 		const safe = s.includes('\n') || s.includes('\r') ? s.replace(/[\r\n]+/g, ' ') : s;
 		return internalize(this.strings, this.idx, safe, safe);
 	}
@@ -480,6 +481,9 @@ function optimizeStringOrder(strings: string[], blobs: PkgBlob[]): string[] {
 				}
 			}
 		}
+		for(const idx of Object.values(blob.sources ?? {})) {
+			bump(idx);
+		}
 	}
 	const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => counts[b] - counts[a] || a - b);
 	const remap = new Int32Array(n);
@@ -526,6 +530,9 @@ function optimizeStringOrder(strings: string[], blobs: PkgBlob[]): string[] {
 					d[2] = remap[d[2]];
 				}
 			}
+		}
+		for(const [version, idx] of Object.entries(blob.sources ?? {})) {
+			(blob.sources as Record<string, number>)[version] = remap[idx];
 		}
 	}
 	return order.map(oldI => strings[oldI]);
@@ -588,8 +595,7 @@ export interface CompressOptions {
 	/** brotli window bits (10..30); above 24 enables the non-standard large-window mode (reader must opt in) */
 	brotliLgwin?:   number;
 }
-// large window (30) shaves ~15% off the `.br`; every {@link SigDatabase} read path decodes with
-// `BROTLI_DECODER_PARAM_LARGE_WINDOW` enabled, so this is always safe for bundles flowR reads back.
+// large window shaves ~15% off the `.br`; every read path decodes with `BROTLI_DECODER_PARAM_LARGE_WINDOW`
 const DefaultBrotliLgwin = 30;
 
 /** codec-appropriate compression options: brotli takes the quality/window, zstd its own level */
@@ -756,7 +762,7 @@ export async function writeShardedDatabase(outBase: string, db: ShardedSigDb, ma
 	};
 	writeManifest(manifestFile, manifest);
 	if(opts.pack) {
-		// a self-contained folder to copy into flowR: every compressed variant of the dictionary + shards + the (index-embedding) manifest
+		// self-contained folder to copy into flowR: every compressed variant plus the manifest
 		fs.mkdirSync(opts.pack, { recursive: true });
 		for(const ext of exts) {
 			fs.copyFileSync(`${outBase}${SigDbDictExt}${ext}`, path.join(opts.pack, `${dictRef.path}${ext}`));

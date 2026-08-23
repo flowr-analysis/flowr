@@ -5,6 +5,7 @@ import { cranPageUrl } from './signature-query-executor';
 import { baseRPackages } from '../../../util/r-base-packages';
 import type { SignatureFunctionView, SignaturePackageView, SignatureQueryResult } from './signature-query-format';
 import { arraysGroupBy } from '../../../util/collections/arrays';
+import { ArgProp, ArgProps } from '../../../dataflow/environments/built-in-props';
 
 /** print an in-repl usage guide for the signature query */
 export function printSignatureHelp(output: ReplOutput): void {
@@ -46,13 +47,14 @@ function linkLocation(file: string, line: number | undefined, url: string | unde
 	return url ? f.hyperlink(text, url, true) : text;
 }
 
-/** render one parameter: required (no default) in yellow, non-forced (lazily evaluated) italicised, default dimmed */
+/** render one parameter: without a default in yellow, non-forced (lazily evaluated) italicised, default dimmed */
 function renderParameter(f: OutputFormatter, p: SignatureFunctionView['parameters'][number]): string {
 	if(p.name === '...') {
 		return p.name;
 	}
-	const lazy = p.forced ? {} : { style: FontStyles.Italic };
-	const name = p.default === undefined ? color(p.name, Colors.Yellow, f, lazy) : p.forced ? p.name : italic(p.name, f);
+	const forced = (p.props & ArgProp.Forced) !== 0;
+	const lazy = forced ? {} : { style: FontStyles.Italic };
+	const name = p.default === undefined ? color(p.name, Colors.Yellow, f, lazy) : forced ? p.name : italic(p.name, f);
 	return p.default !== undefined ? `${name} = ${faint(p.default, f)}` : name;
 }
 
@@ -66,6 +68,14 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 	const generic = fn.s3generic ? `  ${color('S3 generic', Colors.Magenta, f, { style: FontStyles.Bold })}` : '';
 	result.push(`   ╰ ${color(fn.package, Colors.Cyan, f, { style: FontStyles.Bold })}::${bold(fn.name, f)}${fn.version ? ` ${color('v' + fn.version, Colors.Green, f)}` : ''}${generic}`);
 	result.push(`      ╰ ${renderSignature(f, fn)}`);
+	/* what the signature styling does not already say: everything the database states beyond forced/no-default */
+	const roles = fn.parameters
+		.map(p => [p.name, ArgProps.words(p.props & ~(ArgProp.Forced | ArgProp.NoDefault))] as const)
+		.filter(([, words]) => words.length > 0)
+		.map(([name, words]) => `${name}: ${words.join('+')}`);
+	if(roles.length > 0) {
+		result.push(`      ╰ ${italic('roles', f)}   ${roles.join(', ')}`);
+	}
 	if(fn.flowrOnly) {
 		// nothing below comes from the database, so say so instead of rendering its empty fields as facts
 		result.push(`      ╰ ${italic('only flowR knows this one, the signature database has no entry', f)}`);

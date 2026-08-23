@@ -8,6 +8,7 @@ import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-
 import { DefaultAssumedRVersion, FlowrConfig, VersionSelection } from '../../../../../src/config';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName, sigDbLog } from '../../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
+import { ArgProp } from '../../../../../src/dataflow/environments/built-in-props';
 import { baseRExportOwner } from '../../../../../src/util/r-base-packages';
 import { executeCallContextQueries } from '../../../../../src/queries/catalog/call-context-query/call-context-query-executor';
 import type { FlowrAnalyzer } from '../../../../../src/project/flowr-analyzer';
@@ -370,7 +371,7 @@ describe('sigdb system: rich package information is available end-to-end', withT
 			cran:      true,
 			functions: [
 				{ name:   'greet', props:  FnProp.Exported, params: [
-					{ name: 'name', missing: true, forced: true },
+					{ name: 'name', props: ArgProp.NoDefault | ArgProp.Forced },
 					{ name: 'greeting', default: '"hi"' },
 					{ name: '...' }
 				], callees: ['cat', 'paste'], file: 'R/greet.R', line: 1 },
@@ -402,8 +403,8 @@ describe('sigdb system: rich package information is available end-to-end', withT
 		const greet = (db.functions('richpkg') ?? []).find(f => f.name === 'greet');
 		expect(greet?.exported).toBe(true);
 		expect(greet?.signature.map(p => p.name)).toEqual(['name', 'greeting', '...']);
-		expect(greet?.signature[0]).toMatchObject({ name: 'name', forced: true, optional: false });
-		expect(greet?.signature[1]).toMatchObject({ name: 'greeting', optional: true, default: '"hi"' });
+		expect(greet?.signature[0]).toMatchObject({ name: 'name', props: ArgProp.Forced | ArgProp.NoDefault });
+		expect(greet?.signature[1]).toMatchObject({ name: 'greeting', props: 0, default: '"hi"' });
 		expect(greet?.callees).toEqual(['cat', 'paste']);
 
 		// (4) ...and the declared DESCRIPTION dependencies with their version qualifiers (order-independent)

@@ -4,6 +4,8 @@
  * operates on these lives in `./sigdb` (which re-exports this module, so `./sigdb` stays the single entry point).
  */
 
+import type { ArgProps } from '../../dataflow/environments/built-in-props';
+
 /** The definition location of the binding, with a file path usually relative to the package project root. */
 export interface SigDefinitionLocation {
 	readonly file: string
@@ -100,19 +102,13 @@ export const FnPropNames: Readonly<Record<FnProp, string>> = {
 	[FnProp.Value]:            'value'
 };
 
-/** parameter flags, packed into {@link SigParam}'s flag int */
-export const enum ParamFlag {
-	/** forced: the argument is always evaluated (crawlr `always-read`) */
-	Forced  = 1 << 0,
-	/** the argument has no default value (crawlr `missing`) */
-	Missing = 1 << 1
-}
-
 /**
- * One parameter of a signature (position implied by array order): just `nameIdx`, or `[nameIdx, flags]`,
- * or `[nameIdx, flags, defaultIdx]`. All indices point into the global string dictionary.
+ * One parameter of a signature (position implied by array order): just `nameIdx`, or `[nameIdx, props]`, or
+ * `[nameIdx, props, defaultIdx]`. `props` is the {@link ArgProp} bitfield, whose two lowest bits are the
+ * {@link ArgProp.Forced}/{@link ArgProp.NoDefault} an extractor can state, so bundles written before the other
+ * bits existed read the same. All indices point into the global string dictionary.
  */
-export type SigParam = number | [nameIdx: number, flags: number] | [nameIdx: number, flags: number, defaultIdx: number];
+export type SigParam = number | [nameIdx: number, props: number] | [nameIdx: number, props: number, defaultIdx: number];
 /** a full signature: the ordered parameter list */
 export type Sig = SigParam[];
 /**
@@ -150,9 +146,17 @@ export interface PkgBlob {
 	depsByVersion: Record<string, number>;
 	/** version name to its release date as **days since the Unix epoch** (absent when the date is unknown) */
 	dates:         Record<string, number>;
+	/**
+	 * Version name to a dictionary index naming the repository it came from (`cran`, `bioc`, ...).
+	 * Absent in bundles written before this field, where {@link PkgBlob.noncran} is all there is.
+	 */
+	sources?:      Record<string, number>;
 }
-/** on-disk tuple form of a {@link PkgBlob}: `[sigs, cgs, fns, versions, noncran, deps, depsByVersion, dates]` */
-export type PkgBlobTuple = [Sig[], number[][], SigFn[], Record<string, number[]>, string[], SigDep[][], Record<string, number>, Record<string, number>?];
+/**
+ * On-disk tuple form of a {@link PkgBlob}, in the order the fields are declared and ending with
+ * `sources`. Trailing elements are additive, so a reader that stops earlier keeps working.
+ */
+export type PkgBlobTuple = [Sig[], number[][], SigFn[], Record<string, number[]>, string[], SigDep[][], Record<string, number>, Record<string, number>?, Record<string, number>?];
 
 /**
  * Per-package metadata. The optional 4th element marks an **R-core / base package** (`base`, `stats`,
@@ -213,9 +217,8 @@ export interface SigDb {
 
 export interface SigParamInfo {
 	readonly name:     string;
-	readonly forced?:  boolean;
-	/** the argument has no default value */
-	readonly missing?: boolean;
+	/** bitfield of {@link ArgProp}: what the extractor could tell about the parameter, the rest unset */
+	readonly props?:   ArgProps;
 	readonly default?: string;
 }
 export interface SigFunctionInfo {
@@ -239,6 +242,8 @@ export interface SigDependencyInfo {
 }
 export interface SigVersionInfo {
 	readonly cran:          boolean;
+	/** the repository it came from (`cran`, `bioc`, ...); {@link SigVersionInfo.cran} only says whether it is CRAN */
+	readonly source?:       string;
 	readonly functions:     readonly SigFunctionInfo[];
 	/** declared dependencies of this version (Depends/Imports/LinkingTo/Suggests/Enhances) */
 	readonly dependencies?: readonly SigDependencyInfo[];

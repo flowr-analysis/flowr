@@ -8,6 +8,7 @@ import { SigDbBuilder, writeSignatureDb } from '../../../../src/project/sigdb/bu
 import { defaultSigDbPaths } from '../../../../src/project/sigdb/manifest';
 import { SigDbExt, FnProp, MaxDefaultLength, type SigFunctionInfo } from '../../../../src/project/sigdb/schema';
 import { executeQueries } from '../../../../src/queries/query';
+import { ArgProp } from '../../../../src/dataflow/environments/built-in-props';
 import { asciiSummaryOfQueryResult } from '../../../../src/queries/query-print';
 import { ansiFormatter } from '../../../../src/util/text/ansi';
 import { SignatureQueryDefinition, type SignatureQuery } from '../../../../src/queries/catalog/signature-query/signature-query-format';
@@ -28,7 +29,7 @@ async function buildDb(dir: string): Promise<SigDatabase> {
 		cran:         true,
 		dependencies: [{ name: 'rlang', type: 1 /* Imports */, constraint: '>= 1.0.0' }],
 		functions:    [fn('foo', {
-			params:  [{ name: 'a', missing: true, forced: true }, { name: 'b', default: '2' }],
+			params:  [{ name: 'a', props: ArgProp.NoDefault | ArgProp.Forced }, { name: 'b', default: '2' }],
 			callees: ['bar'],
 			file:    'R/foo.R',
 			line:    5
@@ -83,8 +84,8 @@ describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 			expect(info?.exported).toBe(true);
 			expect(info?.version).toBe('1.0.0');
 			expect(info?.parameters).toEqual([
-				{ name: 'a', required: true, forced: true },
-				{ name: 'b', required: false, forced: false, default: '2' }
+				{ name: 'a', props: ArgProp.NoDefault | ArgProp.Forced },
+				{ name: 'b', props: 0, default: '2' }
 			]);
 			expect(info?.callees).toEqual(['bar']);
 			expect(info?.file).toBe('R/foo.R');

@@ -1,42 +1,49 @@
 import type { DecodedFunction } from '../../project/sigdb/decode';
 
 /**
- * What a single argument of a call is used for, as a bitmask.
+ * What a single argument of a call is used for, as a bitmask. The signature database stores its parameters with
+ * the very same bits, so {@link ArgProp.Forced} and {@link ArgProp.NoDefault} lead, being the two it can state.
  * @see {@link BuiltInFnInfo#sig}
  */
 export enum ArgProp {
-	/** the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge */
-	Alias    = 1 << 0,
-	/** the result is computed from the argument's value, like `x` in `sum(x)` */
-	Value    = 1 << 1,
-	/** only the shape is used (length, dimensions, names, other attributes), like `x` in `nrow(x)` */
-	Shape    = 1 << 2,
-	/** selects a behavior instead of carrying data, like `na.rm` in `sum(x, na.rm = TRUE)` */
-	Flag     = 1 << 3,
-	/** names the resource the call reads or writes, like `file` in `write.csv(x, file)` */
-	Resource = 1 << 4,
-	/** what it refers to may be modified, like `envir` in `assign(x, v, envir = e)` */
-	Written  = 1 << 5,
 	/** evaluated whenever the call happens, even if the result goes unused, like `x` in `force(x)` */
-	Forced   = 1 << 6,
+	Forced    = 1 << 0,
+	/**
+	 * declared without a default value, like `x` in `nchar(x, type)`. This says nothing about whether a call has
+	 * to supply it: a function that asks with `missing(x)`/`hasArg(x)` ({@link ArgProp.Presence}) copes with the
+	 * argument left out, and one that never evaluates the parameter (see {@link ArgProp.Forced}) never notices.
+	 */
+	NoDefault = 1 << 1,
+	/** the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge */
+	Alias     = 1 << 2,
+	/** the result is computed from the argument's value, like `x` in `sum(x)` */
+	Value     = 1 << 3,
+	/** only the shape is used (length, dimensions, names, other attributes), like `x` in `nrow(x)` */
+	Shape     = 1 << 4,
+	/** selects a behavior instead of carrying data, like `na.rm` in `sum(x, na.rm = TRUE)` */
+	Flag      = 1 << 5,
+	/** names the resource the call reads or writes, like `file` in `write.csv(x, file)` */
+	Resource  = 1 << 6,
+	/** what it refers to may be modified, like `envir` in `assign(x, v, envir = e)` */
+	Written   = 1 << 7,
 	/** quoted or evaluated in another frame, like `expr` in `quote(expr)` */
-	Nse      = 1 << 7,
+	Nse       = 1 << 8,
 	/** called as a function, like `FUN` in `lapply(x, FUN)` */
-	Callee   = 1 << 8,
+	Callee    = 1 << 9,
 	/** only whether it was supplied matters, as with `missing()` */
-	Presence = 1 << 9,
+	Presence  = 1 << 10,
 	/**
 	 * the result is one of this argument's values, like `choices` in `match.arg(arg, choices)`. The bounding
 	 * argument of a {@link CallProp.Narrows} call; without one such a call yields a value of its own making.
 	 */
-	Bounds   = 1 << 10,
+	Bounds    = 1 << 11,
 	/**
 	 * only atomic data works here, never a closure, as with `e1` in `e1 > e2`. A bare symbol in such an
 	 * argument therefore names a variable even when a function of that name is in scope.
 	 */
-	Atomic   = 1 << 11,
+	Atomic    = 1 << 12,
 	/** the open handle the call acts on, like `con` in `close(con)` */
-	Handle   = 1 << 12
+	Handle    = 1 << 13
 }
 
 /**
@@ -195,6 +202,41 @@ export const FnSig = {
 	posWith: argsWith
 } as const;
 
+/** the {@link ArgProp} bit to its name; integer keys iterate in ascending bit order */
+const ArgPropNames: Readonly<Record<ArgProp, string>> = {
+	[ArgProp.Forced]:    'forced',
+	[ArgProp.NoDefault]: 'no default',
+	[ArgProp.Alias]:     'alias',
+	[ArgProp.Value]:     'value',
+	[ArgProp.Shape]:     'shape',
+	[ArgProp.Flag]:      'flag',
+	[ArgProp.Resource]:  'resource',
+	[ArgProp.Written]:   'written',
+	[ArgProp.Nse]:       'nse',
+	[ArgProp.Callee]:    'callee',
+	[ArgProp.Presence]:  'presence',
+	[ArgProp.Bounds]:    'bounds',
+	[ArgProp.Atomic]:    'atomic',
+	[ArgProp.Handle]:    'handle'
+};
+
+/** What an argument is used for, as words rather than as a bit mask, for anything showing it to a reader. */
+function argPropWords(this: void, props: ArgProps | undefined): string[] {
+	return props === undefined ? [] : Object.entries(ArgPropNames)
+		.filter(([bit]) => (props & Number(bit)) !== 0).map(([, word]) => word);
+}
+
+/**
+ * Utility functions for {@link ArgProps|argument property bitfields}.
+ */
+export const ArgProps = {
+	name:  'ArgProps',
+	/** the {@link ArgProp} bit to its name, in ascending bit order */
+	names: ArgPropNames,
+	/** What an argument is used for, as words; see {@link argPropWords}. */
+	words: argPropWords
+} as const;
+
 /** the {@link CallProp} bits as the words a reader wants, in the order they are declared */
 const CallPropNames: readonly (readonly [CallProp, string])[] = [
 	[CallProp.Pure, 'pure'], [CallProp.Throws, 'can throw'], [CallProp.Invisible, 'invisible'],
@@ -205,9 +247,18 @@ const CallPropNames: readonly (readonly [CallProp, string])[] = [
 ];
 
 /** What a call states about itself, as words rather than as a bit mask, for anything showing it to a reader. */
-export function callPropWords(props: CallProps | undefined): string[] {
+function callPropWords(this: void, props: CallProps | undefined): string[] {
 	return props === undefined ? [] : CallPropNames.filter(([bit]) => (props & bit) !== 0).map(([, word]) => word);
 }
+
+/**
+ * Utility functions for {@link CallProps|call property bitfields}.
+ */
+export const CallProps = {
+	name:  'CallProps',
+	/** What a call states about itself, as words; see {@link callPropWords}. */
+	words: callPropWords
+} as const;
 
 /**
  * Semantics of a built-in that hold no matter which processor handles the call. The remaining facts already
@@ -284,9 +335,10 @@ export const DispatchCallees: ReadonlySet<string> = new Set(['UseMethod', 'stand
 
 /**
  * The part of a {@link BuiltInFnInfo} that the signature database already knows: the parameter names in order
- * (`...` included) with the ones R always forces, plus the properties listed in {@link SigDbProps}. Everything
- * else the database records (`higher-order`, `deprecated`, `recursive`, ...) has no counterpart here and is
- * dropped, and anything it cannot see (purity, resources, what an argument is used for) stays unset.
+ * (`...` included) with the {@link ArgProp} bits stored for each, plus the properties listed in
+ * {@link SigDbProps}. Everything else the database records (`higher-order`, `deprecated`, `recursive`, ...)
+ * has no counterpart here and is dropped, and every {@link ArgProp} bit the extractor could not infer stays
+ * unset -- the database states the same bits flowR does, just fewer of them.
  */
 export function fnInfoFromSignature(fn: DecodedFunction): BuiltInFnInfo {
 	let props = 0;
@@ -299,7 +351,7 @@ export function fnInfoFromSignature(fn: DecodedFunction): BuiltInFnInfo {
 	}
 	return {
 		sig: fn.signature.map(p => [p.name,
-			(p.forced ? ArgProp.Forced : 0) | (p.default === 'TRUE' || p.default === 'FALSE' ? ArgProp.Flag : 0)]),
+			p.props | (p.default === 'TRUE' || p.default === 'FALSE' ? ArgProp.Flag : 0)]),
 		props
 	};
 }

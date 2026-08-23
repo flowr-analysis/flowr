@@ -7,6 +7,7 @@ import { SigDatabase, SigDatabaseSet, type PackageSignatureSource } from '../pro
 // FnProp is a const enum referenced only via `typeof` (for linkE's member typing); a type-only import would break `typeof`
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { FnProp, SigDbSchema } from '../project/sigdb/schema';
+import type { ArgProp } from '../dataflow/environments/built-in-props';
 import { defaultSigDbPath, defaultSigDbPaths, readManifestFile, type SigDbShardRef } from '../project/sigdb/manifest';
 import { CompressedExtPattern, decompressSyncFor } from '../project/sigdb/codec';
 import { DefaultAssumedRVersion } from '../config';
@@ -249,11 +250,19 @@ Every function is a ${ctx.link('DecodedFunction')}:
 | field | holds |
 |-------|-------|
 | ${ctx.link('DecodedFunction::exported')} | whether the name is a package export |
-| ${ctx.link('DecodedFunction::signature')} | the parameters, with defaults and forced or optional flags |
+| ${ctx.link('DecodedFunction::signature')} | the parameters, with their defaults and their ${ctx.link('ArgProp')} mask |
 | ${ctx.link('DecodedFunction::callees')} | the function's own local calls |
 | ${ctx.link('DecodedFunction::topic')} | the Rd help topic when it differs from the name |
 | ${ctx.link('DecodedFunction::file')}, ${ctx.link('DecodedFunction::line')} | source location |
 | ${ctx.link('DecodedFunction::props')} | flags like higher-order, recursive, deprecated |
+
+The parameter mask is the one flowR states its own built-ins with, so a parameter carries
+${ctx.linkE<typeof ArgProp>('ArgProp', 'NoDefault')} when it has no default, ${ctx.linkE<typeof ArgProp>('ArgProp', 'Forced')}
+when the function always evaluates it, and whichever roles the extractor could infer
+(${ctx.linkE<typeof ArgProp>('ArgProp', 'Alias')}, ${ctx.linkE<typeof ArgProp>('ArgProp', 'Presence')},
+${ctx.linkE<typeof ArgProp>('ArgProp', 'Callee')}, ...). Every bit it cannot see stays unset, so an unset bit
+reads as "unknown" rather than "no"; ${ctx.link('fnInfoFromSignature')} hands the mask on unchanged, which is
+what lets a package function answer the same questions a built-in does.
 
 Per version the source also answers declared dependencies (${ctx.link('ResolvedDependency')}), release dates, the plain export view (${ctx.link('LibraryExports')}), and the versions it carries (${ctx.link('AvailableVersion')}).
 
@@ -349,15 +358,15 @@ Every shard, dictionary, and manifest is published in both brotli (\`.br\`) and 
 ## Format
 
 The on-disk format is \`flowr-sigdb\` (schema ${SigDbSchema}). Beyond each version's exports it records, per
-version, every function's signature (parameters, whether each is forced or optional, and its default) and
-call graph, together with that version's declared dependencies (\`Depends\`, \`Imports\`, ... with their
+version, every function's signature (the parameters, each with its default and its ${ctx.link('ArgProp')} mask)
+and call graph, together with that version's declared dependencies (\`Depends\`, \`Imports\`, ... with their
 version qualifiers). The layout is NDJSON: a header, then a shared string dictionary, then one
 self-contained blob per package, next to a sidecar \`.idx\`. A reader (${ctx.link(SigDatabase)}) therefore
 loads the dictionary once and then **seeks straight to the packages it needs**, never reading the rest.
 The bundle is written by ${ctx.link('SigDbBuilder')} and can be split into several small shards (current-only
 versus full history, top-N versus the rest) that a \`flowr-sigdb-manifest\` routes transparently
 (${ctx.link(SigDatabaseSet)}), and which information gets stored is selectable (${ctx.link('SigDbFeatures')}).
-crawlr produces the bundle from its analysis of CRAN.
+The extractor produces the bundle from its analysis of CRAN.
 
 ## Performance
 

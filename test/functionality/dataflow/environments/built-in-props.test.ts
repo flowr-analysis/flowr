@@ -39,7 +39,7 @@ const TestSignatures = {
 		line:      1,
 		exported:  true,
 		props:     ['exported', 'can-throw', 'higher-order'],
-		signature: [{ name: 'x', forced: true, optional: false }, { name: '...', forced: false, optional: true }],
+		signature: [{ name: 'x', props: ArgProp.Forced | ArgProp.NoDefault }, { name: '...', props: 0 }],
 		callees:   ['paste', 'system']
 	} satisfies DecodedFunction : undefined,
 	transitiveCallees: (pkg: string, name: string) => pkg === 'base' && name === 'known' ? ['paste', 'system'] : undefined
@@ -161,7 +161,7 @@ describe('Built-in properties', () => {
 	describe('Falling back to the signature database', () => {
 		test(label('it fills in the parameters and the properties it knows', ['name-normal'], ['other']), () => {
 			const info = queryFnProps(Identifier.from(['known', PkgName.Base]), { signatures: TestSignatures });
-			assert.deepStrictEqual(info?.sig, [['x', ArgProp.Forced], ['...', 0]]);
+			assert.deepStrictEqual(info?.sig, [['x', ArgProp.Forced | ArgProp.NoDefault], ['...', 0]]);
 			assert.strictEqual(info?.props, CallProp.Throws | CallProp.Process,
 				'can-throw is read off, `system` carries over, exported and higher-order have no counterpart');
 		});
@@ -287,7 +287,7 @@ describe('Built-in properties', () => {
 		test(label('forced parameters keep their order', ['name-normal'], ['other']), () => {
 			const fn = (TestSignatures.functionByName('base', 'known') as DecodedFunction);
 			assert.deepStrictEqual(fnInfoFromSignature(fn), {
-				sig:   [['x', ArgProp.Forced], ['...', 0]],
+				sig:   [['x', ArgProp.Forced | ArgProp.NoDefault], ['...', 0]],
 				props: CallProp.Throws
 			});
 		});

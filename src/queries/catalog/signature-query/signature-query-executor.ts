@@ -13,7 +13,7 @@ import type { DecodedFunction } from '../../../project/sigdb/decode';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
 import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
 import type { BuiltInFnInfo } from '../../../dataflow/environments/built-in-props';
-import { ArgProp, CallProp } from '../../../dataflow/environments/built-in-props';
+import { ArgProp, ArgProps, CallProp } from '../../../dataflow/environments/built-in-props';
 import { Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
 import { RVersion } from '../../../util/r-version';
 import { baseRPackages, baseRExportOwner } from '../../../util/r-base-packages';
@@ -86,7 +86,7 @@ function parameterFilter(q: SignatureQuery): ((fn: DecodedFunction) => boolean) 
 			return false;
 		}
 		// required = no default; `...` is never a required parameter to provide
-		return required === undefined || fn.signature.filter(p => p.name !== '...' && !p.optional).length === required;
+		return required === undefined || fn.signature.filter(p => p.name !== '...' && (p.props & ArgProp.NoDefault) !== 0).length === required;
 	};
 }
 
@@ -216,7 +216,7 @@ function propNames(props: number, of: Record<string, string | number>): string[]
 /** the view of one {@link BuiltInFnInfo}: every declared parameter with what it is used for, and what comes back */
 function flowrViewOf(info: BuiltInFnInfo, sigParams: readonly string[]): SignatureFlowrView {
 	/* every declared parameter, even one flowR says nothing about, so the answer is the whole signature */
-	const args = (info.sig ?? []).map(([n, p]) => ({ name: n, roles: propNames(p, ArgProp) }));
+	const args = (info.sig ?? []).map(([n, p]) => ({ name: n, roles: ArgProps.words(p) }));
 	const params = args.map(a => a.name);
 	const returns = info.sig?.find(([, p]) => (p & ArgProp.Alias) !== 0)?.[0];
 	/* flowR usually declares only the parameters it models, which is no disagreement as long as they line up */
@@ -270,8 +270,8 @@ function flowrOnlyFunctionInfo(env: REnvironmentInformation | undefined, pkg: st
 		flowrOnly:  true,
 		exported:   true,
 		properties: [],
-		/* flowR states no defaults, so `required` stays `false` throughout; whether R forces a parameter it does know */
-		parameters: (info.sig ?? []).map(([n, p]) => ({ name: n, required: false, forced: (p & ArgProp.Forced) !== 0 })),
+		/* flowR states no defaults, so nothing here says a parameter has none; what it is used for it does know */
+		parameters: (info.sig ?? []).map(([n, p]) => ({ name: n, props: p & ~ArgProp.NoDefault })),
 		callees:    [],
 		flowr:      flowrViewOf(info, []),
 		...(group ? { s4group: { group } } : {})
@@ -287,9 +287,8 @@ function decodedToView(pkg: string, fn: DecodedFunction, version: string | undef
 		exported:   fn.exported,
 		properties: fn.props,
 		parameters: fn.signature.map(p => ({
-			name:     p.name,
-			required: !p.optional,
-			forced:   p.forced,
+			name:  p.name,
+			props: p.props,
 			...(p.default !== undefined ? { default: p.default } : {})
 		})),
 		callees: fn.callees,
@@ -554,7 +553,7 @@ function matchedParamPreview(fn: DecodedFunction, q: SignatureQuery): { preview:
 	const matched = q.parameters?.length
 		? names.filter(n => q.parameters?.some(pat => nameMatcher(pat)(n)))
 		: [];
-	const show = new Set(matched.length > 0 ? matched : fn.signature.filter(p => p.name !== '...' && !p.optional).map(p => p.name));
+	const show = new Set(matched.length > 0 ? matched : fn.signature.filter(p => p.name !== '...' && (p.props & ArgProp.NoDefault) !== 0).map(p => p.name));
 	for(const n of names) {
 		if(show.size >= ParamPreviewCap) {
 			break;

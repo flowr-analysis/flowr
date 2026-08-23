@@ -14,7 +14,7 @@ import { BuiltInEvalName } from './built-in-eval-name';
 import { NseArguments } from '../internal/process/functions/call/known-call-handling';
 import { Unquote } from '../internal/process/functions/call/nse';
 import { DataMaskingFunctionIdentifiers } from './data-masking-functions';
-import { ArgProp, CallProp, callPropWords, type CallProps, type FnSig } from './built-in-props';
+import { ArgProp, CallProp, CallProps, type FnSig } from './built-in-props';
 import { AttachedBasePackageSet, baseRExportOwner } from '../../util/r-base-packages';
 import { RBasePackageStore } from '../../data/r-base-packages.generated';
 
@@ -192,7 +192,7 @@ export interface StatedSignature {
 	 * though the function took nothing.
 	 */
 	readonly params?: string;
-	/** what it does, from {@link callPropWords} */
+	/** what it does, from {@link CallProps.words} */
 	readonly props:   readonly string[];
 }
 
@@ -267,7 +267,7 @@ export function statedSignatures(definitions: BuiltInDefinitions = DefaultBuilti
 			const name = String(Identifier.getName(id));
 			const pkg = String(Identifier.getNamespace(id) ?? PkgName.Base);
 			const declared = (info?.sig ?? []).map(([param]: readonly [string, unknown]) => param);
-			const entry = { pkg, params: declared.length > 0 ? declared.join(', ') : undefined, props: callPropWords(info?.props) };
+			const entry = { pkg, params: declared.length > 0 ? declared.join(', ') : undefined, props: CallProps.words(info?.props) };
 			const known = stated.get(name) ?? [];
 			/* the last definition for a package is the one that resolves, so it is the one stated */
 			stated.set(name, [...known.filter(other => other.pkg !== pkg), entry]);
@@ -459,6 +459,9 @@ export const WrittenBuiltinDefinitions = [
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure | CallProp.Narrows, sig: SigShape }, assumePrimitive: true, evalHandler:     BuiltInEvalName.StringFn },
 	{ type:            'function', names:           [Identifier.from(['missing', PkgName.Base])],
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['x', ArgProp.Presence]] }, assumePrimitive: true },
+	/* `hasArg(x)` is `missing()` asked the other way round: it too only looks at whether an argument was supplied */
+	{ type:            'function', names:           [Identifier.from(['hasArg', PkgName.Methods])],
+		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: [['name', ArgProp.Presence]] }, assumePrimitive: true },
 	/* they fold everything they are handed into one result */
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['sum', 'prod', 'min', 'max', 'range', 'pmin', 'pmax', 'cbind', 'rbind', 'data.frame', 'order', 'any']),
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure, sig: SigDots }, assumePrimitive: true },
@@ -865,10 +868,11 @@ export const WrittenBuiltinDefinitions = [
 		config:          { useAsProcessor: BuiltInProcName.Stop, cfg: ExitPointType.Error, forceArgs: 'all', props: CallProp.Throws },
 		assumePrimitive: false
 	},
+	/* the block is evaluated whatever happens, the handlers only when something does, and an error keeps the value from coming back */
 	{ type:            'function', names:           [Identifier.from(['try', PkgName.Base])],
-		processor:       BuiltInProcName.Try, config:          { block: 'expr', handlers: {} }, assumePrimitive: true },
+		processor:       BuiltInProcName.Try, config:          { block: 'expr', handlers: {}, sig: [['expr', ArgProp.Value | ArgProp.Forced]] }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['tryCatch', PkgName.Base]), Identifier.from(['tryCatchLog', PkgName.TryCatchLog])],
-		processor:       BuiltInProcName.Try, config:          { block: 'expr', handlers: { error: 'error', finally: 'finally' } }, assumePrimitive: true },
+		processor:       BuiltInProcName.Try, config:          { block: 'expr', handlers: { error: 'error', finally: 'finally' }, sig: [['expr', ArgProp.Value | ArgProp.Forced], ['error', ArgProp.Callee], ['finally', ArgProp.Nse]] }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['stopifnot', PkgName.Base]), Identifier.from(['assert_that', PkgName.AssertThat])],
 		processor:       BuiltInProcName.StopIfNot, config:          { props: CallProp.Invisible | CallProp.Throws }, assumePrimitive: false },
 	{ type:            'function', names:           ['break'],
@@ -881,11 +885,12 @@ export const WrittenBuiltinDefinitions = [
 		/* it hands back what it evaluated invisibly, so a top-level `source()` prints nothing of its own */
 		processor:       BuiltInProcName.Source, config:          { includeFunctionCall: true, forceFollow: false, props: CallProp.Invisible }, assumePrimitive: false },
 	{ type:            'function', names:           ['['],
-		processor:       BuiltInProcName.Access, config:          { treatIndicesAsString: false, props: CallProp.Pure }, assumePrimitive: true },
+		processor:       BuiltInProcName.Access, config:          { treatIndicesAsString: false, props: CallProp.Pure, sig: [['x', ArgProp.Value], ['...', ArgProp.Value]] }, assumePrimitive: true },
 	{ type:            'function', names:           ['[['],
-		processor:       BuiltInProcName.Access, config:          { treatIndicesAsString: false, resolveField: true, props: CallProp.Pure }, assumePrimitive: true },
+		processor:       BuiltInProcName.Access, config:          { treatIndicesAsString: false, resolveField: true, props: CallProp.Pure, sig: [['x', ArgProp.Value], ['...', ArgProp.Value]] }, assumePrimitive: true },
+	/* the field is a name rather than a value, so it is never evaluated */
 	{ type:            'function', names:           ['$', '@'],
-		processor:       BuiltInProcName.Access, config:          { treatIndicesAsString: true, resolveField: true, props: CallProp.Pure }, assumePrimitive: true },
+		processor:       BuiltInProcName.Access, config:          { treatIndicesAsString: true, resolveField: true, props: CallProp.Pure, sig: [['x', ArgProp.Value], ['name', ArgProp.Nse]] }, assumePrimitive: true },
 	{ type:            'function', names:           ['::'],
 		processor:       BuiltInProcName.NamespaceAccess, config:          { internal: false }, assumePrimitive: true },
 	{ type:            'function', names:           [':::'],
@@ -1106,8 +1111,9 @@ export const WrittenBuiltinDefinitions = [
 	processor: BuiltInProcName.StringTemplate, config: { markup: true, props: CallProp.MayPure }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['str_interp', PkgName.Stringr])],
 		processor:       BuiltInProcName.StringTemplate, config:          { open: '${', props: CallProp.MayPure | CallProp.Deprecated }, assumePrimitive: false },
+	/* `local(expr)` evaluates `expr` in a frame of its own and hands its value back */
 	{ type:            'function', names:           [Identifier.from(['local', PkgName.Base])],
-		processor:       BuiltInProcName.Local, config:          { args: { env: 'envir', expr: 'expr' } }, assumePrimitive: false },
+		processor:       BuiltInProcName.Local, config:          { args: { env: 'envir', expr: 'expr' }, sig: [['expr', ArgProp.Alias | ArgProp.Forced]] }, assumePrimitive: false },
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['with', 'within']),
 		processor:       BuiltInProcName.With, config:          {}, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['new.env', PkgName.Base]), Identifier.from(['new_environment', PkgName.Rlang])],

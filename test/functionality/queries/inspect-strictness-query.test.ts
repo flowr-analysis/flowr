@@ -20,6 +20,13 @@ describe('Inspect Strict Functions Query', withTreeSitter(parser => {
 	testStrictness('a function reading its parameter is strict', 'f <- function(x) x + 1', [Ternary.Always]);
 	testStrictness('one ignoring it is not', 'f <- function(x) 1', [Ternary.Never]);
 	testStrictness('a conditional read is conditional', 'f <- function(x) if(runif(1) > .5) x', [Ternary.Maybe]);
+	/* counterexamples: what the verdict has to get right where the read is not a plain one */
+	testStrictness('an assignment forces what it stores', 'f <- function(x) { y <- x }', [Ternary.Always]);
+	testStrictness('a constant condition is no condition', 'f <- function(x) if(TRUE) x', [Ternary.Always]);
+	testStrictness('a dead branch never forces', 'f <- function(x) if(FALSE) x else 1', [Ternary.Never]);
+	testStrictness('a quoted parameter is not evaluated', 'f <- function(x) quote(x)', [Ternary.Never]);
+	testStrictness('a caught block still evaluates', 'f <- function(x) tryCatch(x, error = function(e) 1)', [Ternary.Never, Ternary.Always]);
+
 	testStrictness('the callee decides for an argument passed on', 'g <- function(y) y\nf <- function(x) g(x)', [Ternary.Always, Ternary.Always]);
 	testStrictness('a callee leaving it alone makes it lazy', 'g <- function(y) 1\nf <- function(x) g(x)', [Ternary.Never, Ternary.Never]);
 

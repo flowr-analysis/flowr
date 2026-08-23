@@ -6,8 +6,9 @@ import { SigDbBuilder, writeSignatureDb, writeShardedDatabase, type ShardSpec } 
 import { writeManifest, SigDbManifestMagic, SigDbManifestSchema, type SigDbManifest } from '../../../../../src/project/sigdb/manifest';
 import { readSigDbIndex, encodeIndex } from '../../../../../src/project/sigdb/index-format';
 import { deriveLibraryExports } from '../../../../../src/project/sigdb/decode';
-import { FnProp, ParamFlag, DepType, SigDbMagic, SigDbSchema, SigDbExt, MaxDefaultLength, DefaultCranBase } from '../../../../../src/project/sigdb/schema';
+import { FnProp, DepType, SigDbMagic, SigDbSchema, SigDbExt, MaxDefaultLength, DefaultCranBase } from '../../../../../src/project/sigdb/schema';
 import { zstdSupported } from '../../../../../src/project/sigdb/codec';
+import { ArgProp } from '../../../../../src/dataflow/environments/built-in-props';
 import { resolveSource } from '../../../../../src/project/sigdb/decompress';
 import { selectDownloadVariants } from '../../../../../src/project/sigdb/sigdb-download';
 import { sigTmpDir, cleanupSigTmpDirs, writeAndOpen, ver } from '../../../_helper/sigdb';
@@ -129,7 +130,7 @@ describe(`sigdb database (schema ${SigDbSchema})`, () => {
 	test('partial reader (SigDatabase): seeks one package; lookup + rich functions match', async() => {
 		const b = new SigDbBuilder();
 		b.addPackage('alpha', { latest: '1.0' });
-		b.addVersion('alpha', '1.0', ver([{ name: 'a1', props: FnProp.Exported, params: [{ name: 'z', missing: true }, { name: 'w', default: 'NULL' }], callees: ['helper', 'c'], file: 'R/a.R', line: 4 }]));
+		b.addVersion('alpha', '1.0', ver([{ name: 'a1', props: FnProp.Exported, params: [{ name: 'z', props: ArgProp.NoDefault }, { name: 'w', default: 'NULL' }], callees: ['helper', 'c'], file: 'R/a.R', line: 4 }]));
 		b.addPackage('beta', { latest: '2.0' });
 		b.addVersion('beta', '2.0', ver([{ name: 'b1', props: 0, params: [], callees: [], file: 'R/b.R', line: 1 }]));
 		const db = b.build(meta);
@@ -154,7 +155,7 @@ describe(`sigdb database (schema ${SigDbSchema})`, () => {
 		const fns = rd.functions('alpha', '1.0');
 		expect(fns?.length).toBe(1);
 		expect(fns?.[0].signature.map(p => p.name)).toEqual(['z', 'w']);
-		expect(fns?.[0].signature[0].optional).toBe(false); // missing -> not optional
+		expect((fns?.[0].signature[0].props ?? 0) & ArgProp.NoDefault).toBeTruthy(); // missing -> required
 		expect(fns?.[0].signature[1].default).toBe('NULL');
 		expect(fns?.[0].callees.toSorted()).toEqual(['c', 'helper']);
 		rd.close();
@@ -243,13 +244,13 @@ describe(`sigdb database (schema ${SigDbSchema})`, () => {
 		rd.close();
 	});
 
-	test('ParamFlag packing: forced + missing', () => {
+	test('parameter props packing: forced + no default', () => {
 		const b = new SigDbBuilder();
 		b.addPackage('p', { latest: '1.0' });
-		b.addVersion('p', '1.0', ver([{ name: 'f', props: FnProp.Exported, params: [{ name: 'a', forced: true, missing: true }], callees: [], line: 1 }]));
+		b.addVersion('p', '1.0', ver([{ name: 'f', props: FnProp.Exported, params: [{ name: 'a', props: ArgProp.Forced | ArgProp.NoDefault }], callees: [], line: 1 }]));
 		const db = b.build(meta);
 		const sig = db.blobs[db.pkgs['p']].sigs[0];
-		expect((sig[0] as [number, number])[1]).toBe(ParamFlag.Forced | ParamFlag.Missing);
+		expect((sig[0] as [number, number])[1]).toBe(ArgProp.Forced | ArgProp.NoDefault);
 	});
 
 	test('overlong parameter defaults are stored truncated (dictionary stays compact); short ones verbatim', () => {

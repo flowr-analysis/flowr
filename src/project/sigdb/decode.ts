@@ -4,9 +4,10 @@
  * Split out of `../sigdb` so the reader/writer there does not carry the per-record decoding.
  */
 import {
-	DefaultCranBase, FnProp, FnPropNames, ParamFlag,
+	DefaultCranBase, FnProp, FnPropNames,
 	type DepType, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigDbPkgMeta, type SigDefinitionLocation
 } from './schema';
+import type { ArgProps } from '../../dataflow/environments/built-in-props';
 import { resolveVersion } from './sigdb-version';
 
 /** the CRAN status of a version, used to build (or skip) its source-tarball link */
@@ -30,20 +31,36 @@ export function cranBlobUrl(cranBase: string, pkg: string, version: string, opts
 		: `${base}Archive/${pkg}/${pkg}_${version}.tar.gz`;
 }
 
-/** a {@link PkgBlob} in its compact on-disk tuple form (drops the trailing `dates` when empty) */
-export const blobTuple = (b: Readonly<PkgBlob>): PkgBlobTuple => Object.keys(b.dates).length > 0
-	? [b.sigs, b.cgs, b.fns, b.versions, b.noncran ?? [], b.deps, b.depsByVersion, b.dates]
-	: [b.sigs, b.cgs, b.fns, b.versions, b.noncran ?? [], b.deps, b.depsByVersion];
+/** whether the record holds anything, without building the array `Object.keys(...).length` would */
+function hasEntries(record: Readonly<Record<string, unknown>> | undefined): boolean {
+	for(const _ in record) {
+		return true;
+	}
+	return false;
+}
+
+/**
+ * A {@link PkgBlob} in its compact on-disk tuple form, dropping the trailing fields it has nothing to say
+ * about. What is there is what its length states, so no flag has to be written, read, or kept in step, and a
+ * reader that stops earlier keeps working on a bundle carrying more.
+ */
+export const blobTuple = (b: Readonly<PkgBlob>): PkgBlobTuple => {
+	const head = [b.sigs, b.cgs, b.fns, b.versions, b.noncran ?? [], b.deps, b.depsByVersion] as const;
+	if(hasEntries(b.sources)) {
+		return [...head, b.dates, b.sources];
+	}
+	return hasEntries(b.dates) ? [...head, b.dates] : [...head];
+};
 /** the inverse of {@link blobTuple}: rebuild a {@link PkgBlob} from its on-disk tuple */
 export function tupleToBlob(t: PkgBlobTuple): PkgBlob {
-	return { sigs: t[0], cgs: t[1], fns: t[2], versions: t[3], noncran: t[4]?.length ? t[4] : undefined, deps: t[5] ?? [], depsByVersion: t[6] ?? {}, dates: t[7] ?? {} };
+	return { sigs: t[0], cgs: t[1], fns: t[2], versions: t[3], noncran: t[4]?.length ? t[4] : undefined, deps: t[5] ?? [], depsByVersion: t[6] ?? {}, dates: t[7] ?? {}, sources: t[8] };
 }
 
 /** one decoded parameter of a function signature */
 export interface SigParameter {
 	readonly name:     string;
-	readonly forced:   boolean;
-	readonly optional: boolean;
+	/** bitfield of {@link ArgProp}, as flowR's built-ins state it; a bit the extractor cannot see stays unset */
+	readonly props:    ArgProps;
 	readonly default?: string;
 }
 
@@ -86,11 +103,10 @@ export function transitiveCallees(functions: readonly DecodedFunction[], name: s
 export function decodeFunction(strings: readonly string[], blob: Readonly<PkgBlob>, fnIdx: number): DecodedFunction {
 	const [nameIdx, sigIdx, cgIdx, bits, fileIdx, line, topicIdx] = blob.fns[fnIdx];
 	const signature = (sigIdx >= 0 ? blob.sigs[sigIdx] : []).map(p => {
-		const [n, flags, def] = Array.isArray(p) ? [p[0], p[1], p.length === 3 ? p[2] : -1] : [p, 0, -1];
+		const [n, props, def] = Array.isArray(p) ? [p[0], p[1], p.length === 3 ? p[2] : -1] : [p, 0, -1];
 		return {
-			name:     strings[n],
-			forced:   Boolean(flags & ParamFlag.Forced),
-			optional: !(flags & ParamFlag.Missing),
+			name: strings[n],
+			props,
 			...(def >= 0 ? { default: strings[def] } : {})
 		};
 	});

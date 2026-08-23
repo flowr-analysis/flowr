@@ -1,4 +1,5 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import type { ArgProps } from '../../../dataflow/environments/built-in-props';
 import type { ShardStatus } from '../../../project/sigdb/reader';
 import Joi from 'joi';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -39,8 +40,8 @@ export interface SignatureQuery extends BaseQueryFormat {
 /** one parameter of a function signature */
 export interface SignatureParameterView {
 	readonly name:     string;
-	readonly required: boolean;
-	readonly forced:   boolean;
+	/** bitfield of {@link ArgProp}: what the database states about the parameter, `0` when it states nothing */
+	readonly props:    ArgProps;
 	readonly default?: string;
 }
 

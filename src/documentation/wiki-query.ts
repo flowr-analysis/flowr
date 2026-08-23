@@ -49,6 +49,7 @@ import { executeFileQuery } from '../queries/catalog/files-query/files-query-exe
 import { executeCallGraphQuery } from '../queries/catalog/call-graph-query/call-graph-query-executor';
 import { executeRecursionQuery } from '../queries/catalog/inspect-recursion-query/inspect-recursion-query-executor';
 import { executeStrictnessQuery } from '../queries/catalog/inspect-strictness-query/inspect-strictness-query-executor';
+import { executeArgRolesQuery } from '../queries/catalog/inspect-arg-roles-query/inspect-arg-roles-query-executor';
 import { executeDoesCallQuery } from '../queries/catalog/does-call-query/does-call-query-executor';
 import { executeExceptionQuery } from '../queries/catalog/inspect-exceptions-query/inspect-exception-query-executor';
 import { SliceDirection } from '../util/slice-direction';
@@ -326,6 +327,7 @@ registerQueryDocumentation('inspect-higher-order', {
 		const exampleCode = 'f <- function() function(x) x; f()';
 		return `
 With this query you can identify which functions in the code are higher-order functions, i.e., either take a function as an argument or return a function.
+A parameter the body itself calls (\`function(g) g()\`, \`function(g) lapply(x, g)\`) counts as well, without any call site having to hand a function over.
 Please note, that functions that are just identities (e.g., \`function(x) x\`) are not considered higher-order if they do not take a function as an argument.
 
 Using the example code \`${exampleCode}\` the following query returns the information for all identified function definitions whether they are higher-order functions:
@@ -428,6 +430,39 @@ This query also supports a slicing criterion based query mode that only returns 
 ${
 	await showQuery(shell, exampleCode, [{
 		type:   'inspect-strictness',
+		filter: ['1@function']
+	}], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
+}
+		`;
+	}
+});
+
+registerQueryDocumentation('inspect-arg-roles', {
+	type:             'active',
+	shortDescription: 'Determine what functions do with their formals',
+	functionName:     executeArgRolesQuery.name,
+	functionFile:     '../queries/catalog/inspect-arg-roles-query/inspect-arg-roles-query-executor.ts',
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
+		const exampleCode = 'f <- function(x, xs, FUN, opt) { if(missing(opt)) print(length(xs)); lapply(xs, FUN); x }';
+		return `
+Where the ${linkToQueryOfName('inspect-strictness')} answers *whether* a formal is evaluated, this one answers
+*what for*: per function definition it returns the ${ctx.link('ArgProp')} bits of each formal, the same scheme
+flowR states its built-ins and the signature database stores its parameters with.
+A formal is an alias only if the function *always* returns it (\`return(x)\` under an \`if\` does not count),
+every other bit is the one the calls in the body state for what they are handed, and a formal carrying none at
+all is left out.
+
+Using the example code \`${exampleCode}\` the following query returns the roles of all identified formals:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'inspect-arg-roles',
+	}], { showCode: true, collapseQuery: true, ctx })
+}
+
+This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
+${
+	await showQuery(shell, exampleCode, [{
+		type:   'inspect-arg-roles',
 		filter: ['1@function']
 	}], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
 }

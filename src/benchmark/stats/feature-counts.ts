@@ -7,6 +7,8 @@ import { SupportedQueries } from '../../queries/query';
 import { LintingRules } from '../../linter/linter-rules';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
+import { BuiltInPlugins } from '../../project/plugins/plugin-registry';
+import { PluginType } from '../../project/plugins/flowr-analyzer-plugin';
 import type { FlowrFeatureCounts } from './stats';
 
 const DefaultProcessors: readonly string[] = [BuiltInProcName.Default, BuiltInProcName.DefaultReadAllArgs];
@@ -28,8 +30,27 @@ function countRuleTags(): Record<string, number> {
 	return tags;
 }
 
+/** which built-in plugins carry each `PluginType`, which a plugin only states on the instance */
+function pluginsByType(): Record<string, string[]> {
+	/* every type the version defines, so one nothing is registered for reads as none rather than as missing */
+	const types: Record<string, string[]> = Object.fromEntries(Object.values(PluginType).map(t => [t, []]));
+	for(const entry of (Array.isArray(BuiltInPlugins) ? BuiltInPlugins : []) as readonly [string, new () => { type?: unknown }][]) {
+		let type: unknown;
+		try {
+			type = new entry[1]().type;
+		} catch{
+			continue;
+		}
+		if(typeof type === 'string') {
+			(types[type] ??= []).push(entry[0]);
+		}
+	}
+	return types;
+}
+
 /**
- * Counts the linting rules, their tags, the queries, and the built-in definitions by the handler they use.
+ * Counts the linting rules, their tags, the queries, the built-in plugins by their type, and the built-in
+ * definitions by the handler they use.
  * Every count is defensive, as this also runs against older definitions when the history is filled in.
  */
 export function countFeatures(): FlowrFeatureCounts {
@@ -48,8 +69,11 @@ export function countFeatures(): FlowrFeatureCounts {
 			evals++;
 		}
 	}
+	const plugins = pluginsByType();
 	return {
 		lintingRules:                      Object.keys(LintingRules ?? {}).length,
+		plugins:                           Array.isArray(BuiltInPlugins) ? BuiltInPlugins.length : 0,
+		pluginsByType:                     plugins,
 		queries:                           Object.keys(SupportedQueries ?? {}).length,
 		builtinDefinitions:                builtins.length,
 		builtinDefinitionsDefault:         def,

@@ -615,7 +615,7 @@
 		{ id: 'volume', title: 'Corpus size', about: 'how much input the suite covers', log: true, folded: true },
 		{ id: 'graphs', title: 'Graph size', about: 'how large the graphs the analysis builds are' },
 		{ id: 'dataframes', title: 'Data frame shapes', about: 'what the shape inference sees and how precise it is', folded: true },
-		{ id: 'features', title: 'Feature set', about: 'the linting rules, their tags, and the queries this version carries', perVersion: true },
+		{ id: 'features', title: 'Feature set', about: 'the linting rules, queries, and plugins this version carries', perVersion: true },
 		{ id: 'builtins', title: 'Built-in definitions', about: 'how the built-ins are handled', perVersion: true },
 		{ id: 'calibration', title: 'Machine calibration', about: 'runtime of the fixed synthetic workload', folded: true },
 		{ id: 'sigdb', title: 'Signature database', about: 'the package signatures this version ships', perVersion: true, facts: true },
@@ -645,7 +645,7 @@
 		if(n.startsWith('built-in definitions')) {
 			return 'builtins';
 		}
-		if(n === 'queries' || n.startsWith('linting rules')) {
+		if(n === 'queries' || n === 'plugins' || n.startsWith('linting rules') || n.startsWith('plugins (')) {
 			return 'features';
 		}
 		// only the three reductions that describe the slice itself, the rest is recorded but not shown

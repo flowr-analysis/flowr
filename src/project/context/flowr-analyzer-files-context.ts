@@ -27,6 +27,8 @@ import type {
 	FlowrRdFile, FlowrRdIndexFile, FlowrRdMacroFile, FlowrRdMetaFile, FlowrRdTopicIndexFile, RdIndex
 } from '../plugins/file-plugins/files/flowr-rd-file';
 import { FlowrDataListFile, rdIndexOf } from '../plugins/file-plugins/files/flowr-rd-file';
+import type { SysdataObject } from '../plugins/file-plugins/files/flowr-sysdata-file';
+import { FlowrSysdataFile } from '../plugins/file-plugins/files/flowr-sysdata-file';
 import type { ProjectKind } from './project-kind';
 import { classifyProjectKind, resolveClassifyOptions, type ContentReader } from './classify-project-kind';
 import { FlowrAnalyzer } from '../flowr-analyzer';
@@ -66,8 +68,8 @@ export type RoleBasedFiles = {
 	[FileRole.Startup]:       FlowrFileProvider[];
 	[FileRole.Environment]:   FlowrFileProvider[];
 	[FileRole.Source]:        FlowrFileProvider[];
-	/** a `data/datalist` ({@link FlowrDataListFile}) or any other data file, which has no special support */
-	[FileRole.Data]:          (FlowrDataListFile | FlowrFileProvider)[];
+	/** a `data/datalist` ({@link FlowrDataListFile}), a package's system data ({@link FlowrSysdataFile}), or any other data file, which has no special support */
+	[FileRole.Data]:          (FlowrDataListFile | FlowrSysdataFile | FlowrFileProvider)[];
 	[FileRole.Other]:         FlowrFileProvider[];
 };
 
@@ -120,6 +122,14 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * @param dataset - the name passed to `data()`
 	 */
 	datasetObjects(dataset: string): readonly string[];
+
+	/**
+	 * The objects a package's system data (`R/sysdata.rda`, or the `R/sysdata.rdx` of an installed package)
+	 * lazy-loads into its namespace. R makes these available to every line of the package's own code without
+	 * anything bringing them in, and keeps them internal: they are neither exported nor reachable through
+	 * `data()`. Empty for a project that ships none.
+	 */
+	sysdataObjects(): readonly SysdataObject[];
 
 	/**
 	 * Get all files known to this context.
@@ -577,6 +587,16 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			}
 		}
 		return [];
+	}
+
+	public sysdataObjects(): readonly SysdataObject[] {
+		const objects: SysdataObject[] = [];
+		for(const file of this.getFilesByRole(FileRole.Data)) {
+			if(file instanceof FlowrSysdataFile) {
+				objects.push(...file.content());
+			}
+		}
+		return objects;
 	}
 
 	public getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role] {

@@ -9,7 +9,7 @@ import { build, type Plugin } from 'esbuild';
 import { builtinModules } from 'module';
 import { openDatabase } from './sigdb-index';
 import { rSourceUrl, helpPageUrl } from '../src/queries/catalog/signature-query/signature-query-executor';
-import { fillVersion, versionMarker } from './version-marker';
+import { template, writePage } from './html-page';
 import { FlowrConfig } from '../src/config';
 import { DefaultBuiltinConfig } from '../src/dataflow/environments/default-builtin-config';
 import { Identifier } from '../src/dataflow/environments/identifier';
@@ -175,17 +175,17 @@ async function main(): Promise<void> {
 
 	/* the wasm rides along inside the bundle as a data url, so the page has nothing to fetch and works
 	   from a file:// url as well as over GitHub Pages */
-	const page = fs.readFileSync(path.join('scripts', 'playground', 'index.html'), 'utf8');
+	const page = template('playground', 'index.html');
 	const signatures = await baseSignatures();
 	const exports = await packageExports();
 	/* the script the page opens with, kept as an R file so the documentation links to the same one */
 	const sample = fs.readFileSync(path.join('scripts', 'playground', 'sample.R'), 'utf8').trim();
-	fs.writeFileSync(path.join(Target, 'index.html'), fillVersion(page
+	writePage(path.join(Target, 'index.html'), (page
 		/* the text of a script element ends at `</`, and nothing else in it has to be escaped */
 		.replace('<!--SAMPLE-->', sample.replaceAll('</', '<\\/'))
 		.replace('<!--SIGS-->', signatures)
 		.replace('<!--PKGS-->', exports)
-		.replace('<!--CFGDOCS-->', configDocs()), versionMarker()));
+		.replace('<!--CFGDOCS-->', configDocs())));
 	const size = Object.values(result.metafile.outputs).reduce((sum, o) => sum + o.bytes, 0);
 	console.log(`  wrote ${Target} (${(size / 1024 / 1024).toFixed(1)} MB bundle, `
 		+ `${Math.round(signatures.length / 1024)} kB of base R signatures, `

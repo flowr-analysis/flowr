@@ -142,6 +142,8 @@ const metadataFilePatterns = [
 const testOrVignetteDir = /(^|\/)(tests?|vignettes?)(\/|$)/i;
 /** a package's manual pages and the `macros/` definitions they use, which the Rd plugins read */
 const manPageFile = /(^|[\\/])man[\\/](macros[\\/])?[^\\/]+\.rd$/i;
+/** a package's system data, which R lazy-loads into its namespace (source `R/sysdata.rda`, installed `R/sysdata.rdx`) */
+const sysdataFile = /(^|[\\/])R[\\/]sysdata\.(rda|rdx)$/i;
 /** the tables R keeps beside the pages: what a package documents, and what its datasets provide */
 const documentationTables = [
 	/^(INDEX|00Index)$/,
@@ -162,7 +164,8 @@ function resolveRules(override: { include?: string[], exclude?: string[] } | und
 function keptByDefault(rel: string): boolean {
 	const base = path.basename(rel);
 	return discoverRSourcesRegex.test(rel) || metadataFilePatterns.some(p => p.test(base))
-		|| testOrVignetteDir.test(rel) || manPageFile.test(rel) || documentationTables.some(p => p.test(base));
+		|| testOrVignetteDir.test(rel) || manPageFile.test(rel) || sysdataFile.test(rel)
+		|| documentationTables.some(p => p.test(base));
 }
 
 /** whether root-relative `rel` is kept; an explicit `ignore` or `perKind` exclude wins over everything */
@@ -171,8 +174,8 @@ function keep(rel: string, rules: KeepRules, ignore: readonly ((p: string) => bo
 	if(ignore.some(m => m(rel)) || rules.exclude.some(m => m(rel))) {
 		return false;
 	}
-	// a binary/data blob is out too, except a `.Rd` under `man/`: there the extension is the package's documentation
-	if(noiseFiles.test(rel) && !manPageFile.test(rel)) {
+	// a binary/data blob is out too, except a `.Rd` under `man/` and the package's system data: those the analysis reads
+	if(noiseFiles.test(rel) && !manPageFile.test(rel) && !sysdataFile.test(rel)) {
 		return false;
 	}
 	return keptByDefault(rel) || rules.include.some(m => m(rel));

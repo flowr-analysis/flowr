@@ -16,7 +16,7 @@ import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
 import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
-import type { BrandedIdentifier, IdentifierDefinition, InGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import type { BrandedIdentifier, IdentifierDefinition, InGraphIdentifierDefinition, InGraphReferenceType } from '../../../../../environments/identifier';
 import type { BuiltInMemory } from '../../../../../environments/built-in';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { Environment, EnvType, REnvironment } from '../../../../../environments/environment';
@@ -36,6 +36,7 @@ import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 import { baseRPackages } from '../../../../../../util/r-base-packages';
 import { resolveAttachPosition } from './built-in-envir-utils';
 import { uniqueArray } from '../../../../../../util/collections/arrays';
+import { sexpTypeToReferenceType } from './built-in-load';
 
 /** Controls how {@link processLibrary} brings a package into scope. */
 export interface LibraryProcessorConfig {
@@ -692,9 +693,35 @@ export function attachAssumedPackages(env: REnvironmentInformation, ctx: FlowrAn
 	return built;
 }
 
-/** attach every project-level environment layer in order: base R namespaces, the project's own `importFrom` symbols, its declared dependencies, then whatever the configuration assumes attached */
+/**
+ * Defines the objects `R/sysdata.rda` lazy-loads into the package namespace: internal, not exported, not
+ * reachable through `data()`, and available to the package's own code without a call bringing them in.
+ * flowR models that namespace with the global environment, which gives them R's resolution order: the
+ * package's own assignment shadows them, and they answer before anything it imports or attaches.
+ * @see https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Data-in-packages
+ */
+export function defineProjectSysdata(env: REnvironmentInformation, ctx: FlowrAnalyzerContext): REnvironmentInformation {
+	const namespace = ctx.meta.getNamespace();
+	/* only a package has a namespace to lazy-load into */
+	if(namespace === undefined) {
+		return env;
+	}
+	const objects = ctx.files.sysdataObjects();
+	if(objects.length === 0) {
+		return env;
+	}
+	const definedAt = NodeId.toBuiltIn(namespace);
+	return { level:   env.level, current: env.current.defineAll(objects.map(object => ({
+		name:   Identifier.make(object.name, namespace),
+		type:   sexpTypeToReferenceType(object.type) as InGraphReferenceType,
+		nodeId: NodeId.fromPkgFn(namespace, object.name),
+		definedAt
+	}))) };
+}
+
+/** attach every project-level environment layer in order: base R namespaces, the project's own `importFrom` symbols, its declared dependencies, whatever the configuration assumes attached, then the package's own system data */
 export function attachProject(env: REnvironmentInformation, ctx: FlowrAnalyzerContext): REnvironmentInformation {
-	return attachAssumedPackages(attachDeclaredDependencies(attachProjectImports(attachBaseRNamespaces(env, ctx), ctx), ctx), ctx);
+	return defineProjectSysdata(attachAssumedPackages(attachDeclaredDependencies(attachProjectImports(attachBaseRNamespaces(env, ctx), ctx), ctx), ctx), ctx);
 }
 
 function recImports(importsEnv: Environment, namespaceInfo: NamespaceInfo, ctx: FlowrAnalyzerContext, alreadyImportedAll: Set<string>){

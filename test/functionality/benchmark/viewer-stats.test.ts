@@ -37,7 +37,7 @@ interface BenchStats {
 
 /** the history the page ships with, one entry per suite */
 interface BenchmarkData {
-	entries: Record<string, { benches: { name: string, unit: string }[] }[]>;
+	entries: Record<string, { commit?: { message?: string }, benches: { name: string, unit: string }[] }[]>;
 }
 
 /* the page is not part of the TypeScript project, so it is loaded by path rather than imported */
@@ -146,6 +146,9 @@ describe('Benchmark page helpers', () => {
 		assert.ok(!S.GROUPS.some(g => g.id === 'other'), 'a metric no rule claims stays off the page');
 		assert.deepStrictEqual(S.GROUPS.filter(g => g.perVersion).map(g => g.id), ['features', 'builtins', 'sigdb', 'tests'],
 			'only what the flowR version itself carries is independent of the suite');
+		assert.strictEqual(S.groupOf('plugins', '#'), 'features', 'the plugins are part of what the version carries');
+		assert.strictEqual(S.groupOf('plugins (file-load)', '#'), 'features', 'the per-type breakdown joins its total');
+		assert.strictEqual(S.betterOf('plugins', '#'), 'flat', 'more plugins is neither better nor worse');
 		assert.strictEqual(S.betterOf('data frame shapes (exact)', '#'), 'up');
 		assert.strictEqual(S.betterOf('data frame shapes (top)', '#'), 'down');
 		assert.strictEqual(S.betterOf('Total per-file', 'ms'), 'down');
@@ -273,7 +276,7 @@ describe('Benchmark page helpers', () => {
 			assert.ok(classes.has(i), `.s${i} is missing from the stylesheet`);
 		}
 		/* the breakdowns are drawn as bars in the colour of their parent, so they need none */
-		const isBar = (name: string) => /^linting rules \(|^signature database base functions \(|^tests \(/.test(name);
+		const isBar = (name: string) => /^linting rules \(|^plugins \(|^signature database base functions \(|^tests \(/.test(name);
 		/* the page assigns its data to `window`, which node does not have */
 		const global = globalThis as unknown as { window?: unknown, BENCHMARK_DATA: BenchmarkData };
 		global.window ??= globalThis;
@@ -300,12 +303,38 @@ describe('Benchmark page helpers', () => {
 		}
 	});
 
+	test('the shipped history states the plugin counts of every release that states its feature set', () => {
+		const global = globalThis as unknown as { window?: unknown, BENCHMARK_DATA: BenchmarkData };
+		global.window ??= globalThis;
+		createRequire(__filename)(path.join(process.cwd(), 'wiki/stats/benchmark', 'data.js'));
+		let stated = 0;
+		for(const [suite, runs] of Object.entries(global.BENCHMARK_DATA.entries)) {
+			for(const run of runs) {
+				const carries = new Set(run.benches.map(b => b.name));
+				/* the per-version block sits in whichever run of a release carries the rules, so this follows it */
+				if(!carries.has('linting rules')) {
+					continue;
+				}
+				const version = /(\d+\.\d+\.\d+)/.exec(run.commit?.message ?? '')?.[1] ?? '?';
+				/* only from the release the registry existed in, everything before it cannot be counted */
+				if(Number(version.split('.')[1]) < 7) {
+					continue;
+				}
+				assert.ok(carries.has('plugins'), `${suite} states no plugin count for ${version}`);
+				assert.ok([...carries].some(n => n.startsWith('plugins (')), `${suite} states no plugin types for ${version}`);
+				stated++;
+			}
+		}
+		assert.ok(stated > 0, 'the history states the feature set of at least one release');
+	});
+
 	test('upload the counters where nothing alerts on them', () => {
 		for(const [name, unit] of [
 			['linting rules', '#'], ['linting rules (smell)', '#'], ['queries', '#'],
 			['built-in definitions', '#'], ['signature database functions', '#'], ['signature database size', 'KiB'],
 			['number of files', '#'], ['input lines', '#'], ['dataflow vertices', '#'], ['control flow edges', '#'],
-			['data frame constraints', '#'], ['tests', '#'], ['tests (dataflow)', '#'], ['tests overall', '#']
+			['data frame constraints', '#'], ['tests', '#'], ['tests (dataflow)', '#'], ['tests overall', '#'],
+			['plugins', '#'], ['plugins (file-load)', '#']
 		] as const) {
 			assert.ok(isInfoEntry({ name, unit }), `${name} grows with the release, that is no regression`);
 		}

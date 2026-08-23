@@ -37,6 +37,7 @@ import {
 	FlowrAnalyzerRdTopicIndexFilePlugin
 } from './file-plugins/flowr-analyzer-rd-file-plugin';
 import { FlowrAnalyzerRdaFilePlugin } from './file-plugins/flowr-analyzer-rda-file-plugin';
+import { FlowrAnalyzerSysdataFilePlugin } from './file-plugins/flowr-analyzer-sysdata-file-plugin';
 import { FlowrAnalyzerMetaVignetteFilesPlugin } from './file-plugins/flowr-analyzer-vignette-file-plugin';
 import { FlowrAnalyzerMetaTestFilesPlugin } from './file-plugins/flowr-analyzer-test-file-plugin';
 import { FlowrAnalyzerMetaInstFilesPlugin } from './file-plugins/flowr-analyzer-inst-file-plugin';
@@ -111,6 +112,8 @@ export const BuiltInPlugins = [
 	['file:rd-topics', FlowrAnalyzerRdTopicIndexFilePlugin],
 	['file:rd-meta', FlowrAnalyzerRdMetaFilePlugin],
 	['file:datalist', FlowrAnalyzerDataListFilePlugin],
+	/* the sysdata plugin comes first: it claims the `R/sysdata.rda` the rda plugin would read as a plain workspace */
+	['file:sysdata', FlowrAnalyzerSysdataFilePlugin],
 	['file:rda', FlowrAnalyzerRdaFilePlugin],
 	['file:license', FlowrAnalyzerLicenseFilePlugin],
 	['file:virtualenv', FlowrAnalyzerVirtualEnvFilePlugin],

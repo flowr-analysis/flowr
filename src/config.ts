@@ -566,6 +566,8 @@ export const FlowrDefaultPlugins = [
 	'file:rd-topics',
 	'file:rd-meta',
 	'file:datalist',
+	/* the sysdata plugin before the rda one, so `R/sysdata.rda` never reads as a plain workspace */
+	'file:sysdata',
 	'file:rda',
 	'file:license',
 	'file:virtualenv',

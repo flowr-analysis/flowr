@@ -12,7 +12,7 @@
 	for(const id of ['theme', 'suite', 'engine', 'range', 'mode', 'baseline', 'baselineOut', 'smooth', 'smoothOut',
 		'band', 'calibrate', 'charts', 'status', 'tooltip', 'rangeNote', 'calibrationNote', 'sourceNote',
 		'baselineField', 'calibrateField', 'dlSuite', 'dlCsv', 'dlAll', 'lock', 'resetLayout', 'copyLink',
-		'latest', 'watchNote',
+		'watchNote',
 		'fullscreen', 'panelData', 'panelView', 'panelLayout', 'panelDownload',
 		'digestData', 'digestView', 'digestLayout', 'digestDownload']) {
 		ui[id] = el(id.replace(/[A-Z]/g, c => '-' + c.toLowerCase()));
@@ -744,6 +744,9 @@
 		if(barsExpanded.size) {
 			p.set('open', [...barsExpanded].join(','));
 		}
+		if(barsPick.size) {
+			p.set('bars', [...barsPick].map(([id, at]) => id + ':' + at).join(','));
+		}
 		const off = S.encodeGroups(hidden);
 		if(off) {
 			p.set('hidden', off);
@@ -800,6 +803,15 @@
 				barsExpanded.add(id);
 			}
 		}
+		if(p.has('bars')) {
+			barsPick.clear();
+			for(const part of p.get('bars').split(',').filter(Boolean)) {
+				const at = part.lastIndexOf(':');
+				if(at > 0) {
+					barsPick.set(part.slice(0, at), Number(part.slice(at + 1)) || 0);
+				}
+			}
+		}
 		if(p.has('hidden')) {
 			hidden.clear();
 			for(const [id, set] of S.decodeGroups(p.get('hidden'))) {
@@ -824,7 +836,10 @@
 		renderSafe();
 	}
 
-	/** the groups in the reader's order, with anything they never moved left where it was */
+	/**
+	 * The groups in the reader's order. A tile they never moved goes where the page puts it, not to the end:
+	 * a stored order from before a new tile existed would otherwise bury it below everything.
+	 */
 	function orderedGroups() {
 		const byId = new Map(S.GROUPS.map(g => [g.id, g]));
 		const out = [];
@@ -835,9 +850,19 @@
 			}
 		}
 		for(const group of S.GROUPS) {
-			if(byId.has(group.id)) {
-				out.push(group);
+			if(!byId.has(group.id)) {
+				continue;
 			}
+			/* behind the last tile the page puts before this one, so it lands among its own neighbours */
+			const before = S.GROUPS.slice(0, S.GROUPS.indexOf(group)).map(g => g.id);
+			let at = out.length;
+			for(let i = out.length - 1; i >= 0; i--) {
+				if(before.includes(out[i].id)) {
+					at = i + 1;
+					break;
+				}
+			}
+			out.splice(at, 0, group);
 		}
 		return out;
 	}
@@ -1159,7 +1184,7 @@
 	}
 
 	/** the breakdowns that are drawn as bars below the chart rather than as lines in it */
-	const isBar = name => /^linting rules \(|^signature database base functions \(|^tests \(/.test(String(name));
+	const isBar = name => /^linting rules \(|^plugins \(|^signature database base functions \(|^tests \(/.test(String(name));
 
 	/** a chart only spans what it has data for, an empty stretch would just waste the axis */
 	function clipToSpan(shown, series, all, runs, bumps) {
@@ -1443,64 +1468,122 @@
 			fig.appendChild(share);
 			// the detail follows the pointer, so it always describes the run under the cursor
 			const swap = swapper(share);
+			/* the run the pointer is over, kept so that switching the detailed view stays on it */
+			let over;
+			const redraw = () => swap(() => compositionOf(group, all, runs, over));
+			redraws.set(group.id, redraw);
 			svg.addEventListener('pointermove', ev => {
-				const i = at(ev);
-				swap(() => compositionOf(group, all, runs, i));
+				over = at(ev);
+				redraw();
 			});
-			svg.addEventListener('pointerleave', () => swap(() => compositionOf(group, all, runs)));
+			svg.addEventListener('pointerleave', () => {
+				over = undefined;
+				redraw();
+			});
 		}
 		into.appendChild(fig);
 		return fig;
 	}
 
-	/** the breakdowns drawn as bars: parts of a whole that overlap, so a pie would lie about them */
+	/** the breakdowns drawn as bars: parts of a whole that overlap, so a pie would lie about them. A tile may state several */
 	const BARS = {
-		/* a linting rule usually carries several tags */
-		features: {
-			parent: 'linting rules', part: /^linting rules \((.*)\)$/, label: t => S.tagLabel(t),
-			more:   'tags', note: 'rules per tag as of '
-		},
+		features: [
+			/* a linting rule usually carries several tags */
+			{
+				title:  'Rules per tag', parent: 'linting rules', part: /^linting rules \((.*)\)$/, label: t => S.tagLabel(t),
+				more:   'tags', note: 'rules per tag as of '
+			},
+			/* every plugin carries exactly one type, which is the stage of the analysis it runs at */
+			{
+				title:  'Plugins per type', parent: 'plugins', part: /^plugins \((.*)\)$/, label: t => t,
+				/* a type nothing is registered for is an answer of its own, so it is kept rather than dropped */
+				more:   'types', note: 'plugins per type as of ', zero: true,
+				link:   { href: 'https://github.com/flowr-analysis/flowr/wiki/Analyzer#plugins', text: 'plugins' }
+			}
+		],
 		/* a function record carries as many of these as it has information for */
-		sigdb: {
-			parent: 'signature database base functions', part: /^signature database base functions \((.*)\)$/, label: t => t,
+		sigdb: [{
+			title:  'What a base-R entry carries', parent: 'signature database base functions', part: /^signature database base functions \((.*)\)$/, label: t => t,
 			more:   'kinds of information', note: 'what a base-R entry carries as of '
-		},
+		}],
 		/* a test may cover several parts of the analysis */
-		tests: {
-			parent: 'tests overall', part: /^tests \((.*)\)$/, label: t => t,
+		tests: [{
+			title:  'Labeled tests per part', parent: 'tests overall', part: /^tests \((.*)\)$/, label: t => t,
 			more:   'parts', note: 'labeled tests per part as of ', top: 7,
 			link:   { href: 'https://github.com/flowr-analysis/flowr/wiki/Capabilities', text: 'capabilities' }
-		}
+		}]
 	};
+
+	/** what {@link barsExpanded} remembers a breakdown under; the first keeps the plain id, so older links still open it */
+	const openKey = (group, at) => at === 0 ? group.id : group.id + '~' + at;
+
+	/** which of a tile's breakdowns is the one on show, as only one of them is */
+	const barsPick = new Map();
+
+	/**
+	 * How a tile redraws what it states about one run. A detailed view is swapped out as the pointer moves
+	 * over the chart, so a button inside it must ask the tile to draw itself again rather than replace a
+	 * node the swap has since taken out.
+	 */
+	const redraws = new Map();
+
+	/**
+	 * The names an entry stands for, without the leading words every one of them carries: grouped by
+	 * category, those words are what the category already says. Whole words only, so `versions:renv` and
+	 * `versions:rv` keep theirs, and `file-roles:inst` next to `file:rda` loses only the `file`.
+	 */
+	function membersOf(text) {
+		const names = String(text || '').split(', ').filter(Boolean);
+		if(names.length < 2) {
+			return names.join(', ');
+		}
+		/* `a-b:c` becomes `[a, -, b, :, c]`, so an even index is a word and the odd one after it its separator */
+		const parts = names.map(n => n.split(/([:-])/));
+		let common = 0;
+		/* a word every name shares, and that none of them ends on, as a name must keep something of its own */
+		while(parts.every(p => p[common * 2] !== undefined && p[common * 2] === parts[0][common * 2] && p[common * 2 + 1] !== undefined)) {
+			common++;
+		}
+		return (common ? parts.map(p => p.slice(common * 2).join('')) : names).join(', ');
+	}
+
+	/** redraws the tile of `group`, falling back to replacing `box` where it draws no chart to follow */
+	function redrawBars(group, box, make) {
+		const redraw = redraws.get(group.id);
+		if(redraw) {
+			redraw();
+		} else {
+			replaceNode(box, make());
+		}
+	}
 
 	/**
 	 * The bars of one run. `lead` is the colour class of the donut they stand next to: the bars break down
 	 * the same thing it does, so a colour of their own would read as a second, unrelated quantity.
 	 */
-	function barsOf(group, series, runs, at, lead) {
-		const spec = BARS[group.id];
-		if(!spec) {
-			return null;
-		}
+	function barOf(group, spec, key, series, runs, at, lead, specs, pick) {
 		const i = at === undefined || at < 0 || at >= runs.length ? runs.length - 1 : at;
 		const parent = series.find(s => s.name === spec.parent);
 		const cls = lead || 's' + (parent ? parent.color : 0);
 		const tags = series
-			.map(s => ({ part: spec.part.exec(s.name), value: s.values[i] }))
-			.filter(t => t.part && typeof t.value === 'number' && t.value > 0)
-			.map(t => ({ label: spec.label(t.part[1]), value: t.value }))
+			.map(s => ({ part: spec.part.exec(s.name), value: s.values[i], name: s.name }))
+			.filter(t => t.part && typeof t.value === 'number' && (spec.zero ? t.value >= 0 : t.value > 0))
+			.map(t => ({ label: spec.label(t.part[1]), value: t.value, name: t.name }))
 			.sort((a, b) => b.value - a.value);
 		if(!tags.length) {
 			return null;
 		}
 		const max = tags[0].value || 1;
 		const box = dom('div', { className: 'composition tags' });
+		box.appendChild(dom('div', { className: 'tags-head' }, dom('span', { className: 'tags-title', textContent: spec.title })));
 		const top = spec.top || 3;
-		const shownTags = barsExpanded.has(group.id) ? tags : tags.slice(0, top);
+		const shownTags = barsExpanded.has(key) ? tags : tags.slice(0, top);
 		const list = dom('ul');
 		const whole = parent && typeof parent.values[i] === 'number' ? parent.values[i] : 0;
 		shownTags.forEach((entry, rank) => {
 			const share = whole > 0 ? (entry.value / whole * 100).toFixed(1) + '% of ' + fmtFact(whole, '#') : '';
+			/* what the entry stands for, where the run wrote the names down alongside the number */
+			const members = membersOf(extraOf(runs[i], entry.name));
 			const name = dom('span', { className: 'tag-name', textContent: entry.label });
 			const bar = dom('span', { className: 'tag-bar ' + cls });
 			bar.style.width = (entry.value / max * 100) + '%';
@@ -1513,7 +1596,7 @@
 				noteTooltip(cell, {
 					run: runs[i], color: cls, label: entry.label,
 					value: fmtFact(entry.value, '#'),
-					notes: [share, spec.note.replace(/ as of $/, ''), 'as of ' + S.runLabel(runs[i]) + ', ' + fmtDate(runs[i].date)]
+					notes: [members, share, spec.note.replace(/ as of $/, ''), 'as of ' + S.runLabel(runs[i]) + ', ' + fmtDate(runs[i].date)]
 						.filter(Boolean)
 				});
 			}
@@ -1522,7 +1605,7 @@
 		box.appendChild(list);
 		const foot = dom('div', { className: 'tags-foot' });
 		if(tags.length > top) {
-			const open = barsExpanded.has(group.id);
+			const open = barsExpanded.has(key);
 			const chevron = tag('svg', { class: 'chevron', viewBox: '0 0 12 12', 'aria-hidden': 'true' });
 			chevron.appendChild(tag('path', { d: 'M3 4.5 L6 8 L9 4.5' }));
 			const more = dom('button', { type: 'button', className: 'unfold' + (open ? ' open' : '') },
@@ -1530,12 +1613,12 @@
 			more.setAttribute('aria-expanded', String(open));
 			more.addEventListener('click', () => {
 				if(open) {
-					barsExpanded.delete(group.id);
+					barsExpanded.delete(key);
 				} else {
-					barsExpanded.add(group.id);
+					barsExpanded.add(key);
 				}
 				writeUrl();
-				replaceNode(box, barsOf(group, series, runs, at, lead));
+				redrawBars(group, box, () => barOf(group, spec, key, series, runs, at, lead, specs, pick));
 			});
 			foot.appendChild(more);
 		}
@@ -1549,7 +1632,40 @@
 		}
 		foot.appendChild(note);
 		box.appendChild(foot);
+		if(specs && specs.length > 1) {
+			box.appendChild(tabsOf(group, specs, pick, box, series, runs, at, lead));
+		}
 		return box;
+	}
+
+	/** the tabs below a tile that states several breakdowns, as only one of them is on show */
+	function tabsOf(group, specs, pick, box, series, runs, at, lead) {
+		const row = dom('div', { className: 'tags-tabs' });
+		specs.forEach((spec, i) => {
+			const on = i === pick;
+			const b = dom('button', { type: 'button', className: 'tags-tab' + (on ? ' on' : ''), textContent: spec.title });
+			b.setAttribute('aria-pressed', String(on));
+			b.addEventListener('click', () => {
+				barsPick.set(group.id, i);
+				writeUrl();
+				redrawBars(group, box, () => barsOf(group, series, runs, at, lead));
+			});
+			row.appendChild(b);
+		});
+		return row;
+	}
+
+	/** the breakdown the tile is showing, which is one of them */
+	function barsOf(group, series, runs, at, lead) {
+		const specs = BARS[group.id];
+		if(!specs) {
+			return null;
+		}
+		const pick = Math.min(barsPick.get(group.id) ?? 0, specs.length - 1);
+		return barOf(group, specs[pick], openKey(group, pick), series, runs, at, lead, specs, pick)
+			/* the chosen one states nothing for this run, so the first that does is shown instead */
+			?? specs.map((spec, i) => i === pick ? null : barOf(group, spec, openKey(group, i), series, runs, at, lead, specs, i))
+				.find(Boolean) ?? null;
 	}
 
 	/** the arc of a donut slice, from one fraction of the circle to the next */
@@ -1666,7 +1782,7 @@
 
 	/** the history of one stated number, zero based, so the tile also shows how it got there */
 	function timelineOf(s, runs, color, onPick, mark) {
-		const w = 300, h = 40, padX = 4, padT = 5, padB = 11;
+		const w = 300, h = 46, padX = 4, padT = 11, padB = 11;
 		const points = s.values.map((v, i) => [i, v]).filter(p => typeof p[1] === 'number');
 		if(points.length < 1) {
 			return null;
@@ -1680,17 +1796,30 @@
 		const svg = tag('svg', { class: 's' + (color === undefined ? s.color : color), viewBox: '0 0 ' + w + ' ' + h, role: 'img',
 			'aria-label': 'how ' + s.name + ' developed over the releases' });
 		svg.appendChild(tag('line', { class: 'timeline-base', x1: padX, y1: h - padB, x2: w - padX, y2: h - padB }));
-		/* the same releases the charts mark, so a stated number sits on the same timeline as a measured one */
-		for(const b of S.releaseBumps(runs)) {
-			if(b.index >= 0 && b.index <= last) {
-				const guide = tag('line', {
-					class: 'timeline-marker ' + b.kind, x1: x(b.index), x2: x(b.index), y1: padT - 2, y2: h - padB
-				});
-				guide.appendChild(tag('title', {}, (b.kind === 'major' ? 'major release ' : 'minor release ') + b.version
-					+ ', ' + fmtDate(runs[b.index].date)));
-				svg.appendChild(guide);
-			}
+		/* the same releases the charts mark, named above the line the way the charts name them */
+		const bumps = S.releaseBumps(runs).filter(b => b.index >= 0 && b.index <= last).map(b => ({
+			b, at: x(b.index), text: b.kind === 'major' ? 'v' + b.version : b.version.replace(/\.\d+$/, '')
+		}));
+		for(const m of bumps) {
+			m.width = m.text.length * 3 + 4;
+			/* the newest release sits at the border, so its name hangs to the left instead of being cut off */
+			m.flip = m.at + m.width > w;
 		}
+		const named = S.fitLabels(bumps.map(m => [m.flip ? m.at - m.width : m.at, m.width]));
+		bumps.forEach((m, k) => {
+			const guide = tag('line', {
+				class: 'timeline-marker ' + m.b.kind, x1: m.at, x2: m.at, y1: padT - 2, y2: h - padB
+			});
+			guide.appendChild(tag('title', {}, (m.b.kind === 'major' ? 'major release ' : 'minor release ') + m.b.version
+				+ ', ' + fmtDate(runs[m.b.index].date)));
+			svg.appendChild(guide);
+			if(named[k]) {
+				svg.appendChild(tag('text', {
+					class: 'timeline-release ' + m.b.kind, x: m.flip ? m.at - 2 : m.at + 2, y: padT - 5,
+					...(m.flip ? { 'text-anchor': 'end' } : {})
+				}, m.text));
+			}
+		});
 		for(const seg of S.segments(s.values)) {
 			const pts = seg.map(i => [x(i), y(s.values[i])]);
 			if(pts.length > 1) {
@@ -1852,7 +1981,7 @@
 			box.appendChild(rest);
 		}
 		const trend = spec.trend ? series.find(x => x.name === spec.trend) : null;
-		const barParent = BARS[group.id] ? series.find(x => x.name === BARS[group.id].parent) : undefined;
+		const barParent = BARS[group.id] ? series.find(x => x.name === BARS[group.id][0].parent) : undefined;
 		const swap = swapper(box);
 		const timeline = trend ? timelineOf(trend, runs, barParent ? barParent.color : undefined,
 			i => swap(() => factsOf(group, series, runs, i)), at) : null;
@@ -2109,49 +2238,6 @@
 
 	/* ---------- render ---------- */
 
-	/** the release this page is about, which is the one a reader looks for before anything else */
-	function showLatest(run) {
-		if(!run) {
-			ui.latest.hidden = true;
-			return;
-		}
-		const label = S.runLabel(run);
-		const tag = /^\d+\.\d+\.\d+$/.test(label) ? 'v' + label : null;
-		const href = tag ? 'https://github.com/flowr-analysis/flowr/releases/tag/' + tag : run.commit.url;
-		const name = href
-			? dom('a', { className: 'version', href: href, textContent: tag || label, target: '_blank', rel: 'noopener' })
-			: dom('span', { className: 'version', textContent: label });
-		/* the tag has room for the number and no more, so the rest of what it says waits for a hover */
-		name.title = 'newest release, ' + fmtDate(run.date) + ': ' + S.commitTitle(run.commit.message);
-		if(tag) {
-			releaseName(name, tag);
-		}
-		ui.latest.hidden = false;
-		ui.latest.replaceChildren(name);
-	}
-
-	/** the name a release carries only lives on GitHub, so it is fetched once someone asks for it */
-	function releaseName(tagEl, tag) {
-		let asked = false;
-		const ask = () => {
-			if(asked) {
-				return;
-			}
-			asked = true;
-			fetch('https://api.github.com/repos/flowr-analysis/flowr/releases/tags/' + tag)
-				.then(r => r.ok ? r.json() : Promise.reject(r.status))
-				.then(release => {
-					if(release.name) {
-						const when = release.published_at ? fmtDate(release.published_at) : '';
-						tagEl.title = when ? release.name + ', released ' + when : release.name;
-					}
-				})
-				.catch(() => { /* the title it already carries says enough */ });
-		};
-		tagEl.addEventListener('pointerenter', ask);
-		tagEl.addEventListener('focus', ask);
-	}
-
 	/**
 	 * What decides which tiles the page has and in which order, as opposed to what they draw. A redraw
 	 * that leaves this alone is one the reader should not see arriving, see the `rise` animation.
@@ -2181,23 +2267,17 @@
 		const all = allRuns();
 		if(!runs.length) {
 			ui.rangeNote.textContent = selectedKey() ? 'No runs in this range.' : 'This suite was not measured with this engine.';
-			/* whatever the range hides, the header must not go on naming a release of the suite before */
-			showLatest(all[all.length - 1]);
 			ui.charts.replaceChildren(dom('p', { className: 'empty', textContent: 'No runs in this range.' }));
 			return;
 		}
 		ui.rangeNote.textContent = runs.length + ' of ' + all.length + ' runs, ' + fmtDate(runs[0].date) + ' to ' + fmtDate(runs[runs.length - 1].date) + '.';
-		showLatest(all[all.length - 1]);
 
 		const calib = usableCalibration(runs, calibrationMetric(runs));
 		ui.calibrateField.hidden = !calib;
 		ui.calibrationNote.hidden = !calib;
 		/* the box keeps its state while it is away, so a suite that carries a calibration again is normalised again */
 		if(calib) {
-			ui.calibrationNote.textContent = 'A fixed synthetic workload runs in the same CI job, so "' + calib
-				+ '" measures how fast or loaded that machine was. Whatever else the runner did can only add time, '
-				+ 'so the fastest run of a scale is the reference and every other timing has that added time taken '
-				+ 'back off, never put on. The correction is bounded, and counts, sizes, and ratios stay as measured.';
+			ui.calibrationNote.textContent = '"' + calib + '" uses machine measurements to normalize timings.';
 		}
 
 		const factors = calib && ui.calibrate.checked ? S.calibrationFactors(runs.map(r => valueOf(r, calib))) : null;
@@ -2211,6 +2291,8 @@
 			return;
 		}
 		const folded = [];
+		/* the tiles are built anew, so what the last ones knew how to redraw is gone with them */
+		redraws.clear();
 		for(const group of orderedGroups()) {
 			const series = [];
 			for(const [name, unit] of metrics) {
@@ -2351,6 +2433,7 @@
 		}
 		order = [];
 		barsExpanded.clear();
+		barsPick.clear();
 		writeStore(FOLDED_STORE, [...collapsed]);
 		writeStore('flowr-bench-order', []);
 		renderSafe();

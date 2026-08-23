@@ -31,7 +31,10 @@ export enum FileRole {
 	 * These are not part of the package namespace source, so tooling may want to treat them separately.
 	 */
 	Install       = 'install',
-	/** Data files, e.g., `R/sysdata.rda`, currently not specially supported. */
+	/**
+	 * Data files: a `data/datalist`, a package's system data (`R/sysdata.rda`, or the `R/sysdata.rdx` of an
+	 * installed package), and any other data file, which has no special support.
+	 */
 	Data          = 'data',
 	/** Manual pages (`man/*.Rd`) and an installed package's `help/AnIndex`, i.e. what documents a name. */
 	Documentation = 'documentation',

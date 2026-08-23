@@ -188,15 +188,9 @@ header {
 /* the way back to the landing page, after the sentence rather than crowding the heading */
 .intro a { margin-left: .5rem; }
 
-/* the release this page is about, which is what a reader looks for first */
-/* the size of the title it shares its line with, so the two read as one heading */
-.latest {
-	margin-left: .55rem;
-	white-space: nowrap;
-}
-
-/* the number of the release the page is about, in the same plain text every flowR page carries */
-.latest .version {
+/* the release this page was built from, the same link every flowR page carries */
+.titles h1 > .version {
+	margin-left: .5rem;
 	font-size: .82rem;
 	font-weight: 400;
 	color: var(--muted);
@@ -205,10 +199,8 @@ header {
 	transition: color .18s ease;
 }
 
-.latest .version:hover,
-.latest .version:focus-visible {
-	color: var(--fg);
-}
+.titles h1 > .version:hover,
+.titles h1 > .version:focus-visible { color: var(--fg); }
 
 .theme {
 	display: flex;
@@ -1236,10 +1228,61 @@ footer {
 	stroke-width: 1.2;
 }
 
+/* the releases named above the sparkline, as the charts name them above their own */
+.timeline-release {
+	fill: var(--muted);
+	font-size: 5px;
+	font-variant-numeric: tabular-nums;
+}
+
+.timeline-release.major { font-weight: 600; }
+
 .timeline-tick {
 	fill: var(--muted);
 	font-size: 5.5px;
 	font-variant-numeric: tabular-nums;
+}
+
+/* what a detailed view breaks down, said above it */
+.tags-head {
+	margin-bottom: .35rem;
+}
+
+.tags-title {
+	font-size: .78rem;
+	font-weight: 600;
+	color: var(--fg);
+}
+
+/* the breakdowns a tile could show instead of the one it does */
+.tags-tabs {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .35rem;
+	margin-top: .5rem;
+	border-top: 1px solid var(--border);
+	padding-top: .5rem;
+}
+
+.tags-tab {
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: none;
+	color: var(--muted);
+	font: inherit;
+	font-size: .74rem;
+	padding: .12rem .55rem;
+	cursor: pointer;
+	transition: color .18s ease, border-color .18s ease;
+}
+
+.tags-tab:hover { color: var(--fg); }
+
+.tags-tab.on {
+	color: var(--fg);
+	border-color: var(--fg);
+	font-weight: 600;
+	cursor: default;
 }
 
 .facts .composition {

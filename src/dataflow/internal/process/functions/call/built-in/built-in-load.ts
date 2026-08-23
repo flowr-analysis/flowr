@@ -246,7 +246,8 @@ function defineLoadedClosure<OtherInfo>(
 	fn.information.graph.addEdge(syntheticId, fdefId, EdgeType.DefinedBy);
 }
 
-function sexpTypeToReferenceType(type?: SexpType): ReferenceType{
+/** The kind of reference a serialized R object stands for, from the {@link SexpType} it was stored as. */
+export function sexpTypeToReferenceType(type?: SexpType): ReferenceType{
 	if(type === undefined){
 		return ReferenceType.Unknown;
 	}

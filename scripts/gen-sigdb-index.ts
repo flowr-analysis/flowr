@@ -13,7 +13,7 @@ import fs from 'fs';
 import path from 'path';
 import { build } from 'esbuild';
 import { encode, pack, readSigIndex } from './sigdb-index';
-import { fillVersion, versionMarker } from './version-marker';
+import { template, writePage } from './html-page';
 
 /**
  * The name ranker as plain script, so this page orders its hits with the very function the playground's
@@ -74,7 +74,7 @@ async function main(): Promise<void> {
 		[name, entries.map(({ pkg, props, args }) =>
 			[pkg, props.join('|'), (args ?? []).map(([arg, roles]) => arg + ':' + roles.join('|')).join(',')])
 		]))).replaceAll('</', '<\\/');
-	const page = fillVersion(Template, versionMarker())
+	const page = Template
 		.replaceAll('<!--UPDATED-->', index.updated)
 		.replaceAll('<!--PACKAGES-->', group(index.packages.length))
 		.replaceAll('<!--FUNCTIONS-->', group(blobs.count))
@@ -88,9 +88,8 @@ async function main(): Promise<void> {
 		.replace('"<!--GENERICS-->"', JSON.stringify([...index.generics].sort().join('\n')).replaceAll('</', '<\\/'))
 		.replace('<!--DATA-->', pack(blobs.packages, blobs.names));
 
-	fs.mkdirSync(Target, { recursive: true });
 	const target = path.join(Target, 'index.html');
-	fs.writeFileSync(target, page);
+	writePage(target, page);
 	console.log(`  wrote ${target} (${group(index.packages.length)} packages, ${group(blobs.count)} names, ${group(index.stated.size)} flowR signatures, ${group(index.formals.size)} base R signatures, ${(page.length / 1024 / 1024).toFixed(1)} MB, not committed)`);
 
 	const descriptionTarget = path.join(Target, 'opensearch.xml');
@@ -98,6 +97,6 @@ async function main(): Promise<void> {
 	console.log(`  wrote ${descriptionTarget}`);
 }
 
-const Template = fs.readFileSync(path.join('scripts', 'landing-sigdb-template.html'), 'utf8');
+const Template = template('landing-sigdb-template.html');
 
 void main();

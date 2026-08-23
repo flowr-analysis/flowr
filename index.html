@@ -82,7 +82,14 @@ body::after {
 	body::before, body::after { animation: none; }
 }
 main { max-width: 62rem; margin: 0 auto; }
-a { color: var(--accent); }
+a {
+	color: var(--accent); text-decoration: underline;
+	text-decoration-thickness: from-font; text-underline-offset: .16em;
+	text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+	transition: color .12s, text-decoration-color .12s, opacity .12s;
+}
+a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decoration-color: currentColor; }
+@media (prefers-reduced-motion: reduce) { a { transition: none; } }
 .prose a, .cases a { font-weight: 400; text-decoration: none; color: color-mix(in srgb, var(--accent) 85%, var(--fg)); }
 .prose a:hover, .cases a:hover { text-decoration: underline; color: var(--accent); }
 h1 { font-size: clamp(1.7rem, 6vw, 2.6rem); }
@@ -432,7 +439,7 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 <main>
 
 <div class="bar">
-	<h2><a class="brand" href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><a class="version" id="version" data-release="v2.14.4" href="https://github.com/flowr-analysis/flowr/releases/tag/v2.14.4" target="_blank" rel="noopener" title="the release notes of flowR v2.14.4">v2.14.4</a></h2>
+	<h2><a class="brand" href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><a class="version" id="version" data-release="v2.14.4" href="https://github.com/flowr-analysis/flowr/commit/620e119718068034018ff77180a397a4d4b9b294" target="_blank" rel="noopener" title="a development build of flowR, 9 commits after v2.14.4, with uncommitted changes (620e119)">v2.14.4*</a></h2>
 	<nav>
 		<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
 		<a href="wiki/sigdb/" target="_blank" rel="noopener">Signature DB</a>
@@ -452,7 +459,7 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 	<h1>Program Analysis for R</h1>
 	<p class="lead">flowR is an open source static program analyzer for your R code. It helps you understand existing scripts,
 		find quality issues, improve reproducibility, and check the validity of your analyses.</p>
-	<p id="meta"><b>v2.14.4</b> &middot; <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a></p>
+	<p id="meta"><b>v2.14.4*</b> &middot; <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a></p>
 	<p class="cta">
 		<a class="primary" href="https://github.com/flowr-analysis/flowr/wiki/Setup" target="_blank" rel="noopener">Get started</a>
 		<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
@@ -784,7 +791,7 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 	<a href="https://posit.co/" target="_blank" rel="noopener">Posit</a>.
 </p>
 
-<p class="updated">Last updated 2026-08-22, 20:41</p>
+<p class="updated">Last updated 2026-08-23, 14:06</p>
 
 </main>
 <div id="tip" role="tooltip" aria-hidden="true"></div>

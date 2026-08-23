@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-20, 22:53:36 UTC (v2.14.1, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-23, 13:40:41 UTC (v2.14.3, R v4.6.1), please do not edit directly._
 
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
@@ -56,14 +56,14 @@ For now, we support the following **active** queries (which we will refer to sim
     Returns the id-map of the normalized AST of the given code.
 1. [Input Sources Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Input-Sources) (`input-sources`):\
     Classify the input sources of function calls
+1. [Inspect Argument Roles Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Inspect-Argument-Roles) (`inspect-fn-props`):\
+    Determine what functions and their formals do
 1. [Inspect Exceptions of Functions Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Inspect-Exceptions-of-Functions) (`inspect-exception`):\
     Determine whether functions throw exceptions (known to flowR)
 1. [Inspect Higher-Order Functions Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Inspect-Higher-Order-Functions) (`inspect-higher-order`):\
     Determine whether functions are higher-order functions
 1. [Inspect Recursive Functions Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Inspect-Recursive-Functions) (`inspect-recursion`):\
     Determine whether functions are recursive
-1. [Inspect Strict Functions Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Inspect-Strict-Functions) (`inspect-strictness`):\
-    Determine whether functions force their arguments
 1. [Linter Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Linter) (`linter`):\
     Lints a given R script for common issues.
 1. [Location Map Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Location-Map) (`location-map`):\
@@ -211,7 +211,7 @@ Valid item types:
                 - **roles** [optional] _Optional roles of the files to query. If not provided, all roles are considered._ (array)
                 Valid item types:
                     - (string)
-                        Only allows: 'description', 'namespace', 'news', 'vignette', 'test', 'install', 'data', 'license', 'virtual-env', 'manifest', 'startup', 'environment', 'source', 'other'
+                        Only allows: 'description', 'namespace', 'news', 'vignette', 'test', 'install', 'data', 'documentation', 'license', 'virtual-env', 'manifest', 'startup', 'environment', 'source', 'other'
                 - **matchesPathRegex** [optional] _An optional regular expression to match the file paths against._ (string)
             - _The id map query retrieves the id map from the normalized AST._ (object)
                 - **type** [required] _The type of the query._ (string)
@@ -409,12 +409,22 @@ Valid item types:
                 - **filter** [optional] _If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered._ (array)
                 Valid item types:
                     - [required] (string)
-            - _Either returns all function definitions alongside whether they are strict, or just those matching the filters._ (object)
+            - _Either returns all function definitions alongside what they and their formals do, or just those matching the filters._ (object)
                 - **type** [required] _The type of the query._ (string)
-                    Only allows: 'inspect-strictness'
+                    Only allows: 'inspect-fn-props'
                 - **filter** [optional] _If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered._ (array)
                 Valid item types:
                     - [required] (string)
+                - **maxDepth** [optional] _How far a value is followed back through names and calls when deciding what a formal stands for (default 6)._ (number)
+                - **only** [optional] _Infer only what the formals do, or only what the function itself does; both are inferred when this is left out._ (string)
+                    Only allows: 'arguments', 'function'
+                - **formals** [optional] _Keep only the formals written as one of these names._ (array)
+                Valid item types:
+                    - (string)
+                - **props** [optional] _Keep only these properties, named as the ArgProp/CallProp members they are._ (array)
+                Valid item types:
+                    - (string)
+                        Only allows: 'Forced', 'NoDefault', 'Alias', 'Value', 'Shape', 'Flag', 'Resource', 'Written', 'Nse', 'Callee', 'Presence', 'Bounds', 'Atomic', 'Handle', 'Lazy', 'Pure', 'MayPure', 'Throws', 'Invisible', 'Generic', 'Method', 'Scope', 'NonDet', 'Random', 'Ambient', 'File', 'TempFile', 'Network', 'Process', 'Ffi', 'Lang', 'User', 'Graphics', 'Database', 'Reads', 'Writes', 'Prints', 'Narrows', 'Configures', 'Closes', 'Glob', 'CommandLine', 'Opens', 'Statistics', 'Deprecated', 'Strict', 'Concurrent'
             - _The resolve value query used to get definitions of an identifier_ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'resolve-value'
@@ -436,6 +446,7 @@ Valid item types:
                     - (string)
                 - **requiredParameters** [optional] _Keep only functions with exactly this many required (no-default) parameters, excluding `...`._ (number)
                 - **callGraph** [optional] _For a single function, also render its transitive call graph as a mermaid.live link (`--cg`)._ (boolean)
+                - **callGraphMaxNodes** [optional] _How many nodes the rendered call graph may hold before the expansion stops (default 300, `--cg-max <n>`)._ (number)
             - _The resolve value query used to get definitions of an identifier_ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'origin'
@@ -910,7 +921,7 @@ points`"]
 ```
 
 	
-(The analysis required _3.8 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _9.7 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
@@ -956,11 +967,11 @@ _Results (prettified and summarized):_
 Query: **call-context** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input** (2 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))\
-_All queries together required ≈3 ms (1ms accuracy, total 4 ms)_
+_All queries together required ≈7 ms (1ms accuracy, total 8 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _3.8 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _8.0 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -998,7 +1009,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 3
+    "timing": 7
   }
 }
 ```

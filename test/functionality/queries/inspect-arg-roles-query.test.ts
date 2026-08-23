@@ -2,7 +2,7 @@ import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { withTreeSitter } from '../_helper/shell';
 import { label } from '../_helper/label';
-import { ArgProp, ArgProps } from '../../../src/dataflow/environments/built-in-props';
+import { ArgProp, ArgProps, CallProp, CallProps } from '../../../src/dataflow/environments/built-in-props';
 
 describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 	/** The roles the query gives the formals of `f` for the given body, keyed by the name each is written as. */
@@ -22,6 +22,19 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 			const words = (of: Record<string, ArgProps>) => Object.fromEntries(Object.entries(of).map(([n, p]) => [n, ArgProps.words(p).join('+')]));
 			assert.deepStrictEqual(words(found), words(expected));
 			assert.deepStrictEqual(found, expected);
+		});
+	}
+
+	/** What the query states about the function definitions of the program themselves, in the order it answers them. */
+	function testProps(name: string, code: string, expected: readonly CallProps[]) {
+		test(label(name, ['name-normal'], ['other']), async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+			analyzer.addRequest(code);
+			const found = Object.values((await analyzer.query([{ type: 'inspect-arg-roles' }]))['inspect-arg-roles'].props);
+			/* the words make a mismatch readable, the numbers are what is compared */
+			const words = (of: readonly CallProps[]) => of.map(p => CallProps.words(p).join('+'));
+			assert.deepStrictEqual(words(found), words(expected));
+			assert.deepStrictEqual(found, [...expected]);
 		});
 	}
 
@@ -66,4 +79,17 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 	testRoles('a name it cannot follow loses the frame', 'f <- function(x, nm) { e <- environment(); get(nm, envir = e) }', { x: ArgProp.Value, nm: ArgProp.Value });
 
 
+	/* what the body states about the function itself, not about one of its formals */
+	testProps('a body handing back an invisible result', 'f <- function(x) invisible(x)', [CallProp.Invisible]);
+	testProps('through a return', 'f <- function(x) return(invisible(x))', [CallProp.Invisible]);
+	testProps('a value of its own is visible', 'f <- function() 1', []);
+	testProps('only one branch invisible is not enough', 'f <- function(c) if(c) invisible(1) else 2', []);
+	testProps('both branches invisible are', 'f <- function(c) if(c) invisible(1) else invisible(2)', [CallProp.Invisible]);
+	testProps('an assignment is invisible and binds a local', 'f <- function() { y <- 1 }', [CallProp.Invisible]);
+	testProps('a super-assignment reaches beyond the frame', 'f <- function() { x <<- 1 }', [CallProp.Invisible | CallProp.Scope]);
+	testProps('what its calls do it does too', 'f <- function() runif(1)', [CallProp.Random]);
+	testProps('reading a file included', 'f <- function() read.csv("a")', [CallProp.File | CallProp.Reads]);
+	testProps('throwing included', 'f <- function() stop("x")', [CallProp.Throws]);
+	testProps('a dispatching body is a generic', 'f <- function(x) UseMethod("f")', [CallProp.Generic]);
+	testProps('printing hands back invisibly', 'f <- function(x) print(x)', [CallProp.Invisible | CallProp.Prints]);
 }));

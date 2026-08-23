@@ -449,6 +449,8 @@ registerQueryDocumentation('inspect-arg-roles', {
 Where the ${linkToQueryOfName('inspect-strictness')} answers *whether* a formal is evaluated, this one answers
 *what for*: per function definition it returns the ${ctx.link('ArgProp')} bits of each formal, the same scheme
 flowR states its built-ins and the signature database stores its parameters with.
+Besides the formals, the query states what each function itself does, in the ${ctx.link('CallProp')} bits a
+built-in states about itself.
 A formal is an alias only if the function *always* returns it (\`return(x)\` under an \`if\` does not count),
 every other bit is the one the calls in the body state for what they are handed, and a formal carrying none at
 all is left out. A body reading its own call or frame (\`match.call()\`, \`nargs()\`,

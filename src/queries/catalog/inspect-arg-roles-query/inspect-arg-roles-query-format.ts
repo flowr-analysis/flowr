@@ -10,7 +10,7 @@ import type { FlowrConfig } from '../../../config';
 import { queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { SourceLocation } from '../../../util/range';
 import type { FunctionArgumentRoles } from '../../../dataflow/fn/argument-roles';
-import { ArgProps } from '../../../dataflow/environments/built-in-props';
+import { ArgProps, CallProps } from '../../../dataflow/environments/built-in-props';
 import { ArgumentRoles } from '../../../dataflow/fn/argument-roles';
 
 /**
@@ -27,6 +27,8 @@ export interface InspectArgRolesQuery extends BaseQueryFormat {
 export interface InspectArgRolesQueryResult extends BaseQueryResult {
 	/** per function definition, the {@link ArgProp} mask of the formals that carry one */
 	readonly roles: Record<NodeId, FunctionArgumentRoles>;
+	/** per function definition, the {@link CallProp} mask its body states about the function itself */
+	readonly props: Record<NodeId, CallProps>;
 }
 
 function inspectRolesLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'inspect-arg-roles'> {
@@ -47,13 +49,14 @@ export const InspectArgRolesQueryDefinition = {
 		const out = queryResults as QueryResults<'inspect-arg-roles'>['inspect-arg-roles'];
 		result.push(`Query: ${bold('inspect-arg-roles', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 		const idMap = (await processed.normalize()).idMap;
-		for(const [id, roles] of Object.entries(out.roles)) {
+		for(const id of new Set([...Object.keys(out.roles), ...Object.keys(out.props)])) {
 			const node = idMap.get(NodeId.normalize(id));
 			const loc = node ? SourceLocation.fromNode(node) : undefined;
-			const formals = Object.entries(roles)
+			const formals = Object.entries(out.roles[id] ?? {})
 				.map(([formal, props]) => `${idMap.get(NodeId.normalize(formal))?.lexeme ?? formal}: ${ArgProps.words(props).join(', ')}`)
 				.join(', ');
-			result.push(`  - Function ${bold(id, formatter)} (${SourceLocation.format(loc)}) ${formals}`);
+			const states = CallProps.words(out.props[id]).join(', ');
+			result.push(`  - Function ${bold(id, formatter)} (${SourceLocation.format(loc)}) ${formals}${states.length > 0 ? ` [${states}]` : ''}`);
 		}
 		return true;
 	},
@@ -66,6 +69,6 @@ export const InspectArgRolesQueryDefinition = {
 	}).description('Either returns all function definitions alongside what they do with their formals, or just those matching the filters.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
 		const out = queryResults as QueryResults<'inspect-arg-roles'>['inspect-arg-roles'];
-		return Object.keys(out.roles);
+		return [...new Set([...Object.keys(out.roles), ...Object.keys(out.props)])];
 	}
 } as const satisfies SupportedQuery<'inspect-arg-roles'>;

@@ -101,6 +101,17 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run sync:sigdb
 
+      # the release workflow produces the data but does not commit it, so it lands in the same commit as the pages
+      - name: "⬇️ Get the Benchmark Data from the Release Run"
+        if: ${{ github.event_name == 'workflow_run' }}
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: benchmark-data
+          path: wiki/stats/benchmark/
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.RELEASE_TOKEN }}
+
       - name: "🛠️ Update the Generated Pages"
         run: |
           # npm ci is done by the full test run before
@@ -132,6 +143,17 @@ jobs:
               echo "CHANGED=true" >> $GITHUB_ENV
           else
               echo "No Wiki pages were changed!"
+          fi
+
+          echo "====== Benchmark Data (if any) ======"
+          if [ -n "$(git status --porcelain -- wiki/stats/benchmark/)" ]; then
+              echo "New benchmark data!"
+              git add -f wiki/stats/benchmark/
+              CHANGED_ANY=true
+              echo "CHANGED=true" >> $GITHUB_ENV
+              CHANGED_FILES+=("benchmark-data")
+          else
+              echo "No new benchmark data!"
           fi
 
           echo "====== Producing Update (if necessary) ======"

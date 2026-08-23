@@ -582,12 +582,11 @@ jobs:
         # the action pretty prints the history, one line per run keeps the file and its diffs small
         run: bash .github/workflows/scripts/run-flowr-command.sh benchmark:compact
 
-      - name: "⬆️ Push benchmark results"
-        run: |
-          git fetch origin main
-          git reset --soft origin/main
-          git add -f wiki/stats/benchmark/
-          git commit -m "[skip ci] doc: new benchmark data"
-
-      - name: "⬆️ Push changes"
-        run: git push origin HEAD:main
+      # the data is not committed here: the wiki workflow picks the artifact up and folds it into its own
+      # documentation commit, so a release produces one doc commit instead of two
+      - name: "⬆️ Upload the benchmark data for the wiki workflow"
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-data
+          path: wiki/stats/benchmark/
+          if-no-files-found: error

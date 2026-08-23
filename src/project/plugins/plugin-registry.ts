@@ -28,6 +28,10 @@ import { FlowrAnalyzerJupyterFilePlugin } from './file-plugins/notebooks/flowr-a
 import { FlowrAnalyzerNamespaceFilesPlugin } from './file-plugins/flowr-analyzer-namespace-files-plugin';
 import { FlowrAnalyzerPackageVersionsNamespaceFilePlugin } from './package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
 import { FlowrAnalyzerNewsFilePlugin } from './file-plugins/flowr-analyzer-news-file-plugin';
+import {
+	FlowrAnalyzerRdFilePlugin,
+	FlowrAnalyzerRdIndexFilePlugin
+} from './file-plugins/flowr-analyzer-rd-file-plugin';
 import { FlowrAnalyzerRdaFilePlugin } from './file-plugins/flowr-analyzer-rda-file-plugin';
 import { FlowrAnalyzerMetaVignetteFilesPlugin } from './file-plugins/flowr-analyzer-vignette-file-plugin';
 import { FlowrAnalyzerMetaTestFilesPlugin } from './file-plugins/flowr-analyzer-test-file-plugin';
@@ -96,6 +100,8 @@ export const BuiltInPlugins = [
 	['file:namespace', FlowrAnalyzerNamespaceFilesPlugin],
 	['versions:namespace', FlowrAnalyzerPackageVersionsNamespaceFilePlugin],
 	['file:news', FlowrAnalyzerNewsFilePlugin],
+	['file:rd', FlowrAnalyzerRdFilePlugin],
+	['file:rd-index', FlowrAnalyzerRdIndexFilePlugin],
 	['file:rda', FlowrAnalyzerRdaFilePlugin],
 	['file:license', FlowrAnalyzerLicenseFilePlugin],
 	['file:virtualenv', FlowrAnalyzerVirtualEnvFilePlugin],

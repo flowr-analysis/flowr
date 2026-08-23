@@ -23,6 +23,7 @@ import { globMatcher } from '../../util/glob';
 import type { FlowrNewsFile } from '../plugins/file-plugins/files/flowr-news-file';
 import type { FlowrNamespaceFile } from '../plugins/file-plugins/files/flowr-namespace-file';
 import type { FlowrManifestFile } from '../plugins/file-plugins/files/flowr-manifest-files';
+import type { FlowrRdFile, FlowrRdIndexFile } from '../plugins/file-plugins/files/flowr-rd-file';
 import type { ProjectKind } from './project-kind';
 import { classifyProjectKind, resolveClassifyOptions, type ContentReader } from './classify-project-kind';
 import { FlowrAnalyzer } from '../flowr-analyzer';
@@ -47,21 +48,23 @@ export interface RProjectAnalysisRequest {
 export type RAnalysisRequest = RParseRequest | RProjectAnalysisRequest;
 
 export type RoleBasedFiles = {
-	[FileRole.Description]: FlowrDescriptionFile[];
-	[FileRole.News]:        FlowrNewsFile[];
-	[FileRole.Namespace]:   FlowrNamespaceFile[];
-	[FileRole.Manifest]:    FlowrManifestFile[];
+	[FileRole.Description]:   FlowrDescriptionFile[];
+	[FileRole.News]:          FlowrNewsFile[];
+	[FileRole.Namespace]:     FlowrNamespaceFile[];
+	[FileRole.Manifest]:      FlowrManifestFile[];
+	/** a `man/*.Rd` page ({@link FlowrRdFile}) or an installed package's `help/AnIndex` ({@link FlowrRdIndexFile}) */
+	[FileRole.Documentation]: (FlowrRdFile | FlowrRdIndexFile)[];
 	/* currently no special support */
-	[FileRole.Vignette]:    FlowrFileProvider[];
-	[FileRole.Test]:        FlowrFileProvider[];
-	[FileRole.Install]:     FlowrFileProvider[];
-	[FileRole.License]:     FlowrFileProvider[];
-	[FileRole.VirtualEnv]:  FlowrFileProvider[];
-	[FileRole.Startup]:     FlowrFileProvider[];
-	[FileRole.Environment]: FlowrFileProvider[];
-	[FileRole.Source]:      FlowrFileProvider[];
-	[FileRole.Data]:        FlowrFileProvider[];
-	[FileRole.Other]:       FlowrFileProvider[];
+	[FileRole.Vignette]:      FlowrFileProvider[];
+	[FileRole.Test]:          FlowrFileProvider[];
+	[FileRole.Install]:       FlowrFileProvider[];
+	[FileRole.License]:       FlowrFileProvider[];
+	[FileRole.VirtualEnv]:    FlowrFileProvider[];
+	[FileRole.Startup]:       FlowrFileProvider[];
+	[FileRole.Environment]:   FlowrFileProvider[];
+	[FileRole.Source]:        FlowrFileProvider[];
+	[FileRole.Data]:          FlowrFileProvider[];
+	[FileRole.Other]:         FlowrFileProvider[];
 };
 
 function wrapFile(file: string | FlowrFileProvider | RParseRequestFromFile, roles?: readonly FileRole[]): FlowrFileProvider {

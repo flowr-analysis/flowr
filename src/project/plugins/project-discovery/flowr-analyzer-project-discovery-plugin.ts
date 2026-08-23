@@ -124,7 +124,7 @@ export class FlowrAnalyzerFullProjectDiscoveryPlugin extends FlowrAnalyzerProjec
 }
 
 // noise directories pruned from the scoped walk on top of `ignorePathsWith`: build output, checks, rendered docs, and packaged data
-const noiseDirs = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|\.uvr|[^/]*\.Rcheck|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles|cache)[^/]*|build|dist|_build|_site|_book|\.quarto|\.cache|Rtmp[^/]*|man|inst\/(extdata|doc))(\/|$)/i;
+const noiseDirs = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|\.uvr|[^/]*\.Rcheck|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles|cache)[^/]*|build|dist|_build|_site|_book|\.quarto|\.cache|Rtmp[^/]*|inst\/(extdata|doc))(\/|$)/i;
 // binary/data blobs, dropped even inside an otherwise kept directory
 const noiseFiles = /\.(rds|rda|rdata|rd|png|jpe?g|gif|svg|pdf|ico|zip|tar|t?gz|bz2|xz|so|o|a|dll|dylib|exe|jar|woff2?|ttf|eot|feather|parquet|xls[xm]?|docx?|pptx?)$/i;
 const descriptionFilePattern = /^DESCRIPTION(\.(txt|in))?$/i;
@@ -140,6 +140,8 @@ const metadataFilePatterns = [
 	RenvironFilePattern
 ];
 const testOrVignetteDir = /(^|\/)(tests?|vignettes?)(\/|$)/i;
+/** a package's manual pages, which the Rd plugin reads to decide what documents a name */
+const manPageFile = /(^|[\\/])man[\\/][^\\/]+\.rd$/i;
 
 interface KeepRules { readonly include: readonly ((p: string) => boolean)[]; readonly exclude: readonly ((p: string) => boolean)[] }
 
@@ -151,15 +153,21 @@ function resolveRules(override: { include?: string[], exclude?: string[] } | und
 	};
 }
 
-/** over-approximating default: R sources, role metadata, and `tests/`/`vignettes/` count as project files */
+/** over-approximating default: R sources, role metadata, `tests/`/`vignettes/`, and `man/` pages are project files */
 function keptByDefault(rel: string): boolean {
 	const base = path.basename(rel);
-	return discoverRSourcesRegex.test(rel) || metadataFilePatterns.some(p => p.test(base)) || testOrVignetteDir.test(rel);
+	return discoverRSourcesRegex.test(rel) || metadataFilePatterns.some(p => p.test(base))
+		|| testOrVignetteDir.test(rel) || manPageFile.test(rel);
 }
 
 /** whether root-relative `rel` is kept; an explicit `ignore` or `perKind` exclude wins over everything */
 function keep(rel: string, rules: KeepRules, ignore: readonly ((p: string) => boolean)[]): boolean {
-	if(noiseFiles.test(rel) || ignore.some(m => m(rel)) || rules.exclude.some(m => m(rel))) {
+	// what the user excluded is out whatever else says, which is why this is asked first
+	if(ignore.some(m => m(rel)) || rules.exclude.some(m => m(rel))) {
+		return false;
+	}
+	// a binary/data blob is out too, except a `.Rd` under `man/`: there the extension is the package's documentation
+	if(noiseFiles.test(rel) && !manPageFile.test(rel)) {
 		return false;
 	}
 	return keptByDefault(rel) || rules.include.some(m => m(rel));

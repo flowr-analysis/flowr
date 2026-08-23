@@ -56,9 +56,10 @@ describe('Default (scoped) project discovery', () => {
 		const got = discovered(project(pkg));
 		assert.includeMembers(got, [
 			'R/foo.R', 'R/bar.R', 'DESCRIPTION', 'NAMESPACE', 'renv.lock',
-			'tests/testthat/test-foo.R', 'vignettes/intro.Rmd'
+			'tests/testthat/test-foo.R', 'vignettes/intro.Rmd',
+			'man/f.Rd'   /* the manual says what documents a name, so the Rd plugin needs it */
 		], 'project sources + metadata are kept');
-		for(const dropped of ['man/f.Rd', 'inst/extdata/big.bin', 'renv/library/foo/lib.R', 'RtmpAB12/scratch.R', 'README.md']) {
+		for(const dropped of ['inst/extdata/big.bin', 'renv/library/foo/lib.R', 'RtmpAB12/scratch.R', 'README.md']) {
 			assert.notInclude(got, dropped, `${dropped} is noise and must be dropped`);
 		}
 	});

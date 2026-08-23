@@ -20,7 +20,7 @@ import { baseRPackages, baseRExportOwner } from '../../../util/r-base-packages';
 import { Mermaid } from '../../../util/mermaid/mermaid';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
-import { groupGenericOf } from '../../../dataflow/environments/group-generics';
+import { groupGenericMembers, groupGenericOf, isGroupGeneric } from '../../../dataflow/environments/group-generics';
 import { uniqueArray } from '../../../util/collections/arrays';
 
 /** the CRAN package landing page (only meaningful for CRAN packages, not base R) */
@@ -274,8 +274,22 @@ function flowrOnlyFunctionInfo(env: REnvironmentInformation | undefined, pkg: st
 		parameters: (info.sig ?? []).map(([n, p]) => ({ name: n, props: p & ~ArgProp.NoDefault })),
 		callees:    [],
 		flowr:      flowrViewOf(info, []),
-		...(group ? { s4group: { group } } : {})
+		...(s4GroupView(name, group, false))
 	};
+}
+
+/** the {@link SignatureFunctionView.s4group} field for `asked`, answered by the entry `entryName` (`undefined` for none) */
+function s4GroupView(asked: string, group: string | undefined, viaGroup: boolean, entryName: string = asked): { s4group?: SignatureFunctionView['s4group'] } {
+	const groupEntry = isGroupGeneric(entryName) ? entryName : undefined;
+	if(group === undefined && groupEntry === undefined) {
+		return {};
+	}
+	return { s4group: {
+		group: group ?? groupEntry as string,
+		...(viaGroup ? { viaGroup: true } : {}),
+		/* the entry is the group itself, so it answers for every member it covers */
+		...(groupEntry ? { members: groupGenericMembers(groupEntry) } : {})
+	} };
 }
 
 /** the decoded view of one function, adding the CRAN-mirror source link */
@@ -329,7 +343,7 @@ export function signatureFunctionInfo(src: PackageSignatureSource, pkg: string, 
 		...(flowr ? { flowr } : {}),
 		...(methods.length > 0 ? { s3generic: true, s3methods: methods } : {}),
 		...(s3method ? { s3method } : {}),
-		...(group ? { s4group: { group, ...(own === undefined ? { viaGroup: true } : {}) } } : {})
+		...(s4GroupView(fnName, group, own === undefined, fn.name))
 	};
 }
 

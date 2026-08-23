@@ -165,7 +165,11 @@ describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 			// no entry of its own, so `Math` answers, under the name that was asked for
 			const via = signatureFunctionInfo(src, 's4pkg', 'sin');
 			expect(via?.name).toBe('sin');
-			expect(via?.s4group).toEqual({ group: 'Math', viaGroup: true });
+			// the entry found is the group, so it also reports every member it answers for
+			expect(via?.s4group?.group).toBe('Math');
+			expect(via?.s4group?.viaGroup).toBe(true);
+			expect(via?.s4group?.members).toContain('sin');
+			expect(via?.s4group?.members).toContain('cumsum');
 			expect(signatureFunctionInfo(src, 's4pkg', 'plain')?.s4group).toBeUndefined();
 			// a name in no group finds nothing to fall back to
 			expect(signatureFunctionInfo(src, 's4pkg', 'nowhere')).toBeUndefined();

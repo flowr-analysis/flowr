@@ -74,8 +74,10 @@ export interface SignatureFunctionView {
 	 * `setMethod('Math', 'cls', ...)` answers every member of the group at once, and that is what a `sin(x)` call
 	 * on such a class dispatches to. A member is often documented only under its `sin,cls-method` Rd alias, which
 	 * is why such a name can carry `no-doc` and still have a help page.
+	 * `members` lists every name the group entry answers for, present whenever the entry found is the group
+	 * itself, with `Ops` flattened to its operators (see {@link groupGenericMembers}).
 	 */
-	readonly s4group?:   { readonly group: string, readonly viaGroup?: boolean };
+	readonly s4group?:   { readonly group: string, readonly viaGroup?: boolean, readonly members?: readonly string[] };
 	/** a mermaid.live link visualizing the transitive call graph from this function (only when requested with `--cg`) */
 	readonly callGraph?: string;
 	/** what flowR itself states about the function, from the built-in environment of the analysis */

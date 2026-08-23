@@ -103,6 +103,9 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 			? `answered by ${fn.package}::${fn.s4group.group}, which covers the whole group`
 			: `a package may answer it for its own class with setMethod('${fn.s4group.group}', ...)`;
 		result.push(`      ╰ ${italic('S4 group', f)} ${color(fn.s4group.group, Colors.Magenta, f)} ${italic(`(${said})`, f)}`);
+		if(fn.s4group.members) {
+			result.push(`        ${italic('covers', f)} ${fn.s4group.members.map(m => color(m, Colors.Cyan, f)).join(', ')}`);
+		}
 	}
 	if(fn.flowr) {
 		const args = (fn.flowr.args ?? []).map(a => `${a.name}${a.roles.length > 0 ? `: ${a.roles.join('+')}` : ''}`);

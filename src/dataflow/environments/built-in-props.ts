@@ -272,6 +272,16 @@ export interface BuiltInFnInfo {
 	readonly props?:           CallProps
 	/** keep the environment on the call vertex, for a later pass to look names up in */
 	readonly keepEnvironment?: boolean
+	/**
+	 * What this call lets the function around it reach about its own formals without naming one of them:
+	 * `match.call()` hands out the arguments as written ({@link ArgProp.Nse}), `nargs()` only how many were
+	 * supplied ({@link ArgProp.Presence}), and `environment()`/`sys.frame()` the frame itself, whose values may
+	 * be read ({@link ArgProp.Value}). Only what flowR fails to resolve counts: an access it follows to a name
+	 * (`get("x", envir = e)`, `e$x`) draws its own edges, and `parent.frame()` reaches the *caller's* frame,
+	 * which says nothing about the arguments of the function making the call.
+	 * @see {@link reflectiveRoles}
+	 */
+	readonly frame?:           ArgProps
 }
 
 /** A {@link FnSig} in the form the call processors use it, see {@link sigLayout}. */

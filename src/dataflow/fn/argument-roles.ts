@@ -7,6 +7,7 @@ import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefini
 import { FunctionCallVertex, FunctionDefinitionVertex, UseVertex, VariableDefinitionVertex } from '../graph/vertex';
 import type { ArgProps, BuiltInFnInfo, FnSig } from '../environments/built-in-props';
 import { ArgProp } from '../environments/built-in-props';
+import { reflectiveRoles } from './frame-reflection';
 import { BuiltInIndex, queryFnProps } from '../environments/query-fn-props';
 import { Identifier } from '../environments/identifier';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -103,10 +104,12 @@ function rolesOf(id: NodeId, state: RoleState): FunctionArgumentRoles {
 	const unconditional = definition.exitPoints.filter(e => happensInEveryBranch(e.cds)).map(e => e.nodeId);
 	const returned = identityOf(unconditional, state);
 	const stated = statedRoles(definition, state);
+	/* reflection flowR could not follow reaches every formal alike */
+	const reflective = reflectiveRoles(definition, state.graph, name => infoOf(name, state));
 	const roles: FunctionArgumentRoles = {};
 	for(const formal of Object.keys(definition.params)) {
 		const at = NodeId.normalize(formal);
-		const props = (stated.get(at) ?? 0) | (returned.has(at) ? ArgProp.Alias : 0);
+		const props = (stated.get(at) ?? 0) | (returned.has(at) ? ArgProp.Alias : 0) | reflective;
 		if(props !== 0) {
 			roles[formal] = props;
 		}

@@ -27,6 +27,9 @@ describe('Inspect Strict Functions Query', withTreeSitter(parser => {
 	testStrictness('a quoted parameter is not evaluated', 'f <- function(x) quote(x)', [Ternary.Never]);
 	testStrictness('a caught block still evaluates', 'f <- function(x) tryCatch(x, error = function(e) 1)', [Ternary.Never, Ternary.Always]);
 
+	testStrictness('a body reading its own frame may reach the parameter', 'f <- function(x) as.list(environment())', [Ternary.Maybe]);
+	testStrictness('reading its own call forces nothing', 'f <- function(x) as.list(match.call())', [Ternary.Never]);
+	testStrictness('the frame of another function says nothing', 'f <- function(x, g) environment(g)', [Ternary.Never]);
 	testStrictness('the callee decides for an argument passed on', 'g <- function(y) y\nf <- function(x) g(x)', [Ternary.Always, Ternary.Always]);
 	testStrictness('a callee leaving it alone makes it lazy', 'g <- function(y) 1\nf <- function(x) g(x)', [Ternary.Never, Ternary.Never]);
 

@@ -8,8 +8,10 @@ import { DfEdge, EdgeType } from '../graph/edge';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
 import { FunctionCallVertex, FunctionDefinitionVertex, VertexType } from '../graph/vertex';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
-import type { ArgProps, FnSig } from '../environments/built-in-props';
+import type { ArgProps, BuiltInFnInfo, FnSig } from '../environments/built-in-props';
 import { ArgProp, DispatchCallees, FnSig as Sig } from '../environments/built-in-props';
+import type { BuiltInLookup } from './frame-reflection';
+import { reflectiveRoles } from './frame-reflection';
 import { BuiltInIndex, queryFnProps } from '../environments/query-fn-props';
 import { Identifier } from '../environments/identifier';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -34,6 +36,11 @@ export interface FunctionStrictness {
  * ({@link ArgProp.Nse}), or looked at only for having been supplied ({@link ArgProp.Presence}).
  */
 const NotEvaluated = ArgProp.Nse | ArgProp.Presence;
+/**
+ * What reflection has to reach for a parameter to be evaluated by it: `as.list(environment())` may read the
+ * values in the frame, while `match.call()` and `nargs()` look at the call alone and force nothing.
+ */
+const MayEvaluate = ArgProp.Value | ArgProp.Forced;
 /**
  * The processors whose calls reach their first argument and the rest only on the way the run happens to
  * take: `switch` picks one of its branches, and `try`/`tryCatch` reach a handler only when one is needed.
@@ -86,6 +93,8 @@ interface StrictnessState {
 	readonly owner:    Map<NodeId, NodeId>
 	/** the definitions whose body dispatches */
 	readonly dispatch: Map<NodeId, DispatchInformation>
+	/** what flowR states about a built-in, see {@link BuiltInFnInfo} */
+	readonly fnInfo:   BuiltInLookup
 	readonly known:    Map<NodeId, FunctionStrictness>
 	/** the definitions the current question rests on, so a cycle answers rather than loops */
 	readonly asking:   Set<NodeId>
@@ -113,6 +122,18 @@ function makeState(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | und
 			owner.set(NodeId.normalize(param), id);
 		}
 	}
+	const environment = ctx?.env.makeCleanEnv();
+	const info = environment === undefined
+		? (name: Identifier) => BuiltInIndex.default().get(name)
+		: (name: Identifier) => queryFnProps(name, { environment });
+	const infos = new Map<string, BuiltInFnInfo | undefined>();
+	const fnInfo = (name: Identifier): BuiltInFnInfo | undefined => {
+		const key = Identifier.getName(name);
+		if(!infos.has(key)) {
+			infos.set(key, info(name));
+		}
+		return infos.get(key);
+	};
 	const dispatch = new Map<NodeId, DispatchInformation>();
 	if(idMap !== undefined) {
 		for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
@@ -136,11 +157,7 @@ function makeState(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | und
 			dispatch.set(within, { named, certain, next });
 		}
 	}
-	const environment = ctx?.env.makeCleanEnv();
-	const props = environment === undefined
-		? (name: Identifier) => BuiltInIndex.default().get(name)?.sig
-		: (name: Identifier) => queryFnProps(name, { environment })?.sig;
-	return { graph, idMap, owner, dispatch, sigs: new Map(), props, known: new Map(), asking: new Set(), assumed: false };
+	return { graph, idMap, owner, dispatch, fnInfo, sigs: new Map(), props: name => fnInfo(name)?.sig, known: new Map(), asking: new Set(), assumed: false };
 }
 
 /** What is certain becomes a possibility once something may intervene. */
@@ -341,6 +358,12 @@ function strictnessOf(id: NodeId, state: StrictnessState): FunctionStrictness {
 	for(const param of params) {
 		parameters[param] = strictnessOfParameter(NodeId.normalize(param), vertex, state);
 	}
+	/* reflection flowR could not follow may read a parameter without any read of it showing in the code */
+	if((reflectiveRoles(vertex, state.graph, state.fnInfo) & MayEvaluate) !== 0) {
+		for(const param of params) {
+			parameters[param] = TernaryLogic.or(parameters[param], Ternary.Maybe);
+		}
+	}
 	const dispatch = state.dispatch.get(id);
 	if(dispatch !== undefined) {
 		for(const param of params) {
@@ -373,6 +396,8 @@ function strictnessOf(id: NodeId, state: StrictnessState): FunctionStrictness {
  * {@link ArgProp.Presence} is never evaluated, one stated {@link ArgProp.Forced} always is, and the calls
  * reaching an argument only on the way the run takes are the ones flowR hands to the processor that says so
  * (`switch` picking a branch, `try` reaching a handler, a hook running at exit).
+ * A body reading its own call or frame ({@link CallProp.Frame}: `match.call()`, `nargs()`,
+ * `as.list(environment())`) reaches every parameter without naming one, so none of them is answered `Never`.
  * For a generic, the methods reached by S3 dispatch decide: they agree on a parameter or it is left open,
  * while the object the dispatch is on is forced by the dispatch itself. A `NextMethod` carries the same
  * question on to the methods it reaches, matched by the position the parameter is written in.

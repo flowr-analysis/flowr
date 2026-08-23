@@ -404,7 +404,8 @@ way the run happens to take are the ones flowR hands to the processor saying so 
 \`tryCatch\` reaching a handler, \`on.exit\` running at exit, and the short-circuiting \`&&\`/\`||\`).
 A definition of your own shadowing such a name is judged by its own body instead, as R would.
 A parameter read only in the default of another parameter is \`conditionally\` strict, as that default is
-evaluated only when the argument is left out.
+evaluated only when the argument is left out. So is every parameter of a function reading its own call or frame
+(\`match.call()\`, \`nargs()\`, \`as.list(environment())\`), which reaches them without naming any.
 
 A generic mentions none of its arguments, so its verdict comes from the methods that S3 dispatch reaches: if
 they agree the answer is theirs, otherwise the parameter is \`conditionally\` strict. The object the dispatch
@@ -450,7 +451,8 @@ Where the ${linkToQueryOfName('inspect-strictness')} answers *whether* a formal 
 flowR states its built-ins and the signature database stores its parameters with.
 A formal is an alias only if the function *always* returns it (\`return(x)\` under an \`if\` does not count),
 every other bit is the one the calls in the body state for what they are handed, and a formal carrying none at
-all is left out.
+all is left out. A body reading its own call or frame (\`match.call()\`, \`nargs()\`,
+\`as.list(environment())\`) reaches every formal without naming one, so they all carry \`nse\`.
 
 Using the example code \`${exampleCode}\` the following query returns the roles of all identified formals:
 ${

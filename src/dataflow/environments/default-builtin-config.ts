@@ -825,8 +825,9 @@ export const WrittenBuiltinDefinitions = [
 		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true, forceArgs: [true], props: CallProp.Invisible | CallProp.Random | CallProp.Configures }, assumePrimitive: false },
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['body', 'formals']),
 		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true, forceArgs: [true], props: CallProp.Lang }, assumePrimitive: true },
+	/* `environment()` without an argument is the frame the call sits in, which is how `as.list(environment())` gets at every argument */
 	{ type:            'function', names:           [Identifier.from(['environment', PkgName.Base])],
-		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true, forceArgs: [true] }, assumePrimitive: true },
+		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true, forceArgs: [true], frame: ArgProp.Value, sig: [['fun', ArgProp.Handle]] }, assumePrimitive: true },
 	{
 		type:      'function',
 		names:     Identifier.fromAll(PkgName.Base, ['.Call', '.External', '.C', '.Fortran']),
@@ -1125,7 +1126,9 @@ export const WrittenBuiltinDefinitions = [
 		.filter(([n, kind]) => !n.startsWith('.') && (kind === StackEnvKind.Global || kind === StackEnvKind.Base || kind === StackEnvKind.Empty))
 		.map(([n]) => Identifier.from([n, PkgName.Base])),
 	processor: BuiltInProcName.StackEnv, config: {}, assumePrimitive: true },
-	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['parent.env', 'parent.frame', 'environmentName', 'as.environment', 'pos.to.env', 'sys.frame', 'sys.frames', 'topenv']), processor: BuiltInProcName.Default, config: {}, assumePrimitive: true },
+	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['parent.env', 'parent.frame', 'environmentName', 'as.environment', 'pos.to.env', 'topenv']), processor: BuiltInProcName.Default, config: {}, assumePrimitive: true },
+	/* `sys.frame(sys.nframe())` is the own frame written the long way round, and its values are there to be read */
+	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['sys.frame', 'sys.frames']), processor: BuiltInProcName.Default, config: { frame: ArgProp.Value }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['load', PkgName.Base])],
 		processor:       BuiltInProcName.Load,
 		config:          { props: CallProp.Invisible | CallProp.Scope | CallProp.File | CallProp.Reads, sig: [['file', ArgProp.Resource]] }, assumePrimitive: false },
@@ -1168,7 +1171,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type:            'function', names:           [Identifier.from(['Recall', PkgName.Base])],
 		processor:       BuiltInProcName.Recall, config:          { libFn: true }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['sys.function', PkgName.Base])],
-		processor:       BuiltInProcName.Recall, config:          { libFn: true, unknownOnNonZeroArg: true, props: CallProp.Lang }, assumePrimitive: false },
+		processor:       BuiltInProcName.Recall, config:          { libFn: true, unknownOnNonZeroArg: true, props: CallProp.Lang, frame: ArgProp.Nse }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['c', PkgName.Base])],
 		processor:       BuiltInProcName.Vector, config:          { props: CallProp.Pure, sig: [['...', ArgProp.Value]] }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Vector },
 	{ type: 'function', names: [Identifier.from(['cmpfun', PkgName.Compiler])], processor: BuiltInProcName.Default, config: { sig: [['f', ArgProp.Alias]] } },
@@ -1277,9 +1280,25 @@ export const WrittenBuiltinDefinitions = [
 	{
 		type:  'function',
 		names: Identifier.fromAll(PkgName.Base, ['enquote', 'call', 'as.call', 'as.expression', 'as.name', 'as.symbol',
-			'as.language', 'match.call', 'sys.call', 'args', 'deparse', 'deparse1']),
+			'as.language', 'args', 'deparse', 'deparse1']),
 		processor:       BuiltInProcName.Default,
 		config:          { forceArgs: 'all', props: CallProp.Lang },
+		assumePrimitive: false
+	},
+	/* they hand back the call they sit in, so the function around them reads its arguments as written, unevaluated */
+	{
+		type:            'function',
+		names:           Identifier.fromAll(PkgName.Base, ['match.call', 'sys.call', 'sys.calls']),
+		processor:       BuiltInProcName.Default,
+		config:          { forceArgs: 'all', props: CallProp.Lang, frame: ArgProp.Nse },
+		assumePrimitive: false
+	},
+	/* `nargs()` counts what the call supplied, so it sees no argument, only whether there was one */
+	{
+		type:            'function',
+		names:           Identifier.fromAll(PkgName.Base, ['nargs', 'sys.nframe']),
+		processor:       BuiltInProcName.Default,
+		config:          { forceArgs: 'all', props: CallProp.Lang, frame: ArgProp.Presence },
 		assumePrimitive: false
 	},
 	/* `alist` keeps its arguments unevaluated, `evalq` evaluates its first one in another frame */

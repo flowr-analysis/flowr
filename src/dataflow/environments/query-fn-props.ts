@@ -60,7 +60,7 @@ function withStatedBuiltIns(definitions: readonly IdentifierDefinition[], enviro
 }
 
 function ofDefinitions(definitions: readonly IdentifierDefinition[] | undefined): BuiltInFnInfo | undefined {
-	let sig, props;
+	let sig, props, frame;
 	for(const d of definitions ?? []) {
 		if(d.type !== ReferenceType.BuiltInFunction) {
 			continue;
@@ -68,8 +68,9 @@ function ofDefinitions(definitions: readonly IdentifierDefinition[] | undefined)
 		const info = d.config as BuiltInFnInfo | undefined;
 		sig ??= info?.sig;
 		props = info?.props === undefined ? props : (props ?? 0) | info.props;
+		frame = info?.frame === undefined ? frame : (frame ?? 0) | info.frame;
 	}
-	return sig === undefined && props === undefined ? undefined : { sig, props };
+	return sig === undefined && props === undefined && frame === undefined ? undefined : { sig, props, frame };
 }
 
 /**
@@ -98,7 +99,7 @@ export function queryFnProps(name: Identifier, { environment, builtIns, signatur
 	if(known === undefined) {
 		return info;
 	}
-	return { sig: info?.sig ?? known.sig, props: (info?.props ?? 0) | (known.props ?? 0) };
+	return { sig: info?.sig ?? known.sig, props: (info?.props ?? 0) | (known.props ?? 0), frame: info?.frame };
 }
 
 /** What flowR states about the call `id` makes, together with the name the call resolved to. */

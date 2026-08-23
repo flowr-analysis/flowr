@@ -356,7 +356,8 @@ function argsWith(this: void, layout: SigLayout, count: number, prop: ArgProps):
 const SigDbProps: Readonly<Record<string, CallProp>> = {
 	'can-throw':         CallProp.Throws,
 	'non-deterministic': CallProp.NonDet,
-	's3-method':         CallProp.Method
+	's3-method':         CallProp.Method,
+	'generic':           CallProp.Generic
 };
 
 /** the callees that make the calling function itself a generic ({@link CallProp.Generic}) */
@@ -374,8 +375,8 @@ export function fnInfoFromSignature(fn: DecodedFunction): BuiltInFnInfo {
 	for(const name of fn.props) {
 		props |= SigDbProps[name] ?? 0;
 	}
-	/* a function whose own body dispatches is the generic, which no property of the database states */
-	if(fn.callees.some(c => DispatchCallees.has(c))) {
+	/* the `generic` property settles it; without one (an older bundle, or none stored) the dispatching callee does */
+	if(!(props & CallProp.Generic) && fn.callees.some(c => DispatchCallees.has(c))) {
 		props |= CallProp.Generic;
 	}
 	return {

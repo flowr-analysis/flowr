@@ -81,7 +81,13 @@ export const enum FnProp {
 	 * ggplot2's `class_gg`). Only the extractor can tell: an entry without a definition location may equally be
 	 * a function built at load time, an S4 generic or a `Vectorize` result, which has no source to point at.
 	 */
-	Value            = 1 << 13
+	Value            = 1 << 13,
+	/**
+	 * The definition is a generic others dispatch on: an S3 one whose body calls `UseMethod`, an S4 one from
+	 * `setGeneric`/`standardGeneric`, or an S7 `new_generic`. The call graph shows the same for an S3 generic,
+	 * but only while a bundle carries one, and it never shows an S4/S7 generic built without an R body.
+	 */
+	Generic          = 1 << 14
 }
 
 /** the {@link FnProp} bit to its name (for decoding); integer keys iterate in ascending bit order */
@@ -99,7 +105,8 @@ export const FnPropNames: Readonly<Record<FnProp, string>> = {
 	[FnProp.S3Owner]:          's3-owner',
 	[FnProp.S4Owner]:          's4-owner',
 	[FnProp.S4Method]:         's4-method',
-	[FnProp.Value]:            'value'
+	[FnProp.Value]:            'value',
+	[FnProp.Generic]:          'generic'
 };
 
 /**

@@ -15,6 +15,9 @@ import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { Resolve } from '../environments/resolve-helper';
 import { NoEdges } from '../graph/graph';
+import type { FunctionArgumentRoles } from './argument-roles';
+import { ArgumentRoles } from './argument-roles';
+import { ArgProp } from '../environments/built-in-props';
 
 function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): boolean {
 	const workingQueue: DataflowGraphVertexArgument[] = def.exitPoints.map(d => graph.getVertex(d.nodeId)).filter(isNotUndefined);
@@ -30,7 +33,8 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 		}
 		const next = graph.outgoingEdges(current.id) ?? NoEdges;
 		for(const [t, e] of next) {
-			if(DfEdge.includesType(e, EdgeType.Returns)) {
+			/* a returned name is followed to what it holds, as `g <- function() 1; g` hands back that function */
+			if(DfEdge.includesType(e, EdgeType.Returns | EdgeType.Reads | EdgeType.DefinedBy) && !NodeId.isBuiltIn(t)) {
 				const v = graph.getVertex(t);
 				if(v) {
 					workingQueue.push(v);
@@ -82,9 +86,16 @@ function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition
 	return false;
 }
 
+/** Whether the body uses a formal as a function ({@link ArgProp.Callee}), which no call site has to show. */
+function callsAFormal(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
+	const roles: FunctionArgumentRoles = ArgumentRoles.of([id], graph, { ctx })[id] ?? {};
+	return Object.values(roles).some(props => (props & ArgProp.Callee) !== 0);
+}
+
 /**
  * Determines whether the function with the given id is a higher-order function, i.e.,
  * either takes a function as an argument or (may) returns a function.
+ * A parameter the body calls counts as well, whatever the call sites hand over.
  * If the return is an identity, e.g., `function(x) x`, this is not considered higher-order,
  * if no function is passed as an argument.
  * Please note that inspecting higher order functions can be sped up (if queries multiple times) by providing an inverted graph as well!
@@ -100,6 +111,11 @@ export function isFunctionHigherOrder(id: NodeId, graph: DataflowGraph, ctx: Rea
 		return true;
 	}
 
-	// 2. check whether any of the callsites passes a function
+	// 2. check whether the body calls one of its own parameters
+	if(callsAFormal(id, graph, ctx)) {
+		return true;
+	}
+
+	// 3. check whether any of the callsites passes a function
 	return inspectCallSitesArgumentsFns(vert, graph, ctx, invertedGraph);
 }

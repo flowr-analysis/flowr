@@ -21,4 +21,11 @@ describe('Inspect Higher-Order Functions Query', withTreeSitter(parser => {
 	testHigherOrder('and one returning a function', 'f <- function() function() 1', true);
 	testHigherOrder('a plain function is not', 'f <- function(x) x + 1\nf(1)', false);
 	testHigherOrder('nor is one taking a value', 'f <- function(g) g\nf(2)', false);
+	/* counterexamples: the body states what its parameters are for, whatever the call sites hand over */
+	testHigherOrder('a parameter the body calls needs no call site', 'f <- function(g) g()', true);
+	testHigherOrder('one handed to an applying built-in as well', 'f <- function(g) lapply(1:2, g)', true);
+	testHigherOrder('and one called through do.call', 'f <- function(g) do.call(g, list())', true);
+	testHigherOrder('a parameter only computed with stays plain', 'f <- function(x) x + 1', false);
+	testHigherOrder('a parameter called under another name counts', 'f <- function(g) { h <- g; h() }', true);
+	testHigherOrder('handing back a function of its own counts', 'f <- function() { g <- function() 1; g }', true);
 }));

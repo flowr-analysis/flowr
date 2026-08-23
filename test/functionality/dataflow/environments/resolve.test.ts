@@ -297,9 +297,10 @@ describe('Resolve', { concurrent: false }, withShell(shell => {
 		testResolve('unicode',            '2@x', 'x <- toupper("héllo") \n x',      set(['HÉLLO']));
 		testResolve('unicode nchar',      '2@x', 'x <- nchar("héllo") \n x',        set([5]));
 		testResolve('unresolved',         '2@x', 'x <- toupper(Sys.getenv("P")) \n x',  Top);
-		/* we see the source text, in which an escape is still a backslash and a letter */
-		testResolve('escape untouched',   '2@x', 'x <- toupper("a\\tb") \n x',      Top);
-		testResolve('escape not counted', '2@x', 'x <- nchar("a\\tb") \n x',        Top);
+		/* a literal stands for the characters R reads it as, not for the source text spelling them out */
+		testResolve('escape folded',      '2@x', 'x <- toupper("a\\tb") \n x',      set(['A\tB']));
+		testResolve('escape counted',     '2@x', 'x <- nchar("a\\tb") \n x',        set([3]));
+		testResolve('backslash counted',  '2@x', 'x <- nchar("a\\\\b") \n x',       set([3]));
 		/* a second argument changes what these do, so the plain fold would be wrong */
 		testResolve('nchar in bytes',     '2@x', 'x <- nchar("ab", type = "bytes") \n x', Top);
 		testResolve('trimws one side',    '2@x', 'x <- trimws("  a  ", which = "left") \n x', Top);
@@ -408,10 +409,15 @@ describe('Resolve', { concurrent: false }, withShell(shell => {
 			['FALSE', false],
 			['F',     false],
 			['NULL',  null],
-			['NA',    null],
 		])("Identifier '%s' should always resolve to %s", (identifier, wantedValue) => {
 			const result = Resolve.toBuiltIn(identifier, defaultEnv(), wantedValue);
 			assert.strictEqual(result, Ternary.Always, 'should be Ternary.Always');
+		});
+
+		/* an `NA` is a value R has and flowR cannot hold, so it answers anything rather than `NULL` */
+		test.each(['NA', 'NA_integer_', 'NA_real_', 'NA_complex_', 'NA_character_'])("Identifier '%s' is no null", identifier => {
+			assert.strictEqual(Resolve.toBuiltIn(identifier, defaultEnv(), null), Ternary.Never, 'should be Ternary.Never');
+			assert.deepEqual(Resolve.toConstants(identifier, defaultEnv()), Top);
 		});
 
 		// Maybe Resolve
@@ -446,7 +452,6 @@ describe('Resolve', { concurrent: false }, withShell(shell => {
 				['FALSE', false],
 				['F',     false],
 				['NULL',  null],
-				['NA',    null],
 			])("Identifier '%s' should always resolve to %s", (identifier, wantedValue) => {
 				const defs = Resolve.toConstants(identifier, defaultEnv());
 				assert.deepEqual(defs, setFrom(valueFromTsValue(wantedValue)));

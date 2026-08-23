@@ -7,6 +7,11 @@ import { Unknown } from '../../../src/queries/catalog/dependencies-query/depende
 import path from 'path';
 import { getPlatform } from '../../../src/util/os';
 
+/** a path as R reads it back, so that a backslash in the source is one in the value and no escape */
+function inR(path: string): string {
+	return path.replaceAll('\\', '\\\\');
+}
+
 describe('flowR linter', withTreeSitter(parser => {
 	describe('absolute path linter', () => {
 
@@ -128,7 +133,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				describe('relative paths', () => {
 					for(const relPath of ['./file.csv', '../file.csv', 'file.csv', 'a\\b\\c.csv']) {
 						/* @ignore-in-wiki */
-						assertLinter(`"${relPath}"`, parser, `${fn}("${relPath}")`, 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 0 });
+						assertLinter(`"${relPath}"`, parser, `${fn}("${inR(relPath)}")`, 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 0 });
 					}
 				});
 				describe('raw strings', () => {
@@ -152,11 +157,11 @@ describe('flowR linter', withTreeSitter(parser => {
 				describe('absolute paths', () => {
 					for(const absPath of ['/absolute/path/file.csv', 'C:\\absolute\\path\\file.csv', 'G:\\absolute\\path\\file.txt']) {
 						/* @ignore-in-wiki */
-						assertLinter(`"${absPath}"`, parser, `${fn}("${absPath}")`, 'absolute-file-paths', [
+						assertLinter(`"${absPath}"`, parser, `${fn}("${inR(absPath)}")`, 'absolute-file-paths', [
 							{
 								certainty: LintingResultCertainty.Certain,
 								filePath:  absPath,
-								loc:       [1, 1, 1, absPath.length + 2 + fn.length + 2] // +2 for the quotes and the parentheses
+								loc:       [1, 1, 1, inR(absPath).length + 2 + fn.length + 2] // +2 for the quotes and the parentheses
 							}
 						], { totalConsidered: 1, totalUnknown: 0 });
 					}
@@ -188,7 +193,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			describe('file.path', () => {
 				describe('relative paths', () => {
 					for(const components of [['a', 'b', 'c'], ['a/b/c', 'd/e/f'], ['a\\b\\c', 'd\\e\\f']] as const) {
-						const command = `file.path(${components.map(c => `"${c}"`).join(', ')})`;
+						const command = `file.path(${components.map(c => `"${inR(c)}"`).join(', ')})`;
 						/* @ignore-in-wiki */
 						assertLinter(command, parser, command, 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 0 });
 					}
@@ -206,7 +211,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				});
 				describe('absolute paths', () => {
 					for(const components of [['/absolute/path', 'file.csv'], ['G:', 'a', 'b.txt'], ['', 'a.txt'], ['C:\\absolute\\path', 'file.csv'], ['G:\\absolute\\path', 'file.txt']] as const) {
-						const command = `file.path(${components.map(c => `"${c}"`).join(', ')})`;
+						const command = `file.path(${components.map(c => `"${inR(c)}"`).join(', ')})`;
 						/* @ignore-in-wiki */
 						assertLinter(command, parser, command, 'absolute-file-paths', [
 							{
@@ -219,7 +224,7 @@ describe('flowR linter', withTreeSitter(parser => {
 					assertLinter('change fsep', parser, 'file.path("C:", "b", fsep="\\\\")', 'absolute-file-paths', [
 						{
 							certainty: LintingResultCertainty.Uncertain,
-							filePath:  'C:\\\\b',
+							filePath:  'C:\\b',
 							loc:       [1, 1, 1, 31]
 						}
 					], { totalConsidered: 1, totalUnknown: 0 });

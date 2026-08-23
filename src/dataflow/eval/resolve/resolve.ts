@@ -4,11 +4,11 @@ import type { RNumberValue } from '../../../r-bridge/lang-4.x/convert-values';
 import { isRNumberValue, unliftRValue } from '../../../util/r-value';
 import type { BuiltInEvalHandler, BuiltInEvalHandlerArgs } from '../../environments/built-in';
 import { OriginType } from '../../origin/dfg-get-origin';
-import { intervalFrom } from '../values/intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-constants';
 import { type Lift, Top, type Value, type ValueNumber, type ValueVector } from '../values/r-value';
-import { stringFrom } from '../values/string/string-constants';
+import { RStringLiteral } from '../values/string/string-constants';
 import { flattenVectorElements, vectorFrom } from '../values/vectors/vector-constants';
+import { valueFromRNumber } from '../values/general';
 import { liftScalar } from '../values/scalar/scalar-constants';
 import { Identifier, type IdentifierDefinition, ReferenceType } from '../../environments/identifier';
 import type { REnvironmentInformation } from '../../environments/environment';
@@ -74,9 +74,9 @@ export function resolveNode(args: BuiltInEvalHandlerArgs): Value {
 	const { node, environment, ctx } = args;
 	const nt = node.type;
 	if(nt === RType.String) {
-		return stringFrom(node.content.str);
+		return RStringLiteral.value(node.content) ?? Top;
 	} else if(nt === RType.Number) {
-		return intervalFrom(node.content.num, node.content.num);
+		return valueFromRNumber(node.content);
 	} else if(nt === RType.Logical) {
 		return node.content.valueOf() ? ValueLogicalTrue : ValueLogicalFalse;
 	} else if(nt === RType.FunctionDefinition) {
@@ -120,22 +120,24 @@ export function resolveAsSeq(args: BuiltInEvalHandlerArgs): ValueVector<Lift<Val
 	const rightValue = unliftRValue(Resolve.toValue(operator.rhs, args));
 
 	if(isRNumberValue(leftValue) && isRNumberValue(rightValue)) {
-		return vectorFrom(createNumberSequence(leftValue, rightValue).map(liftScalar));
+		const sequence = createNumberSequence(leftValue, rightValue);
+		return sequence === undefined ? Top : vectorFrom(sequence.map(liftScalar));
 	}
 	return Top;
 }
 
-function createNumberSequence(start: RNumberValue, end: RNumberValue): RNumberValue[] {
-	const sequence: RNumberValue[] = [];
-	const min = Math.min(start.num, end.num);
-	const max = Math.max(start.num, end.num);
-
-	for(let i = min; i <= max; i++) {
-		sequence.push({ ...start, num: i });
+/**
+ * The elements `from:to` runs over, counting down whenever `to` is the smaller one, and stopping before it
+ * would pass `to` (`1:3.5` ends at `3`). `undefined` for a bound that names no position to count from or to.
+ */
+function createNumberSequence(start: RNumberValue, end: RNumberValue): RNumberValue[] | undefined {
+	if(!Number.isFinite(start.num) || !Number.isFinite(end.num)) {
+		return undefined;
 	}
-
-	if(start > end) {
-		sequence.reverse();
+	const step = start.num <= end.num ? 1 : -1;
+	const sequence: RNumberValue[] = [];
+	for(let i = start.num; step > 0 ? i <= end.num : i >= end.num; i += step) {
+		sequence.push({ ...start, num: i });
 	}
 	return sequence;
 }

@@ -1,8 +1,7 @@
 import { VariableResolve } from '../../../config';
 import type { LinkTo } from '../../../queries/catalog/call-context-query/call-context-query-format';
 import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverName } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId, recoverName } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { VisitingQueue } from '../../../slicing/static/visiting-queue';
 import { guard } from '../../../util/assert';
@@ -363,6 +362,19 @@ function iteratedSequence(id: NodeId, graph: DataflowGraph, idMap: AstIdMap): RN
 	return sequence;
 }
 
+/** whether the call may run a built-in as well as a definition of the program, so that what it yields is open */
+function callsBuiltInAndDefinition(edges: ReadonlyMap<NodeId, DfEdge>): boolean {
+	let builtIn = false;
+	let defined = false;
+	for(const [target, edge] of edges) {
+		if(DfEdge.includesType(edge, EdgeType.Calls)) {
+			builtIn ||= NodeId.isBuiltIn(target);
+			defined ||= !NodeId.isBuiltIn(target);
+		}
+	}
+	return builtIn && defined;
+}
+
 /**
  * Please use {@link resolveIdToValue}
  *
@@ -435,6 +447,12 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 
 		const isFn = t === VertexType.FunctionCall;
 		const outgoingEdges = graph.outgoingEdges(id) ?? NoEdges;
+		if(isFn && callsBuiltInAndDefinition(outgoingEdges)) {
+			/* `if(u) toupper <- function(x) "z"`: the call may run the built-in just as well as the definition,
+			 * and what the two hand back has nothing to do with each other, so following the one we can walk
+			 * would state the value of a call that may never happen */
+			return Top;
+		}
 		let foundRetuns = false;
 		// travel all read and defined-by edges
 		for(const [targetId, edge] of outgoingEdges) {

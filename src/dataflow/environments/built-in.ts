@@ -48,9 +48,9 @@ import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
 import type { ResolveInfo } from '../eval/resolve/alias-tracking';
 import { resolveAsSeq, resolveAsVector } from '../eval/resolve/resolve';
-import { resolveAsStringFn } from '../eval/resolve/resolve-strings';
+import { StringFold } from '../eval/resolve/resolve-strings';
 import { resolveAsComparison, resolveAsGroup, resolveAsLogical } from '../eval/resolve/resolve-operators';
-import { resolveAsNumeric } from '../eval/resolve/resolve-numbers';
+import { NumericFold } from '../eval/resolve/resolve-numbers';
 import { BuiltInEvalName } from './built-in-eval-name';
 import type { VariableResolve } from '../../config';
 import type {
@@ -397,10 +397,10 @@ export const BuiltInProcessorMapper = {
 export const BuiltInEvalHandlerMapper = {
 	[BuiltInEvalName.Vector]:     resolveAsVector,
 	[BuiltInEvalName.Seq]:        resolveAsSeq,
-	[BuiltInEvalName.Numeric]:    resolveAsNumeric,
+	[BuiltInEvalName.Numeric]:    NumericFold.call,
 	[BuiltInEvalName.Comparison]: resolveAsComparison,
 	[BuiltInEvalName.Logical]:    resolveAsLogical,
-	[BuiltInEvalName.StringFn]:   resolveAsStringFn,
+	[BuiltInEvalName.StringFn]:   StringFold.call,
 	[BuiltInEvalName.Group]:      resolveAsGroup
 } as const satisfies Record<BuiltInEvalName, BuiltInEvalHandler>;
 

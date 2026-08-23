@@ -23,6 +23,36 @@ function mod(a: number, b: number): number {
 	return a - Math.floor(a / b) * b;
 }
 
+/** the largest R integer there is; the smallest one is its negation, as `-.Machine$integer.max` is `NA` */
+const IntegerMax = 2147483647;
+
+/** the value as R's `as.integer` sees it, `undefined` for the ones it answers `NA` for */
+function asInteger(x: number): number | undefined {
+	const truncated = Math.trunc(x);
+	return Number.isFinite(truncated) && Math.abs(truncated) <= IntegerMax ? truncated : undefined;
+}
+
+/**
+ * A `bitw*` fold, which R defines on 32-bit integers: an operand it cannot represent as one and a result that
+ * is no integer either (`bitwShiftL(1, 31)`) are `NA` in R, so they fold to nothing here.
+ */
+function bitwise(fold: (...args: number[]) => number): (...args: number[]) => number | undefined {
+	return (...args: number[]) => {
+		const ints = args.map(asInteger);
+		if(ints.includes(undefined)) {
+			return undefined;
+		}
+		const result = fold(...ints as number[]);
+		return Math.abs(result) <= IntegerMax ? result : undefined;
+	};
+}
+
+/** a shift, which R answers `NA` for whenever the number of places is not one of the 32 it knows */
+function bitwiseShift(fold: (a: number, n: number) => number): (a: number, n: number) => number | undefined {
+	const shift = bitwise(fold);
+	return (a: number, n: number) => n >= 0 && n <= 31 ? shift(a, n) : undefined;
+}
+
 /**
  * One entry of the {@link NumericFns} registry: the parameters R declares, in order, and how to fold them.
  *
@@ -86,13 +116,13 @@ export const NumericFns = {
 	asinh:      { params: ['x'], fold: Math.asinh },
 	acosh:      { params: ['x'], fold: Math.acosh },
 	atanh:      { params: ['x'], fold: Math.atanh },
-	/* bit twiddling, which R defines on 32-bit integers just as JS does */
-	bitwAnd:    { params: ['a', 'b'], fold: (a: number, b: number) => a & b },
-	bitwOr:     { params: ['a', 'b'], fold: (a: number, b: number) => a | b },
-	bitwXor:    { params: ['a', 'b'], fold: (a: number, b: number) => a ^ b },
-	bitwNot:    { params: ['a'], fold: (a: number) => ~a },
-	bitwShiftL: { params: ['a', 'n'], fold: (a: number, n: number) => a << n },
-	bitwShiftR: { params: ['a', 'n'], fold: (a: number, n: number) => a >>> n }
+	/* bit twiddling, which R defines on the 32-bit integers, see `bitwise` for what falls outside of them */
+	bitwAnd:    { params: ['a', 'b'], fold: bitwise((a: number, b: number) => a & b) },
+	bitwOr:     { params: ['a', 'b'], fold: bitwise((a: number, b: number) => a | b) },
+	bitwXor:    { params: ['a', 'b'], fold: bitwise((a: number, b: number) => a ^ b) },
+	bitwNot:    { params: ['a'], fold: bitwise((a: number) => ~a) },
+	bitwShiftL: { params: ['a', 'n'], fold: bitwiseShift((a: number, n: number) => a << n) },
+	bitwShiftR: { params: ['a', 'n'], fold: bitwiseShift((a: number, n: number) => a >>> n) }
 } as const satisfies Record<string, NumericFn>;
 
 /** an operand as the folds take it: one number, or a vector of them to map over */
@@ -152,7 +182,7 @@ function apply(fold: NumericFn['fold'], operands: readonly Operand[]): number | 
  * number, a logical (counting as its `0`/`1`), or a vector of numbers, which folds elementwise. Anything that
  * does not resolve, a result that is not finite, and a vector length mismatch all stay `Top`.
  */
-export function resolveAsNumeric(args: BuiltInEvalHandlerArgs): Value {
+function resolveAsNumeric(this: void, args: BuiltInEvalHandlerArgs): Value {
 	const name = calledName(args.node);
 	const fn = name === undefined ? undefined : NumericFns[name as keyof typeof NumericFns] as NumericFn | undefined;
 	if(fn === undefined) {
@@ -180,3 +210,14 @@ export function resolveAsNumeric(args: BuiltInEvalHandlerArgs): Value {
 	/* a number is an exact interval everywhere else in the solver, so the elements are lifted the same way */
 	return folded === undefined ? Top : vectorFrom(folded.map(n => intervalFrom(n, n)));
 }
+
+/**
+ * Folding the numeric built-ins, from an operator to `sqrt`.
+ */
+export const NumericFold = {
+	name: 'NumericFold',
+	/** every numeric built-in that is folded, see {@link NumericFns} */
+	fns:  NumericFns,
+	/** What a numeric call amounts to; see {@link resolveAsNumeric}. */
+	call: resolveAsNumeric
+} as const;

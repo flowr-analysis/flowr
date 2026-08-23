@@ -17,6 +17,7 @@ import { DataMaskingFunctionIdentifiers } from './data-masking-functions';
 import { ArgProp, CallProp, CallProps, type FnSig } from './built-in-props';
 import { AttachedBasePackageSet, baseRExportOwner } from '../../util/r-base-packages';
 import { RBasePackageStore } from '../../data/r-base-packages.generated';
+import { Top } from '../eval/values/r-value';
 
 /** Which stack environment an env-returning/-transforming builtin denotes (see {@link StackEnvBuiltins}). */
 export enum StackEnvKind {
@@ -376,9 +377,12 @@ const PlotCreateConfig = {
  * is what {@link markGenerics} makes of them, and a test checks that this is all it changes.
  */
 export const WrittenBuiltinDefinitions = [
-	{ type: 'constant', names: Identifier.fromAll(PkgName.Base, ['NULL', 'NA', 'NA_integer_', 'NA_real_', 'NA_complex_', 'NA_character_']), value: null, assumePrimitive: true },
+	{ type: 'constant', names: [Identifier.from(['NULL', PkgName.Base])], value: null, assumePrimitive: true },
+	/* an `NA` is a value R has and flowR has no way to hold, which is not the same as having none: `is.null(NA)` is FALSE */
+	{ type: 'constant', names: Identifier.fromAll(PkgName.Base, ['NA', 'NA_integer_', 'NA_real_', 'NA_complex_', 'NA_character_']), value: Top, assumePrimitive: true },
 	{ type: 'constant', names: [Identifier.from(['NaN', PkgName.Base])], value: NaN, assumePrimitive: true },
-	{ type: 'constant', names: Identifier.fromAll(PkgName.Base, ['.GlobalEnv', '.BaseNamespaceEnv', '.BaseEnv']), value: null, assumePrimitive: true },
+	/* an environment is no more `NULL` than an `NA` is; which one it stands for is what the stack-env handling answers */
+	{ type: 'constant', names: Identifier.fromAll(PkgName.Base, ['.GlobalEnv', '.BaseNamespaceEnv', '.BaseEnv']), value: Top, assumePrimitive: true },
 	{ type: 'constant', names: Identifier.fromAll(PkgName.Base, ['TRUE', 'T']),  value: true,  assumePrimitive: true },
 	{ type: 'constant', names: Identifier.fromAll(PkgName.Base, ['FALSE', 'F']),  value: false, assumePrimitive: true },
 	{ type: 'constant', names: [Identifier.from(['Inf', PkgName.Base])],  value: Infinity,  assumePrimitive: true },

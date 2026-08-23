@@ -14,7 +14,7 @@ import { BuiltInEvalName } from './built-in-eval-name';
 import { NseArguments } from '../internal/process/functions/call/known-call-handling';
 import { Unquote } from '../internal/process/functions/call/nse';
 import { DataMaskingFunctionIdentifiers } from './data-masking-functions';
-import { ArgProp, CallProp, CallProps, type FnSig } from './built-in-props';
+import { ArgProp, ArgProps, CallProp, CallProps, type FnSig } from './built-in-props';
 import { ClassSystem, MemberVisibility } from '../fn/class-declaration';
 import { AttachedBasePackageSet, baseRExportOwner } from '../../util/r-base-packages';
 import { RBasePackageStore } from '../../data/r-base-packages.generated';
@@ -295,6 +295,8 @@ export interface StatedSignature {
 	readonly params?: string;
 	/** what it does, from {@link CallProps.words} */
 	readonly props:   readonly string[];
+	/** each formal with what it is used for, from {@link ArgProps.words}; the roles read like the types R has none of */
+	readonly args?:   readonly (readonly [name: string, roles: readonly string[]])[];
 }
 
 /**
@@ -367,8 +369,13 @@ export function statedSignatures(definitions: BuiltInDefinitions = DefaultBuilti
 		for(const id of definition.names) {
 			const name = String(Identifier.getName(id));
 			const pkg = String(Identifier.getNamespace(id) ?? PkgName.Base);
-			const declared = (info?.sig ?? []).map(([param]: readonly [string, unknown]) => param);
-			const entry = { pkg, params: declared.length > 0 ? declared.join(', ') : undefined, props: CallProps.words(info?.props) };
+			const declared = info?.sig ?? [];
+			const entry = {
+				pkg,
+				params: declared.length > 0 ? declared.map(([param]) => param).join(', ') : undefined,
+				props:  CallProps.words(info?.props),
+				args:   declared.length > 0 ? declared.map(([param, props]) => [param, ArgProps.words(props)] as const) : undefined
+			};
 			const known = stated.get(name) ?? [];
 			/* the last definition for a package is the one that resolves, so it is the one stated */
 			stated.set(name, [...known.filter(other => other.pkg !== pkg), entry]);

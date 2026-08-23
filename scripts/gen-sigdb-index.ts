@@ -68,9 +68,12 @@ async function main(): Promise<void> {
 	}
 	const blobs = encode(index.packages);
 	const kinds = JSON.stringify(Object.fromEntries(index.kinds)).replaceAll('</', '<\\/');
-	/* what flowR states about the names it defines, so a hit can show its signature next to the database's */
+	/* what flowR states about the names it defines, so a hit can show its signature next to the database's.
+	   `|` separates the words, `no default` and `changes scope` being two of them rather than four */
 	const stated = JSON.stringify(Object.fromEntries([...index.stated].map(([name, entries]) =>
-		[name, entries.map(({ pkg, params, props }) => [pkg, params ?? '', props.join(' ')])]))).replaceAll('</', '<\\/');
+		[name, entries.map(({ pkg, props, args }) =>
+			[pkg, props.join('|'), (args ?? []).map(([arg, roles]) => arg + ':' + roles.join('|')).join(',')])
+		]))).replaceAll('</', '<\\/');
 	const page = fillVersion(Template, versionMarker())
 		.replaceAll('<!--UPDATED-->', index.updated)
 		.replaceAll('<!--PACKAGES-->', group(index.packages.length))
@@ -82,6 +85,7 @@ async function main(): Promise<void> {
 		.replace('"<!--TOPICS-->"', JSON.stringify(Object.fromEntries(index.topics)).replaceAll('</', '<\\/'))
 		.replaceAll('<!--TOPICS-COMPLETE-->', String(index.topicsComplete))
 		.replace('"<!--GROUPS-->"', JSON.stringify(Object.fromEntries(index.groups)).replaceAll('</', '<\\/'))
+		.replace('"<!--GENERICS-->"', JSON.stringify([...index.generics].sort().join('\n')).replaceAll('</', '<\\/'))
 		.replace('<!--DATA-->', pack(blobs.packages, blobs.names));
 
 	fs.mkdirSync(Target, { recursive: true });

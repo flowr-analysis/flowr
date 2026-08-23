@@ -231,12 +231,20 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 /* what flowR states about the name, next to what the database says about it */
 #hits .kindtag.props { border-style: dashed; opacity: .8; }
 #hits .flag.stated { border-style: dashed; color: var(--accent); }
-#hits .own .stated { max-width: 26rem; }
+#hits .own .stated { max-width: 30rem; }
 #hits .stated {
 	font-size: .78rem; color: var(--muted); background: var(--sunk);
 	padding: .05rem .35rem; border-radius: .3rem; white-space: nowrap;
-	overflow: hidden; text-overflow: ellipsis; max-width: 22rem;
+	overflow: hidden; text-overflow: ellipsis; max-width: 32rem;
 }
+/* R has no types, so the letters for what flowR says a formal is used for are set in their place */
+#hits .stated { display: inline-flex; align-items: baseline; vertical-align: bottom; }
+#hits .stated .args { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* what the call does is the part worth keeping when the formals no longer fit */
+#hits .stated .ret, #hits .stated .kind { flex: none; }
+#hits .stated .role { font-style: normal; color: color-mix(in srgb, var(--accent) 75%, var(--muted)); }
+#hits .stated .ret { font-style: normal; color: color-mix(in srgb, var(--fg) 45%, var(--muted)); }
+#hits .stated .kind { font-style: normal; color: color-mix(in srgb, var(--muted) 80%, transparent); }
 #hits .owners { margin-left: auto; display: flex; flex-wrap: wrap; gap: .3rem; }
 #hits .owners a {
 	font-size: .78rem; text-decoration: none; padding: .1rem .45rem; border-radius: .8rem;
@@ -317,6 +325,7 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 <script type="application/json" id="topics">"<!--TOPICS-->"</script>
 <script type="application/json" id="formals">"<!--FORMALS-->"</script>
 <script type="application/json" id="groups">"<!--GROUPS-->"</script>
+<script type="application/json" id="generics">"<!--GENERICS-->"</script>
 <script>
 /* the ranker the playground shares, written in from `src/util/text/name-rank.ts` by the build */
 <!--RANKER-->
@@ -644,6 +653,9 @@ const FlagNames = {
 	m: 'S4 method', h: 'higher order', x: 'deprecated', c: 'value', v: 'no loc', u: 'no docs'
 };
 
+/** the flags recording something about the entry rather than about the call, which no signature states */
+const MetaFlags = ['c', 'v', 'u'];
+
 /** the few flags whose short form does not speak for itself */
 const FlagAbout = {
 	c: 'the database records it as a value rather than a function',
@@ -667,11 +679,13 @@ function owner(entry) {
 
 /* a Map, not the parsed object: R exports names like `toString`, and those would hit Object's prototype */
 const kinds = new Map(Object.entries(JSON.parse(document.getElementById('kinds').textContent)));
-/* `name -> [call, props]`: what flowR states about the functions it carries a definition for */
+/* `name -> [package, properties, formals with their roles][]`: what flowR states about the names it defines */
 const stated = new Map(Object.entries(JSON.parse(document.getElementById('stated').textContent)));
 /* `package::alias -> topic` for every documented base R name, empty where the topic is the name itself, so the
    keys are also the set of base R names that have a manual page at all */
 const topics = new Map(Object.entries(JSON.parse(document.getElementById('topics').textContent)));
+/* the names something dispatches on, which is what makes `format.Date` a method and `is.datacggm` a function */
+const generics = new Set(JSON.parse(document.getElementById('generics').textContent).split('\n').filter(Boolean));
 /* whether that set is the real one: without an R to read the alias tables from, it holds the primitives alone */
 const topicsKnown = '<!--TOPICS-COMPLETE-->' === 'true';
 /* `name -> [package, parameters][]`: what base R itself declares, which flowR states nothing about */
@@ -704,7 +718,7 @@ function ownerLink(index) {
 	return link;
 }
 
-const Shown = 6;
+const Shown = 3;
 
 /** one aligned row per owning package, each one a link to that package's manual page for this name */
 function detail(name, owners) {
@@ -767,21 +781,13 @@ function detail(name, owners) {
 		const tag = document.createElement('span');
 		tag.className = 'tag';
 		tag.textContent = base === '1' ? 'base R' : 'CRAN';
+		/* what flowR states for this package's version of the name, which the head can only show for one of
+		   them (`filter` is `stats`'s to a reader and dplyr's to flowR), else what the database records */
 		const own = statedFor.get(pkg);
-		/* the signature flowR carries for this package's version of the name, which the head can only show
-		   for one of them: `filter` is `stats`'s to a reader and dplyr's to flowR */
-		const mineHere = own?.[1] ?? declaredIn(name, pkg);
-		if(mineHere) {
-			marks.append(signature(name, mineHere, own?.[1]
-				? 'what flowR models of ' + pkg + '::' + name
-				: 'what ' + pkg + ' declares for ' + name));
-		}
-		for(const word of (own?.[2] ?? '').split(' ').filter(Boolean)) {
-			const one = document.createElement('span');
-			one.className = 'flag stated';
-			one.textContent = word;
-			one.title = 'flowR states this about ' + pkg + '::' + name;
-			marks.append(one);
+		const here = own ? { args: own[2] ?? '', props: own[1] ?? '' }
+			: { args: declaredIn(name, pkg) ?? '', props: flagWords(flags) };
+		if(here.args !== '' || here.props !== '') {
+			marks.append(signature(name, here.args, here.props));
 		}
 		const go = document.createElement('a');
 		go.className = 'go';
@@ -846,12 +852,27 @@ function genericOf(name, owners) {
 	if(!owners.some(entry => owner(entry).flags.includes('3'))) {
 		return undefined;
 	}
+	/* the longest prefix something dispatches on: `is` is a name, but nothing dispatches on it, so
+	   `is.datacggm` is a function whose name happens to have a dot in it rather than a method of `is` */
+	let found;
 	for(let at = name.indexOf('.'); at > 0; at = name.indexOf('.', at + 1)) {
-		if(knownNames().has(name.slice(0, at))) {
-			return name.slice(0, at);
+		if(generics.has(name.slice(0, at))) {
+			found = name.slice(0, at);
 		}
 	}
-	return undefined;
+	return found;
+}
+
+/**
+ * The generic an S4 method answers, `undefined` when the name is no S4 method. R writes such a method down as
+ * `generic,signature-method`, so the name carries its generic where the database recorded one that way.
+ */
+function s4GenericOf(name, owners) {
+	if(!owners.some(entry => owner(entry).flags.includes('m'))) {
+		return undefined;
+	}
+	const at = name.indexOf(',');
+	return at > 0 ? name.slice(0, at) : undefined;
 }
 
 /** a package is a thing to find too: searching `dplyr` should offer the package, not only its names */
@@ -968,13 +989,103 @@ function withStatedOwner(name, owners) {
 	return found.length === 0 ? known : [...found.map(at => at + ':?'), ...known];
 }
 
-/** `name(params)`, the one shape a signature is drawn in wherever it comes from */
-function signature(name, params, why) {
+/**
+ * The words for what a call is, does and hands back, and for what an argument is used for, shortened to
+ * what fits on one line and still reads as a word. A word without an entry is short enough already, and
+ * the full ones are on every signature as a tooltip.
+ */
+const Words = {
+	/* what a call is and does, flowR's words and the database's for the same thing alike */
+	'can throw': 'throws', 'invisible': 'invis', 's3 method': 's3', 'S3 method': 's3', 'S4 method': 's4',
+	'changes scope': 'scope', 'non deterministic': 'nondet', 'non-deterministic': 'nondet',
+	'ambient state': 'ambient', 'file system': 'file', 'network': 'net', 'concurrent': 'async',
+	'calls something deprecated': 'calls depr', 'calls internals': 'internal', 'recursive': 'rec',
+	'owns an S3 class': 's3 class', 'owns an S4 class': 's4 class', 'higher order': 'hof', 'deprecated': 'depr',
+	/* when an argument is evaluated is a letter (`F+val`), what it is used for stays a word */
+	'forced': 'F', 'no default': 'R', 'lazy': 'L',
+	'value': 'val', 'resource': 'res', 'written': 'out', 'callee': 'fn', 'presence': 'seen'
+};
+
+/** what a call hands back, which belongs behind the formals like a return type */
+const Returns = ['invisible'];
+
+/** the `|`-joined words of the page's own encoding, as a list */
+function wordsOf(joined) {
+	return joined.split('|').filter(Boolean);
+}
+
+/** the words as a reader sees them, shortened where {@link Words} has something shorter */
+function short(words) {
+	return words.map(word => Words[word] ?? word);
+}
+
+/** the words of `props` split into what the call is and does, and what it hands back */
+function parts(props) {
+	const words = wordsOf(props);
+	return { kind: words.filter(word => !Returns.includes(word)), returns: words.filter(word => Returns.includes(word)) };
+}
+
+/** the formals of `args` as `[name, roles]`, the roles empty for a declaration that states none */
+function argsOf(args) {
+	return args.split(',').filter(Boolean).map(arg => {
+		const at = arg.indexOf(':');
+		return at < 0 ? [arg.trim(), []] : [arg.slice(0, at).trim(), wordsOf(arg.slice(at + 1))];
+	});
+}
+
+/** one `name: roles` part of a signature, the roles set apart from the formal they belong to */
+function formal([name, roles]) {
+	const part = document.createElement('span');
+	part.className = 'formal';
+	part.append(name);
+	if(roles.length > 0) {
+		part.append(Object.assign(document.createElement('i'), { className: 'role', textContent: ': ' + short(roles).join('+') }));
+	}
+	return part;
+}
+
+/** the same signature spelled out, which is what a reader gets on hovering the short one */
+function readable(name, args, props) {
+	const spelled = argsOf(args).map(([formal, roles]) => roles.length === 0 ? formal : formal + ': ' + roles.join(' + ')).join(', ');
+	const { kind, returns } = parts(props);
+	return name + (kind.length > 0 ? '<' + kind.join(', ') + '>' : '') + (args === '' ? '' : '(' + spelled + ')')
+		+ (returns.length > 0 ? ': ' + returns.join(', ') : '');
+}
+
+/**
+ * A signature the way the page draws every one of them: `name<what it is and does>(formal: role, ...): what
+ * it hands back`. R has no types, so the roles stand in for them. `args` are the formals, with their roles
+ * behind a `:` where something states them; the parentheses are left out where none are known at all, which
+ * is not the same as a call taking nothing.
+ */
+function signature(name, args, props) {
 	const said = document.createElement('code');
 	said.className = 'stated';
-	said.append(Object.assign(document.createElement('b'), { textContent: name }), '(' + params + ')');
-	said.title = why;
+	const { kind, returns } = parts(props);
+	said.append(Object.assign(document.createElement('b'), { textContent: name }));
+	if(kind.length > 0) {
+		said.append(Object.assign(document.createElement('i'), { className: 'kind', textContent: '<' + short(kind).join(', ') + '>' }));
+	}
+	if(args !== '') {
+		/* the formals are what gets cut when the line is too long; what the call is and does stays */
+		const list = document.createElement('span');
+		list.className = 'args';
+		list.append('(');
+		argsOf(args).forEach((arg, at) => list.append(at > 0 ? ', ' : '', formal(arg)));
+		list.append(')');
+		said.append(list);
+	}
+	if(returns.length > 0) {
+		said.append(Object.assign(document.createElement('i'), { className: 'ret', textContent: ': ' + short(returns).join(', ') }));
+	}
+	/* the short form is for the glance, the words for the reader who stops on it */
+	said.title = readable(name, args, props);
 	return said;
+}
+
+/** the flags the database records about the call itself, as the `|`-joined words a signature states */
+function flagWords(flags) {
+	return flags.filter(flag => !MetaFlags.includes(flag)).map(flag => FlagNames[flag]).filter(Boolean).join('|');
 }
 
 /** what base R declares for `name` in `pkg`, which the page carries for base R alone */
@@ -1006,9 +1117,10 @@ function show(name, needle, at, owners) {
 	   A name several packages define is stated per package, so the one the reader means is the one shown */
 	const mine = stated.get(name) ?? [];
 	/* the package the search named, else the one a reader most likely means */
-	const first = packages[owner(owners.find(entry => packages[owner(entry).index]?.[0] === scoped) ?? owners[0]).index];
+	const chosen = owners.find(entry => packages[owner(entry).index]?.[0] === scoped) ?? owners[0];
+	const first = packages[owner(chosen).index];
 	const own = mine.find(entry => entry[0] === first?.[0]) ?? mine.find(entry => entry[0] === 'base') ?? mine[0];
-	const words = (own?.[2] ?? '').split(' ').filter(Boolean);
+	const words = short(wordsOf(own?.[1] ?? ''));
 	/* what the name does comes first, that flowR knows it at all comes after */
 	const known = kinds.get(name) ?? [];
 	for(const kind of [...known.filter(k => k !== 'builtin'), ...known.filter(k => k === 'builtin')]) {
@@ -1016,7 +1128,8 @@ function show(name, needle, at, owners) {
 		badge.className = kind === 'builtin' ? 'kindtag flowr' : 'kindtag';
 		badge.textContent = KindNames[kind] ?? kind;
 		head.append(badge);
-		if(kind === 'builtin' && words.length > 0) {
+		/* the signature below states them where flowR carries one, and repeating them as a count says nothing */
+		if(kind === 'builtin' && words.length > 0 && !own) {
 			const more = document.createElement('span');
 			more.className = 'kindtag props';
 			more.textContent = '+' + words.length;
@@ -1024,20 +1137,24 @@ function show(name, needle, at, owners) {
 			head.append(more);
 		}
 	}
-	/* flowR's own formals where it names any, else what base R declares: an empty list would read as
-	   `takes nothing`, which is not what a definition without a declared signature means */
-	const declared = own?.[1] ? undefined : declaredIn(name, first?.[0]);
-	if(own?.[1]) {
-		head.append(signature(name, own[1], 'what flowR models of this call: the arguments it has something to say about, not every formal R declares'));
-	} else if(declared) {
-		head.append(signature(name, declared, 'what ' + first[0] + ' declares for this function'));
+	/* the generics this name answers, which the row states in words rather than the signature in short */
+	const dispatches = [['S3', genericOf(name, owners)], ['S4', s4GenericOf(name, owners)]]
+		.filter(([, generic]) => generic !== undefined);
+	/* what flowR states, else what the database records for the package a reader means. One line, ellipsis
+	   where the formals do not fit, and the words spelled out on it as a tooltip */
+	const shown = own ? { args: own[2] ?? '', props: own[1] ?? '' }
+		: { args: declaredIn(name, first?.[0]) ?? '', props: flagWords(owner(chosen).flags) };
+	/* where the row states `S3 method for format` next to it, the signature saying `s3` once more says nothing */
+	const said = dispatches.map(([kind]) => kind.toLowerCase() + ' method');
+	const props = wordsOf(shown.props).filter(word => !said.includes(word.toLowerCase())).join('|');
+	if(shown.args !== '' || props !== '') {
+		head.append(signature(name, shown.args, props));
 	}
-	const generic = genericOf(name, owners);
-	if(generic) {
+	for(const [kind, generic] of dispatches) {
 		const link = document.createElement('a');
 		link.className = 'generic';
 		link.href = '?q=' + encodeURIComponent(generic);
-		link.textContent = 'S3 method for ' + generic;
+		link.textContent = kind + ' method for ' + generic;
 		link.title = 'search for the generic this method dispatches for';
 		head.append(link);
 	}

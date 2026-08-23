@@ -8,9 +8,9 @@ import fs from 'fs';
 import path from 'path';
 import { once } from 'events';
 import {
-	DefaultCranBase, MaxDefaultLength, SigDbExt, SigDbMagic, SigDbSchema,
+	ClassProp, DefaultCranBase, MaxDefaultLength, SigClassSystem, SigClassSystemNames, SigDbExt, SigDbMagic, SigDbSchema,
 	type PkgBlob, type Sig, type SigDb, type SigDbFeatures, type SigDbPkgMeta, type SigDbPkgMetaIndex, type SigDbShard, type SigDbTier,
-	type SigDep, type SigDependencyInfo, type SigFn, type SigFunctionInfo, type SigParamInfo, type SigVersionInfo } from './schema';
+	type SigClass, type SigClassInfo, type SigDep, type SigDependencyInfo, type SigFn, type SigFunctionInfo, type SigParamInfo, type SigVersionInfo } from './schema';
 import { RVersion } from '../../util/r-version';
 import { blobTuple } from './decode';
 import { contentHash, dictionaryHash, shardHash } from './hash';
@@ -34,14 +34,20 @@ function noteZstdSupport(): void {
 /** resolve the effective features (everything defaults to on) */
 function resolveFeatures(f: SigDbFeatures | undefined): Required<SigDbFeatures> {
 	if(f === undefined) {
-		return { signatures: true, callGraphs: true, locations: true, dependencies: true };
+		return { signatures: true, callGraphs: true, locations: true, dependencies: true, classes: true };
 	}
 	return {
 		signatures:   f.signatures   ?? true,
 		callGraphs:   f.callGraphs   ?? true,
 		locations:    f.locations    ?? true,
-		dependencies: f.dependencies ?? true
+		dependencies: f.dependencies ?? true,
+		classes:      f.classes      ?? true
 	};
+}
+
+/** an ascending list with its duplicates dropped, so a class named twice in one version is stored once */
+function uniqueSortedNumbers(sorted: readonly number[]): number[] {
+	return sorted.filter((n, i) => i === 0 || n !== sorted[i - 1]);
 }
 
 /** first-order delta encoding of an ascending integer list (smaller, more repetitive, compresses better) */
@@ -130,6 +136,7 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 	const cgs = new Pool<number[]>();
 	const fns = new Pool<SigFn>();
 	const deps = new Pool<SigDep[]>();
+	const classes = new Pool<SigClass>();
 
 	const sig = (params: readonly SigParamInfo[]): number => {
 		if(!feats.signatures || params.length === 0) {
@@ -171,7 +178,24 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 		return deps.intern(JSON.stringify(value), value);
 	};
 
+	/** one class record, pooled like a function so a version that changes nothing about a class reuses its slot */
+	const cls = (c: SigClassInfo): number => {
+		const systemIdx = SigClassSystemNames.indexOf(c.system);
+		const props = (c.virtual ? ClassProp.Virtual : 0) | (c.union ? ClassProp.Union : 0)
+			| (c.package !== undefined ? ClassProp.Foreign : 0);
+		const head: SigClass = [
+			strings.str(c.name),
+			(systemIdx < 0 ? SigClassSystem.S4 : systemIdx),
+			props,
+			c.supers.map(sup => strings.str(sup)),
+			c.slots.map(sl => sl.type === undefined ? strings.str(sl.name) : [strings.str(sl.name), strings.str(sl.type)] as [number, number])
+		];
+		const rec: SigClass = c.package !== undefined ? [...head, strings.str(c.package)] : head;
+		return classes.intern(JSON.stringify(rec), rec);
+	};
+
 	const versions: Record<string, number[]> = {};
+	const classesByVersion: Record<string, number[]> = {};
 	const depsByVersion: Record<string, number> = {};
 	const dates: Record<string, number> = {};
 	const noncran: string[] = [];
@@ -187,6 +211,12 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 		if(feats.dependencies && info.dependencies && info.dependencies.length > 0) {
 			depsByVersion[version] = depList(info.dependencies);
 		}
+		if(feats.classes && info.classes && info.classes.length > 0) {
+			const classIdxs = info.classes
+				.toSorted((a, b) => a.name.localeCompare(b.name) || a.system.localeCompare(b.system))
+				.map(cls).sort((a, b) => a - b);
+			classesByVersion[version] = deltaEncode(uniqueSortedNumbers(classIdxs));
+		}
 		if(info.date !== undefined && Number.isFinite(info.date)) {
 			dates[version] = Math.round(info.date / 86_400_000); // days since the Unix epoch (compact; day precision)
 		}
@@ -199,7 +229,8 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 			sources[version] = strings.str(info.source);
 		}
 	}
-	const blob: PkgBlob = { sigs: sigs.items, cgs: cgs.items, fns: fns.items, versions, noncran: noncran.length ? noncran : undefined, deps: deps.items, depsByVersion, dates, sources: Object.keys(sources).length ? sources : undefined };
+	const blob: PkgBlob = { sigs:             sigs.items, cgs:              cgs.items, fns:              fns.items, versions, noncran:          noncran.length ? noncran : undefined, deps:             deps.items, depsByVersion, dates, sources:          Object.keys(sources).length ? sources : undefined,
+		classes:          classes.items.length ? classes.items : undefined, classesByVersion: Object.keys(classesByVersion).length ? classesByVersion : undefined };
 	return { blob, versionCount, functionCount };
 }
 

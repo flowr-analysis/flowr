@@ -16,6 +16,7 @@ import { SourceRange } from '../../../src/util/range';
 import { Record } from '../../../src/util/record';
 import { decorateLabelContext, type TestLabel } from '../_helper/label';
 import { skipTestBecauseConfigNotMet, type TestConfiguration } from '../_helper/shell';
+import { assumedPackagesOf, withAssumedPackages } from '../_helper/shell';
 
 /**
  * Whether an inferred value should equal the expected value, or should be an over-approximation of the expected value.
@@ -68,7 +69,7 @@ export async function runInference<Inference extends AbstractInterpretationVisit
 ): Promise<Inference> {
 	const analyzer = await new FlowrAnalyzerBuilder()
 		.setEngine('tree-sitter')
-		.setConfig(options?.config ?? FlowrConfig.default())
+		.setConfig(withAssumedPackages(options?.config ?? FlowrConfig.default(), assumedPackagesOf(undefined)))
 		.build();
 
 	analyzer.addRequest(code);

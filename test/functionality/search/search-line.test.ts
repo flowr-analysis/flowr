@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { withTreeSitter } from '../_helper/shell';
+import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { FlowrSearchGenerator as Q } from '../../../src/search/flowr-search-builder';
 import { assertSearch, assertSearchEnrichment } from '../_helper/search';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
@@ -12,6 +12,8 @@ import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { BuiltInProcName } from '../../../src/dataflow/environments/built-in-proc-name';
 import type { CallProps } from '../../../src/dataflow/environments/built-in-props';
 import { CallProp } from '../../../src/dataflow/environments/built-in-props';
+
+assumeLoadedPackages('svDialogs');
 
 describe('flowR search', withTreeSitter(parser => {
 	assertSearch('simple search for first', parser, 'x <- 1\nprint(x)', ['1@x'],

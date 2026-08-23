@@ -335,6 +335,13 @@ export interface FlowrConfig {
 		 * nothing, so this only bounds a graph that keeps growing; lowering it trades precision for time.
 		 */
 		readonly transitiveSideEffectRounds?: number
+		/**
+		 * Packages to treat as attached without a `library()` call, as if the analyzed code had loaded them.
+		 * What the built-in configuration states about a package R does not attach on startup only enters an
+		 * analysis once that package is attached; this covers the case where the `library()` call is simply not
+		 * part of what is analyzed.
+		 */
+		readonly assumeAttachedPackages?:     string[]
 		/** These keys are only intended for use within code, allowing to instrument the dataflow analyzer! */
 		readonly instrument: {
 			/**
@@ -876,6 +883,7 @@ export const FlowrConfig = {
 			versionManagement: Joi.object({
 				linkedVersionGroups: Joi.array().items(Joi.array().items(Joi.string())).optional().description('Groups of packages that must resolve to the same version; version guessing intersects each group so its members stay mutually compatible (default []).')
 			}).description('Policies for reasoning about dependency versions.'),
+			assumeAttachedPackages:     Joi.array().items(Joi.string()).optional().description('Packages to treat as attached without a `library()` call, so what the built-in configuration states about them applies to the analyzed code.'),
 			transitiveSideEffectRounds: Joi.number().min(1).optional().description(`How many rounds the transitive side-effect fixpoint may run before it is cut off (default ${DefaultTransitiveSideEffectRounds}); the propagation stops on its own as soon as a round adds nothing.`),
 			instrument:                 Joi.object({
 				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')

@@ -1,7 +1,9 @@
-import { assertSlicedF, withShell } from '../../../_helper/shell';
+import { assertSlicedF, assumeLoadedPackages, withShell } from '../../../_helper/shell';
 import { describe } from 'vitest';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
+
+assumeLoadedPackages('data.table');
 
 describe('Simple Forward', { concurrent: false }, withShell(shell => {
 	describe('Constant assignments', () => {

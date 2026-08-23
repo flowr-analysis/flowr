@@ -16,6 +16,7 @@ import type { DataflowInformation } from '../../../src/dataflow/info';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { format } from 'util';
 import type { RParseRequest } from '../../../src/r-bridge/retriever';
+import { applyAssumedPackages, assumedPackagesOf } from './shell';
 
 /**
  * Implementation of assertSearch that works with both string code and parse requests
@@ -27,17 +28,19 @@ export function assertSearch(
 	expected: readonly (NodeId | SlicingCriterion)[] | ((result: FlowrSearchElement<ParentInformation>[]) => boolean),
 	...searches: FlowrSearchLike[]
 ) {
+	/* captured while the file is collected, as that is when the enclosing withLoadedPackages is in effect */
+	const assumed = assumedPackagesOf(undefined);
 	describe(decorateLabelContext(name, ['search']), () => {
 		let analyzer: FlowrAnalyzer | undefined;
 		let dataflow: DataflowInformation | undefined;
 		let ast: NormalizedAst | undefined;
 
 		beforeAll(async() => {
-			analyzer = await new FlowrAnalyzerBuilder()
+			analyzer = await applyAssumedPackages(new FlowrAnalyzerBuilder()
 				.setInput({
 					getId: deterministicCountingIdGenerator(0)
 				})
-				.setParser(parser)
+				.setParser(parser), assumed)
 				.build();
 			analyzer.addRequest(codeOrRequests);
 			dataflow = await analyzer.dataflow();

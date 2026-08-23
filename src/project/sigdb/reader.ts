@@ -8,10 +8,10 @@ import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
 import { RVersion, type VersionString } from '../../util/r-version';
-import { DefaultCranBase, SigDbExt, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigDb, type SigDbContent, type SigDbPkgMeta, type SigDbPkgMetaIndex } from './schema';
+import { DefaultCranBase, SigDbExt, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigClassInfo, type SigDb, type SigDbContent, type SigDbPkgMeta, type SigDbPkgMetaIndex } from './schema';
 import { dayToMillis, releasesOf, newestVersion, resolveVersion, type VersionRelease } from './sigdb-version';
 import { decodeIndex, readSigDbIndex, type ByteRange, type SigDbIndex } from './index-format';
-import { tupleToBlob, decodeFunction, decodeDependencies, deriveLibraryExports, versionFnIndices, transitiveCallees, type DecodedFunction, type ResolvedDependency } from './decode';
+import { tupleToBlob, decodeFunction, decodeDependencies, decodeClasses, deriveLibraryExports, versionFnIndices, transitiveCallees, type DecodedFunction, type ResolvedDependency } from './decode';
 import { isCompressed, isUnpacked, parseHeader, sigDbStream, resolveSource, ensurePlain, ensurePlainSync } from './decompress';
 import { stripCompressedExt } from './codec';
 import { contentHash, dictionaryHash, shardHash } from './hash';
@@ -146,6 +146,14 @@ export interface PackageSignatureSource {
 	 * @param version - The version to answer for, the database's newest if omitted.
 	 */
 	dependencies(pkg: string, version?: string): ResolvedDependency[] | undefined;
+	/**
+	 * The classes a package version declares and the relations it states between them: direct superclasses,
+	 * slots with their declared types, whether a class is virtual, and union membership. This is the structure
+	 * {@link LibraryExports.s4Classes} (a flat name list) has nowhere to hang.
+	 * @param pkg     - The package to read the classes of.
+	 * @param version - The version to answer for, the database's newest if omitted.
+	 */
+	classes(pkg: string, version?: string): SigClassInfo[] | undefined;
 	/** every package name this source can resolve */
 	packageNames(): string[];
 	/** whether the package is an R-core / base package (its versions are the R releases it shipped with) */
@@ -315,6 +323,9 @@ export class MergedSignatureSource implements PackageSignatureSource {
 	}
 	public dependencies(pkg: string, version?: string): ResolvedDependency[] | undefined {
 		return this.pick(pkg, version)?.dependencies(pkg, version);
+	}
+	public classes(pkg: string, version?: string): SigClassInfo[] | undefined {
+		return this.pick(pkg, version)?.classes(pkg, version);
 	}
 	public packageNames(): string[] {
 		return uniqueArray(this.sources.flatMap(s => s.packageNames()));
@@ -695,6 +706,16 @@ export class SigDatabase implements PackageSignatureSource {
 		}
 		const ver = resolveVersion(blob, meta[0], version);
 		return ver !== undefined ? decodeDependencies(this.strings, blob, ver) : undefined;
+	}
+
+	public classes(pkg: string, version?: string): SigClassInfo[] | undefined {
+		const blob = this.blob(pkg);
+		const meta = this.index.meta[pkg];
+		if(!blob || !meta) {
+			return undefined;
+		}
+		const ver = resolveVersion(blob, meta[0], version);
+		return ver !== undefined ? decodeClasses(this.strings, blob, ver) : undefined;
 	}
 
 	/** whether this is an R-core / base package (its versions are the R releases it shipped with; see {@link SigDbPkgMeta}) */
@@ -1080,6 +1101,10 @@ export class SigDatabaseSet implements PackageSignatureSource {
 
 	public dependencies(pkg: string, version?: string): ResolvedDependency[] | undefined {
 		return this.firstOf(pkg, version, db => db.dependencies(pkg, version));
+	}
+
+	public classes(pkg: string, version?: string): SigClassInfo[] | undefined {
+		return this.firstOf(pkg, version, db => db.classes(pkg, version));
 	}
 
 	/** whether this is an R-core / base package (see {@link SigDatabase.isBaseR}); O(1) via the hoisted metadata */

@@ -16,7 +16,8 @@ import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
 import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
-import type { BrandedIdentifier, InGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import type { BrandedIdentifier, IdentifierDefinition, InGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import type { BuiltInMemory } from '../../../../../environments/built-in';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { Environment, EnvType, REnvironment } from '../../../../../environments/environment';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
@@ -195,6 +196,10 @@ export function processLibrary<OtherInfo>(
 		const dependency = data.ctx.deps.loadDependency(p);
 		if(dependency){
 			linkLibrary(dependency, info, rootId, data, spec);
+		} else if(data.ctx.env.statedFor(p) !== undefined){
+			/* nothing resolved the package's exports, but flowR states what some of its calls mean, and this
+			   `library()` is what brings those into scope */
+			info.environment = attachStatedDefinitions(p, info.environment, data.ctx, spec, undefined, rootId, data.cds);
 		} else {
 			if(!data.ctx.env.knowsPackage(p)){
 				info.graph.markIdForUnknownSideEffects(rootId);
@@ -320,6 +325,8 @@ function processUse<OtherInfo>(
 	const dependency = parsed && data.ctx.deps.getDependency(parsed.pack);
 	if(parsed && dependency){
 		linkLibrary(dependency, info, rootId, data, parsed.spec);
+	} else if(parsed && data.ctx.env.statedFor(parsed.pack) !== undefined){
+		info.environment = attachStatedDefinitions(parsed.pack, info.environment, data.ctx, parsed.spec, undefined, rootId, data.cds);
 	} else {
 		info.graph.markIdForUnknownSideEffects(rootId);
 	}
@@ -440,14 +447,30 @@ function selectExports(callables: readonly string[], spec: AttachSpec): Attached
 	return callables.filter(c => !spec.exclude?.has(c)).map(c => ({ exported: c, as: c }));
 }
 
-/** The identifier definition binding a package export (or its alias) to its built-in function-definition. */
-function exportDefinition(pack: string, exp: AttachedExport, definedAt: NodeId = NodeId.toBuiltIn(pack)) {
-	return {
+/**
+ * The identifier definition binding a package export (or its alias) to its built-in function-definition.
+ *
+ * The identity stays the package's export -- a plain {@link ReferenceType.Function} whose node is
+ * `built-in:pkg:fn` -- as that is what makes a call to it materialize the vertex saying where it came from.
+ * What the configuration states about the very same name is layered on top of it: the processor that models
+ * the call, and the handler that folds it. Attaching the package is what brings those in, so the two halves
+ * meet exactly here.
+ */
+function exportDefinition(pack: string, exp: AttachedExport, ctx: FlowrAnalyzerContext, definedAt: NodeId = NodeId.toBuiltIn(pack)): IdentifierDefinition & { name: Identifier } {
+	const identity = {
 		name:   Identifier.make(exp.as, pack),
 		type:   ReferenceType.Function,
 		nodeId: NodeId.fromPkgFn(pack, exp.exported),
 		definedAt,
 	} as const;
+	const stated = ctx.env.statedFor(pack)?.get(Identifier.make(exp.exported) as unknown as BrandedIdentifier)?.[0];
+	if(stated === undefined) {
+		return identity;
+	}
+	/* the identity stays the export, so the call still earns its `built-in:pkg:fn` vertex; what the
+	   configuration states about the same name rides along, so the call is modelled and folded as configured */
+	const { processor, config, evalHandler } = stated as { processor?: unknown, config?: unknown, evalHandler?: unknown };
+	return { ...identity, processor, config, evalHandler } as unknown as IdentifierDefinition & { name: Identifier };
 }
 
 /** Whether a subset import restricts the attached exports, so no imports layer is materialized. */
@@ -463,21 +486,26 @@ function isSubsetAttach(spec: AttachSpec): boolean {
  */
 export function attachDependencyToEnvironment(dependency: Package, envInfo: REnvironmentInformation, ctx: FlowrAnalyzerContext, spec: AttachSpec = {}, definedAt?: NodeId): REnvironmentInformation {
 	const pack = dependency.name;
-	if(isUndefined(dependency.namespaceInfo) || isAttached(envInfo.current, pack, spec.namespaceOnly)){
+	if(isAttached(envInfo.current, pack, spec.namespaceOnly)){
 		return envInfo;
+	}
+	if(isUndefined(dependency.namespaceInfo)){
+		/* nothing resolved the package's exports, but what flowR states about them is still what a call to one
+		   of them means, and the `library()` is what brings it into scope */
+		return attachStatedDefinitions(pack, envInfo, ctx, spec);
 	}
 	const exports = selectExports(getCallables(dependency.namespaceInfo), spec);
 	if(spec.namespaceOnly || isSubsetAttach(spec)){
 		const layerType = spec.namespaceOnly ? EnvType.LoadedNamespace : EnvType.Namespace;
 		const layer = new Environment(envInfo.current).asLibrary(pack, layerType)
-			.defineAll(exports.map(exp => exportDefinition(pack, exp, definedAt)));
+			.defineAll(exports.map(exp => exportDefinition(pack, exp, ctx, definedAt)));
 		return { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, layer, layer, spec.pos) };
 	}
 	// full attach: imports layer at the bottom, namespace (exports) layer on top
 	let importsEnv = new Environment(envInfo.current).asLibrary(pack, EnvType.Imports);
 	importsEnv = recImports(importsEnv, dependency.namespaceInfo, ctx, new Set());
 	const namespaceEnv = new Environment(importsEnv).asLibrary(pack, EnvType.Namespace)
-		.defineAll(exports.map(exp => exportDefinition(pack, exp, definedAt)));
+		.defineAll(exports.map(exp => exportDefinition(pack, exp, ctx, definedAt)));
 	const attached = { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, namespaceEnv, importsEnv, spec.pos) };
 	/* whatever R puts on the search path with it, `pack` first so a dependency cycle stays finite (the guard above stops it) */
 	return attachedAlongside(pack, ctx.deps.signatureSources()).reduce((env, alongside) => {
@@ -489,9 +517,10 @@ export function attachDependencyToEnvironment(dependency: Package, envInfo: REnv
 /** A namespace-only load is subsumed by any layer for `pack`; a full attach ignores a mere {@link EnvType.LoadedNamespace}. */
 function blocksAttach(layer: Environment, namespaceOnly: boolean | undefined): boolean {
 	if(namespaceOnly){
-		return true;
+		return layer.t !== EnvType.AssumedNamespace;
 	}
-	return layer.t !== EnvType.LoadedNamespace;
+	/* an assumption stands in for a `library()` that was not analyzed, so the real one still attaches over it */
+	return layer.t !== EnvType.LoadedNamespace && layer.t !== EnvType.AssumedNamespace;
 }
 
 /** Whether package `pack` is already attached below the global env in a way that makes this (re-)attach a no-op. */
@@ -602,9 +631,70 @@ export function attachProjectImports(env: REnvironmentInformation, ctx: FlowrAna
 	return { level: env.level, current: REnvironment.attachAt(env.current, layer, layer) };
 }
 
-/** attach every project-level environment layer in order: base R namespaces, the project's own `importFrom` symbols, then its declared dependencies */
+/** Attaches the definitions flowR states for `pack`, for a package whose own exports nothing could resolve. */
+function attachStatedDefinitions(pack: string, envInfo: REnvironmentInformation, ctx: FlowrAnalyzerContext, spec: AttachSpec, as?: EnvType, loadedAt?: NodeId, cds?: readonly ControlDependency[]): REnvironmentInformation {
+	const stated = ctx.env.statedFor(pack);
+	if(stated === undefined) {
+		return envInfo;
+	}
+	/* keyed as the configuration states them: a replacement is bound under `f<-`, which its `name` does not say */
+	const memory: BuiltInMemory = new Map(stated);
+	if(loadedAt !== undefined) {
+		/* the marker an unresolved load leaves behind, so a call links back to the `library()` that made it
+		   resolve while the definitions themselves stay as the configuration states them */
+		memory.set(libraryLoadMarker, [{
+			name:      Identifier.make(libraryLoadMarker, pack),
+			type:      ReferenceType.Function,
+			nodeId:    loadedAt,
+			definedAt: loadedAt,
+			cds:       cds?.slice()
+		}]);
+	}
+	const layer = new Environment(envInfo.current)
+		.asLibrary(pack, as ?? (spec.namespaceOnly ? EnvType.LoadedNamespace : EnvType.Namespace));
+	layer.memory = memory;
+	return { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, layer, layer, spec.pos) };
+}
+
+/**
+ * The `search()` position an assumed package attaches at: past every entry, so it ends up directly above the
+ * built-ins. An assumption stands in for a `library()` the analysis never saw, so anything the code attaches
+ * itself has to be found first -- otherwise the assumption would answer for it and the real call would drop
+ * out of, say, a slice that needs it.
+ */
+const AssumedAttachPosition = Number.MAX_SAFE_INTEGER;
+
+/**
+ * Attaches the packages `solver.assumeAttachedPackages` names as if the code had called `library()` on them.
+ *
+ * The built-in configuration states things about packages R does not attach on startup, and those statements
+ * only enter an analysis when the package is attached. Assuming a package covers the case where the `library()`
+ * call is simply not part of what is being analyzed -- a snippet, a chunk, a notebook cell -- without pretending
+ * every package flowR knows something about is loaded.
+ */
+export function attachAssumedPackages(env: REnvironmentInformation, ctx: FlowrAnalyzerContext): REnvironmentInformation {
+	const assumed = ctx.config.solver.assumeAttachedPackages;
+	if(assumed === undefined || assumed.length === 0) {
+		return env;
+	}
+	let built = env;
+	/* each attaches below the one before, so walking the list backwards makes the first name given the one that
+	   answers when two assumed packages export the same function -- the order it is written is the precedence */
+	for(let i = assumed.length - 1; i >= 0; i--) {
+		const pkg = assumed[i];
+		const dependency = ctx.deps.getDependency(pkg);
+		if(dependency?.namespaceInfo !== undefined) {
+			built = attachDependencyToEnvironment(dependency, built, ctx, {}, NodeId.toBuiltIn(pkg));
+			continue;
+		}
+		built = attachStatedDefinitions(pkg, built, ctx, { pos: AssumedAttachPosition }, EnvType.AssumedNamespace);
+	}
+	return built;
+}
+
+/** attach every project-level environment layer in order: base R namespaces, the project's own `importFrom` symbols, its declared dependencies, then whatever the configuration assumes attached */
 export function attachProject(env: REnvironmentInformation, ctx: FlowrAnalyzerContext): REnvironmentInformation {
-	return attachDeclaredDependencies(attachProjectImports(attachBaseRNamespaces(env, ctx), ctx), ctx);
+	return attachAssumedPackages(attachDeclaredDependencies(attachProjectImports(attachBaseRNamespaces(env, ctx), ctx), ctx), ctx);
 }
 
 function recImports(importsEnv: Environment, namespaceInfo: NamespaceInfo, ctx: FlowrAnalyzerContext, alreadyImportedAll: Set<string>){

@@ -4,6 +4,7 @@ import type {
 	SignatureQuery, SignatureQueryResult, SignaturePackageView, SignatureFunctionView, SignatureDatabaseView,
 	SignatureMatchView, SignaturePackageMatch, SignatureFlowrView
 } from './signature-query-format';
+import { DefaultCallGraphMaxNodes } from './signature-query-format';
 import { availableVersionEntries, getSharedSigSourceSync, SigDatabaseSet, type AvailableVersion, type PackageSignatureSource, type ShardStatus } from '../../../project/sigdb/reader';
 import { isDateBound, releaseDateBound } from '../../../project/sigdb/sigdb-version';
 import { DepType, DepTypeNames, type LibraryExports } from '../../../project/sigdb/schema';
@@ -407,16 +408,15 @@ function s3MethodParts(src: PackageSignatureSource, pkg: string, fns: readonly D
 	return undefined;
 }
 
-/** how many nodes the call-graph render is capped at (cross-package expansion could otherwise explode into base R) */
-const CallGraphMaxNodes = 300;
+
 
 /**
  * A mermaid.live link for the transitive call graph reachable from `pkg::root`, resolved across package borders:
  * a bare callee is attributed to the first namespace that exports it (the calling package, then its attached
  * `Depends`/`Imports`, then base R), qualified as `owner::fn`, and expanded there. Base R calls are qualified leaves
- * (their internals are noise); explicit `pkg::fn` calls resolve directly. Bounded by {@link CallGraphMaxNodes}.
+ * (their internals are noise); explicit `pkg::fn` calls resolve directly. Bounded by `maxNodes` (see {@link SignatureQuery.callGraphMaxNodes}).
  */
-function signatureCallGraphUrl(src: PackageSignatureSource, pkg: string, version: string | undefined, root: string): string {
+function signatureCallGraphUrl(src: PackageSignatureSource, pkg: string, version: string | undefined, root: string, maxNodes: number): string {
 	const bases = new Set(baseRPackages());
 	const exportsCache = new Map<string, ReadonlySet<string>>();
 	const exportsOf = (p: string, v?: string): ReadonlySet<string> => {
@@ -462,7 +462,7 @@ function signatureCallGraphUrl(src: PackageSignatureSource, pkg: string, version
 	const edges: string[] = [];
 	const seen = new Set<string>();
 	const queue: { owner: string, ver?: string, name: string, id: string }[] = [{ owner: pkg, ver: version, name: root, id: rootId }];
-	while(queue.length > 0 && nodes.size < CallGraphMaxNodes) {
+	while(queue.length > 0 && nodes.size < maxNodes) {
 		const cur = queue.pop() as { owner: string, ver?: string, name: string, id: string };
 		const key = `${cur.owner}::${cur.name}`;
 		if(seen.has(key)) {
@@ -473,7 +473,7 @@ function signatureCallGraphUrl(src: PackageSignatureSource, pkg: string, version
 			const r = resolve(cur.owner, cur.ver, callee);
 			edges.push(`  ${cur.id} --> ${node(r?.owner, r ? r.name : callee)}`);
 			// expand into a resolved same/other CRAN package (not base R, whose internals explode the graph), avoiding cycles
-			if(r && !bases.has(r.owner) && !seen.has(`${r.owner}::${r.name}`) && nodes.size < CallGraphMaxNodes) {
+			if(r && !bases.has(r.owner) && !seen.has(`${r.owner}::${r.name}`) && nodes.size < maxNodes) {
 				queue.push({ owner: r.owner, ver: r.owner === cur.owner ? cur.ver : src.latestVersion(r.owner)?.str, name: r.name, id: node(r.owner, r.name) });
 			}
 		}
@@ -891,7 +891,7 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	if(q.function) {
 		const fn = signatureFunctionInfo(resolvedSrc, q.package, q.function, version, analyzer.inspectContext().env.makeCleanEnv());
 		if(fn) {
-			const cg = q.callGraph ? signatureCallGraphUrl(resolvedSrc, q.package, version, fn.name) : undefined;
+			const cg = q.callGraph ? signatureCallGraphUrl(resolvedSrc, q.package, version, fn.name, q.callGraphMaxNodes ?? DefaultCallGraphMaxNodes) : undefined;
 			return { ...meta(), function: cg ? { ...fn, callGraph: cg } : fn };
 		}
 		// a primitive like `base::+` has no entry in the package's sources, but flowR models it itself

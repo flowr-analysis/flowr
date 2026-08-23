@@ -1,7 +1,7 @@
 import { assert, describe, test } from 'vitest';
 import type { DecodedFunction } from '../../../../src/project/sigdb/decode';
 import type { PackageSignatureSource } from '../../../../src/project/sigdb/reader';
-import type { BuiltInDefinitions, BuiltInFunctionDefinition } from '../../../../src/dataflow/environments/built-in-config';
+import type { BaseBuiltInDefinition, BuiltInDefinitions, BuiltInFunctionDefinition } from '../../../../src/dataflow/environments/built-in-config';
 import { getDefaultBuiltInDefinitions } from '../../../../src/dataflow/environments/built-in-config';
 import type { BuiltInFnInfo, CallProps } from '../../../../src/dataflow/environments/built-in-props';
 import {
@@ -13,6 +13,7 @@ import {
 	InputProps
 } from '../../../../src/dataflow/environments/built-in-props';
 import { builtInNames, BuiltInIndex, inferFnProps, queryFnProps } from '../../../../src/dataflow/environments/query-fn-props';
+import type { BuiltInIdentifierDefinition } from '../../../../src/dataflow/environments/built-in';
 import { DefaultBuiltinConfig, WrittenBuiltinDefinitions } from '../../../../src/dataflow/environments/default-builtin-config';
 import { Identifier, PkgName } from '../../../../src/dataflow/environments/identifier';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
@@ -239,6 +240,60 @@ describe('Built-in properties', () => {
 				}
 			}
 		});
+		test(label('a name is stated once, unless the entry says it restates it', ['name-normal'], ['other']), () => {
+			/* the last definition of a name is the one that sticks, so an unmarked repeat silently drops the first */
+			const stated = new Map<string, BuiltInDefinitions[number]>();
+			for(const d of WrittenBuiltinDefinitions) {
+				for(const n of builtInNames(d)) {
+					const name = Identifier.toString(n);
+					const before = stated.get(name);
+					if(before !== undefined) {
+						assert.isTrue((d as BaseBuiltInDefinition).overrides,
+							`${name} is stated again without \`overrides: true\`, which drops what the earlier entry said`);
+					}
+					stated.set(name, d);
+				}
+			}
+		});
+		/** what a restatement corrects rather than forgets: the name, and the properties it takes back */
+		const Corrects: Readonly<Record<string, CallProps>> = {
+			/* drawing rows at random is exactly what makes it impure, so the block it is listed in has it wrong */
+			'dplyr::slice_sample': CallProp.Pure
+		};
+		test(label('restating a name keeps what was already known about it', ['name-normal'], ['other']), () => {
+			/* the ggplot2 addons that got deprecated lost their `Graphics` bit this way */
+			const stated = new Map<string, BuiltInFnInfo | undefined>();
+			const handlers = new Map<string, string | undefined>();
+			for(const d of WrittenBuiltinDefinitions) {
+				const info = (d as { config?: BuiltInFnInfo }).config;
+				for(const n of builtInNames(d)) {
+					const name = Identifier.toString(n);
+					const before = stated.get(name);
+					const lost = (before?.props ?? 0) & ~(info?.props ?? 0) & ~(Corrects[name] ?? 0);
+					assert.strictEqual(lost, 0, `restating ${name} drops the properties ${lost.toString(2)} it had`);
+					if(before !== undefined) {
+						/* the two that decide how a call is read rather than what it does, and are as easy to forget */
+						const masked = (c?: BuiltInFnInfo) => (c as { markArgsAsMasked?: unknown })?.markArgsAsMasked;
+						assert.deepStrictEqual(masked(info), masked(before), `restating ${name} changes its data mask`);
+						assert.strictEqual((d as { evalHandler?: string }).evalHandler, handlers.get(name),
+							`restating ${name} drops the value solver it had`);
+					}
+					handlers.set(name, (d as { evalHandler?: string }).evalHandler);
+					stated.set(name, info);
+				}
+			}
+		});
+		test(label('an entry claiming to restate a name has one to restate', ['name-normal'], ['other']), () => {
+			const stated = new Set<string>();
+			for(const d of WrittenBuiltinDefinitions) {
+				const names = builtInNames(d).map(Identifier.toString);
+				if((d as BaseBuiltInDefinition).overrides) {
+					assert.isTrue(names.some(n => stated.has(n)),
+						`${names.join(', ')} claims to restate a name nothing states before it`);
+				}
+				names.forEach(n => stated.add(n));
+			}
+		});
 		test(label('redefining a name does not drop its signature', ['name-normal'], ['other']), () => {
 			const declared = new Set<string>();
 			for(const d of DefaultBuiltinConfig) {
@@ -291,6 +346,45 @@ describe('Built-in properties', () => {
 				props: CallProp.Throws
 			});
 		});
+	});
+});
+
+describe('Functions several packages export', () => {
+	const builtIns = getDefaultBuiltInDefinitions();
+	const defOf = (pkg: string, name: string) =>
+		builtIns.forPackage(pkg)?.get(name as never)?.[0] as BuiltInIdentifierDefinition | undefined;
+
+	/** a name, the package owning it, and the packages re-exporting that very function */
+	const ReExported: readonly (readonly [string, string, readonly string[]])[] = [
+		['%>%', 'magrittr', ['dplyr', 'purrr', 'stringr', 'tibble', 'tidyr', 'readr', 'testthat', 'magick', 'promises']],
+		['quo', 'rlang', ['dplyr', 'ggplot2']],
+		['enquo', 'rlang', ['dplyr', 'ggplot2']],
+		['sym', 'rlang', ['dplyr', 'ggplot2']],
+		['tibble', 'tibble', ['dplyr', 'tidyr']],
+		['evalText', 'SoDA', ['FastUtils']]
+	];
+
+	test(label('a re-export means what the package owning it means', ['name-normal'], ['other']), () => {
+		for(const [name, owner, others] of ReExported) {
+			const own = defOf(owner, name);
+			assert.isDefined(own, `${owner}::${name} is not stated at all`);
+			for(const pkg of others) {
+				const def = defOf(pkg, name);
+				assert.isDefined(def, `${pkg} re-exports ${name}, but nothing is stated for it`);
+				/* the same configuration and the same evaluation, so attaching either package means the same call */
+				assert.deepStrictEqual(def?.config, own?.config, `${pkg}::${name}`);
+				assert.strictEqual(def?.type, own?.type, `${pkg}::${name}`);
+				assert.strictEqual(def?.evalHandler, own?.evalHandler, `${pkg}::${name}`);
+			}
+		}
+	});
+
+	test(label('each package states it once', ['name-normal'], ['other']), () => {
+		for(const [name, owner, others] of ReExported) {
+			for(const pkg of [owner, ...others]) {
+				assert.lengthOf(builtIns.forPackage(pkg)?.get(name as never) ?? [], 1, `${pkg}::${name}`);
+			}
+		}
 	});
 });
 

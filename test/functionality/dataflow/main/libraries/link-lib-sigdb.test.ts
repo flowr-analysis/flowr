@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, test, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
-import { withTreeSitter } from '../../../_helper/shell';
+import { assumeLoadedPackages, withTreeSitter } from '../../../_helper/shell';
 import { sigTmpDir, cleanupSigTmpDirs, sigdbAnalyzer, expFn, ver, hasBuiltInVertex as hasBuiltIn } from '../../../_helper/sigdb';
 import type { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
@@ -26,6 +26,9 @@ import { SemVer } from 'semver';
 import { label } from '../../../_helper/label';
 import { setMinLevelOfAllLogs } from '../../../_helper/log';
 import { LogLevel } from '../../../../../src/util/log';
+
+assumeLoadedPackages('future');
+
 
 afterAll(cleanupSigTmpDirs);
 

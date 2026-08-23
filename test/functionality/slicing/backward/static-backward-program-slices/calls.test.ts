@@ -1,9 +1,12 @@
-import { assertSliced, withShell } from '../../../_helper/shell';
+import { assertSliced, assumeLoadedPackages, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { describe } from 'vitest';
+
+assumeLoadedPackages('dplyr', 'magrittr', 'maps', 'plyr', 'inferference');
+
 
 describe('Calls', { concurrent: false }, withShell(shell => {
 	describe('Simple Calls', () => {

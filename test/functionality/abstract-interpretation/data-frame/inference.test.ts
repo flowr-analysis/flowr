@@ -4,8 +4,10 @@ import { FlowrConfig } from '../../../../src/config';
 import { PosIntervalTop } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
 import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { MIN_VERSION_LAMBDA, MIN_VERSION_PIPE } from '../../../../src/r-bridge/lang-4.x/ast/model/versions';
-import { withShell } from '../../_helper/shell';
+import { assumeLoadedPackages, withShell } from '../../_helper/shell';
 import { testMappedDataFrameOperations, testInferredDataFrameShape, testInferredDataFrameShapeWithSource } from './data-frame';
+
+assumeLoadedPackages('dplyr', 'magrittr', 'tibble');
 
 /** The minimum version required for calling `head` and `tail` with a vector argument, e.g. `head(df, c(1, 2))` */
 export const MIN_VERSION_HEAD_TAIL_VECTOR = '4.0.0';

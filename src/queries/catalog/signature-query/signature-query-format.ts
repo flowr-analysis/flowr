@@ -12,6 +12,12 @@ import { executeSignatureQuery, signatureQueryCompleter } from './signature-quer
 import { printSignatureHelp, pushFunction, pushPackage, pushMatches, pushPackages, pushSummary } from './signature-query-render';
 
 /**
+ * Default of {@link SignatureQuery.callGraphMaxNodes}: how many nodes a rendered call graph may hold.
+ * Cross-package expansion could otherwise run off into base R, and a graph nobody can read is not an answer.
+ */
+export const DefaultCallGraphMaxNodes = 300;
+
+/**
  * Inspects the loaded signature database(s) (see the {@link https://github.com/flowr-analysis/flowr/wiki/Signature-Database|Signature Database wiki}).
  * The `package` and `function` fields accept glob wildcards (`*`, `?`), and `version` accepts an exact version,
  * a glob (`3.*`), a semver range (`>=3.0.0`, `3.x`), or a release-date bound (`<=2026`, `>=2021.05`, YYYY.MM.DD).
@@ -35,6 +41,12 @@ export interface SignatureQuery extends BaseQueryFormat {
 	readonly requiredParameters?: number;
 	/** for a single function, also render its transitive call graph as a mermaid.live link (`--cg`) */
 	readonly callGraph?:          boolean;
+	/**
+	 * How many nodes the rendered call graph may hold before the expansion stops (default
+	 * {@link DefaultCallGraphMaxNodes}). Cross-package expansion would otherwise run off into base R, and a
+	 * graph nobody can read is not an answer. `--cg-max <n>` sets it.
+	 */
+	readonly callGraphMaxNodes?:  number;
 }
 
 /** one parameter of a function signature */
@@ -214,6 +226,7 @@ function signatureQueryLineParser(output: ReplOutput, line: readonly string[], _
 	const parameters: string[] = [];
 	let requiredParameters: number | undefined;
 	let callGraph = false;
+	let callGraphMaxNodes: number | undefined = undefined;
 	const positional: string[] = [];
 	for(let i = 0; i < line.length; i++) {
 		const tok = line[i];
@@ -226,6 +239,9 @@ function signatureQueryLineParser(output: ReplOutput, line: readonly string[], _
 			requiredParameters = Number(line[++i]);
 		} else if(tok === '--cg') {
 			callGraph = true;
+		} else if(tok === '--cg-max') {
+			callGraph = true;
+			callGraphMaxNodes = Number(line[++i]);
 		} else if(!tok.startsWith('--')) {
 			positional.push(tok);
 		}
@@ -238,7 +254,8 @@ function signatureQueryLineParser(output: ReplOutput, line: readonly string[], _
 	const paramFilters = {
 		...(parameters.length > 0 ? { parameters } : {}),
 		...(requiredParameters !== undefined && !Number.isNaN(requiredParameters) ? { requiredParameters } : {}),
-		...(callGraph ? { callGraph: true } : {})
+		...(callGraph ? { callGraph: true } : {}),
+		...(callGraphMaxNodes !== undefined && Number.isFinite(callGraphMaxNodes) ? { callGraphMaxNodes } : {})
 	};
 	const hasParamFilter = parameters.length > 0 || (requiredParameters !== undefined && !Number.isNaN(requiredParameters));
 	const [first, second] = positional;
@@ -290,7 +307,7 @@ export const SignatureQueryDefinition = {
 	},
 	fromLine:  signatureQueryLineParser,
 	completer: signatureQueryCompleter,
-	syntax:    '@signature [<pkg>[@<version>]] [<pkg>::<fn> | <fn>] [--param <name>[,...]] [--required <n>] [--cg] [--help]',
+	syntax:    '@signature [<pkg>[@<version>]] [<pkg>::<fn> | <fn>] [--param <name>[,...]] [--required <n>] [--cg] [--cg-max <n>] [--help]',
 	schema:    Joi.object({
 		type:               Joi.string().valid('signature').required().description('The type of the query.'),
 		package:            Joi.string().optional().description('The package to inspect (glob wildcards allowed); omit for a summary of the loaded databases.'),
@@ -298,7 +315,8 @@ export const SignatureQueryDefinition = {
 		version:            Joi.string().optional().description('A version spec: an exact version, a glob (3.*), a semver range (>=3.0.0, 3.x), or a release-date bound (<=2026, >=2021.05 in YYYY.MM.DD).'),
 		parameters:         Joi.array().items(Joi.string()).optional().description('Keep only functions that have a parameter matching every one of these names (glob wildcards allowed, position-independent).'),
 		requiredParameters: Joi.number().integer().min(0).optional().description('Keep only functions with exactly this many required (no-default) parameters, excluding `...`.'),
-		callGraph:          Joi.boolean().optional().description('For a single function, also render its transitive call graph as a mermaid.live link (`--cg`).')
+		callGraph:          Joi.boolean().optional().description('For a single function, also render its transitive call graph as a mermaid.live link (`--cg`).'),
+		callGraphMaxNodes:  Joi.number().min(1).optional().description(`How many nodes the rendered call graph may hold before the expansion stops (default ${DefaultCallGraphMaxNodes}, \`--cg-max <n>\`).`)
 	}).description('Inspects the loaded signature database(s): loaded databases, a package, a function, or wildcard matches (optionally filtered by parameter name or required-parameter count).'),
 	flattenInvolvedNodes: (): NodeId[] => []
 } as const satisfies SupportedQuery<'signature'>;

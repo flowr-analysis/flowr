@@ -330,6 +330,7 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.StringTemplate:
 			case BuiltInProcName.S7MakeConstructor:
 			case BuiltInProcName.ClassGenerator:
+			case BuiltInProcName.ClassRelation:
 			case BuiltInProcName.DefineArgument:
 			case BuiltInProcName.Switch:
 				return this.onDefaultFunctionCall({ call });

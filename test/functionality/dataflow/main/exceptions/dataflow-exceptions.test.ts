@@ -1,5 +1,5 @@
 import { assert, describe, test } from 'vitest';
-import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
+import { applyAssumedPackages, assertDataflow, assumedPackagesOf, assumeLoadedPackages, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../../../src/r-bridge/retriever';
@@ -10,6 +10,8 @@ import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 
+assumeLoadedPackages('rlang');
+
 interface DFConstraints {
 	hasVertices:         SlicingCriterion[];
 	doesNotHaveVertices: SlicingCriterion[];
@@ -18,8 +20,9 @@ interface DFConstraints {
 describe('Dataflow, Handle Exceptions', withTreeSitter(ts  => {
 	function checkDfContains(code: string, constraints: DFConstraints): void {
 		const effName = label(code, ['exceptions-and-errors'], ['dataflow']);
+		const assumed = assumedPackagesOf(undefined);
 		test(effName, async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+			const analyzer = await applyAssumedPackages(new FlowrAnalyzerBuilder().setParser(ts), assumed).build();
 			analyzer.addRequest(requestFromInput(code));
 			const df = await analyzer.dataflow();
 			try {

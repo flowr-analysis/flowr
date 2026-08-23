@@ -1,8 +1,11 @@
-import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
+import { assertDataflow, assumeLoadedPackages, withTreeSitter } from '../../../_helper/shell';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { label } from '../../../_helper/label';
 import { describe } from 'vitest';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
+
+assumeLoadedPackages('purrr');
+
 
 describe('Purrr Formulas', withTreeSitter(ts => {
 	assertDataflow(label('simple map', ['reflection-"computing-on-the-language"']), ts, 'map(df, ~ .x + 1)',

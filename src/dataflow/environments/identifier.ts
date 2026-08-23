@@ -84,6 +84,23 @@ export const Identifier = {
 		return ids;
 	},
 	/**
+	 * The names as every one of the given packages exports them, for a function one package owns and others
+	 * re-export unchanged (`dplyr::%>%` is `magrittr::%>%`).
+	 * @example
+	 * ```ts
+	 * Identifier.fromAllIn(['magrittr', 'dplyr'], ['%>%']) // [['%>%', 'magrittr'], ['%>%', 'dplyr']]
+	 * ```
+	 */
+	fromAllIn(this: void, namespaces: readonly BrandedNamespace[], names: readonly BrandedIdentifier[]): Identifier[] {
+		const ids: Identifier[] = [];
+		for(const namespace of namespaces) {
+			for(const name of names) {
+				ids.push([name, namespace]);
+			}
+		}
+		return ids;
+	},
+	/**
 	 * Verify whether an unknown element has a valid identifier shape!
 	 */
 	is(this: void, id: unknown): id is Identifier {
@@ -300,19 +317,31 @@ export const enum PkgName {
 	Graphics    = 'graphics',
 	GrDevices   = 'grDevices',
 	Methods     = 'methods',
+	Parallel    = 'parallel',
 	Stats       = 'stats',
 	Utils       = 'utils',
 	/* CRAN / third-party */
 	AssertThat   = 'assertthat',
 	Box          = 'box',
+	Callr        = 'callr',
 	Car          = 'car',
 	Cli          = 'cli',
 	CohortBuilder = 'cohortBuilder',
 	DataTable    = 'data.table',
 	Dbi          = 'DBI',
 	Devtools     = 'devtools',
+	DoFuture     = 'doFuture',
+	DoMc         = 'doMC',
+	DoParallel   = 'doParallel',
+	DoSnow       = 'doSNOW',
 	Dplyr        = 'dplyr',
+	FastUtils    = 'FastUtils',
+	Foreach      = 'foreach',
 	Fs           = 'fs',
+	Furrr        = 'furrr',
+	Future       = 'future',
+	FutureApply  = 'future.apply',
+	FutureCallr  = 'future.callr',
 	Functools    = 'functools',
 	GgPlot2      = 'ggplot2',
 	Here         = 'here',
@@ -324,16 +353,20 @@ export const enum PkgName {
 	LmTest       = 'lmtest',
 	Magick       = 'magick',
 	Magrittr     = 'magrittr',
+	Mirai        = 'mirai',
 	Msgr         = 'msgr',
 	Multcomp     = 'multcomp',
 	NorTest      = 'nortest',
 	PkgLoad      = 'pkgload',
+	Parallelly   = 'parallelly',
 	Plyr         = 'plyr',
+	Promises     = 'promises',
 	Purrr        = 'purrr',
 	Ragg         = 'ragg',
 	R6           = 'R6',
 	RasterPdf    = 'rasterpdf',
 	Rcpp         = 'Rcpp',
+	RcppParallel = 'RcppParallel',
 	Remotes      = 'remotes',
 	Rlang        = 'rlang',
 	RmethodsS3   = 'R.methodsS3',

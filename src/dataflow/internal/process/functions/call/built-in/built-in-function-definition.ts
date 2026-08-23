@@ -32,7 +32,7 @@ import {
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { FunctionCallVertex, VertexType, FunctionDefinitionVertex, UseVertex, VariableDefinitionVertex } from '../../../../../graph/vertex';
 import { createFreshEnvState } from './built-in-new-env';
-import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
+import { cleanEnvOf, popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
@@ -525,7 +525,7 @@ function parseSysFrameOffset(node: RNode<ParentInformation> | undefined): number
 }
 
 function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>, rootId: NodeId) {
-	let env = data.ctx.env.makeCleanEnv();
+	let env = cleanEnvOf(data.environment);
 	for(let i = 0; i < data.environment.level + 1 /* add another env */; i++) {
 		env = pushLocalEnvironment(env);
 		if(i === data.environment.level) {

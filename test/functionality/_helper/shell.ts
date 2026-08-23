@@ -32,7 +32,7 @@ import {
 } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
-import { afterAll, assert, beforeAll, describe, test } from 'vitest';
+import { afterAll, assert, beforeAll, describe, expect, test } from 'vitest';
 import semver from 'semver/preload';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
@@ -51,6 +51,7 @@ import type { FlowrFileProvider } from '../../../src/project/context/flowr-file'
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { SliceDirection } from '../../../src/util/slice-direction';
 import { CallGraph } from '../../../src/dataflow/graph/call-graph';
+import type { DeepWritable } from 'ts-essentials';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>, timeout?: number) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -169,6 +170,11 @@ export interface TestConfiguration extends MergeableRecord {
 	/** the (inclusive) minimum version of R required to run this test, e.g., {@link MIN_VERSION_PIPE} */
 	minRVersion:            string | undefined
 	needsNetworkConnection: boolean
+	/**
+	 * Packages this test's code may use without writing the `library()` call itself, as
+	 * `solver.assumeAttachedPackages` states them.
+	 */
+	assumeLoaded?:          readonly string[]
 }
 
 export interface TestConfigurationWithOutput extends TestConfiguration {
@@ -181,6 +187,68 @@ export const defaultTestConfiguration: TestConfiguration = {
 	minRVersion:            undefined,
 	needsNetworkConnection: false
 };
+
+/**
+ * What {@link assumeLoadedPackages} declared, together with the file that declared it. The suite runs with
+ * `isolate: false`, so one module registry serves many files; keying the declaration by file is what keeps it
+ * from leaking into whichever one is collected next.
+ */
+let collectingWithPackages: { file: string | undefined, packages: readonly string[] } = { file: undefined, packages: [] };
+
+/** the test file currently being collected, which is what scopes a {@link assumeLoadedPackages} declaration */
+function collectingFile(): string | undefined {
+	return expect.getState().testPath;
+}
+
+/**
+ * Declares the packages the tests in this file may use without attaching them themselves, as if the file had
+ * opened with `library(pkg)`. Call it once, at the top:
+ *
+ * ```ts
+ * assumeLoadedPackages('dplyr', 'ggplot2');
+ * ```
+ *
+ * A single test overrides this with its own {@link TestConfiguration.assumeLoaded}, `[]` included.
+ * @param packages - the packages to treat as attached
+ */
+export function assumeLoadedPackages(...packages: string[]): void {
+	collectingWithPackages = { file: collectingFile(), packages };
+}
+
+/**
+ * The packages a test being registered runs with: its own {@link TestConfiguration.assumeLoaded} when it names
+ * any, otherwise what {@link withLoadedPackages} declared around it. The nearest declaration wins, so a single
+ * test can say `assumeLoaded: []` to run with nothing attached even inside a file that assumes several.
+ */
+export function assumedPackagesOf(config: Pick<TestConfiguration, 'assumeLoaded'> | undefined): readonly string[] {
+	if(config?.assumeLoaded !== undefined) {
+		return config.assumeLoaded;
+	}
+	/* keyed by file, as the suite runs with `isolate: false` and one module registry serves many of them */
+	return collectingWithPackages.file === collectingFile() ? collectingWithPackages.packages : [];
+}
+
+/**
+ * Applies the packages a test runs with to `builder`, so a helper that never sets a config of its own still
+ * honors {@link withLoadedPackages}. Pass what {@link assumedPackagesOf} returned at collection time.
+ */
+export function applyAssumedPackages<B extends { amendConfig(f: (c: DeepWritable<FlowrConfig>) => void): B }>(
+	builder: B, assumed: readonly string[]
+): B {
+	return assumed.length === 0 ? builder : builder.amendConfig(c => {
+		c.solver.assumeAttachedPackages = [...(c.solver.assumeAttachedPackages ?? []), ...assumed];
+	});
+}
+
+/** `config` with `assumeLoaded` applied, so a test states the packages its snippet uses instead of attaching them itself. */
+export function withAssumedPackages(config: FlowrConfig, assumeLoaded: readonly string[] | undefined): FlowrConfig {
+	if(assumeLoaded === undefined || assumeLoaded.length === 0) {
+		return config;
+	}
+	return FlowrConfig.amend(config, c => {
+		c.solver.assumeAttachedPackages = [...(c.solver.assumeAttachedPackages ?? []), ...assumeLoaded];
+	});
+}
 
 
 /** Automatically skip a test if no internet connection is available */
@@ -392,12 +460,14 @@ export function assertDataflow(
 	config = FlowrConfig.default()
 ): void {
 	const effectiveName = decorateLabelContext(name, [userConfig?.context ?? 'dataflow']);
+	/* captured while the file is collected, as that is when the enclosing withLoadedPackages is in effect */
+	const assumed = assumedPackagesOf(userConfig);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
 		let analyzer = await new FlowrAnalyzerBuilder()
 			.setInput({
 				getId: deterministicCountingIdGenerator(startIndexForDeterministicIds)
 			})
-			.setConfig(config)
+			.setConfig(withAssumedPackages(config, assumed))
 			.setParser(parser)
 			.build();
 		analyzer.addRequest(input);
@@ -566,6 +636,8 @@ export function assertSliced(
 	testConfig?: Partial<TestConfigurationWithOutput> & Partial<TestCaseParams> & { addFiles?: FlowrFileProvider[], extendSlice?: boolean },
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
+	/* captured while the file is collected, as that is when the enclosing withLoadedPackages is in effect */
+	const assumed = assumedPackagesOf(testConfig);
 	const skip = skipTestBecauseConfigNotMet(testConfig);
 	if(skip || testConfig?.testCaseFailType === 'fail-both') {
 		// drop it again because the test is not to be counted
@@ -633,7 +705,7 @@ export function assertSliced(
 		handleAssertOutput(name, shell, input, testConfig);
 
 		async function executePipeline(parser: KnownParser): Promise<PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>> {
-			const context =  contextFromInput(input, FlowrConfig.clone(testConfig?.flowrConfig ?? FlowrConfig.default()));
+			const context =  contextFromInput(input, withAssumedPackages(FlowrConfig.clone(testConfig?.flowrConfig ?? FlowrConfig.default()), assumed));
 			if(testConfig?.extendSlice) {
 				FlowrConfig.setInConfigInPlace(context.config, 'solver.slicer.autoExtend', true);
 			}

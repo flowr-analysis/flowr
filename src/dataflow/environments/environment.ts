@@ -35,7 +35,13 @@ export enum EnvType{
 	Namespace = 'ns',
 	Imports = 'imp',
 	/** `requireNamespace("pkg")`: `pkg::fn` resolves, bare `fn` does not */
-	LoadedNamespace = 'lns'
+	LoadedNamespace = 'lns',
+	/**
+	 * A package `solver.assumeAttachedPackages` states as attached: it resolves like a {@link EnvType.Namespace},
+	 * but a `library()` in the analyzed code still attaches the package in full over it, as the assumption only
+	 * stands in for a call that was not part of what is analyzed.
+	 */
+	AssumedNamespace = 'ans'
 }
 
 interface Jsonified {
@@ -76,6 +82,11 @@ export class Environment implements IEnvironment {
 	private sharedParent?: true;
 	/** marks the global environment (`.GlobalEnv`); attached packages (see {@link EnvType}) live below it */
 	globalEnv?:            true;
+	/**
+	 * What the configuration states about the packages R does not attach on startup, keyed by package. Only the
+	 * built-in environment carries it: a bare name must not find these, `pkg::fn` has to (see {@link statedIn}).
+	 */
+	namespaces?:           ReadonlyMap<string, BuiltInMemory>;
 
 	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined, memory?: BuiltInMemory) {
 		this.id = isBuiltInDefault ? 0 : environmentIdCounter++;

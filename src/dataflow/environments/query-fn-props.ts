@@ -198,14 +198,19 @@ function entryOfDefinition(definition: BuiltInDefinition): readonly BuiltInEntry
 
 function entriesOfMemory(builtIns: BuiltIns): readonly BuiltInEntry[] {
 	const out: BuiltInEntry[] = [];
-	for(const [registered, definitions] of builtIns.builtInMemory) {
-		for(const d of definitions) {
-			if(d.type !== ReferenceType.BuiltInFunction) {
-				continue;
+	/* the index says what flowR *knows*, not what is in scope, so the packages R does not attach on startup
+	   belong in it as much as the always-on built-ins do -- being gated changes when a name resolves, not
+	   whether flowR can answer for it */
+	for(const memory of [builtIns.builtInMemory, ...builtIns.packageMemory.values()]) {
+		for(const [registered, definitions] of memory) {
+			for(const d of definitions) {
+				if(d.type !== ReferenceType.BuiltInFunction) {
+					continue;
+				}
+				const info = d.config as BuiltInFnInfo | undefined;
+				/* the memory is keyed by the bare name, the definition keeps the namespace it was declared with */
+				out.push({ name: d.name ?? registered, props: info?.props, sig: info?.sig, folds: d.evalHandler !== undefined });
 			}
-			const info = d.config as BuiltInFnInfo | undefined;
-			/* the memory is keyed by the bare name, the definition keeps the namespace it was declared with */
-			out.push({ name: d.name ?? registered, props: info?.props, sig: info?.sig, folds: d.evalHandler !== undefined });
 		}
 	}
 	return out;

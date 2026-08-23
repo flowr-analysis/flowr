@@ -22,10 +22,11 @@ import { isNotUndefined } from '../../../../../../util/assert';
 import type { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { Identifier } from '../../../../../environments/identifier';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
-import { VertexType, UseVertex, FunctionDefinitionVertex } from '../../../../../graph/vertex';
+import { VertexType, UseVertex, FunctionCallVertex, FunctionDefinitionVertex } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type ClassDeclarationConfig, classDeclarationOf } from '../../../../../fn/class-declaration';
 
 /** e.g. new_generic(name, dispatch_args, fun=NULL) */
 interface S7GenericDispatchConfig {
@@ -101,7 +102,13 @@ export function processMakeConstructor<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config?: { readonly mode?: readonly ('s7' | 's3' | 's4')[], readonly wrapIndex?: number, readonly wrapName?: string }
+	config?: {
+		readonly mode?:      readonly ('s7' | 's3' | 's4')[],
+		readonly wrapIndex?: number,
+		readonly wrapName?:  string,
+		/** what the call declares about a class, see {@link classDeclarationOf} */
+		readonly classDecl?: ClassDeclarationConfig
+	}
 ): DataflowInformation {
 	// synthesise `function(...) S7_dispatch()` and make the call return it
 	const [funArg, funId]: [RArgument<OtherInfo & ParentInformation>, NodeId] = makeS7DispatchFDef(name, [], rootId, args.length, data.completeAst.idMap);
@@ -115,7 +122,24 @@ export function processMakeConstructor<OtherInfo>(
 	if(config?.wrapIndex !== undefined) {
 		linkWrappedFunction(info, args, config.wrapIndex, config.wrapName, data);
 	}
+	attachClassDeclaration(info, rootId, args, config?.classDecl);
 	return info;
+}
+
+/** Records on the call vertex what a class-declaring call states, see {@link DataflowGraphVertexFunctionCall.classDecl}. */
+export function attachClassDeclaration<OtherInfo>(
+	info:   DataflowInformation,
+	rootId: NodeId,
+	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	config: ClassDeclarationConfig | undefined
+): void {
+	if(config === undefined) {
+		return;
+	}
+	const vertex = info.graph.getVertex(rootId);
+	if(FunctionCallVertex.is(vertex)) {
+		vertex.classDecl = classDeclarationOf(config, args);
+	}
 }
 
 /** Mark the wrapped function of an eager higher-order wrapper (`Negate`/`Vectorize`/`partial`) as called. */

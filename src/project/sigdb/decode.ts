@@ -4,8 +4,9 @@
  * Split out of `../sigdb` so the reader/writer there does not carry the per-record decoding.
  */
 import {
-	DefaultCranBase, FnProp, FnPropNames,
-	type DepType, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigDbPkgMeta, type SigDefinitionLocation
+	ClassProp, DefaultCranBase, FnProp, FnPropNames, SigClassSystemNames,
+	type DepType, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigClassInfo, type SigDbPkgMeta,
+	type SigDefinitionLocation, type SigSlotInfo
 } from './schema';
 import type { ArgProps } from '../../dataflow/environments/built-in-props';
 import { resolveVersion } from './sigdb-version';
@@ -46,6 +47,9 @@ function hasEntries(record: Readonly<Record<string, unknown>> | undefined): bool
  */
 export const blobTuple = (b: Readonly<PkgBlob>): PkgBlobTuple => {
 	const head = [b.sigs, b.cgs, b.fns, b.versions, b.noncran ?? [], b.deps, b.depsByVersion] as const;
+	if(b.classes?.length) {
+		return [...head, b.dates, b.sources ?? {}, b.classes, b.classesByVersion ?? {}];
+	}
 	if(hasEntries(b.sources)) {
 		return [...head, b.dates, b.sources];
 	}
@@ -53,7 +57,7 @@ export const blobTuple = (b: Readonly<PkgBlob>): PkgBlobTuple => {
 };
 /** the inverse of {@link blobTuple}: rebuild a {@link PkgBlob} from its on-disk tuple */
 export function tupleToBlob(t: PkgBlobTuple): PkgBlob {
-	return { sigs: t[0], cgs: t[1], fns: t[2], versions: t[3], noncran: t[4]?.length ? t[4] : undefined, deps: t[5] ?? [], depsByVersion: t[6] ?? {}, dates: t[7] ?? {}, sources: t[8] };
+	return { sigs: t[0], cgs: t[1], fns: t[2], versions: t[3], noncran: t[4]?.length ? t[4] : undefined, deps: t[5] ?? [], depsByVersion: t[6] ?? {}, dates: t[7] ?? {}, sources: t[8], classes: t[9], classesByVersion: t[10] };
 }
 
 /** one decoded parameter of a function signature */
@@ -146,6 +150,41 @@ export function decodeDependencies(strings: readonly string[], blob: Readonly<Pk
 		type: d[1],
 		...(d.length === 3 ? { constraint: strings[d[2]] } : {})
 	}));
+}
+
+/**
+ * The classes a package version declares, decoded from the blob's class pool.
+ * @param strings - the global string dictionary
+ * @param blob    - the package blob to read
+ * @param ver     - the version to answer for
+ */
+export function decodeClasses(strings: readonly string[], blob: Readonly<PkgBlob>, ver: string): SigClassInfo[] {
+	const list = blob.classesByVersion?.[ver];
+	const pool = blob.classes;
+	if(list === undefined || pool === undefined) {
+		return [];
+	}
+	const out: SigClassInfo[] = [];
+	let prev = 0;
+	for(const delta of list) {
+		const rec = pool[prev += delta];
+		if(rec === undefined) {
+			continue;
+		}
+		const [nameIdx, system, props, supers, slots, pkgIdx] = rec;
+		out.push({
+			name:   strings[nameIdx],
+			system: SigClassSystemNames[system] ?? SigClassSystemNames[0],
+			supers: supers.map(i => strings[i]),
+			slots:  slots.map((sl): SigSlotInfo => typeof sl === 'number'
+				? { name: strings[sl] }
+				: { name: strings[sl[0]], type: strings[sl[1]] }),
+			...(props & ClassProp.Virtual ? { virtual: true } : {}),
+			...(props & ClassProp.Union ? { union: true } : {}),
+			...(pkgIdx !== undefined ? { package: strings[pkgIdx] } : {})
+		});
+	}
+	return out;
 }
 
 /** the function indices of a blob version (undoing the delta encoding) */

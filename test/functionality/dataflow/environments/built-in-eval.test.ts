@@ -27,7 +27,9 @@ const FoldedBy: Record<BuiltInEvalName, readonly string[]> = {
 const handlerOf = new Map(Object.entries(BuiltInEvalHandlerMapper).map(([name, handler]) => [handler, name as BuiltInEvalName]));
 
 /** what the default configuration ends up registering, so that a redefinition dropping a handler shows up too */
-const folded = [...getDefaultBuiltInDefinitions().builtInMemory].flatMap(([name, defs]) => defs.flatMap(d =>
+const definitions = getDefaultBuiltInDefinitions();
+/* a name a package owns is stated apart from the built-ins, but it is folded just the same */
+const folded = [definitions.builtInMemory, ...definitions.packageMemory.values()].flatMap(m => [...m]).flatMap(([name, defs]) => defs.flatMap(d =>
 	d.type === ReferenceType.BuiltInFunction && d.evalHandler !== undefined ?
 		[{ name, handler: handlerOf.get(d.evalHandler), info: d.config ?? {} }] : []));
 

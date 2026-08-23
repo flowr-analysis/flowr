@@ -6,6 +6,7 @@ import type { ControlDependency, ExitPoint } from '../info';
 import type { Identifier } from '../environments/identifier';
 import type { BuiltInProcName } from '../environments/built-in-proc-name';
 import type { Value } from '../eval/values/r-value';
+import type { ClassDeclaration } from '../fn/class-declaration';
 
 
 export enum VertexType {
@@ -118,6 +119,13 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	 * argument can be statically resolved (tracked env variable or `emptyenv()`-family call).
 	 */
 	newEnvParent?: REnvironmentInformation
+	/**
+	 * For a class-declaring call (`setClass`, `setClassUnion`, `setIs`, `setValidity`, `setRefClass`,
+	 * `S7::new_class`, `R6::R6Class`): what the declaration states -- its name, superclasses, members, and
+	 * whether it can be instantiated. Filled from the {@link ClassDeclarationConfig} the built-in declares,
+	 * so no argument's meaning is guessed. See {@link declaredClasses} to collect these across a graph.
+	 */
+	classDecl?:    ClassDeclaration
 }
 
 /** Describes the processor responsible for a function call */

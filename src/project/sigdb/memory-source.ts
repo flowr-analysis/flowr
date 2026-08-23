@@ -116,6 +116,11 @@ export class MemorySignatureSource implements PackageSignatureSource {
 		return [...found.deps ?? []];
 	}
 
+	/** an in-memory package states its exports, never its class relations */
+	public classes(): undefined {
+		return undefined;
+	}
+
 	public packageNames(): string[] {
 		return [...this.packages.keys()];
 	}

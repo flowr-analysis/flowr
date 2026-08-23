@@ -19,7 +19,11 @@ export interface FunctionInfo {
 	isExported:      boolean;
 	isS3Generic:     boolean;
 	s3TypeDispatch?: string;
-	/** The name is an S4 method the package registered (its NAMESPACE `exportMethods()`) */
+	/**
+	 * The name is an S4 method the package registered (its NAMESPACE `exportMethods()`): it is exported because
+	 * the package answers a generic for one of its classes, not because it defines a function of its own.
+	 * The S4 counterpart of {@link isS3Generic}/{@link s3TypeDispatch}.
+	 */
 	isS4Method?:     boolean;
 	/** The name is an S4 class the package owns, i.e. its NAMESPACE lists it in `exportClasses()`. */
 	isS4Class?:      boolean;

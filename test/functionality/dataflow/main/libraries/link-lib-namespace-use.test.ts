@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
+import { assertDataflow, assumeLoadedPackages, withTreeSitter } from '../../../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../../../../src/project/flowr-analyzer';
 import { Package } from '../../../../../src/project/plugins/package-version-plugins/package';
@@ -8,6 +8,9 @@ import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-buil
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { label } from '../../../_helper/label';
 import { EnvType, REnvironment } from '../../../../../src/dataflow/environments/environment';
+
+assumeLoadedPackages('import');
+
 
 describe('Namespace loading, import::from and box::use', withTreeSitter(ts => {
 	const twoExports = (a: FlowrAnalyzer): void => {

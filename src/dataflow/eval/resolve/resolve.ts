@@ -26,7 +26,9 @@ import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-o
 function evalHandlerOf(name: Identifier, environment: REnvironmentInformation | undefined, ctx: ReadOnlyFlowrAnalyzerContext): BuiltInEvalHandler | undefined {
 	const defs = environment ?
 		Resolve.byNameAndType(name, environment, ReferenceType.BuiltInFunction)
-		: ctx.env.builtInEnvironment.memory.get(Identifier.getName(name)) as IdentifierDefinition[] | undefined;
+		/* without an environment the search path is unknown, so what a package states about the name has its say */
+		: ctx.env.builtInEnvironment.memory.get(Identifier.getName(name)) as IdentifierDefinition[] | undefined
+			?? ctx.env.statedDefinitionsOf(name);
 	const def = defs?.length === 1 ? defs[0] : undefined;
 	return def?.type === ReferenceType.BuiltInFunction ? def.evalHandler : undefined;
 }
@@ -57,7 +59,8 @@ function evalNameOf({ node, graph }: BuiltInEvalHandlerArgs): Identifier | undef
 		if(name !== undefined && Identifier.getName(name) !== Identifier.getName(named)) {
 			return undefined;
 		}
-		name = named;
+		/* the same call is named bare by one origin and qualified by another; the qualified one says whose it is */
+		name = name !== undefined && Identifier.getNamespace(named) === undefined ? name : named;
 	}
 	return name;
 }

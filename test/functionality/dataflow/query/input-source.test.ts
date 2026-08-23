@@ -1,6 +1,6 @@
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
-import { withTreeSitter } from '../../_helper/shell';
+import { assumeLoadedPackages, withTreeSitter } from '../../_helper/shell';
 import { assert, describe, test } from 'vitest';
 import type {
 	InputSourcesQuery,
@@ -12,6 +12,8 @@ import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { BuiltInIndex } from '../../../../src/dataflow/environments/query-fn-props';
 import { ArgProp, CallProp } from '../../../../src/dataflow/environments/built-in-props';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
+
+assumeLoadedPackages('cohortBuilder', 'shiny', 'shinyCohortBuilder');
 
 describe('The default classifier configuration follows the built-in labels', () => {
 	const builtIns = BuiltInIndex.default();
@@ -35,7 +37,7 @@ describe('The default classifier configuration follows the built-in labels', () 
 });
 
 describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
-	function testQuery(name: string, code: string, query: readonly InputSourcesQuery[], expectedOutput: InputSourcesQueryResult['results']) {
+	function testQuery(name: string, code: string, query: readonly InputSourcesQuery[], expectedOutput: InputSourcesQueryResult['results'], assumeLoaded?: readonly string[]) {
 		assertQuery(label(name), parser, code, query, d => {
 			const nast = d.normalize.idMap;
 			for(const [key, value] of Object.entries(expectedOutput)) {
@@ -48,7 +50,7 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 			return {
 				'input-sources': { results: expectedOutput }
 			};
-		});
+		}, false, assumeLoaded);
 	}
 
 	describe('Trivial eval+parse combinations', () => {
@@ -389,9 +391,10 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 		testQuery('an ordinary input parameter stays a parameter', 'convert <- function(input, mode) {\n  foo(input)\n}', [{ type: 'input-sources', criterion: '2@foo' }], {
 			'2@foo': [{ id: '2@input', types: [InputType.Parameter], trace: InputTraceType.Pure }]
 		});
+		/* the point is that nothing is attached, which is what the empty list says */
 		testQuery('without shiny even an input/output pair is no framework object', 'copyIt <- function(input, output) {\n  foo(input)\n}', [{ type: 'input-sources', criterion: '2@foo' }], {
 			'2@foo': [{ id: '2@input', types: [InputType.Parameter], trace: InputTraceType.Pure }]
-		});
+		}, []);
 		testQuery('a locally defined input shadows the framework object', 'library(shiny)\nserver <- function(input, output, session) {\n  helper <- function(input) {\n    foo(input)\n  }\n}', [{ type: 'input-sources', criterion: '4@foo' }], {
 			'4@foo': [{ id: '4@input', types: [InputType.Parameter], trace: InputTraceType.Pure }]
 		});
@@ -414,8 +417,9 @@ describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 			'3@foo': [{ id: '3@coh', types: [InputType.File, InputType.DerivedConstant], trace: InputTraceType.Alias }]
 		});
 		testQuery('a bare filter() is dplyr\'s without cohortBuilder', 'coh <- filter(read.csv("a.csv"), x > 1)\nfoo(coh)', [{ type: 'input-sources', criterion: '2@foo' }], {
-			'2@foo': [{ id: '2@coh', types: [InputType.Unknown], trace: InputTraceType.Alias }]
-		});
+			/* dplyr's `filter` hands its data frame on, so the csv it was read from is still the source */
+			'2@foo': [{ id: '2@coh', types: [InputType.File, InputType.Unknown, InputType.Constant, InputType.DerivedConstant], trace: InputTraceType.Alias }]
+		}, ['dplyr']);
 		testQuery('the shiny gui is a user entry point', 'library(shinyCohortBuilder)\nfoo(gui(coh))', [{ type: 'input-sources', criterion: '2@foo' }], {
 			'2@foo': [{ id: '2@gui', types: [InputType.User], trace: InputTraceType.Unknown }]
 		});

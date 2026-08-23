@@ -126,6 +126,49 @@ export type Sig = SigParam[];
 export type SigFn = [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number]
 	| [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number, topicIdx: number];
 
+/** the object system a class record belongs to, mirroring {@link ClassSystem} in a single on-disk byte */
+export const enum SigClassSystem { S4 = 0, RefClass = 1, S7 = 2, R6 = 3 }
+/** the {@link SigClassSystem} values in order, with their names (for decoding) */
+export const SigClassSystemNames = ['s4', 'rc', 's7', 'r6'] as const;
+
+/** class-level boolean properties, packed into {@link SigClass}'s bitfield */
+export const enum ClassProp {
+	/** the class cannot be instantiated: `representation("VIRTUAL")`, `contains = "VIRTUAL"`, or S7 `abstract = TRUE` */
+	Virtual = 1 << 0,
+	/**
+	 * the record is a `setClassUnion`, so its {@link SigClass} supers are the classes it *unites* (which become
+	 * its subclasses) rather than the ones it extends. A union is always {@link ClassProp.Virtual} too.
+	 */
+	Union   = 1 << 1,
+	/**
+	 * the package does not define the class, it only extends or relates it (a `setIs`, or a `contains` naming
+	 * a class of another package). What such a record states is the relation, not the class.
+	 */
+	Foreign = 1 << 2
+}
+
+/** the {@link ClassProp} bit to its name (for decoding); integer keys iterate in ascending bit order */
+export const ClassPropNames: Readonly<Record<ClassProp, string>> = {
+	[ClassProp.Virtual]: 'virtual',
+	[ClassProp.Union]:   'union',
+	[ClassProp.Foreign]: 'foreign'
+};
+
+/**
+ * One declared member of a class (an S4 slot, an S7 property, an RC field, an R6 entry): just `nameIdx` when
+ * the declaration states no type, `[nameIdx, typeIdx]` when it does. Both index the global dictionary.
+ */
+export type SigSlot = number | [nameIdx: number, typeIdx: number];
+
+/**
+ * One class record `[nameIdx, system, propBits, supers, slots]`, with an optional trailing `pkgIdx` naming the
+ * package that *defines* the class when that is not the one carrying the record (see {@link ClassProp.Foreign}).
+ * `supers` are dictionary indices of the direct superclasses, in declaration order. The trailing element is
+ * additive: readers that stop at `slots` ignore it, so older bundles stay readable.
+ */
+export type SigClass = [nameIdx: number, system: SigClassSystem, props: number, supers: number[], slots: SigSlot[]]
+	| [nameIdx: number, system: SigClassSystem, props: number, supers: number[], slots: SigSlot[], pkgIdx: number];
+
 /** the kind of a package dependency (mirrors the DESCRIPTION fields) */
 export const enum DepType { Depends = 0, Imports = 1, LinkingTo = 2, Suggests = 3, Enhances = 4 }
 /** the {@link DepType} values in order, with their names (for decoding) */
@@ -140,30 +183,34 @@ export type SigDep = [nameIdx: number, type: DepType] | [nameIdx: number, type: 
  * consecutive pool slots, which brotli collapses on disk. See {@link PkgBlobTuple} for the on-disk order.
  */
 export interface PkgBlob {
-	sigs:          Sig[];
-	cgs:           number[][];
-	fns:           SigFn[];
+	sigs:              Sig[];
+	cgs:               number[][];
+	fns:               SigFn[];
 	/** version name to a delta-encoded ascending list of indices into {@link PkgBlob.fns} */
-	versions:      Record<string, number[]>;
+	versions:          Record<string, number[]>;
 	/** the subset of {@link PkgBlob.versions} that are not from CRAN (usually empty, so left undefined in memory) */
-	noncran?:      string[];
+	noncran?:          string[];
 	/** pool of unique dependency lists (shared across a package's versions) */
-	deps:          SigDep[][];
+	deps:              SigDep[][];
 	/** version name to an index into {@link PkgBlob.deps} (absent when the version declares no dependencies) */
-	depsByVersion: Record<string, number>;
+	depsByVersion:     Record<string, number>;
 	/** version name to its release date as **days since the Unix epoch** (absent when the date is unknown) */
-	dates:         Record<string, number>;
+	dates:             Record<string, number>;
 	/**
 	 * Version name to a dictionary index naming the repository it came from (`cran`, `bioc`, ...).
 	 * Absent in bundles written before this field, where {@link PkgBlob.noncran} is all there is.
 	 */
-	sources?:      Record<string, number>;
+	sources?:          Record<string, number>;
+	/** pool of unique class records (shared across a package's versions), absent when the bundle stores none */
+	classes?:          SigClass[];
+	/** version name to a delta-encoded ascending list of indices into {@link PkgBlob.classes} */
+	classesByVersion?: Record<string, number[]>;
 }
 /**
  * On-disk tuple form of a {@link PkgBlob}, in the order the fields are declared and ending with
  * `sources`. Trailing elements are additive, so a reader that stops earlier keeps working.
  */
-export type PkgBlobTuple = [Sig[], number[][], SigFn[], Record<string, number[]>, string[], SigDep[][], Record<string, number>, Record<string, number>?, Record<string, number>?];
+export type PkgBlobTuple = [Sig[], number[][], SigFn[], Record<string, number[]>, string[], SigDep[][], Record<string, number>, Record<string, number>?, Record<string, number>?, SigClass[]?, Record<string, number[]>?];
 
 /**
  * Per-package metadata. The optional 4th element marks an **R-core / base package** (`base`, `stats`,
@@ -256,6 +303,38 @@ export interface SigVersionInfo {
 	readonly dependencies?: readonly SigDependencyInfo[];
 	/** release date as milliseconds since the Unix epoch (stored at day granularity, used to find the newest release) */
 	readonly date?:         number;
+	/** the classes this version declares and the relations it states between them */
+	readonly classes?:      readonly SigClassInfo[];
+}
+
+/**
+ * One class of a package version: what its declaration states, plus which package defines it. This is the
+ * structure `s4Classes` (a flat list of names) has nowhere to hang, so a consumer can tell a class the package
+ * owns from one it merely inherits, and read a slot's declared type without re-reading the sources.
+ */
+export interface SigClassInfo {
+	readonly name:     string;
+	readonly system:   typeof SigClassSystemNames[number];
+	/** the direct superclasses, in declaration order; for a {@link SigClassInfo.union} the united members instead */
+	readonly supers:   readonly string[];
+	/** the declared members, in declaration order */
+	readonly slots:    readonly SigSlotInfo[];
+	/** the class cannot be instantiated (see {@link ClassProp.Virtual}) */
+	readonly virtual?: boolean;
+	/** the record is a class union, so {@link SigClassInfo.supers} are its members (see {@link ClassProp.Union}) */
+	readonly union?:   boolean;
+	/**
+	 * The package defining the class, when it is not the one carrying the record: an inherited or related class
+	 * the package does not own (see {@link ClassProp.Foreign}). Absent for a class the package defines itself.
+	 */
+	readonly package?: string;
+}
+
+/** one declared member of a {@link SigClassInfo}: an S4 slot, an S7 property, an RC field, or an R6 entry */
+export interface SigSlotInfo {
+	readonly name:  string;
+	/** the class the declaration states for the member (`"numeric"`, `class_numeric`); absent when it states none */
+	readonly type?: string;
 }
 
 /**
@@ -272,4 +351,6 @@ export interface SigDbFeatures {
 	locations?:    boolean;
 	/** per-version declared dependencies -- default true */
 	dependencies?: boolean;
+	/** per-version class relations (superclasses, slots, unions) -- default true */
+	classes?:      boolean;
 }

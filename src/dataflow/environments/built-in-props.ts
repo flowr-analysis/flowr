@@ -128,7 +128,16 @@ export enum CallProp {
 	/** marked for removal, with a better alternative available, like `dplyr::funs` */
 	Deprecated  = 1 << 29,
 	/** calling it forces every parameter, so nothing it is handed stays a promise (see {@link strictnessOfFunction}) */
-	Strict      = 1 << 30
+	Strict      = 1 << 30,
+	/**
+	 * runs its work in parallel: forks or spawns workers, submits to a cluster or a future/promise backend, or
+	 * is a `foreach` operator doing so. Says nothing about purity -- a pure function evaluated in parallel is
+	 * still pure -- but everything about reproducibility, the RNG stream, and where an error surfaces.
+	 * Stated by the built-ins that do it (`parallel`, the futureverse, `foreach`'s parallel operator, `mirai`,
+	 * `callr`, `RcppParallel`) and carried over by {@link PropagatedProps}, so a function reaching one has it too.
+	 * This is the last bit of the 32 a JavaScript bitfield holds, so every use of it must stay bitwise.
+	 */
+	Concurrent  = 1 << 31
 }
 
 /**
@@ -164,7 +173,8 @@ export const InputProps = CallProp.NonDet | CallProp.Random | CallProp.Ambient |
  * The {@link CallProp} bits the signature database states itself, so {@link fnInfoFromSignature} can read them
  * off any package function without anyone writing them down.
  */
-export const SigDbInferable = CallProp.Throws | CallProp.NonDet | CallProp.Method | CallProp.Generic;
+export const SigDbInferable = CallProp.Throws | CallProp.NonDet | CallProp.Method | CallProp.Generic
+	| CallProp.Concurrent;
 
 /**
  * The {@link CallProp} bits that say a call takes its data from a file, as {@link CallProp.File} alone also
@@ -179,7 +189,7 @@ export const FileInputProps = CallProp.File | CallProp.Reads;
 export const PropagatedProps = CallProp.Throws | CallProp.Scope | CallProp.NonDet | CallProp.Prints
 	| CallProp.Random | CallProp.Ambient | CallProp.File | CallProp.TempFile | CallProp.Network | CallProp.Process
 	| CallProp.Ffi | CallProp.Lang | CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes
-	| CallProp.Configures | CallProp.CommandLine;
+	| CallProp.Configures | CallProp.CommandLine | CallProp.Concurrent;
 
 /** a bitfield of {@link ArgProp} */
 export type ArgProps = number;
@@ -260,7 +270,8 @@ const CallPropNames: readonly (readonly [CallProp, string])[] = [
 	[CallProp.Generic, 'generic'], [CallProp.Method, 's3 method'], [CallProp.Scope, 'changes scope'],
 	[CallProp.NonDet, 'non deterministic'], [CallProp.Random, 'random'], [CallProp.Ambient, 'ambient state'],
 	[CallProp.File, 'file system'], [CallProp.Reads, 'reads'], [CallProp.Writes, 'writes'],
-	[CallProp.Network, 'network'], [CallProp.Prints, 'prints'], [CallProp.Strict, 'strict']
+	[CallProp.Network, 'network'], [CallProp.Prints, 'prints'], [CallProp.Strict, 'strict'],
+	[CallProp.Concurrent, 'concurrent']
 ];
 
 /** What a call states about itself, as words rather than as a bit mask, for anything showing it to a reader. */
@@ -379,9 +390,5 @@ export function fnInfoFromSignature(fn: DecodedFunction): BuiltInFnInfo {
 	if(!(props & CallProp.Generic) && fn.callees.some(c => DispatchCallees.has(c))) {
 		props |= CallProp.Generic;
 	}
-	return {
-		sig: fn.signature.map(p => [p.name,
-			p.props | (p.default === 'TRUE' || p.default === 'FALSE' ? ArgProp.Flag : 0)]),
-		props
-	};
+	return { sig: fn.signature.map(p => [p.name, p.props]), props };
 }

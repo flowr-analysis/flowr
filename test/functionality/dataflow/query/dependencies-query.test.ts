@@ -13,7 +13,7 @@ import {
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { assert, describe, test } from 'vitest';
-import { skipTestBecauseConfigNotMet, withTreeSitter } from '../../_helper/shell';
+import { assumeLoadedPackages, skipTestBecauseConfigNotMet, withTreeSitter } from '../../_helper/shell';
 import { execFileSync } from 'child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
@@ -27,6 +27,8 @@ import { ReadFunctions } from '../../../../src/queries/catalog/dependencies-quer
 import { WriteFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/write-functions';
 import { OtherPathFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/other-path-functions';
 import { RFunctionCall } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+
+assumeLoadedPackages('car', 'ggplot2', 'ggthemes', 'jmcm', 'magrittr', 'maps', 'plotly', 'remotes', 'rlang', 'tinyplot');
 
 const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], remote: [], source: [], read: [], write: [], visualize: [], test: [], statistics: [] };
 
@@ -100,7 +102,6 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '1@require', functionName: 'require', value: 'unknown', lexemeOfArgument: 'c', argumentId: '1:9' }
 		] });
 
-
 		testQuery('Library with variable', 'a <- "ggplot2"\nb <- TRUE\nlibrary(a,character.only=b)', { library: [
 			{ nodeId: '3@library', functionName: 'library', value: 'ggplot2'  }
 		] });
@@ -110,7 +111,6 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '2@library', functionName: 'library', value: 'b' },
 			{ nodeId: '2@library', functionName: 'library', value: 'a' }
 		] });
-
 
 		testQuery('pacman', 'p_load(a, b, c)', { library: [
 			{ nodeId: '1@p_load', functionName: 'p_load', value: 'a' },
@@ -764,7 +764,6 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			write: []
 		});
 	});
-
 
 	describe('Statistical Tests', () => {
 		/* what a test is asked for is the statistic it prints, so a top-level one is an output as well */

@@ -14,6 +14,7 @@ import { loadNodesForNamespace } from '../../../../../src/dataflow/internal/proc
 import { EnvType, REnvironment, builtInEnvJsonReplacer } from '../../../../../src/dataflow/environments/environment';
 import type { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
+
 const ggplot2Callable = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 const namespaceContent = `S3method(fortify,data.frame)
 	S3method(fortify,lm)
@@ -364,10 +365,10 @@ describe('Link libraries', withTreeSitter(ts => {
 			{ call: '6@fb', pkg: 'pkgB', fn: 'fb', lib: '3@library' }),
 		abc);
 
-	// inside a function body the call is resolved lazily, so only the `calls` edge is present
+	// the load happens before the definition, so the body sees the package on the search path already
 	assertDataflow(label('Library is visible inside the function that loads it', ['library-loading', 'search-path']), ts,
 		'library(pkgA)\nh <- function() {\n  fa()\n}\nh()',
-		resolvesTo({ call: '3@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library', callEdge: EdgeType.Calls }),
+		resolvesTo({ call: '3@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library' }),
 		abc);
 
 	assertDataflow(label('Transitively loaded library resolves at the call site', ['library-loading', 'search-path']), ts,

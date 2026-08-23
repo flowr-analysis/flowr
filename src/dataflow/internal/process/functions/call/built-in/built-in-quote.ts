@@ -17,6 +17,7 @@ import { FunctionArgument } from '../../../../../graph/graph';
 import { Nse, Unquote } from '../nse';
 import { linkInputs } from '../../../../linker';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { cleanEnvOf } from '../../../../../environments/scoping';
 
 interface QuoteConfig extends ForceArguments {
 	quoteArgumentsWithIndex: number
@@ -43,7 +44,7 @@ export function processQuote<OtherInfo>(
 		patchData(data: DataflowProcessorInformation<OtherInfo & ParentInformation>, index: number): DataflowProcessorInformation<OtherInfo & ParentInformation> {
 			if(index === config.quoteArgumentsWithIndex) {
 				lastEnv = data.environment;
-				return { ...data, environment: data.ctx.env.makeCleanEnv() };
+				return { ...data, environment: cleanEnvOf(data.environment) };
 			} else {
 				return { ...data, environment: lastEnv };
 			}

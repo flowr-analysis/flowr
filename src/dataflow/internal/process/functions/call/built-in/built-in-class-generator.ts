@@ -16,6 +16,8 @@ import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-a
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { ClassDeclarationConfig } from '../../../../../fn/class-declaration';
+import { attachClassDeclaration } from './built-in-s-seven-new-generic';
 
 /** R6's `public` / Reference Class's `methods` argument carrying the class generator's methods. */
 const MethodListArguments = ['public', 'methods'];
@@ -26,8 +28,11 @@ export function processClassGenerator<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config?: { readonly classDecl?: ClassDeclarationConfig }
 ): DataflowInformation {
-	return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.ClassGenerator }).information;
+	const info = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.ClassGenerator }).information;
+	attachClassDeclaration(info, rootId, args, config?.classDecl);
+	return info;
 }
 
 /** The method env of a class generator's `public`/`methods` `list(...)` (via {@link resolveListToEnvState}); `undefined` if absent. */

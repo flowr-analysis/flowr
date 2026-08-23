@@ -15,6 +15,7 @@ import { extractCfg } from '../../../src/control-flow/control-flow-graph';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { CallGraph } from '../../../src/dataflow/graph/call-graph';
+import { applyAssumedPackages, assumedPackagesOf } from './shell';
 
 
 function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {
@@ -44,10 +45,14 @@ export function assertQuery<
 	code: string,
 	queries: readonly (Queries | VirtualQueryArgumentsWithType<Queries['type'], VirtualArguments>)[],
 	expected?: QueryResultsWithoutMeta<Queries> | ((info: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE>) => (QueryResultsWithoutMeta<Queries> | Promise<QueryResultsWithoutMeta<Queries>>)),
-	runFull = false
+	runFull = false,
+	/** packages this query's code may use without attaching them, overriding the file's {@link assumeLoadedPackages} */
+	assumeLoaded?: readonly string[]
 ) {
 	const effectiveName = decorateLabelContext(name, ['query']);
 
+	/* captured while the file is collected, as that is when the enclosing withLoadedPackages is in effect */
+	const assumed = assumedPackagesOf({ assumeLoaded });
 	test(effectiveName, async() => {
 		for(const query of queries) {
 			if(query.type === 'compound') {
@@ -68,8 +73,8 @@ export function assertQuery<
 		}
 
 
-		const analyzer = await new FlowrAnalyzerBuilder()
-			.setParser(parser)
+		const analyzer = await applyAssumedPackages(new FlowrAnalyzerBuilder()
+			.setParser(parser), assumed)
 			.build();
 		analyzer.addRequest(code);
 		if(runFull) {

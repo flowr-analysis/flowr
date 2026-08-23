@@ -623,7 +623,7 @@ describe('sigdb dependencies and feature selection', () => {
 		], dependencies: [{ name: 'R6', type: DepType.Imports }] });
 		const db = b.build({ ...meta, features: { signatures: false, callGraphs: false, locations: false } });
 		const blob = db.blobs[db.pkgs['p']];
-		expect(db.content.features).toEqual({ signatures: false, callGraphs: false, locations: false, dependencies: true });
+		expect(db.content.features).toEqual({ signatures: false, callGraphs: false, locations: false, dependencies: true, classes: true });
 		expect(blob.sigs.length).toBe(0);   // no signatures stored
 		expect(blob.cgs.length).toBe(0);    // no call graphs stored
 		const [, sigIdx, cgIdx, bits, fileIdx] = blob.fns[0];

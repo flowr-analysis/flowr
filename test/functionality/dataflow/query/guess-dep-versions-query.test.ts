@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { withTreeSitter } from '../../_helper/shell';
+import { assumeLoadedPackages, withTreeSitter } from '../../_helper/shell';
 import { boundsFrom, buildGuessAnalyzer, guessDep, guessed, runGuess, type GuessScenario } from '../../_helper/guess-dep-versions';
 import { FlowrConfig } from '../../../../src/config';
 import { executeQueries, SupportedQueries } from '../../../../src/queries/query';
@@ -10,6 +10,8 @@ import { ansiFormatter } from '../../../../src/util/text/ansi';
 import { Package } from '../../../../src/project/plugins/package-version-plugins/package';
 import { FlowrNamespaceFile } from '../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
 import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
+
+assumeLoadedPackages('S7', 'cohortBuilder', 'ggplot2');
 
 /** a config pinning the assumed R version, so base-R bounding is deterministic */
 function assumedR(version: string): FlowrConfig {

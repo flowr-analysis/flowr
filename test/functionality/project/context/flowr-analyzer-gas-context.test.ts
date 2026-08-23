@@ -7,6 +7,7 @@ import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-anal
 import { FlowrAnalyzerGasPlugin } from '../../../../src/project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { PluginType } from '../../../../src/project/plugins/flowr-analyzer-plugin';
 import { SemVer } from 'semver';
+import { withoutLogs } from '../../_helper/log';
 
 /** Returns a fixed level for the given target key; defers (undefined) for all other keys. */
 class FixedLevelGasPlugin extends FlowrAnalyzerGasPlugin {
@@ -132,7 +133,7 @@ describe('FlowrAnalyzerGasContext', () => {
 		});
 
 		test('a bare number is not a per-feature entry', () => {
-			assert.isUndefined(FlowrConfig.parse(JSON.stringify({ gas: { thresholds: { timeMs: { slicer: 3 } } } })), 'a feature key must name a pair');
+			assert.isUndefined(withoutLogs(() => FlowrConfig.parse(JSON.stringify({ gas: { thresholds: { timeMs: { slicer: 3 } } } }))), 'a feature key must name a pair');
 		});
 	});
 

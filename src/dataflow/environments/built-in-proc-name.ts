@@ -102,6 +102,8 @@ export enum BuiltInProcName {
 	NewEnv = 'builtin:nenv',
 	/** for `R6Class`/`setRefClass` class generators whose methods back `$new()`-instance dispatch */
 	ClassGenerator = 'builtin:class-gen',
+	/** relates existing classes rather than declaring one: `setIs`, `setValidity` */
+	ClassRelation = 'builtin:class-relation',
 	/** for unnamed directly-linked function calls */
 	Unnamed = 'unnamed',
 	/** for vector construction calls, see {@link processVector} */

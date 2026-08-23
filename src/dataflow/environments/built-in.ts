@@ -72,6 +72,7 @@ import { BuiltInProcName } from './built-in-proc-name';
 import { processPurrrFormula } from '../internal/process/functions/call/built-in/built-in-purrr-formula';
 import { processNewEnv } from '../internal/process/functions/call/built-in/built-in-new-env';
 import { processClassGenerator } from '../internal/process/functions/call/built-in/built-in-class-generator';
+import { processClassRelation } from '../internal/process/functions/call/built-in/built-in-class-relation';
 import { processStackEnv } from '../internal/process/functions/call/built-in/built-in-stack-env';
 import { processAttach } from '../internal/process/functions/call/built-in/built-in-attach';
 import { processWithEnv } from '../internal/process/functions/call/built-in/built-in-with';
@@ -80,6 +81,8 @@ import { processLoadCall } from '../internal/process/functions/call/built-in/bui
 import { processStringTemplate } from '../internal/process/functions/call/built-in/built-in-string-template';
 import { ArgProp, FnSig, type BuiltInFnInfo } from './built-in-props';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { AttachedBasePackageSet } from '../../util/r-base-packages';
+import { cleanEnvOf } from './scoping';
 
 export type BuiltInIdentifierProcessor = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -205,7 +208,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 		patchData:   nsePositions === undefined ? undefined : (d, index) => {
 			if(nsePositions.has(index)) {
 				lastEnv = d.environment;
-				return { ...d, environment: d.ctx.env.makeCleanEnv() };
+				return { ...d, environment: cleanEnvOf(d.environment) };
 			}
 			return { ...d, environment: lastEnv };
 		}
@@ -384,6 +387,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Attach]:             processAttach,
 	[BuiltInProcName.NewEnv]:             processNewEnv,
 	[BuiltInProcName.ClassGenerator]:     processClassGenerator,
+	[BuiltInProcName.ClassRelation]:      processClassRelation,
 	[BuiltInProcName.StackEnv]:           processStackEnv,
 	[BuiltInProcName.With]:               processWithEnv,
 	[BuiltInProcName.Vector]:             processVector,
@@ -408,6 +412,18 @@ export type ConfigOfBuiltInMappingName<N extends keyof typeof BuiltInProcessorMa
 
 export type BuiltInMemory = Map<BrandedIdentifier, IdentifierDefinition[]>;
 
+/**
+ * Whether a definition registered under `namespace` belongs in the always-on built-in environment.
+ *
+ * R only has base and the {@link AttachedBasePackages} on its search path at startup, so only those are in
+ * scope without a `library()` call. Everything the configuration states about another package is *knowledge*
+ * about it, not a reason to consider it loaded -- a name with no namespace at all is a language primitive and
+ * always in scope.
+ */
+function attachedByDefault(namespace: string | undefined): boolean {
+	return namespace === undefined || AttachedBasePackageSet.has(namespace);
+}
+
 export class BuiltIns {
 	/**
 	 * Register a built-in constant (like `NULL` or `TRUE`) to the given {@link BuiltIns}
@@ -424,7 +440,7 @@ export class BuiltIns {
 				name,
 				nodeId:    id
 			}];
-			this.set(n, d, assumePrimitive);
+			this.set(n, d, assumePrimitive, Identifier.getNamespace(name));
 		}
 	}
 
@@ -451,7 +467,7 @@ export class BuiltIns {
 				name,
 				nodeId:      id
 			}];
-			this.set(n, d, assumePrimitive);
+			this.set(n, d, assumePrimitive, Identifier.getNamespace(name));
 		}
 	}
 
@@ -478,7 +494,7 @@ export class BuiltIns {
 					cds:    undefined,
 					nodeId: id
 				}];
-				this.set(effectiveName, d, assumePrimitive);
+				this.set(effectiveName, d, assumePrimitive, Identifier.getNamespace(assignment));
 			}
 		}
 	}
@@ -512,10 +528,40 @@ export class BuiltIns {
 	 */
 	emptyBuiltInMemory: BuiltInMemory = new Map<BrandedIdentifier, IdentifierDefinition[]>();
 
-	set(identifier: BrandedIdentifier, definition: IdentifierDefinition[], includeInEmptyMemory: boolean | undefined): void {
+	/**
+	 * What the configuration states about the exports of packages R does not attach on startup, keyed by
+	 * package and then by the bare name within it. These are *not* in {@link builtInMemory}: they enter an
+	 * analysis only when that package is attached, see {@link BuiltIns.forPackage}.
+	 */
+	packageMemory: Map<string, BuiltInMemory> = new Map<string, BuiltInMemory>();
+
+	/**
+	 * Registers `definition` under `identifier`. A definition whose name carries a namespace R does not
+	 * attach by default lands in {@link packageMemory} instead of the always-on environment.
+	 * @param identifier           - the bare name the definition is reachable under
+	 * @param definition           - what flowR states about it
+	 * @param includeInEmptyMemory - whether it also belongs in the {@link emptyBuiltInMemory}
+	 * @param namespace            - the package the name belongs to, `undefined` for a language primitive
+	 */
+	set(identifier: BrandedIdentifier, definition: IdentifierDefinition[], includeInEmptyMemory: boolean | undefined, namespace?: string): void {
+		if(!attachedByDefault(namespace)) {
+			const pkg = this.packageMemory.get(namespace as string) ?? new Map<BrandedIdentifier, IdentifierDefinition[]>();
+			pkg.set(identifier, definition);
+			this.packageMemory.set(namespace as string, pkg);
+			return;
+		}
 		this.builtInMemory.set(identifier, definition);
 		if(includeInEmptyMemory) {
 			this.emptyBuiltInMemory.set(identifier, definition);
 		}
+	}
+
+	/**
+	 * What flowR states about `pkg`'s exports, `undefined` when it states nothing. Attaching the package is
+	 * what brings these into scope, which is why they are kept out of the built-in environment.
+	 * @param pkg - the package name
+	 */
+	forPackage(pkg: string): BuiltInMemory | undefined {
+		return this.packageMemory.get(pkg);
 	}
 }

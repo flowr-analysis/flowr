@@ -3,6 +3,7 @@ import { FlowrAnalyzerContext } from '../../../src/project/context/flowr-analyze
 import { ProjectKind } from '../../../src/project/context/project-kind';
 import { FlowrConfig, VariableResolve } from '../../../src/config';
 import type { DeepWritable } from 'ts-essentials';
+import { withoutLogs } from '../_helper/log';
 
 /** a config specializing `overwrite` for the given `kind` */
 function specializing(kind: ProjectKind, overwrite: (c: DeepWritable<FlowrConfig>) => void): FlowrConfig {
@@ -118,7 +119,7 @@ describe('FlowrConfig.Schema validates specializeConfig.inherit', () => {
 		assert.isTrue(entry?.ignoreSourceCalls);
 	});
 	test('rejects an inherit target that is not a project kind', () => {
-		assert.isUndefined(FlowrConfig.parse(specialize({ inherit: 'not-a-kind' })));
+		assert.isUndefined(withoutLogs(() => FlowrConfig.parse(specialize({ inherit: 'not-a-kind' }))));
 	});
 });
 

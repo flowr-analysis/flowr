@@ -1,11 +1,12 @@
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 import type { IEnvironment, REnvironmentInformation } from '../../dataflow/environments/environment';
 import { Environment } from '../../dataflow/environments/environment';
+import type { cleanEnvOf } from '../../dataflow/environments/scoping';
 import type { DeepReadonly } from 'ts-essentials';
 import { getBuiltInDefinitions } from '../../dataflow/environments/built-in-config';
-import type { IdentifierDefinition } from '../../dataflow/environments/identifier';
+import type { BrandedIdentifier, IdentifierDefinition } from '../../dataflow/environments/identifier';
 import { Identifier, ReferenceType } from '../../dataflow/environments/identifier';
-import type { BuiltInIdentifierDefinition } from '../../dataflow/environments/built-in';
+import type { BuiltInIdentifierDefinition, BuiltInMemory  } from '../../dataflow/environments/built-in';
 import type { Fingerprint } from '../../slicing/static/fingerprint';
 import { envFingerprint } from '../../slicing/static/fingerprint';
 
@@ -44,6 +45,9 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 
 	/**
 	 * Create a new {@link REnvironmentInformation|environment} with the configured built-in environment as base.
+	 * It knows the built-ins and nothing else: no package the code (or the project) attached is on its search
+	 * path, so a name one of them brought in goes unresolved. Wherever an environment is at hand, take its
+	 * search path with {@link cleanEnvOf} instead of building one from nothing.
 	 */
 	makeCleanEnv(): REnvironmentInformation;
 
@@ -61,6 +65,20 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 	 * A completely empty {@link REnvironmentInformation|environment}.
 	 */
 	makeEmptyEnv(): REnvironmentInformation;
+
+	/**
+	 * What the configuration states about `pkg`'s exports, `undefined` when it states nothing. These are not
+	 * in the built-in environment: attaching the package is what brings them into scope.
+	 * @param pkg - the package name
+	 */
+	statedFor(pkg: string): BuiltInMemory | undefined;
+
+	/**
+	 * The definitions the configuration states for `name` without any package being attached: the ones its
+	 * namespace states when it names one, otherwise what every package together states for the bare name.
+	 * @param name - the identifier to look up
+	 */
+	statedDefinitionsOf(name: Identifier): readonly IdentifierDefinition[] | undefined;
 }
 
 /**
@@ -71,9 +89,14 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 	private readonly builtInEnv:      Environment;
 	private readonly emptyBuiltInEnv: Environment;
 
+	/** what the configuration states about packages R does not attach on startup, see {@link statedFor} */
+	private readonly stated: ReadonlyMap<string, BuiltInMemory>;
+
 	private builtInEnvFingerprint: Fingerprint | undefined;
 	/** the packages {@link knowsPackage} answers for, collected from the built-in environment on first use */
 	private knownPackages:         Set<string> | undefined;
+	/** {@link stated} by bare name across all packages, for {@link statedDefinitionsOf}; built on first use */
+	private statedByName:          Map<BrandedIdentifier, IdentifierDefinition[]> | undefined;
 
 	constructor(ctx: FlowrAnalyzerContext) {
 		const builtInsConfig = ctx.config.semantics.environment.overwriteBuiltIns;
@@ -84,6 +107,36 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 
 		this.emptyBuiltInEnv = new Environment(undefined as unknown as Environment, true);
 		this.emptyBuiltInEnv.memory = builtIns.emptyBuiltInMemory;
+
+		this.stated = builtIns.packageMemory;
+		/* `pkg::fn` resolves whether or not the package is attached, so the built-in env answers for it */
+		this.builtInEnv.namespaces = builtIns.packageMemory;
+	}
+
+	public statedFor(pkg: string): BuiltInMemory | undefined {
+		return this.stated.get(pkg);
+	}
+
+	public statedDefinitionsOf(name: Identifier): readonly IdentifierDefinition[] | undefined {
+		const bare = Identifier.getName(name);
+		const namespace = Identifier.getNamespace(name);
+		if(namespace !== undefined) {
+			return this.stated.get(String(namespace))?.get(bare);
+		}
+		if(this.statedByName === undefined) {
+			this.statedByName = new Map();
+			for(const memory of this.stated.values()) {
+				for(const [key, definitions] of memory) {
+					const known = this.statedByName.get(key);
+					if(known === undefined) {
+						this.statedByName.set(key, [...definitions]);
+					} else {
+						known.push(...definitions);
+					}
+				}
+			}
+		}
+		return this.statedByName.get(bare);
 	}
 
 	public get builtInEnvironment(): DeepReadonly<IEnvironment> {
@@ -95,7 +148,7 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 	}
 
 	public builtInDefinitionsOf(name: Identifier): readonly IdentifierDefinition[] {
-		return this.builtInEnv.memory.get(Identifier.getName(name)) ?? [];
+		return this.builtInEnv.memory.get(Identifier.getName(name)) ?? this.statedDefinitionsOf(name) ?? [];
 	}
 
 	public knowsPackage(pkg: string): boolean {

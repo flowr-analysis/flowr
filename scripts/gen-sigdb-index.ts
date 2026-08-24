@@ -80,6 +80,8 @@ async function main(): Promise<void> {
 		.replace('"<!--STATED-->"', stated)
 		.replace('"<!--FORMALS-->"', JSON.stringify(Object.fromEntries(index.formals)).replaceAll('</', '<\\/'))
 		.replace('"<!--TOPICS-->"', JSON.stringify(Object.fromEntries(index.topics)).replaceAll('</', '<\\/'))
+		.replaceAll('<!--TOPICS-COMPLETE-->', String(index.topicsComplete))
+		.replace('"<!--GROUPS-->"', JSON.stringify(Object.fromEntries(index.groups)).replaceAll('</', '<\\/'))
 		.replace('<!--DATA-->', pack(blobs.packages, blobs.names));
 
 	fs.mkdirSync(Target, { recursive: true });

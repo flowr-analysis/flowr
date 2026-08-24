@@ -38,31 +38,50 @@ function git(...args: readonly string[]): string | undefined {
 }
 
 /**
- * Whether this build is the release it claims to be. Anything committed after the tag that touches what the
- * pages are built from, or left uncommitted, makes it a development build, marked with a `*`.
+ * The release currently being cut, if any: a release is tagged only after its workflow ran, so everything from
+ * its `[release:<kind>] <version>` commit up to that tag would otherwise look like it came after the last one.
  */
-export function versionMarker(): VersionMarker {
-	const version = `v${flowrVersion().format()}`;
-	const release = {
+function pendingRelease(since: string): { readonly version: string, readonly commit: string } | undefined {
+	const log = git('log', '-1', '--format=%H %s', '--grep', '^\\[release:', `${since}..HEAD`) ?? '';
+	const match = /^(\w+) \[release:\w+] (\d+\.\d+\.\d+)/.exec(log);
+	return match ? { commit: match[1], version: match[2] } : undefined;
+}
+
+/** What a page says when the build is the release itself. */
+function releaseBuild(version: string): VersionMarker {
+	return {
 		label:   version,
 		href:    `${Repository}/releases/tag/${version}`,
 		title:   `the release notes of flowR ${version}`,
 		release: version
 	};
+}
+
+/**
+ * Whether this build is the release it claims to be. Anything committed after the release that touches what the
+ * pages are built from, or left uncommitted, makes it a development build, marked with a `*`.
+ */
+export function versionMarker(): VersionMarker {
+	const tag = `v${flowrVersion().format()}`;
 	const commit = git('rev-parse', 'HEAD');
 
 	if(commit === undefined) {
-		return release;
+		return releaseBuild(tag);
 	}
+	/* a release in flight counts as released: its trigger commit, and the generated docs that follow, are it */
+	const pending = pendingRelease(tag);
+	const base = pending?.commit ?? tag;
+	const version = pending ? `v${pending.version}` : tag;
+
 	/* what the build is made of, not how many commits happened: a doc-only commit leaves this empty */
-	const changed = git('diff', '--name-only', version, 'HEAD', '--', ...BuildInputs);
+	const changed = git('diff', '--name-only', base, 'HEAD', '--', ...BuildInputs);
 	const dirty = git('status', '--porcelain', '--', ...BuildInputs) !== '';
 
 	/* a clone without tags cannot compare against the release, and claiming to be one would be worse */
 	if(changed === '' && !dirty) {
-		return release;
+		return releaseBuild(version);
 	}
-	const commits = changed === undefined ? undefined : Number(git('rev-list', '--count', `${version}..HEAD`, '--', ...BuildInputs) ?? '0');
+	const commits = changed === undefined ? undefined : Number(git('rev-list', '--count', `${base}..HEAD`, '--', ...BuildInputs) ?? '0');
 	const uncommitted = dirty ? ' with uncommitted changes' : '';
 	const since = commits === undefined ? `built after ${version}`
 		: commits === 0 ? `${version}${uncommitted || ' rebuilt'}`

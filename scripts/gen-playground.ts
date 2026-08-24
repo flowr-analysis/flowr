@@ -8,7 +8,7 @@ import path from 'path';
 import { build, type Plugin } from 'esbuild';
 import { builtinModules } from 'module';
 import { openDatabase } from './sigdb-index';
-import { rSourceUrl, rdrrDocUrl } from '../src/queries/catalog/signature-query/signature-query-executor';
+import { rSourceUrl, helpPageUrl } from '../src/queries/catalog/signature-query/signature-query-executor';
 import { fillVersion, versionMarker } from './version-marker';
 import { FlowrConfig } from '../src/config';
 import { DefaultBuiltinConfig } from '../src/dataflow/environments/default-builtin-config';
@@ -67,7 +67,7 @@ async function baseSignatures(): Promise<string> {
 			const params = fn.signature.map(p => p.default === undefined ? p.name : `${p.name} = ${p.default}`).join(', ');
 			const where = fn.file === undefined ? '' : `${fn.file}:${fn.line}`;
 			const source = fn.file === undefined ? '' : rSourceUrl(pkg, version, fn.file, fn.line);
-			const docs = fn.props.includes('no-doc') ? '' : rdrrDocUrl(pkg, fn.topic ?? fn.name, { base: true, cran: false }) ?? '';
+			const docs = fn.props.includes('no-doc') ? '' : helpPageUrl(pkg, fn.topic ?? fn.name, { base: true, cran: false }) ?? '';
 			rows.push([fn.name, pkg, params, fn.props.filter(p => p !== 'exported').join(' '), where, source, docs].join('\t'));
 		}
 	}

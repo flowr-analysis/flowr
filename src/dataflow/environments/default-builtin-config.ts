@@ -299,26 +299,6 @@ const LinkToLastPlot = {
 	callName: toRegex((GraphicDeviceOpen as readonly string[]).concat(PlotCreate, PlotAddons, GgPlotAddons, TinyPlotAddons))
 } as const;
 
-const Arith = ['+', '-', '*', '/', '^', '**', '%%', '%/%'] as const;
-const Compare = ['==', '!=', '<', '<=', '>', '>='] as const;
-const Logic = ['&', '|'] as const;
-
-/**
- * R's group generics: a class claims every member of a group at once, with an `Ops.cls` (S3) or a
- * `setMethod('Arith', ...)` (S4), so a call to any member may dispatch to a method named after the group.
- * `Ops` is what S3 calls the union of the three S4 groups it splits into.
- */
-export const RGroupGenerics = {
-	Arith, Compare, Logic,
-	Ops:  [...Arith, ...Compare, ...Logic, '!'],
-	Math: ['abs', 'sign', 'sqrt', 'floor', 'ceiling', 'trunc', 'exp', 'expm1', 'log', 'log2', 'log10', 'log1p',
-		'cos', 'sin', 'tan', 'cosh', 'sinh', 'tanh', 'acos', 'asin', 'atan', 'acosh', 'asinh', 'atanh',
-		'cumsum', 'cumprod', 'cummax', 'cummin'],
-	Math2:   ['round', 'signif'],
-	Summary: ['any', 'sum', 'prod', 'min', 'max', 'range'],
-	Complex: ['Re', 'Im', 'Mod', 'Arg', 'Conj']
-} as const satisfies Record<string, readonly string[]>;
-
 /**
  * The internal generics: they dispatch in C rather than through `UseMethod`, so no signature can state it and
  * the list has to be written down. Everything that dispatches from R is generated, see {@link RBasePackageStore}.

@@ -19,7 +19,7 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer
 import { removeRQuotes } from '../../r-bridge/retriever';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import { CallProp } from '../../dataflow/environments/built-in-props';
-import { RGroupGenerics } from '../../dataflow/environments/default-builtin-config';
+import { RGroupGenerics } from '../../dataflow/environments/group-generics';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { NoEdges } from '../../dataflow/graph/graph';

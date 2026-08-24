@@ -148,6 +148,30 @@ describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 			fs.rmSync(dir, { recursive: true, force: true });
 		});
 
+		test('an S4 group member names its group, and the group entry answers for a member of its own', async() => {
+			const b = new SigDbBuilder();
+			b.addPackage('s4pkg', { latest: '1.0.0', downloads: 1 });
+			b.addVersion('s4pkg', '1.0.0', { cran:      true, functions: [
+				fn('Math', { props: FnProp.Exported | FnProp.NoDoc }),
+				fn('sqrt', { props: FnProp.Exported | FnProp.NoDoc }),
+				fn('plain')
+			] });
+			const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-sig-s4-'));
+			await writeSignatureDb(path.join(dir, 'db'), b.build({ date: '2026-05-23', generated: 0 }));
+			const src = await SigDatabase.open(path.join(dir, `db${SigDbExt}`));
+			// an entry of its own: the group is named, but nothing was substituted for it
+			expect(signatureFunctionInfo(src, 's4pkg', 'sqrt')?.s4group).toEqual({ group: 'Math' });
+			// no entry of its own, so `Math` answers, under the name that was asked for
+			const via = signatureFunctionInfo(src, 's4pkg', 'sin');
+			expect(via?.name).toBe('sin');
+			expect(via?.s4group).toEqual({ group: 'Math', viaGroup: true });
+			expect(signatureFunctionInfo(src, 's4pkg', 'plain')?.s4group).toBeUndefined();
+			// a name in no group finds nothing to fall back to
+			expect(signatureFunctionInfo(src, 's4pkg', 'nowhere')).toBeUndefined();
+			src.close();
+			fs.rmSync(dir, { recursive: true, force: true });
+		});
+
 		test('a CRAN function carries a location and CRAN-mirror source link', () => {
 			const info = signatureFunctionInfo(db, 'mypkg', 'foo');
 			expect(info?.file).toBe('R/foo.R');
@@ -159,6 +183,8 @@ describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 			expect(info?.file).toBe('R/paste.R');
 			expect(info?.sourceUrl).toBe('https://github.com/wch/r-source/blob/R-4-5-branch/src/library/base/R/paste.R#L10');
 			expect(info?.manUrl).toBe('https://github.com/wch/r-source/blob/R-4-5-branch/src/library/base/man/paste2.Rd');
+			// base R goes to R's own manual: rdrr.io serves an older release, so anything newer is dead there
+			expect(info?.docUrl).toBe('https://stat.ethz.ch/R-manual/R-devel/library/base/html/paste2.html');
 		});
 
 		test('a CRAN function links its help source at the queried version, unlike the rdrr.io link', () => {

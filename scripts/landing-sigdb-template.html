@@ -128,7 +128,8 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 .filters button:hover:not(:disabled) { color: var(--fg); border-color: var(--accent); }
 .filters button:disabled { opacity: .4; cursor: default; }
 .mix { order: 2; margin-left: auto; display: flex; align-items: center; gap: .45rem; }
-.mixlabel { font-size: .72rem; color: var(--muted); }
+.mixlabel, .filterlabel { font-size: .72rem; color: var(--muted); }
+.filterlabel { align-self: center; margin-right: .1rem; }
 #scope {
 	font: inherit; font-size: .76rem; font-weight: 600; cursor: pointer; padding: .22rem .7rem;
 	border-radius: 1rem; border: 1px solid transparent; background: var(--accent); color: var(--accent-fg);
@@ -288,6 +289,7 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 	</select>
 </div>
 <div class="filters" id="filters">
+	<span class="filterlabel">filter:</span>
 	<button type="button" id="scope" hidden></button>
 	<span class="mix">
 		<span class="mixlabel">match</span>
@@ -307,6 +309,7 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 <script type="application/json" id="stated">"<!--STATED-->"</script>
 <script type="application/json" id="topics">"<!--TOPICS-->"</script>
 <script type="application/json" id="formals">"<!--FORMALS-->"</script>
+<script type="application/json" id="groups">"<!--GROUPS-->"</script>
 <script>
 /* the ranker the playground shares, written in from `src/util/text/name-rank.ts` by the build */
 <!--RANKER-->
@@ -339,14 +342,16 @@ const q = document.getElementById('q'), mode = document.getElementById('mode');
 const sort = document.getElementById('sort');
 /** each filter, with what it says when the pointer rests on it */
 const Filters = [
-	['only', 'package', 'package', 'list packages rather than the names they export'],
+	['only', 'package', 'packages', 'list packages rather than the names they export'],
 	['pkg', 'archived', 'archived', 'names from a package CRAN no longer carries'],
 	['flag', 't', 'throws', 'may raise an error, so a caller cannot count on getting a value back'],
-	['flag', 'n', 'non-deterministic', 'may answer differently for the same arguments, like random draws or the clock'],
-	['flag', '3', 'S3 method', 'an implementation of a generic for one class, like print.data.frame'],
+	['flag', 'n', 'non-determ.', 'non-deterministic: may answer differently for the same arguments, like random draws or the clock'],
+	['flag', '3', 'S3', 'S3 method: an implementation of a generic for one class, like print.data.frame'],
 	['flag', 'x', 'deprecated', 'marked as deprecated by the package itself'],
-	['flag', 'd', 'calls deprecated', 'calls something deprecated, so it may stop working when that goes'],
-	['flag', 'v', 'value', 'a value rather than a function, like pi or LETTERS'],
+	['flag', 'd', 'calls depr.', 'calls deprecated: calls something deprecated, so it may stop working when that goes'],
+	['flag', 'c', 'value', 'a value rather than a function, like pi or LETTERS'],
+	['flag', 'v', 'no loc', 'no location: the database records no file and line for it. Usually a constant, a dataset or a class object, sometimes a function nothing wrote down, like an S4 generic setGeneric builds'],
+	['name', 'group', 'S4', 'S4 group member: a member of an S4 group generic (Math, Arith, Summary, ...), which a package usually exports because it answered the group for one of its classes'],
 	['kind', 'read', 'reads', 'reads data from somewhere outside the program, like read.csv'],
 	['kind', 'write', 'writes', 'writes data out of the program, like write.csv'],
 	['kind', 'visualize', 'plots', 'draws something, like plot or ggsave'],
@@ -366,7 +371,7 @@ for(const [what, key, label, about] of Filters) {
 	const button = document.createElement('button');
 	button.type = 'button';
 	button.textContent = label;
-	button.title = about;
+	button.title = about + '. Click to filter by it, click again to drop it';
 	button.setAttribute('aria-pressed', 'false');
 	button.addEventListener('click', () => {
 		const id = what + ':' + key;
@@ -398,6 +403,10 @@ function holds(id, name, owners) {
 	const [what, key] = id.split(':');
 	if(what === 'only') {
 		return false;   // it selects what is listed, not which names qualify
+	}
+	if(what === 'name') {
+		/* a property of the name itself, so no owner has to agree for it to hold */
+		return groups.has(name);
 	}
 	if(what === 'pkg') {
 		/* a property of the package rather than of the name: archived means CRAN dropped it */
@@ -482,17 +491,23 @@ function documented(name, flags, index) {
 	if(flags.includes('u')) {
 		return false;
 	}
+	const pkg = packages[index]?.[0];
 	/* what a link would name: the topic when one is recorded, else the name itself */
-	const page = topics.get(packages[index]?.[0] + '::' + name) ?? name;
+	const page = topics.get(pkg + '::' + name) || name;
 	if(!/^[A-Za-z.][A-Za-z0-9._-]*$/.test(page)) {
 		return false;
 	}
 	/*
-	 * `?` says the database holds nothing about it. For base R that is no obstacle: the alias table names
-	 * every page whose name is not the name, so one it does not name is documented under the name itself.
-	 * Anywhere else there is nothing to go on, and guessing only produces a dead link.
+	 * Base R ships an alias table naming every page it has, so nothing has to be guessed: a name it does not
+	 * carry has none. That is most of what a base package exports without documenting, the locals and internals
+	 * (`tmp`, `shell.exec`) as much as the `sinkplot` flowR states and R has never had.
 	 */
-	return !flags.includes('?') || packages[index]?.[2] === '1';
+	if(packages[index]?.[2] === '1') {
+		return !topicsKnown || topics.has(pkg + '::' + name);
+	}
+	/* `?` says the database holds nothing about it: a name flowR states rather than one a package is known to
+	   export, and outside base R there is no table to settle it, so guessing only produces a dead link */
+	return !flags.includes('?');
 }
 
 /**
@@ -531,11 +546,16 @@ function packageDocUrl(index) {
 		: 'https://rdrr.io/cran/' + encodeURIComponent(pkg) + '/';
 }
 
+/*
+ * Base R goes to R's own manual rather than to rdrr.io, which serves an older release: `array2DF`, `sort_by`
+ * and the rest of what R has gained since have no page there. It is also where the alias table above comes
+ * from, so the two can never disagree about which pages exist.
+ */
 function docUrl(name, entry) {
 	const { index, topic } = typeof entry === 'object' ? entry : { index: entry };
 	const [pkg, , base] = packages[index];
-	const page = encodeURIComponent(topic ?? topics.get(pkg + '::' + name) ?? name);
-	return base === '1' ? 'https://rdrr.io/r/' + encodeURIComponent(pkg) + '/' + page + '.html'
+	const page = encodeURIComponent(topic || topics.get(pkg + '::' + name) || name);
+	return base === '1' ? 'https://stat.ethz.ch/R-manual/R-devel/library/' + encodeURIComponent(pkg) + '/html/' + page + '.html'
 		: 'https://rdrr.io/cran/' + encodeURIComponent(pkg) + '/man/' + page + '.html';
 }
 
@@ -593,7 +613,8 @@ function score(name, owners, rank, needle) {
 		base:      pkg?.[0] === 'base',
 		known:     kinds.has(name),
 		s3:        first.flags.includes('3'),
-		variable:  first.flags.includes('v')
+		/* only a stated value ranks lower: a function the database records no definition for is still a function */
+		variable:  first.flags.includes('c')
 	});
 }
 
@@ -613,7 +634,15 @@ function fuzzy(name, needle) {
 const FlagNames = {
 	t: 'can throw', 3: 'S3 method', n: 'non-deterministic', d: 'calls something deprecated',
 	r: 'recursive', i: 'calls internals', o: 'owns an S3 class', 4: 'owns an S4 class',
-	h: 'higher order', x: 'deprecated', v: 'value', u: 'no docs'
+	m: 'S4 method', h: 'higher order', x: 'deprecated', c: 'value', v: 'no loc', u: 'no docs'
+};
+
+/** the few flags whose short form does not speak for itself */
+const FlagAbout = {
+	c: 'the database records it as a value rather than a function',
+	v: 'no location: the database records no file and line for it in this package. Usually a constant, a dataset '
+		+ 'or a class object, sometimes a function nothing wrote down, like an S4 generic setGeneric builds',
+	u: 'no manual page for this name in this package'
 };
 
 /** an owner reads `12`, or `12:tn:4:topic:5:2g`: package, flags, parameters, topic, and file and line in base 36 */
@@ -633,10 +662,15 @@ function owner(entry) {
 const kinds = new Map(Object.entries(JSON.parse(document.getElementById('kinds').textContent)));
 /* `name -> [call, props]`: what flowR states about the functions it carries a definition for */
 const stated = new Map(Object.entries(JSON.parse(document.getElementById('stated').textContent)));
-/* `package::alias -> topic`, for the base R names that are documented under another name (`sin` under `Trig`) */
+/* `package::alias -> topic` for every documented base R name, empty where the topic is the name itself, so the
+   keys are also the set of base R names that have a manual page at all */
 const topics = new Map(Object.entries(JSON.parse(document.getElementById('topics').textContent)));
+/* whether that set is the real one: without an R to read the alias tables from, it holds the primitives alone */
+const topicsKnown = '<!--TOPICS-COMPLETE-->' === 'true';
 /* `name -> [package, parameters][]`: what base R itself declares, which flowR states nothing about */
 const formals = new Map(Object.entries(JSON.parse(document.getElementById('formals').textContent)));
+/* `name -> S4 group generic`: `sin` belongs to `Math`, so a package answering `Math` for its class exports `sin` */
+const groups = new Map(Object.entries(JSON.parse(document.getElementById('groups').textContent)));
 /** how flowR describes what one of its known functions does */
 const KindNames = {
 	library: 'can load a package', source: 'can source a file', read: 'can read a file',
@@ -690,7 +724,12 @@ function detail(name, owners) {
 			/* no page of its own, so the package's documentation is the next best thing */
 			row.href = packageDocUrl(index);
 			row.classList.add('undocumented');
-			row.title = name + ' has no manual page in ' + pkg + ', so this links to the package documentation';
+			/* a group member is usually documented under its S4 alias (`sin,float32-method` on float's `trig`
+			   page), which is a name the database does not carry, so say so rather than claim there is nothing */
+			row.title = groups.has(name) && base !== '1'
+				? name + ' has no manual page of its own in ' + pkg + ': an S4 method is documented under its '
+					+ name + ',<class>-method alias, so this links to the package documentation'
+				: name + ' has no manual page in ' + pkg + ', so this links to the package documentation';
 		}
 		/* the name and the arrow open the manual page; the row is not one link so the source can sit within it */
 		const docs = [];
@@ -706,6 +745,9 @@ function detail(name, owners) {
 				const one = document.createElement('span');
 				one.className = 'flag';
 				one.textContent = FlagNames[flag];
+				if(FlagAbout[flag]) {
+					one.title = FlagAbout[flag];
+				}
 				marks.append(one);
 			}
 		}
@@ -900,17 +942,23 @@ function aboutPackage(index) {
  * The package flowR states a name for, put first among its owners when the database does not list it: `+` is
  * base R's, but a primitive is in no NAMESPACE, so nothing exports it and the reader would see `lubridate`
  * where they expect `base`.
+ *
+ * A statement that names no package adds no owner: flowR recognizes `sinkplot` as a plot call without knowing
+ * whose it is, and the packages the database does list are then the whole answer. What flowR says about the
+ * call still shows, and a name nothing at all exports keeps its row with the flowR badge and no package.
  */
 function withStatedOwner(name, owners) {
+	/* a name no package exports has one empty entry, which is a row rather than an owner */
+	const known = owners.filter(entry => entry !== '');
 	const mine = stated.get(name) ?? [];
 	if(mine.length === 0) {
-		return owners;
+		return known;
 	}
-	const already = new Set(owners.map(entry => packages[owner(entry).index]?.[0]));
-	const missing = mine.map(entry => entry[0]).filter(pkg => !already.has(pkg));
+	const already = new Set(known.map(entry => packages[owner(entry).index]?.[0]));
+	const missing = mine.map(entry => entry[0]).filter(pkg => pkg !== '' && !already.has(pkg));
 	/* `?` says the database holds nothing about it, so nothing about its manual page is guessed either */
 	const found = missing.map(pkg => packages.findIndex(entry => entry[0] === pkg)).filter(at => at >= 0);
-	return found.length === 0 ? owners : [...found.map(at => at + ':?'), ...owners];
+	return found.length === 0 ? known : [...found.map(at => at + ':?'), ...known];
 }
 
 /** `name(params)`, the one shape a signature is drawn in wherever it comes from */
@@ -934,14 +982,17 @@ function show(name, needle, at, owners) {
 	const row = document.createElement('li');
 	const head = document.createElement('div');
 	head.className = 'head';
-	/* the package a reader most likely means decides: `pi` is a constant even though something exports a `pi()` */
-	const value = owner(owners[0]).flags.includes('v');
+	/* the package a reader most likely means decides: `pi` is a constant even though something exports a `pi()`.
+	   Only what the database states, `c`: that it records no location (`v`) says too little to head a row,
+	   and it is on the package rows below, where a reader can see which package it is missing for */
+	const value = owner(owners[0]).flags.includes('c');
 	head.append(marked(name, needle, at));
 	if(value) {
 		head.firstChild.classList.add('value');
 		const badge = document.createElement('span');
 		badge.className = 'kindtag value';
 		badge.textContent = 'value';
+		badge.title = 'the database records it as a value rather than a function';
 		head.append(badge);
 	}
 	/* flowR's own statement about the name, which is the one thing the database cannot tell a reader.
@@ -981,6 +1032,19 @@ function show(name, needle, at, owners) {
 		link.href = '?q=' + encodeURIComponent(generic);
 		link.textContent = 'S3 method for ' + generic;
 		link.title = 'search for the generic this method dispatches for';
+		head.append(link);
+	}
+	/* a member of an S4 group: a package exports it because it answered the whole group for one of its
+	   classes, so the name says far less about that package than an ordinary export would */
+	const group = groups.get(name);
+	if(group) {
+		const link = document.createElement('a');
+		link.className = 'generic';
+		link.href = '?q=' + encodeURIComponent(group);
+		link.textContent = group + ' group';
+		link.title = name + ' belongs to R\'s ' + group + ' group generic: a package may answer it for its own '
+			+ 'class with setMethod("' + name + '", ...) or setMethod("' + group + '", ...) instead of defining a '
+			+ 'function of its own. Click to search for ' + group + '.';
 		head.append(link);
 	}
 	const list = document.createElement('span');

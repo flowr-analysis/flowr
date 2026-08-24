@@ -250,9 +250,19 @@ function applyAddRowsSemantics(
 	});
 }
 
+/**
+ * How many of `count` indices reaching up to `maxIndex` a removal actually drops: all of them while every index
+ * names something, and anywhere between none and all once one reaches past the extent, as R drops nothing for it.
+ */
+function removedRange(count: number, maxIndex: number | undefined, extent: PosIntervalDomain): [number, number] {
+	const lower = extent.isValue() ? extent.lower : undefined;
+	/* `subtract` takes what comes off each bound, so an uncertain removal takes `count` off the lower and none off the upper */
+	return maxIndex !== undefined && typeof lower === 'number' && maxIndex > lower ? [count, 0] : [count, count];
+}
+
 function applyRemoveColsSemantics(
 	value: DataFrameDomain,
-	{ colnames }: { colnames: (string | undefined)[] | undefined },
+	{ colnames, maxIndex }: { colnames: (string | undefined)[] | undefined, maxIndex?: number },
 	options?: { maybe?: boolean }
 ): DataFrameDomain {
 	if(options?.maybe) {
@@ -264,14 +274,14 @@ function applyRemoveColsSemantics(
 	}
 	return value.create({
 		colnames: colnames !== undefined ? value.colnames.subtract(setRange(colnames)) : value.colnames.widenDown(),
-		cols:     colnames !== undefined ? value.cols.subtract([colnames.length, colnames.length]) : value.cols.widenDown(),
+		cols:     colnames !== undefined ? value.cols.subtract(removedRange(colnames.length, maxIndex, value.cols)) : value.cols.widenDown(),
 		rows:     value.rows
 	});
 }
 
 function applyRemoveRowsSemantics(
 	value: DataFrameDomain,
-	{ rows }: { rows: number | undefined },
+	{ rows, maxIndex }: { rows: number | undefined, maxIndex?: number },
 	options?: { maybe?: boolean }
 ): DataFrameDomain {
 	if(options?.maybe) {
@@ -284,7 +294,7 @@ function applyRemoveRowsSemantics(
 	return value.create({
 		colnames: value.colnames,
 		cols:     value.cols,
-		rows:     rows !== undefined ? value.rows.subtract([rows, rows]) : value.rows.widenDown()
+		rows:     rows !== undefined ? value.rows.subtract(removedRange(rows, maxIndex, value.rows)) : value.rows.widenDown()
 	});
 }
 
@@ -342,22 +352,24 @@ function applySubsetColsSemantics(
 	});
 }
 
+/**
+ * Selecting rows by index yields exactly as many rows as the selection names, whatever the frame holds: R pads an
+ * index past the end with an `NA` row rather than dropping it, and repeats one that appears twice. That holds for
+ * a logical selection too. `head` and `tail` instead take what is there, which `atMost` states.
+ */
 function applySubsetRowsSemantics(
 	value: DataFrameDomain,
 	{ rows }: { rows: number | undefined },
-	options?: { duplicateRows?: boolean }
+	options?: { atMost?: boolean }
 ): DataFrameDomain {
-	if(options?.duplicateRows) {
-		return value.create({
-			colnames: value.colnames,
-			cols:     value.cols,
-			rows:     rows !== undefined ? value.rows.create([rows, rows]) : value.rows.top()
-		});
+	if(rows === undefined) {
+		return value.create({ colnames: value.colnames, cols: value.cols, rows: value.rows.widenDown() });
 	}
 	return value.create({
 		colnames: value.colnames,
 		cols:     value.cols,
-		rows:     rows !== undefined ? value.rows.min([rows, rows]) : value.rows.widenDown()
+		/* `head` and `tail` take what is there, an index selects what it names even where nothing is */
+		rows:     options?.atMost ? value.rows.min([rows, rows]) : value.rows.create([rows, rows])
 	});
 }
 

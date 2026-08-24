@@ -40,6 +40,14 @@ export const NodeId = {
 		return id;
 	},
 	/**
+	 * Whether the id belongs to a node the analyzed code writes. flowR wraps a deferred expression
+	 * (`on.exit` and its relatives) in a definition of its own, and that definition carries an id no node
+	 * of the ast does.
+	 */
+	isWritten(this: void, id: NodeId): boolean {
+		return typeof NodeId.normalize(id) === 'number';
+	},
+	/**
 	 * The prefix used for built-in function or operator ids.
 	 */
 	builtInPrefix: 'built-in:',

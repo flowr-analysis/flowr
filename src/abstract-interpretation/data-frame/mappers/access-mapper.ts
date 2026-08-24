@@ -120,7 +120,6 @@ function mapDataFrameIndexColRowAccess(
 		const colSubset = columns === undefined || columns.every(col => typeof col === 'string' || col >= 0);
 		const rowZero = rows?.length === 1 && rows[0] === 0;
 		const colZero = columns?.length === 1 && columns[0] === 0;
-		const duplicateRows = rows?.some((row, index, list) => list.indexOf(row) !== index);
 		const duplicateCols = columns?.some((col, index, list) => list.indexOf(col as never) !== index);
 
 		let operand: RNode<ParentInformation> | undefined = dataFrame;
@@ -130,14 +129,15 @@ function mapDataFrameIndexColRowAccess(
 				result.push({
 					operation: 'subsetRows',
 					operand:   operand?.info.id,
-					rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length,
-					...(duplicateRows ? { options: { duplicateRows: true } } : {})
+					rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length
 				});
 			} else {
 				result.push({
 					operation: 'removeRows',
 					operand:   operand?.info.id,
-					rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length
+					rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length,
+					/* R drops nothing for an index beyond the extent, so the semantics has to know how far they reach */
+					maxIndex:  rows !== undefined ? Math.max(...rows.map(Math.abs)) : undefined
 				});
 			}
 			operand = undefined;
@@ -154,7 +154,8 @@ function mapDataFrameIndexColRowAccess(
 				result.push({
 					operation: 'removeCols',
 					operand:   operand?.info.id,
-					colnames:  columns?.map(col => typeof col === 'string' ? col : undefined)
+					colnames:  columns?.map(col => typeof col === 'string' ? col : undefined),
+					maxIndex:  columns?.every(col => typeof col === 'number') ? Math.max(...columns.map(Math.abs)) : undefined
 				});
 			}
 			// eslint-disable-next-line no-useless-assignment -- ends the chain

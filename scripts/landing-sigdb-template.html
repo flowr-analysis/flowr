@@ -149,12 +149,16 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 .mix .pick[aria-pressed="true"] { color: var(--accent); background: var(--panel); border-color: transparent; }
 .filters button[aria-pressed="true"] { color: var(--accent-fg); background: var(--accent); border-color: transparent; }
 
-#hits { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .4rem; }
+/* `minmax(0, 1fr)` and not the implicit `auto`: a grid track sized to its content lets a long signature push the
+   whole row past the page instead of giving the row a width to fit itself into */
+#hits { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: .4rem; }
 #hits li {
 	padding: .55rem .8rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--panel);
-	transition: border-color .12s; cursor: pointer;
+	transition: border-color .12s; cursor: pointer; min-width: 0;
 }
-#hits .head { display: flex; flex-wrap: wrap; gap: .3rem .8rem; align-items: baseline; }
+/* one line per hit: the signature is the part that gives way, so nothing else is pushed onto a line of its own */
+#hits .head { display: flex; flex-wrap: nowrap; gap: .3rem .8rem; align-items: baseline; min-width: 0; }
+#hits .head > :not(.stated) { flex: none; }
 #hits .detail { margin-top: .55rem; border-top: 1px solid var(--border); padding-top: .55rem; }
 #hits .detail p { margin: .1rem 0; font-size: .85rem; }
 #hits .pkghit .detail p {
@@ -193,7 +197,7 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 	letter-spacing: .03em; color: var(--muted); border: 1px solid var(--border);
 }
 #hits .own:hover .go { color: var(--accent); }
-#hits .flags { display: flex; flex-wrap: wrap; gap: .3rem; }
+#hits .flags { display: flex; flex-wrap: wrap; gap: .3rem; min-width: 0; }
 #hits .pkghit { border-style: dashed; }
 #hits .pkghit .owners { color: var(--muted); font-size: .78rem; }
 /* every badge is the same pill whatever it says, so only its colour carries the difference */
@@ -231,21 +235,24 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 /* what flowR states about the name, next to what the database says about it */
 #hits .kindtag.props { border-style: dashed; opacity: .8; }
 #hits .flag.stated { border-style: dashed; color: var(--accent); }
-#hits .own .stated { max-width: 30rem; }
 #hits .stated {
 	font-size: .78rem; color: var(--muted); background: var(--sunk);
 	padding: .05rem .35rem; border-radius: .3rem; white-space: nowrap;
-	overflow: hidden; text-overflow: ellipsis; max-width: 32rem;
+	overflow: hidden; text-overflow: ellipsis;
+	/* as wide as what it says and no wider, giving way to an ellipsis only when the line runs out */
+	flex: 0 1 auto; min-width: 0;
 }
 /* R has no types, so the letters for what flowR says a formal is used for are set in their place */
 #hits .stated { display: inline-flex; align-items: baseline; vertical-align: bottom; }
-#hits .stated .args { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* the formals are the one part that may be cut, so they are what shrinks: without `min-width` a flex item never
+   goes below what it says, and the whole row would grow past the panel instead of ending in an ellipsis */
+#hits .stated .args { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; min-width: 0; }
 /* what the call does is the part worth keeping when the formals no longer fit */
 #hits .stated .ret, #hits .stated .kind { flex: none; }
 #hits .stated .role { font-style: normal; color: color-mix(in srgb, var(--accent) 75%, var(--muted)); }
 #hits .stated .ret { font-style: normal; color: color-mix(in srgb, var(--fg) 45%, var(--muted)); }
 #hits .stated .kind { font-style: normal; color: color-mix(in srgb, var(--muted) 80%, transparent); }
-#hits .owners { margin-left: auto; display: flex; flex-wrap: wrap; gap: .3rem; }
+#hits .owners { margin-left: auto; display: flex; flex-wrap: wrap; gap: .3rem; flex: none; }
 #hits .owners a {
 	font-size: .78rem; text-decoration: none; padding: .1rem .45rem; border-radius: .8rem;
 	border: 1px solid var(--border); color: var(--muted); background: var(--sunk);
@@ -359,19 +366,19 @@ const sort = document.getElementById('sort');
 /** each filter, with what it says when the pointer rests on it */
 const Filters = [
 	['only', 'package', 'packages', 'list packages rather than the names they export'],
-	['pkg', 'archived', 'archived', 'names from a package CRAN no longer carries'],
-	['flag', 't', 'throws', 'may raise an error, so a caller cannot count on getting a value back'],
-	['flag', 'n', 'non-determ.', 'non-deterministic: may answer differently for the same arguments, like random draws or the clock'],
+	['pkg', 'archive', 'archived', 'names from a package CRAN no longer carries'],
+	['flag', 't', 'throw', 'may raise an error, so a caller cannot count on getting a value back'],
+	['flag', 'n', 'non-det.', 'non-deterministic: may answer differently for the same arguments, like random draws or the clock'],
 	['flag', '3', 'S3', 'S3 method: an implementation of a generic for one class, like print.data.frame'],
-	['flag', 'x', 'deprecated', 'marked as deprecated by the package itself'],
+	['flag', 'x', 'depr.', 'marked as deprecated by the package itself'],
 	['flag', 'd', 'calls depr.', 'calls deprecated: calls something deprecated, so it may stop working when that goes'],
 	['flag', 'c', 'value', 'a value rather than a function, like pi or LETTERS'],
 	['flag', 'v', 'no loc', 'no location: the database records no file and line for it. Usually a constant, a dataset or a class object, sometimes a function nothing wrote down, like an S4 generic setGeneric builds'],
 	['name', 'group', 'S4', 'S4 group member: a member of an S4 group generic (Math, Arith, Summary, ...), which a package usually exports because it answered the group for one of its classes'],
-	['kind', 'read', 'reads', 'reads data from somewhere outside the program, like read.csv'],
-	['kind', 'write', 'writes', 'writes data out of the program, like write.csv'],
-	['kind', 'visualize', 'plots', 'draws something, like plot or ggsave'],
-	['kind', 'library', 'loads', 'attaches a package, like library or require']
+	['kind', 'read', 'read', 'reads data from somewhere outside the program, like read.csv'],
+	['kind', 'write', 'write', 'writes data out of the program, like write.csv'],
+	['kind', 'visualize', 'plot', 'draws something, like plot or ggsave'],
+	['kind', 'library', 'load', 'attaches a package, like library or require']
 ];
 const active = new Set();
 const filters = document.getElementById('filters');
@@ -761,8 +768,15 @@ function detail(name, owners) {
 		row.append(who);
 		const marks = document.createElement('span');
 		marks.className = 'flags';
+		/* what flowR states for this package's version of the name, which the head can only show for one of
+		   them (`filter` is `stats`'s to a reader and dplyr's to flowR), else what the database records */
+		const own = statedFor.get(pkg);
+		const here = own ? { args: own[2] ?? '', props: own[1] ?? '' }
+			: { args: declaredIn(name, pkg) ?? '', props: flagWords(flags) };
+		/* the signature spells these out a moment later, and a badge saying it once more only costs the line */
+		const said = new Set(wordsOf(here.props));
 		for(const flag of flags) {
-			if(FlagNames[flag]) {
+			if(FlagNames[flag] && !said.has(FlagNames[flag])) {
 				const one = document.createElement('span');
 				one.className = 'flag';
 				one.textContent = FlagNames[flag];
@@ -781,11 +795,6 @@ function detail(name, owners) {
 		const tag = document.createElement('span');
 		tag.className = 'tag';
 		tag.textContent = base === '1' ? 'base R' : 'CRAN';
-		/* what flowR states for this package's version of the name, which the head can only show for one of
-		   them (`filter` is `stats`'s to a reader and dplyr's to flowR), else what the database records */
-		const own = statedFor.get(pkg);
-		const here = own ? { args: own[2] ?? '', props: own[1] ?? '' }
-			: { args: declaredIn(name, pkg) ?? '', props: flagWords(flags) };
 		if(here.args !== '' || here.props !== '') {
 			marks.append(signature(name, here.args, here.props));
 		}
@@ -1048,8 +1057,8 @@ function formal([name, roles]) {
 function readable(name, args, props) {
 	const spelled = argsOf(args).map(([formal, roles]) => roles.length === 0 ? formal : formal + ': ' + roles.join(' + ')).join(', ');
 	const { kind, returns } = parts(props);
-	return name + (kind.length > 0 ? '<' + kind.join(', ') + '>' : '') + (args === '' ? '' : '(' + spelled + ')')
-		+ (returns.length > 0 ? ': ' + returns.join(', ') : '');
+	return name + (kind.length > 0 ? '[' + kind.join(',') + ']' : '') + (args === '' ? '' : '(' + spelled + ')')
+		+ (returns.length > 0 ? ': ' + returns.join(',') : '');
 }
 
 /**
@@ -1064,7 +1073,7 @@ function signature(name, args, props) {
 	const { kind, returns } = parts(props);
 	said.append(Object.assign(document.createElement('b'), { textContent: name }));
 	if(kind.length > 0) {
-		said.append(Object.assign(document.createElement('i'), { className: 'kind', textContent: '<' + short(kind).join(', ') + '>' }));
+		said.append(Object.assign(document.createElement('i'), { className: 'kind', textContent: '[' + short(kind).join(',') + ']' }));
 	}
 	if(args !== '') {
 		/* the formals are what gets cut when the line is too long; what the call is and does stays */
@@ -1076,7 +1085,7 @@ function signature(name, args, props) {
 		said.append(list);
 	}
 	if(returns.length > 0) {
-		said.append(Object.assign(document.createElement('i'), { className: 'ret', textContent: ': ' + short(returns).join(', ') }));
+		said.append(Object.assign(document.createElement('i'), { className: 'ret', textContent: ': ' + short(returns).join(',') }));
 	}
 	/* the short form is for the glance, the words for the reader who stops on it */
 	said.title = readable(name, args, props);

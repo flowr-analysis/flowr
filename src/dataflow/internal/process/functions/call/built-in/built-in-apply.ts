@@ -1,4 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { FnSig } from '../../../../../environments/built-in-props';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import {
@@ -83,11 +84,9 @@ export function processApply<OtherInfo>(
 	config: BuiltInApplyConfiguration
 ): DataflowInformation {
 	const { indexOfFunction = 1, nameOfFunctionArgument, unquoteFunction, resolveInEnvironment, resolveValue, hasUnknownSideEffects } = config;
-	/* as the length is one-based and the argument filter mapping is zero-based, we do not have to subtract 1 */
-	const forceArgsMask = new Array(indexOfFunction).fill(false);
-	forceArgsMask.push(true);
+	/* the length is one-based and the argument mapping zero-based, so the function sits at `indexOfFunction` */
 	const resFn = processKnownFunctionCall({
-		name, args, rootId, data, forceArgs: forceArgsMask, origin: BuiltInProcName.Apply
+		name, args, rootId, data, sig: FnSig.only(indexOfFunction, nameOfFunctionArgument ?? 'FUN'), origin: BuiltInProcName.Apply
 	});
 	let information = resFn.information;
 	if(hasUnknownSideEffects) {

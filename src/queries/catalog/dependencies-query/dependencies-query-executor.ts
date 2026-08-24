@@ -129,28 +129,52 @@ function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: o
 const readOnlyModes = new Set(['r', 'rt', 'rb']);
 const writeOnlyModes = new Set(['w', 'wt', 'wb', 'a', 'at', 'ab']);
 
+/**
+ * The entry to use for a call, out of everything the category declares under that name: several packages may
+ * export the same function with different arguments, so the entry of the package the call resolves to wins.
+ * A call qualified to a package no entry declares is none of them, an unqualified call that cannot be pinned
+ * down goes to the entry of a package the project loads, and only then to the first one able to apply.
+ */
+function pickFunctionInfo(candidates: readonly FunctionInfo[], callNamespace: string | undefined, isLoaded: (pkg: string) => boolean): FunctionInfo | undefined {
+	if(callNamespace !== undefined) {
+		return candidates.find(c => c.package === callNamespace) ?? candidates.find(c => c.package === undefined);
+	} else if(candidates.length === 1) {
+		return candidates[0];
+	}
+	return candidates.find(c => c.package !== undefined && isLoaded(c.package)) ?? candidates[0];
+}
+
 function getResults(queries: readonly DependenciesQuery[], { dataflow, config, normalize }: { dataflow: DataflowInformation, config: FlowrConfig, normalize: NormalizedAst }, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[], data: BasicQueryData): DependencyInfo[] {
 	const defaultValue = getAllCategories(queries)[kind].defaultValue;
 	const vars = config.solver.variables;
-	const functionMap = new Map<string, FunctionInfo>(functions.map(f => [f.name, f]));
+	const functionMap = new Map<string, FunctionInfo[]>();
+	for(const f of functions) {
+		const known = functionMap.get(f.name);
+		if(known) {
+			known.push(f);
+		} else {
+			functionMap.set(f.name, [f]);
+		}
+	}
 	const kindEntries = Object.entries(results?.kinds[kind]?.subkinds ?? {});
 	const finalResults: DependencyInfo[] = [];
 	const ictx = data.analyzer.inspectContext();
 	const d = ictx.deps;
+	/* only asked when a name is declared by more than one package, keeping the resolution it may trigger off the common path */
+	let loadedPackages: ReadonlySet<string> | undefined;
+	const isLoadedPackage = (pkg: string) => (loadedPackages ??= new Set(d.getDependencies().map(p => p.name))).has(pkg);
 	const dfg = dataflow.graph;
 	for(const [name, results] of kindEntries) {
 		for(const { id, linkedIds } of results) {
 			const vertex = dfg.getVertex(id) as DataflowGraphVertexFunctionCall;
-			const info = functionMap.get(name) as FunctionInfo;
 
 			const functionName = Dataflow.qualify(id, dfg, false) ?? vertex.name;
-
-			if(info.package !== undefined) {
-				const callNamespace = Identifier.getNamespace(functionName);
-				if(callNamespace !== undefined && callNamespace !== info.package) {
-					continue;
-				}
+			/* aliased into a const the nested checks can capture, as a hoisted declaration would not see the narrowing */
+			const picked = pickFunctionInfo(functionMap.get(name) as readonly FunctionInfo[], Identifier.getNamespace(functionName), isLoadedPackage);
+			if(picked === undefined) {
+				continue;
 			}
+			const info = picked;
 
 			const args = getArgumentStringValue(vars, dfg, vertex, info.argIdx, info.argName, info.resolveValue, ictx);
 			const linkedArgs = collectValuesFromLinks(args, { dataflow, config, ctx: ictx }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);

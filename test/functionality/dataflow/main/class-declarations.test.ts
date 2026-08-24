@@ -19,6 +19,16 @@ async function classesOf(code: string): Promise<Map<string, DeclaredClass>> {
 	return declaredClasses((await analyzer.dataflow()).graph);
 }
 
+/**
+ * As {@link classesOf}, but with nothing assumed attached, so the snippet's own `library()` is what has to bring
+ * the package in -- attaching a package must not disable what flowR states about its exports.
+ */
+async function classesOfAttaching(code: string): Promise<Map<string, DeclaredClass>> {
+	const analyzer = await new FlowrAnalyzerBuilder().build();
+	analyzer.addRequest(code);
+	return declaredClasses((await analyzer.dataflow()).graph);
+}
+
 describe('S4 class declarations', () => {
 	const code = `
 setClass("Base", representation(x = "numeric"))
@@ -126,5 +136,34 @@ describe('Handing the declarations to the signature database', () => {
 	test('a class nothing can place is left out rather than invented', async() => {
 		const classes = await classesOf('setClass("A", contains = "B")');
 		assert.lengthOf(toSigClasses(classes, () => undefined), 1);
+	});
+});
+
+describe('library() keeps what flowR states about the exports it attaches', () => {
+	test('library(R6) declares the class R6::R6Class declares', async() => {
+		const attached = await classesOfAttaching('library(R6)\nP <- R6Class("P", public = list(x = 1))');
+		assert.strictEqual(attached.get('P')?.system, ClassSystem.R6);
+		assert.deepEqual(attached.get('P')?.members, [{ name: 'x', visibility: MemberVisibility.Public }]);
+		/* the qualified call is what the attached export has to keep meaning (the ids differ by the library line) */
+		const qualified = await classesOfAttaching('P <- R6::R6Class("P", public = list(x = 1))');
+		assert.deepEqual(attached.get('P')?.members, qualified.get('P')?.members);
+	});
+
+	test('library(S7) declares the class S7::new_class declares', async() => {
+		const attached = await classesOfAttaching('library(S7)\nR <- new_class("R", properties = list(x = class_numeric))');
+		assert.strictEqual(attached.get('R')?.system, ClassSystem.S7);
+		const qualified = await classesOfAttaching('R <- S7::new_class("R", properties = list(x = class_numeric))');
+		assert.deepEqual(attached.get('R')?.members, qualified.get('R')?.members);
+	});
+
+	test('library(methods) declares the class a bare setClass declares', async() => {
+		const attached = await classesOfAttaching('library(methods)\nsetClass("A", representation(x = "numeric"))');
+		assert.strictEqual(attached.get('A')?.system, ClassSystem.S4);
+		assert.deepEqual(attached.get('A')?.members, [{ name: 'x', type: 'numeric' }]);
+	});
+
+	test('a local definition of the name still shadows the attached export', async() => {
+		const shadowed = await classesOfAttaching('library(R6)\nR6Class <- function(...) 1\nP <- R6Class("P")');
+		assert.isFalse(shadowed.has('P'));
 	});
 });

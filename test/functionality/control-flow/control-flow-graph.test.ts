@@ -116,8 +116,8 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 					.addVertex(CfgVertex.makeStatement(9))
 					.addVertex(CfgVertex.makeExpression(10))
 					.addVertex(CfgVertex.makeStatement(11))
-					.addEdge(6, 0, CfgEdge.makeFd())
 					.addEdge(6, 7, CfgEdge.makeFd())
+					.addEdge(7, 0, CfgEdge.makeFd())
 					.addEdge(8, 9, CfgEdge.makeFd())
 					.addEdge(3, 6, CfgEdge.makeCdTrue(8))
 					.addEdge(3, 8, CfgEdge.makeCdFalse(8))
@@ -125,7 +125,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 					.addEdge(10, 0, CfgEdge.makeFd())
 					.addEdge(0, 3, CfgEdge.makeCdTrue(11))
 					.addEdge(0, 11, CfgEdge.makeCdFalse(11))
-			}, { excludeProperties: ['entry-reaches-all', 'exit-reaches-all'] });
+			});
 
 			assertCfg(parser, whileBreak, {
 				entryPoints: [0],
@@ -139,8 +139,8 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 					.addVertex(CfgVertex.makeStatement(9))
 					.addVertex(CfgVertex.makeExpression(10))
 					.addVertex(CfgVertex.makeStatement(11))
-					.addEdge(6, 11, CfgEdge.makeFd())
 					.addEdge(6, 7, CfgEdge.makeFd())
+					.addEdge(7, 11, CfgEdge.makeFd())
 					.addEdge(8, 9, CfgEdge.makeFd())
 					.addEdge(3, 6, CfgEdge.makeCdTrue(8))
 					.addEdge(3, 8, CfgEdge.makeCdFalse(8))
@@ -148,7 +148,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 					.addEdge(10, 0, CfgEdge.makeFd())
 					.addEdge(0, 3, CfgEdge.makeCdTrue(11))
 					.addEdge(0, 11, CfgEdge.makeCdFalse(11))
-			}, { excludeProperties: ['entry-reaches-all', 'exit-reaches-all'] });
+			});
 		});
 
 		describe('function calls', () => {
@@ -214,6 +214,8 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				.addEdge(11, 13, CfgEdge.makeFd())
 				/* the `return` leaves the `{` it sits in, which the loop then carries on from */
 				.addEdge(13, 14, CfgEdge.makeFd())
+				/* `%do%` evaluates its body with `eval`, so the `return` there hands its value on rather than erroring */
+				.addEdge(13, 0, CfgEdge.makeFd())
 				.addEdge(0, 17, CfgEdge.makeFd())
 		}, { excludeProperties: ['entry-reaches-all', 'exit-reaches-all'] });
 
@@ -277,8 +279,10 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				.addVertex(CfgVertex.makeBlock('bb-3', [
 					CfgVertex.makeExpression(3)
 				]))
+				/* the jump joins its block, so the two are one straight line and one block */
 				.addVertex(CfgVertex.makeBlock('bb-6', [
-					CfgVertex.makeStatement(6)
+					CfgVertex.makeStatement(6),
+					CfgVertex.makeExpression(7)
 				]))
 				.addVertex(CfgVertex.makeBlock('bb-8', [
 					CfgVertex.makeStatement(8),
@@ -286,14 +290,10 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 					CfgVertex.makeExpression(10),
 					CfgVertex.makeExpression(0)
 				]))
-				.addVertex(CfgVertex.makeBlock('bb-7', [
-					CfgVertex.makeExpression(7)
-				]))
 				.addVertex(CfgVertex.makeBlock('bb-11', [
 					CfgVertex.makeStatement(11)
 				]))
 				.addEdge('bb-6', 'bb-11', CfgEdge.makeFd())
-				.addEdge('bb-6', 'bb-7', CfgEdge.makeFd())
 				.addEdge('bb-3', 'bb-6', CfgEdge.makeCdTrue(8))
 				.addEdge('bb-3', 'bb-8', CfgEdge.makeCdFalse(8))
 				.addEdge('bb-8', 'bb-3', CfgEdge.makeCdTrue(11))

@@ -10,7 +10,6 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
-import type { ForceArguments } from '../common';
 import { markAsAssignment } from './built-in-assignment';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -54,24 +53,24 @@ export function processAccess<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { treatIndicesAsString: boolean, resolveField?: boolean } & ForceArguments
+	config: { treatIndicesAsString: boolean, resolveField?: boolean }
 ): DataflowInformation {
 	if(args.length < 1) {
 		dataflowLogger.warn(`Access ${Identifier.getName(name.content)} has less than 1 argument, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 	const head = args[0];
 
 	let fnCall: ProcessKnownFunctionCallResult;
 	if(RArgument.isEmpty(head)) {
 		// in this case we may be within a pipe
-		fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: BuiltInProcName.Access });
+		fnCall = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Access });
 	} else if(config.treatIndicesAsString) {
-		fnCall = processStringBasedAccess<OtherInfo>(args, data, name, rootId, config);
+		fnCall = processStringBasedAccess<OtherInfo>(args, data, name, rootId);
 	} else {
 		/* within an access operation which treats its fields, we redefine the table assignment ':=' as a trigger if this is to be treated as a definition */
 		// do we have a local definition that needs to be recovered?
-		fnCall = processNumberBasedAccess<OtherInfo>(data, name, args, rootId, config, head);
+		fnCall = processNumberBasedAccess<OtherInfo>(data, name, args, rootId, head);
 	}
 
 	const info = fnCall.information;
@@ -149,7 +148,6 @@ function processNumberBasedAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
-	config: ForceArguments,
 	head: RArgument<OtherInfo & ParentInformation>,
 ) {
 	const existing = data.environment.current.memory.get(':=');
@@ -164,7 +162,7 @@ function processNumberBasedAccess<OtherInfo>(
 		nodeId:    tableAssignId
 	}]);
 
-	const fnCall = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: BuiltInProcName.Access });
+	const fnCall = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Access });
 
 	/* recover the environment */
 	if(existing !== undefined) {
@@ -221,15 +219,13 @@ function processStringBasedAccess<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	name: RSymbol<OtherInfo & ParentInformation>,
-	rootId: NodeId,
-	config: { treatIndicesAsString: boolean, resolveField?: boolean } & ForceArguments
+	rootId: NodeId
 ) {
 	return processKnownFunctionCall({
 		name,
-		args:      symbolArgumentsToStrings(args),
+		args:   symbolArgumentsToStrings(args),
 		rootId,
 		data,
-		forceArgs: config.forceArgs,
-		origin:    BuiltInProcName.Access
+		origin: BuiltInProcName.Access
 	});
 }

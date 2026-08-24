@@ -3,8 +3,9 @@ import type { DecodedFunction } from '../../../../src/project/sigdb/decode';
 import type { PackageSignatureSource } from '../../../../src/project/sigdb/reader';
 import type { BaseBuiltInDefinition, BuiltInDefinitions, BuiltInFunctionDefinition } from '../../../../src/dataflow/environments/built-in-config';
 import { getDefaultBuiltInDefinitions } from '../../../../src/dataflow/environments/built-in-config';
-import type { BuiltInFnInfo, CallProps } from '../../../../src/dataflow/environments/built-in-props';
+import type { BuiltInFnInfo } from '../../../../src/dataflow/environments/built-in-props';
 import {
+	CallProps,
 	ArgProp,
 	CallProp,
 	ExclusiveCallProps,
@@ -60,14 +61,15 @@ const ExpectedLabels: readonly (readonly [Identifier, CallProps])[] = [
 
 /** and the shapes a signature comes in */
 const ExpectedSigs: readonly (readonly [Identifier, FnSig])[] = [
-	[Identifier.from(['+', PkgName.Base]), [['e1', ArgProp.Value | ArgProp.Atomic], ['e2', ArgProp.Value | ArgProp.Atomic]]],
-	[Identifier.from(['sum', PkgName.Base]), [['...', ArgProp.Value]]],
+	[Identifier.from(['+', PkgName.Base]), [['e1', ArgProp.Forced | ArgProp.Value | ArgProp.Atomic], ['e2', ArgProp.Forced | ArgProp.Value | ArgProp.Atomic]]],
+	[Identifier.from(['sum', PkgName.Base]), [['...', ArgProp.Forced | ArgProp.Value]]],
 	[Identifier.from(['missing', PkgName.Base]), [['x', ArgProp.Presence]]],
 	/* `Alias` is what states the argument handed back, so these have to keep declaring it */
 	[Identifier.from(['identity', PkgName.Base]), [['x', ArgProp.Alias | ArgProp.Forced]]],
-	[Identifier.from(['match.arg', PkgName.Base]), [['arg', ArgProp.Value], ['choices', ArgProp.Bounds]]],
-	[Identifier.from(['read.csv', PkgName.Utils]), [['file', ArgProp.Resource], ['header', ArgProp.Flag], ['sep', ArgProp.Value],
-		['quote', ArgProp.Value], ['dec', ArgProp.Value], ['fill', ArgProp.Flag], ['comment.char', ArgProp.Value], ['...', ArgProp.Value]]]
+	[Identifier.from(['match.arg', PkgName.Base]), [['arg', ArgProp.Forced | ArgProp.Value], ['choices', ArgProp.Forced | ArgProp.Bounds]]],
+	[Identifier.from(['read.csv', PkgName.Utils]), [['file', ArgProp.Forced | ArgProp.Resource], ['header', ArgProp.Forced | ArgProp.Flag],
+		['sep', ArgProp.Forced | ArgProp.Value], ['quote', ArgProp.Forced | ArgProp.Value], ['dec', ArgProp.Forced | ArgProp.Value],
+		['fill', ArgProp.Forced | ArgProp.Flag], ['comment.char', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Forced | ArgProp.Value]]]
 ];
 
 describe('Built-in properties', () => {
@@ -151,7 +153,8 @@ describe('Built-in properties', () => {
 		test(label('resolving in an environment finds the built-in', ['name-normal'], ['other']), () => {
 			const info = queryFnProps('nchar', { environment: defaultEnv() });
 			assert.strictEqual((info?.props ?? 0) & CallProp.Pure, CallProp.Pure);
-			assert.deepStrictEqual(info?.sig, [['x', ArgProp.Shape], ['type', ArgProp.Value], ['allowNA', ArgProp.Flag], ['keepNA', ArgProp.Flag]]);
+			assert.deepStrictEqual(info?.sig, [['x', ArgProp.Forced | ArgProp.Shape], ['type', ArgProp.Forced | ArgProp.Value],
+				['allowNA', ArgProp.Forced | ArgProp.Flag], ['keepNA', ArgProp.Forced | ArgProp.Flag]]);
 		});
 		test(label('a definition in the code shadows the built-in', ['name-normal', 'normal-definition'], ['other']), () => {
 			const env = defaultEnv().defineFunction('nchar', '0', '0');
@@ -302,7 +305,8 @@ describe('Built-in properties', () => {
 				}
 				const info = (d as { config?: BuiltInFnInfo }).config;
 				for(const n of builtInNames(d)) {
-					const name = Identifier.getName(n);
+					/* the whole identifier, as `filter` is cohortBuilder's and dplyr's and they share nothing but a name */
+					const name = String(n);
 					if(info?.sig !== undefined) {
 						declared.add(name);
 					} else {
@@ -377,6 +381,27 @@ describe('Functions several packages export', () => {
 				assert.strictEqual(def?.evalHandler, own?.evalHandler, `${pkg}::${name}`);
 			}
 		}
+	});
+
+	describe('what a property is called', () => {
+		test(label('every bit has a word of its own', ['name-normal'], ['other']), () => {
+			const seen = new Set<string>();
+			for(const member of Object.keys(CallProp).filter(k => Number.isNaN(Number(k)))) {
+				const bit = CallProp[member as keyof typeof CallProp];
+				const words = CallProps.words(bit);
+				assert.lengthOf(words, 1, `${member} has to render as exactly one word, got ${JSON.stringify(words)}`);
+				assert.isFalse(seen.has(words[0]), `${member} shares the word ${words[0]} with another property`);
+				seen.add(words[0]);
+			}
+		});
+
+		test(label('a mask renders every bit it holds', ['name-normal'], ['other']), () => {
+			assert.deepStrictEqual(CallProps.words(CallProp.Process | CallProp.Strict), ['runs a process', 'strict']);
+			assert.deepStrictEqual(CallProps.words(CallProp.Graphics), ['graphics']);
+			assert.deepStrictEqual(CallProps.words(CallProp.Ambient | CallProp.CommandLine), ['ambient state', 'command line']);
+			assert.deepStrictEqual(CallProps.words(undefined), []);
+			assert.deepStrictEqual(CallProps.words(0), []);
+		});
 	});
 
 	test(label('each package states it once', ['name-normal'], ['other']), () => {

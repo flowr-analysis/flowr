@@ -1,4 +1,5 @@
 import { MatchArgs } from '../../../../../graph/match-args';
+import { FnSig } from '../../../../../environments/built-in-props';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -60,7 +61,7 @@ export function processEvalCall<OtherInfo>(
 	}
 
 	const information = config.includeFunctionCall ?
-		processKnownFunctionCall({ name, args, rootId, data, forceArgs: [true], origin: BuiltInProcName.Eval }).information
+		processKnownFunctionCall({ name, args, rootId, data, sig: FnSig.only(0, 'expr'), origin: BuiltInProcName.Eval }).information
 		: DataflowInformation.initialize(rootId, data);
 
 	if(config.includeFunctionCall) {

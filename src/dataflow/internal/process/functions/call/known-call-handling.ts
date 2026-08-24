@@ -1,7 +1,8 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
+import { FnSig } from '../../../../environments/built-in-props';
 import type { ExitPoint, DataflowInformation } from '../../../../info';
 import { ExitPointType } from '../../../../info';
-import { type ForceArguments, processAllArguments } from './common';
+import { processAllArguments } from './common';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -19,7 +20,9 @@ import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 import { Nse } from './nse';
 
-export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments {
+export interface ProcessKnownFunctionCallInput<OtherInfo> {
+	/** the signature of the called function, the one place stating which arguments it evaluates */
+	readonly sig?:                  FnSig
 	/** The name of the function being called. */
 	readonly name:                  RSymbol<OtherInfo & ParentInformation>
 	/** The arguments to the function call. */
@@ -160,19 +163,20 @@ function markArgument(graph: DataflowGraph, rootId: NodeId, arg: DataflowInforma
  * add any specific handling.
  */
 export function processKnownFunctionCall<OtherInfo>(
-	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect, origin, nonFunction, customControlFlow, alternativeArgsFrom }: ProcessKnownFunctionCallInput<OtherInfo>,
+	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, sig, patchData = d => d, hasUnknownSideEffect, origin, nonFunction, customControlFlow, alternativeArgsFrom }: ProcessKnownFunctionCallInput<OtherInfo>,
 ): ProcessKnownFunctionCallResult {
 	const functionName = processDataflowFor(name, data);
 	const finalGraph = new DataflowGraph(data.completeAst.idMap);
 	const functionCallName = name.content;
 	const processArgs = reverseOrder ? args.toReversed() : args;
+	const forced = FnSig.forced(sig, processArgs.length);
 
 	const {
 		finalEnv,
 		callArgs,
 		remainingReadInArgs,
 		processedArguments
-	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forceArgs, nonFunction });
+	} = processAllArguments<OtherInfo>({ functionName, args: processArgs, data, finalGraph, functionRootId: rootId, patchData, forced, nonFunction });
 	markArgumentsAsNonStandardEvaluation(finalGraph, rootId, processedArguments, markAsNSE, { kind: NseKind.Reevaluated });
 
 	const onlyBuiltin = data.builtInNoEnv === rootId;
@@ -200,10 +204,10 @@ export function processKnownFunctionCall<OtherInfo>(
 	let exitPoints: ExitPoint[] | undefined = undefined;
 	/* a jump that only happens under a condition still lets the call complete, so its default exit has to stay */
 	let alwaysJumps = false;
-	if(forceArgs) {
+	if(forced) {
 		for(let i = 0; i < processedArguments.length; i++) {
 			const p = processedArguments[i];
-			if(p === undefined || (forceArgs !== 'all' && !forceArgs[i])) {
+			if(p === undefined || !forced[i]) {
 				continue;
 			}
 			const before = exitPoints?.length ?? 0;

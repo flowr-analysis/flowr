@@ -1159,6 +1159,10 @@ export function extractCfg(dataflow: DataflowInformation): ControlFlowInformatio
 	if(dataflow.cfgExit !== undefined) {
 		exitPoints.length = 0;
 		exitPoints.push(dataflow.cfgExit);
+	} else {
+		/* this is the whole program, so a jump still unclaimed here is one no function or loop encloses: it leaves
+		   the program, whether with a value as a top-level `return` does or with an error as `break` does */
+		exitPoints.push(...returns, ...breaks, ...nexts);
 	}
 	const graph = new ControlFlowGraph(dataflow.graph);
 	const entry = ControlFlow.entryOf(dataflow);
@@ -1166,7 +1170,7 @@ export function extractCfg(dataflow: DataflowInformation): ControlFlowInformatio
 		graph,
 		/* a program without a single statement (only comments, say) has nothing to enter or leave */
 		entryPoints: graph.hasVertex(entry) ? [entry] : [],
-		exitPoints:  exitPoints.filter(e => graph.hasVertex(e)),
+		exitPoints:  [...new Set(exitPoints)].filter(e => graph.hasVertex(e)),
 		returns,
 		breaks,
 		nexts

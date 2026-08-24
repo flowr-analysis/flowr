@@ -12,9 +12,10 @@ import type {
 	ParentInformation,
 	RNodeWithParent
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
-import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import type { RForLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
@@ -31,6 +32,7 @@ import { type AutoSelectPredicate, doNotAutoSelect } from './auto-select/auto-se
 import { Identifier } from '../dataflow/environments/identifier';
 import type { InlineWarning } from './inline/source-inline-map';
 import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { RawRType } from '../r-bridge/lang-4.x/ast/model/type';
 
 /**
  * Whether to inline every file into a single self-contained text: `true` inlines them, `'banner'` additionally
@@ -84,8 +86,28 @@ type Code = PrettyPrintLine[];
 
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' });
 
-function getLexeme(n: RNodeWithParent) {
-	return RNode.lexeme(n) ?? '';
+function getLexeme(n: RNodeWithParent): string {
+	const lexeme = RNode.lexeme(n);
+	if(lexeme !== undefined) {
+		return lexeme;
+	}
+	// only expression lists may lack a lexeme of their own, so we synthesize equivalent source from their children
+	return RExpressionList.is(n) ? synthesizeExpressionListLexeme(n) : '';
+}
+
+/** rebuilds the source of a lexeme-less expression list (e.g., a `(` or `{` wrapper) so that it still parses */
+function synthesizeExpressionListLexeme(n: RExpressionList<ParentInformation>): string {
+	const inner = n.children
+		.filter(c => !RComment.is(c))
+		.map(c => getLexeme(c))
+		.filter(c => c.length > 0)
+		.join('; ');
+	const start = RExpressionList.groupStart(n);
+	const end = RExpressionList.groupEnd(n);
+	if(start === undefined || end === undefined) {
+		return inner;
+	}
+	return `${Identifier.toString(start.content)}${inner}${Identifier.toString(end.content)}`;
 }
 
 function codeToText(code: Code): string {
@@ -165,6 +187,15 @@ function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration:
 	return foldToConst(leaf);
 }
 
+/** whether the value of `n` is the value of its rhs alone, i.e. the lhs may be dropped without changing the result */
+function evaluatesToRhs(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>): boolean {
+	if(RPipe.is(n)) {
+		return false;
+	}
+	const info = RBinaryOp.getOperatorInfo(n);
+	return info?.usedAs === 'assignment' && info.stringUsedInRAst !== RawRType.RightAssign;
+}
+
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, config: ReconstructionConfiguration): Code {
 	if(lhs.length === 0 && rhs.length === 0) {
 		if(isSelected(config, n)) {
@@ -172,7 +203,11 @@ function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInfor
 		} else {
 			return [];
 		}
-	} else if(lhs.length === 0) { // if we have no lhs, only return rhs
+	} else if(lhs.length === 0) {
+		// dropping the lhs is only sound if the operator evaluates to its rhs, otherwise we have to keep the operation
+		if(isSelected(config, n) && !evaluatesToRhs(n)) {
+			return plain(getLexeme(n));
+		}
 		return rhs;
 	} else if(rhs.length === 0) {
 		if(isSelected(config, n)) {
@@ -360,6 +395,22 @@ function reconstructParameter(parameter: RParameter<ParentInformation>, name: Co
 }
 
 
+/** whether any ancestor of `n` is part of the reconstruction and hence may consume the value of `n` */
+function hasSelectedAncestor(n: RNodeWithParent, config: ReconstructionConfiguration): boolean {
+	const { idMap } = config.fullAst;
+	let parentId = n.info.parent;
+	while(parentId !== undefined) {
+		const parent = idMap.get(parentId);
+		if(parent === undefined) {
+			return false;
+		} else if(isSelected(config, parent)) {
+			return true;
+		}
+		parentId = parent.info.parent;
+	}
+	return false;
+}
+
 function reconstructFunctionDefinition(
 	definition: RFunctionDefinition<ParentInformation>,
 	functionParameters: readonly Code[],
@@ -372,7 +423,7 @@ function reconstructFunctionDefinition(
 		const selected = isSelected(config, definition);
 		if(empty && selected) { // give function stub
 			return plain(`${definition.lexeme}(${reconstructParameters(definition.parameters).join(', ')}) { }`);
-		} else if(!selected) { // do not require function
+		} else if(!selected && !hasSelectedAncestor(definition, config)) { // do not require function
 			return body;
 		}
 	}

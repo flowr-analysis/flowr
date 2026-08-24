@@ -65,6 +65,30 @@ indirect()
 3`, { hasVertices: ['1@1'], doesNotHaveVertices: ['4@3'] });
 		}
 	});
+	describe('A call throws where it is written', () => {
+		/* the callee only tells us that it always throws once we link it, so the constructs around the call have
+		 * to be honored just like they are for a `stop` written in that very place */
+		const alwaysThrows = 'indirect <- function() { stop() }';
+		const bothBranchesThrow = 'indirect <- function(k) { if(k) stop("a") else stop("b") }';
+		describe('Passed on', () => {
+			for(const [def, call] of [[alwaysThrows, 'indirect()'], [alwaysThrows, 'print(indirect())'], [bothBranchesThrow, 'indirect(u)']] as const) {
+				checkDfContains(`1\n${def}\n${call}\n3`, { hasVertices: ['1@1'], doesNotHaveVertices: ['4@3'] });
+			}
+		});
+		describe('Stopped on the way', () => {
+			for(const [def, call] of [
+				[alwaysThrows, 'try(indirect(), silent=TRUE)'],
+				[alwaysThrows, 'tryCatch(indirect(), error=function(e) 0)'],
+				[alwaysThrows, 'try({ indirect() })'],
+				[alwaysThrows, 'if(u) indirect()'],
+				[alwaysThrows, 'for(i in v) indirect()'],
+				[alwaysThrows, 'while(u) indirect()'],
+				[bothBranchesThrow, 'try(indirect(u), silent=TRUE)']
+			] as const) {
+				checkDfContains(`1\n${def}\n${call}\n3`, { hasVertices: ['1@1', '4@3'], doesNotHaveVertices: [] });
+			}
+		});
+	});
 	describe('Exceptions with try and tryCatch', () => {
 		describe('try', () => {
 			checkDfContains('1\ntry({ stop("error") })\n3', { hasVertices: ['1@1', '3@3'], doesNotHaveVertices: [] });

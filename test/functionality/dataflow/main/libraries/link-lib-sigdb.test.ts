@@ -163,6 +163,21 @@ describe('Link libraries from a signature database (sigdb)', withTreeSitter(ts =
 		expect(callResolvesTo(df, 'cranfn', 'cranpkg', 'cranfn')).toBe(true);
 	});
 
+	test(label('a library call within a called function attaches globally', ['library-loading', 'search-path'], ['dataflow']), async() => {
+		const db = buildDb();
+		/* R attaches to the search path, not to the frame of the function doing it, so the call after it resolves */
+		const called = await analyze(ts, 'f <- function() library(cranpkg)\nf()\ncranfn()', db);
+		expect(qualifiedName(called, 'cranfn')).toBe('cranpkg::cranfn');
+		/* without the call nothing ever attaches */
+		const uncalled = await analyze(ts, 'f <- function() library(cranpkg)\ncranfn()', db);
+		expect(qualifiedName(uncalled, 'cranfn')).toBeUndefined();
+	});
+
+	test(label('a library call that cannot run attaches nothing', ['library-loading', 'search-path'], ['dataflow']), async() => {
+		const res = await analyze(ts, 'if (FALSE) library(cranpkg)\ncranfn()', buildDb());
+		expect(qualifiedName(res, 'cranfn')).toBeUndefined();
+	});
+
 	test(label('solver.sigdb.enabled: false disables resolution and unloads the database', ['library-loading'], ['dataflow']), async() => {
 		const off = FlowrConfig.amend(FlowrConfig.default(), c => {
 			c.solver.sigdb.enabled = false;
@@ -565,5 +580,52 @@ describe('auto-attach the project\'s declared DESCRIPTION dependencies (solver.s
 			const { df } = await analyze(ts, 'requireNamespace("dependent")\ncarried()', attachDb());
 			expect(callResolvesTo(df, 'carried', 'carrier', 'carried')).toBe(false);
 		});
+	});
+}));
+
+describe('R attaches its startup packages below whatever the code attaches', withTreeSitter(ts => {
+	/** `stats` and `base` (both attached on startup) share the export `mask` with two plain CRAN packages */
+	function maskDb(): SigDatabase {
+		const b = new SigDbBuilder();
+		b.addPackage('base', { latest: '4.5.0', core: true });
+		b.addVersion('base', '4.5.0', ver([expFn('mask')]));
+		b.addPackage('stats', { latest: '4.5.0', core: true });
+		b.addVersion('stats', '4.5.0', ver([expFn('mask')]));
+		b.addPackage('maskpkg', { latest: '1.0.0', downloads: 5 });
+		b.addVersion('maskpkg', '1.0.0', ver([expFn('mask')]));
+		b.addPackage('otherpkg', { latest: '1.0.0', downloads: 5 });
+		b.addVersion('otherpkg', '1.0.0', ver([expFn('mask')]));
+		return SigDatabase.fromMemory(b.build({ date: '2026-05-23', generated: 0 }));
+	}
+
+	test(label('library() on a startup-attached package does not move it up the search path', ['library-loading', 'search-path'], ['dataflow']), async() => {
+		/* R never re-attaches an already attached package, so `stats` stays below `maskpkg` */
+		expect(qualifiedName(await analyze(ts, 'library(maskpkg)\nlibrary(stats)\nmask()', maskDb()), 'mask')).toBe('maskpkg::mask');
+		expect(qualifiedName(await analyze(ts, 'library(maskpkg)\nlibrary(base)\nmask()', maskDb()), 'mask')).toBe('maskpkg::mask');
+	});
+
+	test(label('re-attaching a startup package does not stop the packages attached after it', ['library-loading', 'search-path'], ['dataflow']), async() => {
+		expect(qualifiedName(await analyze(ts, 'library(base)\nlibrary(maskpkg)\nmask()', maskDb()), 'mask')).toBe('maskpkg::mask');
+		expect(qualifiedName(await analyze(ts, 'library(stats)\nlibrary(maskpkg)\nmask()', maskDb()), 'mask')).toBe('maskpkg::mask');
+	});
+
+	test(label('a startup package still brings its exports into scope', ['library-loading', 'search-path'], ['dataflow']), async() => {
+		expect(qualifiedName(await analyze(ts, 'library(stats)\nmask()', maskDb()), 'mask')).toBe('stats::mask');
+	});
+
+	test(label('re-attaching a package the code attached is a no-op, the one attached after it stays on top', ['library-loading', 'search-path'], ['dataflow']), async() => {
+		expect(qualifiedName(await analyze(ts, 'library(maskpkg)\nlibrary(otherpkg)\nlibrary(maskpkg)\nmask()', maskDb()), 'mask')).toBe('otherpkg::mask');
+		expect(qualifiedName(await analyze(ts, 'library(otherpkg)\nlibrary(maskpkg)\nmask()', maskDb()), 'mask')).toBe('maskpkg::mask');
+	});
+
+	test(label('a binding in the global environment wins over the attached export, whenever it is made', ['library-loading', 'search-path'], ['dataflow']), async() => {
+		expect(qualifiedName(await analyze(ts, 'library(maskpkg)\nmask <- function(x) x\nmask()', maskDb()), 'mask')).toBeUndefined();
+		expect(qualifiedName(await analyze(ts, 'mask <- function(x) x\nlibrary(maskpkg)\nmask()', maskDb()), 'mask')).toBeUndefined();
+	});
+
+	test(label('the attach is looked up when the body runs, and is not leaked into a sibling scope', ['library-loading', 'search-path'], ['dataflow']), async() => {
+		/* `f` is called after the attach, so its body resolves; `g` runs without anything ever attaching */
+		expect(qualifiedName(await analyze(ts, 'f <- function() mask()\nlibrary(maskpkg)\nf()', maskDb()), 'mask')).toBe('maskpkg::mask');
+		expect(qualifiedName(await analyze(ts, 'f <- function() { library(maskpkg) }\ng <- function() mask()\ng()', maskDb()), 'mask')).toBeUndefined();
 	});
 }));

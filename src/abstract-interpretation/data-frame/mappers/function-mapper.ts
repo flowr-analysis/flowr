@@ -377,7 +377,8 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 	},
 	'tail': {
 		dataFrame: { pos: 0, name: 'x' },
-		amount:    { pos: 1, name: 'n', default: 6 }
+		amount:    { pos: 1, name: 'n', default: 6 },
+		fromEnd:   true
 	},
 	'subset': {
 		dataFrame: { pos: 0, name: 'x' },
@@ -824,7 +825,7 @@ function mapDataFrameRowBind(
 
 function mapDataFrameHeadTail(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
-	params: { dataFrame: FunctionParameterLocation, amount: FunctionParameterLocation<number> },
+	params: { dataFrame: FunctionParameterLocation, amount: FunctionParameterLocation<number>, fromEnd?: boolean },
 	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
 ): DataFrameOperations {
@@ -844,20 +845,50 @@ function mapDataFrameHeadTail(
 		rows = amount[0];
 		cols = amount[1];
 	}
-	result.push({
-		operation: rows === undefined || rows >= 0 ? 'subsetRows' : 'removeRows',
-		operand:   dataFrame.value.info.id,
-		rows:      rows !== undefined ? Math.abs(rows) : undefined
-	});
+	const amountOfRows = rows !== undefined ? wholeAmount(rows, params.fromEnd) : undefined;
+	if(rows !== undefined && rows < 0) {
+		result.push({ operation: 'removeRows', operand: dataFrame.value.info.id, rows: amountOfRows });
+	} else {
+		/* `head`/`tail` take what the frame has, so asking for more than it holds is not asking for `NA` rows */
+		result.push({ operation: 'subsetRows', operand: dataFrame.value.info.id, rows: amountOfRows, options: { atMost: true } });
+	}
 
 	if(cols !== undefined) {
 		result.push({
 			operation: cols >= 0 ? 'subsetCols' : 'removeCols',
 			operand:   undefined,
-			colnames:  Array(Math.abs(cols)).fill(undefined)
+			colnames:  unnamedColumns(wholeAmount(cols, params.fromEnd))
 		});
 	}
 	return result;
+}
+
+/**
+ * How many entries `head`/`tail` keep or drop for a count that is not whole. R rounds differently on each side:
+ * `head` takes the whole part of what it keeps (`head(x, 2.9)` keeps two) and drops enough to leave that
+ * (`head(x, -2.5)` of ten leaves seven), while `tail` rounds the length it asks for (`tail(x, 2.9)` keeps three,
+ * `tail(x, -2.5)` of ten leaves eight).
+ */
+function wholeAmount(amount: number, fromEnd?: boolean): number {
+	const size = Math.abs(amount);
+	if(fromEnd) {
+		return amount < 0 ? Math.floor(size) : Math.round(size);
+	}
+	return amount < 0 ? Math.ceil(size) : Math.floor(size);
+}
+
+/**
+ * The most columns an answer names one by one. A count comes out of the analyzed source, so it may say anything
+ * at all -- `head(df, c(2, 2e9))` asks for two billion -- and no answer is worth the memory of writing that out.
+ */
+const MaxNamedColumns = 4096;
+
+/**
+ * The `count` columns an operation names without knowing what they are called, or `undefined` when there are more
+ * of them than {@link MaxNamedColumns}, which widens the answer instead of allocating for it.
+ */
+function unnamedColumns(count: number): undefined[] | undefined {
+	return Number.isSafeInteger(count) && count >= 0 && count <= MaxNamedColumns ? Array(count).fill(undefined) : undefined;
 }
 
 function mapDataFrameSubset(

@@ -106,6 +106,20 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '3@library', functionName: 'library', value: 'ggplot2'  }
 		] });
 
+		/* without character.only the symbol is the package name, whatever the variable of that name holds */
+		testQuery('Library of a symbol that names a variable', 'p <- "dplyr"\nlibrary(p)', { library: [
+			{ nodeId: '2@library', functionName: 'library', value: 'p' }
+		] });
+
+		testQuery('Library of a variable with character only', 'p <- "dplyr"\nlibrary(p, character.only=TRUE)', { library: [
+			{ nodeId: '2@library', functionName: 'library', value: 'dplyr' }
+		] });
+
+		/* with character.only the symbol is read as a variable, and there is none of that name */
+		testQuery('Library of a package name with character only', 'library(dplyr, character.only=TRUE)', { library: [
+			{ nodeId: '1@library', functionName: 'library', value: 'unknown', lexemeOfArgument: 'dplyr', argumentId: '1:9' }
+		] });
+
 		// for now, we want a better or (https://github.com/flowr-analysis/flowr/issues/1342)
 		testQuery('Library with possibilities', 'if(u) { a <- "a" } else { a <- "b" }\nlibrary(a,character.only=TRUE)', { library: [
 			{ nodeId: '2@library', functionName: 'library', value: 'b' },
@@ -644,6 +658,43 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				{ value: 'stdout', functionName: 'print', nodeId: '1@print' },
 				{ value: 'stdout', implicit: true, functionName: 'read.csv', nodeId: '1@[2]read.csv' }
 			]
+		});
+	});
+
+	describe('Shared function names', () => {
+		/* regression: a name several packages export used to keep only the entry declared last, so a call to any
+		   other package's function of that name went unreported, or was read with the wrong argument */
+		testQuery('a readr write is a write', 'readr::write_csv(d, "o.csv")', {
+			library: [{ nodeId: '1@write_csv', functionName: '::', value: 'readr' }],
+			write:   [{ nodeId: '1@readr::write_csv', functionName: Identifier.make('write_csv', 'readr'), value: 'o.csv' }]
+		});
+		testQuery('a readr read is a read', 'readr::read_lines("a.txt")', {
+			library: [{ nodeId: '1@read_lines', functionName: '::', value: 'readr' }],
+			read:    [{ nodeId: '1@readr::read_lines', functionName: Identifier.make('read_lines', 'readr'), value: 'a.txt' }]
+		});
+		/* arrow takes the sink as its second argument, the other package declaring the name takes a file as its first */
+		testQuery('the sink of an arrow write is its own argument', 'arrow::write_parquet(d, "o.pq")', {
+			library: [{ nodeId: '1@write_parquet', functionName: '::', value: 'arrow' }],
+			write:   [{ nodeId: '1@arrow::write_parquet', functionName: Identifier.make('write_parquet', 'arrow'), value: 'o.pq' }]
+		});
+		testQuery('a testthat test is a test dependency', 'testthat::test_package("p")', {
+			library: [{ nodeId: '1@test_package', functionName: '::', value: 'testthat' }],
+			test:    [{ nodeId: '1@testthat::test_package', functionName: Identifier.make('test_package', 'testthat') }]
+		});
+		/* nothing pins the call down, so the first entry able to apply answers (and reads the file it declares) */
+		testQuery('an unqualified call still reports', 'write_csv(d, "o.csv")', {
+			write: [{ nodeId: '1@write_csv', functionName: 'write_csv', value: 'o.csv' }]
+		});
+		/* a call qualified to a package that declares none of the entries is none of them */
+		testQuery('a write_csv of another package is no write', 'mypkg::write_csv(d, "o.csv")', {
+			library: [{ nodeId: '1@write_csv', functionName: '::', value: 'mypkg' }]
+		});
+	});
+
+	describe('Where a call resolves', () => {
+		/* a library call that cannot have run attaches nothing, so no dependency on it is reported */
+		testQuery('a library call that never runs is no library dependency', 'if (FALSE) library(readr)\nread_csv("a.csv")', {
+			read: [{ nodeId: '2@read_csv', functionName: 'read_csv', value: 'a.csv' }]
 		});
 	});
 

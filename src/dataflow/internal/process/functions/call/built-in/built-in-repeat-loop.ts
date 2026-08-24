@@ -1,4 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { FnSig } from '../../../../../environments/built-in-props';
 import { type DataflowInformation, ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
 import {
 	findNonLocalReads,
@@ -47,7 +48,7 @@ export function processRepeatLoop<OtherInfo>(
 		args:      unpacked ? [unpacked] : args,
 		rootId,
 		data,
-		forceArgs: 'all',
+		sig:       FnSig.every,
 		patchData: (d, i) => {
 			if(i === 0) {
 				return { ...d, cds: [...d.cds ?? [], { id: name.info.id }] };

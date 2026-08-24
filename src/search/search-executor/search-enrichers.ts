@@ -176,6 +176,34 @@ function isReachedByControlFlow(node: RNodeWithParent, alive: ReadonlySet<NodeId
 }
 
 /**
+ * One entry per distinct call target. A call to a package export is modelled by the built-in flowR states for
+ * the very same name, so the export and that built-in reach us as two targets naming one function: the
+ * qualified identifier wins, as it is the one that says where the function came from.
+ */
+function dedupeCallTargets(
+	targets: readonly (FlowrSearchElement<ParentInformation> | string)[]
+): (FlowrSearchElement<ParentInformation> | string)[] {
+	const byName = new Map<string, number>();
+	const out: (FlowrSearchElement<ParentInformation> | string)[] = [];
+	for(const target of targets) {
+		if(typeof target !== 'string') {
+			out.push(target);
+			continue;
+		}
+		const id = Identifier.parse(target);
+		const bare = String(Identifier.getName(id));
+		const at = byName.get(bare);
+		if(at === undefined) {
+			byName.set(bare, out.length);
+			out.push(target);
+		} else if(Identifier.getNamespace(id) !== undefined) {
+			out[at] = target;
+		}
+	}
+	return out;
+}
+
+/**
  * The registry of enrichments that are currently supported by the search.
  * See {@link FlowrSearchBuilder.with} for more information on how to apply enrichments.
  */
@@ -224,6 +252,10 @@ export const Enrichments = {
 					}
 				}
 			}
+
+			/* a package export and the built-in flowR models it with are one target seen twice, so keep the
+			   qualified identifier and drop the bare name for it */
+			content.targets = dedupeCallTargets(content.targets);
 
 			// keep only calls whose targets are all built-in; library/package exports arrive as an identifier
 			// targets and count as built-in, a target with a `node` is user code and disqualifies the call

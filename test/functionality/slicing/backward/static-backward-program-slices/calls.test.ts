@@ -204,6 +204,13 @@ cat(x)
     `, ['7@x'], `x <- (function() 3)()
 x`);
 	});
+	describe('Criterion within a function body', () => {
+		/* slicing into the body yields the statements themselves, the definition is not required for them */
+		assertSliced(label('body without its header', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'newlines', 'function-calls', 'call-normal']),
+			shell, 'f <- function() { x <- 2\nprint(x) }\nf()', ['2@x'], 'x <- 2\nx',
+			{ expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' }
+		);
+	});
 	describe('Higher-order Functions', () => {
 		const code = `a <- function() { x <- 3; i }
 i <- 4
@@ -453,6 +460,97 @@ cat(4 %a% 5)`);
 		assertSliced(label('quote does not reference variables', ['name-normal', 'newlines', ...OperatorDatabase['<-'].capabilities, 'built-in-quoting' ]),
 			shell, 'x <- 3\ny <- quote(x)', ['2@y'], 'y <- quote(x)');
 	});
+	describe('S3 Dispatch', () => {
+		/* the generic has to evaluate its object to know the class, even though no method body reads it */
+		assertSliced(label('dispatch forces its object', ['name-normal', 'numbers', 'strings', 'newlines', 'oop-s3', 'normal-definition', 'implicit-return', 'call-normal']),
+			shell, 'p <- function(x) UseMethod("p")\np.foo <- function(x) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv', ['5@v'],
+			'p <- function(x) UseMethod("p")\np.foo <- function(x) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv',
+			{ expectedOutput: '[1] "FOO"', expectedSliceOutput: '[1] "FOO"' });
+		assertSliced(label('dispatch with dots forces its object', ['name-normal', 'numbers', 'strings', 'newlines', 'oop-s3', 'normal-definition', 'implicit-return', 'call-normal']),
+			shell, 'p <- function(x, ...) UseMethod("p")\np.foo <- function(x, ...) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv', ['5@v'],
+			'p <- function(x, ...) UseMethod("p")\np.foo <- function(x, ...) "FOO"\no <- structure(1, class="foo")\nv <- p(o)\nv',
+			{ expectedOutput: '[1] "FOO"', expectedSliceOutput: '[1] "FOO"' });
+		assertSliced(label('next-method keeps the object as well', ['name-normal', 'numbers', 'strings', 'newlines', 'oop-s3', 'normal-definition', 'implicit-return', 'call-normal']),
+			shell, 'p <- function(x) UseMethod("p")\np.foo <- function(x) NextMethod()\np.default <- function(x) "DEF"\no <- structure(1, class="foo")\nv <- p(o)\nv', ['6@v'],
+			'p <- function(x) UseMethod("p")\np.foo <- function(x) NextMethod()\np.default <- function(x) "DEF"\no <- structure(1, class="foo")\nv <- p(o)\nv',
+			{ expectedOutput: '[1] "DEF"', expectedSliceOutput: '[1] "DEF"' });
+		/* control: a plain function never forces the parameter it does not mention, so the argument may go */
+		assertSliced(label('a plain call still drops the argument it never forces', ['name-normal', 'numbers', 'strings', 'newlines', 'normal-definition', 'implicit-return', 'call-normal']),
+			shell, 'p <- function(x) "FOO"\nu <- 1\nv <- p(u)\nv', ['4@v'],
+			'p <- function(x) "FOO"\nv <- p(u)\nv',
+			{ expectedOutput: '[1] "FOO"', expectedSliceOutput: '[1] "FOO"' });
+		/* control: naming the object moves the dispatch to it, leaving the first formal lazy */
+		assertSliced(label('a named object leaves the first formal lazy', ['name-normal', 'numbers', 'strings', 'newlines', 'oop-s3', 'normal-definition', 'implicit-return', 'call-normal']),
+			shell, 'p <- function(x, y) UseMethod("p", y)\np.foo <- function(x, y) "FOO"\np.default <- function(x, y) "DEF"\nw <- 7\no <- structure(1, class="foo")\nv <- p(w, o)\nv', ['7@v'],
+			'p <- function(x, y) UseMethod("p", y)\np.foo <- function(x, y) "FOO"\np.default <- function(x, y) "DEF"\no <- structure(1, class="foo")\nv <- p(w, o)\nv',
+			{ expectedOutput: '[1] "FOO"', expectedSliceOutput: '[1] "FOO"' });
+	});
+	describe('S3 Dispatch on Base Generics', () => {
+		const baseCaps: SupportedFlowrCapabilityId[] = ['name-normal', 'numbers', 'strings', 'newlines', 'oop-s3', 'normal-definition', 'implicit-return', 'call-normal', 'named-arguments', 'unnamed-arguments', ...OperatorDatabase['<-'].capabilities];
+		/* `length` dispatches just like a `UseMethod` generic does, so its method has to stay */
+		assertSliced(label('a method of a base generic stays', baseCaps),
+			shell, 'length.zz <- function(x) 99\no <- structure(1, class="zz")\nv <- length(o)\nv', ['4@v'],
+			'length.zz <- function(x) 99\no <- structure(1, class="zz")\nv <- length(o)\nv',
+			{ expectedOutput: '[1] 99', expectedSliceOutput: '[1] 99' });
+		assertSliced(label('a method of an operator stays', [...baseCaps, 'name-quoted', 'infix-calls', ...OperatorDatabase['+'].capabilities]),
+			shell, '"+.mn" <- function(e1, e2) 123\no <- structure(1, class="mn")\nv <- o + 1\nv', ['4@v'],
+			'"+.mn" <- function(e1, e2) 123\no <- structure(1, class="mn")\nv <- o + 1\nv',
+			{ expectedOutput: '[1] 123', expectedSliceOutput: '[1] 123' });
+		assertSliced(label('a method of an extractor stays', [...baseCaps, 'name-quoted', 'single-bracket-access']),
+			shell, '"[.mm" <- function(x, i) 55\no <- structure(c(1,2,3), class="mm")\nv <- o[2]\nv', ['4@v'],
+			'"[.mm" <- function(x, i) 55\no <- structure(c(1,2,3), class="mm")\nv <- o[2]\nv',
+			{ expectedOutput: '[1] 55', expectedSliceOutput: '[1] 55' });
+		assertSliced(label('next-method through a base generic', baseCaps),
+			shell, 'length.zz <- function(x) NextMethod()\no <- structure(c(1,2,3), class="zz")\nv <- length(o)\nv', ['4@v'],
+			'length.zz <- function(x) NextMethod()\no <- structure(c(1,2,3), class="zz")\nv <- length(o)\nv',
+			{ expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' });
+		/* precision: only the methods of the generic that is called, and only when it is called at all */
+		assertSliced(label('a method of another generic is not dragged in', baseCaps),
+			shell, 'foo.bar <- function(x) 1\nlength.zz <- function(x) 99\no <- structure(1, class="zz")\nv <- length(o)\nv', ['5@v'],
+			'length.zz <- function(x) 99\no <- structure(1, class="zz")\nv <- length(o)\nv',
+			{ expectedOutput: '[1] 99', expectedSliceOutput: '[1] 99' });
+		assertSliced(label('an undispatched method goes', baseCaps),
+			shell, 'length.zz <- function(x) 99\nu <- 5\nv <- u\nv', ['4@v'],
+			'u <- 5\nv <- u\nv',
+			{ expectedOutput: '[1] 5', expectedSliceOutput: '[1] 5' });
+	});
+	describe('S4 Registration', () => {
+		const s4Caps: SupportedFlowrCapabilityId[] = ['name-normal', 'numbers', 'strings', 'newlines', 'oop-s4', 'normal-definition', 'implicit-return', 'call-normal', 'unnamed-arguments', 'named-arguments', ...OperatorDatabase['<-'].capabilities];
+		/* `setClass` writes a string-keyed registry `new("P")` reads, so the slice cannot drop it */
+		assertSliced(label('new keeps the class registration', s4Caps),
+			shell, 'setClass("P", representation(s = "numeric"))\no <- new("P", s = 1)\nr <- o@s\nr', ['4@r'],
+			'setClass("P", representation(s = "numeric"))\no <- new("P", s = 1)\nr <- o@s\nr',
+			{ expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		assertSliced(label('a prototype default is kept with its class', s4Caps),
+			shell, 'setClass("W", representation(v = "numeric"), prototype(v = 12))\no <- new("W")\nr <- o@v\nr', ['4@r'],
+			'setClass("W", representation(v = "numeric"), prototype(v = 12))\no <- new("W")\nr <- o@v\nr',
+			{ expectedOutput: '[1] 12', expectedSliceOutput: '[1] 12' });
+		/* `setMethod` answers an existing generic, so it depends on the `setGeneric` that created it */
+		assertSliced(label('a method keeps the generic it answers', s4Caps),
+			shell, 'setGeneric("sz", function(x) standardGeneric("sz"))\nsetMethod("sz", "numeric", function(x) x * 3)\nr <- sz(4)\nr', ['4@r'],
+			'setGeneric("sz", function(x) standardGeneric("sz"))\nsetMethod("sz", "numeric", function(x) x * 3)\nr <- sz(4)\nr',
+			{ expectedOutput: '[1] "sz"\n[1] 12', expectedSliceOutput: '[1] "sz"\n[1] 12' });
+		/* `callNextMethod` reaches the method of the superclass, which the chain of generic reads keeps */
+		assertSliced(label('call-next-method keeps the inherited method', s4Caps),
+			shell, 'setClass("A", representation(x = "numeric"))\nsetClass("B", contains = "A")\nsetGeneric("f", function(o) standardGeneric("f"))\nsetMethod("f", "A", function(o) o@x)\nsetMethod("f", "B", function(o) callNextMethod() + 1)\nr <- f(new("B", x = 10))\nr', ['7@r'],
+			'setClass("A", representation(x = "numeric"))\nsetClass("B", contains = "A")\nsetGeneric("f", function(o) standardGeneric("f"))\nsetMethod("f", "A", function(o) o@x)\nsetMethod("f", "B", function(o) callNextMethod() + 1)\nr <- f(new("B", x = 10))\nr',
+			{ expectedOutput: '[1] "f"\n[1] 11', expectedSliceOutput: '[1] "f"\n[1] 11' });
+		/* `setValidity` changes what `new` does with the class, so it is kept, and it keeps the declaration in turn */
+		assertSliced(label('a validator is kept with the class it guards', s4Caps),
+			shell, 'setClass("P", representation(s = "numeric"))\nsetValidity("P", function(object) if(object@s < 0) "neg" else TRUE)\nr <- tryCatch(new("P", s = -1)@s, error = function(e) -99)\nr', ['4@r'],
+			'setClass("P", representation(s = "numeric"))\nsetValidity("P", function(object) if(object@s < 0) "neg" else TRUE)\nr <- tryCatch(new("P", s = -1)@s, error = function(e) -99)\nr',
+			{ expectedOutput: /\[1\] -99$/, expectedSliceOutput: /\[1\] -99$/ });
+		/* precision: the registry is keyed by name, so a class nothing uses stays out */
+		assertSliced(label('an unused class registration is dropped', s4Caps),
+			shell, 'setClass("P", representation(s = "numeric"))\nsetClass("Q", representation(t = "numeric"))\no <- new("P", s = 1)\nr <- o@s\nr', ['5@r'],
+			'setClass("P", representation(s = "numeric"))\no <- new("P", s = 1)\nr <- o@s\nr',
+			{ expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		/* precision: the same for a generic nothing calls */
+		assertSliced(label('an unused generic is dropped', s4Caps),
+			shell, 'setGeneric("f", function(o) standardGeneric("f"))\nsetMethod("f", "numeric", function(o) o * 2)\nsetGeneric("h", function(o) standardGeneric("h"))\nsetMethod("h", "numeric", function(o) o + 100)\nr <- f(3)\nr', ['6@r'],
+			'setGeneric("f", function(o) standardGeneric("f"))\nsetMethod("f", "numeric", function(o) o * 2)\nr <- f(3)\nr',
+			{ expectedOutput: '[1] "f"\n[1] "h"\n[1] 6', expectedSliceOutput: '[1] "f"\n[1] 6' });
+	});
 	describe('Assignment and Reflection Functions', () => {
 		describe('Assign', () => {
 			assertSliced(label('using assign as assignment', ['name-normal', 'numbers', 'assignment-functions', 'strings', 'newlines', 'global-scope']),
@@ -473,9 +571,20 @@ a()`, { minRVersion: MIN_VERSION_LAMBDA });
 			assertSliced(label('using delayed-assign as assignment', ['name-normal', 'numbers', 'assignment-functions', 'strings', 'newlines', 'global-scope']),
 				shell, 'delayedAssign("x", 42)\nx', ['2@x'],
 				'delayedAssign("x", 42)\nx');
-			assertSliced(label('using delayed-assign should break reference', ['name-normal', 'numbers', 'assignment-functions', 'strings', 'newlines', 'global-scope']),
+			/* the promise is forced at the read, so it sees the last write of `x`, not the one at registration time */
+			assertSliced(label('using delayed-assign keeps the bindings the force may see', ['name-normal', 'numbers', 'assignment-functions', 'strings', 'newlines', 'global-scope']),
 				shell, 'x <- 4\ndelayedAssign("y", x)\nx <- 5;\ny', ['4@y'],
-				'delayedAssign("y", x)\ny'); // note: `x <- 5` should be part of the slice!
+				'x <- 4\ndelayedAssign("y", x)\nx <- 5\ny', { expectedOutput: '[1] 5', expectedSliceOutput: '[1] 5' });
+			assertSliced(label('the delayed expression drags in what it reads', ['name-normal', 'numbers', 'assignment-functions', 'strings', 'newlines', 'global-scope']),
+				shell, 'z <- 1\ndelayedAssign("d", z * 2)\nv <- d\nv', ['4@v'],
+				'z <- 1\ndelayedAssign("d", z * 2)\nv <- d\nv', { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
+			assertSliced(label('the force decides which binding is read', ['name-normal', 'numbers', 'assignment-functions', 'strings', 'newlines', 'global-scope']),
+				shell, 'z <- 1\ndelayedAssign("d", z)\nz <- 10\nv <- d\nv', ['5@v'],
+				'z <- 1\ndelayedAssign("d", z)\nz <- 10\nv <- d\nv', { expectedOutput: '[1] 10', expectedSliceOutput: '[1] 10' });
+			/* control: an expression without free variables must not pull anything along */
+			assertSliced(label('a closed delayed expression drags in nothing', ['name-normal', 'numbers', 'assignment-functions', 'strings', 'newlines', 'global-scope']),
+				shell, 'q <- 99\ndelayedAssign("d", 1 + 2)\nv <- d\nv', ['4@v'],
+				'delayedAssign("d", 1 + 2)\nv <- d\nv', { expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' });
 		});
 		describe('Get', () => {
 			assertSliced(label('get-access should work like a symbol-access', ['name-normal', 'numbers', 'strings', 'newlines', ...OperatorDatabase['<-'].capabilities, 'global-scope', 'name-created']),
@@ -663,6 +772,56 @@ foo(.x = f(3))`);
 			assertSliced(label('Simple Anonymous Function (both)', caps), shell,
 				'function(x, y=3) {\n    x\n   z <- x + y\n   }', ['3@z'],
 				'function(x, y=3) z <- x + y');
+		});
+		describe('Grouped Default Values', () => {
+			const caps: SupportedFlowrCapabilityId[] = [
+				'name-normal', ...OperatorDatabase['<-'].capabilities, 'grouping',
+				'formals-default', 'numbers', 'newlines', 'implicit-return', 'normal-definition',
+				'unnamed-arguments', 'formals-named', 'call-normal'
+			];
+			const plusCaps: SupportedFlowrCapabilityId[] = [...caps, ...OperatorDatabase['+'].capabilities];
+			assertSliced(label('Parenthesized default', caps), shell,
+				'f <- function(a, b = (1)) { b }\nv <- f(3)\nv', ['3@v'],
+				'f <- function(a, b=(1)) b\nv <- f(3)\nv', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+			assertSliced(label('Braced default', caps), shell,
+				'f <- function(a, b = { 1 }) { b }\nv <- f(3)\nv', ['3@v'],
+				'f <- function(a, b={1}) b\nv <- f(3)\nv', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+			assertSliced(label('Nested parenthesized default', caps), shell,
+				'f <- function(a, b = ((1))) { b }\nv <- f(3)\nv', ['3@v'],
+				'f <- function(a, b=((1))) b\nv <- f(3)\nv', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+			assertSliced(label('Parenthesized compound default', plusCaps), shell,
+				'f <- function(a, b = (a + 1)) { b }\nv <- f(3)\nv', ['3@v'],
+				'f <- function(a, b=(a + 1)) b\nv <- f(3)\nv', { expectedOutput: '[1] 4', expectedSliceOutput: '[1] 4' });
+			assertSliced(label('Braced multi-expression default', plusCaps), shell,
+				'f <- function(a, b = { x <- 2; x + 1 }) { b }\nv <- f(3)\nv', ['3@v'],
+				'f <- function(a, b={x <- 2; x + 1}) b\nv <- f(3)\nv', { expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' });
+			/* controls: ungrouped defaults must stay untouched */
+			assertSliced(label('Constant default', caps), shell,
+				'f <- function(a, b = 1) { b }\nv <- f(3)\nv', ['3@v'],
+				'f <- function(a, b=1) b\nv <- f(3)\nv', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+			assertSliced(label('Symbol default', caps), shell,
+				'f <- function(a, b = a) { b }\nv <- f(3)\nv', ['3@v'],
+				'f <- function(a, b=a) b\nv <- f(3)\nv', { expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' });
+			assertSliced(label('Call default', caps), shell,
+				'f <- function(a, b = length(a)) { b }\nv <- f(3)\nv', ['3@v'],
+				'f <- function(a, b=length(a)) b\nv <- f(3)\nv', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		});
+		describe('Grouped Conditions and Vectors', () => {
+			const caps: SupportedFlowrCapabilityId[] = [
+				'name-normal', ...OperatorDatabase['<-'].capabilities, 'grouping', 'numbers', 'newlines'
+			];
+			assertSliced(label('Parenthesized if condition', [...caps, 'if', 'logical']), shell,
+				'a <- TRUE\nif((a)) { v <- 1 } else { v <- 2 }\nv', ['3@v'],
+				'a <- TRUE\nif((a)) { v <- 1 } else\n{ v <- 2 }\nv', { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+			assertSliced(label('Parenthesized while condition', [...caps, 'while-loop', ...OperatorDatabase['<'].capabilities, ...OperatorDatabase['+'].capabilities]), shell,
+				'i <- 0\nwhile((i < 2)) { i <- i + 1 }\nv <- i\nv', ['4@v'],
+				'i <- 0\nwhile((i < 2)) i <- i + 1\nv <- i\nv', { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' });
+			assertSliced(label('Parenthesized for vector', [...caps, 'for-loop', ...OperatorDatabase[':'].capabilities, ...OperatorDatabase['+'].capabilities]), shell,
+				's <- 0\nfor(i in (1:3)) { s <- s + i }\nv <- s\nv', ['4@v'],
+				's <- 0\nfor(i in (1:3)) s <- s + i\nv <- s\nv', { expectedOutput: '[1] 6', expectedSliceOutput: '[1] 6' });
+			assertSliced(label('Braced for vector', [...caps, 'for-loop', ...OperatorDatabase[':'].capabilities, ...OperatorDatabase['+'].capabilities]), shell,
+				's <- 0\nfor(i in { 1:3 }) { s <- s + i }\nv <- s\nv', ['4@v'],
+				's <- 0\nfor(i in {1:3}) s <- s + i\nv <- s\nv', { expectedOutput: '[1] 6', expectedSliceOutput: '[1] 6' });
 		});
 		describe('Potentially redefine built-ins', () => {
 			assertSliced(label('Potential Definition', [
@@ -1060,5 +1219,82 @@ f <- function(x) {
     }
 f(21)`, { includeCallees: true }
 		);
+	});
+	describe('Super-assignment binds lexically', () => {
+		const superCaps: readonly SupportedFlowrCapabilityId[] = ['name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['<<-'].capabilities, 'normal-definition', 'implicit-return', 'closures', 'lexicographic-scope', 'side-effects-in-function-call', 'numbers', 'newlines', 'semicolons', 'call-normal', 'unnamed-arguments'];
+		/* `<<-` searches the enclosing frames first, so this writes f's `x`, not the global one */
+		assertSliced(label('the enclosing function frame wins over the global one', superCaps), shell,
+			`f <- function() { x <- 2; h <- function() x <<- 9; h(); x }
+v <- f()
+v`, ['3@v'], `f <- function() {
+        x <- 2
+        h <- function() x <<- 9
+        h()
+        x
+    }
+v <- f()
+v`, { expectedOutput: '[1] 9', expectedSliceOutput: '[1] 9' });
+		/* the write lands on f's `x`, so the global one is never touched and the call is irrelevant */
+		assertSliced(label('a write caught by an enclosing frame leaves the global one alone', superCaps), shell,
+			`x <- 1
+f <- function() { x <- 2; h <- function() x <<- 9; h() }
+f()
+v <- x
+v`, ['5@v'], `x <- 1
+v <- x
+v`, { expectedOutput: '[1] 1', expectedSliceOutput: '[1] 1' });
+		/* control: a closure counter writes the frame it captured, so every call depends on the one before */
+		assertSliced(label('a closure counter still chains its calls', superCaps), shell,
+			`mk <- function() { n <- 0; function() { n <<- n + 1; n } }
+c1 <- mk()
+c1()
+v <- c1()
+v`, ['5@v'], `mk <- function() {
+        n <- 0
+        function() {
+            n <<- n + 1
+            n
+        }
+    }
+c1 <- mk()
+c1()
+v <- c1()
+v`, { expectedOutput: '[1] 1\n[1] 2', expectedSliceOutput: '[1] 1\n[1] 2' });
+		/* control: with no enclosing frame holding the name, the global one is still the target */
+		assertSliced(label('a super-assignment no enclosing frame catches still reaches the global one', superCaps), shell,
+			`x <- 1
+f <- function() { g <- function() x <<- 42; g(); x }
+v <- f()
+v`, ['4@v'], `x <- 1
+f <- function() {
+        g <- function() x <<- 42
+        g()
+        x
+    }
+v <- f()
+v`, { expectedOutput: '[1] 42', expectedSliceOutput: '[1] 42' });
+	});
+	describe('User-defined replacement functions', () => {
+		const replCaps: readonly SupportedFlowrCapabilityId[] = ['name-quoted', 'name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'replacement-functions', 'normal-definition', 'formals-named', 'implicit-return', 'numbers', 'newlines', 'call-normal', 'unnamed-arguments'];
+		/* a replacement function rebinds its target whether or not flowR ships a built-in for it */
+		assertSliced(label('a user-defined replacement rebinds its target', replCaps), shell,
+			'`s<-` <- function(x, value) x + value\ny <- 1\ns(y) <- 5\nv <- y\nv', ['5@v'],
+			'`s<-` <- function(x, value) x + value\ny <- 1\ns(y) <- 5\nv <- y\nv',
+			{ expectedOutput: '[1] 6', expectedSliceOutput: '[1] 6' });
+		/* the same holds when the user redefines a replacement we do know */
+		assertSliced(label('a user redefinition of a known replacement rebinds its target', replCaps), shell,
+			'`levels<-` <- function(x, value) x + value\ny <- 1\nlevels(y) <- 5\nv <- y\nv', ['5@v'],
+			'`levels<-` <- function(x, value) x + value\ny <- 1\nlevels(y) <- 5\nv <- y\nv',
+			{ expectedOutput: '[1] 6', expectedSliceOutput: '[1] 6' });
+		/* the super-assigning form binds outside the frame it is called in */
+		assertSliced(label('a super-assigning user replacement binds outside the frame', [...replCaps, ...OperatorDatabase['<<-'].capabilities, 'side-effects-in-function-call']), shell,
+			'`s<-` <- function(x, value) x + value\ny <- 1\nf <- function() { s(y) <<- 5 }\nf()\nv <- y\nv', ['6@v'],
+			'`s<-` <- function(x, value) x + value\ny <- 1\nf <- function() s(y) <<- 5\nf()\nv <- y\nv',
+			{ expectedOutput: '[1] 6', expectedSliceOutput: '[1] 6' });
+		/* control: a built-in replacement is unaffected */
+		assertSliced(label('a built-in replacement is unchanged', [...replCaps, 'built-in-sequencing', 'single-bracket-access', 'strings']), shell,
+			'x <- c(1, 2)\nnames(x) <- c("a", "b")\nv <- names(x)[1]\nv', ['4@v'],
+			'x <- c(1, 2)\nnames(x) <- c("a", "b")\nv <- names(x)[1]\nv',
+			{ expectedOutput: '[1] "a"', expectedSliceOutput: '[1] "a"' });
 	});
 }));

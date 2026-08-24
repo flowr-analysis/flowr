@@ -52,6 +52,7 @@ import {
 	ControlFlowQueryDefinition
 } from './catalog/control-flow-query/control-flow-query-format';
 import type { AsyncOrSync, Writable } from 'ts-essentials';
+import { deepMergeObject, type MergeableRecord } from '../util/objects';
 import type { FlowrConfig } from '../config';
 import {
 	type InspectHigherOrderQuery,
@@ -299,9 +300,9 @@ export async function executeQueries<
 			const result = await executeQueriesOfSameType(data, group);
 			results.push([type, result] as [Base, Awaited<QueryResult<Base>>]);
 		} catch(e) {
-			const message = e instanceof Error ? e.message : String(e);
+			const message = errorMessage(e);
 			log.error(`query of type '${type}' failed: ${message.split('\n')[0]}`);
-			results.push([type, { '.meta': { timing: 0 }, error: message } as never]);
+			results.push([type, await retryQueriesIndividually(data, group, message) as never]);
 		}
 	}
 
@@ -310,6 +311,33 @@ export async function executeQueries<
 		timing: Date.now() - now
 	};
 	return r as QueryResults<Base>;
+}
+
+function errorMessage(e: unknown): string {
+	return e instanceof Error ? e.message : String(e);
+}
+
+/**
+ * Re-runs the queries of a batch that failed as a whole one by one, so that a single faulty query does not discard the
+ * results of its siblings. The result merges everything that could be computed and carries the errors of all queries
+ * that still failed.
+ */
+async function retryQueriesIndividually(data: BasicQueryData, group: readonly Query[], fallback: string): Promise<BaseQueryResult> {
+	if(group.length <= 1) {
+		return { '.meta': { timing: 0 }, error: fallback } as BaseQueryResult;
+	}
+	const errors: string[] = [];
+	let merged: BaseQueryResult | undefined;
+	for(const query of group) {
+		try {
+			const result = await executeQueriesOfSameType(data, [query]);
+			merged = merged === undefined ? result : deepMergeObject(merged as unknown as MergeableRecord, result as unknown as MergeableRecord) as unknown as BaseQueryResult;
+		} catch(e) {
+			errors.push(errorMessage(e));
+		}
+	}
+	const error = errors.length > 0 ? errors.join('\n') : fallback;
+	return merged === undefined ? { '.meta': { timing: 0 }, error } as BaseQueryResult : { ...merged, error } as BaseQueryResult;
 }
 
 /**

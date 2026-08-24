@@ -4,7 +4,7 @@ import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
 import { isNotUndefined } from '../../util/assert';
-import { FunctionDefinitionVertex, VariableDefinitionVertex, VertexType } from '../../dataflow/graph/vertex';
+import { FunctionCallVertex, FunctionDefinitionVertex, VariableDefinitionVertex, VertexType } from '../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { F } from '../../search/flowr-search-filters';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -17,10 +17,12 @@ import { getExportedNames } from '../../project/plugins/file-plugins/files/flowr
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { removeRQuotes } from '../../r-bridge/retriever';
-import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
-import { CallProp } from '../../dataflow/environments/built-in-props';
-import { RGroupGenerics } from '../../dataflow/environments/group-generics';
-import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { BuiltInIndex, callFnProps  } from '../../dataflow/environments/query-fn-props';
+import { CallProp, ImpureProps } from '../../dataflow/environments/built-in-props';
+import { RGroupGenerics, s3GroupGenericMembers } from '../../dataflow/environments/group-generics';
+import { EmptyArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { DataflowInformation } from '../../dataflow/info';
+import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { NoEdges } from '../../dataflow/graph/graph';
 import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
@@ -68,7 +70,7 @@ function isKnownS3Generic(name: string): boolean {
 
 /** Whether `generic`, or any member of it when it is a group generic (`Ops.cls` dispatches on `+`), is called. */
 function isDispatched(generic: string, called: ReadonlySet<string>): boolean {
-	const group = RGroupGenerics[generic as keyof typeof RGroupGenerics] as readonly string[] | undefined;
+	const group = s3GroupGenericMembers(generic);
 	return called.has(generic) || (group?.some(member => called.has(member)) ?? false);
 }
 
@@ -194,7 +196,53 @@ function getDefinitionArguments(def: NodeId, dfg: DataflowGraph) {
 		.map(([target]) => target).toArray() ?? [];
 }
 
-function buildQuickFix(variable: RNode<ParentInformation>, dfg: DataflowGraph, ast: NormalizedAst): LintQuickFixRemove[] | undefined {
+/**
+ * Whether the node names a parameter of a function whose signature something outside the code fixes: a package
+ * lifecycle hook R calls with a set of arguments, or an S3 method a generic dispatches to. Such a parameter is
+ * unused only in the sense that this body ignores it, which is no reason to change what the function accepts.
+ */
+function hasContractedSignature(
+	node: RNode<ParentInformation>,
+	ast: NormalizedAst,
+	config: UnusedDefinitionConfig,
+	pkg: PackageInfo,
+	called: ReadonlySet<string>
+): boolean {
+	let inParameter = false;
+	for(let up = node.info.parent; up !== undefined;) {
+		const parent: RNode<ParentInformation> | undefined = ast.idMap.get(up);
+		if(parent === undefined) {
+			return false;
+		}
+		inParameter ||= RParameter.is(parent);
+		if(RFunctionDefinition.is(parent)) {
+			/* the name the definition is bound under is what reaches it, so that is what the contract goes by */
+			const bound = parent.info.parent !== undefined ? ast.idMap.get(parent.info.parent) : undefined;
+			const name = RBinaryOp.is(bound) ? bound.lhs.lexeme
+				: RFunctionCall.is(bound) && bound.arguments[0] !== EmptyArgument ? bound.arguments[0]?.lexeme : undefined;
+			return inParameter && name !== undefined && isConsideredUsed(name, config, pkg, called);
+		}
+		up = parent.info.parent;
+	}
+	return false;
+}
+
+/**
+ * Whether the call states an effect beyond computing a value, which is what makes dropping the statement around
+ * it a change to what the program does: `res <- write.csv(x, f)` writes the file whether or not `res` is read.
+ * `binds` is the assignment being removed, whose own {@link CallProp.Scope} is the binding this is all about and
+ * so says nothing; the same property on a call within it, as `assign` states, is an effect of its own.
+ */
+function doesMoreThanCompute(id: NodeId, df: Pick<DataflowInformation, 'graph' | 'environment'>, binds: NodeId | undefined): boolean {
+	if(!FunctionCallVertex.is(df.graph.getVertex(id))) {
+		return false;
+	}
+	const worthKeeping = id === binds ? ImpureProps & ~CallProp.Scope : ImpureProps;
+	return ((callFnProps(id, df)?.props ?? 0) & worthKeeping) !== 0;
+}
+
+function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInformation, 'graph' | 'environment'>, ast: NormalizedAst): LintQuickFixRemove[] | undefined {
+	const dfg = df.graph;
 	// first we check whether any of the 'Defined by' targets have any obligations - if so, we can not remove the definition
 	// otherwise we can automatically remove the full definition!
 
@@ -204,7 +252,7 @@ function buildQuickFix(variable: RNode<ParentInformation>, dfg: DataflowGraph, a
 	}
 	const definedBys = getDefinitionArguments(variable.info.id, dfg);
 
-	const hasImportantArgs = definedBys.some(d => dfg.unknownSideEffects.has(d))
+	const hasImportantArgs = definedBys.some(d => dfg.unknownSideEffects.has(d) || doesMoreThanCompute(d, df, variable.info.parent))
 		|| definedBys.flatMap(e => Array.from(dfg.outgoingEdges(e) ?? NoEdges))
 			.some(([target, e]) => {
 				return DfEdge.includesType(e, InterestingEdgesTargets) || dfg.unknownSideEffects.has(target);
@@ -311,6 +359,12 @@ export const UNUSED_DEFINITION = {
 					return undefined;
 				}
 
+				/* what calls a hook or dispatches to a method decides its parameters, so they are no more the
+				   author's to drop than the name is: `print.foo` keeps the `x` the generic hands it */
+				if(hasContractedSignature(element.node, normalize, config, packageInfo, calledNames)) {
+					return undefined;
+				}
+
 				const ingoingEdges = dataflow.graph.ingoingEdges(dfgVertex.id);
 
 				const interestedIn = VariableDefinitionVertex.is(dfgVertex) ? InterestingEdgesVariable : InterestingEdgesFunction;
@@ -327,7 +381,7 @@ export const UNUSED_DEFINITION = {
 					variableName,
 					involvedId: element.node.info.id,
 					loc:        SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
-					quickFix:   buildQuickFix(element.node, dataflow.graph, normalize)
+					quickFix:   buildQuickFix(element.node, dataflow, normalize)
 				}] satisfies UnusedDefinitionResult[];
 			}).filter(isNotUndefined)),
 			'.meta': metadata

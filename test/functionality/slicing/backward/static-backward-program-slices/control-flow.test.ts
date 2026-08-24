@@ -164,4 +164,65 @@ if(x) {
 }
 print(y)`, ['7@y'], 'y <- TRUE\ny');
 	});
+	describe('Calls that throw', () => {
+		/* a callee that always throws makes what follows it unreachable, but says nothing about what runs before it
+		 * and nothing at all once a handler, a branch, or a loop sits between the call and the enclosing list */
+		const caps: SupportedFlowrCapabilityId[] = ['exceptions-and-errors', 'control-flow', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'unnamed-arguments', 'normal-definition', 'call-normal'];
+		const outputs = { expectedOutput: '[1] 2', expectedSliceOutput: '[1] 2' };
+		const sliced = 'x <- 1\nw <- x + 1\nw';
+		assertSliced(label('always throwing callee caught by try', caps),
+			shell, `f <- function() { stop("b") }
+x <- 1
+w <- x + 1
+r <- try(f(), silent = TRUE)
+w`, ['5@w'], sliced, outputs);
+		assertSliced(label('always throwing callee caught by tryCatch', caps),
+			shell, `f <- function() { stop("b") }
+x <- 1
+w <- x + 1
+r <- tryCatch(f(), error = function(e) 0)
+w`, ['5@w'], sliced, outputs);
+		assertSliced(label('always throwing callee caught within a function', caps),
+			shell, `f <- function() { stop("b") }
+h <- function() {
+  x <- 1
+  w <- x + 1
+  r <- try(f(), silent = TRUE)
+  w
+}
+print(h())`, ['6@w'], sliced, outputs);
+		assertSliced(label('throw written in the try itself', caps),
+			shell, `x <- 1
+w <- x + 1
+r <- try(stop("b"), silent = TRUE)
+w`, ['4@w'], sliced,
+			/* the caught error leaves the `stop` beside the flow, which is unrelated to the slice */
+			{ ...outputs, cfgExcludeProperties: ['entry-reaches-all'] });
+		assertSliced(label('callee throws in one branch', [...caps, 'if']),
+			shell, `f <- function(k) { if(k) stop("b") else 1 }
+x <- 1
+w <- x + 1
+r <- try(f(TRUE), silent = TRUE)
+w`, ['5@w'], sliced, outputs);
+		assertSliced(label('callee throws in every branch', [...caps, 'if']),
+			shell, `f <- function(k) { if(k) stop("a") else stop("b") }
+x <- 1
+w <- x + 1
+r <- try(f(TRUE), silent = TRUE)
+w`, ['5@w'], sliced, outputs);
+		assertSliced(label('always throwing callee one level deeper', caps),
+			shell, `f <- function() { stop("b") }
+g <- function() f()
+x <- 1
+w <- x + 1
+r <- try(g(), silent = TRUE)
+w`, ['6@w'], sliced, outputs);
+		assertSliced(label('always throwing callee in a loop body', [...caps, 'for-loop']),
+			shell, `f <- function() { stop("b") }
+x <- 1
+w <- x + 1
+for(i in integer(0)) f()
+w`, ['5@w'], sliced, outputs);
+	});
+
 }));

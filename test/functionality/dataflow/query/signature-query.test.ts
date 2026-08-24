@@ -39,7 +39,7 @@ async function buildDb(dir: string): Promise<SigDatabase> {
 		fn('print.myclass', { props: FnProp.Exported | FnProp.S3Method, file: 'R/print.R', line: 8 })]
 	});
 	b.addPackage('base', { latest: '4.5.3', core: true });
-	b.addVersion('base', '4.5.3', { cran: false, functions: [fn('paste2', { file: 'R/paste.R', line: 10 })] });
+	b.addVersion('base', '4.5.3', { cran: false, functions: [fn('paste2', { file: 'R/paste.R', line: 10 }), fn('%*%', { file: 'R/matmul.R', line: 3 })] });
 	// a multi-version CRAN package (dated, so every version is enumerable) for version exact/glob/range tests
 	b.addPackage('multi', { latest: '2.1.0', downloads: 3 });
 	b.addVersion('multi', '1.0.0', { cran: true, date: Date.UTC(2020, 0, 1), functions: [fn('m1')] });
@@ -351,6 +351,24 @@ describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 		const { res } = await runQuery([{ type: 'signature', package: 'mypkg', function: 'print*' }]);
 		const names = res.signature.matches?.map(m => m.name).sort();
 		expect(names).toEqual(['print', 'print.myclass']);
+	});
+
+	test(label('a function name that reads like a glob is the function it names', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'base', function: '%*%' }]);
+		expect(res.signature.matches).toBeUndefined();
+		expect(res.signature.function?.name).toBe('%*%');
+		expect(res.signature.function?.line).toBe(3);
+		// `*` is in no package's sources, but flowR models it itself, and that is an exact hit all the same
+		const { res: times } = await runQuery([{ type: 'signature', package: 'base', function: '*' }]);
+		expect(times.signature.matches).toBeUndefined();
+		expect(times.signature.function?.name).toBe('*');
+		expect(times.signature.function?.flowrOnly).toBe(true);
+	});
+
+	test(label('a wildcard name nothing carries verbatim stays a search', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'base', function: 'pas*' }]);
+		expect(res.signature.function).toBeUndefined();
+		expect(res.signature.matches?.map(m => m.name)).toEqual(['paste2']);
 	});
 
 	test(label('a glob package with no function lists matching packages', [], ['other']), async() => {

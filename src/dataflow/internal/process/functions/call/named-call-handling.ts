@@ -1,4 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../processor';
+import { FnSig } from '../../../../environments/built-in-props';
 import { DataflowInformation } from '../../../../info';
 import { processKnownFunctionCall } from './known-call-handling';
 import { appendEnvironment } from '../../../../environments/append';
@@ -9,7 +10,7 @@ import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/no
 import { Identifier, ReferenceType } from '../../../../environments/identifier';
 import { baseRExportOwner } from '../../../../../util/r-base-packages';
 import type { IdentifierDefinition, InGraphIdentifierDefinition } from '../../../../environments/identifier';
-import { statesNonStandardEvaluation, type BuiltInIdentifierDefinition } from '../../../../environments/built-in';
+import type { BuiltInIdentifierDefinition } from '../../../../environments/built-in';
 import { EdgeType } from '../../../../graph/edge';
 import { attachExportVertex, loadNodesForNamespace } from './built-in/built-in-library';
 import type { DataflowGraph } from '../../../../graph/graph';
@@ -40,10 +41,11 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 /**
  * The flowR definition of `pkg::fn` behind an export a signature database attached. Such an export binds the
  * name in a layer below the global environment, which hides the built-in environment underneath, and with it
- * how the call evaluates its arguments: without this lookup `library(dplyr); filter(df, id > 2)` loses the data
- * mask of `dplyr::filter`. Only that is recovered here. What a definition merely states about a call (its
- * properties, its signature) reaches every consumer through the export vertex already, so a definition saying
- * nothing about evaluation is left to the default processor, which keeps the call to one target.
+ * everything the configuration models about the call: how it evaluates its arguments, the class it declares,
+ * the value it folds to. Without this lookup, attaching the package would silently disable all of it, so
+ * `library(dplyr); filter(df, id > 2)` would lose the data mask of `dplyr::filter`, and attaching `R6` would
+ * lose the class `R6Class("P")` declares. The call itself stays a call to the export, it is only
+ * processed by what flowR states about the very same name.
  */
 function builtInBehindExport<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
@@ -54,7 +56,13 @@ function builtInBehindExport<OtherInfo>(
 		return undefined;
 	}
 	const known = data.ctx.env.builtInFunctionOf(definition.name);
-	return statesNonStandardEvaluation(known) ? known : undefined;
+	if(known !== undefined) {
+		return known;
+	}
+	/* an alias binds the export under a name no built-in lookup finds, but attaching it carried what the
+	   configuration states about the exported name along */
+	const attached = definition as unknown as Partial<BuiltInIdentifierDefinition>;
+	return typeof attached.processor === 'function' ? attached as BuiltInIdentifierDefinition : undefined;
 }
 
 /**
@@ -98,16 +106,15 @@ export function processNamedCall<OtherInfo>(
 	/* a set, because an export and the built-in behind it are two ways to the same definition */
 	const toRun = new Set<BuiltInIdentifierDefinition>();
 	for(const resolvedFunction of resolved) {
-		const own = resolvedFunction.type === ReferenceType.BuiltInFunction && typeof resolvedFunction.processor === 'function'
-			? resolvedFunction
-			/* the call goes through the attached export, so it is not built-in only, but flowR's own
-			   definition of that export is what knows how to process it */
-			: builtInBehindExport(data, resolvedFunction);
+		const isBuiltIn = resolvedFunction.type === ReferenceType.BuiltInFunction && typeof resolvedFunction.processor === 'function';
+		/* the call goes through the attached export, so it is not built-in only, but flowR's own
+		   definition of that export is what knows how to process it */
+		const own = isBuiltIn ? resolvedFunction : builtInBehindExport(data, resolvedFunction);
 		if(own === undefined) {
 			defaultProcessor = true;
 			continue;
 		}
-		builtIn ||= own === resolvedFunction && own.config?.libFn !== true;
+		builtIn ||= isBuiltIn && own.config?.libFn !== true;
 		toRun.add(own);
 	}
 	for(const own of toRun) {
@@ -116,7 +123,7 @@ export function processNamedCall<OtherInfo>(
 
 	if(defaultProcessor) {
 		/* if we do not know where we land, we force! reuse `resolved`, data.environment did not change above */
-		const call = processKnownFunctionCall({ name, args, rootId, data, forceArgs: resolved.length > 0 ? undefined : 'all', origin: 'default' });
+		const call = processKnownFunctionCall({ name, args, rootId, data, sig: resolved.length > 0 ? undefined : FnSig.every, origin: 'default' });
 		information = mergeInformation(information, call.information);
 	} else if(information && builtIn) {
 		// mark the function call as built in only

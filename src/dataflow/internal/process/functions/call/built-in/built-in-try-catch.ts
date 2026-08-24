@@ -1,4 +1,6 @@
 import { MatchArgs } from '../../../../../graph/match-args';
+import { FnSig } from '../../../../../environments/built-in-props';
+import { namesAnErrorHandler } from '../../../../../fn/condition-handlers';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
 import { ExitPointType, happensInEveryBranch } from '../../../../../info';
@@ -41,7 +43,7 @@ export function processTryCatch<OtherInfo>(
 		}
 	}
 ): DataflowInformation {
-	const res = processKnownFunctionCall({ name, args: args.map(tryUnpackNoNameArg), rootId, data, origin: BuiltInProcName.Try, forceArgs: 'all' });
+	const res = processKnownFunctionCall({ name, args: args.map(tryUnpackNoNameArg), rootId, data, origin: BuiltInProcName.Try, sig: FnSig.every });
 	if(args.length < 1 || RArgument.isEmpty(args[0])) {
 		dataflowLogger.warn(`TryCatch Handler ${Identifier.toString(name.content)} does not have 1 argument, skipping`);
 		return res.information;
@@ -65,6 +67,10 @@ export function processTryCatch<OtherInfo>(
 	const blockArg = new Set(argMaps.get('block'));
 	const errorArg = new Set(argMaps.get('error'));
 	const finallyArg = new Set(argMaps.get('finally'));
+	/* handlers are matched by the class of the condition, so a call naming none for an error lets it out:
+	   `tryCatch(stop("x"), warning = ...)` throws, and so does one with nothing but a `finally`.
+	   A construct declaring no handler parameter at all, as `try` does, catches whatever arrives. */
+	const catchesError = config.handlers.error === undefined || namesAnErrorHandler(args);
 	// only take those exit points from the block
 	// check whether blockArg has *always* happening exceptions, if so we do not constrain the error handler
 	const blockErrorExitPoints: (ControlDependency | undefined)[] = [];
@@ -81,6 +87,9 @@ export function processTryCatch<OtherInfo>(
 		}
 		if(!blockArg.has(arg.entryPoint)) {
 			// not killing other args
+			return arg.exitPoints;
+		}
+		if(!catchesError) {
 			return arg.exitPoints;
 		}
 		blockErrorExitPoints.push(...arg.exitPoints.filter(ep => ep.type === ExitPointType.Error).flatMap(a => a.cds));
@@ -133,6 +142,15 @@ export function processTryCatch<OtherInfo>(
 	const cleanup = res.processedArguments.find(arg => arg !== undefined && finallyArg.has(arg.entryPoint));
 	const caughtAt = handler !== undefined ? ControlFlow.entryOf(handler)
 		: cleanup === undefined ? rootId : ControlFlow.entryOf(cleanup);
+	/* R runs `finally` whatever leaves the block, so a jump reaches it on its way out just as an error does */
+	const cleanupEntry = cleanup !== undefined ? ControlFlow.entryOf(cleanup) : undefined;
+	if(cleanupEntry !== undefined) {
+		/* and it leaves through the call, so whatever claims the jump links to where the cleanup ends, not to the
+		   jump itself, which would let control out without running it */
+		(info.exitPoints as ExitPoint[]) = info.exitPoints.map(
+			e => JumpExitPoints.includes(e.type) ? { ...e, nodeId: rootId } : e
+		);
+	}
 	for(const arg of res.processedArguments) {
 		if(arg === undefined || errorArg.has(arg.entryPoint) || finallyArg.has(arg.entryPoint)) {
 			continue;
@@ -140,6 +158,8 @@ export function processTryCatch<OtherInfo>(
 		for(const exit of arg.exitPoints) {
 			if(exit.type === ExitPointType.Error) {
 				info.graph.addEdge(exit.nodeId, caughtAt, EdgeType.FlowEdge);
+			} else if(cleanupEntry !== undefined && JumpExitPoints.includes(exit.type)) {
+				info.graph.addEdge(exit.nodeId, cleanupEntry, EdgeType.FlowEdge);
 			}
 		}
 	}
@@ -153,6 +173,9 @@ export function processTryCatch<OtherInfo>(
 		kill:        escapingKills
 	};
 }
+
+/** the exits that leave the construct for a destination of their own, which `finally` still runs before */
+const JumpExitPoints: readonly ExitPointType[] = [ExitPointType.Break, ExitPointType.Next, ExitPointType.Return];
 
 function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: DataflowInformation, data: DataflowProcessorInformation<ParentInformation & OtherInfo>): NodeId | undefined {
 	let functionId: NodeId | undefined = undefined;

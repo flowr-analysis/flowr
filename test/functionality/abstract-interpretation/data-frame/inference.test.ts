@@ -15,8 +15,11 @@ export const MIN_VERSION_HEAD_TAIL_VECTOR = '4.0.0';
 const DataFrameTop = { colnames: [[], Top] as [[], typeof Top], cols: PosIntervalTop, rows: PosIntervalTop } as const;
 
 describe('Data Frame Shape Inference', { concurrent: false }, withShell(shell => {
-	let librariesInstalled = false;
-	const skipLibraries = () => !librariesInstalled;
+	let dplyrInstalled = false;
+	let readrInstalled = false;
+	/* one missing package must not switch off the run-and-compare half of every other case */
+	const skipLibraries = () => !dplyrInstalled;
+	const skipReadr = () => !dplyrInstalled || !readrInstalled;
 
 	const sources = {
 		'a.csv': 'id,name,"score"\n1,"A",95\n2,"B",80\n4,"A",85',
@@ -35,7 +38,8 @@ describe('Data Frame Shape Inference', { concurrent: false }, withShell(shell =>
 	}
 
 	beforeAll(async() => {
-		librariesInstalled = await shell.isPackageInstalled('dplyr') && await shell.isPackageInstalled('readr');
+		dplyrInstalled = await shell.isPackageInstalled('dplyr');
+		readrInstalled = await shell.isPackageInstalled('readr');
 		shell.clearEnvironment();
 	});
 
@@ -1138,7 +1142,7 @@ df2 <- as.data.frame(df1)
 			'"a.csv"', `"${getFileContent('a.csv')}"`,
 			source => `df <- readr::read_csv(${source})`,
 			{ '1@df': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] } },
-			{ skipRun: skipLibraries, files: sourceFiles }
+			{ skipRun: skipReadr, files: sourceFiles }
 		);
 
 		testInferredDataFrameShapeWithSource(
@@ -1146,7 +1150,7 @@ df2 <- as.data.frame(df1)
 			'"b.csv"', `"${getFileContent('b.csv')}"`,
 			source => `df <- readr::read_csv(${source}, quote = "'")`,
 			{ '1@df': { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] } },
-			{ skipRun: skipLibraries, files: sourceFiles }
+			{ skipRun: skipReadr, files: sourceFiles }
 		);
 
 		testInferredDataFrameShapeWithSource(
@@ -1154,7 +1158,7 @@ df2 <- as.data.frame(df1)
 			'"c.csv"', `"${getFileContent('c.csv')}"`,
 			source => `df <- readr::read_csv(${source}, comment = "#")`,
 			{ '1@df': { colnames: [['id,number', '"unique" name'], Top], cols: [3, 3], rows: [5, 5] } },
-			{ skipRun: skipLibraries, files: sourceFiles }
+			{ skipRun: skipReadr, files: sourceFiles }
 		);
 
 		testInferredDataFrameShapeWithSource(
@@ -1162,7 +1166,7 @@ df2 <- as.data.frame(df1)
 			'"c.csv"', `"${getFileContent('c.csv')}"`,
 			source => `df <- readr::read_csv(${source}, col_names = FALSE, skip = 4)`,
 			{ '1@df': { colnames: [[], Top], cols: [3, 3], rows: [5, 5] } },
-			{ skipRun: skipLibraries, files: sourceFiles }
+			{ skipRun: skipReadr, files: sourceFiles }
 		);
 
 		testInferredDataFrameShapeWithSource(
@@ -1170,7 +1174,7 @@ df2 <- as.data.frame(df1)
 			'"d.csv"', `"${getFileContent('d.csv')}"`,
 			source => `df <- readr::read_csv2(${source}, col_names = FALSE)`,
 			{ '1@df': { colnames: [[], Top], cols: [3, 3], rows: [4, 4] } },
-			{ skipRun: skipLibraries, files: sourceFiles }
+			{ skipRun: skipReadr, files: sourceFiles }
 		);
 
 		testInferredDataFrameShapeWithSource(
@@ -1178,7 +1182,7 @@ df2 <- as.data.frame(df1)
 			'"d.csv"', `"${getFileContent('d.csv')}"`,
 			source => `df <- readr::read_delim(${source}, delim = ",", col_names = FALSE)`,
 			{ '1@df': { colnames: [[], Top], cols: [2, 2], rows: [4, 4] } },
-			{ skipRun: skipLibraries, files: sourceFiles }
+			{ skipRun: skipReadr, files: sourceFiles }
 		);
 
 		testInferredDataFrameShapeWithSource(
@@ -1186,7 +1190,7 @@ df2 <- as.data.frame(df1)
 			'"d.csv"', `"${getFileContent('d.csv')}"`,
 			source => `df <- readr::read_delim(${source}, delim = ";", col_names = FALSE)`,
 			{ '1@df': { colnames: [[], Top], cols: [3, 3], rows: [4, 4] } },
-			{ skipRun: skipLibraries, files: sourceFiles }
+			{ skipRun: skipReadr, files: sourceFiles }
 		);
 
 		testInferredDataFrameShapeWithSource(
@@ -1194,7 +1198,7 @@ df2 <- as.data.frame(df1)
 			'"e.csv"', `"${getFileContent('e.csv')}"`,
 			source => `df <- readr::read_table(${source})`,
 			{ '1@df': { colnames: [['first', 'last', 'state', 'phone'], []], cols: [4, 4], rows: [3, 3] } },
-			{ skipRun: skipLibraries, files: sourceFiles }
+			{ skipRun: skipReadr, files: sourceFiles }
 		);
 
 		testInferredDataFrameShapeWithSource(
@@ -1202,7 +1206,7 @@ df2 <- as.data.frame(df1)
 			'"f.csv"', `"${getFileContent('f.csv')}"`,
 			source => `df <- readr::read_tsv(${source})`,
 			{ '1@df': { colnames: [['state', 'phone'], Top], cols: [4, 4], rows: [3, 3] } },
-			{ skipRun: skipLibraries, files: sourceFiles }
+			{ skipRun: skipReadr, files: sourceFiles }
 		);
 	});
 

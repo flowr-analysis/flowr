@@ -167,7 +167,17 @@ export const ControlFlow = {
 			if(previous === undefined) {
 				entry = ControlFlow.entryOf(part);
 			} else {
-				ControlFlow.continuesWith(graph, previous, ControlFlow.entryOf(part));
+				const next = ControlFlow.entryOf(part);
+				ControlFlow.continuesWith(graph, previous, next);
+				/*
+				 * R promises the parts are evaluated in this order, not that one jumping away keeps the next
+				 * from running at all, so a part that cannot complete still leads into the one after it.
+				 */
+				if(!ControlFlow.canComplete(previous)) {
+					for(const exit of previous.exitPoints) {
+						graph.addEdge(exit.nodeId, next, EdgeType.FlowEdge);
+					}
+				}
 			}
 			previous = part;
 		}

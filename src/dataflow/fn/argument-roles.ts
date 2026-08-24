@@ -12,6 +12,7 @@ import { builtInLookup } from '../environments/query-fn-props';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { Identifier } from '../environments/identifier';
 import { RLogical } from '../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { happensInEveryBranch } from '../info';
@@ -227,8 +228,9 @@ function statedRoles(definition: DataflowGraphVertexFunctionDefinition, state: R
 }
 
 /**
- * What the call reads to find the function it calls: everything it reads that it was not handed as an argument
- * and that is not a built-in, so `h()` after `h <- g` names `g` just as `g()` does.
+ * What the call reads to find the function it calls: the name it is written with, so `h()` after `h <- g` names
+ * `g` just as `g()` does. A call reads more than that, as a closure handed to it resolves what it captures onto
+ * the call as well, and a variable the closure merely reads is nothing the call calls.
  */
 function calledNames(id: NodeId, vertex: DataflowGraphVertexFunctionCall, state: RoleState): NodeId[] {
 	const handed = new Set<NodeId>();
@@ -240,8 +242,10 @@ function calledNames(id: NodeId, vertex: DataflowGraphVertexFunctionCall, state:
 			}
 		}
 	}
+	const called = Identifier.getName(vertex.name);
 	return [...state.graph.outgoingEdges(id) ?? NoEdges]
-		.filter(([target, edge]) => DfEdge.includesType(edge, EdgeType.Reads) && !handed.has(target) && !NodeId.isBuiltIn(target))
+		.filter(([target, edge]) => DfEdge.includesType(edge, EdgeType.Reads) && !handed.has(target) && !NodeId.isBuiltIn(target)
+			&& state.graph.idMap?.get(target)?.lexeme === called)
 		.map(([target]) => target);
 }
 

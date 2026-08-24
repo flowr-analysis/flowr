@@ -74,7 +74,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				loc:           [1, 10, 1, 27, '/home/me'],
 				replacement:   `".${path.sep}foo.bar"`
 			}]
-		}], { totalConsidered: 1, totalUnknown: 0 }, {
+		}], { totalConsidered: 2, totalUnknown: 0 }, {
 			useAsFilePath: '/home/me',
 			useAsWd:       '@script',
 			include:       {
@@ -85,7 +85,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		/* If the script contains no function that reads a file path, we expect no issues */
 		assertLinter('none', parser, 'cat("hello")', 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 1 });
 		/* If the script contains no file paths, but we include all strings, we expect no issues either */
-		assertLinter('none with all strings', parser, 'cat("hello")', 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 0 }, {
+		assertLinter('none with all strings', parser, 'cat("hello")', 'absolute-file-paths', [], { totalConsidered: 2, totalUnknown: 0 }, {
 			include: {
 				allStrings: true
 			}
@@ -103,7 +103,7 @@ describe('flowR linter', withTreeSitter(parser => {
 
 				for(const relPath of ['./file.csv', '../file.csv', 'file.csv', 'a\\b\\c.csv']) {
 					/* @ignore-in-wiki */
-					assertLinter(`"${relPath}"`, parser, `x <- "${relPath}"`, 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 0 }, {
+					assertLinter(`"${relPath}"`, parser, `x <- "${relPath}"`, 'absolute-file-paths', [], { totalConsidered: 2, totalUnknown: 0 }, {
 						include: {
 							allStrings: true
 						}
@@ -119,7 +119,7 @@ describe('flowR linter', withTreeSitter(parser => {
 							filePath:  absPath,
 							loc:       [1, 6, 1, absPath.length + 2 + 3 + 2] // +2 for the quotes and the assignment
 						}
-					], { totalConsidered: 1, totalUnknown: 0 }, {
+					], { totalConsidered: 2, totalUnknown: 0 }, {
 						include: {
 							allStrings: true
 						}
@@ -149,9 +149,10 @@ describe('flowR linter', withTreeSitter(parser => {
 					});
 				});
 				describe('unknown paths', () => {
-					for(const relPath of ['x', 'paste0("a", u)', 'runif(42)']) {
+					/* a nested call is a second element the search reaches, a bare name is not */
+					for(const [relPath, considered] of [['x', 1], ['paste0("a", u)', 2], ['runif(42)', 2]] as const) {
 						/* @ignore-in-wiki */
-						assertLinter(`${relPath}`, parser, `${fn}(${relPath})`, 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 1 });
+						assertLinter(`${relPath}`, parser, `${fn}(${relPath})`, 'absolute-file-paths', [], { totalConsidered: considered, totalUnknown: 1 });
 					}
 				});
 				describe('absolute paths', () => {
@@ -262,7 +263,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				describe('all strings', () => {
 					for(const url of remoteUrls) {
 						/* @ignore-in-wiki */
-						assertLinter(url, parser, `x <- "${url}"`, 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 0 }, {
+						assertLinter(url, parser, `x <- "${url}"`, 'absolute-file-paths', [], { totalConsidered: 2, totalUnknown: 0 }, {
 							include: { allStrings: true }
 						});
 					}
@@ -291,7 +292,7 @@ describe('flowR linter', withTreeSitter(parser => {
 								filePath:  url,
 								loc:       [1, 6, 1, url.length + 2 + 3 + 2]
 							}
-						], { totalConsidered: 1, totalUnknown: 0 }, {
+						], { totalConsidered: 2, totalUnknown: 0 }, {
 							include:    { allStrings: true },
 							ignoreUrls: false
 						});

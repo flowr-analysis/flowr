@@ -6,6 +6,14 @@ import type { CallGraph } from '../graph/call-graph';
 import type { DataflowGraphVertexArgument } from '../graph/vertex';
 import { FunctionCallVertex, FunctionDefinitionVertex } from '../graph/vertex';
 import { NoEdges } from '../graph/graph';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { ArgProp } from '../environments/built-in-props';
+import { builtInLookup } from '../environments/query-fn-props';
+import type { BuiltInLookup } from './frame-reflection';
+import { namesAnErrorHandler } from './condition-handlers';
 
 const CatchHandlers: ReadonlySet<string> = new Set<BuiltInProcName>([BuiltInProcName.Try]);
 export interface ExceptionPoint {
@@ -25,12 +33,45 @@ interface ReachedFunctions {
 /** The exceptions each function may raise, keyed by the id of its definition. */
 export type ExceptionsByFunction = Record<NodeId, ExceptionPoint[]>;
 
-/** Whether the vertex catches what is raised below it, which ends the walk. */
-function catches(vertex: DataflowGraphVertexArgument | undefined): boolean {
-	return FunctionCallVertex.is(vertex) && vertex.origin !== 'unnamed' && vertex.origin.some(c => CatchHandlers.has(c));
+/**
+ * Whether the vertex catches an error raised below it, which ends the walk. A construct declaring no condition
+ * handler of its own (`try`) catches whatever arrives; one that matches handlers by condition class
+ * (`tryCatch`) catches only what the names written for it say.
+ */
+function catches(vertex: DataflowGraphVertexArgument | undefined, graph: CallGraph, info: BuiltInLookup): boolean {
+	if(!FunctionCallVertex.is(vertex) || vertex.origin === 'unnamed' || !vertex.origin.some(c => CatchHandlers.has(c))) {
+		return false;
+	}
+	const sig = info(vertex.name)?.sig;
+	if(sig === undefined || !sig.some(([, props]) => (props & ArgProp.Callee) !== 0)) {
+		return true;
+	}
+	const node = graph.idMap?.get(vertex.id);
+	return RFunctionCall.is(node) && namesAnErrorHandler(node.arguments);
+}
+
+/**
+ * Whether the call is written in the block of a construct catching what it raises, which keeps an error its
+ * callee raises from reaching the function around it. Only the block is guarded, as a handler runs after the
+ * error was raised, and the walk ends at the definition the call is written in, as a function defined in the
+ * block is not run there.
+ */
+function guarded(id: NodeId, graph: CallGraph, info: BuiltInLookup): boolean {
+	const idMap = graph.idMap;
+	let node = idMap === undefined ? undefined : idMap.get(id);
+	while(node !== undefined && !RFunctionDefinition.is(node)) {
+		const parent = RNode.directParent(node, idMap as NonNullable<typeof idMap>);
+		if(RArgument.isUnnamed(node) && RFunctionCall.is(parent) && catches(graph.getVertex(parent.info.id), graph, info)) {
+			return true;
+		}
+		node = parent;
+	}
+	return false;
 }
 
 function reach(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction): ReachedFunctions {
+	const info = builtInLookup();
+	const isGuarded = new Map<NodeId, boolean>();
 	const calls = new Map<NodeId, readonly NodeId[]>();
 	const own = new Map<NodeId, readonly ExceptionPoint[]>();
 	const defs = new Set<NodeId>();
@@ -55,11 +96,16 @@ function reach(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction)
 		if(FunctionDefinitionVertex.is(vertex)) {
 			defs.add(current);
 			own.set(current, vertex.exitPoints.filter(e => e.type === ExitPointType.Error).map(e => ({ id: e.nodeId, cds: e.cds })));
-		} else if(catches(vertex)) {
-			calls.set(current, []);
-			continue;
 		}
-		const next = [...(graph.outgoingEdges(current) ?? NoEdges).keys()];
+		/* a guarded call is only ever reached through the construct guarding it, which ends the walk of its own */
+		const next = [...(graph.outgoingEdges(current) ?? NoEdges).keys()].filter(n => {
+			let known = isGuarded.get(n);
+			if(known === undefined) {
+				known = guarded(n, graph, info);
+				isGuarded.set(n, known);
+			}
+			return !known;
+		});
 		calls.set(current, next);
 		for(const n of next) {
 			if(!calls.has(n)) {
@@ -76,7 +122,7 @@ function reach(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction)
  * Please be aware, that these are restricted to functions known by flowR.
  * With `knownThrower` you can provide additional functions that are known to throw exceptions; the result of
  * an earlier call serves as one, as every definition it passes gets an answer counting its callees.
- * A `try` and its relatives end the search.
+ * What a `try` and its relatives guard ends the search, their handlers do not.
  * @returns A record mapping all `NodeId`s of functions that may throw exceptions to their exception points.
  */
 export function calculateExceptionsOfFunction(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction = {}): ExceptionsByFunction {

@@ -8,6 +8,7 @@ import {
 } from '../../../../../info';
 import {
 	getAllFunctionCallTargets,
+	getAllLinkedFunctionDefinitions,
 	linkCircularRedefinitionsWithinALoop,
 	linkInputs,
 	produceNameSharedIdMap
@@ -16,7 +17,7 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import { guard } from '../../../../../../util/assert';
 import { dataflowLogger } from '../../../../../logger';
-import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -33,7 +34,7 @@ import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { FunctionCallVertex, VertexType, FunctionDefinitionVertex, UseVertex, VariableDefinitionVertex } from '../../../../../graph/vertex';
 import { createFreshEnvState } from './built-in-new-env';
 import { cleanEnvOf, popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
-import type { REnvironmentInformation } from '../../../../../environments/environment';
+import type { Environment, IEnvironment, REnvironmentInformation } from '../../../../../environments/environment';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
 import type { ReadOnlyFlowrAnalyzerContext, FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
@@ -46,6 +47,8 @@ import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { queryFnProps } from '../../../../../environments/query-fn-props';
+import { CallProp } from '../../../../../environments/built-in-props';
 
 /**
  * Process a function definition, i.e., `function(a, b) { ... }`
@@ -217,7 +220,7 @@ export function processFunctionDefinition<OtherInfo>(
 		} else {
 			return EmptyArgument;
 		}
-	}));
+	}), data.completeAst.idMap);
 	updateNestedFunctionClosures(subgraph, outEnvironment, name.info.id);
 	const exitPoints = body.exitPoints;
 
@@ -312,17 +315,32 @@ export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInforma
 	return overwriteEnvironment(baseEnvironment, callerEnvironment);
 }
 
-function updateDispatches(graph: DataflowGraph, myArgs: FunctionArgument[]): void {
+/**
+ * Whether the dispatch takes its object from the first formal, which is what R does unless the call names
+ * the object itself (`UseMethod("f", y)`), in which case that argument carries the read already.
+ */
+function dispatchesOnFirstParameter<Info>(id: NodeId, idMap: AstIdMap<Info & ParentInformation>): boolean {
+	let node = idMap.get(id);
+	while(node !== undefined && !RFunctionCall.is(node)) {
+		node = node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
+	}
+	return node === undefined || (node.arguments?.length ?? 0) <= 1;
+}
+
+function updateDispatches<Info>(graph: DataflowGraph, myArgs: FunctionArgument[], idMap: AstIdMap<Info & ParentInformation>): void {
 	for(const [, info] of graph.vertices(false)) {
 		if(!FunctionCallVertex.is(info) || (!info.origin.includes(BuiltInProcName.S3Dispatch) && !info.origin.includes(BuiltInProcName.S7Dispatch))) {
 			continue;
 		}
 		if(info.args.length === 0) {
 			info.args = myArgs;
+			/* dispatch evaluates the object to know its class, whatever the method it picks does with it */
+			let dispatchesOn = dispatchesOnFirstParameter(info.id, idMap);
 			for(const arg of myArgs) {
 				// add argument edges
 				if(arg !== EmptyArgument) {
-					graph.addEdge(info.id, arg.nodeId, EdgeType.Argument);
+					graph.addEdge(info.id, arg.nodeId, dispatchesOn ? EdgeType.Argument | EdgeType.Reads : EdgeType.Argument);
+					dispatchesOn = false;
 				}
 			}
 		}
@@ -416,6 +434,63 @@ function linkSuperAssignmentsToOuterDefinitions(
 }
 
 
+/** What one walk over the environments the analyzed code populates yields, see {@link namesShadowingBuiltIns}. */
+interface NamesOfInterest {
+	/** the names the code binds itself, so a call within a body may land on one of them */
+	readonly shadowing: ReadonlySet<string>
+	/** the generic halves of every `<generic>.<class>` the code binds, so a dispatch on one may reach a method */
+	readonly generics:  ReadonlySet<string>
+}
+
+/**
+ * The names the analyzed code binds that a built-in also goes by. A call within a function body that resolved to
+ * nothing but a built-in when flowR walked the definition may still land on one of them, as a body looks its
+ * callee up when it runs, not when it is written: `c <- function(n) if(n > 0) c(n - 1) else 0` recurses.
+ */
+function namesShadowingBuiltIns(environment: REnvironmentInformation): NamesOfInterest {
+	const shadowing = new Set<string>();
+	const generics = new Set<string>();
+	for(let env: IEnvironment | undefined = environment.current; env !== undefined && !env.builtInEnv; env = env.parent) {
+		for(const [identifier, definitions] of env.memory) {
+			if(!definitions.some(d => !NodeId.isBuiltIn(d.nodeId))) {
+				continue;
+			}
+			const name = Identifier.getName(identifier);
+			shadowing.add(name);
+			/* `as.character.zz` may be a method of `as` or of `as.character`, so every prefix is a candidate */
+			for(let dot = name.indexOf('.', 1); dot > 0; dot = name.indexOf('.', dot + 1)) {
+				generics.add(name.slice(0, dot));
+			}
+		}
+	}
+	return { shadowing, generics };
+}
+
+/** Whether `name` resolves to a built-in that dispatches, so the methods the code writes for it are reachable. */
+function dispatchesOnClass(name: Identifier, environment: REnvironmentInformation): boolean {
+	return ((queryFnProps(name, { environment })?.props ?? 0) & CallProp.Generic) !== 0;
+}
+
+/**
+ * Links `call` to the S3 methods the analyzed code binds as `<name>.<class>`, i.e. the ones a dispatch on
+ * `name` may pick, and returns their definition vertices. Which method runs depends on the class of the
+ * object, which flowR does not track, so all of them count - the same over-approximation the
+ * {@link BuiltInProcName.S3Dispatch} path makes.
+ */
+function linkOwnS3Methods(call: NodeId, name: Identifier, graph: DataflowGraph, environment: REnvironmentInformation): readonly NodeId[] {
+	const defs = Resolve.byNameAndType(name, environment, ReferenceType.S3MethodPrefix)
+		?.filter(d => !NodeId.isBuiltIn(d.nodeId));
+	if(defs === undefined || defs.length === 0) {
+		return [];
+	}
+	for(const def of defs) {
+		/* the dispatch looks the method up by name, just like a call written out would */
+		graph.addEdge(call, def.nodeId, EdgeType.Reads);
+	}
+	const [definitions] = getAllLinkedFunctionDefinitions(new Set(defs.map(d => d.nodeId)), graph);
+	return definitions.values().map(d => d.id).toArray();
+}
+
 /**
  * Update the closure links of all nested function calls, this is probably to be done once at the end of the script
  * @param graph          - dataflow graph to collect the function calls from and to update the closure links for
@@ -428,10 +503,17 @@ export function updateNestedFunctionCalls(
 	outEnvironment: REnvironmentInformation,
 	ctx: FlowrAnalyzerContext
 ) {
+	const { shadowing, generics } = namesShadowingBuiltIns(outEnvironment);
 	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
-	for(const [id, { onlyBuiltin, environment, name, args, origin }] of graph.verticesOfType(VertexType.FunctionCall)) {
-		if(onlyBuiltin || name === undefined) {
+	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
+		const { onlyBuiltin, environment, name, args, origin } = vertex;
+		if(name === undefined) {
+			continue;
+		}
+		/* the code writes a `<name>.<class>`, so a built-in `name` that dispatches may reach it */
+		const mayDispatch = generics.has(Identifier.getName(name));
+		if(onlyBuiltin && !mayDispatch && !(!graph.isRoot(id) && shadowing.has(Identifier.getName(name)))) {
 			continue;
 		}
 
@@ -439,7 +521,13 @@ export function updateNestedFunctionCalls(
 
 		const targets = new Set(getAllFunctionCallTargets(id, graph, effectiveEnvironment));
 		const collectedNextMethods: Set<NodeId> = new Set();
-		const treatAsS3 = origin.includes(BuiltInProcName.S3Dispatch);
+		let treatAsS3 = origin.includes(BuiltInProcName.S3Dispatch);
+		if(mayDispatch && !treatAsS3 && dispatchesOnClass(name, effectiveEnvironment)) {
+			for(const method of linkOwnS3Methods(id, name, graph, effectiveEnvironment)) {
+				targets.add(method);
+			}
+			treatAsS3 = true;
+		}
 		for(const target of targets) {
 			if(NodeId.isBuiltIn(target)) {
 				// a package export resolved lazily here (nested), so materialize it and link to its loader
@@ -460,6 +548,8 @@ export function updateNestedFunctionCalls(
 				continue;
 			}
 			graph.addEdge(id, target, EdgeType.Calls);
+			/* the call reaches user code, so everything downstream has to stop treating it as built-in only */
+			vertex.onlyBuiltin = false;
 			for(const exitPoint of targetVertex.exitPoints) {
 				graph.addEdge(id, exitPoint.nodeId, EdgeType.Returns);
 			}
@@ -525,11 +615,19 @@ function parseSysFrameOffset(node: RNode<ParentInformation> | undefined): number
 }
 
 function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>, rootId: NodeId) {
+	const level = data.environment.level;
+	/* the enclosing frames are emptied, but a `<<-` binds lexically, so each stand-in keeps what its original held */
+	const enclosing: Environment[] = [];
+	for(let frame = data.environment.current; enclosing.length < level; frame = frame.parent) {
+		enclosing.push(frame);
+	}
 	let env = cleanEnvOf(data.environment);
-	for(let i = 0; i < data.environment.level + 1 /* add another env */; i++) {
+	for(let i = 0; i < level + 1 /* add another env */; i++) {
 		env = pushLocalEnvironment(env);
-		if(i === data.environment.level) {
+		if(i === level) {
 			env.current.setClosureNodeId(rootId);
+		} else {
+			env.current.standsInFor(enclosing[level - 1 - i].memory);
 		}
 	}
 	return { ...data, environment: env };

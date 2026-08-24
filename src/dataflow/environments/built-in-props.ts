@@ -204,6 +204,12 @@ export type CallProps = number;
 export type FnSig = [name: string, props: ArgProps][];
 
 /**
+ * The signature of a call that evaluates every argument and states nothing else, which is all that is known
+ * about a callee flowR cannot resolve.
+ */
+const ForcingEvery: FnSig = [['...', ArgProp.Forced]];
+
+/**
  * Utility functions for {@link FnSig|function signatures}.
  */
 export const FnSig = {
@@ -213,7 +219,13 @@ export const FnSig = {
 	/** The roles of the argument at a position; see {@link argProp}. */
 	propAt:  argProp,
 	/** The positions carrying any of the given roles; see {@link argsWith}. */
-	posWith: argsWith
+	posWith: argsWith,
+	/** Which of the first `count` arguments a call evaluates; see {@link forcedArgs}. */
+	forced:  forcedArgs,
+	/** A signature saying only that the call evaluates every argument; see {@link ForcingEvery}. */
+	every:   ForcingEvery,
+	/** A signature saying only that the call evaluates one argument; see {@link forcingOnly}. */
+	only:    forcingOnly
 } as const;
 
 /** the {@link ArgProp} bit to its name; integer keys iterate in ascending bit order */
@@ -264,15 +276,48 @@ export const ArgProps = {
 	mask:  (names: readonly string[]): ArgProps => maskOfNames(ArgProp, names)
 } as const;
 
+/**
+ * The word a reader wants for every {@link CallProp}. Keyed by the member rather than listed, so a bit added to
+ * the enum without a word here does not compile instead of silently never showing up in what a reader is told.
+ */
+const CallPropWord: Readonly<Record<keyof typeof CallProp, string>> = {
+	Pure:        'pure',
+	MayPure:     'pure but runs what it is handed',
+	Throws:      'can throw',
+	Invisible:   'invisible',
+	Generic:     'generic',
+	Method:      's3 method',
+	Scope:       'changes scope',
+	NonDet:      'non deterministic',
+	Random:      'random',
+	Ambient:     'ambient state',
+	File:        'file system',
+	TempFile:    'temporary path',
+	Network:     'network',
+	Process:     'runs a process',
+	Ffi:         'foreign function interface',
+	Lang:        'language object',
+	User:        'asks the user',
+	Graphics:    'graphics',
+	Database:    'database',
+	Reads:       'reads',
+	Writes:      'writes',
+	Prints:      'prints',
+	Narrows:     'narrows',
+	Configures:  'configures',
+	Closes:      'closes',
+	Glob:        'glob',
+	CommandLine: 'command line',
+	Opens:       'opens',
+	Statistics:  'statistical test',
+	Deprecated:  'deprecated',
+	Strict:      'strict',
+	Concurrent:  'concurrent'
+};
+
 /** the {@link CallProp} bits as the words a reader wants, in the order they are declared */
-const CallPropNames: readonly (readonly [CallProp, string])[] = [
-	[CallProp.Pure, 'pure'], [CallProp.Throws, 'can throw'], [CallProp.Invisible, 'invisible'],
-	[CallProp.Generic, 'generic'], [CallProp.Method, 's3 method'], [CallProp.Scope, 'changes scope'],
-	[CallProp.NonDet, 'non deterministic'], [CallProp.Random, 'random'], [CallProp.Ambient, 'ambient state'],
-	[CallProp.File, 'file system'], [CallProp.Reads, 'reads'], [CallProp.Writes, 'writes'],
-	[CallProp.Network, 'network'], [CallProp.Prints, 'prints'], [CallProp.Strict, 'strict'],
-	[CallProp.Concurrent, 'concurrent']
-];
+const CallPropNames: readonly (readonly [CallProp, string])[] =
+	Object.entries(CallPropWord).map(([member, word]) => [CallProp[member as keyof typeof CallProp], word] as const);
 
 /** What a call states about itself, as words rather than as a bit mask, for anything showing it to a reader. */
 function callPropWords(this: void, props: CallProps | undefined): string[] {
@@ -350,6 +395,29 @@ function sigLayout(this: void, sig: FnSig): SigLayout {
 /** The {@link ArgProp} bits of the argument at `index`, with `...` covering every position from where it appears. */
 function argProp(this: void, { props, rest }: SigLayout, index: number): ArgProps {
 	return (rest >= 0 && index >= rest ? props[rest] : props[index]) ?? 0;
+}
+
+/**
+ * The signature of a call that evaluates the argument at `index` and states nothing else, as the apply family
+ * does for the function it is handed. The positions before it are named for their place, having nothing to say.
+ */
+function forcingOnly(this: void, index: number, name: string): FnSig {
+	return [...Array.from({ length: index }, (_, i) => [`..${i + 1}`, 0] as [string, ArgProps]), [name, ArgProp.Forced]];
+}
+
+/**
+ * Which of the first `count` arguments the call evaluates, `undefined` when the signature states it of none.
+ * A signature is the one place that says so, which is why nothing else may state it alongside.
+ */
+function forcedArgs(this: void, sig: FnSig | undefined, count: number): readonly boolean[] | undefined {
+	if(sig === undefined) {
+		return undefined;
+	}
+	const layout = sigLayout(sig);
+	if((layout.any & ArgProp.Forced) === 0) {
+		return undefined;
+	}
+	return Array.from({ length: count }, (_, i) => (argProp(layout, i) & ArgProp.Forced) !== 0);
 }
 
 /** The positions of the first `count` arguments that carry any of `prop`. */

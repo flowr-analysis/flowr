@@ -34,6 +34,17 @@ f()
 print(x + y)
 		`, ['2@x'], '{ x <<- 2 }\nf()\nprint(x + y)');
 	});
+	describe('Function definitions', () => {
+		/* the slice keeps the binding of `f`, so the body must not be reconstructed without its header */
+		assertSlicedF(label('definition reached by its own name', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'formals-named', 'implicit-return', ...OperatorDatabase['+'].capabilities, 'newlines', 'call-normal', 'unnamed-arguments']),
+			shell, 'f <- function(a) a + 1\ny <- f(2)\nz <- 7\ny', ['1@f'], 'f <- function(a) a + 1\ny <- f(2)\ny',
+			{ expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' }
+		);
+		assertSlicedF(label('unrelated definition stays out', ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'formals-named', 'implicit-return', 'newlines', 'function-calls']),
+			shell, 'f <- function(a) a + 1\nx <- 3\nprint(x)', ['2@x'], 'x <- 3\nprint(x)',
+			{ expectedOutput: '[1] 3', expectedSliceOutput: '[1] 3' }
+		);
+	});
 	describe('Constant conditionals', () => {
 		assertSlicedF(label('if(TRUE)', ['name-normal', 'logical', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines', 'if']),
 			shell, 'x <- 1\nif(TRUE) { x <- 3 }\nx', ['1@x'], 'x <- 1');

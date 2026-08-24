@@ -57,17 +57,72 @@ function inferFunctions(this: void, definitions: readonly NodeId[], graph: Dataf
 	};
 }
 
-/** The {@link CallProp} mask of each definition, `Strict` included. */
+/** The {@link CallProp} mask of each definition, `Strict` included and what its callees carry mixed in. */
 function callProps(definitions: readonly NodeId[], graph: DataflowGraph, strict: Record<NodeId, FunctionStrictness>, ctx: ReadOnlyFlowrAnalyzerContext | undefined): Record<NodeId, CallProps> {
 	const state = makeState(graph, ctx);
+	const props = new Map<NodeId, CallProps>();
+	const callees = new Map<NodeId, readonly NodeId[]>();
+	/* a callee is asked about as well, whether or not it is one of the definitions to answer for */
+	const toVisit = [...definitions];
+	while(toVisit.length > 0) {
+		const id = toVisit.pop() as NodeId;
+		if(props.has(id)) {
+			continue;
+		}
+		const own = propsOf(id, state);
+		props.set(id, own.props | (strict[id]?.strict === Ternary.Always ? CallProp.Strict : 0));
+		callees.set(id, own.callees);
+		toVisit.push(...own.callees);
+	}
+	propagateOverCalls(props, callees);
 	const all: Record<NodeId, CallProps> = {};
 	for(const id of definitions) {
-		const props = propsOf(id, state) | (strict[id]?.strict === Ternary.Always ? CallProp.Strict : 0);
-		if(props !== 0) {
-			all[id] = props;
+		const found = props.get(id) ?? 0;
+		if(found !== 0) {
+			all[id] = found;
 		}
 	}
 	return all;
+}
+
+/**
+ * Hands the {@link PropagatedProps} of every definition on to the definitions calling it until nothing changes,
+ * so a chain of calls carries them however long it is. Only what a definition gains is followed up on, which is
+ * what lets a recursive and a mutually recursive definition come to an end.
+ */
+function propagateOverCalls(props: Map<NodeId, CallProps>, callees: ReadonlyMap<NodeId, readonly NodeId[]>): void {
+	const callers = new Map<NodeId, NodeId[]>();
+	for(const [id, called] of callees) {
+		for(const callee of called) {
+			const known = callers.get(callee);
+			if(known === undefined) {
+				callers.set(callee, [id]);
+			} else {
+				known.push(id);
+			}
+		}
+	}
+	const pending = [...callees.keys()];
+	const queued = new Set<NodeId>(pending);
+	while(pending.length > 0) {
+		const id = pending.pop() as NodeId;
+		queued.delete(id);
+		const before = props.get(id) ?? 0;
+		let grown = before;
+		for(const callee of callees.get(id) ?? []) {
+			grown |= (props.get(callee) ?? 0) & PropagatedProps;
+		}
+		if(grown === before) {
+			continue;
+		}
+		props.set(id, grown);
+		for(const caller of callers.get(id) ?? []) {
+			if(!queued.has(caller)) {
+				queued.add(caller);
+				pending.push(caller);
+			}
+		}
+	}
 }
 
 /** The {@link ArgProp} mask of each formal, `Forced`/`Lazy` included. */
@@ -108,12 +163,22 @@ function makeState(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | und
 	return { graph, info: builtInLookup(ctx) };
 }
 
-function propsOf(id: NodeId, state: PropsState): CallProps {
+/** What one definition states about itself, together with the definitions its body calls. */
+interface OwnProps {
+	readonly props:   CallProps
+	/** the definitions of the program its body calls, whose props it carries as well */
+	readonly callees: readonly NodeId[]
+}
+
+const NoCallees: readonly NodeId[] = [];
+
+function propsOf(id: NodeId, state: PropsState): OwnProps {
 	const definition = state.graph.getVertex(id);
 	if(!FunctionDefinitionVertex.is(definition)) {
-		return 0;
+		return { props: 0, callees: NoCallees };
 	}
 	let props = 0;
+	const callees: NodeId[] = [];
 	for(const node of definition.subflow.graph) {
 		const vertex = state.graph.getVertex(node);
 		if(!FunctionCallVertex.is(vertex)) {
@@ -124,12 +189,33 @@ function propsOf(id: NodeId, state: PropsState): CallProps {
 		if(DispatchCallees.has(Identifier.getName(vertex.name))) {
 			props |= CallProp.Generic;
 		}
+		callees.push(...calledDefinitions(node, state));
 	}
-	return props | (returnsInvisibly(definition, state) ? CallProp.Invisible : 0);
+	return { props: props | (returnsInvisibly(definition, state) ? CallProp.Invisible : 0), callees };
+}
+
+/** The definitions of the program the call resolved to, which are the ones stating what the call does. */
+function calledDefinitions(node: NodeId, state: PropsState): NodeId[] {
+	const called: NodeId[] = [];
+	for(const [target, edge] of state.graph.outgoingEdges(node) ?? NoEdges) {
+		if(DfEdge.includesType(edge, EdgeType.Calls) && FunctionDefinitionVertex.is(state.graph.getVertex(target))) {
+			called.push(target);
+		}
+	}
+	return called;
 }
 
 /** the assignments binding in the frame they run in, which is a scope of the function's own */
 const FrameLocalBinders: ReadonlySet<string> = new Set(['<-', '=', '->', ':=', 'assign']);
+
+/**
+ * Whether the name is that of a replacement function binding in the frame it runs in: `names(x) <- v`
+ * stands for an assignment of `names<-` to `x` and hence rebinds `x` right there. Its super-assigning
+ * twin, written `names<<-`, does not and is left out.
+ */
+function isFrameLocalReplacement(name: string): boolean {
+	return name.endsWith('<-') && !name.endsWith('<<-');
+}
 
 /**
  * Whether the call binds a name beyond the frame it runs in, which is what makes it a {@link CallProp.Scope}
@@ -137,7 +223,8 @@ const FrameLocalBinders: ReadonlySet<string> = new Set(['<-', '=', '->', ':=', '
  * `library(x)` and an `assign` handed an environment ({@link ArgProp.Written}) do.
  */
 function bindsOutside(vertex: DataflowGraphVertexFunctionCall, info: BuiltInFnInfo | undefined): boolean {
-	if(!FrameLocalBinders.has(Identifier.getName(vertex.name))) {
+	const name = Identifier.getName(vertex.name);
+	if(!FrameLocalBinders.has(name) && !isFrameLocalReplacement(name)) {
 		return true;
 	}
 	const layout = info?.sig === undefined ? undefined : Sig.layout(info.sig);

@@ -107,6 +107,19 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 	testProps('a function forcing every parameter is strict', 'f <- function(x) x + 1', [CallProp.Strict]);
 	testProps('one leaving a parameter alone is not', 'f <- function(x, y) x', []);
 
+	/* counterexamples: a replacement call rebinds its target in the frame it runs in, as a plain assignment does */
+	testProps('a part assigned on a local changes no scope', 'f1 <- function(x) { x$a <- 1; x }', [CallProp.Strict]);
+	testProps('nor does setting names', 'f <- function(x) { names(x) <- "n"; x }', [CallProp.Strict]);
+	testProps('nor any of the other replacements', 'f <- function(x) { x[1] <- 1; attr(x, "k") <- 1; class(x) <- "a"; levels(x) <- 1; x }', [CallProp.Strict]);
+	testProps('a super-assigning replacement does', 'f <- function(x) { names(x) <<- "n"; x }', [CallProp.Scope | CallProp.Strict]);
+	testProps('so does a super-assignment of the formal', 'f <- function(x) { x <<- 5; 1 }', [CallProp.Scope]);
+	testProps('and attaching a package', 'f <- function(x) { library(stats); x }', [CallProp.Scope | CallProp.Strict]);
+
+	/* the formals of the same bodies, so a fix to one half cannot quietly move the other */
+	testRoles('a default keeps the other formals apart', 'f <- function(x, y = 2) x', { x: ArgProp.Forced | ArgProp.Alias, y: ArgProp.Lazy });
+	testRoles('a deparsed formal is read as written', 'f1 <- function(x) deparse(substitute(x))', { x: ArgProp.Nse | ArgProp.Lazy });
+	testRoles('a formal only asked to be there', 'f2 <- function(x) if (missing(x)) 1 else 2', { x: ArgProp.Presence | ArgProp.Lazy });
+
 	test(label('the filter narrows the definitions', ['name-normal'], ['other']), async() => {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
 		analyzer.addRequest('f <- function(x) x\ng <- function(y) 1');
@@ -139,6 +152,50 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 		const result = await analyzer.query([{ type: 'inspect-fn-props', props: ['Alias', 'Invisible'] }]);
 		assert.deepStrictEqual(Object.values(result['inspect-fn-props'].roles).flatMap(r => Object.values(r)), [ArgProp.Alias]);
 		assert.deepStrictEqual(Object.values(result['inspect-fn-props'].props), [CallProp.Invisible]);
+	});
+
+	/** What the query states about each definition of the program, keyed by the definition as it is written. */
+	function testEachProps(name: string, code: string, expected: Readonly<Record<string, CallProps>>) {
+		test(label(name, ['name-normal'], ['other']), async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+			analyzer.addRequest(code);
+			const result = await analyzer.query([{ type: 'inspect-fn-props' }]);
+			const idMap = (await analyzer.normalize()).idMap;
+			const found: Record<string, CallProps> = {};
+			for(const [id, props] of Object.entries(result['inspect-fn-props'].props)) {
+				found[idMap.get(Number(id))?.info.fullLexeme ?? id] = props;
+			}
+			/* the words make a mismatch readable, the numbers are what is compared */
+			const words = (of: Record<string, CallProps>) => Object.fromEntries(Object.entries(of).map(([n, p]) => [n, CallProps.words(p).join('+')]));
+			assert.deepStrictEqual(words(found), words(expected));
+			assert.deepStrictEqual(found, { ...expected });
+		});
+	}
+
+	/* what a function calls it does too, however many calls of the program lie in between */
+	testEachProps('throwing carries over a call', 'g <- function(y) stop(y)\nh <- function(z) g(z)', {
+		'function(y) stop(y)': CallProp.Throws | CallProp.Strict,
+		'function(z) g(z)':    CallProp.Throws | CallProp.Strict
+	});
+	testEachProps('and over a chain of them', 'g <- function(y) stop(y)\nh <- function(z) g(z)\ni <- function(z) h(z)', {
+		'function(y) stop(y)': CallProp.Throws | CallProp.Strict,
+		'function(z) g(z)':    CallProp.Throws | CallProp.Strict,
+		'function(z) h(z)':    CallProp.Throws | CallProp.Strict
+	});
+	testEachProps('drawing at random does as well', 'k <- function() runif(1)\nm <- function() k()', {
+		'function() runif(1)': CallProp.Random | CallProp.Strict,
+		'function() k()':      CallProp.Random | CallProp.Strict
+	});
+	testEachProps('so does writing a file', 'w <- function(p) write.csv(p, "a.csv")\nv <- function(p) w(p)', {
+		'function(p) write.csv(p, "a.csv")': CallProp.Invisible | CallProp.File | CallProp.Writes | CallProp.Strict,
+		'function(p) w(p)':                  CallProp.Invisible | CallProp.File | CallProp.Writes | CallProp.Strict
+	});
+	testEachProps('a recursive definition states what it reaches', 'rec <- function(n) if(n > 0) rec(n - 1) else stop("d")', {
+		'function(n) if(n > 0) rec(n - 1) else stop("d")': CallProp.Throws | CallProp.Strict
+	});
+	testEachProps('a call to a definition doing nothing of note adds nothing', 'pl <- function(x) x + 1\npl2 <- function(x) pl(x)', {
+		'function(x) x + 1': CallProp.Strict,
+		'function(x) pl(x)': CallProp.Strict
 	});
 
 	/* a query that could only answer with nothing is refused rather than run */

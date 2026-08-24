@@ -35,7 +35,6 @@ import { type BuiltIn, NodeId } from '../../r-bridge/lang-4.x/ast/model/processi
 import { EdgeType } from '../graph/edge';
 import { processLibrary } from '../internal/process/functions/call/built-in/built-in-library';
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source';
-import type { ForceArguments } from '../internal/process/functions/call/common';
 import { processApply } from '../internal/process/functions/call/built-in/built-in-apply';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { processList } from '../internal/process/functions/call/built-in/built-in-list';
@@ -73,6 +72,7 @@ import { processPurrrFormula } from '../internal/process/functions/call/built-in
 import { processNewEnv } from '../internal/process/functions/call/built-in/built-in-new-env';
 import { processClassGenerator } from '../internal/process/functions/call/built-in/built-in-class-generator';
 import { processClassRelation } from '../internal/process/functions/call/built-in/built-in-class-relation';
+import { processS4Use } from '../internal/process/functions/call/built-in/built-in-s-four';
 import { processStackEnv } from '../internal/process/functions/call/built-in/built-in-stack-env';
 import { processAttach } from '../internal/process/functions/call/built-in/built-in-attach';
 import { processWithEnv } from '../internal/process/functions/call/built-in/built-in-with';
@@ -124,7 +124,7 @@ export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierRefere
 	value:     T
 }
 
-export interface DefaultBuiltInProcessorConfiguration extends ForceArguments, BuiltInFnInfo {
+export interface DefaultBuiltInProcessorConfiguration extends BuiltInFnInfo {
 	readonly cfg?:                   ExitPointType,
 	/** see {@link ProcessKnownFunctionCallInput#alternativeArgsFrom} */
 	readonly alternativeArgsFrom?:   number,
@@ -190,18 +190,17 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, alternativeArgsFrom, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
+	{ useAsProcessor = BuiltInProcName.Default, readAllArguments, cfg, alternativeArgsFrom, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	/* a signature states per argument what the individual options state for all of them at once */
 	const layout = sig !== undefined ? FnSig.layout(sig) : undefined;
 	if(layout !== undefined) {
-		forceArgs ??= (layout.any & ArgProp.Forced) !== 0 ? args.map((_, i) => (FnSig.propAt(layout, i) & ArgProp.Forced) !== 0) : undefined;
 		nse ??= (layout.any & ArgProp.Nse) !== 0 ? FnSig.posWith(layout, args.length, ArgProp.Nse) : undefined;
 	}
 	const nsePositions = nsePositionsOf(nse, args.length);
 	let lastEnv = data.environment;
 	const { information: res, processedArguments } = processKnownFunctionCall({
-		name, args, rootId, data, forceArgs, alternativeArgsFrom,
+		name, args, rootId, data, sig, alternativeArgsFrom,
 		origin:      useAsProcessor,
 		nonFunction: dataArgumentSymbols(args, sig),
 		/* an unevaluated argument must not read the current frame, so it is analyzed in a clean env like `quote` */
@@ -333,10 +332,10 @@ function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ useAsProcessor = BuiltInProcName.Default, forceArgs, markArgsAsNSE: nse, markArgsAsMasked: masked, sig }: Pick<DefaultBuiltInProcessorConfiguration, 'useAsProcessor' | 'forceArgs' | 'markArgsAsNSE' | 'markArgsAsMasked' | 'sig'>
+	{ useAsProcessor = BuiltInProcName.Default, markArgsAsNSE: nse, markArgsAsMasked: masked, sig }: Pick<DefaultBuiltInProcessorConfiguration, 'useAsProcessor' | 'markArgsAsNSE' | 'markArgsAsMasked' | 'sig'>
 ): DataflowInformation {
 	const { information, processedArguments } = processKnownFunctionCall({
-		name, args, rootId, data, forceArgs, origin: useAsProcessor, nonFunction: dataArgumentSymbols(args, sig) });
+		name, args, rootId, data, sig, origin: useAsProcessor, nonFunction: dataArgumentSymbols(args, sig) });
 	const g = information.graph;
 	for(const arg of processedArguments) {
 		if(arg) {
@@ -388,6 +387,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.NewEnv]:             processNewEnv,
 	[BuiltInProcName.ClassGenerator]:     processClassGenerator,
 	[BuiltInProcName.ClassRelation]:      processClassRelation,
+	[BuiltInProcName.S4Use]:              processS4Use,
 	[BuiltInProcName.StackEnv]:           processStackEnv,
 	[BuiltInProcName.With]:               processWithEnv,
 	[BuiltInProcName.Vector]:             processVector,

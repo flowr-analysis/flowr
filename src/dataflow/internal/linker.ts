@@ -281,21 +281,23 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 		return [];
 	}
 
-	if(environment !== undefined || info.environment !== undefined) {
-		let functionCallDefs: NodeId[] = [];
+	const known = environment ?? info.environment;
+	let functionCallDefs: NodeId[] = [];
+	if(known !== undefined) {
 		const refType = info.origin.includes(BuiltInProcName.S3Dispatch) ? ReferenceType.S3MethodPrefix :
 			info.origin.includes(BuiltInProcName.S7Dispatch) ? ReferenceType.S7MethodPrefix : ReferenceType.Function;
 		if(info.name !== undefined && !Identifier.getName(info.name).startsWith(UnnamedFunctionCallPrefix)) {
-			functionCallDefs = Resolve.byNameAndType(
-				info.name, environment ?? info.environment as REnvironmentInformation, refType
-			)?.map(d => d.nodeId) ?? [];
+			functionCallDefs = Resolve.byNameAndType(info.name, known, refType)?.map(d => d.nodeId) ?? [];
 		}
-		for(const [target, outgoingEdge] of outgoingEdges.entries()) {
-			if(DfEdge.includesType(outgoingEdge, EdgeType.Calls)) {
-				functionCallDefs.push(target);
-			}
+	}
+	/* a call that kept no environment still knows the user definitions it was linked to, and those are targets */
+	for(const [target, outgoingEdge] of outgoingEdges.entries()) {
+		if(DfEdge.includesType(outgoingEdge, EdgeType.Calls) && (known !== undefined || !NodeId.isBuiltIn(target))) {
+			functionCallDefs.push(target);
 		}
+	}
 
+	if(functionCallDefs.length > 0) {
 		const [functionCallTargets, builtInTargets] = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), graph);
 		for(const target of functionCallTargets) {
 			found.add(target.id);

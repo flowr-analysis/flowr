@@ -18,7 +18,7 @@ import { ControlFlow } from '../../../../control-flow';
 import { type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment } from '../../../../../environments/scoping';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
-import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { dataflowLogger } from '../../../../../logger';
@@ -30,6 +30,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { valueFromTsValue } from '../../../../../eval/values/general';
 import { FunctionDefinitionVertex, FunctionCallVertex } from '../../../../../graph/vertex';
 import { Resolve } from '../../../../../environments/resolve-helper';
+import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 
 
 
@@ -153,6 +154,58 @@ function withoutPackageLayers(env: REnvironmentInformation): REnvironmentInforma
 	return { current: parent, level: env.level };
 }
 
+/** Drops the top frame, keeping its definitions in the frame below (they outlive it, see the caller). */
+function foldFrameIntoParent({ current, level }: REnvironmentInformation): REnvironmentInformation {
+	const parent = current.parent.clone(false);
+	for(const [name, definitions] of current.memory) {
+		parent.writableMemory.set(name, definitions);
+	}
+	return { current: parent, level: level - 1 };
+}
+
+/**
+ * Whether an error raised by the call `from` still leaves the expression it is written in.
+ * A callee only tells us that it always throws once we link it here, long after the expression around the call
+ * was processed, so we have to redo what the constructs on the way would have done with a `stop` written in that
+ * very place: they have to pass the error on, which a branch, a loop body, or a handler does not.
+ */
+function errorEscapes(from: NodeId, expression: NodeId, idMap: AstIdMap, graph: DataflowGraph): boolean {
+	let node = idMap.get(from);
+	while(node !== undefined && node.info.id !== expression) {
+		const parent = node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
+		if(parent === undefined) {
+			return true;
+		}
+		switch(parent.type) {
+			case RType.Argument:
+			case RType.ExpressionList:
+				break;
+			case RType.FunctionCall:
+				/* a handler catches the error instead of passing it on */
+				if(FunctionCallVertex.hasOrigin(graph.getVertex(parent.info.id), BuiltInProcName.Try)) {
+					return false;
+				}
+				break;
+			case RType.IfThenElse:
+			case RType.WhileLoop:
+				/* only the condition is guaranteed to be evaluated */
+				if(parent.condition.info.id !== node.info.id) {
+					return false;
+				}
+				break;
+			case RType.ForLoop:
+				if(parent.vector.info.id !== node.info.id) {
+					return false;
+				}
+				break;
+			default:
+				return false;
+		}
+		node = parent;
+	}
+	return true;
+}
+
 function updateSideEffectsForCalledFunctions(calledEnvs: {
 	functionCall: NodeId;
 	called:       readonly DataflowGraphVertexInfo[]
@@ -163,8 +216,14 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 			guard(FunctionDefinitionVertex.is(calledFn), 'called function must be a function definition');
 			// only merge the environments they have in common
 			let environment = direct ? calledFn.subflow.environment : withoutPackageLayers(calledFn.subflow.environment);
-			while(environment.level > inputEnvironment.level) {
+			if(environment.level > inputEnvironment.level) {
+				/* the callee's own frame dies with the call */
 				environment = popLocalEnvironment(environment);
+				/* what is left above the caller are frames the closure captured; they outlive the call, so their
+				 * writes stay observable for the caller instead of vanishing with the frames */
+				while(environment.level > inputEnvironment.level) {
+					environment = foldFrameIntoParent(environment);
+				}
 			}
 			// update alle definitions to be defined at this function call
 			let current: Environment | undefined = environment.current;
@@ -268,7 +327,7 @@ export function processExpressionList<OtherInfo>(
 
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph);
 		for(const c of calledEnvs) {
-			if(c.propagateExitPoints.length > 0) {
+			if(c.propagateExitPoints.length > 0 && errorEscapes(c.functionCall, expression.info.id, data.completeAst.idMap, nextGraph)) {
 				for(const exit of c.propagateExitPoints) {
 					(processed.exitPoints as Writable<ExitPoint[]>).push(exit);
 				}
@@ -354,12 +413,18 @@ export function processExpressionList<OtherInfo>(
 	const reachesEnd = !!withGroup && (processedExpressions.length === 0 || exitPoints.some(e => e.type === ExitPointType.Default));
 	const cfgEntry = ControlFlow.inSequence(nextGraph, processedExpressions, reachesEnd ? rootId : undefined);
 	/*
-	 * `{ break }` is entered and never left, so its `{` is reached and goes nowhere. Saying only the second
-	 * half of that leaves the vertex beside the control flow, with nothing leading to it either.
+	 * `{ break }` is entered and left by the jump within it, so its `{` is where that jump leaves the group:
+	 * whatever catches the jump continues from there instead of from within the group, which keeps the `{`
+	 * on the control flow rather than beside it as a vertex nothing leads away from.
 	 */
 	if(withGroup && !reachesEnd) {
-		for(const exit of exitPoints) {
+		for(let i = 0; i < exitPoints.length; i++) {
+			const exit = exitPoints[i];
 			nextGraph.addEdge(exit.nodeId, rootId, EdgeType.FlowEdge);
+			/* what a `return` hands back and what a `stop` raises stay with the node that does it */
+			if(exit.nodeId !== rootId && (exit.type === ExitPointType.Break || exit.type === ExitPointType.Next)) {
+				exitPoints[i] = { ...exit, nodeId: rootId };
+			}
 		}
 	}
 

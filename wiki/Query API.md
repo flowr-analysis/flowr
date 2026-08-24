@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-23, 19:28:08 UTC (v2.14.3, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-24, 09:07:20 UTC (v2.14.3, R v4.6.1), please do not edit directly._
 
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
@@ -1228,10 +1228,10 @@ points`"]
     linkStyle 32 stroke:gray,color:gray;
     29 -->|"reads, returns, arg"| 26
     29 -->|"reads, arg"| 27
-    29 -.->|"flow"| 31
-    linkStyle 35 stroke:gray,color:gray;
     29 -.->|"reads, calls"| built-in:_
-    linkStyle 36 stroke:gray;
+    linkStyle 35 stroke:gray;
+    29 -.->|"flow"| 31
+    linkStyle 36 stroke:gray,color:gray;
     31 -->|"reads, arg"| 29
     31 -.->|"flow"| 24
     linkStyle 38 stroke:gray,color:gray;
@@ -1279,10 +1279,10 @@ points`"]
     52 -->|"arg"| 38
     52 -->|"returns, arg"| 50
     52 -->|"reads"| 11
-    52 -.->|"flow"| 54
-    linkStyle 70 stroke:gray,color:gray;
     52 -.->|"reads, calls"| built-in:___
-    linkStyle 71 stroke:gray;
+    linkStyle 70 stroke:gray;
+    52 -.->|"flow"| 54
+    linkStyle 71 stroke:gray,color:gray;
     54 -.->|"flow"| 55
     linkStyle 72 stroke:gray,color:gray;
     55 -->|"reads, arg"| 52
@@ -1355,10 +1355,10 @@ points`"]
     linkStyle 116 stroke:gray,color:gray;
     85 -->|"reads, returns, arg"| 82
     85 -->|"reads, arg"| 83
-    85 -.->|"flow"| 87
-    linkStyle 119 stroke:gray,color:gray;
     85 -.->|"reads, calls"| built-in:_
-    linkStyle 120 stroke:gray;
+    linkStyle 119 stroke:gray;
+    85 -.->|"flow"| 87
+    linkStyle 120 stroke:gray,color:gray;
     87 -->|"reads, arg"| 85
     87 -.->|"reads, calls"| built-in:mean
     linkStyle 122 stroke:gray;
@@ -1370,7 +1370,7 @@ points`"]
 ```
 
 	
-(The analysis required _8.3 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _7.8 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
@@ -1413,14 +1413,14 @@ Just as an example, the following [Call-Context Query](https://github.com/flowr-
 
 _Results (prettified and summarized):_
 
-Query: **call-context** (1 ms)\
+Query: **call-context** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input** (2 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))\
-_All queries together required ≈7 ms (1ms accuracy, total 9 ms)_
+_All queries together required ≈10 ms (1ms accuracy, total 10 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _8.7 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _10.2 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -1432,7 +1432,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "call-context": {
     ".meta": {
-      "timing": 1
+      "timing": 0
     },
     "kinds": {
       "input": {
@@ -1458,7 +1458,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 7
+    "timing": 10
   }
 }
 ```

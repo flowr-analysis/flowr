@@ -83,6 +83,12 @@ export class Environment implements IEnvironment {
 	/** marks the global environment (`.GlobalEnv`); attached packages (see {@link EnvType}) live below it */
 	globalEnv?:            true;
 	/**
+	 * What the lexical frame this one stands in for held when the closure around it was created. A function body is
+	 * analyzed with empty enclosing frames (their binds may be rebound by the time the function is called), but
+	 * `<<-` binds lexically, so {@link defineSuper} still has to know which of them the name was bound in.
+	 */
+	superMemory?:          BuiltInMemory;
+	/**
 	 * What the configuration states about the packages R does not attach on startup, keyed by package. Only the
 	 * built-in environment carries it: a bare name must not find these, `pkg::fn` has to (see {@link statedIn}).
 	 */
@@ -109,6 +115,12 @@ export class Environment implements IEnvironment {
 	/** Marks this as the global environment (`.GlobalEnv`); see {@link globalEnv}. */
 	public asGlobal(): this {
 		this.globalEnv = true;
+		return this;
+	}
+
+	/** Records the lexical frame this one stands in for; see {@link superMemory}. */
+	public standsInFor(memory: BuiltInMemory): this {
+		this.superMemory = memory;
 		return this;
 	}
 
@@ -168,6 +180,7 @@ export class Environment implements IEnvironment {
 		clone.n = this.n;
 		clone.t = this.t;
 		clone.globalEnv = this.globalEnv;
+		clone.superMemory = this.superMemory;
 		clone.sharedMemory = this.sharedMemory = true;
 		if(recurseParents && !this.parent.builtInEnv) {
 			clone.sharedParent = true;
@@ -278,7 +291,9 @@ export class Environment implements IEnvironment {
 		let last = undefined;
 		let found = false;
 		do{
-			if(current.memory.has(name)) {
+			/* `<<-` binds in the closest enclosing frame that holds the name, which for an emptied frame is what
+			 * it stood in for when the closure was created (see {@link superMemory}) */
+			if(current.memory.has(name) || current.superMemory?.has(name)) {
 				current.writableMemory.set(name, [definition]);
 				found = true;
 				break;
@@ -347,6 +362,7 @@ export class Environment implements IEnvironment {
 		out.n = this.n;
 		out.t = this.t;
 		out.globalEnv = this.globalEnv;
+		out.superMemory = this.superMemory ?? other.superMemory;
 		out.memory = map;
 		return out;
 	}
@@ -377,6 +393,7 @@ export class Environment implements IEnvironment {
 		out.n = this.n;
 		out.t = this.t;
 		out.globalEnv = this.globalEnv;
+		out.superMemory = this.superMemory ?? other.superMemory;
 		out.memory = map;
 		return out;
 	}

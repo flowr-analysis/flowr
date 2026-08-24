@@ -1,4 +1,5 @@
 import { MatchArgs } from '../../../../../graph/match-args';
+import { FnSig } from '../../../../../environments/built-in-props';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -27,6 +28,7 @@ import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { type ClassDeclarationConfig, classDeclarationOf } from '../../../../../fn/class-declaration';
+import { linkS4Declaration, linkS4Generic } from './built-in-s-four';
 
 /** e.g. new_generic(name, dispatch_args, fun=NULL) */
 interface S7GenericDispatchConfig {
@@ -34,7 +36,9 @@ interface S7GenericDispatchConfig {
 		name:        string,
 		dispatchArg: string | undefined,
 		fun:         string
-	}
+	},
+	/** the call binds the generic under the name it is given, as `setGeneric` does (S7 hands its generic back instead) */
+	binds?: boolean
 }
 
 /**
@@ -80,13 +84,16 @@ export function processS7NewGeneric<OtherInfo>(
 		effectiveArgs.push(newFun[0]);
 		funArg = newFun[1];
 	}
-	const info = processKnownFunctionCall({ name, forceArgs: 'all', args: effectiveArgs, rootId, data, origin: BuiltInProcName.S7NewGeneric }).information;
+	const info = processKnownFunctionCall({ name, sig: FnSig.every, args: effectiveArgs, rootId, data, origin: BuiltInProcName.S7NewGeneric }).information;
 
 	info.graph.addEdge(rootId, funArg, EdgeType.Returns);
 	info.entryPoint = funArg;
 	const fArg = info.graph.getVertex(funArg);
 	if(FunctionDefinitionVertex.is(fArg)) {
 		fArg.mode ??= ['s4', 's7'];
+	}
+	if(config.binds) {
+		linkS4Generic(info, rootId, accessedIdentifiers, data);
 	}
 	return info;
 }
@@ -112,7 +119,7 @@ export function processMakeConstructor<OtherInfo>(
 ): DataflowInformation {
 	// synthesise `function(...) S7_dispatch()` and make the call return it
 	const [funArg, funId]: [RArgument<OtherInfo & ParentInformation>, NodeId] = makeS7DispatchFDef(name, [], rootId, args.length, data.completeAst.idMap);
-	const info = processKnownFunctionCall({ name, forceArgs: 'all', args: [...args, funArg], rootId, data, origin: BuiltInProcName.S7MakeConstructor }).information;
+	const info = processKnownFunctionCall({ name, sig: FnSig.every, args: [...args, funArg], rootId, data, origin: BuiltInProcName.S7MakeConstructor }).information;
 	info.graph.addEdge(rootId, funId, EdgeType.Returns);
 	info.entryPoint = funId;
 	const fArg = info.graph.getVertex(funId);
@@ -123,6 +130,7 @@ export function processMakeConstructor<OtherInfo>(
 		linkWrappedFunction(info, args, config.wrapIndex, config.wrapName, data);
 	}
 	attachClassDeclaration(info, rootId, args, config?.classDecl);
+	linkS4Declaration(info, rootId, data);
 	return info;
 }
 

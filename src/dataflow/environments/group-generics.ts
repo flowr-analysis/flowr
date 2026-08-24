@@ -17,12 +17,16 @@ export const RGroupGenerics = {
 	Ops:  [...Arith, ...Compare, ...Logic, '!'],
 	Math: ['abs', 'sign', 'sqrt', 'floor', 'ceiling', 'trunc', 'exp', 'expm1', 'log', 'log2', 'log10', 'log1p',
 		'cos', 'sin', 'tan', 'cosh', 'sinh', 'tanh', 'acos', 'asin', 'atan', 'acosh', 'asinh', 'atanh',
+		'cospi', 'sinpi', 'tanpi', 'gamma', 'lgamma', 'digamma', 'trigamma',
 		'cumsum', 'cumprod', 'cummax', 'cummin'],
 	Math2:     ['round', 'signif'],
-	Summary:   ['any', 'sum', 'prod', 'min', 'max', 'range'],
+	Summary:   ['any', 'all', 'sum', 'prod', 'min', 'max', 'range'],
 	Complex:   ['Re', 'Im', 'Mod', 'Arg', 'Conj'],
-	matrixOps: ['%*%', 'crossprod', 'tcrossprod']
+	matrixOps: ['%*%']
 } as const satisfies Record<string, readonly string[]>;
+
+/** what an S3 `Math.<class>` answers for: S3 has no `Math2`, so `round`/`signif` dispatch to it as well */
+const MathS3: readonly string[] = [...RGroupGenerics.Math, ...RGroupGenerics.Math2];
 
 /** the name of a group in {@link RGroupGenerics} */
 export type RGroupGeneric = keyof typeof RGroupGenerics;
@@ -50,6 +54,14 @@ export function groupGenericOf(name: string): string | undefined {
  */
 export function groupGenericMembers(name: string): readonly string[] | undefined {
 	return RGroupGenerics[name as RGroupGeneric];
+}
+
+/**
+ * The members an S3 `<group>.<class>` method answers for. S3 knows no `Math2` group: `round(x)` and `signif(x)`
+ * on such an object dispatch to `Math.<class>`, so the S3 `Math` covers both. Every other name answers as in S4.
+ */
+export function s3GroupGenericMembers(name: string): readonly string[] | undefined {
+	return name === 'Math' ? MathS3 : groupGenericMembers(name);
 }
 
 /** Whether `name` is one of R's group generics (see {@link RGroupGenerics}). */

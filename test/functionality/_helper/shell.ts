@@ -179,8 +179,13 @@ export interface TestConfiguration extends MergeableRecord {
 
 export interface TestConfigurationWithOutput extends TestConfiguration {
 	/** HANDLE WITH UTTER CARE! Will run in an R-Shell on the host system! */
-	expectedOutput: string | RegExp
-	trimOutput:     boolean
+	expectedOutput:      string | RegExp
+	/**
+	 * What the reconstructed slice has to print when it runs.
+	 * HANDLE WITH UTTER CARE! Will run in an R-Shell on the host system!
+	 */
+	expectedSliceOutput: string | RegExp
+	trimOutput:          boolean
 }
 
 export const defaultTestConfiguration: TestConfiguration = {
@@ -747,6 +752,23 @@ export function assertSliced(
 				throw e;
 			} /* v8 ignore stop */
 		}
+		/* running the slice catches both a slice that drops what the criterion needs and one that does not parse */
+		if(testConfig?.expectedSliceOutput !== undefined && testConfig?.testCaseFailType === undefined) {
+			test('slice output', async() => {
+				const reconstructed = (shellResult as PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE>).reconstruct.code;
+				const code = Array.isArray(reconstructed) ? reconstructed.join('\n') : reconstructed;
+				const lines = await shell.sendCommandWithOutput(code, { automaticallyTrimOutput: testConfig?.trimOutput ?? true });
+				/* we have to reset in between such tests! */
+				shell.clearEnvironment();
+				const expected = testConfig.expectedSliceOutput as string | RegExp;
+				if(typeof expected === 'string') {
+					assert.strictEqual(lines.join('\n'), expected, `the slice of ${JSON.stringify(input)} does not print what it has to, it is:\n${code}`);
+				} else {
+					assert.match(lines.join('\n'), expected, `, the slice of ${JSON.stringify(input)} is:\n${code}`);
+				}
+			});
+		}
+
 		handleAssertOutput(name, shell, input, testConfig);
 	});
 }

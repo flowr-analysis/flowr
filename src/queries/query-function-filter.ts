@@ -13,15 +13,12 @@ interface FunctionFilteringQuery {
  * Resolves the function filter shared by the inspection queries (`inspect-*`).
  */
 export const QueryFunctionFilter = {
-	name: 'QueryFunctionFilter',
+	name:    'QueryFunctionFilter',
 	/**
-	 * Whether the definition is one the analyzed code writes. A deferred expression (`on.exit` and its
-	 * relatives) is wrapped in a definition of its own, which carries an id no node of the ast does, and
-	 * nobody asks about a function they never wrote.
+	 * Whether the definition is one the analyzed code writes, as nobody asks about a function they never wrote.
+	 * @see {@link NodeId.isWritten}
 	 */
-	written(this: void, id: NodeId): boolean {
-		return typeof NodeId.normalize(id) === 'number';
-	},
+	written: NodeId.isWritten,
 	/** The ids the given queries restrict themselves to; empty if at least one query wants all functions. */
 	async criteria(this: void, queries: readonly FunctionFilteringQuery[], analyzer: ReadonlyFlowrAnalysisProvider): Promise<ReadonlySet<NodeId>> {
 		let filters: SlicingCriterion[] | undefined = undefined;

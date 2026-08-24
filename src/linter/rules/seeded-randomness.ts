@@ -160,9 +160,13 @@ export const SEEDED_RANDOMNESS = {
 					if(cdsOfProduces.size > 0) {
 						metadata.callsWithOtherBranchProducers++;
 					}
+					/* a call within a function body is seeded by whatever its callers did first, which the control
+					   flow of this body does not show: `set.seed(1); sapply(1:3, function(i) runif(1))` is seeded.
+					   Only a call the program itself reaches can be stated as unseeded for certain. */
+					const nested = !dataflow.graph.isRoot(element.searchElement.node.info.id);
 					return [{
 						involvedId: element.involvedId,
-						certainty:  cdsOfProduces.size > 0 ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
+						certainty:  cdsOfProduces.size > 0 || nested ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
 						function:   element.target,
 						loc:        element.loc
 					}];

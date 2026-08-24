@@ -11,7 +11,6 @@ import { dataflowLogger } from '../../../../../logger';
 import { Dataflow } from '../../../../../graph/df-helper';
 import type { IdentifierReference } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
-import type { ForceArguments } from '../common';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { FunctionArgument } from '../../../../../graph/graph';
 import { Nse, Unquote } from '../nse';
@@ -19,7 +18,7 @@ import { linkInputs } from '../../../../linker';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { cleanEnvOf } from '../../../../../environments/scoping';
 
-interface QuoteConfig extends ForceArguments {
+interface QuoteConfig {
 	quoteArgumentsWithIndex: number
 	envArgIndex?:            number
 	/** which unquote escape the function supports, {@link Unquote.None} if unset */
@@ -40,7 +39,7 @@ export function processQuote<OtherInfo>(
 	const startEnv = data.environment;
 	let lastEnv = startEnv;
 	const { information, processedArguments, fnRef } = processKnownFunctionCall({
-		name, args, rootId, data, forceArgs: config.forceArgs, origin: BuiltInProcName.Quote,
+		name, args, rootId, data, origin: BuiltInProcName.Quote,
 		patchData(data: DataflowProcessorInformation<OtherInfo & ParentInformation>, index: number): DataflowProcessorInformation<OtherInfo & ParentInformation> {
 			if(index === config.quoteArgumentsWithIndex) {
 				lastEnv = data.environment;

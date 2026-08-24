@@ -32,7 +32,12 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 			return true;
 		}
 		const next = graph.outgoingEdges(current.id) ?? NoEdges;
+		const isCall = FunctionCallVertex.is(current);
 		for(const [t, e] of next) {
+			/* a call hands back what its callee returns, which its `returns` edges name, and never the callee itself */
+			if(isCall && !DfEdge.includesType(e, EdgeType.Returns)) {
+				continue;
+			}
 			/* a returned name is followed to what it holds, as `g <- function() 1; g` hands back that function */
 			if(DfEdge.includesType(e, EdgeType.Returns | EdgeType.Reads | EdgeType.DefinedBy) && !NodeId.isBuiltIn(t)) {
 				const v = graph.getVertex(t);
@@ -48,10 +53,11 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 /**
  * Whether the argument hands over a built-in function (`f(print)`), which has no definition in the graph and
  * hence no `function-definition` value to resolve to.
+ * An argument calling a built-in (`lapply(1:3, f)`) hands over its result, not the built-in itself.
  */
 function readsBuiltInFunction(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
-		if(!DfEdge.includesType(edge, EdgeType.Reads) || !NodeId.isBuiltIn(target)) {
+		if(!DfEdge.includesType(edge, EdgeType.Reads) || DfEdge.includesType(edge, EdgeType.Calls) || !NodeId.isBuiltIn(target)) {
 			continue;
 		}
 		const defs = Resolve.byNameAndType(NodeId.fromBuiltIn(target), ctx.env.makeCleanEnv(), ReferenceType.Function);
@@ -60,6 +66,33 @@ function readsBuiltInFunction(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlo
 		}
 	}
 	return false;
+}
+
+/**
+ * The definitions the given node can hand over, following the names and results leading up to them.
+ * Used to tell an argument that is the very definition under inspection from one holding another function.
+ */
+function definitionsBehind(id: NodeId, graph: DataflowGraph): ReadonlySet<NodeId> {
+	const found = new Set<NodeId>();
+	const seen = new Set<NodeId>();
+	const workingQueue: NodeId[] = [id];
+	while(workingQueue.length > 0) {
+		const current = workingQueue.pop() as NodeId;
+		if(seen.has(current) || NodeId.isBuiltIn(current)) {
+			continue;
+		}
+		seen.add(current);
+		if(FunctionDefinitionVertex.is(graph.getVertex(current))) {
+			found.add(current);
+			continue;
+		}
+		for(const [t, e] of graph.outgoingEdges(current) ?? NoEdges) {
+			if(DfEdge.includesType(e, EdgeType.Returns | EdgeType.Reads | EdgeType.DefinedBy)) {
+				workingQueue.push(t);
+			}
+		}
+	}
+	return found;
 }
 
 function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph): boolean {
@@ -75,6 +108,11 @@ function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition
 		}
 		for(const arg of caller.args) {
 			if(arg === EmptyArgument) {
+				continue;
+			}
+			/* an apply-family call carries the callback among its arguments, which says nothing about the callback itself */
+			const behind = definitionsBehind(arg.nodeId, graph);
+			if(behind.size === 1 && behind.has(def.id)) {
 				continue;
 			}
 			const value = NodeValue.inGraph.setOf(arg.nodeId, graph, ctx, { resolve: VariableResolve.Alias });

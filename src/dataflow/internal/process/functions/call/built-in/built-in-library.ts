@@ -19,7 +19,7 @@ import { Identifier, PkgName, ReferenceType } from '../../../../../environments/
 import type { BrandedIdentifier, IdentifierDefinition, InGraphIdentifierDefinition, InGraphReferenceType } from '../../../../../environments/identifier';
 import type { BuiltInMemory } from '../../../../../environments/built-in';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { Environment, EnvType, REnvironment } from '../../../../../environments/environment';
+import { DefaultAttachPosition, Environment, EnvType, REnvironment } from '../../../../../environments/environment';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { EdgeType } from '../../../../../graph/edge';
@@ -33,7 +33,7 @@ import { convertFnArguments } from '../common';
 import type { Lift, TernaryLogical } from '../../../../../eval/values/r-value';
 import { VertexType } from '../../../../../graph/vertex';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import { baseRPackages } from '../../../../../../util/r-base-packages';
+import { AttachedBasePackages, AttachedBasePackageSet, baseRPackages } from '../../../../../../util/r-base-packages';
 import { resolveAttachPosition } from './built-in-envir-utils';
 import { uniqueArray } from '../../../../../../util/collections/arrays';
 import { sexpTypeToReferenceType } from './built-in-load';
@@ -490,6 +490,12 @@ export function attachDependencyToEnvironment(dependency: Package, envInfo: REnv
 	if(isAttached(envInfo.current, pack, spec.namespaceOnly)){
 		return envInfo;
 	}
+	if(spec.pos === undefined && !spec.namespaceOnly) {
+		const startup = startupAttachPosition(pack, envInfo.current);
+		if(startup !== undefined) {
+			spec = { ...spec, pos: startup };
+		}
+	}
 	if(isUndefined(dependency.namespaceInfo)){
 		/* nothing resolved the package's exports, but what flowR states about them is still what a call to one
 		   of them means, and the `library()` is what brings it into scope */
@@ -522,6 +528,44 @@ function blocksAttach(layer: Environment, namespaceOnly: boolean | undefined): b
 	}
 	/* an assumption stands in for a `library()` that was not analyzed, so the real one still attaches over it */
 	return layer.t !== EnvType.LoadedNamespace && layer.t !== EnvType.AssumedNamespace;
+}
+
+/**
+ * The `search()` order R attaches its startup packages in, deepest last (`base` is always the last entry),
+ * `undefined` for a package R does not attach on startup.
+ */
+function startupAttachRank(pack: string | undefined): number | undefined {
+	if(pack === undefined || !AttachedBasePackageSet.has(pack)) {
+		return undefined;
+	}
+	return pack === PkgName.Base ? AttachedBasePackages.length : AttachedBasePackages.indexOf(pack);
+}
+
+/**
+ * The `search()` position `library(pack)` attaches a startup-attached package at, `undefined` for every other
+ * package. R attaches these on startup and `library()` on an already-attached package does not move it up the
+ * search path (only a different `lib.loc` re-attaches it), so `library(dplyr); library(stats)` must leave
+ * `filter` with `dplyr`. flowR materializes the startup layers only when configured to (see
+ * {@link attachBaseRNamespaces}), so the attach still has to happen for the exports to resolve, but it belongs
+ * where R keeps them: below every package the analyzed code attaches, and among themselves in R's own order.
+ */
+function startupAttachPosition(pack: string, env: Environment): number | undefined {
+	const rank = startupAttachRank(pack);
+	if(rank === undefined) {
+		return undefined;
+	}
+	let pos = DefaultAttachPosition;
+	for(let e: Environment = REnvironment.findGlobal(env).parent; !e.builtInEnv; e = e.parent) {
+		if(e.t === EnvType.Imports) {
+			continue; // internal layer, not a search-path entry
+		}
+		const other = startupAttachRank(e.n);
+		if(other !== undefined && other > rank) {
+			break;
+		}
+		pos++;
+	}
+	return pos;
 }
 
 /** Whether package `pack` is already attached below the global env in a way that makes this (re-)attach a no-op. */

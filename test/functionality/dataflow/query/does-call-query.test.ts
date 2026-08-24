@@ -1,12 +1,13 @@
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
-import { describe } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import type {
 	CallsConstraint,
 	DoesCallQuery,
 	DoesCallQueryResult
 } from '../../../../src/queries/catalog/does-call-query/does-call-query-format';
+import { DoesCallQueryDefinition } from '../../../../src/queries/catalog/does-call-query/does-call-query-format';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { DeepWritable } from 'ts-essentials';
 
@@ -40,6 +41,24 @@ describe('Does Call Query', withTreeSitter(parser => {
 	const r = (name: string) => ({ type: 'name', name, nameExact: false } as const);
 	const and = (...calls: readonly CallsConstraint[]) => ({ type: 'and', calls } as const);
 	const or = (...calls: readonly CallsConstraint[]) => ({ type: 'or', calls } as const);
+	const oneOf = (...calls: readonly CallsConstraint[]) => ({ type: 'one-of', calls } as const);
+
+	test('one-of is accepted by the schema', () => {
+		const { error } = DoesCallQueryDefinition.schema.validate({
+			type:  'does-call',
+			call:  '2@f',
+			calls: oneOf(n('eval'))
+		});
+		expect(error).toBeUndefined();
+	});
+
+	testQuery('one-of requires exactly one constraint to match', 'f <- function(x) { eval(x) }\nf(1)', [
+		{ call: '1@function', calls: oneOf(n('eval')) },
+		{ call: '2@f',        calls: oneOf(n('eval')) },
+		{ call: '1@function', calls: oneOf(n('eval'), r('^ev')) },
+		{ call: '1@function', calls: oneOf(n('eval'), n('rofl')) },
+		{ call: '1@function', calls: oneOf(n('rofl')) }
+	], ['1@function', '2@f', false, '1@function', false]);
 
 	testQuery('Calling eval (named & regex)', 'f <- function(x) { eval(x) }\nf(1)', [
 		{ call: '1@function',  calls: n('eval') },

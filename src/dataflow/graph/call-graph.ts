@@ -194,6 +194,15 @@ function processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefi
 }
 
 
+/**
+ * The caller to record for a function definition found in the body of `from`. A definition the body writes is
+ * not called by writing it, so it gets none; a definition flowR synthesizes for a deferred expression
+ * (`on.exit` and its relatives) is one the body really runs, so it keeps `from`.
+ */
+function callerOfBodyDefinition(from: NodeId | undefined, to: NodeId): NodeId | undefined {
+	return NodeId.isWritten(to) ? undefined : from;
+}
+
 /** Follows the `Calls` edges from `seeds`, collecting everything they reach in `reached`. */
 function followCalls(graph: CallGraph, seeds: Iterable<NodeId>, reached: Set<NodeId>): void {
 	const toVisit = Array.from(seeds);
@@ -385,10 +394,10 @@ export const CallGraph = {
 					if(v) {
 						processUnknown(v, from, graph, result, state);
 						if(FunctionDefinitionVertex.is(v)) {
-							processFunctionDefinition(v, from, graph, result, state);
+							processFunctionDefinition(v, callerOfBodyDefinition(from, to), graph, result, state);
 						}
 					}
-				} else {
+				} else if(callerOfBodyDefinition(from, to) !== undefined || !FunctionDefinitionVertex.is(graph.getVertex(to))) {
 					result.addEdge(from, to, EdgeType.Calls);
 				}
 			}

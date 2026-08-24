@@ -26,6 +26,12 @@ interface CallsWithNameConstraint {
 }
 
 interface CallsConstraints {
+	/**
+	 * How to combine the given constraints:
+	 * `and` requires every constraint to be satisfied by some call reached during the walk,
+	 * `or` requires at least one of them to match a reached call,
+	 * and `one-of` requires exactly one of them to match a reached call.
+	 */
 	readonly type:  'and' | 'or' | 'one-of';
 	/* The constraints to combine. */
 	readonly calls: readonly CallsConstraint[];

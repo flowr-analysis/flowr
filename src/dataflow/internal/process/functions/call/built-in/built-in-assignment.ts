@@ -6,7 +6,6 @@ import { DataMaskingFunctionNames } from '../../../../../environments/data-maski
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { log, LogLevel } from '../../../../../../util/log';
 import { unpackArg } from '../argument/unpack-argument';
-import { processAsNamedCall } from '../../../process-named-call';
 import { toUnnamedArgument, wrapArgumentsUnnamed } from '../argument/make-argument';
 import type {
 	ParentInformation,
@@ -35,7 +34,6 @@ import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph
 import { FunctionCallVertex, FunctionDefinitionVertex, VertexType } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
-import type { ForceArguments } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { findReturnsEnvState, resolveConstantString, resolveEnvirArg, resolveSymbolToEnvir, routeWrittenToCustomEnv } from './built-in-envir-utils';
@@ -68,7 +66,7 @@ function getEffectiveOrder<T>(config: {
 	return config.swapSourceAndTarget ? [args[1], args[0]] : args;
 }
 
-export interface AssignmentConfiguration extends ForceArguments {
+export interface AssignmentConfiguration {
 	readonly superAssignment?:     boolean
 	readonly swapSourceAndTarget?: boolean
 	/** Make maybe if assigned to symbol */
@@ -107,15 +105,15 @@ function tryReplacement<OtherInfo>(
 	rootId: NodeId,
 	functionName: RSymbol<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	name: Identifier,
+	superAssignment: boolean,
 	args: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[]
 ): DataflowInformation {
 	const resolved = Resolve.byNameAndType(functionName.content, data.environment, ReferenceType.Function) ?? [];
+	const builtIn = resolved.length === 1 && resolved[0].type === ReferenceType.BuiltInFunction ? resolved[0] : undefined;
 
-	// yield for unsupported pass along!
-	if(resolved.length !== 1 || resolved[0].type !== ReferenceType.BuiltInFunction) {
-		return processAsNamedCall(functionName, data, name, args);
-	}
+	/* every replacement function rebinds its target, no matter whether we ship a built-in for it or the user wrote
+	 * it; a user-defined one is only ever bound under its `<-` name, the `<<-` form stays in the configuration */
+	const name = builtIn ? functionName.content : Identifier.mapName(functionName.content, n => superAssignment ? n.slice(0, -'<<-'.length) + '<-' : n);
 
 	const info = BuiltInProcessorMapper[BuiltInProcName.Replacement](
 		{
@@ -128,14 +126,27 @@ function tryReplacement<OtherInfo>(
 		wrapArgumentsUnnamed(args, data.completeAst.idMap),
 		functionName.info.id,
 		data,
-		{
-			...resolved[0].config,
+		builtIn ? {
+			...builtIn.config,
 			assignRootId: rootId
+		} : {
+			readIndices:        true,
+			makeMaybe:          true,
+			assignmentOperator: superAssignment ? '<<-' : '<-',
+			assignRootId:       rootId
 		}
 	);
 
-	markAsOnlyBuiltIn(info.graph, functionName.info.id);
-	return info;
+	if(builtIn) {
+		markAsOnlyBuiltIn(info.graph, functionName.info.id);
+		return info;
+	}
+	/* the replacement marks its callee as an S3 prefix, which only ever resolves to `name.<class>`; a user-defined
+	 * replacement is bound under the plain name, so we read that first to link the call to its definition */
+	return {
+		...info,
+		in: [{ nodeId: functionName.info.id, name, cds: data.cds, type: ReferenceType.Function }, ...info.in]
+	};
 }
 
 /**
@@ -233,7 +244,7 @@ export function processAssignment<OtherInfo>(
 
 	if(!config.mayHaveMoreArgs && args.length !== 2) {
 		dataflowLogger.warn(`Assignment ${Identifier.toString(name.content)} has something else than 2 arguments, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	/* route into a custom environment when envir resolves to a tracked env variable */
@@ -249,7 +260,7 @@ export function processAssignment<OtherInfo>(
 
 	if(target === undefined || source === undefined) {
 		dataflowLogger.warn(`Assignment ${Identifier.toString(name.content)} has an undefined target or source, skipping`);
-		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 	const { type, named } = target;
 
@@ -261,7 +272,6 @@ export function processAssignment<OtherInfo>(
 			rootId,
 			data,
 			reverseOrder: !config.swapSourceAndTarget,
-			forceArgs:    config.forceArgs,
 			origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 		});
 		return processAssignmentToSymbol<OtherInfo & ParentInformation>({
@@ -289,7 +299,7 @@ export function processAssignment<OtherInfo>(
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
 		dataflowLogger.debug(`Assignment ${Identifier.toString(name.content)} has a function call as target ==> replacement function ${target.lexeme}`);
 		const replacement = toReplacementSymbol(target, target.functionName.content, config.superAssignment ?? false);
-		return tryReplacement(rootId, replacement, data, replacement.content, [...target.arguments, source]);
+		return tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [...target.arguments, source]);
 	} else if(config.canBeReplacement && type === RType.Access) {
 		dataflowLogger.debug(`Assignment ${Identifier.toString(name.content)} has an access-type node as target ==> replacement function ${target.lexeme}`);
 		const replacement = toReplacementSymbol(target, target.operator, config.superAssignment ?? false);
@@ -297,7 +307,7 @@ export function processAssignment<OtherInfo>(
 		if(envRouted !== undefined) {
 			return envRouted;
 		}
-		return tryReplacement(rootId, replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
+		return tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
 	} else if(type === RType.Access) {
 		const rootArg = findRootAccess(target);
 		if(rootArg) {
@@ -307,7 +317,6 @@ export function processAssignment<OtherInfo>(
 				rootId,
 				data,
 				reverseOrder: !config.swapSourceAndTarget,
-				forceArgs:    config.forceArgs,
 				origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 			});
 
@@ -329,8 +338,8 @@ export function processAssignment<OtherInfo>(
 	dataflowLogger.warn(`Assignment ${Identifier.toString(name.content)} has an unknown target type ${target.type} => unknown impact`);
 
 	const info = processKnownFunctionCall({
-		name, args:      effectiveArgs, rootId, data, forceArgs: config.forceArgs,
-		origin:    config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
+		name, args:   effectiveArgs, rootId, data,
+		origin: config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 	}).information;
 	handleUnknownSideEffect(info.graph, info.environment, rootId);
 	return info;
@@ -391,7 +400,6 @@ function processAssignmentToString<OtherInfo>(
 		rootId,
 		data,
 		reverseOrder: !config.swapSourceAndTarget,
-		forceArgs:    config.forceArgs,
 		origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 	});
 
@@ -464,7 +472,7 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 	}
 	const fieldName = (RString.is(fieldNode) ? fieldNode.content.str : fieldNode.lexeme) as Identifier;
 
-	const normalResult = tryReplacement(rootId, replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
+	const normalResult = tryReplacement(rootId, replacement, data, config.superAssignment ?? false, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
 
 	const fieldDef: InGraphIdentifierDefinition & { name: Identifier } = {
 		type:      ReferenceType.Variable,
@@ -556,7 +564,7 @@ export function processDefineArgument<OtherInfo>(
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: AssignmentConfiguration
 ): DataflowInformation {
-	const res = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: BuiltInProcName.DefineArgument });
+	const res = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.DefineArgument });
 	const info = res.information;
 	const targetArg = res.processedArguments[0];   // the read argument, e.g. `prostate`
 	if(targetArg !== undefined) {

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-19, 17:41:34 UTC (v2.14.1), please do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-24, 09:02:10 UTC (v2.14.3), please do not edit directly._
 <h2 id="unused-definitions">Unused Definitions&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the readability of the code. For example, complex expressions, long lines, or inconsistent formatting."><a href='#readability'>![readability](https://img.shields.io/badge/readability-teal) </a></span>
@@ -7,7 +7,7 @@ _<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter
 This rule is a `best-effort` rule.
  
 Checks for unused definitions.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-definition.ts#L273">src/linter/rules/unused-definition.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-definition.ts#L321">src/linter/rules/unused-definition.ts</a>._
 
 
 ### Configuration
@@ -15,10 +15,10 @@ _This linting rule is implemented in <a href="https://github.com/flowr-analysis/
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `unused-definitions` rule accepts the following configuration options:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-definition.ts#L41"><code><span title="Whether to suppress definitions that the analyzed project exports via its NAMESPACE (the package's public API). flowR cannot observe external callers, so exported names would otherwise be reported as (uncertain) false positives.">excludeExportedDefinitions</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-definition.ts#L43"><code><span title="Whether to suppress definitions that the analyzed project exports via its NAMESPACE (the package's public API). flowR cannot observe external callers, so exported names would otherwise be reported as (uncertain) false positives.">excludeExportedDefinitions</span></code></a>\
 Whether to suppress definitions that the analyzed project exports via its `NAMESPACE` (the package's public API).
 flowR cannot observe external callers, so exported names would otherwise be reported as (uncertain) false positives.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-definition.ts#L36"><code><span title="Whether to include (potentially anonymous) function definitions in the search (e.g., should we report uncalled anonymous functions?).">includeFunctionDefinitions</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-definition.ts#L38"><code><span title="Whether to include (potentially anonymous) function definitions in the search (e.g., should we report uncalled anonymous functions?).">includeFunctionDefinitions</span></code></a>\
 Whether to include (potentially anonymous) function definitions in the search (e.g., should we report uncalled anonymous functions?).
 
 ### Examples
@@ -48,16 +48,16 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (1 ms)\
+Query: **linter** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ uncertain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Definition of `y` at 3.1 (1 quick fix(es) available)\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 2, searchTimeMs: 1, processTimeMs: 0\
-_All queries together required ≈1 ms (1ms accuracy, total 2 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 2, searchTimeMs: 1, processTimeMs: 1\
+_All queries together required ≈2 ms (1ms accuracy, total 3 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _1.8 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _2.5 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -98,16 +98,16 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ".meta": {
           "totalConsidered": 2,
           "searchTimeMs": 1,
-          "processTimeMs": 0
+          "processTimeMs": 1
         }
       }
     },
     ".meta": {
-      "timing": 1
+      "timing": 2
     }
   },
   ".meta": {
-    "timing": 1
+    "timing": 2
   }
 }
 ```
@@ -151,4 +151,4 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-definition.test.ts#L61) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unused-definition.test.ts#L62) for the test-case implementation.

@@ -40,9 +40,9 @@ function globToRegExp(glob: string): RegExp {
 	return new RegExp(`^${escaped}$`);
 }
 
-/** a name matcher: exact equality, or a glob test when the pattern uses wildcards */
-function nameMatcher(pattern: string): (name: string) => boolean {
-	if(hasGlob(pattern)) {
+/** a name matcher: exact equality, or a glob test when the pattern uses wildcards (unless it is meant literally) */
+function nameMatcher(pattern: string, literal = false): (name: string) => boolean {
+	if(!literal && hasGlob(pattern)) {
 		const re = globToRegExp(pattern);
 		return name => re.test(name);
 	}
@@ -80,7 +80,7 @@ function parameterFilter(q: SignatureQuery): ((fn: DecodedFunction) => boolean) 
 	if(!hasParameterFilter(q)) {
 		return undefined;
 	}
-	const nameMatchers = q.parameters?.map(nameMatcher);
+	const nameMatchers = q.parameters?.map(p => nameMatcher(p));
 	const required = q.requiredParameters;
 	return fn => {
 		if(nameMatchers && !nameMatchers.every(m => fn.signature.some(p => m(p.name)))) {
@@ -628,8 +628,16 @@ function versionNotFoundMessage(pkg: string, lead: string, avail: readonly strin
 	return `${lead}${avail.length ? ` Available: ${avail.join(', ')}.` : ''}${hint}`;
 }
 
+/**
+ * Whether a name that reads like a glob is one a source records verbatim: `*` and `%*%` are functions of `base`,
+ * and a name that exists is what was asked for, not a pattern.
+ */
+function isVerbatimFunction(sources: readonly PackageSignatureSource[], pkg: string, name: string, version: string | undefined): boolean {
+	return sources.some(s => s.has(pkg) && ((s.functions(pkg, version) ?? s.functions(pkg))?.some(f => f.name === name) ?? false));
+}
+
 /** run a wildcard search across the loaded sources: matching packages (no function), or matching functions */
-function searchSources(sources: readonly PackageSignatureSource[], allNames: ReadonlySet<string>, q: SignatureQuery): Partial<SignatureQueryResult> {
+function searchSources(sources: readonly PackageSignatureSource[], allNames: ReadonlySet<string>, q: SignatureQuery, literalFunction = false): Partial<SignatureQueryResult> {
 	const cap = MaxMatches;
 	const pkgMatch = nameMatcher(q.package as string);
 	const matchedPkgs = [...allNames].filter(pkgMatch).sort();
@@ -669,10 +677,10 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 		return { packages, truncated };
 	}
 
-	const fnMatch = q.function ? nameMatcher(q.function) : () => true;
+	const fnMatch = q.function ? nameMatcher(q.function, literalFunction) : () => true;
 	// an exact function name lets us seek that one record (decoding only it) instead of decoding every function of
 	// every package, the difference between a fast `* ggplot` and one that decodes the whole database
-	const exactName = q.function !== undefined && !hasGlob(q.function);
+	const exactName = q.function !== undefined && (literalFunction || !hasGlob(q.function));
 	const matches: SignatureMatchView[] = [];
 	let searched = 0;
 	let truncated = false;
@@ -853,8 +861,12 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 
 	// wildcard search: a glob in the package/function name, a version spec matching more than one release (a range or
 	// a date bound), or a parameter filter (which narrows a set of functions and so always goes through the search path)
-	if(hasGlob(q.package) || (q.function !== undefined && hasGlob(q.function)) || (q.version !== undefined && (isMultiVersion(q.version) || isDateBound(q.version))) || hasParameterFilter(q)) {
-		const found = searchSources(sources, packages, q);
+	// a function name of one exact package that the database or flowR itself knows verbatim (`base::*`, `base::%*%`)
+	// names that function, so the exact answer wins over reading the name as a glob
+	const literalFunction = q.function !== undefined && hasGlob(q.function) && !hasGlob(q.package)
+		&& (isVerbatimFunction(sources, q.package, q.function, q.version) || builtIn(q.package, q.function) !== undefined);
+	if(hasGlob(q.package) || (q.function !== undefined && hasGlob(q.function) && !literalFunction) || (q.version !== undefined && (isMultiVersion(q.version) || isDateBound(q.version))) || hasParameterFilter(q)) {
+		const found = searchSources(sources, packages, q, literalFunction);
 		// a version glob against a single concrete, known package that matched no release: point at the available versions
 		// (the same guidance the exact-version path gives) instead of a bare "0 matched"
 		if((found.matchCount === 0 || found.packages?.length === 0) && !hasGlob(q.package) && q.version !== undefined) {
@@ -864,7 +876,7 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 				return { ...meta(), message: versionNotFoundMessage(q.package, `no release of '${q.package}' matches '${q.version}'.`, avail, owning[0].isBaseR(q.package)) };
 			}
 		}
-		if(found.matchCount === 0 && q.function !== undefined && !hasGlob(q.function)) {
+		if(found.matchCount === 0 && q.function !== undefined && (literalFunction || !hasGlob(q.function))) {
 			return { ...meta(), ...found, message: `No function named exactly '${q.function}'. Try a wildcard like '*${q.function}*'.` };
 		}
 		return { ...meta(), ...found };

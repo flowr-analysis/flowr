@@ -12,7 +12,7 @@ import type { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/rol
 import { looselyCompareObjects } from '../util/objects';
 import { searchLogger } from './search-executor/search-generators';
 import { callFnProps } from '../dataflow/environments/query-fn-props';
-import type { CallProp, PropSelector, SemanticProp } from '../dataflow/environments/built-in-props';
+import type { CallProp, PropSelector, SemanticCallTag } from '../dataflow/environments/built-in-props';
 import { CallProps } from '../dataflow/environments/built-in-props';
 import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
@@ -50,7 +50,7 @@ export enum FlowrFilter {
 	 */
 	FilePathFilter = 'file-path-filter',
 	/**
-	 * Only returns function calls carrying the given {@link CallProp}/{@link SemanticProp} properties, so that
+	 * Only returns function calls carrying the given {@link CallProp}/{@link SemanticCallTag} properties, so that
 	 * _every call that asks the user_ or _every call that closes a device_ can be searched for without naming a
 	 * single function.
 	 * This filter accepts {@link CallPropsArgs}.
@@ -91,7 +91,7 @@ export const FlowrFilters = {
 	}) satisfies FlowrFilterFunction<FilePathFilterArgs>,
 	[FlowrFilter.CallProps]: ((e: FlowrSearchElement<ParentInformation>, args: CallPropsArgs, data: { dataflow: DataflowInformation }) => {
 		const props = callFnProps(e.node.info.id, data.dataflow);
-		return args.matchType === 'every' ? CallProps.all(props, args.props) : CallProps.any(props, args.props);
+		return args.matchType === 'every' ? CallProps.hasAll(props, args.props) : CallProps.hasAny(props, args.props);
 	}) satisfies FlowrFilterFunction<CallPropsArgs>
 } as const;
 export type FlowrFilterArgs<F extends FlowrFilter> = typeof FlowrFilters[F] extends FlowrFilterFunction<infer Args> ? Args : never;
@@ -116,7 +116,7 @@ export interface FilePathFilterArgs {
 	filePathRegex: string | RegExp
 }
 export interface CallPropsArgs {
-	/** the properties to look for, e.g. `[SemanticProp.User, CallProp.Closes]` */
+	/** the properties to look for, e.g. `[SemanticCallTag.User, CallProp.Pure]` */
 	props:      PropSelector;
 	/** whether a call has to carry every one of {@link props} or just one of them (the default) */
 	matchType?: 'some' | 'every'

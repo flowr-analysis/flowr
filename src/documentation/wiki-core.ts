@@ -39,7 +39,7 @@ import { FlowrAnalyzerGasContext } from '../project/context/flowr-analyzer-gas-c
 import { FlowrAnalyzerGasPlugin } from '../project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { GasFeatureKey, GasLevel } from '../gas';
 import type { PropSelector } from '../dataflow/environments/built-in-props';
-import { ArgProp, CallProp, ExclusiveCallProps, CallProps, SemanticProp, SigDbInferable } from '../dataflow/environments/built-in-props';
+import { ArgProp, CallProp, ExclusiveCallProps, CallProps, SemanticCallTag, SigDbInferable } from '../dataflow/environments/built-in-props';
 import { BuiltInIndex, inferFnProps } from '../dataflow/environments/query-fn-props';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import { SemVer } from 'semver';
@@ -125,7 +125,7 @@ function propNames(selector: PropSelector): string {
 /** The "Labeling the Built-Ins" section of the Core page, with a table per enum taken from the configuration. */
 function builtInLabelsSection(ctx: GeneralDocContext): string {
 	const index = BuiltInIndex.default();
-	const Enums = { CallProp, SemanticProp, ArgProp };
+	const Enums = { CallProp, SemanticCallTag, ArgProp };
 	const enumEntries = (type: keyof typeof Enums): [name: string, prop: PropSelector][] =>
 		Object.entries(Enums[type]).map(([name, prop]) => [name, prop as PropSelector]);
 	/* the doc comment of a property is its explanation, flattened to fit a table cell; properties nothing carries are left out */
@@ -150,7 +150,7 @@ Besides the processor, an entry says what the function *is*, in three label voca
   throws, whether it returns invisibly, whether it dispatches, what it does to the frames around it. R's
   primitive generics (\`+\`, \`sin\`, \`length\`, ...) are \`Pure | Generic\`, and as they have no R body, the store is
   the only place that can say they dispatch.
-* ${ctx.link('SemanticProp')} labels what semantic a call has (\`tags\`, an array): which resource it accesses,
+* ${ctx.link('SemanticCallTag')} labels what semantic a call has (\`tags\`, an array): which resource it accesses,
   what it produces, what it is used for. \`print\` is \`Invisible | Generic\` with \`[Prints]\`.
 * ${ctx.link('ArgProp')} labels each parameter (\`sig\`), in the order R declares them: which one carries the data,
   which one only selects a behavior, which one names a file, which one is called as a function.
@@ -171,7 +171,7 @@ ${codeBlock('ts', `{ type: 'function', names: Identifier.fromAll(PkgName.Base, [
 while \`read.csv\` states what it does instead:
 
 ${codeBlock('ts', `{ type: 'function', names: [Identifier.from(['read.csv', PkgName.Utils])], processor: BuiltInProcName.Default,
-  config:    { tags: [SemanticProp.File, SemanticProp.Reads], sig: [['file', ArgProp.Resource], ...] } }`)}
+  config:    { tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: [['file', ArgProp.Resource], ...] } }`)}
 
 The three tables below are generated from the configuration itself, so they always list every label that exists,
 what it means, and how many built-ins carry it.
@@ -184,7 +184,7 @@ ${table('CallProp', 'Call property', prop => index.with(prop).length)}`)}
 
 ${details('What each semantic property means', `
 
-${table('SemanticProp', 'Semantic property', prop => index.with(prop).length)}
+${table('SemanticCallTag', 'Semantic property', prop => index.with(prop).length)}
 
 Two pairs read like refinements but are not: \`TempFile\` does not imply \`File\` (making up a path touches no file
 system, so a call doing both states both), and \`Reads\`/\`Writes\` say what happens to the resource an

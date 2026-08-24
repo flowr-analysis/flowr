@@ -1,4 +1,4 @@
-import { type ArgProps, type BuiltInFnInfo, CallProp, CallProps, fnInfoFromSignature, type FnSig, PropagatedProps, type PropSelector, type SemanticProps, type StatedProps } from './built-in-props';
+import { type ArgProps, type BuiltInFnInfo, CallProp, CallProps, fnInfoFromSignature, type FnSig, PropagatedProps, type PropSelector, type SemanticCallTags, type StatedProps } from './built-in-props';
 import type { BuiltIns } from './built-in';
 import type { BuiltInDefinition, BuiltInDefinitions } from './built-in-config';
 import { DefaultBuiltinConfig } from './default-builtin-config';
@@ -69,7 +69,7 @@ function ofDefinitions(definitions: readonly IdentifierDefinition[] | undefined)
 		sig ??= info?.sig;
 		stated = CallProps.join(stated, info);
 	}
-	return sig === undefined && !CallProps.any(stated) ? undefined : { sig, ...stated };
+	return sig === undefined && !CallProps.hasAny(stated) ? undefined : { sig, ...stated };
 }
 
 /**
@@ -153,8 +153,8 @@ export interface BuiltInEntry extends StatedProps {
 	readonly name:   Identifier
 	/** the {@link CallProp} bits the definition states, `undefined` when it states none */
 	readonly props?: CallProps
-	/** the {@link SemanticProp} entries the definition states, `undefined` when it states none */
-	readonly tags?:  SemanticProps
+	/** the {@link SemanticCallTags} entries the definition states, `undefined` when it states none */
+	readonly tags?:  SemanticCallTags
 	/** the declared parameters and what each of their arguments is used for */
 	readonly sig?:   FnSig
 	/** whether the value solver can fold a call of this built-in to a constant */
@@ -242,9 +242,9 @@ export class BuiltInIndex {
 		return found;
 	}
 
-	/** Every built-in carrying at least one property of `props`, like {@link SemanticProp.File} for the file calls. */
+	/** Every built-in carrying at least one property of `props`, like {@link SemanticCallTag.File} for the file calls. */
 	public with(props: PropSelector): readonly Identifier[] {
-		return this.cached(`with:${CallProps.key(props)}`, e => CallProps.any(e, props));
+		return this.cached(`with:${CallProps.key(props)}`, e => CallProps.hasAny(e, props));
 	}
 
 	/**
@@ -252,7 +252,7 @@ export class BuiltInIndex {
 	 * like {@link FileInputProps} for the calls that read a file rather than only write one.
 	 */
 	public withAll(props: PropSelector): readonly Identifier[] {
-		return this.cached(`all:${CallProps.key(props)}`, e => CallProps.any(e) && CallProps.all(e, props));
+		return this.cached(`all:${CallProps.key(props)}`, e => CallProps.hasAny(e) && CallProps.hasAll(e, props));
 	}
 
 	/**
@@ -260,7 +260,7 @@ export class BuiltInIndex {
 	 * the calls that derive their result from their arguments alone.
 	 */
 	public without(props: PropSelector): readonly Identifier[] {
-		return this.cached(`without:${CallProps.key(props)}`, e => CallProps.any(e) && !CallProps.any(e, props));
+		return this.cached(`without:${CallProps.key(props)}`, e => CallProps.hasAny(e) && !CallProps.hasAny(e, props));
 	}
 
 	/** Every built-in flowR states computes a result and nothing else ({@link CallProp.Pure}). */

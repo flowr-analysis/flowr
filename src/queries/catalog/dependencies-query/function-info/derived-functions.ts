@@ -23,7 +23,7 @@ export function functionInfosFromProps(props: PropSelector, except: readonly Fun
 	const found: FunctionInfo[] = [];
 	for(const d of DefaultBuiltinConfig) {
 		const info = d.type !== 'constant' ? (d as { config?: BuiltInFnInfo }).config : undefined;
-		if(info?.sig === undefined || !CallProps.any(info) || !CallProps.all(info, props)) {
+		if(info?.sig === undefined || !CallProps.hasAny(info) || !CallProps.hasAll(info, props)) {
 			continue;
 		}
 		const argIdx = info.sig.findIndex(([, p]) => (p & ArgProp.Resource) !== 0);

@@ -38,8 +38,8 @@ describe('Built-in value folding', () => {
 
 	test(label('a folded call is pure and names its argument as its handler expects', ['name-normal'], ['other']), () => {
 		for(const { name, info } of folded) {
-			assert.isTrue(CallProps.any(info, CallProp.Pure), `${name} is folded but does not claim to be pure`);
-			assert.isTrue(!CallProps.any(info, InputProps), `${name} is folded but brings in data of its own`);
+			assert.isTrue(CallProps.hasAny(info, CallProp.Pure), `${name} is folded but does not claim to be pure`);
+			assert.isTrue(!CallProps.hasAny(info, InputProps), `${name} is folded but brings in data of its own`);
 			/* the handlers match arguments by the parameter names they declare, so the signature has to use the same ones */
 			const params: readonly string[] | undefined = StringFns[name as keyof typeof StringFns]?.params
 				?? NumericFns[name as keyof typeof NumericFns]?.params;

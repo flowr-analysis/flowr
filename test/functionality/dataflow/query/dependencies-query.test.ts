@@ -22,7 +22,7 @@ import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { DefaultBuiltinConfig } from '../../../../src/dataflow/environments/default-builtin-config';
 import { builtInNames, BuiltInIndex } from '../../../../src/dataflow/environments/query-fn-props';
 import type { BuiltInFnInfo, FnSig } from '../../../../src/dataflow/environments/built-in-props';
-import { ArgProp, SemanticProp } from '../../../../src/dataflow/environments/built-in-props';
+import { ArgProp, SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
 import { ReadFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/read-functions';
 import { WriteFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/write-functions';
 import { OtherPathFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/other-path-functions';
@@ -795,7 +795,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			statistics: [{ nodeId: '1@t.test', functionName: 't.test' }]
 		});
 		test('the category is what the built-ins state, with a package for every entry', () => {
-			const stated = BuiltInIndex.default().with(SemanticProp.Statistics);
+			const stated = BuiltInIndex.default().with(SemanticCallTag.Statistics);
 			assert.isNotEmpty(stated);
 			assert.deepStrictEqual(
 				DefaultDependencyCategories.statistics.functions.map(f => `${f.package as string}::${f.name}`).sort(),

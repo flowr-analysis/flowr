@@ -2,14 +2,14 @@ import type { DependencyInfo } from './dependencies-query-format';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
 import { callFnProps } from '../../../dataflow/environments/query-fn-props';
-import { CallProp, CallProps, SemanticProp } from '../../../dataflow/environments/built-in-props';
+import { CallProps, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
 import { FunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { SourceRange } from '../../../util/range';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PropSelector } from '../../../dataflow/environments/built-in-props';
 
 function callHas(id: NodeId, dataflow: DataflowInformation, props: PropSelector): boolean {
-	return CallProps.any(callFnProps(id, dataflow), props);
+	return CallProps.hasAny(callFnProps(id, dataflow), props);
 }
 
 /**
@@ -21,15 +21,15 @@ function callHas(id: NodeId, dataflow: DataflowInformation, props: PropSelector)
  * {@link DependencyInfo#parts}: the addons drawn onto it, plus the device opener and closer around it.
  * Closing a device ends the plot, so an addon after it builds whatever device is open then, not this file.
  *
- * Openers are the `write` entries that draw ({@link SemanticProp.Graphics}), closers the calls that end a device
- * ({@link CallProp.Closes}), and the order is the one the source states.
+ * Openers are the `write` entries that draw ({@link SemanticCallTag.Graphics}), closers the calls that end a device
+ * ({@link SemanticCallTag.Closes}), and the order is the one the source states.
  */
 export function linkPlotsToDevices(written: readonly DependencyInfo[], plots: DependencyInfo[], dataflow: DataflowInformation, ast: NormalizedAst): void {
 	const opened = new Map(written
-		.filter(w => w.value !== undefined && callHas(w.nodeId, dataflow, SemanticProp.Graphics))
+		.filter(w => w.value !== undefined && callHas(w.nodeId, dataflow, SemanticCallTag.Graphics))
 		.map(w => [w.nodeId, w.value as string]));
 	const closed = new Set(dataflow.graph.vertices(true)
-		.filter(([id, v]) => FunctionCallVertex.is(v) && callHas(id, dataflow, CallProp.Closes))
+		.filter(([id, v]) => FunctionCallVertex.is(v) && callHas(id, dataflow, SemanticCallTag.Closes))
 		.map(([id]) => id));
 	const plotAt = new Map(plots.map((p, index) => [p.nodeId, index]));
 	const located = [...opened.keys(), ...closed, ...plotAt.keys()]

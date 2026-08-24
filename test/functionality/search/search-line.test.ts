@@ -11,7 +11,7 @@ import { DefaultCfgSimplificationOrder } from '../../../src/control-flow/cfg-sim
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { BuiltInProcName } from '../../../src/dataflow/environments/built-in-proc-name';
 import type { PropSelector } from '../../../src/dataflow/environments/built-in-props';
-import { CallProp, SemanticProp } from '../../../src/dataflow/environments/built-in-props';
+import { CallProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
 
 describe('flowR search', withTreeSitter(parser => {
 	assertSearch('simple search for first', parser, 'x <- 1\nprint(x)', ['1@x'],
@@ -94,18 +94,18 @@ describe('flowR search', withTreeSitter(parser => {
 				Q.all().filter({ name: FlowrFilter.CallProps, args: { props, matchType } });
 			const code = 'pdf("a.pdf")\nplot(1)\ndev.off()\nsetwd("/tmp")\nx <- readline("give: ")\nprint(1)';
 
-			assertSearch('asks the user', parser, code, ['5@readline'], carrying(SemanticProp.User));
-			assertSearch('closes a device', parser, code, ['3@dev.off'], carrying(CallProp.Closes));
+			assertSearch('asks the user', parser, code, ['5@readline'], carrying(SemanticCallTag.User));
+			assertSearch('closes a device', parser, code, ['3@dev.off'], carrying(SemanticCallTag.Closes));
 			assertSearch('sets ambient state', parser, code, ['4@setwd'], carrying(CallProp.Configures));
-			assertSearch('any of several properties', parser, code, ['3@dev.off', '4@setwd'], carrying(CallProp.Closes | CallProp.Configures));
-			assertSearch('every one of them', parser, code, ['3@dev.off'], carrying([CallProp.Closes, SemanticProp.Graphics], 'every'));
+			assertSearch('any of several properties', parser, code, ['3@dev.off', '4@setwd'], carrying([SemanticCallTag.Closes, CallProp.Configures]));
+			assertSearch('every one of them', parser, code, ['3@dev.off'], carrying([SemanticCallTag.Closes, SemanticCallTag.Graphics], 'every'));
 			/* a definition in the analyzed code shadows the built-in, so the call is no longer the one we labelled */
-			assertSearch('a shadowed built-in states nothing', parser, 'readline <- function(...) "x"\nreadline("give: ")', [], carrying(SemanticProp.User));
+			assertSearch('a shadowed built-in states nothing', parser, 'readline <- function(...) "x"\nreadline("give: ")', [], carrying(SemanticCallTag.User));
 			/* the call happens before that definition, so it is still the built-in that runs */
-			assertSearch('a redefinition afterwards does not speak for it', parser, 'readline("give: ")\nreadline <- function(...) "x"', ['1@readline'], carrying(SemanticProp.User));
+			assertSearch('a redefinition afterwards does not speak for it', parser, 'readline("give: ")\nreadline <- function(...) "x"', ['1@readline'], carrying(SemanticCallTag.User));
 			/* attaching a package binds its exports itself, which must not hide what flowR states about them */
-			assertSearch('a call of an attached package', parser, 'library(svDialogs)\nx <- dlgInput("give: ")', ['2@dlgInput'], carrying(SemanticProp.User));
-			assertSearch('the same call namespaced', parser, 'x <- svDialogs::dlgInput("give: ")', ['1@svDialogs::dlgInput'], carrying(SemanticProp.User));
+			assertSearch('a call of an attached package', parser, 'library(svDialogs)\nx <- dlgInput("give: ")', ['2@dlgInput'], carrying(SemanticCallTag.User));
+			assertSearch('the same call namespaced', parser, 'x <- svDialogs::dlgInput("give: ")', ['1@svDialogs::dlgInput'], carrying(SemanticCallTag.User));
 		});
 		describe('file path', () => {
 			assertSearch('filter by file path with RegExp', parser,

@@ -6,7 +6,13 @@ import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 import type { FilePath } from './flowr-file';
 import type { ParseStepOutput } from '../../r-bridge/parser';
 import fs from 'fs';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
+
+interface PersistedDataflowGraphEntry {
+	readonly graph:       Buffer;
+	readonly environment: Buffer;
+}
 
 export interface ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
 	/**
@@ -16,7 +22,7 @@ export interface ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
 
 	getOldParseResultOf(filePath: FilePath): Parser.Tree | undefined;
 	getOldContentOf(filePath: FilePath): string | undefined;
-	getPersistedDataflowGraphOf(filePath: FilePath): string | undefined;
+	getPersistedDataflowGraphOf(nodeId: NodeId, hash: string): PersistedDataflowGraphEntry | undefined;
 }
 
 /**
@@ -42,7 +48,7 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 	 */
 	private changedFilesWithOldContent: Map<FilePath, string | undefined> = new Map();
 	private oldParseResults:            Map<FilePath, Parser.Tree> = new Map();
-	private persistedDataflowGraphs:    Map<FilePath, string> = new Map();
+	private persistedDataflowGraphs:    Map<string, PersistedDataflowGraphEntry> = new Map();
 	private readonly lastKnownMtime:    Map<FilePath, number> = new Map();
 
 
@@ -131,11 +137,8 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 			: checks.every(check => check(filePath, ctx));
 	}
 
-	handleShouldReparseDataflow(filePath: FilePath, ctx: FlowrAnalyzerContext): boolean {
-		if(!ctx.config.incremental.dataflow.activated) {
-			return true;
-		}
-		return this.handleShouldReparse(filePath, ctx);
+	handleShouldReparseDataflow(ctx: FlowrAnalyzerContext): boolean {
+		return ctx.config.incremental.dataflow.activated;
 	}
 
 	receive(event: InvalidationEvent): void {
@@ -183,11 +186,11 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 		this.lastKnownMtime.set(filePath, mtimeMs);
 	}
 
-	public storePersistedDataflowGraph(filePath: FilePath, serialized: string): void {
-		this.persistedDataflowGraphs.set(filePath, serialized);
+	public storePersistedDataflowGraph(nodeId: NodeId, hash: string, entry: PersistedDataflowGraphEntry): void {
+		this.persistedDataflowGraphs.set(`${nodeId}:${hash}`, entry);
 	}
 
-	public getPersistedDataflowGraphOf(filePath: FilePath): string | undefined {
-		return this.persistedDataflowGraphs.get(filePath);
+	public getPersistedDataflowGraphOf(nodeId: NodeId, hash: string): PersistedDataflowGraphEntry | undefined {
+		return this.persistedDataflowGraphs.get(`${nodeId}:${hash}`);
 	}
 }

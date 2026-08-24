@@ -53,7 +53,8 @@ import { SliceDirection } from '../../../src/util/slice-direction';
 import { CallGraph } from '../../../src/dataflow/graph/call-graph';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import {
-	VertexType
+	FunctionCallVertex,
+	FunctionDefinitionVertex
 } from '../../../src/dataflow/graph/vertex';
 import type { Environment, IEnvironment } from '../../../src/dataflow/environments/environment';
 
@@ -412,10 +413,10 @@ function assertPersistedDataflowGraphMatches(
 
 		for(const [, vertex] of graph.vertices(true)) {
 			stripEnv(vertex.environment?.current);
-			if(vertex.tag === VertexType.FunctionCall) {
+			if(FunctionCallVertex.is(vertex)) {
 				stripEnv(vertex.newEnvParent?.current);
 			}
-			if(vertex.tag === VertexType.FunctionDefinition) {
+			if(FunctionDefinitionVertex.is(vertex)) {
 				stripEnv(vertex.subflow?.environment?.current);
 				stripEnv(vertex.returnEnvState?.current);
 			}

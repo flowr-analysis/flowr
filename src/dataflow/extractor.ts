@@ -1,4 +1,4 @@
-import type { DataflowInformation } from './info';
+import { DataflowInformation } from './info';
 import { type DataflowProcessorInformation, type DataflowProcessors, processDataflowFor } from './processor';
 import { processUninterestingLeaf } from './internal/process/process-uninteresting-leaf';
 import { processSymbol } from './internal/process/process-symbol';
@@ -13,7 +13,7 @@ import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import { attachProject } from './internal/process/functions/call/built-in/built-in-library';
-import { type DataflowGraph, UnknownSideEffect } from './graph/graph';
+import { DataflowGraph, UnknownSideEffect } from './graph/graph';
 import { ControlFlowGraph } from '../control-flow/control-flow-graph';
 import { EdgeType } from './graph/edge';
 import { identifyLinkToLastCallRelationSync
@@ -21,7 +21,7 @@ import { identifyLinkToLastCallRelationSync
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
 import { reResolveOpenReferences, linkMaterializedExportsToLoaders } from './internal/process/functions/call/built-in/transitive-side-effects';
-import type { REnvironmentInformation } from './environments/environment';
+import type { IEnvironment, REnvironmentInformation } from './environments/environment';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrFile } from '../project/context/flowr-file';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -38,6 +38,8 @@ import { dataflowLogger } from './logger';
 import { GasFeatureKey, GasLevel, GasWikiRef } from '../gas';
 import { Dataflow } from './graph/df-helper';
 import { uniqueArray } from '../util/collections/arrays';
+import { Hash53 } from '../util/hash';
+import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -127,6 +129,25 @@ function resolveLinkToSideEffects(graph: DataflowGraph, ctx: FlowrAnalyzerContex
 
 }
 
+const astHashIgnoredKeys = new Set(['id', 'parent', 'tsId', 'location', 'fullRange']);
+
+function hashAst(root: unknown): string {
+	return new Hash53().update(JSON.stringify(root, (key: string, value: unknown) => {
+		if(astHashIgnoredKeys.has(key)) {
+			return undefined;
+		}
+		// filter whitespace
+		if((key === 'lexeme' || key === 'fullLexeme') && typeof value === 'string') {
+			return value.replace(/\s+/g, ' ').trim();
+		}
+		// filter comments
+		if(Array.isArray(value)) {
+			return (value as unknown[]).filter(entry => !RComment.is(entry));
+		}
+		return value;
+	})).digest();
+}
+
 /**
  * This is the main function to produce the dataflow graph from a given request and normalized AST.
  * Note, that this requires knowledge of the active parser in case the dataflow analysis uncovers other files that have to be parsed and integrated into the analysis
@@ -143,6 +164,26 @@ export function produceDataFlowGraph<OtherInfo>(
 	const files = completeAst.ast.files.slice();
 
 	ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
+
+	const incContext = ctx.inc;
+	const nodeId = files[0].root.info.id;
+	const hash = incContext.handleShouldReparseDataflow(ctx) ? hashAst(completeAst.ast) : undefined;
+	const builtInEnv = ctx.env.builtInEnvironment as IEnvironment;
+	const emptyBuiltInEnv = ctx.env.emptyBuiltInEnvironment as IEnvironment;
+
+	if(hash !== undefined) {
+		const cached = incContext.getPersistedDataflowGraphOf(nodeId, hash);
+		if(cached) {
+			dataflowLogger.info(`[Incremental DFG]: Reusing cached dataflow graph for node '${nodeId}'.`);
+			return {
+				...DataflowInformation.initialize(nodeId, {
+					environment: DataflowGraph.reviveEnvironment(cached.environment, builtInEnv, emptyBuiltInEnv),
+					completeAst
+				}),
+				graph: DataflowGraph.fromPersisted(cached.graph, builtInEnv, emptyBuiltInEnv)
+			};
+		}
+	}
 
 	const env = ctx.env.makeCleanEnv();
 	env.current.n = ctx.meta.getNamespace();
@@ -195,6 +236,13 @@ export function produceDataFlowGraph<OtherInfo>(
 	Quoted.finalize(df.graph, completeAst.idMap, () => new ControlFlowGraph(df.graph));
 
 	resolveLinkToSideEffects(df.graph, ctx);
+
+	if(hash !== undefined) {
+		incContext.storePersistedDataflowGraph(nodeId, hash, {
+			graph:       df.graph.persist(builtInEnv, emptyBuiltInEnv),
+			environment: DataflowGraph.persistEnvironment(df.environment, builtInEnv, emptyBuiltInEnv)
+		});
+	}
 
 	return df;
 }

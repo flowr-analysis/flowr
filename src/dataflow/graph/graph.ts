@@ -8,7 +8,7 @@ import {
 	type DataflowGraphVertexFunctionDefinition,
 	type DataflowGraphVertexInfo,
 	type DataflowGraphVertexVariableDefinition,
-	type DataflowGraphVertices, VertexType
+	type DataflowGraphVertices, FunctionCallVertex, VertexType
 } from './vertex';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -829,10 +829,10 @@ export class DataflowGraph<
 			if(v.environment) {
 				v.environment = serializer.renv(v.environment) as unknown as REnvironmentInformation;
 			}
-			if(v.tag === VertexType.FunctionCall && v.newEnvParent) {
+			if(FunctionCallVertex.is(v) && v.newEnvParent) {
 				v.newEnvParent = serializer.renv(v.newEnvParent) as unknown as REnvironmentInformation;
 			}
-			if(v.tag === VertexType.FunctionDefinition) {
+			if(FunctionDefinitionVertex.is(v)) {
 				if(v.subflow?.environment) {
 					v.subflow = { ...v.subflow, environment: serializer.renv(v.subflow.environment) as unknown as REnvironmentInformation };
 				}
@@ -850,6 +850,14 @@ export class DataflowGraph<
 		return this.revive(json, builtInEnv, emptyBuiltInEnv);
 	}
 
+	public static persistEnvironment(env: REnvironmentInformation, builtInEnv: IEnvironment, emptyBuiltInEnv: IEnvironment): Buffer {
+		return packr.pack(new PersistedEnvironmentSerializer(builtInEnv, emptyBuiltInEnv).renv(env));
+	}
+
+	public static reviveEnvironment(data: Buffer, builtInEnv: IEnvironment, emptyBuiltInEnv: IEnvironment): REnvironmentInformation {
+		return new PersistedEnvironmentReviver(builtInEnv, emptyBuiltInEnv).renv(packr.unpack(data) as REnvironmentInformation);
+	}
+
 	public static revive(data: IPersistedDataflowGraph, builtInEnv: IEnvironment, emptyBuiltInEnv: IEnvironment): DataflowGraph {
 		const reviver = new PersistedEnvironmentReviver(builtInEnv, emptyBuiltInEnv);
 		const graph = new DataflowGraph(data._idMap);
@@ -860,10 +868,10 @@ export class DataflowGraph<
 			if(vertex.environment) {
 				(vertex.environment as Writable<REnvironmentInformation>) = reviver.renv(vertex.environment);
 			}
-			if(vertex.tag === VertexType.FunctionCall && vertex.newEnvParent) {
+			if(FunctionCallVertex.is(vertex) && vertex.newEnvParent) {
 				(vertex.newEnvParent as Writable<REnvironmentInformation>) = reviver.renv(vertex.newEnvParent);
 			}
-			if(vertex.tag === VertexType.FunctionDefinition) {
+			if(FunctionDefinitionVertex.is(vertex)) {
 				if(vertex.subflow?.environment) {
 					(vertex.subflow.environment as Writable<REnvironmentInformation>) = reviver.renv(vertex.subflow.environment);
 				}

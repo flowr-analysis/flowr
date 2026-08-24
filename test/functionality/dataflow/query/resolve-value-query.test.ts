@@ -38,7 +38,6 @@ describe('Resolve Value Query', withTreeSitter( parser => {
 		});
 	}
 
-
 	testQuery('Single dataflow', 'x <- 1', ['1@x'], [[setFrom(intervalFrom(1, 1))]]);
 	testQuery('Intermediary', 'x <- 1\ny <- x\nprint(y)', ['3@y'], [[setFrom(intervalFrom(1, 1))]]);
 	testQuery('Mystic Intermediary', 'x <- 1\ny <- f(x)\nprint(y)', ['3@y'], [[Top]]);
@@ -98,7 +97,6 @@ describe('Resolve Value Query', withTreeSitter( parser => {
 			[[setFrom(stringFrom('z'))]]);
 	});
 
-	/* a literal stands for the characters R reads it as, not for the source text spelling them out */
 	describe('String escapes', () => {
 		testQuery('an escaped tab', 'x <- "a\\tb"\nprint(x)', ['2@x'], [[setFrom(stringFrom('a\tb'))]]);
 		testQuery('an escaped quote', 'x <- "a\\"b"\nprint(x)', ['2@x'], [[setFrom(stringFrom('a"b'))]]);

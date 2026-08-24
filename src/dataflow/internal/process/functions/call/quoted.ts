@@ -150,11 +150,7 @@ function boundBy(graph: DataflowGraph, id: NodeId): NodeId | undefined {
 	return undefined;
 }
 
-/**
- * Every read of the delayed name takes the value of the expression the promise holds, so the expression is
- * part of what the read yields. Which read forces it first decides the bindings it sees, not whether it runs,
- * so all of them get the link and none can be sliced away without it.
- */
+/** Every read of the delayed name takes the promised expression's value, so all of them get the link, not just whichever forces it first. */
 function linkForcesToPromise(graph: DataflowGraph, binding: NodeId, promise: NodeId): void {
 	for(const [reader, edge] of graph.ingoingEdges(binding) ?? NoEdges) {
 		if(DfEdge.includesType(edge, EdgeType.Reads) && reader !== promise) {
@@ -197,9 +193,8 @@ function bindingsOf<Info>(graph: DataflowGraph, idMap: AstIdMap<Info & ParentInf
 }
 
 /**
- * Where the evaluation happens as far as the surrounding flow is concerned: the call itself, or, for one inside
- * a closure, every call of that closure, since those are the points whose bindings the evaluation sees. A closure
- * we never see called leaves the moment open, which `undefined` says.
+ * Where the evaluation happens: the call itself, or, for one inside a closure, every call of that closure (those
+ * are the points whose bindings the evaluation sees). `undefined` if a nesting closure is never seen called.
  */
 function evaluationSites(graph: DataflowGraph, id: NodeId): readonly NodeId[] | undefined {
 	const sites: NodeId[] = [];
@@ -227,9 +222,8 @@ function mayReach(sites: readonly NodeId[] | undefined, definition: NodeId, cfg:
 }
 
 /**
- * The names the frames we know do not bind: a capture forced inside a closure sees what the caller bound after
- * the closure was written, so every binding of the name the evaluation may reach stays a candidate. Ruling out
- * the ones no path can bring about keeps this from reaching definitions the evaluation never sees.
+ * The names the frames we know do not bind: a capture forced inside a closure may see bindings the caller made
+ * after the closure was written, so every reachable definition of the name stays a candidate.
  */
 function linkAgainstAnyBinding(graph: DataflowGraph, open: readonly IdentifierReference[], bindings: ReadonlyMap<string, NodeId[]>, sites: readonly NodeId[] | undefined, cfg: ControlFlowGraph | undefined): void {
 	for(const reference of open) {

@@ -125,7 +125,6 @@ function doesCallQueryLineParser(output: ReplOutput, line: readonly string[], _c
 	} ;
 }
 
-
 export const DoesCallQueryDefinition = {
 	title:           'Does-Call Query',
 	executor:        executeDoesCallQuery,

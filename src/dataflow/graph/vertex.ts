@@ -8,7 +8,6 @@ import type { BuiltInProcName } from '../environments/built-in-proc-name';
 import type { Value } from '../eval/values/r-value';
 import type { ClassDeclaration } from '../fn/class-declaration';
 
-
 export enum VertexType {
 	Value              = 'value',
 	Use                = 'use',
@@ -197,7 +196,6 @@ export type DataflowGraphVertexInfo = Required<DataflowGraphVertexArgument>;
  */
 export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo> = Map<NodeId, Vertex>;
 
-
 /**
  * Helpers for {@link DataflowGraphVertexValue} vertices.
  * @example
@@ -282,4 +280,3 @@ export const FunctionDefinitionVertex = {
 		return vertex?.tag === VertexType.FunctionDefinition;
 	}
 };
-

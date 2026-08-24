@@ -65,7 +65,6 @@ import {
 	executeGuessDepVersionsQuery
 } from '../queries/catalog/guess-dep-versions-query/guess-dep-versions-query-executor';
 
-
 registerQueryDocumentation('call-context', {
 	type:             'active',
 	shortDescription: 'Finds all calls in a set of files that matches specified criteria.',
@@ -100,20 +99,8 @@ all calls that start with \`read_\` to the kind \`input\` but only if they are n
 ${
 	await showQuery(shell, exampleQueryCode, [
 		{ type: 'call-context', callName: '^mean$', kind: 'visualize', subkind: 'text' },
-		{
-			type:        'call-context',
-			callName:    '^read_',
-			kind:        'input',
-			subkind:     'csv-file',
-			callTargets: CallTargets.OnlyGlobal
-		},
-		{
-			type:     'call-context',
-			callName: '^points$',
-			kind:     'visualize',
-			subkind:  'plot',
-			linkTo:   { type: 'link-to-last-call', callName: '^plot$' }
-		}
+		{ type: 'call-context', callName: '^read_', kind: 'input', subkind: 'csv-file', callTargets: CallTargets.OnlyGlobal },
+		{ type: 'call-context', callName: '^points$', kind: 'visualize', subkind: 'plot', linkTo: { type: 'link-to-last-call', callName: '^plot$' } }
 	], { showCode: false, ctx })
 }
 
@@ -152,9 +139,7 @@ This query type does exactly that!
 
 Using the example code \`${exampleCode}\`, the following query returns the dataflow graph of the code:
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'dataflow'
-	}], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'dataflow' }], { showCode: true, collapseQuery: true, ctx })
 }
 		`;
 	}
@@ -172,9 +157,7 @@ This query calculates and returns the ${ctx.linkPage('wiki/Dataflow Graph', 'cal
 
 Using the example code \`${exampleCode}\`, the following query returns the dataflow graph of the code:
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'call-graph'
-	}], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'call-graph' }], { showCode: true, collapseQuery: true, ctx })
 }
 		`;
 	}
@@ -194,17 +177,11 @@ Using the example code:
 ${codeBlock('r', exampleCode)}
 the following query checks whether the call to \`f\` calls \`eval\`:
 ${
-	await showQuery(shell, exampleCode, [{
-		type:    'does-call',
-		queryId: 'calls-eval',
-		call:    '2@f',
-		calls:   { type: 'name', name: 'eval', nameExact: true }
-	}], { showCode: true, collapseQuery: false, shorthand: '(2@f:"eval")', ctx })
+	await showQuery(shell, exampleCode, [{ type: 'does-call', queryId: 'calls-eval', call: '2@f', calls: { type: 'name', name: 'eval', nameExact: true } }], { showCode: true, collapseQuery: false, shorthand: '(2@f:"eval")', ctx })
 }
 		`;
 	}
 });
-
 
 registerQueryDocumentation('files', {
 	type:             'active',
@@ -215,9 +192,7 @@ registerQueryDocumentation('files', {
 		return `
 This query returns the files that match the given criteria.
 ${
-	await showQuery(shell, '', [{
-		type: 'files'
-	}], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, '', [{ type: 'files' }], { showCode: true, collapseQuery: true, ctx })
 }
 		`;
 	}
@@ -235,9 +210,7 @@ This query returns the information about the analyzed project.
 If present, it will incorporate plugins to, e.g., extract author and license information from R package DESCRIPTION files.
 
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'project'
-	}], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'project' }], { showCode: true, collapseQuery: true, ctx })
 }
 		`;
 	}
@@ -256,9 +229,7 @@ This query type does exactly that!
 
 Using the example code \`${exampleCode}\`, the following query returns the normalized AST of the code:
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'normalized-ast'
-	}], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'normalized-ast' }], { showCode: true, collapseQuery: true, ctx })
 }
 		`;
 	}
@@ -287,9 +258,7 @@ ${details('Example <code>' + exampleB + '</code>',
 
 Using the example code from above, the following query returns all clusters:
 ${
-	await showQuery(shell, exampleQueryCode, [{
-		type: 'dataflow-cluster'
-	}], { showCode: false, collapseQuery: true, ctx })
+	await showQuery(shell, exampleQueryCode, [{ type: 'dataflow-cluster' }], { showCode: false, collapseQuery: true, ctx })
 }
 		`;
 	}
@@ -309,10 +278,7 @@ The extent to which flowR traces values (e.g., built-ins vs. constants) can be c
 
 Using the example code \`${exampleCode}\` (with newlines), the following query returns all values of \`x\` in the code:
 ${
-	await showQuery(shell, exampleCode, [{
-		type:     'resolve-value',
-		criteria: criteria
-	}], { showCode: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
+	await showQuery(shell, exampleCode, [{ type: 'resolve-value', criteria: criteria }], { showCode: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
 }
 		`;
 	}
@@ -332,22 +298,16 @@ Please note, that functions that are just identities (e.g., \`function(x) x\`) a
 
 Using the example code \`${exampleCode}\` the following query returns the information for all identified function definitions whether they are higher-order functions:
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'inspect-higher-order',
-	}], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'inspect-higher-order' }], { showCode: true, collapseQuery: true, ctx })
 }
 
 This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
 ${
-	await showQuery(shell, exampleCode, [{
-		type:   'inspect-higher-order',
-		filter: ['1@function']
-	}], { showCode: false, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
+	await showQuery(shell, exampleCode, [{ type: 'inspect-higher-order', filter: ['1@function'] }], { showCode: false, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
 }
 		`;
 	}
 });
-
 
 registerQueryDocumentation('inspect-recursion', {
 	type:             'active',
@@ -362,17 +322,12 @@ Please note, that functions that *may* be recursive due to indirect calls are al
 
 Using the example code \`${exampleCode}\` the following query returns the information for all identified function definitions whether they are recursive:
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'inspect-recursion',
-	}], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'inspect-recursion' }], { showCode: true, collapseQuery: true, ctx })
 }
 
 This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
 ${
-	await showQuery(shell, exampleCode, [{
-		type:   'inspect-recursion',
-		filter: ['1@function']
-	}], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
+	await showQuery(shell, exampleCode, [{ type: 'inspect-recursion', filter: ['1@function'] }], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
 }
 		`;
 	}
@@ -411,17 +366,12 @@ properties named as the \`ArgProp\`/\`CallProp\` members they are.
 
 Using the example code \`${exampleCode}\` the following query returns what every identified function and formal does:
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'inspect-fn-props',
-	}], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'inspect-fn-props' }], { showCode: true, collapseQuery: true, ctx })
 }
 
 This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
 ${
-	await showQuery(shell, exampleCode, [{
-		type:   'inspect-fn-props',
-		filter: ['1@function']
-	}], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
+	await showQuery(shell, exampleCode, [{ type: 'inspect-fn-props', filter: ['1@function'] }], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
 }
 		`;
 	}
@@ -450,14 +400,11 @@ Using the following example code:
 ${codeBlock('r', exampleCode)}
 the following query returns the information for all identified function definitions whether they throw exceptions:
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'inspect-exception',
-	}], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'inspect-exception' }], { showCode: true, collapseQuery: true, ctx })
 }
 		`;
 	}
 });
-
 
 registerQueryDocumentation('origin', {
 	type:             'active',
@@ -473,10 +420,7 @@ the functions called by a call, and more.
 
 Using the example code \`${exampleCode}\` (with the \`print(x)\` in the second line), the following query returns the origins of \`x\` in the code:
 ${
-	await showQuery(shell, exampleCode, [{
-		type:      'origin',
-		criterion: criterion
-	}], { showCode: true, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)), ctx })
+	await showQuery(shell, exampleCode, [{ type: 'origin', criterion: criterion }], { showCode: true, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)), ctx })
 }
 		`;
 	}
@@ -494,10 +438,7 @@ With this query you can use the ${ctx.linkPage('wiki/Search API', 'Search API')}
 
 Using the example code \`${exampleCode}\`, the following query returns all uses of 'x' in the code:
 ${
-	await showQuery(shell, exampleCode, [{
-		type:   'search',
-		search: Q.var('x').filter(VertexType.Use).build()
-	}], { showCode: true, collapseQuery: false, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'search', search: Q.var('x').filter(VertexType.Use).build() }], { showCode: true, collapseQuery: false, ctx })
 }
 		`;
 	}
@@ -519,11 +460,7 @@ ${codeBlock('r', exampleCode)}
 
 the following query returns that the first assignment happens always before the other:
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'happens-before',
-		a:    '1@x',
-		b:    '2@y'
-	}], { showCode: true, collapseQuery: false, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'happens-before', a: '1@x', b: '2@y' }], { showCode: true, collapseQuery: false, ctx })
 }
 		`;
 	}
@@ -541,9 +478,7 @@ This query provides access to all nodes in the ${ctx.linkPage('wiki/Normalized A
 
 Using the example code \`${exampleCode}\`, the following query returns all nodes from the code:
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'id-map'
-	}], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'id-map' }], { showCode: true, collapseQuery: true, ctx })
 }
 		`;
 	}
@@ -560,23 +495,13 @@ registerQueryDocumentation('config', {
 This query provides access to the current configuration of the flowR instance. See the ${ctx.linkPage('wiki/Interface', 'Interface')} wiki page for more information on what the configuration represents.
 Additionally, you can use this query to update the configuration of flowR on-the-fly (please do not rely on this mechanism it is mostly of interest for demonstrations).
 ${
-	await showQuery(shell, '', [{
-		type:   'config',
-		update: {
-			ignoreSourceCalls: true
-		}
-	}], { showCode: false, collapseQuery: true, collapseResult: true, ctx })
+	await showQuery(shell, '', [{ type: 'config', update: { ignoreSourceCalls: true } }], { showCode: false, collapseQuery: true, collapseResult: true, ctx })
 }
 
 Please note that, in the REPL, a special syntax starting with \`+\` (which should be autocompleted) can be used to update the configuration on the fly:
 
 ${
-	await documentReplSession(shell, [
-		{
-			command:     ':query @config +solver.slicer.threshold=10000',
-			description: 'Set the slicing threshold to 10,000.'
-		}
-	])
+	await documentReplSession(shell, [{ command: ':query @config +solver.slicer.threshold=10000', description: 'Set the slicing threshold to 10,000.' }])
 }
 
 In the REPL you can also read a single option by its \`.\`-separated path, or several at once with a glob&mdash;\`*\` covers
@@ -584,14 +509,8 @@ one path segment, \`**\` any number. This only reads: setting a value still name
 
 ${
 	await documentReplSession(shell, [
-		{
-			command:     ':query @config **.enabled',
-			description: 'Read every `enabled` option, wherever it sits in the configuration.'
-		},
-		{
-			command:     ':query @config solver.*',
-			description: 'Read the direct children of `solver` (use `solver.**` for the whole subtree).'
-		}
+		{ command: ':query @config **.enabled', description: 'Read every `enabled` option, wherever it sits in the configuration.' },
+		{ command: ':query @config solver.*', description: 'Read the direct children of `solver` (use `solver.**` for the whole subtree).' }
 	])
 }
 
@@ -613,19 +532,12 @@ registerQueryDocumentation('absint', {
 		return `
 This query infers all shapes of dataframes within the code using abstract interpretaion. For example, you can use:
 ${
-	await showQuery(shell, exampleCode, [{
-		type:      'absint',
-		inference: inference
-	}], { showCode: true, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'absint', inference: inference }], { showCode: true, collapseQuery: true, ctx })
 }
 
 The query optionally also accepts slice criteria to narrow the results to specific nodes. For example:
 ${
-	await showQuery(shell, exampleCode, [{
-		type:      'absint',
-		inference: inference,
-		criteria:  criteria
-	}], { showCode: true, collapseQuery: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
+	await showQuery(shell, exampleCode, [{ type: 'absint', inference: inference, criteria: criteria }], { showCode: true, collapseQuery: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
 }
 `;
 	}
@@ -650,23 +562,13 @@ For example, consider the following compound query that combines two call-contex
 assigned to the kind \`visualize\` and the subkind \`text\` (using the example code from above):
 
 ${
-	await showQuery(shell, exampleQueryCode, [{
-		type:            'compound',
-		query:           'call-context',
-		commonArguments: { kind: 'visualize', subkind: 'text' },
-		arguments:       [
-			{ callName: '^mean$' },
-			{ callName: '^print$' }
-		]
-	}], { showCode: false, ctx })
+	await showQuery(shell, exampleQueryCode, [{ type: 'compound', query: 'call-context', commonArguments: { kind: 'visualize', subkind: 'text' }, arguments: [{ callName: '^mean$' }, { callName: '^print$' }] }], { showCode: false, ctx })
 }
 
 Of course, in this specific scenario, the following query would be equivalent:
 
 ${
-	await showQuery(shell, exampleQueryCode, [
-		{ type: 'call-context', callName: '^(mean|print)$', kind: 'visualize', subkind: 'text' }
-	], { showCode: false, collapseResult: true, ctx })
+	await showQuery(shell, exampleQueryCode, [{ type: 'call-context', callName: '^(mean|print)$', kind: 'visualize', subkind: 'text' }], { showCode: false, collapseResult: true, ctx })
 }
 
 However, compound queries become more useful whenever common arguments can not be expressed as a union in one of their properties.
@@ -675,15 +577,7 @@ In the following, we (by default) want all calls to not resolve to a local defin
 want to resolve to a local definition:
 
 ${
-	await showQuery(shell, exampleQueryCode, [{
-		type:            'compound',
-		query:           'call-context',
-		commonArguments: { kind: 'visualize', subkind: 'text', callTargets: CallTargets.OnlyGlobal },
-		arguments:       [
-			{ callName: '^mean$' },
-			{ callName: '^print$', callTargets: CallTargets.OnlyLocal }
-		]
-	}], { showCode: false, ctx })
+	await showQuery(shell, exampleQueryCode, [{ type: 'compound', query: 'call-context', commonArguments: { kind: 'visualize', subkind: 'text', callTargets: CallTargets.OnlyGlobal }, arguments: [{ callName: '^mean$' }, { callName: '^print$', callTargets: CallTargets.OnlyLocal }] }], { showCode: false, ctx })
 }
 
 Now, the results no longer contain calls to \`plot\` that are not defined locally.
@@ -713,33 +607,20 @@ ${codeBlock('r', exampleCode)}
 If you are interested in the parts required for the use of \`x\` in the last line and \`z\`, you can use the following query:
 
 ${
-	await showQuery(shell, exampleCode, [{
-		type:     'static-slice',
-		criteria: criteria
-	}], { showCode: false, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
+	await showQuery(shell, exampleCode, [{ type: 'static-slice', criteria: criteria }], { showCode: false, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
 }
 
 In general, you may be uninterested in seeing the reconstructed version and want to save some computation time, for this,
 you can use the \`noReconstruction\` flag.
 
 ${
-	details('No Reconstruction Example',
-		await showQuery(shell, exampleCode, [{
-			type:             'static-slice',
-			criteria:         ['4@x'],
-			noReconstruction: true
-		}], { showCode: false, ctx })
-	)
+	details('No Reconstruction Example', await showQuery(shell, exampleCode, [{ type: 'static-slice', criteria: ['4@x'], noReconstruction: true }], { showCode: false, ctx }))
 }
 
 Likewise, if you want the forward slice for the first use of \`x\`, you can do it like this:
 
 ${
-	await showQuery(shell, exampleCode, [{
-		type:      'static-slice',
-		criteria:  ['1@x'],
-		direction: SliceDirection.Forward
-	}], { showCode: false, shorthand: sliceQueryShorthand(['1@x'], escapeNewline(exampleCode), true), ctx })
+	await showQuery(shell, exampleCode, [{ type: 'static-slice', criteria: ['1@x'], direction: SliceDirection.Forward }], { showCode: false, shorthand: sliceQueryShorthand(['1@x'], escapeNewline(exampleCode), true), ctx })
 }
 
 If your program pulls in other files with \`source(...)\`, the \`inlineSources\` flag splices the reconstruction
@@ -748,11 +629,7 @@ self-contained R text (cyclic or unresolvable \`source()\` calls are kept verbat
 \`reconstruct.inlineWarnings\`). With the ${getReplCommand('query')} REPL command you append an \`i\` to the
 criteria (and may combine it with the forward \`f\` as \`fi\`), for example (with a faked \`library.R\` providing \`greeting\`):
 ${
-	await showQuery(shell, sourceExample, [{
-		type:          'static-slice',
-		criteria:      sourceCriteria,
-		inlineSources: true
-	}], {
+	await showQuery(shell, sourceExample, [{ type: 'static-slice', criteria: sourceCriteria, inlineSources: true }], {
 		showCode:  false,
 		shorthand: sliceQueryShorthand(sourceCriteria, escapeNewline(sourceExample), false, true),
 		ctx,
@@ -783,10 +660,7 @@ ${codeBlock('r', exampleCode)}
 If you are interested in the provenance of the \`x\` in the last line you can use:
 
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'provenance',
-		criterion
-	}], { showCode: false, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)), ctx })
+	await showQuery(shell, exampleCode, [{ type: 'provenance', criterion }], { showCode: false, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)), ctx })
 }
 `;
 	}
@@ -818,10 +692,7 @@ ${codeBlock('r', exampleCode)}
 If you are interested in the input-sources of the \`print\` call, you can use:
 
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'input-sources',
-		criterion
-	}], { showCode: false, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)), ctx })
+	await showQuery(shell, exampleCode, [{ type: 'input-sources', criterion }], { showCode: false, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)), ctx })
 }
 
 Some objects are handed to the code by a framework rather than defined in it, like the \`input\` of a shiny
@@ -830,10 +701,7 @@ of such an object (and of its fields) classify as user input instead of stopping
 ${codeBlock('r', shinyCode)}
 
 ${
-	await showQuery(shell, shinyCode, [{
-		type:      'input-sources',
-		criterion: shinyCriterion
-	}], { showCode: false, shorthand: sliceQueryShorthand([shinyCriterion], escapeNewline(shinyCode)), ctx })
+	await showQuery(shell, shinyCode, [{ type: 'input-sources', criterion: shinyCriterion }], { showCode: false, shorthand: sliceQueryShorthand([shinyCriterion], escapeNewline(shinyCode)), ctx })
 }
 
 Every ${ctx.link('LinkedInputObject')} names the object, the ${ctx.link('InputType')} to use for it, and optionally
@@ -886,9 +754,7 @@ Loaded libraries are resolved against the ${ctx.linkPage('wiki/Signature Databas
 
 In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns the loaded library:
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'dependencies'
-	}], { showCode: false, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'dependencies' }], { showCode: false, collapseQuery: true, ctx })
 }
 
 Of course, this works for more complicated scripts too. The query offers information on the loaded _libraries_, _sourced_ files, data which is _read_ and data which is _written_.
@@ -896,9 +762,7 @@ For example, consider the following script:
 ${codeBlock('r', longerCode)}
 The following query returns the dependencies of the script.
 ${
-	await showQuery(shell, longerCode, [{
-		type: 'dependencies'
-	}], { showCode: false, collapseQuery: true, collapseResult: true, ctx })
+	await showQuery(shell, longerCode, [{ type: 'dependencies' }], { showCode: false, collapseQuery: true, collapseResult: true, ctx })
 }
 
 Currently, the dependency extraction may fail as it is essentially a set of heuristics guessing the dependencies.
@@ -907,12 +771,7 @@ We welcome any feedback on this (consider opening a [new issue](${NewIssueUrl}))
 In the meantime we offer several properties to overwrite the default behavior (e.g., function names that should be collected)
 
 ${
-	await showQuery(shell, longerCode, [{
-		type:                   'dependencies',
-		ignoreDefaultFunctions: true,
-		enabledCategories:      ['library'],
-		libraryFunctions:       [{ package: 'base', name: 'print', argIdx: 0, argName: 'library', resolveValue: true }],
-	}], { showCode: false, collapseQuery: false, collapseResult: true, ctx })
+	await showQuery(shell, longerCode, [{ type: 'dependencies', ignoreDefaultFunctions: true, enabledCategories: ['library'], libraryFunctions: [{ package: 'base', name: 'print', argIdx: 0, argName: 'library', resolveValue: true }] }], { showCode: false, collapseQuery: false, collapseResult: true, ctx })
 }
 
 Here, \`resolveValue\` tells the dependency query to resolve the value of this argument in case it is not a constant.
@@ -932,22 +791,12 @@ This query lints a given R script for common issues, such as missing files, unus
 
 In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns all smells detected:
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'linter'
-	}], { showCode: false, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'linter' }], { showCode: false, collapseQuery: true, ctx })
 }
 
 You can also configure which rules to apply and what settings to use for these rules:
 ${
-	await showQuery(shell, exampleCode, [{
-		type:  'linter',
-		rules: ['file-path-validity'],
-	}], {
-		showCode:      false,
-		collapseQuery: true,
-		shorthand:     `rules:file-path-validity "${exampleCode}"`,
-		ctx
-	})
+	await showQuery(shell, exampleCode, [{ type: 'linter', rules: ['file-path-validity'] }], { showCode: false, collapseQuery: true, shorthand: `rules:file-path-validity "${exampleCode}"`, ctx })
 }
 
 We welcome any feedback and suggestions for new rules on this (consider opening a [new issue](${NewIssueUrl})).
@@ -967,19 +816,12 @@ This control-flow query provides you access to the control flow graph.
 
 In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns the CFG:
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'control-flow'
-	}], { showCode: false, collapseQuery: true, collapseResult: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'control-flow' }], { showCode: false, collapseQuery: true, collapseResult: true, ctx })
 }
 
 You can also overwrite the simplification passes to tune the perspective. for example, if you want to have basic blocks:
 ${
-	await showQuery(shell, exampleCode, [{
-		type:   'control-flow',
-		config: {
-			simplificationPasses: ['unique-cf-sets', 'to-basic-blocks']
-		}
-	}], { showCode: false, collapseResult: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'control-flow', config: { simplificationPasses: ['unique-cf-sets', 'to-basic-blocks'] } }], { showCode: false, collapseResult: true, ctx })
 }
 
 this produces: 
@@ -989,12 +831,7 @@ ${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart L
 
 If, on the other hand, you want to prune dead code edges:
 ${
-	await showQuery(shell, exampleCode, [{
-		type:   'control-flow',
-		config: {
-			simplificationPasses: ['unique-cf-sets', 'analyze-dead-code']
-		}
-	}], { showCode: false, collapseResult: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'control-flow', config: { simplificationPasses: ['unique-cf-sets', 'analyze-dead-code'] } }], { showCode: false, collapseResult: true, ctx })
 }
 
 this produces:
@@ -1004,12 +841,7 @@ ${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart L
 
 Or, completely remove dead code:
 ${
-	await showQuery(shell, exampleCode, [{
-		type:   'control-flow',
-		config: {
-			simplificationPasses: ['unique-cf-sets', 'analyze-dead-code', 'remove-dead-code']
-		}
-	}], { showCode: false, collapseResult: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'control-flow', config: { simplificationPasses: ['unique-cf-sets', 'analyze-dead-code', 'remove-dead-code'] } }], { showCode: false, collapseResult: true, ctx })
 }
 
 this produces:
@@ -1039,18 +871,13 @@ ${codeBlock('r', exampleCode)}
 The following query then gives you the aforementioned mapping:
 
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'location-map'
-	}], { showCode: false, collapseQuery: true, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'location-map' }], { showCode: false, collapseQuery: true, ctx })
 }
 
 The query also accepts a list of slice criteria to filter the results to only include the locations of specific nodes. For example:
 
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'location-map',
-		ids:  criteria
-	}], { showCode: false, collapseQuery: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
+	await showQuery(shell, exampleCode, [{ type: 'location-map', ids: criteria }], { showCode: false, collapseQuery: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
 }
 
 All locations are given as a ${ctx.link('SourceRange')} paired with the file id in the format \`[file-id, [start-line, start-column, end-line, end-column]]\`.
@@ -1058,7 +885,6 @@ All locations are given as a ${ctx.link('SourceRange')} paired with the file id 
 		`;
 	}
 });
-
 
 registerQueryDocumentation('dice', {
 	type:             'active',
@@ -1083,11 +909,7 @@ Asking what connects the definition of \`x\` to the definition of \`z\` drops \`
 as well as \`w <- z * 2\` and \`print(z)\` (they are not on a path _into_ the \`to\` criterion):
 
 ${
-	await showQuery(shell, exampleCode, [{
-		type: 'dice',
-		from: ['1@x'] as SlicingCriteria,
-		to:   ['3@z'] as SlicingCriteria
-	}], { showCode: false, shorthand: `(1@x->3@z) "${escapeNewline(exampleCode)}"`, ctx })
+	await showQuery(shell, exampleCode, [{ type: 'dice', from: ['1@x'] as SlicingCriteria, to: ['3@z'] as SlicingCriteria }], { showCode: false, shorthand: `(1@x->3@z) "${escapeNewline(exampleCode)}"`, ctx })
 }
 
 Beyond \`from\` and \`to\`, the dice query understands the same options as the ${linkToQueryOfName('static-slice')}
@@ -1095,11 +917,7 @@ Beyond \`from\` and \`to\`, the dice query understands the same options as the $
 \`SliceQueryOptions\` of ${getFilePathMd('../queries/catalog/slice-query-options.ts')}.
 
 ${
-	details('Multiple Criteria per Side', 'Each side accepts several criteria, which are seeded together:' + await showQuery(shell, exampleCode, [{
-		type: 'dice',
-		from: ['1@x', '2@y'] as SlicingCriteria,
-		to:   ['5@print'] as SlicingCriteria
-	}], { showCode: false, ctx }))
+	details('Multiple Criteria per Side', 'Each side accepts several criteria, which are seeded together:' + await showQuery(shell, exampleCode, [{ type: 'dice', from: ['1@x', '2@y'] as SlicingCriteria, to: ['5@print'] as SlicingCriteria }], { showCode: false, ctx }))
 }
 		`;
 	}
@@ -1256,7 +1074,6 @@ See the ${linkToQueryOfName('signature')} to inspect the signatures the guess is
 		`;
 	}
 });
-
 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Query-API

@@ -1,20 +1,11 @@
-import { assert, describe, test } from 'vitest';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { label } from '../_helper/label';
+import { testAnyCase, testEachCase } from '../_helper/query';
 
 describe('Inspect Higher-Order Functions Query', withTreeSitter(parser => {
+	const isTrue = (v: boolean) => v;
 	/** Whether the query calls any of the program's function definitions higher-order. */
-	function testHigherOrder(name: string, code: string, expected: boolean) {
-		test(label(name, ['name-normal'], ['other']), async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest(code);
-			const result = await analyzer.query([{ type: 'inspect-higher-order' }]);
-			const found = result['inspect-higher-order'].higherOrder;
-			assert.isNotEmpty(Object.keys(found), 'the query has to report every function definition');
-			assert.strictEqual(Object.values(found).includes(true), expected, JSON.stringify(found));
-		});
-	}
+	const testHigherOrder = testAnyCase(parser, 'inspect-higher-order', r => r.higherOrder, isTrue);
 
 	testHigherOrder('a function taking a function is higher-order', 'f <- function(g) g(1)\nh <- function(x) x\nf(h)', true);
 	testHigherOrder('so is one taking a built-in', 'f <- function(g) g(1)\nf(print)', true);
@@ -27,19 +18,7 @@ describe('Inspect Higher-Order Functions Query', withTreeSitter(parser => {
 	testHigherOrder('handing back a function of its own counts', 'f <- function() { g <- function() 1; g }', true);
 
 	/** What the query answers for every definition of the program, keyed by the definition as it is written. */
-	function testEachHigherOrder(name: string, code: string, expected: Readonly<Record<string, boolean>>) {
-		test(label(name, ['name-normal'], ['other']), async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest(code);
-			const result = await analyzer.query([{ type: 'inspect-higher-order' }]);
-			const idMap = (await analyzer.normalize()).idMap;
-			const found: Record<string, boolean> = {};
-			for(const [id, higherOrder] of Object.entries(result['inspect-higher-order'].higherOrder)) {
-				found[idMap.get(Number(id))?.info.fullLexeme ?? id] = higherOrder;
-			}
-			assert.deepStrictEqual(found, { ...expected });
-		});
-	}
+	const testEachHigherOrder = testEachCase(parser, 'inspect-higher-order', r => r.higherOrder, isTrue);
 
 	/* a callback is not higher-order just because the built-in applying it hands it around */
 	testEachHigherOrder('a named callback stays what it is', 'myf <- function(v) v + 1\nr <- lapply(1:3, myf)', {

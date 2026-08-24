@@ -178,7 +178,6 @@ function processNumberBasedAccess<OtherInfo>(
 	return fnCall;
 }
 
-
 /**
  * Converts symbol arguments to string arguments within the specified range.
  */

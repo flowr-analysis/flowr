@@ -75,7 +75,6 @@ export function valueFromTsValue(a: unknown): Value {
 	return Top;
 }
 
-
 /**
  * The interval a number literal stands for. A complex literal keeps its flag, so that nothing folds `2i` as
  * the real number its lexeme starts with.

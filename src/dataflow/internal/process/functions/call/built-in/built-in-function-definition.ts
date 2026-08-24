@@ -49,6 +49,7 @@ import { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { queryFnProps } from '../../../../../environments/query-fn-props';
 import { CallProp } from '../../../../../environments/built-in-props';
+import { arraysGroupBy } from '../../../../../../util/collections/arrays';
 
 /**
  * Process a function definition, i.e., `function(a, b) { ... }`
@@ -130,8 +131,7 @@ export function processFunctionDefinition<OtherInfo>(
 			}
 		}
 	}
-	// As we know, parameters cannot technically duplicate (i.e., their names are unique), we overwrite their environments.
-	// This is the correct behavior, even if someone uses non-`=` arguments in functions.
+	// parameter names are unique, so overwriting their environments here is correct even with non-`=` arguments
 	const bodyEnvironment = body.environment;
 
 	// a default read (e.g. `function(x, y = x)`) may also see a later body reassignment, as the default is a promise
@@ -150,19 +150,13 @@ export function processFunctionDefinition<OtherInfo>(
 	// there is no uncertainty regarding the arguments, as if a function header is executed, so is its body
 	const remainingRead = linkInputs(readInBody, paramsEnvironments, readInParameters.slice(), body.graph, true /* functions do not have to be called */);
 
-	// functions can be called multiple times,
-	// so if they have a global effect, we have to link them as if they would be executed a loop
+	// functions can be called multiple times, so a global effect must link as if executed in a loop
 	/* theoretically, we should just check if there is a global effect-write somewhere within */
 	if(remainingRead.length > 0) {
 		const nameIdShares = produceNameSharedIdMap(remainingRead);
-		const definedInLocalEnvironment = new Set<NodeId>();
-		for(const defs of bodyEnvironment.current.memory.values()) {
-			for(const d of defs) {
-				definedInLocalEnvironment.add(d.nodeId);
-			}
-		}
+		const definedInLocalEnvironment = new Set(bodyEnvironment.current.memory.values().flatMap(defs => defs.map(d => d.nodeId)));
 
-		// Everything that is in body.out but not within the local environment populated for the function scope is a potential escape ~> global definition
+		// everything in body.out but not within the local environment populated for the function scope is a potential escape (global definition)
 		const globalBodyOut = body.out.filter(d => !definedInLocalEnvironment.has(d.nodeId));
 
 		linkCircularRedefinitionsWithinALoop(body.graph, nameIdShares, globalBodyOut);
@@ -291,13 +285,7 @@ export function processFunctionDefinition<OtherInfo>(
 	};
 }
 
-/**
- * Retrieve the active environment when entering a function definition or call
- * @param callerEnvironment - environment at the call site / function definition site
- * @param baseEnvironment   - base environment within the function definition / call
- * @param ctx               - analyzer context
- * @returns active environment within the function definition / call
- */
+/** Retrieve the active environment when entering a function definition or call. */
 export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInformation | undefined, baseEnvironment: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext): REnvironmentInformation {
 	callerEnvironment ??= ctx.env.makeCleanEnv();
 	let level = callerEnvironment.level ?? 0;
@@ -348,42 +336,50 @@ function updateDispatches<Info>(graph: DataflowGraph, myArgs: FunctionArgument[]
 }
 
 /**
- * Update the closure links of all nested function definitions
- * @param graph          - dataflow graph to collect the function definitions from and to update the closure links for
- * @param outEnvironment - active environment on resolving closures (i.e., exit of the function definition)
- * @param fnId           - id of the function definition to update the closure links for
+ * Resolves `refs` (open reads of a nested definition/call `openRefId`, closing over `closureId`) against `environment`;
+ * `onResolved` handles each resolved reference and says whether it should stay in the returned "still open" list.
  */
+function resolveIngoingRefs(
+	refs: readonly IdentifierReference[],
+	environment: REnvironmentInformation,
+	openRefId: NodeId,
+	closureId: NodeId,
+	onResolved: (ingoing: IdentifierReference, resolved: readonly IdentifierReference[]) => boolean
+): IdentifierReference[] {
+	const remainingIn: IdentifierReference[] = [];
+	for(const ingoing of refs) {
+		const resolved = ingoing.name ? Resolve.byNameAndType(ingoing.name, environment, ingoing.type) : undefined;
+		if(resolved === undefined) {
+			remainingIn.push(ingoing);
+			continue;
+		}
+		expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${openRefId} in closure of function definition ${closureId}`);
+		if(onResolved(ingoing, resolved)) {
+			remainingIn.push(ingoing);
+		}
+	}
+	expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${openRefId} in closure of function definition ${closureId}`);
+	return remainingIn;
+}
+
+/** Update the closure links of all nested function definitions. */
 function updateNestedFunctionClosures(
 	graph: DataflowGraph,
 	outEnvironment: REnvironmentInformation,
 	fnId: NodeId
 ) {
-	// track *all* function definitions - including those nested within the current graph,
-	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
+	// track *all* function definitions, including those nested within, resolving their 'in' via the lowest scope (popped after this definition)
 	for(const [id, { subflow }] of graph.verticesOfType(VertexType.FunctionDefinition)) {
-		const ingoingRefs = subflow.in;
-		const remainingIn: IdentifierReference[] = [];
-		for(const ingoing of ingoingRefs) {
-			const resolved = ingoing.name ? Resolve.byNameAndType(ingoing.name, outEnvironment, ingoing.type) : undefined;
-			if(resolved === undefined) {
-				remainingIn.push(ingoing);
-				continue;
-			}
-			const inId = ingoing.nodeId;
-			expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${fnId}`);
+		subflow.in = resolveIngoingRefs(subflow.in, outEnvironment, id, fnId, (ingoing, resolved) => {
 			let allBuiltIn = true;
 			for(const ref of resolved) {
-				graph.addEdge(inId, ref.nodeId, EdgeType.Reads);
+				graph.addEdge(ingoing.nodeId, ref.nodeId, EdgeType.Reads);
 				if(!isReferenceType(ref.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
 					allBuiltIn = false;
 				}
 			}
-			if(allBuiltIn) {
-				remainingIn.push(ingoing);
-			}
-		}
-		expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${fnId}`);
-		subflow.in = remainingIn;
+			return allBuiltIn;
+		});
 
 		linkSuperAssignmentsToOuterDefinitions(graph, subflow.graph, outEnvironment);
 	}
@@ -433,7 +429,6 @@ function linkSuperAssignmentsToOuterDefinitions(
 	}
 }
 
-
 /** What one walk over the environments the analyzed code populates yields, see {@link namesShadowingBuiltIns}. */
 interface NamesOfInterest {
 	/** the names the code binds itself, so a call within a body may land on one of them */
@@ -443,9 +438,8 @@ interface NamesOfInterest {
 }
 
 /**
- * The names the analyzed code binds that a built-in also goes by. A call within a function body that resolved to
- * nothing but a built-in when flowR walked the definition may still land on one of them, as a body looks its
- * callee up when it runs, not when it is written: `c <- function(n) if(n > 0) c(n - 1) else 0` recurses.
+ * The names the analyzed code binds that a built-in also goes by, so a call that resolved to only that built-in
+ * may still land on one of them: a body looks its callee up when it runs, not when it is written.
  */
 function namesShadowingBuiltIns(environment: REnvironmentInformation): NamesOfInterest {
 	const shadowing = new Set<string>();
@@ -472,10 +466,8 @@ function dispatchesOnClass(name: Identifier, environment: REnvironmentInformatio
 }
 
 /**
- * Links `call` to the S3 methods the analyzed code binds as `<name>.<class>`, i.e. the ones a dispatch on
- * `name` may pick, and returns their definition vertices. Which method runs depends on the class of the
- * object, which flowR does not track, so all of them count - the same over-approximation the
- * {@link BuiltInProcName.S3Dispatch} path makes.
+ * Links `call` to the S3 methods the analyzed code binds as `<name>.<class>`, returning their definition vertices.
+ * flowR does not track the object's class, so every such method counts, same as the {@link BuiltInProcName.S3Dispatch} path.
  */
 function linkOwnS3Methods(call: NodeId, name: Identifier, graph: DataflowGraph, environment: REnvironmentInformation): readonly NodeId[] {
 	const defs = Resolve.byNameAndType(name, environment, ReferenceType.S3MethodPrefix)
@@ -492,10 +484,7 @@ function linkOwnS3Methods(call: NodeId, name: Identifier, graph: DataflowGraph, 
 }
 
 /**
- * Update the closure links of all nested function calls, this is probably to be done once at the end of the script
- * @param graph          - dataflow graph to collect the function calls from and to update the closure links for
- * @param outEnvironment - active environment on resolving closures (i.e., exit of the function definition)
- * @param ctx            - the analyzer context to resolve against
+ * Update the closure links of all nested function calls, done once at the end of the script.
  * @lintIgnore vertex-has-origin
  */
 export function updateNestedFunctionCalls(
@@ -504,8 +493,6 @@ export function updateNestedFunctionCalls(
 	ctx: FlowrAnalyzerContext
 ) {
 	const { shadowing, generics } = namesShadowingBuiltIns(outEnvironment);
-	// track *all* function definitions - including those nested within the current graph,
-	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		const { onlyBuiltin, environment, name, args, origin } = vertex;
 		if(name === undefined) {
@@ -566,25 +553,15 @@ export function updateNestedFunctionCalls(
 					}
 				}
 			}
-			const ingoingRefs = targetVertex.subflow.in;
-			const remainingIn: IdentifierReference[] = [];
-			for(const ingoing of ingoingRefs) {
-				const resolved = ingoing.name ? Resolve.byNameAndType(ingoing.name, effectiveEnvironment, ingoing.type) : undefined;
-				if(resolved === undefined) {
-					remainingIn.push(ingoing);
-					continue;
-				}
-				const inId = ingoing.nodeId;
-				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${id}`);
+			targetVertex.subflow.in = resolveIngoingRefs(targetVertex.subflow.in, effectiveEnvironment, id, id, (ingoing, resolved) => {
 				for(const { nodeId } of resolved) {
 					if(!NodeId.isBuiltIn(nodeId)) {
-						graph.addEdge(inId, nodeId, EdgeType.DefinedByOnCall);
+						graph.addEdge(ingoing.nodeId, nodeId, EdgeType.DefinedByOnCall);
 						graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
 					}
 				}
-			}
-			expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${id}`);
-			targetVertex.subflow.in = remainingIn;
+				return false;
+			});
 			const linkedParameters = graph.idMap?.get(target);
 			if(RFunctionDefinition.is(linkedParameters)) {
 				MatchArgs.onCallAndLink(args, linkedParameters.parameters, graph);
@@ -635,18 +612,8 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
 
 /** Groups body writes by name, each list sorted by descending id (so the lowest id is last), for `linkParameterReadToBodyWrites`. */
 function groupBodyWrites(out: readonly IdentifierReference[]): Map<Identifier, IdentifierReference[]> {
-	const byName = new Map<Identifier, IdentifierReference[]>();
-	for(const o of out) {
-		if(o.name === undefined) {
-			continue;
-		}
-		const writes = byName.get(o.name);
-		if(writes === undefined) {
-			byName.set(o.name, [o]);
-		} else {
-			writes.push(o);
-		}
-	}
+	const named = out.filter((o): o is IdentifierReference & { name: Identifier } => o.name !== undefined);
+	const byName = arraysGroupBy(named, o => o.name);
 	for(const writes of byName.values()) {
 		writes.sort((a, b) => String(b.nodeId).localeCompare(String(a.nodeId)));
 	}
@@ -654,15 +621,8 @@ function groupBodyWrites(out: readonly IdentifierReference[]): Map<Identifier, I
 }
 
 /**
- * Within something like `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }`
- * `a` will be defined by `b` and `b` will be a promise object bound by the first definition of b it can find.
- * This means that this function returns `2` due to the first `b <- 1` definition.
- * If the code is `f <- function(a=b, m=3) { if(m > 3) { b <- 1; }; a; b <- 5; a + 1 }`, we need a link to `b <- 1` and `b <- 6`
- * as `b` can be defined by either one of them.
- * <p>
- * <b>Currently we may be unable to narrow down every definition within the body as we have not implemented ways to track what covers the first definitions precisely</b>
- *
- * Links a parameter default read to the body writes of the same name (may), returning whether any was linked.
+ * Links a parameter default read (e.g. `function(a=b)`) to the body write(s) of the same name it could see as a promise,
+ * e.g. in `f <- function(a=b) { b <- 1; a; b <- 5 }`, `a` links to `b <- 1`; may not narrow this down precisely in every case.
  */
 function linkParameterReadToBodyWrites(graph: DataflowGraph, read: IdentifierReference, writesByName: ReadonlyMap<Identifier, IdentifierReference[]>): boolean {
 	const writingOuts = read.name === undefined ? undefined : writesByName.get(read.name);

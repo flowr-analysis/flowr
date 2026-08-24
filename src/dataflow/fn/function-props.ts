@@ -4,7 +4,6 @@ import { DfEdge, EdgeType } from '../graph/edge';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
 import { FunctionCallVertex, FunctionDefinitionVertex } from '../graph/vertex';
 import type { BuiltInFnInfo, CallProps } from '../environments/built-in-props';
-import type { BuiltInLookup } from './frame-reflection';
 import { ArgProp, CallProp, DispatchCallees, FnSig as Sig, PropagatedProps } from '../environments/built-in-props';
 import { builtInLookup } from '../environments/query-fn-props';
 import { Identifier } from '../environments/identifier';
@@ -12,9 +11,10 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { happensInEveryBranch } from '../info';
 import { strictnessOfFunctions } from './strict-function';
-import { ArgumentRoles, type ArgumentRolesOptions, type FunctionArgumentRoles } from './argument-roles';
+import { ArgumentRoles, type ArgumentRolesOptions, type FunctionArgumentRoles, type LookupState } from './argument-roles';
 import type { FunctionStrictness } from './strict-function';
 import { Ternary } from '../../util/logic';
+import { DefaultMap } from '../../util/collections/defaultmap';
 
 /** What flowR infers about a set of definitions, see {@link FunctionProps.of}. */
 export interface InferredFunctions {
@@ -32,20 +32,8 @@ export interface FunctionPropsOptions extends ArgumentRolesOptions {
 
 /**
  * What each of the `definitions` does, stated the way a built-in states it: {@link CallProp} bits for the
- * function, {@link ArgProp} bits for each of its formals. Only what the body shows is claimed, so an unset bit
- * reads as "nothing says so" rather than "no": nothing here says a function is {@link CallProp.Pure}, as that
- * would take knowing every call it makes.
- *
- * What its calls do it does too, for the bits that carry over ({@link PropagatedProps}): a body calling `runif`
- * is {@link CallProp.Random}, one calling `read.csv` reads a file, and one binding only its own locals changes
- * no scope (see {@link bindsOutside}). A body that dispatches is a {@link CallProp.Generic}, and one whose
- * result always comes from a call returning invisibly is {@link CallProp.Invisible} in turn.
- *
- * The formals carry the roles {@link ArgumentRoles.of} reads off the body, plus whether they are evaluated at
- * all: {@link ArgProp.Forced} when every call does, {@link ArgProp.Lazy} when none can, neither when it depends
- * on the path taken, on the caller, or on a function flowR cannot resolve. A function forcing every one of them
- * is {@link CallProp.Strict}. Asking for one half alone skips the other walk, but never the strictness both
- * rest on.
+ * function ({@link PropagatedProps} bits its callees carry over included) and {@link ArgProp} bits per formal,
+ * `Forced`/`Lazy` included. An unset bit reads as "nothing says so", never as "no".
  * @useInstead {@link FunctionProps.of}
  */
 function inferFunctions(this: void, definitions: readonly NodeId[], graph: DataflowGraph, options: FunctionPropsOptions = {}): InferredFunctions {
@@ -85,38 +73,44 @@ function callProps(definitions: readonly NodeId[], graph: DataflowGraph, strict:
 	return all;
 }
 
-/**
- * Hands the {@link PropagatedProps} of every definition on to the definitions calling it until nothing changes,
- * so a chain of calls carries them however long it is. Only what a definition gains is followed up on, which is
- * what lets a recursive and a mutually recursive definition come to an end.
- */
+/** Hands {@link PropagatedProps} on to callers until nothing changes, so a chain of calls carries them however long it is. */
 function propagateOverCalls(props: Map<NodeId, CallProps>, callees: ReadonlyMap<NodeId, readonly NodeId[]>): void {
-	const callers = new Map<NodeId, NodeId[]>();
-	for(const [id, called] of callees) {
-		for(const callee of called) {
-			const known = callers.get(callee);
-			if(known === undefined) {
-				callers.set(callee, [id]);
-			} else {
-				known.push(id);
-			}
-		}
-	}
-	const pending = [...callees.keys()];
-	const queued = new Set<NodeId>(pending);
-	while(pending.length > 0) {
-		const id = pending.pop() as NodeId;
-		queued.delete(id);
+	propagateToFixpoint(callees.keys(), callees, id => {
 		const before = props.get(id) ?? 0;
 		let grown = before;
 		for(const callee of callees.get(id) ?? []) {
 			grown |= (props.get(callee) ?? 0) & PropagatedProps;
 		}
 		if(grown === before) {
-			continue;
+			return false;
 		}
 		props.set(id, grown);
-		for(const caller of callers.get(id) ?? []) {
+		return true;
+	});
+}
+
+/**
+ * Recomputes `recompute(id)` for every node reachable from `seed` along the reverse of `successors`, so a
+ * change at a node is carried on to whatever points at it, until nothing grows anymore. `recompute` updates
+ * its node's value itself and reports whether it grew; shared by {@link propagateOverCalls} and
+ * {@link calculateExceptionsOfFunction}, which differ only in what "grew" means for the value they carry.
+ */
+export function propagateToFixpoint(seed: Iterable<NodeId>, successors: ReadonlyMap<NodeId, readonly NodeId[]>, recompute: (id: NodeId) => boolean): void {
+	const callers = new DefaultMap<NodeId, NodeId[]>(() => []);
+	for(const [id, next] of successors) {
+		for(const to of next) {
+			callers.get(to).push(id);
+		}
+	}
+	const pending = [...seed];
+	const queued = new Set<NodeId>(pending);
+	while(pending.length > 0) {
+		const id = pending.pop() as NodeId;
+		queued.delete(id);
+		if(!recompute(id)) {
+			continue;
+		}
+		for(const caller of callers.get(id)) {
 			if(!queued.has(caller)) {
 				queued.add(caller);
 				pending.push(caller);
@@ -143,21 +137,15 @@ function argumentProps(definitions: readonly NodeId[], graph: DataflowGraph, str
 	return all;
 }
 
-/**
- * What the functions of a program do, inferred from what their bodies show.
- */
+/** What the functions of a program do, inferred from what their bodies show. */
 export const FunctionProps = {
 	name: 'FunctionProps',
 	/** What several definitions and their formals do; see {@link inferFunctions}. */
 	of:   inferFunctions
 } as const;
 
-/** What one run carries along, so the built-in lookups are shared between the definitions it answers. */
-interface PropsState {
-	readonly graph: DataflowGraph
-	/** what flowR states about a built-in, answered once per name */
-	readonly info:  BuiltInLookup
-}
+/** @see {@link LookupState} */
+type PropsState = LookupState;
 
 function makeState(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | undefined): PropsState {
 	return { graph, info: builtInLookup(ctx) };
@@ -170,12 +158,10 @@ interface OwnProps {
 	readonly callees: readonly NodeId[]
 }
 
-const NoCallees: readonly NodeId[] = [];
-
 function propsOf(id: NodeId, state: PropsState): OwnProps {
 	const definition = state.graph.getVertex(id);
 	if(!FunctionDefinitionVertex.is(definition)) {
-		return { props: 0, callees: NoCallees };
+		return { props: 0, callees: [] };
 	}
 	let props = 0;
 	const callees: NodeId[] = [];
@@ -208,20 +194,12 @@ function calledDefinitions(node: NodeId, state: PropsState): NodeId[] {
 /** the assignments binding in the frame they run in, which is a scope of the function's own */
 const FrameLocalBinders: ReadonlySet<string> = new Set(['<-', '=', '->', ':=', 'assign']);
 
-/**
- * Whether the name is that of a replacement function binding in the frame it runs in: `names(x) <- v`
- * stands for an assignment of `names<-` to `x` and hence rebinds `x` right there. Its super-assigning
- * twin, written `names<<-`, does not and is left out.
- */
+/** Whether the name is a replacement function binding in its own frame (`names(x) <- v`); the `<<-` twin does not. */
 function isFrameLocalReplacement(name: string): boolean {
 	return name.endsWith('<-') && !name.endsWith('<<-');
 }
 
-/**
- * Whether the call binds a name beyond the frame it runs in, which is what makes it a {@link CallProp.Scope}
- * for the function around it. `y <- 1` binds a local and changes no scope of anyone else, while `y <<- 1`,
- * `library(x)` and an `assign` handed an environment ({@link ArgProp.Written}) do.
- */
+/** Whether the call binds a name beyond its own frame ({@link CallProp.Scope}): `y <<- 1`, `library(x)`, `assign` to an env do; `y <- 1` does not. */
 function bindsOutside(vertex: DataflowGraphVertexFunctionCall, info: BuiltInFnInfo | undefined): boolean {
 	const name = Identifier.getName(vertex.name);
 	if(!FrameLocalBinders.has(name) && !isFrameLocalReplacement(name)) {
@@ -231,11 +209,7 @@ function bindsOutside(vertex: DataflowGraphVertexFunctionCall, info: BuiltInFnIn
 	return layout !== undefined && Sig.posWith(layout, vertex.args.length, ArgProp.Written).length > 0;
 }
 
-/**
- * Whether every path out of the definition ends in a call that returns invisibly. An exit only some path takes
- * says nothing about what the function hands back, so those are not counted, and a definition whose result is a
- * value of its own (`function() 1`) has no such call to speak for it.
- */
+/** Whether every unconditional exit ends in a call returning invisibly; a bare value result (`function() 1`) never does. */
 function returnsInvisibly(definition: DataflowGraphVertexFunctionDefinition, state: PropsState): boolean {
 	const unconditional = definition.exitPoints.filter(e => happensInEveryBranch(e.cds)).map(e => e.nodeId);
 	return unconditional.length > 0 && unconditional.every(node => yieldsInvisibly(node, state, 0));

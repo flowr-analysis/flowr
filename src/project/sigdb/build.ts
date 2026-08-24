@@ -1,8 +1,6 @@
 /**
- * The build/write half of the sigdb format: the {@link SigDbBuilder} (accumulate analyzed packages, pool +
- * frequency-reorder the dictionary, emit a {@link SigDb}) and the NDJSON writers (single bundle, shared
- * dictionary, blob-only shards, and the sharded {@link SigDbManifest}). Split out of `../sigdb` so the reader
- * there is not weighed down by the (build-time only) encoder; imports only sibling format/codec modules.
+ * The build/write half of the sigdb format: {@link SigDbBuilder} (accumulate, pool, frequency-reorder, emit a
+ * {@link SigDb}) and the NDJSON writers. Split out of `../sigdb` so the reader is not weighed down by the encoder.
  */
 import fs from 'fs';
 import path from 'path';
@@ -61,9 +59,7 @@ function deltaEncode(sorted: readonly number[]): number[] {
 	return out;
 }
 
-/**
- * Index based string internalization
- */
+/** index-based string internalization */
 function internalize<V>(arr: V[], map: Map<string, number>, key: string, value: V): number {
 	let i = map.get(key);
 	if(i === undefined) {
@@ -229,15 +225,13 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 			sources[version] = strings.str(info.source);
 		}
 	}
-	const blob: PkgBlob = { sigs:             sigs.items, cgs:              cgs.items, fns:              fns.items, versions, noncran:          noncran.length ? noncran : undefined, deps:             deps.items, depsByVersion, dates, sources:          Object.keys(sources).length ? sources : undefined,
-		classes:          classes.items.length ? classes.items : undefined, classesByVersion: Object.keys(classesByVersion).length ? classesByVersion : undefined };
+	const blob: PkgBlob = { sigs: sigs.items, cgs: cgs.items, fns: fns.items, versions, deps: deps.items, depsByVersion, dates, noncran: noncran.length ? noncran : undefined, sources: Object.keys(sources).length ? sources : undefined, classes: classes.items.length ? classes.items : undefined, classesByVersion: Object.keys(classesByVersion).length ? classesByVersion : undefined };
 	return { blob, versionCount, functionCount };
 }
 
 /**
- * Accumulates analyzed functions and serializes a {@link SigDb}. Feed it with {@link addPackage} and
- * {@link addVersion}, then {@link build}. Pooling (dictionary, per-package blobs, whole-package dedup,
- * frequency reordering) happens in {@link build} so the result is deterministic for identical inputs.
+ * Accumulates analyzed functions and serializes a {@link SigDb}. Feed it with {@link addPackage}/{@link addVersion},
+ * then {@link build}; pooling happens there so the result is deterministic for identical inputs.
  */
 export class SigDbBuilder {
 	private readonly raw = new Map<string, RawPkg>();
@@ -292,10 +286,8 @@ export class SigDbBuilder {
 	}
 
 	/**
-	 * Build one {@link SigDb} bundle. `tier: 'current'` keeps only each package's latest version (small,
-	 * fast to load); `tier: 'full'` keeps every version. `topN` + `shard` further restrict to the most-
-	 * downloaded packages (`'top'`) or the remainder (`'rest'`), so a database can be split into several
-	 * small shards routed by a {@link SigDbManifest}.
+	 * Build one {@link SigDb} bundle. `tier: 'current'` keeps only each package's latest version, `'full'` every
+	 * version; `topN` + `shard` further restrict to the top-downloaded packages or the remainder, for a {@link SigDbManifest}.
 	 */
 	public build(opts: SigDbBuildOptions): SigDb {
 		const tier: SigDbTier = opts.tier ?? 'full';
@@ -346,10 +338,8 @@ export class SigDbBuilder {
 	}
 
 	/**
-	 * Build several shards that all reindex into a **single shared string dictionary** (stored once, not
-	 * per shard). All shards' blobs are pooled into one dictionary and frequency-sorted together, so the
-	 * dictionary loads once and no strings are duplicated across shards. Package metadata is likewise
-	 * collected once. This is the compact, fast-loading counterpart of calling {@link build} per shard.
+	 * Build several shards that all reindex into a **single shared string dictionary** (stored once, not per shard,
+	 * pooled + frequency-sorted together); the compact, fast-loading counterpart of calling {@link build} per shard.
 	 */
 	public buildSharded(opts: Omit<SigDbBuildOptions, 'tier' | 'shard' | 'topN'>, specs: readonly ShardSpec[]): ShardedSigDb {
 		const feats = resolveFeatures(opts.features);
@@ -569,15 +559,12 @@ function optimizeStringOrder(strings: string[], blobs: PkgBlob[]): string[] {
 	return order.map(oldI => strings[oldI]);
 }
 
-
 /** flush a batch line once its serialized size reaches roughly this many bytes (keeps lines under the string cap) */
 const NdjsonBatchBytes = 8_000_000;
 
 /**
- * Batch the string dictionary into `["d", startIdx, "s1\ns2\n…"]` lines: the strings are joined into ONE
- * newline-delimited blob per line rather than a JSON array of quoted strings. On load this parses as a single
- * string and `split('\n')` -- far faster than `JSON.parse`-ing an array of ~1.4M elements, and a touch smaller
- * Safe because no dictionary string contains a newline (defaults are normalized).
+ * Batch the string dictionary into `["d", startIdx, "s1\ns2\n…"]` lines: one newline-delimited blob per line
+ * rather than a JSON array of quoted strings, which loads as a single `split('\n')` instead of parsing ~1.4M elements.
  */
 function* dictLines(strings: readonly string[]): Generator<string> {
 	let start = 0;
@@ -641,8 +628,7 @@ interface CodecSink { stream: NodeJS.ReadWriteStream; file: fs.WriteStream }
 
 /**
  * Streams NDJSON lines to `<plain>` plus every codec {@link writeCodecs} yields (`.br` always, `.zst` when this
- * Node supports it) at once, tracking the plain byte offset for seek indexes. A `.br` fallback is thus always
- * produced beside any `.zst`.
+ * Node supports it) at once, tracking the plain byte offset for seek indexes.
  */
 class LineWriter {
 	private readonly plainOut: fs.WriteStream;
@@ -766,10 +752,9 @@ export interface ShardedWriteOptions extends CompressOptions {
 }
 
 /**
- * Write a {@link ShardedSigDb}: one shared dictionary file, one blob-only file per shard, and a
- * {@link SigDbManifest} that embeds each shard's index and references the shared dictionary by id. Every
- * shard reindexes into that single dictionary (stored once, not per shard). A reader needs only the compressed
- * files plus the manifest -- no `.idx` sidecars. With `pack`, also assembles a clean copy-into-flowR folder.
+ * Write a {@link ShardedSigDb}: one shared dictionary file, one blob-only file per shard, and a {@link SigDbManifest}
+ * that embeds each shard's index and references the shared dictionary by id; needs no `.idx` sidecars. With `pack`,
+ * also assembles a clean copy-into-flowR folder.
  */
 export async function writeShardedDatabase(outBase: string, db: ShardedSigDb, manifestFile: string, opts: ShardedWriteOptions = {}): Promise<SigDbManifest> {
 	const compress: CompressOptions = { level: opts.level, brotliQuality: opts.brotliQuality, brotliLgwin: opts.brotliLgwin };

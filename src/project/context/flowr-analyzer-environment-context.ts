@@ -45,9 +45,7 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 
 	/**
 	 * Create a new {@link REnvironmentInformation|environment} with the configured built-in environment as base.
-	 * It knows the built-ins and nothing else: no package the code (or the project) attached is on its search
-	 * path, so a name one of them brought in goes unresolved. Wherever an environment is at hand, take its
-	 * search path with {@link cleanEnvOf} instead of building one from nothing.
+	 * Knows only the built-ins, no attached package, so prefer {@link cleanEnvOf} wherever an environment is at hand.
 	 */
 	makeCleanEnv(): REnvironmentInformation;
 
@@ -66,18 +64,10 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 	 */
 	makeEmptyEnv(): REnvironmentInformation;
 
-	/**
-	 * What the configuration states about `pkg`'s exports, `undefined` when it states nothing. These are not
-	 * in the built-in environment: attaching the package is what brings them into scope.
-	 * @param pkg - the package name
-	 */
+	/** What the configuration states about `pkg`'s exports, `undefined` when it states nothing (these are not in the built-in environment: attaching the package brings them into scope). */
 	statedFor(pkg: string): BuiltInMemory | undefined;
 
-	/**
-	 * The definitions the configuration states for `name` without any package being attached: the ones its
-	 * namespace states when it names one, otherwise what every package together states for the bare name.
-	 * @param name - the identifier to look up
-	 */
+	/** The definitions the configuration states for `name` without any package attached: its namespace's when it names one, otherwise what every package together states for the bare name. */
 	statedDefinitionsOf(name: Identifier): readonly IdentifierDefinition[] | undefined;
 }
 
@@ -201,4 +191,3 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 		};
 	}
 }
-

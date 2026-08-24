@@ -10,6 +10,7 @@ import {
 } from './schema';
 import type { ArgProps } from '../../dataflow/environments/built-in-props';
 import { resolveVersion } from './sigdb-version';
+import { compactRecord } from '../../util/objects';
 
 /** the CRAN status of a version, used to build (or skip) its source-tarball link */
 export interface CranBlobInfo {
@@ -41,9 +42,8 @@ function hasEntries(record: Readonly<Record<string, unknown>> | undefined): bool
 }
 
 /**
- * A {@link PkgBlob} in its compact on-disk tuple form, dropping the trailing fields it has nothing to say
- * about. What is there is what its length states, so no flag has to be written, read, or kept in step, and a
- * reader that stops earlier keeps working on a bundle carrying more.
+ * A {@link PkgBlob} in its compact on-disk tuple form, dropping the trailing fields it has nothing to say about
+ * (the length says what is there, so no flag needs writing/reading), so a reader that stops earlier keeps working.
  */
 export const blobTuple = (b: Readonly<PkgBlob>): PkgBlobTuple => {
 	const head = [b.sigs, b.cgs, b.fns, b.versions, b.noncran ?? [], b.deps, b.depsByVersion] as const;
@@ -108,27 +108,23 @@ export function decodeFunction(strings: readonly string[], blob: Readonly<PkgBlo
 	const [nameIdx, sigIdx, cgIdx, bits, fileIdx, line, topicIdx] = blob.fns[fnIdx];
 	const signature = (sigIdx >= 0 ? blob.sigs[sigIdx] : []).map(p => {
 		const [n, props, def] = Array.isArray(p) ? [p[0], p[1], p.length === 3 ? p[2] : -1] : [p, 0, -1];
-		return {
-			name: strings[n],
-			props,
-			...(def >= 0 ? { default: strings[def] } : {})
-		};
+		return compactRecord({ name: strings[n], props, default: def >= 0 ? strings[def] : undefined });
 	});
 	let callees: string[] = [];
 	if(cgIdx >= 0) {
 		let prev = 0;
 		callees = blob.cgs[cgIdx].map(d => strings[prev += d]);
 	}
-	return {
+	return compactRecord({
 		name:     strings[nameIdx],
-		...(topicIdx !== undefined && topicIdx >= 0 ? { topic: strings[topicIdx] } : {}),
-		...(fileIdx >= 0 ? { file: strings[fileIdx] } : {}),
+		topic:    topicIdx !== undefined && topicIdx >= 0 ? strings[topicIdx] : undefined,
+		file:     fileIdx >= 0 ? strings[fileIdx] : undefined,
 		line,
 		exported: Boolean(bits & FnProp.Exported),
 		props:    Object.entries(FnPropNames).filter(([m]) => bits & Number(m)).map(([, n]) => n),
 		signature,
 		callees
-	};
+	});
 }
 
 /** a decoded package dependency of one version (`type` is the compact {@link DepType} enum; map to a label via {@link DepTypeNames}) */
@@ -145,19 +141,10 @@ export function decodeDependencies(strings: readonly string[], blob: Readonly<Pk
 	if(idx === undefined) {
 		return [];
 	}
-	return blob.deps[idx].map(d => ({
-		name: strings[d[0]],
-		type: d[1],
-		...(d.length === 3 ? { constraint: strings[d[2]] } : {})
-	}));
+	return blob.deps[idx].map(d => compactRecord({ name: strings[d[0]], type: d[1], constraint: d.length === 3 ? strings[d[2]] : undefined }));
 }
 
-/**
- * The classes a package version declares, decoded from the blob's class pool.
- * @param strings - the global string dictionary
- * @param blob    - the package blob to read
- * @param ver     - the version to answer for
- */
+/** the classes a package version declares, decoded from the blob's class pool */
 export function decodeClasses(strings: readonly string[], blob: Readonly<PkgBlob>, ver: string): SigClassInfo[] {
 	const list = blob.classesByVersion?.[ver];
 	const pool = blob.classes;
@@ -172,17 +159,17 @@ export function decodeClasses(strings: readonly string[], blob: Readonly<PkgBlob
 			continue;
 		}
 		const [nameIdx, system, props, supers, slots, pkgIdx] = rec;
-		out.push({
+		out.push(compactRecord({
 			name:   strings[nameIdx],
 			system: SigClassSystemNames[system] ?? SigClassSystemNames[0],
 			supers: supers.map(i => strings[i]),
 			slots:  slots.map((sl): SigSlotInfo => typeof sl === 'number'
 				? { name: strings[sl] }
 				: { name: strings[sl[0]], type: strings[sl[1]] }),
-			...(props & ClassProp.Virtual ? { virtual: true } : {}),
-			...(props & ClassProp.Union ? { union: true } : {}),
-			...(pkgIdx !== undefined ? { package: strings[pkgIdx] } : {})
-		});
+			virtual: props & ClassProp.Virtual ? true : undefined,
+			union:   props & ClassProp.Union ? true : undefined,
+			package: pkgIdx !== undefined ? strings[pkgIdx] : undefined
+		}));
 	}
 	return out;
 }

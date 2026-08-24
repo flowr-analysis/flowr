@@ -38,17 +38,12 @@ describe('The concurrent call property', () => {
 	const builtIns = BuiltInIndex.default();
 	const propsOf = (name: string, pkg: string) => builtIns.propsOf(Identifier.make(name, pkg)) ?? 0;
 
-	test('the built-in that runs the work states it, not a list beside it', () => {
-		expect(propsOf('future', 'future') & CallProp.Concurrent).toBeTruthy();
-		expect(propsOf('future_map', 'furrr') & CallProp.Concurrent).toBeTruthy();
-		expect(propsOf('%dopar%', 'foreach') & CallProp.Concurrent).toBeTruthy();
-		expect(propsOf('mirai', 'mirai') & CallProp.Concurrent).toBeTruthy();
-		expect(propsOf('r_bg', 'callr') & CallProp.Concurrent).toBeTruthy();
-	});
-
-	test('the sequential neighbours of those do not', () => {
-		expect(propsOf('lapply', 'base') & CallProp.Concurrent).toBeFalsy();
-		expect(propsOf('map', 'purrr') & CallProp.Concurrent).toBeFalsy();
+	test.each([
+		['future', 'future', true], ['future_map', 'furrr', true], ['%dopar%', 'foreach', true],
+		['mirai', 'mirai', true], ['r_bg', 'callr', true],
+		['lapply', 'base', false], ['map', 'purrr', false]
+	] as const)('%s::%s is concurrent: %s', (name, pkg, expected) => {
+		expect(!!(propsOf(name, pkg) & CallProp.Concurrent)).toBe(expected);
 	});
 
 	test('`parallel` stays with the signature database, so its exports still need a library() call', () => {
@@ -69,10 +64,10 @@ describe('The concurrent call property', () => {
 		expect(bg.find(([name]) => name === 'func')?.[1]).toBe(ArgProp.Callee);
 	});
 
-	test('an expression a backend ships elsewhere is marked as not evaluated here', () => {
-		for(const [name, pkg] of [['future', 'future'], ['mirai', 'mirai'], ['%dopar%', 'foreach']] as const) {
-			const sig = builtIns.get(Identifier.make(name, pkg))?.sig ?? [];
-			expect(sig.some(([, props]) => (props & ArgProp.Nse) !== 0)).toBe(true);
-		}
+	test.each([
+		['future', 'future'], ['mirai', 'mirai'], ['%dopar%', 'foreach']
+	] as const)('%s::%s marks the expression a backend ships elsewhere as not evaluated here', (name, pkg) => {
+		const sig = builtIns.get(Identifier.make(name, pkg))?.sig ?? [];
+		expect(sig.some(([, props]) => (props & ArgProp.Nse) !== 0)).toBe(true);
 	});
 });

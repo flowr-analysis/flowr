@@ -1,41 +1,40 @@
 import { assert, describe, test } from 'vitest';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { withTreeSitter } from '../_helper/shell';
 import { label } from '../_helper/label';
+import { queryCase, runQuery } from '../_helper/query';
 import { InspectFnPropsQueryDefinition } from '../../../src/queries/catalog/inspect-fn-props-query/inspect-fn-props-query-format';
 import { ArgProp, ArgProps, CallProp, CallProps } from '../../../src/dataflow/environments/built-in-props';
 
 describe('Inspect Argument Roles Query', withTreeSitter(parser => {
+	/**
+	 * Compares by the raw numbers, but reports the words too, as a mismatch of bit masks reads as nothing.
+	 * `found` and `expected` are either both keyed by name or both in answer order.
+	 */
+	function assertProps<T>(found: Record<string, T> | readonly T[], expected: Record<string, T> | readonly T[], words: (of: T) => readonly string[]) {
+		/* entries read the same for a record and an array, so one spelling covers both shapes */
+		const spell = (of: Record<string, T> | readonly T[]) => Object.entries(of).map(([n, p]) => `${n}: ${words(p).join('+')}`);
+		assert.deepStrictEqual(spell(found), spell(expected));
+		assert.deepStrictEqual({ ...found }, { ...expected });
+	}
+
 	/** The roles the query gives the formals of `f` for the given body, keyed by the name each is written as. */
 	function testRoles(name: string, code: string, expected: Record<string, ArgProps>) {
-		test(label(name, ['name-normal'], ['other']), async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest(code);
-			const result = await analyzer.query([{ type: 'inspect-fn-props' }]);
-			const idMap = (await analyzer.normalize()).idMap;
+		queryCase(parser, 'inspect-fn-props', name, code, ({ result, idMap }) => {
 			const found: Record<string, ArgProps> = {};
-			for(const roles of Object.values(result['inspect-fn-props'].roles)) {
+			for(const roles of Object.values(result.roles)) {
 				for(const [formal, props] of Object.entries(roles)) {
 					found[idMap.get(Number(formal))?.lexeme ?? formal] = props;
 				}
 			}
-			/* the words make a mismatch readable, the numbers are what is compared */
-			const words = (of: Record<string, ArgProps>) => Object.fromEntries(Object.entries(of).map(([n, p]) => [n, ArgProps.words(p).join('+')]));
-			assert.deepStrictEqual(words(found), words(expected));
-			assert.deepStrictEqual(found, expected);
+			assertProps(found, expected, ArgProps.words);
 		});
 	}
 
 	/** What the query states about the function definitions of the program themselves, in the order it answers them. */
 	function testProps(name: string, code: string, expected: readonly CallProps[]) {
-		test(label(name, ['name-normal'], ['other']), async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest(code);
-			const found = Object.values((await analyzer.query([{ type: 'inspect-fn-props' }]))['inspect-fn-props'].props);
-			/* the words make a mismatch readable, the numbers are what is compared */
-			const words = (of: readonly CallProps[]) => of.map(p => CallProps.words(p).join('+'));
-			assert.deepStrictEqual(words(found), words(expected));
-			assert.deepStrictEqual(found, [...expected]);
+		queryCase(parser, 'inspect-fn-props', name, code, ({ result }) => {
+			const found = Object.values(result.props);
+			assertProps(found, expected, CallProps.words);
 		});
 	}
 
@@ -79,7 +78,6 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 
 	testRoles('a name it cannot follow loses the frame', 'f <- function(x, nm) { e <- environment(); get(nm, envir = e) }', { x: ArgProp.Value, nm: ArgProp.Value });
 
-
 	/* what the body states about the function itself, not about one of its formals */
 	testProps('a body handing back an invisible result', 'f <- function(x) invisible(x)', [CallProp.Invisible | CallProp.Strict]);
 	testProps('through a return', 'f <- function(x) return(invisible(x))', [CallProp.Invisible | CallProp.Strict]);
@@ -121,54 +119,39 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 	testRoles('a formal only asked to be there', 'f2 <- function(x) if (missing(x)) 1 else 2', { x: ArgProp.Presence | ArgProp.Lazy });
 
 	test(label('the filter narrows the definitions', ['name-normal'], ['other']), async() => {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest('f <- function(x) x\ng <- function(y) 1');
-		const result = await analyzer.query([{ type: 'inspect-fn-props', filter: ['2@function'] }]);
-		assert.deepStrictEqual(Object.values(result['inspect-fn-props'].roles).flatMap(r => Object.values(r)), [ArgProp.Lazy]);
+		const { result } = await runQuery(parser, 'f <- function(x) x\ng <- function(y) 1', { type: 'inspect-fn-props', filter: ['2@function'] });
+		assert.deepStrictEqual(Object.values(result.roles).flatMap(r => Object.values(r)), [ArgProp.Lazy]);
 	});
 
 	/* the options narrow what is inferred and what comes back */
 	test(label('only the formals, or only the function', ['name-normal'], ['other']), async() => {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest('f <- function(x) invisible(x)');
-		const args = await analyzer.query([{ type: 'inspect-fn-props', only: 'arguments' }]);
-		assert.deepStrictEqual(args['inspect-fn-props'].props, {});
-		assert.isNotEmpty(args['inspect-fn-props'].roles);
-		const fn = await analyzer.query([{ type: 'inspect-fn-props', only: 'function' }]);
-		assert.deepStrictEqual(fn['inspect-fn-props'].roles, {});
-		assert.deepStrictEqual(Object.values(fn['inspect-fn-props'].props), [CallProp.Invisible | CallProp.Strict]);
+		const args = (await runQuery(parser, 'f <- function(x) invisible(x)', { type: 'inspect-fn-props', only: 'arguments' })).result;
+		assert.deepStrictEqual(args.props, {});
+		assert.isNotEmpty(args.roles);
+		const fn = (await runQuery(parser, 'f <- function(x) invisible(x)', { type: 'inspect-fn-props', only: 'function' })).result;
+		assert.deepStrictEqual(fn.roles, {});
+		assert.deepStrictEqual(Object.values(fn.props), [CallProp.Invisible | CallProp.Strict]);
 	});
 
 	test(label('a named formal alone', ['name-normal'], ['other']), async() => {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest('f <- function(x, y) x');
-		const result = await analyzer.query([{ type: 'inspect-fn-props', formals: ['y'] }]);
-		assert.deepStrictEqual(Object.values(result['inspect-fn-props'].roles).flatMap(r => Object.values(r)), [ArgProp.Lazy]);
+		const { result } = await runQuery(parser, 'f <- function(x, y) x', { type: 'inspect-fn-props', formals: ['y'] });
+		assert.deepStrictEqual(Object.values(result.roles).flatMap(r => Object.values(r)), [ArgProp.Lazy]);
 	});
 
 	test(label('named properties alone', ['name-normal'], ['other']), async() => {
-		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-		analyzer.addRequest('f <- function(x) invisible(x)');
-		const result = await analyzer.query([{ type: 'inspect-fn-props', props: ['Alias', 'Invisible'] }]);
-		assert.deepStrictEqual(Object.values(result['inspect-fn-props'].roles).flatMap(r => Object.values(r)), [ArgProp.Alias]);
-		assert.deepStrictEqual(Object.values(result['inspect-fn-props'].props), [CallProp.Invisible]);
+		const { result } = await runQuery(parser, 'f <- function(x) invisible(x)', { type: 'inspect-fn-props', props: ['Alias', 'Invisible'] });
+		assert.deepStrictEqual(Object.values(result.roles).flatMap(r => Object.values(r)), [ArgProp.Alias]);
+		assert.deepStrictEqual(Object.values(result.props), [CallProp.Invisible]);
 	});
 
 	/** What the query states about each definition of the program, keyed by the definition as it is written. */
 	function testEachProps(name: string, code: string, expected: Readonly<Record<string, CallProps>>) {
-		test(label(name, ['name-normal'], ['other']), async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest(code);
-			const result = await analyzer.query([{ type: 'inspect-fn-props' }]);
-			const idMap = (await analyzer.normalize()).idMap;
+		queryCase(parser, 'inspect-fn-props', name, code, ({ result, idMap }) => {
 			const found: Record<string, CallProps> = {};
-			for(const [id, props] of Object.entries(result['inspect-fn-props'].props)) {
+			for(const [id, props] of Object.entries(result.props)) {
 				found[idMap.get(Number(id))?.info.fullLexeme ?? id] = props;
 			}
-			/* the words make a mismatch readable, the numbers are what is compared */
-			const words = (of: Record<string, CallProps>) => Object.fromEntries(Object.entries(of).map(([n, p]) => [n, CallProps.words(p).join('+')]));
-			assert.deepStrictEqual(words(found), words(expected));
-			assert.deepStrictEqual(found, { ...expected });
+			assertProps(found, expected, CallProps.words);
 		});
 	}
 

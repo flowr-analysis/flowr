@@ -6,7 +6,6 @@ import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 
 assumeLoadedPackages('purrr');
 
-
 describe('Purrr Formulas', withTreeSitter(ts => {
 	assertDataflow(label('simple map', ['reflection-"computing-on-the-language"']), ts, 'map(df, ~ .x + 1)',
 		emptyGraph()

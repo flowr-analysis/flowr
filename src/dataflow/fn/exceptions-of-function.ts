@@ -14,6 +14,7 @@ import { ArgProp } from '../environments/built-in-props';
 import { builtInLookup } from '../environments/query-fn-props';
 import type { BuiltInLookup } from './frame-reflection';
 import { namesAnErrorHandler } from './condition-handlers';
+import { propagateToFixpoint } from './function-props';
 
 const CatchHandlers: ReadonlySet<string> = new Set<BuiltInProcName>([BuiltInProcName.Try]);
 export interface ExceptionPoint {
@@ -117,13 +118,8 @@ function reach(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction)
 }
 
 /**
- * Collect exception sources of a function in the call graph.
- * This returns the `NodeId`s of functions that may throw exceptions when called by the given function.
- * Please be aware, that these are restricted to functions known by flowR.
- * With `knownThrower` you can provide additional functions that are known to throw exceptions; the result of
- * an earlier call serves as one, as every definition it passes gets an answer counting its callees.
- * What a `try` and its relatives guard ends the search, their handlers do not.
- * @returns A record mapping all `NodeId`s of functions that may throw exceptions to their exception points.
+ * The `NodeId`s of functions that may throw exceptions when called by `id`, restricted to functions known by
+ * flowR. `knownThrower` seeds additional throwers, e.g. the result of an earlier call, counting its callees.
  */
 export function calculateExceptionsOfFunction(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction = {}): ExceptionsByFunction {
 	const { calls, own, defs } = reach(id, graph, knownThrower);
@@ -132,22 +128,7 @@ export function calculateExceptionsOfFunction(id: NodeId, graph: CallGraph, know
 	for(const node of calls.keys()) {
 		raised.set(node, new Map((own.get(node) ?? []).map(e => [e.id, e])));
 	}
-	const callers = new Map<NodeId, NodeId[]>();
-	for(const [node, next] of calls) {
-		for(const call of next) {
-			const known = callers.get(call);
-			if(known === undefined) {
-				callers.set(call, [node]);
-			} else {
-				known.push(node);
-			}
-		}
-	}
-	const pending = [...calls.keys()];
-	const queued = new Set<NodeId>(pending);
-	while(pending.length > 0) {
-		const node = pending.pop() as NodeId;
-		queued.delete(node);
+	propagateToFixpoint(calls.keys(), calls, node => {
 		const into = raised.get(node) as Map<NodeId, ExceptionPoint>;
 		let grew = false;
 		for(const call of calls.get(node) ?? []) {
@@ -158,16 +139,8 @@ export function calculateExceptionsOfFunction(id: NodeId, graph: CallGraph, know
 				}
 			}
 		}
-		if(!grew) {
-			continue;
-		}
-		for(const caller of callers.get(node) ?? []) {
-			if(!queued.has(caller)) {
-				queued.add(caller);
-				pending.push(caller);
-			}
-		}
-	}
+		return grew;
+	});
 
 	const result: ExceptionsByFunction = {};
 	for(const [node, points] of raised) {

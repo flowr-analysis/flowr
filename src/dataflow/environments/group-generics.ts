@@ -47,19 +47,12 @@ export function groupGenericOf(name: string): string | undefined {
 	return S4GroupOfMember.get(name);
 }
 
-/**
- * The members a method registered on `name` answers for, or `undefined` when `name` names no group. `Ops` is
- * flattened to the operators it stands for rather than to the three S4 groups it splits into, so every element
- * is a name a call may actually use.
- */
+/** The members a method registered on `name` answers for, `undefined` when `name` names no group (`Ops` flattened to its operators). */
 export function groupGenericMembers(name: string): readonly string[] | undefined {
 	return RGroupGenerics[name as RGroupGeneric];
 }
 
-/**
- * The members an S3 `<group>.<class>` method answers for. S3 knows no `Math2` group: `round(x)` and `signif(x)`
- * on such an object dispatch to `Math.<class>`, so the S3 `Math` covers both. Every other name answers as in S4.
- */
+/** The members an S3 `<group>.<class>` method answers for; S3 has no `Math2`, so `Math` covers both (see {@link MathS3}). */
 export function s3GroupGenericMembers(name: string): readonly string[] | undefined {
 	return name === 'Math' ? MathS3 : groupGenericMembers(name);
 }

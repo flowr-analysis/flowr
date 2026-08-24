@@ -1,32 +1,23 @@
 import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import {
-	ClassSystem,
-	type DeclaredClass,
-	MemberVisibility,
-	declaredClasses,
-	superClassesOf,
-	toSigClasses
-} from '../../../../src/dataflow/fn/class-declaration';
+import { ClassSystem, type DeclaredClass, MemberVisibility, declaredClasses, superClassesOf, toSigClasses } from '../../../../src/dataflow/fn/class-declaration';
 import { applyAssumedPackages, assumedPackagesOf, assumeLoadedPackages } from '../../_helper/shell';
 
 assumeLoadedPackages('R6', 'S7');
 
-
-async function classesOf(code: string): Promise<Map<string, DeclaredClass>> {
-	const analyzer = await applyAssumedPackages(new FlowrAnalyzerBuilder(), assumedPackagesOf(undefined)).build();
+/** the classes {@link declaredClasses} finds in `code`; `attach` leaves nothing assumed, so the snippet's own `library()` has to bring the package in */
+async function classesOf(code: string, attach = false): Promise<Map<string, DeclaredClass>> {
+	const builder = attach ? new FlowrAnalyzerBuilder() : applyAssumedPackages(new FlowrAnalyzerBuilder(), assumedPackagesOf(undefined));
+	const analyzer = await builder.build();
 	analyzer.addRequest(code);
 	return declaredClasses((await analyzer.dataflow()).graph);
 }
 
-/**
- * As {@link classesOf}, but with nothing assumed attached, so the snippet's own `library()` is what has to bring
- * the package in -- attaching a package must not disable what flowR states about its exports.
- */
-async function classesOfAttaching(code: string): Promise<Map<string, DeclaredClass>> {
-	const analyzer = await new FlowrAnalyzerBuilder().build();
-	analyzer.addRequest(code);
-	return declaredClasses((await analyzer.dataflow()).graph);
+/** runs `pick` over what {@link classesOf} finds in `code` and compares it against `expected` */
+function testClasses(name: string, code: string, pick: (classes: Map<string, DeclaredClass>) => unknown, expected: unknown) {
+	test(name, async() => {
+		assert.deepEqual(pick(await classesOf(code)), expected);
+	});
 }
 
 describe('S4 class declarations', () => {
@@ -38,41 +29,17 @@ setClassUnion("NumOrChar", c("numeric", "character"))
 setIs("Derived", "Abstract")
 setValidity("Derived", function(object) TRUE)
 `;
-
-	test('slots, their declared types and the contains chain', async() => {
-		const classes = await classesOf(code);
-		const base = classes.get('Base');
-		assert.strictEqual(base?.system, ClassSystem.S4);
-		assert.deepEqual(base?.members, [{ name: 'x', type: 'numeric' }]);
-		const derived = classes.get('Derived');
-		assert.deepEqual(derived?.members, [{ name: 'y', type: 'character' }]);
-		assert.include(derived?.contains ?? [], 'Base');
-		assert.deepEqual(derived?.prototype, ['y']);
-	});
-
-	test('a representation("VIRTUAL") class cannot be instantiated', async() => {
-		assert.isTrue((await classesOf(code)).get('Abstract')?.virtual);
-	});
-
-	test('setClassUnion states its members and is virtual', async() => {
-		const union = (await classesOf(code)).get('NumOrChar');
-		assert.deepEqual(union?.union, ['numeric', 'character']);
-		assert.isTrue(union?.virtual);
-	});
-
-	test('setIs adds the is-a relation contains would have stated', async() => {
-		assert.include((await classesOf(code)).get('Derived')?.contains ?? [], 'Abstract');
-	});
-
-	test('setValidity attributes to a class rather than declaring one', async() => {
-		/* it states a relation, so it contributes no class of its own */
-		assert.isFalse((await classesOf(code)).has('object'));
-	});
-
-	test('the superclass chain is resolved transitively', async() => {
-		const classes = await classesOf(code);
-		assert.deepEqual(superClassesOf('Derived', classes).toSorted(), ['Abstract', 'Base']);
-	});
+	testClasses('a base class states its slot types', code,
+		c => ({ system: c.get('Base')?.system, members: c.get('Base')?.members }), { system: ClassSystem.S4, members: [{ name: 'x', type: 'numeric' }] });
+	testClasses('a derived class states its own members and its prototype default', code,
+		c => ({ members: c.get('Derived')?.members, prototype: c.get('Derived')?.prototype }), { members: [{ name: 'y', type: 'character' }], prototype: ['y'] });
+	testClasses('a VIRTUAL representation cannot be instantiated, so it is virtual', code, c => c.get('Abstract')?.virtual, true);
+	testClasses('a class union states the members it unites and is virtual too', code,
+		c => ({ union: c.get('NumOrChar')?.union, virtual: c.get('NumOrChar')?.virtual }), { union: ['numeric', 'character'], virtual: true });
+	testClasses('setValidity attributes to a class rather than declaring one, so it contributes no class of its own', code, c => c.has('object'), false);
+	testClasses('setIs extends the contains chain the way it would state itself, and the superclass chain resolves it', code,
+		c => ({ hasBase: (c.get('Derived')?.contains ?? []).includes('Base'), hasAbstract: (c.get('Derived')?.contains ?? []).includes('Abstract'), supers: superClassesOf('Derived', c).toSorted() }),
+		{ hasBase: true, hasAbstract: true, supers: ['Abstract', 'Base'] });
 });
 
 describe('Reference, S7 and R6 classes', () => {
@@ -84,86 +51,55 @@ Person <- R6::R6Class("Person", public = list(name = NULL, greet = function() se
 Employee <- R6::R6Class("Employee", inherit = Person, public = list(salary = 0))
 Range <- S7::new_class("Range", parent = S7::S7_object, properties = list(start = class_numeric), abstract = TRUE)
 `;
-
-	test('a reference class states typed fields and its methods apart', async() => {
-		const account = (await classesOf(code)).get('Account');
-		assert.strictEqual(account?.system, ClassSystem.RefClass);
-		assert.deepEqual(account?.contains, ['envRefClass']);
-		assert.deepEqual(account?.members, [{ name: 'balance', type: 'numeric' }, { name: 'deposit', method: true }]);
-	});
-
-	test('R6 members carry the visibility they were declared under', async() => {
-		const person = (await classesOf(code)).get('Person');
-		assert.strictEqual(person?.system, ClassSystem.R6);
-		assert.deepEqual(person?.members, [
-			{ name: 'name', visibility: MemberVisibility.Public },
-			{ name: 'greet', method: true, visibility: MemberVisibility.Public },
-			{ name: 'secret', visibility: MemberVisibility.Private },
-			{ name: 'upper', method: true, visibility: MemberVisibility.Active }
-		]);
-	});
-
-	test('an R6 parent named by its generator variable resolves to the class it declares', async() => {
-		const classes = await classesOf(code);
-		assert.deepEqual(classes.get('Employee')?.byVariable, ['Person']);
-		assert.deepEqual(classes.get('Employee')?.contains, ['Person']);
-		assert.deepEqual(superClassesOf('Employee', classes), ['Person']);
-	});
-
-	test('an S7 class states its properties and abstractness', async() => {
-		const range = (await classesOf(code)).get('Range');
-		assert.strictEqual(range?.system, ClassSystem.S7);
-		assert.deepEqual(range?.members, [{ name: 'start', type: 'class_numeric' }]);
-		assert.isTrue(range?.virtual);
-	});
+	testClasses('a reference class states typed fields and its methods apart', code,
+		c => ({ system: c.get('Account')?.system, contains: c.get('Account')?.contains, members: c.get('Account')?.members }),
+		{ system: ClassSystem.RefClass, contains: ['envRefClass'], members: [{ name: 'balance', type: 'numeric' }, { name: 'deposit', method: true }] });
+	testClasses('R6 members carry the visibility they were declared under', code,
+		c => ({ system: c.get('Person')?.system, members: c.get('Person')?.members }), { system:  ClassSystem.R6, members: [
+			{ name: 'name', visibility: MemberVisibility.Public }, { name: 'greet', method: true, visibility: MemberVisibility.Public },
+			{ name: 'secret', visibility: MemberVisibility.Private }, { name: 'upper', method: true, visibility: MemberVisibility.Active }] });
+	testClasses('an R6 parent by generator variable resolves', code,
+		c => ({ byVariable: c.get('Employee')?.byVariable, contains: c.get('Employee')?.contains, supers: superClassesOf('Employee', c) }),
+		{ byVariable: ['Person'], contains: ['Person'], supers: ['Person'] });
+	testClasses('an S7 class states its properties and abstractness', code,
+		c => ({ system: c.get('Range')?.system, members: c.get('Range')?.members, virtual: c.get('Range')?.virtual }),
+		{ system: ClassSystem.S7, members: [{ name: 'start', type: 'class_numeric' }], virtual: true });
 });
 
 describe('Handing the declarations to the signature database', () => {
-	test('a declared class becomes a record the package owns', async() => {
-		const classes = await classesOf('setClass("A", contains = "B", slots = c(x = "numeric"))');
-		const [record] = toSigClasses(classes);
-		assert.deepEqual(record, { name: 'A', system: 's4', supers: ['B'], slots: [{ name: 'x', type: 'numeric' }] });
-		assert.isUndefined(record.package, 'a class the package declares is its own');
-	});
-
-	test('a superclass declared elsewhere is attributed to the package defining it', async() => {
-		const classes = await classesOf('setClass("A", contains = "B")');
-		const records = toSigClasses(classes, name => name === 'B' ? 'otherpkg' : undefined);
-		assert.deepEqual(records.find(r => r.name === 'B'),
-			{ name: 'B', system: 's4', supers: [], slots: [], package: 'otherpkg' });
-	});
-
-	test('a class nothing can place is left out rather than invented', async() => {
-		const classes = await classesOf('setClass("A", contains = "B")');
-		assert.lengthOf(toSigClasses(classes, () => undefined), 1);
-	});
+	testClasses('a declared class becomes a record the package owns, with no package of its own', 'setClass("A", contains = "B", slots = c(x = "numeric"))',
+		c => toSigClasses(c)[0], { name: 'A', system: 's4', supers: ['B'], slots: [{ name: 'x', type: 'numeric' }] });
+	testClasses('a superclass declared elsewhere is attributed to its package, or left out if nothing places it', 'setClass("A", contains = "B")',
+		c => ({ withOwner: toSigClasses(c, n => n === 'B' ? 'otherpkg' : undefined).find(r => r.name === 'B'), withoutOwner: toSigClasses(c, () => undefined).length }),
+		{ withOwner: { name: 'B', system: 's4', supers: [], slots: [], package: 'otherpkg' }, withoutOwner: 1 });
 });
 
 describe('library() keeps what flowR states about the exports it attaches', () => {
-	test('library(R6) declares the class R6::R6Class declares', async() => {
-		const attached = await classesOfAttaching('library(R6)\nP <- R6Class("P", public = list(x = 1))');
-		assert.strictEqual(attached.get('P')?.system, ClassSystem.R6);
-		assert.deepEqual(attached.get('P')?.members, [{ name: 'x', visibility: MemberVisibility.Public }]);
-		/* the qualified call is what the attached export has to keep meaning (the ids differ by the library line) */
-		const qualified = await classesOfAttaching('P <- R6::R6Class("P", public = list(x = 1))');
-		assert.deepEqual(attached.get('P')?.members, qualified.get('P')?.members);
-	});
-
-	test('library(S7) declares the class S7::new_class declares', async() => {
-		const attached = await classesOfAttaching('library(S7)\nR <- new_class("R", properties = list(x = class_numeric))');
-		assert.strictEqual(attached.get('R')?.system, ClassSystem.S7);
-		const qualified = await classesOfAttaching('R <- S7::new_class("R", properties = list(x = class_numeric))');
-		assert.deepEqual(attached.get('R')?.members, qualified.get('R')?.members);
-	});
+	/** `attachedCode` (via `library(pkg)`) must declare `className` the same way `qualifiedCode` (via `pkg::`) does */
+	function testAttachedExport(name: string, attachedCode: string, qualifiedCode: string, className: string, system: ClassSystem, members?: DeclaredClass['members']) {
+		test(name, async() => {
+			const attached = await classesOf(attachedCode, true);
+			assert.strictEqual(attached.get(className)?.system, system);
+			if(members !== undefined) {
+				assert.deepEqual(attached.get(className)?.members, members);
+			}
+			assert.deepEqual(attached.get(className)?.members, (await classesOf(qualifiedCode, true)).get(className)?.members);
+		});
+	}
+	testAttachedExport('library(R6) declares the class R6::R6Class declares',
+		'library(R6)\nP <- R6Class("P", public = list(x = 1))', 'P <- R6::R6Class("P", public = list(x = 1))',
+		'P', ClassSystem.R6, [{ name: 'x', visibility: MemberVisibility.Public }]);
+	testAttachedExport('library(S7) declares the class S7::new_class declares',
+		'library(S7)\nR <- new_class("R", properties = list(x = class_numeric))', 'R <- S7::new_class("R", properties = list(x = class_numeric))', 'R', ClassSystem.S7);
 
 	test('library(methods) declares the class a bare setClass declares', async() => {
-		const attached = await classesOfAttaching('library(methods)\nsetClass("A", representation(x = "numeric"))');
+		const attached = await classesOf('library(methods)\nsetClass("A", representation(x = "numeric"))', true);
 		assert.strictEqual(attached.get('A')?.system, ClassSystem.S4);
 		assert.deepEqual(attached.get('A')?.members, [{ name: 'x', type: 'numeric' }]);
 	});
 
 	test('a local definition of the name still shadows the attached export', async() => {
-		const shadowed = await classesOfAttaching('library(R6)\nR6Class <- function(...) 1\nP <- R6Class("P")');
+		const shadowed = await classesOf('library(R6)\nR6Class <- function(...) 1\nP <- R6Class("P")', true);
 		assert.isFalse(shadowed.has('P'));
 	});
 });

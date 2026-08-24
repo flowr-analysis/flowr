@@ -25,7 +25,6 @@ interface QuoteConfig {
 	unquote?:                Unquote
 }
 
-
 /**
  * Process a call to `quote` or similar nse/substitution functions.
  */

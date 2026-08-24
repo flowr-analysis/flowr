@@ -11,14 +11,7 @@ import { getArgumentValue, isDataFrameArgument } from './arguments';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
-/**
- * Maps a concrete data frame access operation to abstract data frame operations.
- * @param node      - The R node of the access
- * @param inference - The data frame shape inference visitor
- * @param dfg       - The data flow graph for resolving the arguments
- * @param ctx       - The current flowR analyzer context
- * @returns The mapped abstract data frame operations for the access operation, or `undefined` if the node does not represent a data frame access operation
- */
+/** Maps a concrete data frame access operation to abstract data frame operations, or `undefined` if `node` is not one. */
 export function mapDataFrameAccess(
 	node: RNode<ParentInformation>,
 	inference: DataFrameShapeInferenceVisitor,
@@ -165,9 +158,7 @@ function mapDataFrameIndexColRowAccess(
 	return result;
 }
 
-/**
- * Checks whether an access node represents a string-based access (`$` or `@`), and no index-based access (`[` or `[[`).
- */
+/** Checks whether an access node represents a string-based access (`$` or `@`), and no index-based access (`[` or `[[`). */
 export function isStringBasedAccess(
 	access: RAccess<ParentInformation>
 ): access is RNamedAccess<ParentInformation> {

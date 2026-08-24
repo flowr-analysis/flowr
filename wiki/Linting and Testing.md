@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-08-24, 07:43:38 UTC (v2.14.3, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-08-24, 11:12:39 UTC (v2.14.3, R v4.6.1), please do not edit directly._
 
 
 For the latest code coverage information, see [codecov.io](https://app.codecov.io/gh/flowr-analysis/flowr), 
@@ -99,7 +99,7 @@ This folder contains three special and important elements:
 > [!WARNING]
 > 
 > We name all test files using the `.test.ts` suffix and try to run them in parallel.
-> Whenever this is impossible (e.g., when using <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L79"><code><span title="Produces a shell session for you, can be used within a describe block. Pass { concurrent: false } to the describe, the RShell does not fare well with parallelization.">withShell</span></code></a>), pass `{ concurrent: false }` to the
+> Whenever this is impossible (e.g., when using <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L76"><code><span title="Produces a shell session for you, can be used within a describe block. Pass { concurrent: false } to the describe, the RShell does not fare well with parallelization.">withShell</span></code></a>), pass `{ concurrent: false }` to the
 > `describe` to disable parallel execution for the respective test (otherwise, such tests are flaky):
 > 
 > 
@@ -143,13 +143,13 @@ assertDataflow(label('simple variable', ['name-normal']), shell,
 );
 ```
 
-Have a look at <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L458"><code><span title="Your best friend whenever you want to test whether the dataflow graph produced by flowR is as expected. You may want to have a look at the DataflowTestConfiguration to see what you can configure. Especially the resolveIdsAsCriterion and the expectIsSubgraph are interesting as they allow you for rather flexible matching of the expected graph. Pleas note, that if you pass context: 'call-graph' in th...">assertDataflow</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/cli/repl/print-version.ts#L24"><code>label</code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/dataflowgraph-builder.ts#L35"><code><span title="Creates an empty dataflow graph. Should only be used in tests and documentation.">emptyGraph</span></code></a> for more information.
+Have a look at <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L400"><code><span title="Your best friend whenever you want to test whether the dataflow graph produced by flowR is as expected. See DataflowTestConfiguration for what you can configure; context: 'call-graph' tests the call graph as a view of the dataflow graph.">assertDataflow</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/cli/repl/print-version.ts#L24"><code>label</code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/dataflowgraph-builder.ts#L35"><code><span title="Creates an empty dataflow graph. Should only be used in tests and documentation.">emptyGraph</span></code></a> for more information.
 
 When writing dataflow tests, additional settings can be used to reduce the amount of graph data that needs to be pre-written. Notably:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L418"><code><span title="Specify just a subset of what the dataflow graph will actually be.">expectIsSubgraph</span></code></a> indicates that the expected graph is a subgraph, rather than the full graph that the test should generate. 
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L373"><code><span title="Specify just a subset of what the dataflow graph will actually be.">expectIsSubgraph</span></code></a> indicates that the expected graph is a subgraph, rather than the full graph that the test should generate. 
   The test will then only check if the supplied graph is contained in the result graph, rather than an exact match.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L426"><code><span title="This changes the way the test treats the NodeId s in your expected graph. Before running the verification, the test environment will transform the graph, resolving all Ids as if they are slicing criteria. In other words, you can use the criteria 12@a which will be resolved to the corresponding id before comparing. Please be aware that this is currently a work in progress.">resolveIdsAsCriterion</span></code></a> indicates that the ids given in the expected (sub)graph should be resolved as [slicing criteria](https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion) rather than actual ids. 
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L378"><code><span title="Before comparing, resolve every NodeId in the expected graph as if it were a slicing criterion (e.g. 12@a). Still a work in progress.">resolveIdsAsCriterion</span></code></a> indicates that the ids given in the expected (sub)graph should be resolved as [slicing criteria](https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion) rather than actual ids. 
   For example, passing `12@a` as an id in the expected (sub)graph will cause it to be resolved as the corresponding id.
 
 The following example shows both in use:

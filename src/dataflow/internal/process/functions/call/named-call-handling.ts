@@ -18,7 +18,6 @@ import { FunctionCallVertex } from '../../../../graph/vertex';
 import { Resolve } from '../../../../environments/resolve-helper';
 import { isNotUndefined } from '../../../../../util/assert';
 
-
 function mergeInformation(info: DataflowInformation | undefined, newInfo: DataflowInformation): DataflowInformation {
 	if(info === undefined) {
 		return newInfo;

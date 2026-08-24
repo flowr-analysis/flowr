@@ -1,8 +1,7 @@
-import { assert, describe, test } from 'vitest';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { assert, describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { label } from '../_helper/label';
-import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
+import { queryCase } from '../_helper/query';
+import { SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
 import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
@@ -11,19 +10,10 @@ describe('Inspect Recursion Query', withTreeSitter(parser => {
 	 * The query has to answer for every function definition the code writes, so we compare the whole map:
 	 * the definitions named by `recursive` are the ones that may call themselves again, all others may not.
 	 */
-	function testRecursion(name: string, code: string, recursive: readonly string[]) {
-		test(label(name, ['name-normal'], ['other']), async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest(code);
-			const result = await analyzer.query([{ type: 'inspect-recursion' }]);
-			const found = result['inspect-recursion'].recursive;
-
-			const idMap = (await analyzer.normalize()).idMap;
-			const expectedRecursive = new Set(recursive.map(c => {
-				const id = SlicingCriterion.tryParse(c, idMap);
-				assert.isDefined(id, `criterion ${c} does not resolve`);
-				return String(id);
-			}));
+	function testRecursion(name: string, code: string, recursive: SlicingCriteria) {
+		queryCase(parser, 'inspect-recursion', name, code, async({ result, idMap, analyzer }) => {
+			const found = result.recursive;
+			const expectedRecursive = new Set(SlicingCriteria.decodeAll(recursive, idMap).map(d => String(d.id)));
 
 			const expected: Record<string, boolean> = {};
 			for(const [id] of (await analyzer.dataflow()).graph.verticesOfType(VertexType.FunctionDefinition)) {

@@ -29,7 +29,6 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
-
 /** the formals of `eval(expr, envir, enclos)` */
 const EvalParameterNames = ['expr', 'envir', 'enclos'] as const;
 
@@ -139,7 +138,6 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 		}
 	}
 }
-
 
 function getAsString<OtherInfo>(val: RNode<ParentInformation> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
 	if(!val) {

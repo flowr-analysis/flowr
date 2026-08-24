@@ -74,23 +74,18 @@ const ExpectedSigs: readonly (readonly [Identifier, FnSig])[] = [
 
 describe('Built-in properties', () => {
 	describe('Signature layout', () => {
-		test(label('resolves the declared positions', ['name-normal'], ['other']), () => {
+		test(label('resolves the declared positions, and how `...` covers every position from where it appears', ['name-normal'], ['other']), () => {
 			const layout = FnSig.layout(TestSig as NonNullable<typeof TestSig>);
 			assert.strictEqual(FnSig.propAt(layout, 0), ArgProp.Value);
 			assert.strictEqual(layout.rest, 1);
 			assert.strictEqual(layout.alias, -1);
-		});
-		test(label('`...` covers every position from where it appears', ['name-normal'], ['other']), () => {
-			const layout = FnSig.layout(TestSig as NonNullable<typeof TestSig>);
 			/* the `na.rm` entry sits behind the `...`, so it is never matched by position */
 			for(const i of [1, 2, 7]) {
 				assert.strictEqual(FnSig.propAt(layout, i), ArgProp.Value | ArgProp.Forced, `argument ${i}`);
 			}
 			assert.deepStrictEqual(FnSig.posWith(layout, 4, ArgProp.Forced), [1, 2, 3]);
 			assert.deepStrictEqual(FnSig.posWith(layout, 4, ArgProp.Alias), []);
-		});
-		test(label('an undeclared position states nothing', ['name-normal'], ['other']), () => {
-			assert.strictEqual(FnSig.propAt(FnSig.layout([['x', ArgProp.Value]]), 3), 0);
+			assert.strictEqual(FnSig.propAt(FnSig.layout([['x', ArgProp.Value]]), 3), 0, 'an undeclared position states nothing');
 		});
 		test(label('the layout is cached per signature object', ['name-normal'], ['other']), () => {
 			const sig = TestSig as NonNullable<typeof TestSig>;
@@ -100,41 +95,31 @@ describe('Built-in properties', () => {
 
 	describe('Querying the definitions', () => {
 		const custom = BuiltInIndex.of(TestDefinitions);
-		test(label('by the props they carry', ['name-normal'], ['other']), () => {
+		test(label('by the props they carry or lack, by what an argument is used for, and a replacement under its suffixed name', ['name-normal'], ['other']), () => {
 			assert.deepStrictEqual(custom.with(CallProp.Network).map(Identifier.toString), ['base::fetch']);
 			assert.deepStrictEqual(custom.with(CallProp.Pure | CallProp.Scope).map(Identifier.toString),
 				['base::tally', 'base::dim<-']);
 			assert.deepStrictEqual(custom.withAll(CallProp.Network | CallProp.Writes).map(Identifier.toString), ['base::fetch']);
 			assert.deepStrictEqual(custom.withAll(CallProp.Network | CallProp.Pure).map(Identifier.toString), []);
-		});
-		test(label('by the props they do not carry', ['name-normal'], ['other']), () => {
 			/* `plain` states no props at all, so it is in neither answer */
 			assert.deepStrictEqual(custom.without(InputProps).map(Identifier.toString),
 				['base::tally', 'base::dim<-']);
-		});
-		test(label('by what an argument is used for', ['name-normal'], ['other']), () => {
 			assert.deepStrictEqual(custom.params(ArgProp.Resource),
 				[{ call: Identifier.from(['fetch', PkgName.Base]), index: 0, name: 'url', props: ArgProp.Resource }]);
 			assert.deepStrictEqual(custom.params(ArgProp.Flag).map(p => p.name), ['na.rm']);
-		});
-		test(label('a replacement is asked for under its suffixed name', ['name-normal'], ['other']), () => {
 			assert.deepStrictEqual(builtInNames(TestDefinitions[3]).map(Identifier.toString), ['base::dim<-']);
 		});
-		test(label('the default configuration answers for its own entries', ['name-normal'], ['other']), () => {
+		test(label('the default configuration, its folding and its registered form all answer for their own entries', ['name-normal'], ['other']), () => {
 			const index = BuiltInIndex.default();
 			const pure = new Set(index.pure.map(Identifier.toString));
 			assert.isTrue(pure.has('base::sum'), 'sum is pure');
 			assert.isFalse(pure.has('base::tempfile'), 'tempfile is not');
 			assert.isTrue(index.with(CallProp.TempFile).some(i => Identifier.getName(i) === 'tempfile'));
 			assert.strictEqual(index.propsOf('nchar'), CallProp.Pure | CallProp.Narrows);
-		});
-		test(label('the value solver folds what the definitions hand it', ['name-normal'], ['other']), () => {
 			const folding = new Set(BuiltInIndex.default().folding.map(Identifier.getName));
 			assert.isTrue(folding.has('+'), 'arithmetic is folded');
 			assert.isTrue(folding.has('paste'));
 			assert.isFalse(folding.has('read.csv'), 'reading a file is not');
-		});
-		test(label('the registered built-ins answer just as their definitions do', ['name-normal'], ['other']), () => {
 			const registered = BuiltInIndex.ofEnvironment(getDefaultBuiltInDefinitions());
 			assert.strictEqual(registered.propsOf('nchar'), CallProp.Pure | CallProp.Narrows);
 			assert.isTrue(registered.with(CallProp.Process).some(i => Identifier.getName(i) === 'system'));
@@ -142,46 +127,38 @@ describe('Built-in properties', () => {
 	});
 
 	describe('Asking for one function', () => {
-		test(label('the built-ins state what they know', ['name-normal'], ['other']), () => {
+		test(label('the built-ins state what they know, an unknown name has no answer', ['name-normal'], ['other']), () => {
 			const info = queryFnProps(Identifier.from(['sum', PkgName.Base]), { builtIns: getDefaultBuiltInDefinitions() });
 			assert.isDefined(info);
 			assert.strictEqual((info?.props ?? 0) & CallProp.Pure, CallProp.Pure);
-		});
-		test(label('a name nobody knows has no answer', ['name-normal'], ['other']), () => {
 			assert.isUndefined(queryFnProps('nobodyKnowsMe', { builtIns: getDefaultBuiltInDefinitions() }));
 		});
-		test(label('resolving in an environment finds the built-in', ['name-normal'], ['other']), () => {
+		test(label('resolving in an environment finds the built-in, unless a definition in the code shadows it', ['name-normal', 'normal-definition'], ['other']), () => {
 			const info = queryFnProps('nchar', { environment: defaultEnv() });
 			assert.strictEqual((info?.props ?? 0) & CallProp.Pure, CallProp.Pure);
 			assert.deepStrictEqual(info?.sig, [['x', ArgProp.Forced | ArgProp.Shape], ['type', ArgProp.Forced | ArgProp.Value],
 				['allowNA', ArgProp.Forced | ArgProp.Flag], ['keepNA', ArgProp.Forced | ArgProp.Flag]]);
-		});
-		test(label('a definition in the code shadows the built-in', ['name-normal', 'normal-definition'], ['other']), () => {
 			const env = defaultEnv().defineFunction('nchar', '0', '0');
 			assert.isUndefined(queryFnProps('nchar', { environment: env }));
 		});
 	});
 
 	describe('Falling back to the signature database', () => {
-		test(label('it fills in the parameters and the properties it knows', ['name-normal'], ['other']), () => {
+		test(label('it fills in the parameters and properties it knows, and what the built-ins state wins, the rest filled up', ['name-normal'], ['other']), () => {
 			const info = queryFnProps(Identifier.from(['known', PkgName.Base]), { signatures: TestSignatures });
 			assert.deepStrictEqual(info?.sig, [['x', ArgProp.Forced | ArgProp.NoDefault], ['...', 0]]);
 			assert.strictEqual(info?.props, CallProp.Throws | CallProp.Process,
 				'can-throw is read off, `system` carries over, exported and higher-order have no counterpart');
-		});
-		test(label('what the built-ins state wins, the rest is filled up', ['name-normal'], ['other']), () => {
-			const info = queryFnProps(Identifier.from(['known', PkgName.Base]), {
+			const merged = queryFnProps(Identifier.from(['known', PkgName.Base]), {
 				builtIns:   getBuiltIns([['known', CallProp.Pure]]),
 				signatures: TestSignatures
 			});
-			assert.deepStrictEqual(info?.sig, [['y', ArgProp.Value]], 'the declared signature is kept');
-			assert.strictEqual(info?.props, CallProp.Pure | CallProp.Throws | CallProp.Process,
+			assert.deepStrictEqual(merged?.sig, [['y', ArgProp.Value]], 'the declared signature is kept');
+			assert.strictEqual(merged?.props, CallProp.Pure | CallProp.Throws | CallProp.Process,
 				'the properties are joined');
 		});
-		test(label('a name the database does not have is left alone', ['name-normal'], ['other']), () => {
+		test(label('a name the database does not have, or a bare name with no package to ask for, is left alone', ['name-normal'], ['other']), () => {
 			assert.isUndefined(queryFnProps(Identifier.from(['unknown', PkgName.Base]), { signatures: TestSignatures }));
-		});
-		test(label('a bare name has no package to ask for', ['name-normal'], ['other']), () => {
 			assert.isUndefined(queryFnProps('known', { signatures: TestSignatures }));
 		});
 	});
@@ -204,57 +181,24 @@ describe('Built-in properties', () => {
 				const info = d.type !== 'constant' ? (d as { config?: BuiltInFnInfo }).config : undefined;
 				return info?.props === undefined && info?.sig === undefined ? [] : [[builtInNames(d), info] as const];
 			});
-		test(label('nothing is pure and an input at the same time', ['name-normal'], ['other']), () => {
-			for(const [names, { props = 0 }] of withInfo) {
-				assert.strictEqual(props & (CallProp.Pure | CallProp.MayPure) && props & InputProps, 0,
-					`${names.map(Identifier.toString).join(', ')} claims both`);
-			}
-		});
-		test(label('no entry states two props that rule each other out', ['name-normal'], ['other']), () => {
-			for(const [names, { props = 0 }] of withInfo) {
-				for(const [bit, forbidden] of ExclusiveCallProps) {
-					if((props & bit) !== 0) {
-						assert.strictEqual(props & forbidden, 0,
-							`${names.map(Identifier.toString).join(', ')} states ${CallProp[bit]} together with what it rules out`);
-					}
-				}
-			}
-		});
-		test(label('a named resource comes with an effect that uses it', ['name-normal'], ['other']), () => {
+		test(label('nothing is pure and an input at once, no props rule each other out, resources are used, params are named once, and file direction is stated', ['name-normal'], ['other']), () => {
 			const uses = CallProp.File | CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Reads | CallProp.Writes;
 			for(const [names, { props = 0, sig = [] }] of withInfo) {
-				if(sig.some(([, p]) => (p & ArgProp.Resource) !== 0)) {
-					assert.notStrictEqual(props & uses, 0, `${names.map(Identifier.toString).join(', ')} names a resource but does nothing with it`);
-				}
-			}
-		});
-		test(label('a signature names each parameter once, with at most one `...`', ['name-normal'], ['other']), () => {
-			for(const [names, { sig = [] }] of withInfo) {
-				const declared = sig.map(([n]) => n);
-				assert.deepStrictEqual(declared, uniqueArray(declared), `${names.map(Identifier.toString).join(', ')} repeats a parameter`);
-				assert.isAtMost(declared.filter(n => n === '...').length, 1, `${names.map(Identifier.toString).join(', ')} has two dots`);
-			}
-		});
-		test(label('touching a file says in which direction', ['name-normal'], ['other']), () => {
-			for(const [names, { props = 0 }] of withInfo) {
-				if((props & CallProp.File) !== 0) {
-					assert.notStrictEqual(props & (CallProp.Reads | CallProp.Writes), 0,
-						`${names.map(Identifier.toString).join(', ')} touches a file but states neither Reads nor Writes`);
-				}
-			}
-		});
-		test(label('a name is stated once, unless the entry says it restates it', ['name-normal'], ['other']), () => {
-			/* the last definition of a name is the one that sticks, so an unmarked repeat silently drops the first */
-			const stated = new Map<string, BuiltInDefinitions[number]>();
-			for(const d of WrittenBuiltinDefinitions) {
-				for(const n of builtInNames(d)) {
-					const name = Identifier.toString(n);
-					const before = stated.get(name);
-					if(before !== undefined) {
-						assert.isTrue((d as BaseBuiltInDefinition).overrides,
-							`${name} is stated again without \`overrides: true\`, which drops what the earlier entry said`);
+				const who = () => names.map(Identifier.toString).join(', ');
+				assert.strictEqual(props & (CallProp.Pure | CallProp.MayPure) && props & InputProps, 0, `${who()} claims both`);
+				for(const [bit, forbidden] of ExclusiveCallProps) {
+					if((props & bit) !== 0) {
+						assert.strictEqual(props & forbidden, 0, `${who()} states ${CallProp[bit]} together with what it rules out`);
 					}
-					stated.set(name, d);
+				}
+				if(sig.some(([, p]) => (p & ArgProp.Resource) !== 0)) {
+					assert.notStrictEqual(props & uses, 0, `${who()} names a resource but does nothing with it`);
+				}
+				const declared = sig.map(([n]) => n);
+				assert.deepStrictEqual(declared, uniqueArray(declared), `${who()} repeats a parameter`);
+				assert.isAtMost(declared.filter(n => n === '...').length, 1, `${who()} has two dots`);
+				if((props & CallProp.File) !== 0) {
+					assert.notStrictEqual(props & (CallProp.Reads | CallProp.Writes), 0, `${who()} touches a file but states neither Reads nor Writes`);
 				}
 			}
 		});
@@ -263,14 +207,22 @@ describe('Built-in properties', () => {
 			/* drawing rows at random is exactly what makes it impure, so the block it is listed in has it wrong */
 			'dplyr::slice_sample': CallProp.Pure
 		};
-		test(label('restating a name keeps what was already known about it', ['name-normal'], ['other']), () => {
-			/* the ggplot2 addons that got deprecated lost their `Graphics` bit this way */
+		test(label('restating a name requires overrides:true only when something came before, and keeps what was already known', ['name-normal'], ['other']), () => {
+			/* the last definition of a name is the one that sticks; the ggplot2 addons that got deprecated lost their `Graphics` bit this way */
 			const stated = new Map<string, BuiltInFnInfo | undefined>();
 			const handlers = new Map<string, string | undefined>();
+			const everStated = new Set<string>();
 			for(const d of WrittenBuiltinDefinitions) {
 				const info = (d as { config?: BuiltInFnInfo }).config;
-				for(const n of builtInNames(d)) {
-					const name = Identifier.toString(n);
+				const names = builtInNames(d).map(Identifier.toString);
+				if((d as BaseBuiltInDefinition).overrides) {
+					assert.isTrue(names.some(n => everStated.has(n)), `${names.join(', ')} claims to restate a name nothing states before it`);
+				}
+				for(const name of names) {
+					if(everStated.has(name)) {
+						assert.isTrue((d as BaseBuiltInDefinition).overrides,
+							`${name} is stated again without \`overrides: true\`, which drops what the earlier entry said`);
+					}
 					const before = stated.get(name);
 					const lost = (before?.props ?? 0) & ~(info?.props ?? 0) & ~(Corrects[name] ?? 0);
 					assert.strictEqual(lost, 0, `restating ${name} drops the properties ${lost.toString(2)} it had`);
@@ -283,18 +235,8 @@ describe('Built-in properties', () => {
 					}
 					handlers.set(name, (d as { evalHandler?: string }).evalHandler);
 					stated.set(name, info);
+					everStated.add(name);
 				}
-			}
-		});
-		test(label('an entry claiming to restate a name has one to restate', ['name-normal'], ['other']), () => {
-			const stated = new Set<string>();
-			for(const d of WrittenBuiltinDefinitions) {
-				const names = builtInNames(d).map(Identifier.toString);
-				if((d as BaseBuiltInDefinition).overrides) {
-					assert.isTrue(names.some(n => stated.has(n)),
-						`${names.join(', ')} claims to restate a name nothing states before it`);
-				}
-				names.forEach(n => stated.add(n));
 			}
 		});
 		test(label('redefining a name does not drop its signature', ['name-normal'], ['other']), () => {
@@ -320,10 +262,8 @@ describe('Built-in properties', () => {
 	describe('Labeling the generics', () => {
 		const written = new Map(WrittenBuiltinDefinitions.flatMap(d => builtInNames(d).map(n => [Identifier.toString(n), d] as const)));
 		const registered = new Map(DefaultBuiltinConfig.flatMap(d => builtInNames(d).map(n => [Identifier.toString(n), d] as const)));
-		test(label('every definition stays registered', ['name-normal'], ['other']), () => {
+		test(label('every definition stays registered, and nothing but the `Generic` bit changes', ['name-normal'], ['other']), () => {
 			assert.deepStrictEqual([...registered.keys()].sort(), [...written.keys()].sort());
-		});
-		test(label('nothing but the `Generic` bit changes', ['name-normal'], ['other']), () => {
 			for(const [name, def] of registered) {
 				const before = written.get(name) as typeof def;
 				const info = (d: typeof def) => (d as { config?: BuiltInFnInfo }).config;
@@ -338,12 +278,10 @@ describe('Built-in properties', () => {
 	});
 
 	describe('Reading a signature-database entry', () => {
-		test(label('what a package function calls carries over to it', ['name-normal'], ['other']), () => {
+		test(label('what a package function calls carries over to it, and forced parameters keep their order', ['name-normal'], ['other']), () => {
 			const info = inferFnProps(TestSignatures, 'base', 'known');
 			/* `system` runs a command, `paste` is pure and hands nothing on */
 			assert.strictEqual(info?.props, CallProp.Throws | CallProp.Process);
-		});
-		test(label('forced parameters keep their order', ['name-normal'], ['other']), () => {
 			const fn = (TestSignatures.functionByName('base', 'known') as DecodedFunction);
 			assert.deepStrictEqual(fnInfoFromSignature(fn), {
 				sig:   [['x', ArgProp.Forced | ArgProp.NoDefault], ['...', 0]],
@@ -368,10 +306,11 @@ describe('Functions several packages export', () => {
 		['evalText', 'SoDA', ['FastUtils']]
 	];
 
-	test(label('a re-export means what the package owning it means', ['name-normal'], ['other']), () => {
+	test(label('a re-export means what the package owning it means, and each package states it just once', ['name-normal'], ['other']), () => {
 		for(const [name, owner, others] of ReExported) {
 			const own = defOf(owner, name);
 			assert.isDefined(own, `${owner}::${name} is not stated at all`);
+			assert.lengthOf(builtIns.forPackage(owner)?.get(name as never) ?? [], 1, `${owner}::${name}`);
 			for(const pkg of others) {
 				const def = defOf(pkg, name);
 				assert.isDefined(def, `${pkg} re-exports ${name}, but nothing is stated for it`);
@@ -379,12 +318,13 @@ describe('Functions several packages export', () => {
 				assert.deepStrictEqual(def?.config, own?.config, `${pkg}::${name}`);
 				assert.strictEqual(def?.type, own?.type, `${pkg}::${name}`);
 				assert.strictEqual(def?.evalHandler, own?.evalHandler, `${pkg}::${name}`);
+				assert.lengthOf(builtIns.forPackage(pkg)?.get(name as never) ?? [], 1, `${pkg}::${name}`);
 			}
 		}
 	});
 
 	describe('what a property is called', () => {
-		test(label('every bit has a word of its own', ['name-normal'], ['other']), () => {
+		test(label('every bit has a word of its own, and a mask renders every bit it holds', ['name-normal'], ['other']), () => {
 			const seen = new Set<string>();
 			for(const member of Object.keys(CallProp).filter(k => Number.isNaN(Number(k)))) {
 				const bit = CallProp[member as keyof typeof CallProp];
@@ -393,23 +333,12 @@ describe('Functions several packages export', () => {
 				assert.isFalse(seen.has(words[0]), `${member} shares the word ${words[0]} with another property`);
 				seen.add(words[0]);
 			}
-		});
-
-		test(label('a mask renders every bit it holds', ['name-normal'], ['other']), () => {
 			assert.deepStrictEqual(CallProps.words(CallProp.Process | CallProp.Strict), ['runs a process', 'strict']);
 			assert.deepStrictEqual(CallProps.words(CallProp.Graphics), ['graphics']);
 			assert.deepStrictEqual(CallProps.words(CallProp.Ambient | CallProp.CommandLine), ['ambient state', 'command line']);
 			assert.deepStrictEqual(CallProps.words(undefined), []);
 			assert.deepStrictEqual(CallProps.words(0), []);
 		});
-	});
-
-	test(label('each package states it once', ['name-normal'], ['other']), () => {
-		for(const [name, owner, others] of ReExported) {
-			for(const pkg of [owner, ...others]) {
-				assert.lengthOf(builtIns.forPackage(pkg)?.get(name as never) ?? [], 1, `${pkg}::${name}`);
-			}
-		}
 	});
 });
 

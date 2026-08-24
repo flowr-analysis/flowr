@@ -4,9 +4,7 @@ import { PosIntervalDomain, PosIntervalTop } from '../domains/positive-interval-
 import type { SetRangeValue } from '../domains/set-range-domain';
 import type { DataFrameDomain } from './dataframe-domain';
 
-/**
- * Represents the different types of resulting constraints that are inferred by abstract data frame operations.
- */
+/** Represents the different types of resulting constraints that are inferred by abstract data frame operations. */
 export enum ConstraintType {
 	/** The inferred constraints must hold for the operand at the point of the operation */
 	OperandPrecondition,
@@ -16,10 +14,7 @@ export enum ConstraintType {
 	ResultPostcondition
 }
 
-/**
- * Mapper for defining the abstract data frame operations and mapping them to semantics applier functions,
- * including information about the type of the resulting constraints that are inferred by the operation.
- */
+/** Maps abstract data frame operations to their semantics applier function and inferred constraint type. */
 const DataFrameSemanticsMapper = {
 	'create':      { apply: applyCreateSemantics,      type: ConstraintType.ResultPostcondition },
 	'read':        { apply: applyReadSemantics,        type: ConstraintType.ResultPostcondition },
@@ -50,12 +45,7 @@ type DataFrameSemanticsMapperInfo<Arguments extends object, Options extends obje
 	readonly type:  ConstraintType
 };
 
-/**
- * Data frame semantics applier for applying the abstract semantics of an abstract data frame operation with respect to the data frame shape domain.
- * - `value` contains the abstract data frame shape of operand of the abstract operation
- * - `args` contains the arguments required for the abstract operation
- * - `options` optionally contains additional options to change the behavior or the abstract operation
- */
+/** Applies the abstract semantics of an abstract data frame operation to the operand `value`'s shape, given `args` and optional `options`. */
 type DataFrameSemanticsApplier<Arguments extends object, Options extends object | undefined> = (
 	value: DataFrameDomain,
 	args: Arguments,
@@ -75,14 +65,8 @@ export type DataFrameOperationArgs<N extends DataFrameOperationName> = Parameter
 export type DataFrameOperationOptions<N extends DataFrameOperationName> = Parameters<typeof DataFrameSemanticsMapper[N]['apply']>[2];
 
 /**
- * Applies the abstract semantics of an abstract data frame operation with respect to the data frame shape domain.
- * This expects that all arguments have already been sanitized according to the original concrete data frame function (e.g. by replacing duplicate/invalid column names).
- * @param operation - The name of the abstract operation to apply the semantics of
- * @param value     - The abstract data frame shape of the operand of the abstract operation
- * @param args      - The arguments for applying the abstract semantics of the abstract operation
- * @param options   - The optional additional options of the abstract operation
- * @returns The resulting new data frame shape constraints.
- * The semantic type of the resulting constraints depends on the {@link ConstraintType} of the abstract operation.
+ * Applies the abstract semantics of `operation` to `value`, assuming `args`/`options` were already sanitized per the
+ * original concrete function (e.g. duplicate/invalid column names replaced). Result's constraint type: {@link ConstraintType}.
  */
 export function applyDataFrameSemantics<Name extends DataFrameOperationName>(
 	operation: Name,
@@ -95,9 +79,7 @@ export function applyDataFrameSemantics<Name extends DataFrameOperationName>(
 	return applier.apply(value, args, options);
 }
 
-/**
- * Gets the default resulting constraint type for an abstract data frame operation.
- */
+/** Gets the default resulting constraint type for an abstract data frame operation. */
 export function getConstraintType(operation: DataFrameOperationName): ConstraintType {
 	return DataFrameSemanticsMapper[operation].type;
 }

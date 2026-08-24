@@ -12,12 +12,7 @@ export interface BaseBuiltInDefinition {
 	readonly names:            Identifier[];
 	/** Should we assume that the value is a primitive? */
 	readonly assumePrimitive?: boolean;
-	/**
-	 * Set when this entry deliberately re-states a name an earlier entry already defines, to refine what is
-	 * known about it (a fuller signature, a deprecation on top of what the call does). The later definition is
-	 * the one that sticks, so it has to carry everything the earlier one stated. Without the flag a repeated
-	 * name is an accident, and a test says so.
-	 */
+	/** Set when this entry deliberately re-states a name an earlier entry defines; without it a repeated name is an accident, and a test says so. */
 	readonly overrides?:       boolean;
 }
 
@@ -65,7 +60,6 @@ export type AnyBuiltInDefinition = BuiltInConstantDefinition<unknown> | AnyBuilt
  * @see DefaultBuiltinConfig
  */
 export type BuiltInDefinitions<Keys extends (keyof typeof BuiltInProcessorMapper)[] = (keyof typeof BuiltInProcessorMapper)[]> = [...{ [ K in keyof Keys]: BuiltInDefinition<Keys[K]> }];
-
 
 /**
  * Get the {@link BuiltIns#builtInMemory} and {@link BuiltIns#emptyBuiltInMemory} for the {@link DefaultBuiltinConfig}.

@@ -224,8 +224,6 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 				}
 			);
 
-
-
 			assertLinter('(fn) unresolved version should make result uncertain', parser, 'library(testPkg)\ntestFn()',
 				'deprecated-functions',
 				[{
@@ -261,7 +259,6 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					sigDb:         db
 				}
 			);
-
 
 			assertLinter('(fn) version resolved and constraint not satisfied', parser, 'library(testPkg)\ntestFn()',
 				'deprecated-functions',

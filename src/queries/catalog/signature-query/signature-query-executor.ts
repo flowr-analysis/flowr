@@ -23,6 +23,8 @@ import type { CommandCompletions } from '../../../cli/repl/core';
 import { Resolve } from '../../../dataflow/environments/resolve-helper';
 import { groupGenericMembers, groupGenericOf, isGroupGeneric } from '../../../dataflow/environments/group-generics';
 import { uniqueArray } from '../../../util/collections/arrays';
+import { dottedSplits } from '../../../util/text/strings';
+import { compactRecord } from '../../../util/objects';
 
 /** the CRAN package landing page (only meaningful for CRAN packages, not base R) */
 export function cranPageUrl(pkg: string): string {
@@ -125,9 +127,8 @@ export function cranMirrorSourceUrl(pkg: string, version: string | undefined, fi
 const RSourceMirror = 'https://github.com/wch/r-source';
 
 /**
- * The mirror ref holding an R version. The mirror carries no tags, only a `R-<major>-<minor>-branch` per release
- * series, so a link is exact to the minor release and points at its latest patch; `trunk` stands in when the version
- * is unknown.
+ * The mirror ref holding an R version: the mirror carries no tags, only a `R-<major>-<minor>-branch` per release
+ * series (exact to the minor release, latest patch); `trunk` stands in when the version is unknown.
  */
 export function rSourceRef(version: string | undefined): string {
 	const series = /^(\d+)\.(\d+)/.exec(version ?? '');
@@ -144,9 +145,7 @@ export function rSourceUrl(pkg: string, version: string | undefined, file: strin
 const RdrrTopicName = /^[A-Za-z.][A-Za-z0-9._-]*$/;
 /**
  * Best-effort documentation link: R's own manual for a base package, rdrr.io's `/cran/<pkg>/man/<fn>` for CRAN.
- *
- * Base R does not go to rdrr.io because that serves an older release, so everything R has gained since (`sort_by`,
- * `array2DF`, `chooseOpsMethod`, ...) is a dead link there.
+ * Base R skips rdrr.io since it serves an older release, so anything R has gained since is a dead link there.
  */
 export function helpPageUrl(pkg: string, fn: string, opts: { base: boolean, cran: boolean }): string | undefined {
 	if(!RdrrTopicName.test(fn)) {
@@ -162,9 +161,8 @@ export function helpPageUrl(pkg: string, fn: string, opts: { base: boolean, cran
 }
 
 /**
- * The `.Rd` help source of a topic *at the queried version*, on the same mirrors the source links use. rdrr.io only
- * serves a package's current release, so {@link helpPageUrl} silently answers for the wrong version whenever an older
- * one was asked for; this link cannot drift.
+ * The `.Rd` help source of a topic *at the queried version*, on the same mirrors the source links use -- unlike
+ * {@link helpPageUrl}, which silently answers for the wrong version since rdrr.io only serves a current release.
  */
 function manPageUrl(pkg: string, topic: string, version: string | undefined, opts: { base: boolean, cran: boolean }): string | undefined {
 	if(!RdrrTopicName.test(topic)) {
@@ -182,9 +180,7 @@ function docUrlsFor(pkg: string, fn: DecodedFunction, version: string | undefine
 		return {};
 	}
 	const topic = fn.topic ?? fn.name;
-	const doc = helpPageUrl(pkg, topic, { base, cran });
-	const man = manPageUrl(pkg, topic, version, { base, cran });
-	return { ...(doc ? { docUrl: doc } : {}), ...(man ? { manUrl: man } : {}) };
+	return compactRecord({ docUrl: helpPageUrl(pkg, topic, { base, cran }), manUrl: manPageUrl(pkg, topic, version, { base, cran }) });
 }
 
 /** the source link of a definition: the CRAN mirror at its version tag, or the R sources mirror for a base package */
@@ -200,11 +196,8 @@ function sourceUrlFor(pkg: string, fn: DecodedFunction, version: string | undefi
 
 /** the trailing fields shared by every function view: definition location, source link, and documentation links */
 function locationFields(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean) {
-	const source = sourceUrlFor(pkg, fn, version, base, cran);
 	return {
-		...(fn.file ? { file: fn.file } : {}),
-		...(fn.line >= 0 ? { line: fn.line } : {}),
-		...(source ? { sourceUrl: source } : {}),
+		...compactRecord({ file: fn.file, line: fn.line >= 0 ? fn.line : undefined, sourceUrl: sourceUrlFor(pkg, fn, version, base, cran) }),
 		...docUrlsFor(pkg, fn, version, base, cran)
 	};
 }
@@ -222,12 +215,12 @@ function flowrViewOf(info: BuiltInFnInfo, sigParams: readonly string[]): Signatu
 	const returns = info.sig?.find(([, p]) => (p & ArgProp.Alias) !== 0)?.[0];
 	/* flowR usually declares only the parameters it models, which is no disagreement as long as they line up */
 	const same = params.every((n, i) => n === sigParams[i]);
-	return {
-		props: propNames(info.props ?? 0, CallProp),
-		...(args.length > 0 ? { args } : {}),
-		...(returns !== undefined ? { returns } : {}),
-		...(params.length > 0 && !same ? { parameters: params } : {})
-	};
+	return compactRecord({
+		props:      propNames(info.props ?? 0, CallProp),
+		args:       args.length > 0 ? args : undefined,
+		returns,
+		parameters: params.length > 0 && !same ? params : undefined
+	});
 }
 
 /**
@@ -243,9 +236,8 @@ function flowrView(env: REnvironmentInformation | undefined, pkg: string, name: 
 }
 
 /**
- * The view of a call flowR models itself but the signature database has no entry for: the primitives and
- * operators (`+`, `[`, `if`) that never appear in a package's sources, and anything a flowR configuration
- * adds. `pkg` narrows the lookup when the query named one, otherwise the built-in's own namespace is reported.
+ * The view of a call flowR models itself but the signature database has no entry for: primitives/operators and
+ * anything a flowR configuration adds. `pkg` narrows the lookup when named, else the built-in's own namespace is reported.
  */
 function flowrOnlyFunctionInfo(env: REnvironmentInformation | undefined, pkg: string | undefined, name: string): SignatureFunctionView | undefined {
 	if(env === undefined) {
@@ -301,21 +293,15 @@ function decodedToView(pkg: string, fn: DecodedFunction, version: string | undef
 		...(version !== undefined ? { version } : {}),
 		exported:   fn.exported,
 		properties: fn.props,
-		parameters: fn.signature.map(p => ({
-			name:  p.name,
-			props: p.props,
-			...(p.default !== undefined ? { default: p.default } : {})
-		})),
-		callees: fn.callees,
+		parameters: fn.signature.map(p => compactRecord({ name: p.name, props: p.props, default: p.default })),
+		callees:    fn.callees,
 		...locationFields(pkg, fn, version, opts.base, opts.cran)
 	};
 }
 
 /**
- * The detailed view of a single function within a package: its signature (parameters, forced/optional,
- * defaults), properties, definition location, call graph, and for a CRAN package a deep link into the
- * read-only CRAN GitHub mirror. `version` defaults to the source's latest; `undefined` when the source does
- * not carry that function.
+ * The detailed view of a single function within a package: signature, properties, definition location, call
+ * graph, and for a CRAN package a deep link into the read-only mirror; `version` defaults to the source's latest.
  */
 export function signatureFunctionInfo(src: PackageSignatureSource, pkg: string, fnName: string, version?: string, env?: REnvironmentInformation): SignatureFunctionView | undefined {
 	const fns = src.functions(pkg, version) ?? src.functions(pkg);
@@ -383,19 +369,10 @@ function isKnownS3Class(src: PackageSignatureSource, pkg: string, cls: string): 
 	return false;
 }
 
-/** the `generic.class` readings of a dotted name, longest generic first (`as.data.frame.matrix` before `as.data`) */
-function* dottedSplits(name: string): Generator<readonly [generic: string, cls: string]> {
-	for(let dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.', dot - 1)) {
-		yield [name.slice(0, dot), name.slice(dot + 1)];
-	}
-}
-
 /**
- * The generic and dispatch class of an S3 method named `generic.class`, or `undefined` when `fn` is not one.
- *
- * The crawled `s3-method` property settles it when present. It is missing for a base method whose generic lives in
- * another package (`stats` never flags `print.acf`, since `print` is in `base`), so then the prefix must name a
- * dispatching generic and the suffix a registered class. Dropping either check would split `data.frame` or `t.test`.
+ * The generic and dispatch class of an S3 method named `generic.class`, or `undefined` when `fn` is not one. The
+ * crawled `s3-method` property settles it when present; otherwise the prefix must name a dispatching generic and
+ * the suffix a registered class (missing for a base method whose generic lives in another package, e.g. `print.acf`).
  */
 function s3MethodParts(src: PackageSignatureSource, pkg: string, fns: readonly DecodedFunction[] | undefined, fn: DecodedFunction): { generic: string, class: string, package: string } | undefined {
 	const flagged = fn.props.includes('s3-method');
@@ -408,13 +385,10 @@ function s3MethodParts(src: PackageSignatureSource, pkg: string, fns: readonly D
 	return undefined;
 }
 
-
-
 /**
- * A mermaid.live link for the transitive call graph reachable from `pkg::root`, resolved across package borders:
- * a bare callee is attributed to the first namespace that exports it (the calling package, then its attached
- * `Depends`/`Imports`, then base R), qualified as `owner::fn`, and expanded there. Base R calls are qualified leaves
- * (their internals are noise); explicit `pkg::fn` calls resolve directly. Bounded by `maxNodes` (see {@link SignatureQuery.callGraphMaxNodes}).
+ * A mermaid.live link for the transitive call graph reachable from `pkg::root`, resolved across package borders: a
+ * bare callee is attributed to the first namespace exporting it (the calling package, its attached deps, base R),
+ * qualified `owner::fn`, and expanded there (base R stays a leaf). Bounded by `maxNodes` (see {@link SignatureQuery.callGraphMaxNodes}).
  */
 function signatureCallGraphUrl(src: PackageSignatureSource, pkg: string, version: string | undefined, root: string, maxNodes: number): string {
 	const bases = new Set(baseRPackages());
@@ -508,28 +482,29 @@ export function signaturePackageInfo(src: PackageSignatureSource, pkg: string, r
 	const fnNames = new Set(fns.map(f => f.name));
 	const constants = exports.exported.filter(n => !fnNames.has(n));
 	const deps = (src.dependencies(pkg, resolved) ?? src.dependencies(pkg) ?? [])
-		.map(d => ({ type: DepTypeNames[d.type], name: d.name, ...(d.constraint ? { constraint: d.constraint } : {}) }));
+		.map(d => compactRecord({ type: DepTypeNames[d.type], name: d.name, constraint: d.constraint }));
 	const release = src.releaseDate(pkg, resolved);
 	const attaches = attachedAlongside(pkg, [src], resolved);
-	return {
+	return compactRecord({
 		name:          pkg,
 		version:       exports.version,
-		...(resolved && resolved !== exports.version ? { resolved } : {}),
+		resolved:      resolved && resolved !== exports.version ? resolved : undefined,
 		base,
 		cran:          exports.cran,
-		...(exports.cranUrl ? { cranUrl: exports.cranUrl } : {}),
-		...(exports.cran && !base ? { cranPage: cranPageUrl(pkg), repoUrl: cranMirrorRepoUrl(pkg) } : {}),
-		...(release && !Number.isNaN(release.getTime()) ? { releaseDate: release.toISOString().slice(0, 10) } : {}),
+		cranUrl:       exports.cranUrl,
+		cranPage:      exports.cran && !base ? cranPageUrl(pkg) : undefined,
+		repoUrl:       exports.cran && !base ? cranMirrorRepoUrl(pkg) : undefined,
+		releaseDate:   release && !Number.isNaN(release.getTime()) ? release.toISOString().slice(0, 10) : undefined,
 		exportsTotal:  exports.exported.length,
 		functionCount: exports.exported.length - constants.length,
 		constants,
 		internalCount: exports.internal.length,
 		deprecated:    exports.deprecated,
-		...(base && src.coreVersions(pkg) ? { coreVersions: src.coreVersions(pkg)?.map(v => v.str) } : {}),
+		coreVersions:  base ? src.coreVersions(pkg)?.map(v => v.str) : undefined,
 		dependencies:  deps,
-		...(attaches.length > 0 ? { attaches } : {}),
+		attaches:      attaches.length > 0 ? attaches : undefined,
 		functions:     fns.map(f => decodedToView(pkg, f, exports.version, { cran: exports.cran, base }))
-	};
+	});
 }
 
 /** a few near matches for a mistyped package/symbol (case-insensitive substring), for a friendly hint */
@@ -555,9 +530,8 @@ const ParamPreviewCap = 4;
 
 /**
  * A short preview of a function's parameters for a match, when the query filters by parameter, kept in signature
- * order (highlighting never reorders it): the matched parameters are always shown, padded with leading parameters
- * for context up to {@link ParamPreviewCap} and elided with `…` when any are dropped. Also returns the matched names
- * so the renderer can highlight them. `undefined` when no parameter filter is set.
+ * order: matched parameters always show, padded for context up to {@link ParamPreviewCap} and elided with `…`;
+ * also returns the matched names for highlighting. `undefined` when no parameter filter is set.
  */
 function matchedParamPreview(fn: DecodedFunction, q: SignatureQuery): { preview: string[], matched: string[] } | undefined {
 	if(!hasParameterFilter(q)) {
@@ -608,9 +582,8 @@ function allAvailableVersions(sources: readonly PackageSignatureSource[], pkg: s
 }
 
 /**
- * The owning source that actually carries `version`: `current` is checked before `history`, so a
- * latest-version query never decompresses the (large) history shard. Returns the first owner when no version
- * was asked, or `undefined` when an explicit version is carried by none of them.
+ * The owning source that actually carries `version` (`current` before `history`, so a latest-version query never
+ * decompresses the history shard); the first owner when no version was asked, `undefined` if none carries it.
  */
 function sourceForVersion(owning: readonly PackageSignatureSource[], pkg: string, version: string | undefined): PackageSignatureSource | undefined {
 	if(version === undefined) {

@@ -36,10 +36,7 @@ export interface FunctionStrictness {
  * ({@link ArgProp.Nse}), or looked at only for having been supplied ({@link ArgProp.Presence}).
  */
 const NotEvaluated = ArgProp.Nse | ArgProp.Presence;
-/**
- * What reflection has to reach for a parameter to be evaluated by it: `as.list(environment())` may read the
- * values in the frame, while `match.call()` and `nargs()` look at the call alone and force nothing.
- */
+/** What reflection has to reach for a parameter to be evaluated by it (`as.list(environment())`, not `match.call()`/`nargs()`). */
 const MayEvaluate = ArgProp.Value | ArgProp.Forced;
 /**
  * The processors whose calls reach their first argument and the rest only on the way the run happens to

@@ -66,12 +66,9 @@ function evalNameOf({ node, graph }: BuiltInEvalHandlerArgs): Identifier | undef
 }
 
 /**
- * Helper function used by {@link Resolve.toValue}, please use that instead, if
- * you want to resolve the value of an identifier / node
- *
- * This function converts an RNode to its Value, either directly for a constant or by handing the node
- * to the {@link BuiltInEvalHandler} its built-in declares, which may resolve further nodes recursively.
- * @returns resolved value or top/bottom
+ * Converts an RNode to its Value, either directly for a constant or by handing the node to the
+ * {@link BuiltInEvalHandler} its built-in declares, which may resolve further nodes recursively.
+ * Helper of {@link Resolve.toValue}; use that instead to resolve the value of an identifier or node.
  */
 export function resolveNode(args: BuiltInEvalHandlerArgs): Value {
 	const { node, environment, ctx } = args;
@@ -90,14 +87,7 @@ export function resolveNode(args: BuiltInEvalHandlerArgs): Value {
 	return handler?.(args) ?? Top;
 }
 
-/**
- * Helper function used by {@link Resolve.toValue}, please use that instead, if
- * you want to resolve the value of an identifier / node
- *
- * This function resolves a vector function call `c` to a {@link ValueVector}
- * by recursively resolving the values of the arguments by calling {@link Resolve.toValue}
- * @returns ValueVector or Top
- */
+/** Resolves a vector call `c` to a {@link ValueVector}; helper of {@link resolveNode|resolveNode}. */
 export function resolveAsVector(args: BuiltInEvalHandlerArgs): ValueVector | typeof Top {
 	const node = args.node;
 	if(!RFunctionCall.is(node)) {
@@ -106,14 +96,7 @@ export function resolveAsVector(args: BuiltInEvalHandlerArgs): ValueVector | typ
 	return vectorFrom(flattenVectorElements(node.arguments.map(arg => arg !== EmptyArgument ? Resolve.toValue(arg.value, args) : Top)));
 }
 
-/**
- * Helper function used by {@link Resolve.toValue}, please use that instead, if
- * you want to resolve the value of an identifier / node
- *
- * This function resolves a binary sequence operator `:` to a {@link ValueVector} of {@link ValueNumber}s
- * by recursively resolving the values of the arguments by calling {@link Resolve.toValue}
- * @returns ValueVector of ValueNumbers or Top
- */
+/** Resolves the sequence operator `:` to a {@link ValueVector} of {@link ValueNumber}s; helper of {@link resolveNode}. */
 export function resolveAsSeq(args: BuiltInEvalHandlerArgs): ValueVector<Lift<ValueNumber[]>> | typeof Top {
 	const operator = args.node;
 	if(!RBinaryOp.is(operator)) {

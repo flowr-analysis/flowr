@@ -5,7 +5,6 @@ import { LintingResultCertainty } from '../../../src/linter/linter-format';
 
 assumeLoadedPackages('dplyr', 'ggplot2', 'magrittr');
 
-
 /** base package exports the tests rely on (base R is resolved through the package database) */
 const baseSigDb = controlledSigDb({
 	base:  ['double', 'length', 'sum', 'format', 'match.arg', 'colnames', 'deparse', 'NCOL', 'optimize'],

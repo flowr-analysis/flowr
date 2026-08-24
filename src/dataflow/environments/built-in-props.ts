@@ -1,18 +1,14 @@
 import type { DecodedFunction } from '../../project/sigdb/decode';
 
 /**
- * What a single argument of a call is used for, as a bitmask. The signature database stores its parameters with
- * the very same bits, so {@link ArgProp.Forced} and {@link ArgProp.NoDefault} lead, being the two it can state.
+ * What a single argument of a call is used for, as a bitmask ({@link ArgProp.Forced}/{@link ArgProp.NoDefault}
+ * lead, being the two bits the signature database can also state).
  * @see {@link BuiltInFnInfo#sig}
  */
 export enum ArgProp {
 	/** evaluated whenever the call happens, even if the result goes unused, like `x` in `force(x)` */
 	Forced    = 1 << 0,
-	/**
-	 * declared without a default value, like `x` in `nchar(x, type)`. This says nothing about whether a call has
-	 * to supply it: a function that asks with `missing(x)`/`hasArg(x)` ({@link ArgProp.Presence}) copes with the
-	 * argument left out, and one that never evaluates the parameter (see {@link ArgProp.Forced}) never notices.
-	 */
+	/** declared without a default value, like `x` in `nchar(x, type)`; says nothing about whether a call must supply it */
 	NoDefault = 1 << 1,
 	/** the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge */
 	Alias     = 1 << 2,
@@ -130,12 +126,8 @@ export enum CallProp {
 	/** calling it forces every parameter, so nothing it is handed stays a promise (see {@link strictnessOfFunction}) */
 	Strict      = 1 << 30,
 	/**
-	 * runs its work in parallel: forks or spawns workers, submits to a cluster or a future/promise backend, or
-	 * is a `foreach` operator doing so. Says nothing about purity -- a pure function evaluated in parallel is
-	 * still pure -- but everything about reproducibility, the RNG stream, and where an error surfaces.
-	 * Stated by the built-ins that do it (`parallel`, the futureverse, `foreach`'s parallel operator, `mirai`,
-	 * `callr`, `RcppParallel`) and carried over by {@link PropagatedProps}, so a function reaching one has it too.
-	 * This is the last bit of the 32 a JavaScript bitfield holds, so every use of it must stay bitwise.
+	 * runs its work in parallel (workers, a cluster, a future/promise backend); says nothing about purity, only
+	 * reproducibility and where an error surfaces. The last bit of the 32 a JS bitfield holds, so stay bitwise.
 	 */
 	Concurrent  = 1 << 31
 }
@@ -247,12 +239,6 @@ const ArgPropNames: Readonly<Record<ArgProp, string>> = {
 	[ArgProp.Lazy]:      'lazy'
 };
 
-/** What an argument is used for, as words rather than as a bit mask, for anything showing it to a reader. */
-function argPropWords(this: void, props: ArgProps | undefined): string[] {
-	return props === undefined ? [] : Object.entries(ArgPropNames)
-		.filter(([bit]) => (props & Number(bit)) !== 0).map(([, word]) => word);
-}
-
 /** The bitfield the given {@link ArgProp}/{@link CallProp} member names stand for, unknown ones ignored. */
 function maskOfNames(this: void, of: Record<string, string | number>, names: readonly string[]): number {
 	let mask = 0;
@@ -263,6 +249,15 @@ function maskOfNames(this: void, of: Record<string, string | number>, names: rea
 	return mask;
 }
 
+/** The words for whichever of `mask`'s bits appear in `entries`, shared by {@link ArgProps.words} and {@link CallProps.words}. */
+function wordsOf(this: void, entries: readonly (readonly [number, string])[], mask: number | undefined): string[] {
+	return mask === undefined ? [] : entries.filter(([bit]) => (mask & bit) !== 0).map(([, word]) => word);
+}
+
+/** {@link ArgPropNames}, as `[bit, word]` pairs in ascending bit order, for {@link wordsOf}. */
+const ArgPropEntries: readonly (readonly [ArgProp, string])[] =
+	Object.entries(ArgPropNames).map(([bit, word]) => [Number(bit), word] as const);
+
 /**
  * Utility functions for {@link ArgProps|argument property bitfields}.
  */
@@ -270,8 +265,8 @@ export const ArgProps = {
 	name:  'ArgProps',
 	/** the {@link ArgProp} bit to its name, in ascending bit order */
 	names: ArgPropNames,
-	/** What an argument is used for, as words; see {@link argPropWords}. */
-	words: argPropWords,
+	/** What an argument is used for, as words; see {@link wordsOf}. */
+	words: (props: ArgProps | undefined): string[] => wordsOf(ArgPropEntries, props),
 	/** The mask the given {@link ArgProp} member names stand for; see {@link maskOfNames}. */
 	mask:  (names: readonly string[]): ArgProps => maskOfNames(ArgProp, names)
 } as const;
@@ -319,18 +314,13 @@ const CallPropWord: Readonly<Record<keyof typeof CallProp, string>> = {
 const CallPropNames: readonly (readonly [CallProp, string])[] =
 	Object.entries(CallPropWord).map(([member, word]) => [CallProp[member as keyof typeof CallProp], word] as const);
 
-/** What a call states about itself, as words rather than as a bit mask, for anything showing it to a reader. */
-function callPropWords(this: void, props: CallProps | undefined): string[] {
-	return props === undefined ? [] : CallPropNames.filter(([bit]) => (props & bit) !== 0).map(([, word]) => word);
-}
-
 /**
  * Utility functions for {@link CallProps|call property bitfields}.
  */
 export const CallProps = {
 	name:  'CallProps',
-	/** What a call states about itself, as words; see {@link callPropWords}. */
-	words: callPropWords,
+	/** What a call states about itself, as words; see {@link wordsOf}. */
+	words: (props: CallProps | undefined): string[] => wordsOf(CallPropNames, props),
 	/** The mask the given {@link CallProp} member names stand for; see {@link maskOfNames}. */
 	mask:  (names: readonly string[]): CallProps => maskOfNames(CallProp, names)
 } as const;
@@ -348,13 +338,8 @@ export interface BuiltInFnInfo {
 	/** keep the environment on the call vertex, for a later pass to look names up in */
 	readonly keepEnvironment?: boolean
 	/**
-	 * What this call lets the function around it reach about its own formals without naming one of them:
-	 * `match.call()` hands out the arguments as written ({@link ArgProp.Nse}), `nargs()` only how many were
-	 * supplied ({@link ArgProp.Presence}), and `environment()`/`sys.frame()` the frame itself, whose values may
-	 * be read ({@link ArgProp.Value}). Only what flowR fails to resolve counts: an access it follows to a name
-	 * (`get("x", envir = e)`, `e$x`) draws its own edges, and `parent.frame()` reaches the *caller's* frame,
-	 * which says nothing about the arguments of the function making the call.
-	 * @see {@link reflectiveRoles}
+	 * What this call lets the function around it reach about its own formals without naming one of them, e.g.
+	 * `match.call()` ({@link ArgProp.Nse}) or `nargs()` ({@link ArgProp.Presence}); see {@link reflectiveRoles}.
 	 */
 	readonly frame?:           ArgProps
 }
@@ -443,11 +428,8 @@ const SigDbProps: Readonly<Record<string, CallProp>> = {
 export const DispatchCallees: ReadonlySet<string> = new Set(['UseMethod', 'standardGeneric', 'S7_dispatch']);
 
 /**
- * The part of a {@link BuiltInFnInfo} that the signature database already knows: the parameter names in order
- * (`...` included) with the {@link ArgProp} bits stored for each, plus the properties listed in
- * {@link SigDbProps}. Everything else the database records (`higher-order`, `deprecated`, `recursive`, ...)
- * has no counterpart here and is dropped, and every {@link ArgProp} bit the extractor could not infer stays
- * unset -- the database states the same bits flowR does, just fewer of them.
+ * The part of a {@link BuiltInFnInfo} the signature database already knows: the parameter names in order with
+ * the {@link ArgProp} bits stored for each, plus the {@link SigDbProps} properties; everything else is dropped.
  */
 export function fnInfoFromSignature(fn: DecodedFunction): BuiltInFnInfo {
 	let props = 0;

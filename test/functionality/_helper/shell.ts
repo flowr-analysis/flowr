@@ -66,14 +66,11 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) =>
 	}, timeout);
 };
 
-
 let testShell: RShell | undefined = undefined;
 
 /**
- * Produces a shell session for you, can be used within a `describe` block.
- * Pass `{ concurrent: false }` to the `describe`, the RShell does not fare well with parallelization.
- * @param fn       - function to use the shell
- * @param newShell - whether to create a new shell or reuse a global shell instance for the tests
+ * Produces a shell session for you, can be used within a `describe` block. Pass `{ concurrent: false }` to the
+ * `describe`, the RShell does not fare well with parallelization.
  * @see {@link withTreeSitter}
  */
 export function withShell(fn: (shell: RShell) => void, newShell = false): () => void {
@@ -126,7 +123,6 @@ function removeInformation<T extends RProject<unknown> | Record<string, unknown>
 	})) as T;
 }
 
-
 function assertAstEqual<Info>(ast: RProject<Info> | RNode<Info>, expected: RProject<Info> | RNode<Info>, includeTokens: boolean, ignoreColumns: boolean, message?: () => string, ignoreMiscSourceInfo = true): void {
 	ast = removeInformation(ast, includeTokens, ignoreColumns, ignoreMiscSourceInfo);
 	// eslint-disable-next-line flowr/replacement-pattern
@@ -170,20 +166,14 @@ export interface TestConfiguration extends MergeableRecord {
 	/** the (inclusive) minimum version of R required to run this test, e.g., {@link MIN_VERSION_PIPE} */
 	minRVersion:            string | undefined
 	needsNetworkConnection: boolean
-	/**
-	 * Packages this test's code may use without writing the `library()` call itself, as
-	 * `solver.assumeAttachedPackages` states them.
-	 */
+	/** Packages this test's code may use without writing the `library()` call itself, as `solver.assumeAttachedPackages` states them. */
 	assumeLoaded?:          readonly string[]
 }
 
 export interface TestConfigurationWithOutput extends TestConfiguration {
 	/** HANDLE WITH UTTER CARE! Will run in an R-Shell on the host system! */
 	expectedOutput:      string | RegExp
-	/**
-	 * What the reconstructed slice has to print when it runs.
-	 * HANDLE WITH UTTER CARE! Will run in an R-Shell on the host system!
-	 */
+	/** What the reconstructed slice has to print when it runs. HANDLE WITH UTTER CARE! Will run in an R-Shell on the host system! */
 	expectedSliceOutput: string | RegExp
 	trimOutput:          boolean
 }
@@ -193,11 +183,7 @@ export const defaultTestConfiguration: TestConfiguration = {
 	needsNetworkConnection: false
 };
 
-/**
- * What {@link assumeLoadedPackages} declared, together with the file that declared it. The suite runs with
- * `isolate: false`, so one module registry serves many files; keying the declaration by file is what keeps it
- * from leaking into whichever one is collected next.
- */
+/** What {@link assumeLoadedPackages} declared, keyed by file so it does not leak into whichever one the (`isolate: false`) suite collects next. */
 let collectingWithPackages: { file: string | undefined, packages: readonly string[] } = { file: undefined, packages: [] };
 
 /** the test file currently being collected, which is what scopes a {@link assumeLoadedPackages} declaration */
@@ -207,36 +193,24 @@ function collectingFile(): string | undefined {
 
 /**
  * Declares the packages the tests in this file may use without attaching them themselves, as if the file had
- * opened with `library(pkg)`. Call it once, at the top:
- *
- * ```ts
- * assumeLoadedPackages('dplyr', 'ggplot2');
- * ```
- *
- * A single test overrides this with its own {@link TestConfiguration.assumeLoaded}, `[]` included.
- * @param packages - the packages to treat as attached
+ * opened with `library(pkg)`. Call once, at the top; a single test overrides this with its own {@link TestConfiguration.assumeLoaded}, `[]` included.
  */
 export function assumeLoadedPackages(...packages: string[]): void {
 	collectingWithPackages = { file: collectingFile(), packages };
 }
 
 /**
- * The packages a test being registered runs with: its own {@link TestConfiguration.assumeLoaded} when it names
- * any, otherwise what {@link withLoadedPackages} declared around it. The nearest declaration wins, so a single
- * test can say `assumeLoaded: []` to run with nothing attached even inside a file that assumes several.
+ * The packages a test runs with: its own {@link TestConfiguration.assumeLoaded} if set, otherwise what
+ * {@link assumeLoadedPackages} declared for this file. Call only while the file is being collected.
  */
 export function assumedPackagesOf(config: Pick<TestConfiguration, 'assumeLoaded'> | undefined): readonly string[] {
 	if(config?.assumeLoaded !== undefined) {
 		return config.assumeLoaded;
 	}
-	/* keyed by file, as the suite runs with `isolate: false` and one module registry serves many of them */
 	return collectingWithPackages.file === collectingFile() ? collectingWithPackages.packages : [];
 }
 
-/**
- * Applies the packages a test runs with to `builder`, so a helper that never sets a config of its own still
- * honors {@link withLoadedPackages}. Pass what {@link assumedPackagesOf} returned at collection time.
- */
+/** Applies the packages a test runs with to `builder`. Pass what {@link assumedPackagesOf} returned at collection time. */
 export function applyAssumedPackages<B extends { amendConfig(f: (c: DeepWritable<FlowrConfig>) => void): B }>(
 	builder: B, assumed: readonly string[]
 ): B {
@@ -255,7 +229,6 @@ export function withAssumedPackages(config: FlowrConfig, assumeLoaded: readonly 
 	});
 }
 
-
 /** Automatically skip a test if no internet connection is available */
 function skipTestBecauseNoNetwork(): boolean {
 	if(!globalThis.hasNetwork) {
@@ -265,12 +238,7 @@ function skipTestBecauseNoNetwork(): boolean {
 	return false;
 }
 
-
-/**
- * Automatically skip a test if it does not satisfy the given version pattern
- * (for a [semver](https://www.npmjs.com/package/semver) version).
- * @param versionToSatisfy - The version pattern to satisfy (e.g., `"<= 4.0.0 || 5.0.0 - 6.0.0"`)
- */
+/** Automatically skip a test if it does not satisfy the given [semver](https://www.npmjs.com/package/semver) pattern (e.g. `"<= 4.0.0 || 5.0.0 - 6.0.0"`). */
 function skipTestBecauseInsufficientRVersion(versionToSatisfy: string): boolean {
 	if(!globalThis.rVersion || !semver.satisfies(globalThis.rVersion, versionToSatisfy)) {
 		console.warn(`Skipping test because ${JSON.stringify(globalThis.rVersion?.raw)} does not satisfy ${JSON.stringify(versionToSatisfy)}.`);
@@ -279,20 +247,14 @@ function skipTestBecauseInsufficientRVersion(versionToSatisfy: string): boolean 
 	return false;
 }
 
-
-
-/**
- * Automatically skip a test if the given configuration is not met
- */
+/** Automatically skip a test if the given configuration is not met */
 export function skipTestBecauseConfigNotMet(userConfig?: Partial<TestConfiguration>): boolean {
 	const config = deepMergeObject(defaultTestConfiguration, userConfig);
 	return config.needsNetworkConnection && skipTestBecauseNoNetwork()
 		|| config.minRVersion !== undefined && skipTestBecauseInsufficientRVersion(`>=${config.minRVersion}`);
 }
 
-/**
- * Comfort for {@link assertAst} to run the same test for multiple steps
- */
+/** Comfort for {@link assertAst} to run the same test for multiple steps */
 export function sameForSteps<T, S>(steps: S[], wanted: T): { step: S, wanted: T }[] {
 	return steps.map(step => ({ step, wanted }));
 }
@@ -373,17 +335,12 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 	});
 }
 
-/**
- * Maps problematic nodes in a diff report to their ids for easier marking in mermaid graphs
- */
+/** Maps problematic nodes in a diff report to their ids for easier marking in mermaid graphs */
 export function mapProblematicNodesToIds(problematic: readonly ProblematicDiffInfo[] | undefined): Set<NodeId> | undefined {
 	return problematic === undefined ? undefined : new Set(problematic.map(p => p.tag === 'vertex' ? String(p.id) : `${p.from}->${p.to}`));
 }
 
-
-/**
- * Assert that the given input code produces the expected output in R. Trims by default.
- */
+/** Assert that the given input code produces the expected output in R. Trims by default. */
 export function assertOutput(name: string | TestLabel, parser: KnownParser, input: string | RParseRequests, expected: string | RegExp, userConfig?: Partial<TestConfigurationWithOutput>): void {
 	if(typeof input !== 'string') {
 		throw new Error('Currently, we have no support for expecting the output of arbitrary requests');
@@ -412,21 +369,14 @@ function handleAssertOutput(name: string | TestLabel, parser: KnownParser, input
 }
 
 interface DataflowTestConfiguration extends TestConfigurationWithOutput {
-	/**
-	 * Specify just a subset of what the dataflow graph will actually be.
-	 */
+	/** Specify just a subset of what the dataflow graph will actually be. */
 	expectIsSubgraph:      boolean,
 	/**
-	 * This changes the way the test treats the {@link NodeId}s in your expected graph.
-	 * Before running the verification, the test environment will transform the graph,
-	 * resolving all Ids as if they are slicing criteria.
-	 * In other words, you can use the criteria `12@a` which will be resolved to the corresponding id before comparing.
-	 * Please be aware that this is currently a work in progress.
+	 * Before comparing, resolve every {@link NodeId} in the expected graph as if it were a slicing criterion (e.g.
+	 * `12@a`). Still a work in progress.
 	 */
 	resolveIdsAsCriterion: boolean
-	/**
-	 * Which files to add to the project context
-	 */
+	/** Which files to add to the project context */
 	addFiles:              FlowrFileProvider[]
 	/** The collection of vertex ids that should not exist */
 	mustNotHaveVertices:   Set<NodeId>
@@ -434,10 +384,7 @@ interface DataflowTestConfiguration extends TestConfigurationWithOutput {
 	mustNotHaveEdges:      [NodeId, NodeId][]
 	/** Whether to test the call graph instead of the dataflow graph */
 	context:               'dataflow' | 'call-graph',
-	/**
-	 * Allows you to modify the analyzer before running the test.
-	 * (assumes side-effects and reuses the same object if you return undefined)
-	 */
+	/** Allows you to modify the analyzer before running the test (assumes side-effects and reuses the same object if you return undefined). */
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 	modifyAnalyzer:        (analyzer: FlowrAnalyzer) => FlowrAnalyzer | undefined | void
 }
@@ -448,12 +395,7 @@ function cropIfTooLong(str: string): string {
 
 /**
  * Your best friend whenever you want to test whether the dataflow graph produced by flowR is as expected.
- *
- * You may want to have a look at the {@link DataflowTestConfiguration} to see what you can configure.
- * Especially the `resolveIdsAsCriterion` and the `expectIsSubgraph` are interesting as they allow you for rather
- * flexible matching of the expected graph.
- *
- * Pleas note, that if you pass `context: 'call-graph'` in the userConfig, the call graph will be tested as a view of the dataflow graph.
+ * See {@link DataflowTestConfiguration} for what you can configure; `context: 'call-graph'` tests the call graph as a view of the dataflow graph.
  */
 export function assertDataflow(
 	name: string | TestLabel,
@@ -465,7 +407,6 @@ export function assertDataflow(
 	config = FlowrConfig.default()
 ): void {
 	const effectiveName = decorateLabelContext(name, [userConfig?.context ?? 'dataflow']);
-	/* captured while the file is collected, as that is when the enclosing withLoadedPackages is in effect */
 	const assumed = assumedPackagesOf(userConfig);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
 		let analyzer = await new FlowrAnalyzerBuilder()
@@ -548,15 +489,12 @@ export function assertDataflow(
 	handleAssertOutput(name, parser, input, userConfig);
 }
 
-
 /** call within describeSession */
 function printIdMapping(ids: readonly NodeId[], map: AstIdMap): string {
 	return ids.map(id => `${id}: ${JSON.stringify(map.get(id)?.lexeme)}`).join(', ');
 }
 
-/**
- * Please note that this executes the reconstruction step separately, as it predefines the result of the slice with the given ids.
- */
+/** Note that this executes the reconstruction step separately, as it predefines the result of the slice with the given ids. */
 export function assertReconstructed(name: string | TestLabel, shell: RShell, input: string, ids: NodeId | NodeId[], expected: string, userConfig?: Partial<TestConfigurationWithOutput>, getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)) {
 	const selectedIds = Array.isArray(ids) ? ids : [ids];
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(decorateLabelContext(name, ['slice']), async function(this: unknown) {
@@ -628,9 +566,8 @@ interface TestCaseParams {
 }
 
 /**
- * Ensure that slicing for a given criteria returns the code you expect. Please be aware that for ease of use
- * this actually checks against the reconstructed code (which may contain additional tokens to support executability).
- * If you want to check against the actual ids, please provide an array of {@link SlicingCriterion}s as the expected value.
+ * Ensure that slicing for a given criteria returns the code you expect. Checks against the reconstructed code
+ * (which may carry extra tokens for executability); pass an array of {@link SlicingCriterion}s to check ids instead.
  */
 export function assertSliced(
 	name: TestLabel,
@@ -641,7 +578,6 @@ export function assertSliced(
 	testConfig?: Partial<TestConfigurationWithOutput> & Partial<TestCaseParams> & { addFiles?: FlowrFileProvider[], extendSlice?: boolean },
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
-	/* captured while the file is collected, as that is when the enclosing withLoadedPackages is in effect */
 	const assumed = assumedPackagesOf(testConfig);
 	const skip = skipTestBecauseConfigNotMet(testConfig);
 	if(skip || testConfig?.testCaseFailType === 'fail-both') {
@@ -768,14 +704,10 @@ export function assertSliced(
 				}
 			});
 		}
-
-		handleAssertOutput(name, shell, input, testConfig);
 	});
 }
 
-/**
- * Options for {@link assertDiced}. At least one field should be set.
- */
+/** Options for {@link assertDiced}. At least one field should be set. */
 export interface DiceTestExpect {
 	/** Exact reconstructed code expected (trimmed) */
 	code?:       string

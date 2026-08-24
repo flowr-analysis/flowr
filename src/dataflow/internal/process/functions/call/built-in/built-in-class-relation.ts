@@ -22,10 +22,8 @@ export interface ClassRelationConfiguration extends S4UseConfig {
 }
 
 /**
- * Processes a call that *relates* existing classes rather than declaring one: `setIs`, which states an
- * explicit is-a, and `setValidity`, which attaches a validator to the class it names. The relation is recorded
- * on the call vertex so a consumer sees it next to the `setClass` declarations, and an `assignment` config
- * keeps whatever binding behavior the call had before.
+ * Processes a call that *relates* existing classes rather than declaring one: `setIs` (an explicit is-a) or
+ * `setValidity` (attaches a validator). The relation is recorded on the call vertex next to `setClass` declarations.
  */
 export function processClassRelation<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

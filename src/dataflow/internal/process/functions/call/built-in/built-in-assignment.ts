@@ -78,9 +78,8 @@ export interface AssignmentConfiguration {
 	readonly mayHaveMoreArgs?:     boolean
 	readonly modesForFn?:          DataflowGraphVertexFunctionDefinition['mode']
 	/**
-	 * The name of the argument that selects the target environment (e.g. `'envir'` for `assign`).
-	 * When present and the argument resolves to a variable with a tracked {@link InGraphIdentifierDefinition#envState},
-	 * the assignment is routed into that environment instead of the current scope.
+	 * Name of the arg selecting the target env (e.g. `'envir'` for `assign`); if it resolves to a tracked
+	 *  {@link InGraphIdentifierDefinition#envState}, the assignment is routed there instead of the current scope.
 	 */
 	readonly environmentArg?:      string
 }
@@ -149,12 +148,10 @@ function tryReplacement<OtherInfo>(
 	};
 }
 
-/**
- * In contrast to `processAssignment`, this function allows more flexible handling of assignment-like functions.
- */
+/** In contrast to `processAssignment`, this function allows more flexible handling of assignment-like functions. */
 export function processAssignmentLike<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	/* we expect them to be ordered in the sense that we have (source, target): `<source> <- <target>` */
+	/* args may come in any order; matched via config.source/config.target, then normalized to processAssignment's convention below */
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
@@ -226,9 +223,8 @@ function processMaskedNamePair<OtherInfo>(
 }
 
 /**
- * Processes an assignment, i.e., `<target> <- <source>`.
- * Handling it as a function call \`&lt;-\` `(<target>, <source>)`.
- * This includes handling of replacement functions (e.g., `names(x) <- ...` as \`names&lt;-\` `(x, ...)`).
+ * Processes an assignment `<target> <- <source>` as the function call \`&lt;-\` `(<target>, <source>)`,
+ *  including replacement functions (e.g., `names(x) <- ...` as \`names&lt;-\` `(x, ...)`).
  */
 export function processAssignment<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -256,7 +252,8 @@ export function processAssignment<OtherInfo>(
 	}
 
 	const effectiveArgs = getEffectiveOrder(config, args as [PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>]);
-	const { target, source } = extractSourceAndTarget(effectiveArgs);
+	const target = unpackArg(effectiveArgs[0]);
+	const source = unpackArg(effectiveArgs[1]);
 
 	if(target === undefined || source === undefined) {
 		dataflowLogger.warn(`Assignment ${Identifier.toString(name.content)} has an undefined target or source, skipping`);
@@ -345,15 +342,7 @@ export function processAssignment<OtherInfo>(
 	return info;
 }
 
-function extractSourceAndTarget<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]) {
-	const source = unpackArg(args[1]);
-	const target = unpackArg(args[0]);
-	return { source, target };
-}
-
-/**
- * Promotes the ingoing/unknown references of target (an assignment) to definitions
- */
+/** Promotes the ingoing/unknown references of target (an assignment) to definitions. */
 function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): (InGraphIdentifierDefinition & { name: Identifier })[] {
 	const written: (InGraphIdentifierDefinition & { name: Identifier })[] = [];
 	for(const refs of [target.in, target.unknownReferences]) {
@@ -446,9 +435,8 @@ function isEnvCreatorSource(sourceInfo: DataflowInformation): boolean {
 }
 
 /**
- * When `e$x <- val` and `e` holds a tracked {@link InGraphIdentifierDefinition#envState},
- * adds the field `x` into that envState instead of redefining the whole `e` object.
- * Returns `undefined` when routing is not applicable.
+ * When `e$x <- val` and `e` holds a tracked {@link InGraphIdentifierDefinition#envState}, adds field `x` into that
+ *  envState instead of redefining `e`; returns `undefined` when routing is not applicable.
  */
 function tryRouteDollarEnvAssign<OtherInfo>(
 	rootId:      NodeId,
@@ -496,11 +484,8 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 }
 
 /**
- * When `config.environmentArg` identifies an `envir`-like parameter (e.g. `'envir'` for `assign`)
- * and that argument resolves to a variable with a tracked {@link InGraphIdentifierDefinition#envState},
- * this function routes the written definitions into that custom environment instead of the current
- * global scope.
- * @returns `undefined` if routing is not possible
+ * When `config.environmentArg` (e.g. `'envir'` for `assign`) resolves to a variable with a tracked
+ *  {@link InGraphIdentifierDefinition#envState}, routes the written definitions there instead of the current scope; returns `undefined` if not possible.
  */
 function tryRouteToCustomEnv<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -553,9 +538,8 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
 }
 
 /**
- * Model a call like `Hmisc::getHdata(x)` that loads a dataset into the variable it is *given*: the argument symbol
- * `x` is both **read** (as the call's argument, its value comes from outside the code) and **defined** by the call.
- * Unlike {@link markAsAssignment} we keep the read edge.
+ * Models a call like `Hmisc::getHdata(x)` that loads a dataset into the variable it is *given*: `x` is both
+ *  **read** (its value comes from outside) and **defined** by the call; unlike {@link markAsAssignment} we keep the read edge.
  */
 export function processDefineArgument<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -604,9 +588,7 @@ export function markAsAssignment<OtherInfo>(
 	}
 }
 
-/**
- * Helper function whenever it is known that the _target_ of an assignment is a (single) symbol (i.e. `x <- ...`, but not `names(x) <- ...`).
- */
+/** Helper for when the _target_ of an assignment is known to be a (single) symbol (i.e. `x <- ...`, not `names(x) <- ...`). */
 function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
 	const { nameOfAssignmentFunction, source, args: [targetArg, sourceArg], targetId, targetName, rootId, data, information, makeMaybe, quoteSource } = config;
 	const referenceType = checkTargetReferenceType(sourceArg, config.modesForFn);

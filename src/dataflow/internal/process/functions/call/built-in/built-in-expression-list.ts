@@ -1,7 +1,3 @@
-/**
- * Processes a list of expressions joining their dataflow graphs accordingly.
- * @module
- */
 import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
 import { addNonDefaultExitPoints, ExitPointType, happensInEveryBranch } from '../../../../../info';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
@@ -31,8 +27,6 @@ import { valueFromTsValue } from '../../../../../eval/values/general';
 import { FunctionDefinitionVertex, FunctionCallVertex } from '../../../../../graph/vertex';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-
-
 
 /**
  * Whether the definitions of this list among the `targets` of a read cover every branch, alone or together.
@@ -67,8 +61,7 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 		}
 	}
 
-	// keep it, for we have no target, as read-ids are unique within the same fold, this should work for same links
-	// we keep them if they are defined outside the current parent and maybe throw them away later
+	// no target: keep it as an ingoing read (read-ids are unique within the same fold); a later fold may still resolve and drop it
 	if(probableTarget === undefined) {
 		return;
 	}
@@ -94,11 +87,8 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 }
 
 /**
- * Expands the directly-called function definitions (`direct`) with those they transitively call (resolved by name in
- * `resolveEnv`). A sibling/outer callee is invisible inside its caller's (clean) body, so its escaped globals never fold
- * into the caller's subflow; pulling them here lets a super-assignment escaping through several call levels reach the
- * outer read. Escapes are folded popped to the fold level, so a write binding an intermediate frame stops there.
- * Package attachments keep their own (lazy) propagation, so transitive callees only contribute their `<<-` escapes.
+ * Expands `direct`'s directly-called functions with everything they transitively call (via `resolveEnv`): a sibling/outer
+ * callee's escaped globals otherwise never fold into the caller, so a `<<-` escaping several call levels would go unlinked.
  */
 function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInfo[], graph: DataflowGraph, resolveEnv: REnvironmentInformation): Generator<{ fn: DataflowGraphVertexInfo, direct: boolean }> {
 	const seen = new Set<NodeId>();
@@ -164,10 +154,8 @@ function foldFrameIntoParent({ current, level }: REnvironmentInformation): REnvi
 }
 
 /**
- * Whether an error raised by the call `from` still leaves the expression it is written in.
- * A callee only tells us that it always throws once we link it here, long after the expression around the call
- * was processed, so we have to redo what the constructs on the way would have done with a `stop` written in that
- * very place: they have to pass the error on, which a branch, a loop body, or a handler does not.
+ * Whether an error raised by the call `from` still leaves the expression it is written in: redoes what a `stop`
+ * written at that spot would have done, since we only learn a callee always throws after linking it here.
  */
 function errorEscapes(from: NodeId, expression: NodeId, idMap: AstIdMap, graph: DataflowGraph): boolean {
 	let node = idMap.get(from);
@@ -219,8 +207,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 			if(environment.level > inputEnvironment.level) {
 				/* the callee's own frame dies with the call */
 				environment = popLocalEnvironment(environment);
-				/* what is left above the caller are frames the closure captured; they outlive the call, so their
-				 * writes stay observable for the caller instead of vanishing with the frames */
+				/* frames above the caller are ones its closure captured, so fold them back instead of losing their writes */
 				while(environment.level > inputEnvironment.level) {
 					environment = foldFrameIntoParent(environment);
 				}
@@ -245,8 +232,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 				current = current.parent;
 			}
 			if(hasUpdate) {
-				// we update all definitions to be linked with the corresponding function call
-				// we, however, have to ignore expression-local writes!
+				// link all definitions to the corresponding function call, but ignore expression-local writes
 				if(localDefs.length > 0) {
 					environment = {
 						current: environment.current.removeAll(localDefs.filter(d => isNotUndefined(d.name)) as { name: string }[]),
@@ -262,7 +248,6 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 	}
 	return inputEnvironment;
 }
-
 
 /**
  * Processes a list of expressions joining their dataflow graphs accordingly.
@@ -305,8 +290,7 @@ export function processExpressionList<OtherInfo>(
 		processedExpressions.push(processed);
 		nextGraph.mergeWith(processed.graph);
 		defaultReturnExpr = processed;
-		// if the expression contained next or break anywhere before the next loop, the "overwrite" should be an "append", because we do not know if the rest is executed
-		// update the environments for the next iteration with the previous writes
+		// a prior next/break means we do not know if the rest executes, so later environments append rather than overwrite
 		if(exitPoints.length > 0) {
 			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environment, true, invertExitCds);
 			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environment, false, invertExitCds);
@@ -346,10 +330,7 @@ export function processExpressionList<OtherInfo>(
 		if(processed.kill?.length) {
 			// if we may have already exited (break/next), the removal only happens maybe
 			const kills = exitPoints.length > 0 ? makeKillsMaybe(processed.kill, invertExitCds) : processed.kill;
-			killed ??= [];
-			for(const kill of kills) {
-				killed.push(kill);
-			}
+			(killed ??= []).push(...kills);
 		}
 
 		for(const ref of processed.out) {
@@ -357,7 +338,7 @@ export function processExpressionList<OtherInfo>(
 			listEnvironments.add(ref.nodeId);
 		}
 
-		/** if at least built-one of the exit points encountered happens unconditionally, we exit here (dead code)! */
+		/* if at least one exit point encountered happens unconditionally, we exit here (dead code) */
 		if(ControlFlow.alwaysExits(processed)) {
 			/* if there is an always-exit expression, there is no default return active anymore */
 			defaultReturnExpr = undefined;
@@ -376,12 +357,7 @@ export function processExpressionList<OtherInfo>(
 		});
 	}
 
-	const ingoing: IdentifierReference[] = [];
-	for(const refs of remainingRead.values()) {
-		for(const ref of refs) {
-			ingoing.push(ref);
-		}
-	}
+	const ingoing: IdentifierReference[] = [...remainingRead.values()].flat();
 
 	const rootNode = data.completeAst.idMap.get(rootId);
 	const withGroup = rootNode?.grouping;

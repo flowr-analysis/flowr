@@ -90,8 +90,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 }
 /* the four names no longer fit on one line: two by two reads better than three and a stray */
 @media (max-width: 21rem) { .bar nav { display: grid; grid-template-columns: 1fr 1fr; justify-items: start; } }
-/* GitHub asks that its mark stay solid black or white and unmodified, so it does not take the
-   page colours; only the backdrop reacts to the pointer */
+/* GitHub asks that its mark stay solid black or white and unmodified, so only the backdrop reacts to the pointer */
 .bar .controls .gh, .bar .controls .gh:hover { color: #181717; }
 .bar .controls .gh { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: .5rem; }
 .bar .controls .gh:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
@@ -144,13 +143,11 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 #scope:hover { filter: brightness(1.08); }
 #scope[hidden] { display: none; }
 .mix .track { display: inline-flex; gap: .1rem; padding: .16rem; border-radius: 999px; border: 1px solid var(--border); background: var(--sunk); }
-.mix .pick { font: inherit; font-size: .74rem; line-height: 1.5; cursor: pointer; color: var(--muted); border-radius: 999px; padding: .1rem .55rem; }
-.mix .pick { border: 0; background: none; padding: .16rem .6rem; }
+.mix .pick { font: inherit; font-size: .74rem; line-height: 1.5; cursor: pointer; color: var(--muted); border-radius: 999px; border: 0; background: none; padding: .16rem .6rem; }
 .mix .pick[aria-pressed="true"] { color: var(--accent); background: var(--panel); border-color: transparent; }
 .filters button[aria-pressed="true"] { color: var(--accent-fg); background: var(--accent); border-color: transparent; }
 
-/* `minmax(0, 1fr)` and not the implicit `auto`: a grid track sized to its content lets a long signature push the
-   whole row past the page instead of giving the row a width to fit itself into */
+/* minmax(0, 1fr), not the implicit auto: a track sized to its content would let a long signature push the row past the page */
 #hits { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: .4rem; }
 #hits li {
 	padding: .55rem .8rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--panel);
@@ -219,12 +216,9 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 }
 #hits .ask {
 	display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; margin: .5rem 0 0;
-	color: var(--muted); font-size: .78rem;
+	color: var(--muted); font-size: .78rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
-#hits .ask::after {
-	content: ""; /* the command itself is the text node after the label */
-}
-#hits .ask { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+#hits .ask::after { content: ""; } /* the command itself is the text node after the label */
 #hits .ask span { font-family: system-ui, sans-serif; }
 #hits li:hover { border-color: var(--accent); }
 #hits .name { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; }
@@ -235,17 +229,14 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 /* what flowR states about the name, next to what the database says about it */
 #hits .kindtag.props { border-style: dashed; opacity: .8; }
 #hits .flag.stated { border-style: dashed; color: var(--accent); }
+/* stated: as wide as what it says and no wider, an ellipsis only once the line runs out; inline-flex so its own parts (kind/args/ret) lay out beside it */
 #hits .stated {
 	font-size: .78rem; color: var(--muted); background: var(--sunk);
 	padding: .05rem .35rem; border-radius: .3rem; white-space: nowrap;
-	overflow: hidden; text-overflow: ellipsis;
-	/* as wide as what it says and no wider, giving way to an ellipsis only when the line runs out */
-	flex: 0 1 auto; min-width: 0;
+	overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; min-width: 0;
+	display: inline-flex; align-items: baseline; vertical-align: bottom;
 }
-/* R has no types, so the letters for what flowR says a formal is used for are set in their place */
-#hits .stated { display: inline-flex; align-items: baseline; vertical-align: bottom; }
-/* the formals are the one part that may be cut, so they are what shrinks: without `min-width` a flex item never
-   goes below what it says, and the whole row would grow past the panel instead of ending in an ellipsis */
+/* the formals are what may be cut: without min-width a flex item never shrinks below what it says, and the row would grow past the panel */
 #hits .stated .args { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; min-width: 0; }
 /* what the call does is the part worth keeping when the formals no longer fit */
 #hits .stated .ret, #hits .stated .kind { flex: none; }
@@ -505,11 +496,7 @@ function knownNames() {
 	return known;
 }
 
-/** a name with the matched part marked, built as nodes so a function name can never inject markup */
-/**
- * Whether a manual page can be named for this one. `%o%` and friends have no `man/<name>.html`, and a name the
- * database says nothing about (`?`) is only safe to guess at where an alias table settles it.
- */
+/** whether a manual page can be named for this one; `%o%` and friends have none, and a name the database says nothing about (`?`) is only safe to guess at where an alias table settles it */
 function documented(name, flags, index) {
 	if(flags.includes('u')) {
 		return false;
@@ -520,33 +507,20 @@ function documented(name, flags, index) {
 	if(!/^[A-Za-z.][A-Za-z0-9._-]*$/.test(page)) {
 		return false;
 	}
-	/*
-	 * Base R ships an alias table naming every page it has, so nothing has to be guessed: a name it does not
-	 * carry has none. That is most of what a base package exports without documenting, the locals and internals
-	 * (`tmp`, `shell.exec`) as much as the `sinkplot` flowR states and R has never had.
-	 */
+	/* base R ships an alias table naming every page it has, so a name it does not carry has none: most of what base exports without documenting, locals and internals alike */
 	if(packages[index]?.[2] === '1') {
 		return !topicsKnown || topics.has(pkg + '::' + name);
 	}
-	/* `?` says the database holds nothing about it: a name flowR states rather than one a package is known to
-	   export, and outside base R there is no table to settle it, so guessing only produces a dead link */
+	/* `?` says the database holds nothing about it, and outside base R there is no table to settle it, so guessing only produces a dead link */
 	return !flags.includes('?');
 }
 
-/**
- * Where the code of a package lives. Base R sits in the read-only mirror of R's own sources, which carries a
- * branch per release series rather than a tag; everything else is on the read-only CRAN mirror, at its version.
- */
-/** the file of a package an export lives in, `undefined` where the database records none */
+/** the file of a package an export lives in, `undefined` where the database records none; see sourceUrl below for where that file lives */
 function sourceFile(index, file) {
 	return file === undefined ? undefined : (packages[index][8] ?? '').split('|')[file] || undefined;
 }
 
-/**
- * Where the code of an export lives. Base R sits in the read-only mirror of R's own sources, which carries a
- * branch per release series rather than a tag; everything else is on the read-only CRAN mirror, at its version.
- * Without a file of its own, the package's sources are as close as this gets.
- */
+/** where the code of an export lives: base R in the read-only mirror of R's sources (a branch per release series, not a tag), everything else on the CRAN mirror at its version; without a file of its own, the package's sources are as close as this gets */
 function sourceUrl(pkg, version, base, file, line) {
 	const at = line === undefined ? '' : '#L' + line;
 	if(base) {
@@ -569,11 +543,7 @@ function packageDocUrl(index) {
 		: 'https://rdrr.io/cran/' + encodeURIComponent(pkg) + '/';
 }
 
-/*
- * Base R goes to R's own manual rather than to rdrr.io, which serves an older release: `array2DF`, `sort_by`
- * and the rest of what R has gained since have no page there. It is also where the alias table above comes
- * from, so the two can never disagree about which pages exist.
- */
+/* base R goes to R's own manual, not rdrr.io (which serves an older release and lacks recent additions like array2DF); it is also where the alias table above comes from, so the two never disagree */
 function docUrl(name, entry) {
 	const { index, topic } = typeof entry === 'object' ? entry : { index: entry };
 	const [pkg, , base] = packages[index];
@@ -582,13 +552,13 @@ function docUrl(name, entry) {
 		: 'https://rdrr.io/cran/' + encodeURIComponent(pkg) + '/man/' + page + '.html';
 }
 
+/** a name with the matched part marked, built as nodes so a function name can never inject markup */
 function marked(name, needle, at) {
 	const span = document.createElement('span');
 	span.className = 'name';
 	span.title = 'click for every package that exports ' + name;
 	if(at < 0) {
-		/* a fuzzy hit matches scattered characters; neighbours join into one mark so `filter` reads as
-		   one highlight rather than six boxes in a row */
+		/* a fuzzy hit matches scattered characters; neighbours join into one mark so `filter` reads as one highlight, not six boxes in a row */
 		const wanted = needle.toLowerCase();
 		let next = 0, run = '', plain = '';
 		const flush = () => {
@@ -621,11 +591,7 @@ function marked(name, needle, at) {
 	return span;
 }
 
-/**
- * What a reader most likely meant, ordered by the ranker the playground's completion uses as well
- * (`src/util/text/name-rank.ts`, written in here by the build): this only says what the page knows
- * about a name, the weighing itself lives there.
- */
+/** what a reader most likely meant, ordered by the ranker the playground's completion also uses (src/util/text/name-rank.ts, written in here by the build); this only states what the page knows about a name */
 function score(name, owners, rank, needle) {
 	const first = owner(owners.split(',')[0]);
 	const pkg = packages[first.index];
@@ -688,8 +654,7 @@ function owner(entry) {
 const kinds = new Map(Object.entries(JSON.parse(document.getElementById('kinds').textContent)));
 /* `name -> [package, properties, formals with their roles][]`: what flowR states about the names it defines */
 const stated = new Map(Object.entries(JSON.parse(document.getElementById('stated').textContent)));
-/* `package::alias -> topic` for every documented base R name, empty where the topic is the name itself, so the
-   keys are also the set of base R names that have a manual page at all */
+/* `package::alias -> topic` for every documented base R name, empty where the topic is the name itself; the keys are also the set of base R names with a manual page at all */
 const topics = new Map(Object.entries(JSON.parse(document.getElementById('topics').textContent)));
 /* the names something dispatches on, which is what makes `format.Date` a method and `is.datacggm` a function */
 const generics = new Set(JSON.parse(document.getElementById('generics').textContent).split('\n').filter(Boolean));
@@ -752,8 +717,7 @@ function detail(name, owners) {
 			/* no page of its own, so the package's documentation is the next best thing */
 			row.href = packageDocUrl(index);
 			row.classList.add('undocumented');
-			/* a group member is usually documented under its S4 alias (`sin,float32-method` on float's `trig`
-			   page), which is a name the database does not carry, so say so rather than claim there is nothing */
+			/* a group member is usually documented under its S4 alias (`sin,float32-method` on float's `trig` page), a name the database does not carry, so say so rather than claim there is nothing */
 			row.title = groups.has(name) && base !== '1'
 				? name + ' has no manual page of its own in ' + pkg + ': an S4 method is documented under its '
 					+ name + ',<class>-method alias, so this links to the package documentation'
@@ -768,8 +732,7 @@ function detail(name, owners) {
 		row.append(who);
 		const marks = document.createElement('span');
 		marks.className = 'flags';
-		/* what flowR states for this package's version of the name, which the head can only show for one of
-		   them (`filter` is `stats`'s to a reader and dplyr's to flowR), else what the database records */
+		/* what flowR states for this package's version (`filter` is `stats`'s to a reader, dplyr's to flowR), else the database's own record */
 		const own = statedFor.get(pkg);
 		const here = own ? { args: own[2] ?? '', props: own[1] ?? '' }
 			: { args: declaredIn(name, pkg) ?? '', props: flagWords(flags) };
@@ -861,8 +824,7 @@ function genericOf(name, owners) {
 	if(!owners.some(entry => owner(entry).flags.includes('3'))) {
 		return undefined;
 	}
-	/* the longest prefix something dispatches on: `is` is a name, but nothing dispatches on it, so
-	   `is.datacggm` is a function whose name happens to have a dot in it rather than a method of `is` */
+	/* the longest prefix something dispatches on: `is` is a name, but `is.datacggm` is not a method of it */
 	let found;
 	for(let at = name.indexOf('.'); at > 0; at = name.indexOf('.', at + 1)) {
 		if(generics.has(name.slice(0, at))) {
@@ -872,10 +834,7 @@ function genericOf(name, owners) {
 	return found;
 }
 
-/**
- * The generic an S4 method answers, `undefined` when the name is no S4 method. R writes such a method down as
- * `generic,signature-method`, so the name carries its generic where the database recorded one that way.
- */
+/** the generic an S4 method answers (from `generic,signature-method`), `undefined` when the name is no S4 method */
 function s4GenericOf(name, owners) {
 	if(!owners.some(entry => owner(entry).flags.includes('m'))) {
 		return undefined;
@@ -975,15 +934,7 @@ function aboutPackage(index) {
 	return box;
 }
 
-/**
- * The package flowR states a name for, put first among its owners when the database does not list it: `+` is
- * base R's, but a primitive is in no NAMESPACE, so nothing exports it and the reader would see `lubridate`
- * where they expect `base`.
- *
- * A statement that names no package adds no owner: flowR recognizes `sinkplot` as a plot call without knowing
- * whose it is, and the packages the database does list are then the whole answer. What flowR says about the
- * call still shows, and a name nothing at all exports keeps its row with the flowR badge and no package.
- */
+/** the package flowR states a name for, put first among owners when the database omits it (a primitive exports from no NAMESPACE, so `+` would otherwise show as `lubridate`'s); a statement naming no package adds none, so `sinkplot` keeps its flowR badge with no package rather than a wrong one */
 function withStatedOwner(name, owners) {
 	/* a name no package exports has one empty entry, which is a row rather than an owner */
 	const known = owners.filter(entry => entry !== '');
@@ -998,11 +949,7 @@ function withStatedOwner(name, owners) {
 	return found.length === 0 ? known : [...found.map(at => at + ':?'), ...known];
 }
 
-/**
- * The words for what a call is, does and hands back, and for what an argument is used for, shortened to
- * what fits on one line and still reads as a word. A word without an entry is short enough already, and
- * the full ones are on every signature as a tooltip.
- */
+/** short forms of what a call is/does/hands back and what an argument is used for; missing entries are short enough already, the full words sit on every signature as a tooltip */
 const Words = {
 	/* what a call is and does, flowR's words and the database's for the same thing alike */
 	'can throw': 'throws', 'invisible': 'invis', 's3 method': 's3', 'S3 method': 's3', 'S4 method': 's4',
@@ -1061,12 +1008,7 @@ function readable(name, args, props) {
 		+ (returns.length > 0 ? ': ' + returns.join(',') : '');
 }
 
-/**
- * A signature the way the page draws every one of them: `name<what it is and does>(formal: role, ...): what
- * it hands back`. R has no types, so the roles stand in for them. `args` are the formals, with their roles
- * behind a `:` where something states them; the parentheses are left out where none are known at all, which
- * is not the same as a call taking nothing.
- */
+/** a signature as `name<kind>(formal: role, ...): returns`; R has no types, so roles stand in, and the parens are left out where no formals are known at all (not the same as a call taking none) */
 function signature(name, args, props) {
 	const said = document.createElement('code');
 	said.className = 'stated';
@@ -1109,9 +1051,7 @@ function show(name, needle, at, owners) {
 	const row = document.createElement('li');
 	const head = document.createElement('div');
 	head.className = 'head';
-	/* the package a reader most likely means decides: `pi` is a constant even though something exports a `pi()`.
-	   Only what the database states, `c`: that it records no location (`v`) says too little to head a row,
-	   and it is on the package rows below, where a reader can see which package it is missing for */
+	/* the package a reader most likely means decides: `pi` is a constant even though something exports a `pi()`. Only `c`, what the database states, heads a row -- `v` shows on the package rows below instead */
 	const value = owner(owners[0]).flags.includes('c');
 	head.append(marked(name, needle, at));
 	if(value) {
@@ -1122,8 +1062,7 @@ function show(name, needle, at, owners) {
 		badge.title = 'the database records it as a value rather than a function';
 		head.append(badge);
 	}
-	/* flowR's own statement about the name, which is the one thing the database cannot tell a reader.
-	   A name several packages define is stated per package, so the one the reader means is the one shown */
+	/* flowR's own statement about the name, the one thing the database cannot tell a reader; stated per package, so the one the reader means is the one shown */
 	const mine = stated.get(name) ?? [];
 	/* the package the search named, else the one a reader most likely means */
 	const chosen = owners.find(entry => packages[owner(entry).index]?.[0] === scoped) ?? owners[0];
@@ -1149,8 +1088,7 @@ function show(name, needle, at, owners) {
 	/* the generics this name answers, which the row states in words rather than the signature in short */
 	const dispatches = [['S3', genericOf(name, owners)], ['S4', s4GenericOf(name, owners)]]
 		.filter(([, generic]) => generic !== undefined);
-	/* what flowR states, else what the database records for the package a reader means. One line, ellipsis
-	   where the formals do not fit, and the words spelled out on it as a tooltip */
+	/* what flowR states, else the database's record for the package a reader means; one line, ellipsis on overflow, words spelled out as a tooltip */
 	const shown = own ? { args: own[2] ?? '', props: own[1] ?? '' }
 		: { args: declaredIn(name, first?.[0]) ?? '', props: flagWords(owner(chosen).flags) };
 	/* where the row states `S3 method for format` next to it, the signature saying `s3` once more says nothing */
@@ -1167,8 +1105,7 @@ function show(name, needle, at, owners) {
 		link.title = 'search for the generic this method dispatches for';
 		head.append(link);
 	}
-	/* a member of an S4 group: a package exports it because it answered the whole group for one of its
-	   classes, so the name says far less about that package than an ordinary export would */
+	/* a member of an S4 group: a package exports it by answering the whole group for one of its classes, so the name says far less about that package than an ordinary export would */
 	const group = groups.get(name);
 	if(group) {
 		const link = document.createElement('a');
@@ -1208,8 +1145,7 @@ function show(name, needle, at, owners) {
 	hits.append(row);
 }
 
-/* how many names the scan walks before it lets the page breathe again, and how many hits are still
-   worth counting the packages of */
+/* how many names the scan walks before it lets the page breathe again, and how many hits are still worth counting the packages of */
 const Chunk = 40000;
 const Countable = 50000;
 
@@ -1233,8 +1169,7 @@ async function search() {
 	}
 	const lower = needle.toLowerCase();
 	const matches = [];
-	/* 577k names are more than one frame can hold, so the scan hands the thread back every so often
-	   and gives up as soon as a newer keystroke has started its own */
+	/* 577k names are more than one frame can hold, so the scan hands the thread back every so often and gives up once a newer keystroke has started its own */
 	let breathe = Chunk;
 	for(let start = 0; start < names.length;) {
 		if(--breathe === 0) {
@@ -1265,13 +1200,10 @@ async function search() {
 		}
 	}
 	if(sort.value === 'auto') {
-		/* scoring parses an owner entry per hit, so a query matching six figures of names is first cut
-		   down by the cheap key and only its head is scored properly */
-		/* the cut has to know about the badge too, or `ggplot` never survives long enough to be scored:
-		   `kinds` is a Map lookup, so this stays cheap */
+		/* scoring parses an owner entry per hit, so a query matching six figures of names is first cut down by the cheap key and only its head is scored properly */
+		/* the cut has to know about the badge too, or `ggplot` never survives long enough to be scored; `kinds` is a Map lookup, so this stays cheap */
 		const key = (name, rank) => (kinds.has(name) ? 0 : 1000) + rank;
-		/* comparison-sorting six figures of matches costs a visible pause, and the key only takes a
-		   handful of values: counting them out keeps the good ones in front for a fraction of that */
+		/* comparison-sorting six figures of matches costs a visible pause; the key takes a handful of values, so counting them out keeps the good ones in front for a fraction of that */
 		const buckets = new Map();
 		for(const match of matches) {
 			const at = key(match[0], match[3]);
@@ -1309,8 +1241,7 @@ async function search() {
 	const onlyPackages = active.has('only:package') || (needle.length === 0 && active.size === 0 && inPackage === undefined);
 	const allPackages = inPackage !== undefined || (active.size > 0 && !onlyPackages) ? [] : packages
 		.map(([name], index) => [name, index, name.toLowerCase().indexOf(lower)])
-		/* only the package that was typed outright: three near-misses would bury the function `plot`
-		   under `plotly` and `plotrix`. Browsing by name is what the `package` filter is for. */
+		/* only the package that was typed outright: three near-misses would bury `plot` under `plotly` and `plotrix`; browsing by name is what the `package` filter is for */
 		.filter(([name, , at]) => onlyPackages ? at >= 0 : name.toLowerCase() === lower)
 		.sort(sort.value === 'auto'
 			? ([, a], [, b]) => Number(packages[b][3]) - Number(packages[a][3])
@@ -1322,8 +1253,7 @@ async function search() {
 	offerFilters(inScope);
 	const kept = onlyPackages ? [] : inScope.filter(([name, , owners]) => passes(name, owners.split(',')));
 	const found = kept.length;
-	/* how many packages those names come from; a query that matches half the database is not worth
-	   counting, and its answer would be `all of them` anyway */
+	/* how many packages those names come from; a query matching half the database is not worth counting, and its answer would be `all of them` anyway */
 	let inPackages;
 	if(found > 0 && found <= Countable) {
 		const seen = new Set();

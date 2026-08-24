@@ -16,8 +16,7 @@ import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorat
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 
 /**
- * The type of a vertex in the {@link ControlFlowGraph}.
- * Please use the helper object (e.g. {@link CfgVertex#getType|getType()}) to work with vertices instead of directly accessing the properties.
+ * The type of a {@link CfgVertex} in the {@link ControlFlowGraph}.
  */
 export enum CfgVertexType {
 	/**
@@ -150,14 +149,8 @@ export const CfgVertex = {
 		return vertex !== undefined && vertex[0] === CfgVertexType.Block;
 	},
 	/**
-	 * Get the type of the given vertex.
-	 * @example
-	 * ```ts
-	 * const vertex: CfgVertex = CfgVertex.makeExpression('node-1')
-	 * console.log(CfgVertex.getType(vertex)); // Output: CfgVertexType.Expression
-	 * ```
+	 * Get the type of the given vertex, e.g. `CfgVertex.getType(CfgVertex.makeExpression('node-1'))` gives `CfgVertexType.Expression`.
 	 * @see {@link CfgVertex#isExpression|isExpression()}, {@link CfgVertex#isStatement|isStatement()}, {@link CfgVertex#isBlock|isBlock()} - for ways to check the type of a vertex against a specific type
-	 * @see {@link CfgVertex#getId|getId()} - for a way to get the id of a vertex
 	 * @see {@link CfgVertex#typeToString|typeToString()} - for a way to convert the type of a vertex to a string for easier debugging and visualization
 	 */
 	getType(this: void, vertex: CfgVertex): CfgVertexType {
@@ -181,12 +174,7 @@ export const CfgVertex = {
 		}
 	},
 	/**
-	 * Get the id of the given vertex, which directly relates to the AST node.
-	 * @example
-	 * ```ts
-	 * const vertex: CfgVertex = CfgVertex.makeExpression('node-1')
-	 * console.log(CfgVertex.getId(vertex)); // Output: 'node-1'
-	 * ```
+	 * Get the id of the given vertex, which directly relates to the AST node, e.g. `CfgVertex.getId(CfgVertex.makeExpression('node-1'))` gives `'node-1'`.
 	 * @see {@link CfgVertex#getType|getType()} - for a way to get the type of a vertex
 	 */
 	getId<T extends CfgVertex | undefined>(this: void, vertex: T): T extends undefined ? NodeId | undefined : NodeId {
@@ -228,9 +216,7 @@ export const CfgVertex = {
 	toBasicBlockId<Id extends NodeId>(this: void, id: Id): `bb-${Id}` {
 		return `bb-${id}`;
 	},
-	/**
-	 * The functions a call may dispatch to, taken from the `calls` edges the dataflow analysis resolved.
-	 */
+	/** The functions a call may dispatch to, see {@link collectCallTargets} for how these are resolved. */
 	getCallTargets(this: void, vertex: CfgVertex | undefined): Set<NodeId> | undefined {
 		if(vertex === undefined || vertex[0] === CfgVertexType.Block) {
 			return undefined;
@@ -247,8 +233,6 @@ export const CfgVertex = {
 		return (vertex)[2];
 	}
 } as const;
-
-
 
 type CfgFlowEdge = CfgEdgeType.Flow;
 /** a control edge *is* the {@link ControlDependency} it stands for, so nothing about the branch is lost */
@@ -309,42 +293,24 @@ export const CfgEdge = {
 		return { id: controlId, when: false };
 	},
 	/**
-	 * Get the cause of a control dependency edge, i.e., the id of the vertex that causes the control dependency.
-	 * If the edge is not a control dependency edge, this returns undefined.
-	 *
-	 * This is the pendant of {@link CfgEdge#isControlDependency|isControlDependency()} on a {@link CfgEdge}.
-	 * @see {@link CfgEdge#unpackCause|unpackCause()} - for a version of this function that assumes the edge is a control dependency edge and hence does not return undefined
+	 * The id of the vertex that causes the control dependency, `undefined` if `edge` is not one.
+	 * @see {@link CfgEdge#unpackCause|unpackCause()} - the same, assuming `edge` is already known to be a control dependency
 	 */
 	getCause(this: void, edge: CfgEdge): NodeId | undefined {
-		if(CfgEdge.isControlDependency(edge)) {
-			return edge.id;
-		} else {
-			return undefined;
-		}
+		return CfgEdge.isControlDependency(edge) ? edge.id : undefined;
 	},
-	/**
-	 * Get the cause of a control dependency edge, i.e., the id of the vertex that causes the control dependency.
-	 */
+	/** @see {@link CfgEdge#getCause|getCause()} - the same, without assuming `edge` is a control dependency */
 	unpackCause(this: void, edge: CfgControlEdge): NodeId {
 		return edge.id;
 	},
 	/**
-	 * Get whether the control dependency edge is satisfied with a true condition or is it negated (e.g., else-branch).
-	 * If the edge is not a control dependency edge, this returns undefined.
-	 *
-	 * This is the pendant of {@link CfgEdge#isControlDependency|isControlDependency()} on a {@link CfgEdge}.
-	 * @see {@link CfgEdge#unpackWhen|unpackWhen()} - for a version of this function that assumes the edge is a control dependency edge and hence does not return undefined
+	 * Whether the control dependency edge is satisfied with a true condition or is negated (e.g., else-branch), `undefined` if `edge` is not one.
+	 * @see {@link CfgEdge#unpackWhen|unpackWhen()} - the same, assuming `edge` is already known to be a control dependency
 	 */
 	getWhen(this: void, edge: CfgEdge): typeof RTrue | typeof RFalse | undefined {
-		if(CfgEdge.isControlDependency(edge)) {
-			return edge.when ? RTrue : RFalse;
-		} else {
-			return undefined;
-		}
+		return CfgEdge.isControlDependency(edge) ? (edge.when ? RTrue : RFalse) : undefined;
 	},
-	/**
-	 * Get whether the control dependency edge is satisfied with a true condition or is it negated (e.g., else-branch).
-	 */
+	/** @see {@link CfgEdge#getWhen|getWhen()} - the same, without assuming `edge` is a control dependency */
 	unpackWhen(this: void, edge: CfgControlEdge): typeof RTrue | typeof RFalse {
 		return edge.when ? RTrue : RFalse;
 	},
@@ -412,10 +378,8 @@ export interface ReadOnlyControlFlowGraph {
 	 */
 	readonly vertices:           (includeBasicBlockElements: boolean) => ReadonlyMap<NodeId, CfgVertex>
 	/**
-	 * Get all edges in the graph, independent of their sources and targets.
-	 * Edges are in flow order: an edge from `a` to `b` means that `b` is evaluated after `a`.
+	 * Get all edges in the graph, independent of their sources and targets (see {@link ControlFlowGraph} for their order).
 	 * If you are only interested in the edges of a specific node, please use {@link ReadOnlyControlFlowGraph#outgoingEdges|outgoingEdges()} or {@link ReadOnlyControlFlowGraph#ingoingEdges|ingoingEdges()}.
-	 *
 	 * This is the pendant of {@link DataflowGraph#edges|edges()} on a {@link DataflowGraph}.
 	 */
 	readonly edges:              () => ReadonlyMap<NodeId, ReadonlyMap<NodeId, CfgEdge>>
@@ -588,14 +552,8 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 		for(const [from, targets] of this.dfg.edges()) {
 			for(const [to, edge] of targets) {
 				const cfgEdge = toCfgEdge(edge);
-				if(cfgEdge === undefined) {
-					continue;
-				}
-				const after = this.edgeInfos.get(from);
-				if(after === undefined) {
-					this.edgeInfos.set(from, new Map([[to, cfgEdge]]));
-				} else {
-					after.set(to, cfgEdge);
+				if(cfgEdge !== undefined) {
+					setNestedEdge(this.edgeInfos, from, to, cfgEdge);
 				}
 			}
 		}
@@ -620,7 +578,6 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 	private get isView(): boolean {
 		return this.dfg !== undefined && !this.projected;
 	}
-
 
 	/**
 	 * Add a new vertex to the control flow graph.
@@ -659,20 +616,9 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 	 */
 	addEdge(from: NodeId, to: NodeId, edge: CfgEdge): this {
 		this.materialize();
-		const edgesFrom = this.edgeInfos.get(from);
-		if(!edgesFrom) {
-			this.edgeInfos.set(from, new Map<NodeId, CfgEdge>([[to, edge]]));
-		} else {
-			edgesFrom.set(to, edge);
-		}
-
+		setNestedEdge(this.edgeInfos, from, to, edge);
 		if(this.revEdgeInfos) {
-			const edgesTo = this.revEdgeInfos.get(to);
-			if(!edgesTo) {
-				this.revEdgeInfos.set(to, new Map<NodeId, CfgEdge>([[from, edge]]));
-			} else {
-				edgesTo.set(from, edge);
-			}
+			setNestedEdge(this.revEdgeInfos, to, from, edge);
 		}
 		return this;
 	}
@@ -682,12 +628,7 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 			this.revEdgeInfos = new Map<NodeId, Map<NodeId, CfgEdge>>();
 			for(const [from, edges] of this.edgeInfos) {
 				for(const [to, edge] of edges) {
-					const edgesTo = this.revEdgeInfos.get(to);
-					if(!edgesTo) {
-						this.revEdgeInfos.set(to, new Map<NodeId, CfgEdge>([[from, edge]]));
-					} else {
-						edgesTo.set(from, edge);
-					}
+					setNestedEdge(this.revEdgeInfos, to, from, edge);
 				}
 			}
 		}
@@ -933,7 +874,6 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 		return this;
 	}
 
-
 	/** merges b into a */
 	mergeTwoBasicBlocks(
 		a: NodeId,
@@ -1048,6 +988,16 @@ function isControlFlowVertex(dfg: DataflowGraph, id: NodeId): boolean {
 	return dfg.hasVertex(id) && dfg.idMap?.get(id) !== undefined;
 }
 
+/** Records `to -> edge` under `from` in a nested edge map, creating the inner map on first use. */
+function setNestedEdge(map: Map<NodeId, Map<NodeId, CfgEdge>>, from: NodeId, to: NodeId, edge: CfgEdge): void {
+	const existing = map.get(from);
+	if(existing === undefined) {
+		map.set(from, new Map([[to, edge]]));
+	} else {
+		existing.set(to, edge);
+	}
+}
+
 /** The control flow part of the given edges, or `undefined` if none of them carries any. */
 function controlFlowEdges(edges: ReadonlyMap<NodeId, DfEdge> | undefined): ReadonlyMap<NodeId, CfgEdge> | undefined {
 	let result: Map<NodeId, CfgEdge> | undefined = undefined;
@@ -1104,7 +1054,6 @@ function makeCfgVertex(dfg: DataflowGraph, id: NodeId): CfgVertex {
 	const callTargets = collectCallTargets(dfg, id);
 	return CfgVertex.makeExprOrStm(id, type, callTargets ? { callTargets } : {});
 }
-
 
 /**
  * The functions a call may dispatch to, taken from the `calls` edges the dataflow analysis resolved.

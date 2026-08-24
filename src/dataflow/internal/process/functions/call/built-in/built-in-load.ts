@@ -64,7 +64,6 @@ export function processLoadCall<OtherInfo>(
 		fn.information.graph.addEdge(rootId, envirResolution.envirNodeId, EdgeType.Reads);
 	}
 
-
 	let sourceFile: string[] | undefined;
 
 	if(RString.is(fileArg)) {

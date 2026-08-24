@@ -413,12 +413,8 @@ export type ConfigOfBuiltInMappingName<N extends keyof typeof BuiltInProcessorMa
 export type BuiltInMemory = Map<BrandedIdentifier, IdentifierDefinition[]>;
 
 /**
- * Whether a definition registered under `namespace` belongs in the always-on built-in environment.
- *
- * R only has base and the {@link AttachedBasePackages} on its search path at startup, so only those are in
- * scope without a `library()` call. Everything the configuration states about another package is *knowledge*
- * about it, not a reason to consider it loaded -- a name with no namespace at all is a language primitive and
- * always in scope.
+ * Whether a definition registered under `namespace` belongs in the always-on built-in environment: only base
+ * and the attached base packages are on R's search path at startup without a `library()` call.
  */
 function attachedByDefault(namespace: string | undefined): boolean {
 	return namespace === undefined || AttachedBasePackageSet.has(namespace);
@@ -529,19 +525,14 @@ export class BuiltIns {
 	emptyBuiltInMemory: BuiltInMemory = new Map<BrandedIdentifier, IdentifierDefinition[]>();
 
 	/**
-	 * What the configuration states about the exports of packages R does not attach on startup, keyed by
-	 * package and then by the bare name within it. These are *not* in {@link builtInMemory}: they enter an
-	 * analysis only when that package is attached, see {@link BuiltIns.forPackage}.
+	 * What the configuration states about the exports of packages R does not attach on startup, by package and
+	 * then bare name; not in {@link builtInMemory}, they enter an analysis only once attached, see {@link BuiltIns.forPackage}.
 	 */
 	packageMemory: Map<string, BuiltInMemory> = new Map<string, BuiltInMemory>();
 
 	/**
-	 * Registers `definition` under `identifier`. A definition whose name carries a namespace R does not
-	 * attach by default lands in {@link packageMemory} instead of the always-on environment.
-	 * @param identifier           - the bare name the definition is reachable under
-	 * @param definition           - what flowR states about it
-	 * @param includeInEmptyMemory - whether it also belongs in the {@link emptyBuiltInMemory}
-	 * @param namespace            - the package the name belongs to, `undefined` for a language primitive
+	 * Registers `definition` under `identifier`. A `namespace` R does not attach by default lands in
+	 * {@link packageMemory} instead of the always-on environment.
 	 */
 	set(identifier: BrandedIdentifier, definition: IdentifierDefinition[], includeInEmptyMemory: boolean | undefined, namespace?: string): void {
 		if(!attachedByDefault(namespace)) {
@@ -556,11 +547,7 @@ export class BuiltIns {
 		}
 	}
 
-	/**
-	 * What flowR states about `pkg`'s exports, `undefined` when it states nothing. Attaching the package is
-	 * what brings these into scope, which is why they are kept out of the built-in environment.
-	 * @param pkg - the package name
-	 */
+	/** What flowR states about `pkg`'s exports, `undefined` when it states nothing (attaching brings these into scope). */
 	forPackage(pkg: string): BuiltInMemory | undefined {
 		return this.packageMemory.get(pkg);
 	}

@@ -10,35 +10,27 @@ import type { FlowrConfig } from '../../../config';
 import { queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { SourceLocation } from '../../../util/range';
 import type { FunctionArgumentRoles } from '../../../dataflow/fn/argument-roles';
+import { ArgumentRoles } from '../../../dataflow/fn/argument-roles';
 import { ArgProp, ArgProps, CallProp, CallProps } from '../../../dataflow/environments/built-in-props';
+import { enumMembers } from '../../../util/objects';
 
 /** the {@link ArgProp} and {@link CallProp} members a query may name, which is what its schema accepts */
-const PropNames: readonly string[] = [...Object.keys(ArgProp), ...Object.keys(CallProp)].filter(k => isNaN(Number(k)));
+const PropNames: readonly string[] = [...enumMembers(ArgProp), ...enumMembers(CallProp)].map(([name]) => name);
 
-/**
- * Refuses a query that can only answer with nothing: one restricting the formals of an answer that carries
- * none, and one naming properties the single half it asks for cannot state. Naming an `ArgProp` alone while
- * asking for both halves is fine, as the formals still have something to say.
- */
+/** refuses a query that can only answer with nothing: `formals` narrowing an answer that carries none, or `props` naming only properties the single half it asks for cannot state */
 function rejectEmptyAnswer(query: InspectFnPropsQuery, helpers: Joi.CustomHelpers): InspectFnPropsQuery {
 	const { only, formals, props } = query;
 	if(only === 'function' && formals !== undefined) {
 		return helpers.message({ custom: '`formals` narrows the formals, which `only: function` does not answer' }) as unknown as InspectFnPropsQuery;
 	}
-	if(props !== undefined && only === 'arguments' && ArgProps.mask(props) === 0) {
-		return helpers.message({ custom: '`props` names no ArgProp, so nothing about a formal could come back' }) as unknown as InspectFnPropsQuery;
-	}
-	if(props !== undefined && only === 'function' && CallProps.mask(props) === 0) {
-		return helpers.message({ custom: '`props` names no CallProp, so nothing about a function could come back' }) as unknown as InspectFnPropsQuery;
+	const half = only === 'arguments' ? ArgProps : only === 'function' ? CallProps : undefined;
+	if(props !== undefined && half !== undefined && half.mask(props) === 0) {
+		return helpers.message({ custom: `\`props\` names no ${half.name}, so nothing about ${only === 'arguments' ? 'a formal' : 'a function'} could come back` }) as unknown as InspectFnPropsQuery;
 	}
 	return query;
 }
-import { ArgumentRoles } from '../../../dataflow/fn/argument-roles';
 
-/**
- * Either returns all function definitions alongside what they and their formals do,
- * or just those matching the filters.
- */
+/** either returns all function definitions alongside what they and their formals do, or just those matching the filters */
 export interface InspectFnPropsQuery extends BaseQueryFormat {
 	readonly type:      'inspect-fn-props';
 	readonly filter?:   SlicingCriterion[]

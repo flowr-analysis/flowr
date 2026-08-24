@@ -35,7 +35,6 @@ import { FunctionArgument } from '../../../dataflow/graph/graph';
 import { linkPlotsToDevices } from './link-devices';
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
-
 /**
  * Executes a dependencies query.
  */

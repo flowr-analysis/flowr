@@ -39,10 +39,7 @@ export const SigDbMagic = 'flowr-sigdb';
 export const SigDbSchema = 5;
 /** default CRAN source-package base URL, used to build a version's tarball link */
 export const DefaultCranBase = 'https://cran.r-project.org/src/contrib/';
-/**
- * Parameter default expressions longer than this are stored truncated (with a `…` marker): flowR only needs a
- * short lexeme preview of a default, not the whole expression, so a small cap keeps the dictionary compact.
- */
+/** parameter default expressions longer than this are stored truncated (with a `…` marker): a short lexeme preview keeps the dictionary compact */
 export const MaxDefaultLength = 10;
 /** file extension of the (uncompressed) bundle */
 export const SigDbExt = '.sigs.ndjson';
@@ -83,9 +80,8 @@ export const enum FnProp {
 	 */
 	Value            = 1 << 13,
 	/**
-	 * The definition is a generic others dispatch on: an S3 one whose body calls `UseMethod`, an S4 one from
-	 * `setGeneric`/`standardGeneric`, or an S7 `new_generic`. The call graph shows the same for an S3 generic,
-	 * but only while a bundle carries one, and it never shows an S4/S7 generic built without an R body.
+	 * The definition is a generic others dispatch on (S3 `UseMethod`, S4 `setGeneric`/`standardGeneric`, S7
+	 * `new_generic`). The call graph only shows this for an S3 generic with a bundled body, never for S4/S7.
 	 */
 	Generic          = 1 << 14
 }
@@ -110,10 +106,9 @@ export const FnPropNames: Readonly<Record<FnProp, string>> = {
 };
 
 /**
- * One parameter of a signature (position implied by array order): just `nameIdx`, or `[nameIdx, props]`, or
- * `[nameIdx, props, defaultIdx]`. `props` is the {@link ArgProp} bitfield, whose two lowest bits are the
- * {@link ArgProp.Forced}/{@link ArgProp.NoDefault} an extractor can state, so bundles written before the other
- * bits existed read the same. All indices point into the global string dictionary.
+ * One parameter of a signature (position implied by array order): `nameIdx`, `[nameIdx, props]`, or
+ * `[nameIdx, props, defaultIdx]` (indices into the global dictionary). `props` is the {@link ArgProp} bitfield,
+ * whose two lowest bits are the pre-existing `Forced`/`NoDefault`, so old bundles read the same.
  */
 export type SigParam = number | [nameIdx: number, props: number] | [nameIdx: number, props: number, defaultIdx: number];
 /** a full signature: the ordered parameter list */
@@ -135,15 +130,9 @@ export const SigClassSystemNames = ['s4', 'rc', 's7', 'r6'] as const;
 export const enum ClassProp {
 	/** the class cannot be instantiated: `representation("VIRTUAL")`, `contains = "VIRTUAL"`, or S7 `abstract = TRUE` */
 	Virtual = 1 << 0,
-	/**
-	 * the record is a `setClassUnion`, so its {@link SigClass} supers are the classes it *unites* (which become
-	 * its subclasses) rather than the ones it extends. A union is always {@link ClassProp.Virtual} too.
-	 */
+	/** the record is a `setClassUnion`, so its {@link SigClass} supers are the classes it *unites* (its subclasses), not the ones it extends. Always {@link ClassProp.Virtual} too. */
 	Union   = 1 << 1,
-	/**
-	 * the package does not define the class, it only extends or relates it (a `setIs`, or a `contains` naming
-	 * a class of another package). What such a record states is the relation, not the class.
-	 */
+	/** the package does not define the class, it only extends or relates it (a `setIs`, or a `contains` naming another package's class) */
 	Foreign = 1 << 2
 }
 
@@ -161,10 +150,9 @@ export const ClassPropNames: Readonly<Record<ClassProp, string>> = {
 export type SigSlot = number | [nameIdx: number, typeIdx: number];
 
 /**
- * One class record `[nameIdx, system, propBits, supers, slots]`, with an optional trailing `pkgIdx` naming the
- * package that *defines* the class when that is not the one carrying the record (see {@link ClassProp.Foreign}).
- * `supers` are dictionary indices of the direct superclasses, in declaration order. The trailing element is
- * additive: readers that stop at `slots` ignore it, so older bundles stay readable.
+ * One class record `[nameIdx, system, propBits, supers, slots]` (`supers`: dictionary indices of the direct
+ * superclasses, in declaration order), with an optional trailing `pkgIdx` naming the package that *defines* the
+ * class when that is not the one carrying the record (see {@link ClassProp.Foreign}); additive, so older readers stay working.
  */
 export type SigClass = [nameIdx: number, system: SigClassSystem, props: number, supers: number[], slots: SigSlot[]]
 	| [nameIdx: number, system: SigClassSystem, props: number, supers: number[], slots: SigSlot[], pkgIdx: number];
@@ -206,16 +194,12 @@ export interface PkgBlob {
 	/** version name to a delta-encoded ascending list of indices into {@link PkgBlob.classes} */
 	classesByVersion?: Record<string, number[]>;
 }
-/**
- * On-disk tuple form of a {@link PkgBlob}, in the order the fields are declared and ending with
- * `sources`. Trailing elements are additive, so a reader that stops earlier keeps working.
- */
+/** On-disk tuple form of a {@link PkgBlob}, field order, ending `sources`; trailing elements are additive. */
 export type PkgBlobTuple = [Sig[], number[][], SigFn[], Record<string, number[]>, string[], SigDep[][], Record<string, number>, Record<string, number>?, Record<string, number>?, SigClass[]?, Record<string, number[]>?];
 
 /**
- * Per-package metadata. The optional 4th element marks an **R-core / base package** (`base`, `stats`,
- * `parallel`, the historical `mva`/`nls`/…): for these the version keys are the R releases during which
- * the package shipped with core R, so the set of versions is exactly the R versions it was part of core.
+ * Per-package metadata. The optional 4th element marks an **R-core / base package**: for these the version keys
+ * are the R releases the package shipped with core R, so the set of versions is exactly its core-R history.
  */
 export type SigDbPkgMeta = [latest: string, archived: number, downloads: number, core?: number];
 
@@ -308,9 +292,8 @@ export interface SigVersionInfo {
 }
 
 /**
- * One class of a package version: what its declaration states, plus which package defines it. This is the
- * structure `s4Classes` (a flat list of names) has nowhere to hang, so a consumer can tell a class the package
- * owns from one it merely inherits, and read a slot's declared type without re-reading the sources.
+ * One class of a package version: what its declaration states, plus which package defines it -- structure
+ * `s4Classes` (a flat name list) has no room for, so a consumer can tell an owned class from an inherited one.
  */
 export interface SigClassInfo {
 	readonly name:     string;
@@ -323,10 +306,7 @@ export interface SigClassInfo {
 	readonly virtual?: boolean;
 	/** the record is a class union, so {@link SigClassInfo.supers} are its members (see {@link ClassProp.Union}) */
 	readonly union?:   boolean;
-	/**
-	 * The package defining the class, when it is not the one carrying the record: an inherited or related class
-	 * the package does not own (see {@link ClassProp.Foreign}). Absent for a class the package defines itself.
-	 */
+	/** The package defining the class, when not the one carrying the record (see {@link ClassProp.Foreign}); absent when self-defined. */
 	readonly package?: string;
 }
 
@@ -338,9 +318,8 @@ export interface SigSlotInfo {
 }
 
 /**
- * Which information to store in a bundle (default: everything). Turning a feature off shrinks the
- * database -- e.g. an exports-and-dependencies-only bundle omits the (largest) call graphs and signatures.
- * The export view (exported/internal/deprecated) is always available.
+ * Which information to store in a bundle (default: everything); turning a feature off shrinks the database. The
+ * export view (exported/internal/deprecated) is always available.
  */
 export interface SigDbFeatures {
 	/** parameter lists (names, forced/optional, defaults) -- default true */

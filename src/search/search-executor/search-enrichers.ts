@@ -27,7 +27,6 @@ import type { KnownRoxygenTags, RoxygenTag } from '../../r-bridge/roxygen2/roxyg
 import { FlowrSearchBuilder } from '../flowr-search-builder';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
-
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
 	/**
 	 * A function that is applied to each element of the search to enrich it with additional data.

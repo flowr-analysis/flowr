@@ -12,7 +12,6 @@ import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-
 
 assumeLoadedPackages('R6');
 
-
 describe('Call Graph Generation', withTreeSitter(ts => {
 	assertDataflow(label('sample calls', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
 		ts,
@@ -149,7 +148,6 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.calls('8@<-', '8@add')
 		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
-
 
 	assertDataflow(label('higher-order fn', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
 		ts,
@@ -296,7 +294,6 @@ f.numeric <- function(x) {
 			.calls('6@"f"', '8@function')
 		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
-
 
 	assertDataflow(label('Recursion with Recall', ['anonymous-bindings']),
 		ts,

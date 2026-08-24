@@ -40,51 +40,41 @@ async function analyze(bounds?: Bounds) {
 }
 
 describe('The dataflow budget, armed by gas', () => {
-	test('a disabled feature arms nothing and the whole graph is built', async() => {
-		const { df, vertices } = await analyze();
-		assert.isUndefined(df.cutShort);
-		assert.isAbove(vertices, 1000);
-	});
-
-	test('an enabled feature with no counted bound still arms nothing', async() => {
+	test('a disabled feature, or an enabled one with no counted bound, arms nothing and the whole graph is built', async() => {
+		const disabled = await analyze();
+		assert.isUndefined(disabled.df.cutShort);
+		assert.isAbove(disabled.vertices, 1000);
 		/* the shipped `timeMs` default is minutes, so nothing here reaches it */
-		const { df } = await analyze({});
-		assert.isUndefined(df.cutShort);
+		assert.isUndefined((await analyze({})).df.cutShort);
 	});
 
-	test('a step bound returns the partial graph, flagged', async() => {
+	test('a step bound returns the partial graph, flagged, and the feature factor scales a counted bound', async() => {
 		const full = await analyze();
 		const { df, vertices } = await analyze({ steps: 50 });
 		assert.strictEqual(df.cutShort?.dimension, BudgetDimension.Steps);
 		assert.strictEqual(df.cutShort?.limit, 50);
 		assert.isAbove(vertices, 0, 'what was processed before the bound is still there');
 		assert.isBelow(vertices, full.vertices, 'and the rest is not');
+		const scaled = await analyze({ steps: 100, factor: 2 });
+		assert.strictEqual(scaled.df.cutShort?.limit, 50, 'twice as sensitive, so 100 steps bound at 50');
 	});
 
-	test('a vertex bound bounds the work, not the resulting graph', async() => {
-		const { df, vertices } = await analyze({ vertices: 30, every: 1 });
-		assert.strictEqual(df.cutShort?.dimension, BudgetDimension.Vertices);
+	test('a vertex bound bounds the work, not the resulting graph; a coarser granularity overshoots by at most one block', async() => {
+		const fine = await analyze({ vertices: 30, every: 1 });
+		assert.strictEqual(fine.df.cutShort?.dimension, BudgetDimension.Vertices);
 		/* vertices are billed as created, so the graph that survives the merges holds no more than the bound */
-		assert.isAtMost(vertices, 31);
-	});
-
-	test('a coarser granularity overshoots the bound, by no more than one block', async() => {
-		const { df, vertices } = await analyze({ vertices: 30, every: 16 });
-		assert.strictEqual(df.cutShort?.dimension, BudgetDimension.Vertices);
+		assert.isAtMost(fine.vertices, 31);
+		const coarse = await analyze({ vertices: 30, every: 16 });
+		assert.strictEqual(coarse.df.cutShort?.dimension, BudgetDimension.Vertices);
 		/* the counters are sampled, so what a bound promises is "not far past", not "never past" */
-		assert.isAbove(vertices, 31, 'the block is only booked once it is full');
-		assert.isAtMost(vertices, 30 + 16);
+		assert.isAbove(coarse.vertices, 31, 'the block is only booked once it is full');
+		assert.isAtMost(coarse.vertices, 30 + 16);
 	});
 
 	test('a time bound ends a long analysis', async() => {
 		/* checked every step, so the deadline cannot be overshot by a whole batch of them */
 		const { df } = await analyze({ timeMs: 1, every: 1 });
 		assert.strictEqual(df.cutShort?.dimension, BudgetDimension.Time);
-	});
-
-	test('the feature factor scales a counted bound like it scales a sampled one', async() => {
-		const { df } = await analyze({ steps: 100, factor: 2 });
-		assert.strictEqual(df.cutShort?.limit, 50, 'twice as sensitive, so 100 steps bound at 50');
 	});
 
 	test('the partial graph is still a usable graph', async() => {

@@ -11,7 +11,6 @@ import { EnvType, REnvironment } from '../../../../../src/dataflow/environments/
 
 assumeLoadedPackages('import');
 
-
 describe('Namespace loading, import::from and box::use', withTreeSitter(ts => {
 	const twoExports = (a: FlowrAnalyzer): void => {
 		a.context().deps.addDependency(Package.fromConstants('pkgA', 'export(fa)\nexport(fb)', ['fa', 'fb']));

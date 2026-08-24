@@ -36,7 +36,6 @@ import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
 import { resetOnFullInvalidation } from '../cache/flowr-cache';
 
-
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
 
 /**
@@ -107,28 +106,15 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role];
 
 	/**
-	 * The project's manual, built from every {@link FileRole.Documentation} file loaded: the `man/` pages with
-	 * their `macros/`, an `INDEX`, and an installed package's `help/AnIndex` or `Meta/Rd.rds`. Ask it which
-	 * page documents a name, and whether one documents it at all.
-	 *
-	 * Built on each call rather than kept, so hold on to the result while you need it instead of asking per name.
+	 * The project's manual, built from every {@link FileRole.Documentation} file loaded, answering which page
+	 * documents a name. Built on each call rather than kept, so hold on to the result instead of asking per name.
 	 */
 	documentation(): RdIndex;
 
-	/**
-	 * The R objects `data(<dataset>)` brings into scope, as the project's `data/datalist` states them. Empty
-	 * for a dataset no list mentions -- including every project that ships none, where R falls back to the
-	 * dataset's own name.
-	 * @param dataset - the name passed to `data()`
-	 */
+	/** The R objects `data(dataset)` brings into scope, per the project's `data/datalist`. Empty when no list mentions `dataset`, including projects that ship none. */
 	datasetObjects(dataset: string): readonly string[];
 
-	/**
-	 * The objects a package's system data (`R/sysdata.rda`, or the `R/sysdata.rdx` of an installed package)
-	 * lazy-loads into its namespace. R makes these available to every line of the package's own code without
-	 * anything bringing them in, and keeps them internal: they are neither exported nor reachable through
-	 * `data()`. Empty for a project that ships none.
-	 */
+	/** The objects a package's system data (`R/sysdata.rda`/`.rdx`) lazy-loads into its namespace: available package-internally, neither exported nor reachable through `data()`. Empty for a project that ships none. */
 	sysdataObjects(): readonly SysdataObject[];
 
 	/**
@@ -370,17 +356,22 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			return;
 		}
 		this.requestedRoots.push(request.content);
+		for(const req of this.activeDiscoveryPlugins().flatMap(p => p.processor(this.ctx, request))) {
+			this.addDiscovered(req);
+		}
+	}
 
-		const active = this.discoveryPlugins.length > 0
-			? this.discoveryPlugins
-			: [FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin()];
-		const expandedRequests = active.flatMap(p => p.processor(this.ctx, request));
-		for(const req of expandedRequests) {
-			if(isParseRequest(req)) {
-				this.addRequest(req);
-			} else {
-				this.addFile(req, req.roles);
-			}
+	/** The registered discovery plugins, or the built-in default when none are registered. */
+	private activeDiscoveryPlugins(): readonly FlowrAnalyzerProjectDiscoveryPlugin[] {
+		return this.discoveryPlugins.length > 0 ? this.discoveryPlugins : [FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin()];
+	}
+
+	/** Adds a request a discovery plugin produced: expands it further if it is itself a parse request, otherwise adds the file directly. */
+	private addDiscovered(req: RParseRequest | FlowrFileProvider): void {
+		if(isParseRequest(req)) {
+			this.addRequest(req);
+		} else {
+			this.addFile(req, req.roles);
 		}
 	}
 
@@ -403,19 +394,12 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			return;
 		}
 		const matchers = implicit.map(entry => globMatcher(entry));
-		const active = this.discoveryPlugins.length > 0
-			? this.discoveryPlugins
-			: [FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin()];
-		for(const req of active.flatMap(p => p.processor(this.ctx, { request: 'project', content: dir }))) {
+		for(const req of this.activeDiscoveryPlugins().flatMap(p => p.processor(this.ctx, { request: 'project', content: dir }))) {
 			const filePath = isParseRequest(req) ? (req.request === 'file' ? req.content : undefined) : req.path();
 			if(filePath === undefined || filePath === fileContent || !matchers.some(m => m(filePath))) {
 				continue;
 			}
-			if(isParseRequest(req)) {
-				this.addRequest(req);
-			} else {
-				this.addFile(req, req.roles);
-			}
+			this.addDiscovered(req);
 		}
 	}
 

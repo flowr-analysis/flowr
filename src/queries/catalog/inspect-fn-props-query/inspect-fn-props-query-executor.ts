@@ -36,18 +36,10 @@ function keepProps(all: Record<NodeId, CallProps>, mask: CallProps): Record<Node
 	if(mask === AllProps) {
 		return all;
 	}
-	const kept: Record<NodeId, CallProps> = {};
-	for(const [id, props] of Object.entries(all)) {
-		if((props & mask) !== 0) {
-			kept[id] = props & mask;
-		}
-	}
-	return kept;
+	return Object.fromEntries(Object.entries(all).map(([id, props]) => [id, props & mask]).filter(([, props]) => props !== 0)) as Record<NodeId, CallProps>;
 }
 
-/**
- * Execute function-property inspection queries on the given analyzer.
- */
+/** Execute function-property inspection queries on the given analyzer. */
 export async function executeFnPropsQuery({ analyzer }: BasicQueryData, queries: readonly InspectFnPropsQuery[]): Promise<InspectFnPropsQueryResult> {
 	const start = Date.now();
 	const filterFor = await QueryFunctionFilter.criteria(queries, analyzer);

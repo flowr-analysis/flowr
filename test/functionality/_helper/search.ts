@@ -28,7 +28,6 @@ export function assertSearch(
 	expected: readonly (NodeId | SlicingCriterion)[] | ((result: FlowrSearchElement<ParentInformation>[]) => boolean),
 	...searches: FlowrSearchLike[]
 ) {
-	/* captured while the file is collected, as that is when the enclosing withLoadedPackages is in effect */
 	const assumed = assumedPackagesOf(undefined);
 	describe(decorateLabelContext(name, ['search']), () => {
 		let analyzer: FlowrAnalyzer | undefined;
@@ -46,7 +45,6 @@ export function assertSearch(
 			dataflow = await analyzer.dataflow();
 			ast = await analyzer.normalize();
 		});
-
 
 		describe.each([true, false])('optimize %s', optimize => {
 			test.each(searches)('%s', async search => {
@@ -110,7 +108,6 @@ export function benchmarkSearch(
 		});
 	});
 }
-
 
 /**
  * checks whether the flowR search has the expected enrichments

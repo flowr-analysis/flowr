@@ -1,4 +1,4 @@
-import { type FlowrFileProvider, type FileRole, FlowrFile, FlowrTextFile } from '../../../context/flowr-file';
+import { type FlowrFileProvider, type FileRole, FlowrWrappedFile, FlowrTextFile } from '../../../context/flowr-file';
 import type { RAuthorInfo } from '../../../../util/r-author';
 import { AuthorRole, parseTextualAuthorString, parseRAuthorString } from '../../../../util/r-author';
 import { splitAtEscapeSensitive } from '../../../../util/text/args';
@@ -19,44 +19,17 @@ export type DCF = Map<string, string[]>;
  * These methods parse and return the relevant information in structured formats.
  * To access raw fields, use the {@link content} method inherited from {@link FlowrFile}.
  */
-export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
-	private readonly wrapped: FlowrFileProvider;
-
-	/**
-	 * Prefer the static {@link FlowrDescriptionFile.from} method to create instances of this class as it will not re-create if already a description file
-	 * and handle role assignments.
-	 */
-	constructor(file: FlowrFileProvider) {
-		super(file.path(), file.roles);
-		this.wrapped = file;
-	}
-
-	/**
-	 * Loads and parses the content of the wrapped file as a DCF structure.
-	 * @see {@link parseDCF} for details on the parsing logic.
-	 */
+export class FlowrDescriptionFile extends FlowrWrappedFile<DeepReadonly<DCF>> {
+	/** @see {@link parseDCF} for details on the parsing logic. */
 	protected loadContent(): DCF {
 		return parseDCF(this.wrapped);
 	}
 
-	/**
-	 * Creates a FlowrDescriptionFile from given DCF content, path, and optional roles.
-	 * This is useful if you already have the DCF content parsed and want to create a description file instance without re-parsing.
-	 */
+	/** Creates a FlowrDescriptionFile from already-parsed DCF content, without re-parsing. */
 	public static fromDCF(dcf: DCF, path: string, roles?: FileRole[]): FlowrDescriptionFile {
 		const file = new FlowrDescriptionFile(new FlowrTextFile(path, roles));
 		file.setContent(dcf);
 		return file;
-	}
-
-	/**
-	 * Description file lifter, this does not re-create if already a description file
-	 */
-	public static from(file: FlowrFileProvider | FlowrDescriptionFile, role?: FileRole): FlowrDescriptionFile {
-		if(role) {
-			file.assignRole(role);
-		}
-		return file instanceof FlowrDescriptionFile ? file : new FlowrDescriptionFile(file);
 	}
 
 	/**
@@ -181,7 +154,6 @@ export function parseRLicenseField(...licenseField: string[]): RLicenseElementIn
 	return licenseField.map(parseRLicense);
 }
 
-
 function emplaceDCF(key: string, val: string, result: Map<string, string[]>) {
 	if(!key) {
 		return;
@@ -269,7 +241,6 @@ function cleanValues(values: string): string[] {
 		.map(s => s.trim())
 		.filter(s => s.length > 0);
 }
-
 
 const VersionRegex = /([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([^)]+)\))?\s*/;
 

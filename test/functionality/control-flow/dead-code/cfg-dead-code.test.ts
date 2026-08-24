@@ -9,7 +9,6 @@ import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 
 assumeLoadedPackages('foreach', 'rlang');
 
-
 interface CfgDeadCodeArgs {
 	readonly reachableFromStart:   readonly NodeId[];
 	readonly unreachableFromStart: readonly NodeId[];

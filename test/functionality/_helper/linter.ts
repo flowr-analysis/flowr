@@ -67,7 +67,6 @@ export function controlledSigDb(pkgOrPkgs: string | Record<string, readonly stri
 	};
 }
 
-
 type DistributiveOmit<T, K extends keyof T> = T extends unknown ? Omit<T, K> : never;
 
 /**
@@ -127,7 +126,6 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup,
 	cleanup: (result: LintingRuleResult<Name> | Result, ast: NormalizedAst) => LintingRuleResult<Name> | Result = (r => r),
 ) {
-	/* captured while the file is collected, as that is when the enclosing withLoadedPackages is in effect */
 	const assumed = assumedPackagesOf(undefined);
 	test(decorateLabelContext(name, ['linter']), async() => {
 		let builder = applyAssumedPackages(new FlowrAnalyzerBuilder()

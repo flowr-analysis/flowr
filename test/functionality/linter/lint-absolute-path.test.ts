@@ -100,7 +100,6 @@ describe('flowR linter', withTreeSitter(parser => {
 					}
 				});
 
-
 				for(const relPath of ['./file.csv', '../file.csv', 'file.csv', 'a\\b\\c.csv']) {
 					/* @ignore-in-wiki */
 					assertLinter(`"${relPath}"`, parser, `x <- "${relPath}"`, 'absolute-file-paths', [], { totalConsidered: 2, totalUnknown: 0 }, {

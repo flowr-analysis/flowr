@@ -76,216 +76,65 @@ const DataFrameFunctionMapper = {
  * List of other data frame functions that are not explicitly supported but may return data frames.
  */
 const OtherDataFrameFunctions = [
+	{ type: 'entry_point', names: ['as.data.frame.matrix'], library: 'base', returnType: DataFrameType.DataFrame }, // S3 dispatch of `as.data.frame`
+	{ type: 'entry_point', names: ['anova', 'AIC', 'BIC'], library: 'anova', returnType: DataFrameType.DataFrame },
+	{ type: 'entry_point', names: ['Anova', 'Manova'], library: 'car', returnType: DataFrameType.DataFrame },
+	{ type: 'entry_point', names: ['data_frame', 'as_data_frame'], library: 'dplyr', returnType: DataFrameType.DataFrame },
+	{ type: 'entry_point', names: ['tbl', 'as.tbl'], library: 'dplyr', returnType: DataFrameType.Tibble },
+	{ type: 'entry_point', names: ['read_fwf', 'read_log'], library: 'readr', returnType: DataFrameType.Tibble },
+	{ type: 'entry_point', names: ['read_excel', 'read_xls', 'read_xlsx'], library: 'readxl', returnType: DataFrameType.Tibble },
+	{ type: 'entry_point', names: ['tibble', 'tibble_row', 'as_tibble', 'tribble'], library: 'tibble', returnType: DataFrameType.Tibble },
+	{ type: 'entry_point', names: ['data.table', 'as.data.table', 'fread'], library: 'data.table', returnType: DataFrameType.DataTable },
+	{ type: 'transformation', names: ['na.omit'], library: 'stats', returnType: DataFrameType.DataFrame, dataFrame: { pos: 0, name: 'object' } },
+	{ type: 'transformation', names: ['unique', 'droplevels'], library: 'base', returnType: DataFrameType.DataFrame, dataFrame: { pos: 0, name: 'x' } },
+	{ type: 'transformation', names: ['aggregate'], library: 'stats', returnType: DataFrameType.DataFrame, dataFrame: { pos: 0, name: 'x' } },
+	{ type: 'transformation', names: ['with', 'within'], library: 'base', returnType: DataFrameType.DataFrame, dataFrame: { pos: 0, name: 'data' } },
+	{ type: 'transformation', names: ['reshape'], library: 'stats', returnType: DataFrameType.DataFrame, dataFrame: { pos: 0, name: 'data' } },
+	{ type: 'transformation', names: ['melt'], library: 'reshape2', returnType: DataFrameType.DataFrame, dataFrame: { pos: 0, name: 'data' } },
+	{ type: 'transformation', names: ['transmute', 'distinct', 'distinct_prepare', 'group_by_prepare', 'rename', 'rename_with', 'reframe', 'slice', 'slice_head', 'slice_tail', 'slice_min', 'slice_max', 'slice_sample'], library: 'dplyr', returnType: DataFrameType.DataFrame, alwaysDataFrame: true, dataFrame: { pos: 0, name: '.data' } },
 	{
-		type:       'entry_point',
-		names:      ['as.data.frame.matrix'], // S3 dispatch of `as.data.frame`
-		library:    'base',
-		returnType: DataFrameType.DataFrame
-	}, {
-		type:       'entry_point',
-		names:      ['anova', 'AIC', 'BIC'],
-		library:    'anova',
-		returnType: DataFrameType.DataFrame
-	}, {
-		type:       'entry_point',
-		names:      ['Anova', 'Manova'],
-		library:    'car',
-		returnType: DataFrameType.DataFrame
-	}, {
-		type:       'entry_point',
-		names:      ['data_frame', 'as_data_frame'],
-		library:    'dplyr',
-		returnType: DataFrameType.DataFrame
-	}, {
-		type:       'entry_point',
-		names:      ['tbl', 'as.tbl'],
-		library:    'dplyr',
-		returnType: DataFrameType.Tibble
-	}, {
-		type:       'entry_point',
-		names:      ['read_fwf', 'read_log'],
-		library:    'readr',
-		returnType: DataFrameType.Tibble
-	}, {
-		type:       'entry_point',
-		names:      ['read_excel', 'read_xls', 'read_xlsx'],
-		library:    'readxl',
-		returnType: DataFrameType.Tibble
-	}, {
-		type:       'entry_point',
-		names:      ['tibble', 'tibble_row', 'as_tibble', 'tribble'],
-		library:    'tibble',
-		returnType: DataFrameType.Tibble
-	}, {
-		type:       'entry_point',
-		names:      ['data.table', 'as.data.table', 'fread'],
-		library:    'data.table',
-		returnType: DataFrameType.DataTable
-	}, {
-		type:       'transformation',
-		names:      ['na.omit'],
-		library:    'stats',
-		returnType: DataFrameType.DataFrame,
-		dataFrame:  { pos: 0, name: 'object' }
-	}, {
-		type:       'transformation',
-		names:      ['unique', 'droplevels'],
-		library:    'base',
-		returnType: DataFrameType.DataFrame,
-		dataFrame:  { pos: 0, name: 'x' }
-	}, {
-		type:       'transformation',
-		names:      ['aggregate'],
-		library:    'stats',
-		returnType: DataFrameType.DataFrame,
-		dataFrame:  { pos: 0, name: 'x' }
-	}, {
-		type:       'transformation',
-		names:      ['with', 'within'],
-		library:    'base',
-		returnType: DataFrameType.DataFrame,
-		dataFrame:  { pos: 0, name: 'data' }
-	}, {
-		type:       'transformation',
-		names:      ['reshape'],
-		library:    'stats',
-		returnType: DataFrameType.DataFrame,
-		dataFrame:  { pos: 0, name: 'data' }
-	}, {
-		type:       'transformation',
-		names:      ['melt'],
-		library:    'reshape2',
-		returnType: DataFrameType.DataFrame,
-		dataFrame:  { pos: 0, name: 'data' }
-	}, {
-		type:  'transformation',
-		names: [
-			'transmute', 'distinct', 'distinct_prepare', 'group_by_prepare', 'rename', 'rename_with', 'reframe',
-			'slice', 'slice_head', 'slice_tail', 'slice_min', 'slice_max', 'slice_sample'
-		],
-		library:         'dplyr',
-		returnType:      DataFrameType.DataFrame,
-		alwaysDataFrame: true,
-		dataFrame:       { pos: 0, name: '.data' }
-	}, {
-		type:  'transformation',
-		names: [
-			'filter_if', 'filter_at', 'filter_all', 'select_if', 'select_at', 'select_all',
-			'mutate_if', 'mutate_at', 'mutate_all', 'transmute_if', 'transmute_at', 'transmute_all',
-			'distinct_if', 'distinct_at', 'distinct_all', 'group_by_if', 'group_by_at', 'group_by_all',
-			'summarize_if', 'summarise_if', 'summarize_at', 'summarise_at', 'summarize_all', 'summarise_all',
-			'arrange_if', 'arrange_at', 'arrange_all', 'rename_if', 'rename_at', 'rename_all'
-		],
-		library:         'dplyr',
-		returnType:      DataFrameType.Tibble,
-		alwaysDataFrame: true,
-		dataFrame:       { pos: 0, name: '.tbl' }
-	}, {
-		type:  'transformation',
-		names: [
-			'semi_join', 'anti_join', 'nest_join', 'cross_join',
-			'ungroup', 'count', 'tally', 'add_count', 'add_tally',
-			'rows_insert', 'rows_append', 'rows_update', 'rows_patch', 'rows_upsert', 'rows_delete'
-		],
-		library:         'dplyr',
-		returnType:      DataFrameType.DataFrame,
-		alwaysDataFrame: true,
-		dataFrame:       { pos: 0, name: 'x' }
-	}, {
-		type:            'transformation',
-		names:           ['bind_cols', 'bind_rows'],
-		library:         'dplyr',
-		returnType:      DataFrameType.DataFrame,
-		alwaysDataFrame: true
-	}, {
-		type:  'transformation',
-		names: [
-			'drop_na', 'replace_na', 'pivot_longer', 'pivot_wider',
-			'separate', 'separate_wider_position', 'separate_wider_delim', 'unite'
-		],
-		library:    'tidyr',
-		returnType: DataFrameType.DataFrame,
-		dataFrame:  { pos: 0, name: 'data' }
-	}, {
-		type:            'transformation',
-		names:           ['add_column', 'add_row', 'add_case'],
-		library:         'tibble',
-		returnType:      DataFrameType.Tibble,
-		alwaysDataFrame: true,
-		dataFrame:       { pos: 0, name: '.data' }
-	}, {
-		type:       'transformation',
-		names:      ['melt', 'dcast'],
-		library:    'data.table',
-		returnType: DataFrameType.DataTable,
-		dataFrame:  { pos: 0, name: 'data' }
-	}, {
-		type:           'modification',
-		names:          ['setNames'],
-		library:        'stats',
-		constraintType: ConstraintType.OperandModification,
-		returnType:     DataFrameType.DataFrame,
-		dataFrame:      { pos: 0, name: 'object' }
-	}, {
-		type:           'modification',
-		names:          ['unname'],
-		library:        'base',
-		constraintType: ConstraintType.OperandModification,
-		returnType:     DataFrameType.DataFrame,
-		dataFrame:      { pos: 0, name: 'obj' }
-	}
+		type:            'transformation', library:         'dplyr', returnType:      DataFrameType.Tibble, alwaysDataFrame: true, dataFrame:       { pos: 0, name: '.tbl' },
+		names:           [
+			'filter_if', 'filter_at', 'filter_all', 'select_if', 'select_at', 'select_all', 'mutate_if', 'mutate_at', 'mutate_all',
+			'transmute_if', 'transmute_at', 'transmute_all', 'distinct_if', 'distinct_at', 'distinct_all', 'group_by_if', 'group_by_at', 'group_by_all',
+			'summarize_if', 'summarise_if', 'summarize_at', 'summarise_at', 'summarize_all', 'summarise_all', 'arrange_if', 'arrange_at', 'arrange_all', 'rename_if', 'rename_at', 'rename_all'
+		]
+	},
+	{ type: 'transformation', names: ['semi_join', 'anti_join', 'nest_join', 'cross_join', 'ungroup', 'count', 'tally', 'add_count', 'add_tally', 'rows_insert', 'rows_append', 'rows_update', 'rows_patch', 'rows_upsert', 'rows_delete'], library: 'dplyr', returnType: DataFrameType.DataFrame, alwaysDataFrame: true, dataFrame: { pos: 0, name: 'x' } },
+	{ type: 'transformation', names: ['bind_cols', 'bind_rows'], library: 'dplyr', returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	{ type: 'transformation', names: ['drop_na', 'replace_na', 'pivot_longer', 'pivot_wider', 'separate', 'separate_wider_position', 'separate_wider_delim', 'unite'], library: 'tidyr', returnType: DataFrameType.DataFrame, dataFrame: { pos: 0, name: 'data' } },
+	{ type: 'transformation', names: ['add_column', 'add_row', 'add_case'], library: 'tibble', returnType: DataFrameType.Tibble, alwaysDataFrame: true, dataFrame: { pos: 0, name: '.data' } },
+	{ type: 'transformation', names: ['melt', 'dcast'], library: 'data.table', returnType: DataFrameType.DataTable, dataFrame: { pos: 0, name: 'data' } },
+	{ type: 'modification', names: ['setNames'], library: 'stats', constraintType: ConstraintType.OperandModification, returnType: DataFrameType.DataFrame, dataFrame: { pos: 0, name: 'object' } },
+	{ type: 'modification', names: ['unname'], library: 'base', constraintType: ConstraintType.OperandModification, returnType: DataFrameType.DataFrame, dataFrame: { pos: 0, name: 'obj' } }
 ] as const satisfies OtherDataFrameFunctionMapping[];
 
 /** Shared parameters of the `read.csv`/`read.delim` wrappers around `read.table`, which only differ in their separator. */
 const ReadTableVariantParams = {
-	fileName:   { pos: 0, name: 'file' },
-	header:     { pos: 1, name: 'header', default: true },
-	separator:  { pos: 2, name: 'sep', default: ',' },
-	quote:      { pos: 3, name: 'quote', default: '"' },
-	comment:    { pos: 6, name: 'comment.char', default: '' },
-	skipLines:  { pos: -1, name: 'skip', default: 0 },
-	checkNames: { pos: -1, name: 'check.names', default: true },
-	noDupNames: { pos: -1, name: 'check.names', default: true },
-	text:       { pos: -1, name: 'text' },
+	fileName:   { pos: 0, name: 'file' }, header:     { pos: 1, name: 'header', default: true }, separator:  { pos: 2, name: 'sep', default: ',' }, quote:      { pos: 3, name: 'quote', default: '"' },
+	comment:    { pos: 6, name: 'comment.char', default: '' }, skipLines:  { pos: -1, name: 'skip', default: 0 },
+	checkNames: { pos: -1, name: 'check.names', default: true }, noDupNames: { pos: -1, name: 'check.names', default: true }, text:       { pos: -1, name: 'text' },
 	critical:   [
-		{ pos: -1, name: 'row.names' },
-		{ pos: -1, name: 'col.names' },
-		{ pos: -1, name: 'nrows', default: -1 },
-		{ pos: -1, name: 'strip.white', default: false },
-		{ pos: -1, name: 'blank.lines.skip', default: true },
-		{ pos: -1, name: 'allow.escapes', default: false },
+		{ pos: -1, name: 'row.names' }, { pos: -1, name: 'col.names' }, { pos: -1, name: 'nrows', default: -1 },
+		{ pos: -1, name: 'strip.white', default: false }, { pos: -1, name: 'blank.lines.skip', default: true }, { pos: -1, name: 'allow.escapes', default: false },
 	]
 };
 
 /** Shared parameters of the readr `read_csv`/`read_tsv` wrappers around `read_delim`, which only differ in their separator. */
 const ReadrDelimitedParams = {
-	fileName:   { pos: 0, name: 'file' },
-	header:     { pos: 1, name: 'col_names', default: true },
-	separator:  { pos: -1, default: ',' },
-	quote:      { pos: 8, name: 'quote', default: '"' },
-	comment:    { pos: 9, name: 'comment', default: '' },
-	skipLines:  { pos: 11, name: 'skip', default: 0 },
-	checkNames: { pos: -1, default: false },
-	noDupNames: { pos: -1, default: true },
+	fileName:   { pos: 0, name: 'file' }, header:     { pos: 1, name: 'col_names', default: true }, separator:  { pos: -1, default: ',' }, quote:      { pos: 8, name: 'quote', default: '"' },
+	comment:    { pos: 9, name: 'comment', default: '' }, skipLines:  { pos: 11, name: 'skip', default: 0 }, checkNames: { pos: -1, default: false }, noDupNames: { pos: -1, default: true },
 	critical:   [
-		{ pos: 3, name: 'col_select' },
-		{ pos: 4, name: 'id' },
-		{ pos: 10, name: 'trim_ws', default: true },
-		{ pos: 12, name: 'n_max', default: Infinity },
-		{ pos: 14, name: 'name_repair', default: 'unique' },
-		{ pos: 18, name: 'skip_empty_rows', default: true }
+		{ pos: 3, name: 'col_select' }, { pos: 4, name: 'id' }, { pos: 10, name: 'trim_ws', default: true },
+		{ pos: 12, name: 'n_max', default: Infinity }, { pos: 14, name: 'name_repair', default: 'unique' }, { pos: 18, name: 'skip_empty_rows', default: true }
 	],
 	noEmptyNames: true
 };
 
 /** Shared parameters of the dplyr `*_join` functions, which only differ in the sides they keep. */
 const DplyrJoinParams = {
-	dataFrame:      { pos: 0, name: 'x' },
-	otherDataFrame: { pos: 1, name: 'y' },
-	by:             { pos: 2, name: 'by' },
-	joinAll:        { pos: -1, default: false },
-	joinLeft:       { pos: -1, default: false },
-	joinRight:      { pos: -1, default: false },
+	dataFrame:      { pos: 0, name: 'x' }, otherDataFrame: { pos: 1, name: 'y' }, by:             { pos: 2, name: 'by' },
+	joinAll:        { pos: -1, default: false }, joinLeft:       { pos: -1, default: false }, joinRight:      { pos: -1, default: false },
 	critical:       [{ pos: -1, name: 'keep' }]
 };
 
@@ -293,33 +142,15 @@ const DplyrJoinParams = {
  * Mapper for defining the location of all relevant function parameters for each supported data frame function of {@link DataFrameFunctionMapper}.
  */
 const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
-	'data.frame': {
-		checkNames: { pos: -1, name: 'check.names', default: true },
-		noDupNames: { pos: -1, name: 'check.names', default: true },
-		special:    ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'],
-		critical:   [{ pos: -1, name: 'row.names' }]
-	},
-	'as.data.frame': {
-		dataFrame: { pos: 0, name: 'x' },
-		critical:  []
-	},
-	'read.table': {
-		fileName:   { pos: 0, name: 'file' },
-		header:     { pos: 1, name: 'header', default: false },
-		separator:  { pos: 2, name: 'sep', default: '\\s' },
-		quote:      { pos: 3, name: 'quote', default: '"\'' },
-		skipLines:  { pos: 12, name: 'skip', default: 0 },
-		checkNames: { pos: 13, name: 'check.names', default: true },
-		noDupNames: { pos: 13, name: 'check.names', default: true },
-		comment:    { pos: 17, name: 'comment.char', default: '#' },
-		text:       { pos: 23, name: 'text' },
+	'data.frame':    { checkNames: { pos: -1, name: 'check.names', default: true }, noDupNames: { pos: -1, name: 'check.names', default: true }, special: ['row.names', 'check.rows', 'check.names', 'fix.empty.names', 'stringsAsFactors'], critical: [{ pos: -1, name: 'row.names' }] },
+	'as.data.frame': { dataFrame: { pos: 0, name: 'x' }, critical: [] },
+	'read.table':    {
+		fileName:   { pos: 0, name: 'file' }, header:     { pos: 1, name: 'header', default: false }, separator:  { pos: 2, name: 'sep', default: '\\s' }, quote:      { pos: 3, name: 'quote', default: '"\'' },
+		skipLines:  { pos: 12, name: 'skip', default: 0 }, checkNames: { pos: 13, name: 'check.names', default: true }, noDupNames: { pos: 13, name: 'check.names', default: true },
+		comment:    { pos: 17, name: 'comment.char', default: '#' }, text:       { pos: 23, name: 'text' },
 		critical:   [
-			{ pos: 6, name: 'row.names' },
-			{ pos: 7, name: 'col.names' },
-			{ pos: 11, name: 'nrows', default: -1 },
-			{ pos: 15, name: 'strip.white', default: false },
-			{ pos: 16, name: 'blank.lines.skip', default: true },
-			{ pos: 18, name: 'allow.escapes', default: false },
+			{ pos: 6, name: 'row.names' }, { pos: 7, name: 'col.names' }, { pos: 11, name: 'nrows', default: -1 },
+			{ pos: 15, name: 'strip.white', default: false }, { pos: 16, name: 'blank.lines.skip', default: true }, { pos: 18, name: 'allow.escapes', default: false },
 		]
 	},
 	'read.csv':    { ...ReadTableVariantParams, separator: { pos: 2, name: 'sep', default: ',' } },
@@ -327,132 +158,52 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 	'read.delim':  { ...ReadTableVariantParams, separator: { pos: 2, name: 'sep', default: '\\t' } },
 	'read.delim2': { ...ReadTableVariantParams, separator: { pos: 2, name: 'sep', default: '\\t' } },
 	'read_table':  {
-		fileName:   { pos: 0, name: 'file' },
-		header:     { pos: 1, name: 'col_names', default: true },
-		separator:  { pos: -1, default: '\\s' },
-		quote:      { pos: -1, default: '"' },
-		skipLines:  { pos: 5, name: 'skip', default: 0 },
-		comment:    { pos: 9, name: 'comment', default: '' },
-		checkNames: { pos: -1, default: false },
-		noDupNames: { pos: -1, default: true },
-		critical:   [
-			{ pos: 6, name: 'n_max', default: Infinity },
-			{ pos: 11, name: 'skip_empty_rows', default: true }
-		],
+		fileName:     { pos: 0, name: 'file' }, header:       { pos: 1, name: 'col_names', default: true }, separator:    { pos: -1, default: '\\s' }, quote:        { pos: -1, default: '"' },
+		skipLines:    { pos: 5, name: 'skip', default: 0 }, comment:      { pos: 9, name: 'comment', default: '' }, checkNames:   { pos: -1, default: false }, noDupNames:   { pos: -1, default: true },
+		critical:     [{ pos: 6, name: 'n_max', default: Infinity }, { pos: 11, name: 'skip_empty_rows', default: true }],
 		noEmptyNames: true
 	},
 	'read_csv':   { ...ReadrDelimitedParams, separator: { pos: -1, default: ',' } },
 	'read_csv2':  { ...ReadrDelimitedParams, separator: { pos: -1, default: ';' } },
 	'read_tsv':   { ...ReadrDelimitedParams, separator: { pos: -1, default: '\\t' } },
 	'read_delim': {
-		fileName:   { pos: 0, name: 'file' },
-		separator:  { pos: 1, name: 'delim', default: '\t' },
-		quote:      { pos: 2, name: 'quote', default: '"' },
-		header:     { pos: 5, name: 'col_names', default: true },
-		comment:    { pos: 12, name: 'comment', default: '' },
-		skipLines:  { pos: 14, name: 'skip', default: 0 },
-		checkNames: { pos: -1, default: false },
-		noDupNames: { pos: -1, default: true },
+		fileName:   { pos: 0, name: 'file' }, separator:  { pos: 1, name: 'delim', default: '\t' }, quote:      { pos: 2, name: 'quote', default: '"' }, header:     { pos: 5, name: 'col_names', default: true },
+		comment:    { pos: 12, name: 'comment', default: '' }, skipLines:  { pos: 14, name: 'skip', default: 0 }, checkNames: { pos: -1, default: false }, noDupNames: { pos: -1, default: true },
 		critical:   [
-			{ pos: 3, name: 'escape_backslash', default: false },
-			{ pos: 4, name: 'escape_double', default: true },
-			{ pos: 7, name: 'col_select' },
-			{ pos: 8, name: 'id' },
-			{ pos: 13, name: 'trim_ws', default: false },
-			{ pos: 15, name: 'n_max', default: Infinity },
-			{ pos: 17, name: 'name_repair', default: 'unique' },
-			{ pos: 21, name: 'skip_empty_rows', default: true }
+			{ pos: 3, name: 'escape_backslash', default: false }, { pos: 4, name: 'escape_double', default: true }, { pos: 7, name: 'col_select' }, { pos: 8, name: 'id' },
+			{ pos: 13, name: 'trim_ws', default: false }, { pos: 15, name: 'n_max', default: Infinity }, { pos: 17, name: 'name_repair', default: 'unique' }, { pos: 21, name: 'skip_empty_rows', default: true }
 		],
 		noEmptyNames: true
 	},
-	'cbind': {
-		special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude']
-	},
-	'rbind': {
-		special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude']
-	},
-	'head': {
-		dataFrame: { pos: 0, name: 'x' },
-		amount:    { pos: 1, name: 'n', default: 6 }
-	},
-	'tail': {
-		dataFrame: { pos: 0, name: 'x' },
-		amount:    { pos: 1, name: 'n', default: 6 },
-		fromEnd:   true
-	},
-	'subset': {
-		dataFrame: { pos: 0, name: 'x' },
-		subset:    { pos: 1, name: 'subset' },
-		select:    { pos: 2, name: 'select' },
-		drop:      { pos: 3, name: 'drop', default: false }
-	},
-	'filter': {
-		dataFrame: { pos: 0, name: '.data' },
-		special:   ['.by', '.preserve']
-	},
-	'select': {
-		dataFrame: { pos: 0, name: '.data' },
-		special:   []
-	},
-	'mutate': {
-		dataFrame:  { pos: 0, name: '.data' },
-		special:    ['.by', '.keep', '.before', '.after'],
-		critical:   [{ pos: -1, name: '.keep' }],
-		checkNames: false,
-		noDupNames: false
-	},
-	'transform': {
-		dataFrame:  { pos: 0, name: '_data' },
-		special:    [],
-		checkNames: true,
-		noDupNames: true
-	},
-	'group_by': {
-		dataFrame: { pos: 0, name: '.data' },
-		by:        { pos: 1 },
-		special:   ['.add', '.drop']
-	},
-	'summarise': {
-		dataFrame: { pos: 0, name: '.data' },
-		special:   ['.by', '.groups']
-	},
-	'summarize': {
-		dataFrame: { pos: 0, name: '.data' },
-		special:   ['.by', '.groups']
-	},
+	'cbind':      { special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'] },
+	'rbind':      { special: ['deparse.level', 'make.row.names', 'stringsAsFactors', 'factor.exclude'] },
+	'head':       { dataFrame: { pos: 0, name: 'x' }, amount: { pos: 1, name: 'n', default: 6 } },
+	'tail':       { dataFrame: { pos: 0, name: 'x' }, amount: { pos: 1, name: 'n', default: 6 }, fromEnd: true },
+	'subset':     { dataFrame: { pos: 0, name: 'x' }, subset: { pos: 1, name: 'subset' }, select: { pos: 2, name: 'select' }, drop: { pos: 3, name: 'drop', default: false } },
+	'filter':     { dataFrame: { pos: 0, name: '.data' }, special: ['.by', '.preserve'] },
+	'select':     { dataFrame: { pos: 0, name: '.data' }, special: [] },
+	'mutate':     { dataFrame: { pos: 0, name: '.data' }, special: ['.by', '.keep', '.before', '.after'], critical: [{ pos: -1, name: '.keep' }], checkNames: false, noDupNames: false },
+	'transform':  { dataFrame: { pos: 0, name: '_data' }, special: [], checkNames: true, noDupNames: true },
+	'group_by':   { dataFrame: { pos: 0, name: '.data' }, by: { pos: 1 }, special: ['.add', '.drop'] },
+	'summarise':  { dataFrame: { pos: 0, name: '.data' }, special: ['.by', '.groups'] },
+	'summarize':  { dataFrame: { pos: 0, name: '.data' }, special: ['.by', '.groups'] },
 	'inner_join': { ...DplyrJoinParams },
 	'left_join':  { ...DplyrJoinParams, joinLeft: { pos: -1, default: true } },
 	'right_join': { ...DplyrJoinParams, joinRight: { pos: -1, default: true } },
 	'full_join':  { ...DplyrJoinParams, joinAll: { pos: -1, default: true } },
 	'merge':      {
-		dataFrame:      { pos: 0, name: 'x' },
-		otherDataFrame: { pos: 1, name: 'y' },
-		by:             { pos: 2, name: 'by' },
-		joinAll:        { pos: 5, name: 'all', default: false },
-		joinLeft:       { pos: 6, name: 'all.x', default: false },
-		joinRight:      { pos: 7, name: 'all.y', default: false },
-		critical:       [
-			{ pos: 3, name: 'by.x' },
-			{ pos: 4, name: 'by.y' }
-		]
+		dataFrame:      { pos: 0, name: 'x' }, otherDataFrame: { pos: 1, name: 'y' }, by:             { pos: 2, name: 'by' },
+		joinAll:        { pos: 5, name: 'all', default: false }, joinLeft:       { pos: 6, name: 'all.x', default: false }, joinRight:      { pos: 7, name: 'all.y', default: false },
+		critical:       [{ pos: 3, name: 'by.x' }, { pos: 4, name: 'by.y' }]
 	},
-	'relocate': {
-		dataFrame:         { pos: 0, name: '.data' },
-		special:           ['.before', '.after'],
-		disallowNamedArgs: true
-	},
-	'arrange': {
-		dataFrame: { pos: 0, name: '.data' },
-		special:   ['.by_group', '.locale']
-	}
+	'relocate': { dataFrame: { pos: 0, name: '.data' }, special: ['.before', '.after'], disallowNamedArgs: true },
+	'arrange':  { dataFrame: { pos: 0, name: '.data' }, special: ['.by_group', '.locale'] }
 };
 
 interface DataFrameFunctionMapperInfo<Params extends object> {
-	/** Mapper function mapping the function call with the given arguments to abstract operations */
 	readonly mapper:           DataFrameFunctionMapping<Params>;
-	/** Package/library of the functions */
 	readonly library:          string;
-	/** The return type of the function (data frame, tibble, or data table) */
+	/** Return type of the function: data frame, tibble, or data table */
 	readonly returnType:       DataFrameType;
 	/** Whether the function always returns a data frame (including tibbles, data tables, etc.) */
 	readonly alwaysDataFrame?: boolean;
@@ -460,11 +211,9 @@ interface DataFrameFunctionMapperInfo<Params extends object> {
 
 interface OtherDataFrameFunctionBase {
 	readonly type:       string;
-	/** The function names of the other (not explicitly) supported functions for this type and library */
 	readonly names:      readonly string[];
-	/** Package/library of the functions */
 	readonly library:    string;
-	/** The return type of the function (data frame, tibble, or data table) */
+	/** @see {@link DataFrameFunctionMapperInfo.returnType} */
 	readonly returnType: DataFrameType;
 }
 
@@ -493,12 +242,7 @@ interface OtherDataFrameModification extends OtherDataFrameFunctionBase, Readonl
 /** Other data frame functions that are not explicitly supported but may return data frames */
 type OtherDataFrameFunctionMapping = OtherDataFrameEntryPoint | OtherDataFrameTransformation | OtherDataFrameModification;
 
-/**
- * Data frame function mapper for mapping a concrete data frame function to abstract data frame operations.
- * - `args` contains the function call arguments
- * - `params` contains the expected argument location for each parameter of the function
- * - `info` contains the resolve information
- */
+/** Maps a concrete data frame function call's `args`, located via `params`, to abstract data frame operations. */
 type DataFrameFunctionMapping<Params extends object> = (
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: Params,
@@ -528,12 +272,8 @@ function pushAccessedCols(result: DataFrameOperation[], operand: NodeId | undefi
 }
 
 /**
- * Records the accessed columns of `operand` split by how they are indexed, as accessing a column by name and
- * accessing it by index are separate operations.
- * @param result          - The operations recorded so far, appended to in place.
- * @param operand         - The data frame the columns are accessed on.
- * @param columns         - The accessed columns, by name or by index.
- * @param absoluteIndices - Whether negative indices deselect the column they name and thus access the same column.
+ * Records the accessed columns of `operand` (appending to `result`), split by name vs. index since those are
+ * separate operations. `absoluteIndices` treats negative indices as deselecting the column they name.
  */
 function pushAccessedColsByIndexing(result: DataFrameOperation[], operand: NodeId | undefined, columns: readonly unknown[], absoluteIndices = false): void {
 	pushAccessedCols(result, operand, columns.filter(col => typeof col === 'string'));
@@ -541,14 +281,7 @@ function pushAccessedColsByIndexing(result: DataFrameOperation[], operand: NodeI
 	pushAccessedCols(result, operand, absoluteIndices ? indices.map(Math.abs) : indices);
 }
 
-/**
- * Maps a concrete data frame function call to abstract data frame operations.
- * @param node      - The R node of the function call
- * @param inference - The data frame shape inference visitor
- * @param dfg       - The data flow graph for resolving the arguments
- * @param ctx       - The current flowR analyzer context
- * @returns The mapped abstract data frame operations for the function call, or `undefined` if the node does not represent a data frame function call
- */
+/** Maps a concrete data frame function call to abstract data frame operations, or `undefined` if `node` is not one. */
 export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 	node: RNode<ParentInformation>,
 	inference: DataFrameShapeInferenceVisitor,
@@ -864,10 +597,8 @@ function mapDataFrameHeadTail(
 }
 
 /**
- * How many entries `head`/`tail` keep or drop for a count that is not whole. R rounds differently on each side:
- * `head` takes the whole part of what it keeps (`head(x, 2.9)` keeps two) and drops enough to leave that
- * (`head(x, -2.5)` of ten leaves seven), while `tail` rounds the length it asks for (`tail(x, 2.9)` keeps three,
- * `tail(x, -2.5)` of ten leaves eight).
+ * How many entries `head`/`tail` keep or drop for a fractional count. R rounds differently on each side: `head`
+ * takes the floor of what it keeps and the ceiling of what it drops, while `tail` rounds either way (`fromEnd`).
  */
 function wholeAmount(amount: number, fromEnd?: boolean): number {
 	const size = Math.abs(amount);

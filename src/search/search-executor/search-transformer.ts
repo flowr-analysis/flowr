@@ -10,7 +10,6 @@ import { type Enrichment, type EnrichmentElementArguments, enrichElement } from 
 import { type Mapper, type MapperArguments, map } from './search-mappers';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 
-
 /**
  * This is a union of all possible transformer node types
  */

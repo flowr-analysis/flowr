@@ -15,12 +15,24 @@ const Classes: SigClassInfo[] = [
 	{ name: 'Person', system: 'r6', supers: [], slots: [{ name: 'name' }] }
 ];
 
+/** builds package `p` with one version per entry in `versionNums`, optionally carrying {@link Classes} and feature overrides */
+function buildVersions(latest: string, versionNums: readonly string[], opts?: { classes?: SigClassInfo[]; features?: Record<string, boolean> }) {
+	const b = new SigDbBuilder();
+	b.addPackage('p', { latest });
+	for(const v of versionNums) {
+		b.addVersion('p', v, opts?.classes ? { ...ver([]), classes: opts.classes } : ver([]));
+	}
+	return b.build(opts?.features ? { ...meta, features: opts.features } : meta);
+}
+
+/** writes {@link Classes} for package `p` and opens the resulting bundle */
+async function openWithClasses(suffix: string) {
+	return writeAndOpen(sigTmpDir(`sigdb-classes-${suffix}-`), buildVersions('1.0', ['1.0'], { classes: Classes }));
+}
+
 describe('Class relations in the signature database', () => {
 	test('a version\'s classes round-trip through a written bundle', async() => {
-		const b = new SigDbBuilder();
-		b.addPackage('p', { latest: '1.0' });
-		b.addVersion('p', '1.0', { ...ver([]), classes: Classes });
-		const rd = await writeAndOpen(sigTmpDir('sigdb-classes-'), b.build(meta));
+		const rd = await openWithClasses('roundtrip');
 		const read = rd.classes('p') as SigClassInfo[];
 		/* stored sorted by name, so compare against the same order */
 		expect(read).toEqual([...Classes].sort((a, c) => a.name.localeCompare(c.name)));
@@ -28,39 +40,24 @@ describe('Class relations in the signature database', () => {
 	});
 
 	test('a class the package does not define names the one that does', async() => {
-		const b = new SigDbBuilder();
-		b.addPackage('p', { latest: '1.0' });
-		b.addVersion('p', '1.0', { ...ver([]), classes: Classes });
-		const rd = await writeAndOpen(sigTmpDir('sigdb-classes-foreign-'), b.build(meta));
+		const rd = await openWithClasses('foreign');
 		const read = rd.classes('p') as SigClassInfo[];
 		expect(read.find(c => c.name === 'Base')?.package).toBe('otherpkg');
 		expect(read.find(c => c.name === 'Account')?.package).toBeUndefined();
 		rd.close();
 	});
 
-	test('the class records pool across versions that state the same thing', () => {
-		const b = new SigDbBuilder();
-		b.addPackage('p', { latest: '2.0' });
-		b.addVersion('p', '1.0', { ...ver([]), classes: Classes });
-		b.addVersion('p', '2.0', { ...ver([]), classes: Classes });
-		const db = b.build(meta);
-		expect(db.blobs[db.pkgs['p']].classes).toHaveLength(Classes.length);
-	});
+	test('the class records pool across versions that state the same thing, and turning the feature off stores none', () => {
+		const pooledDb = buildVersions('2.0', ['1.0', '2.0'], { classes: Classes });
+		expect(pooledDb.blobs[pooledDb.pkgs['p']].classes).toHaveLength(Classes.length);
 
-	test('turning the feature off stores no classes at all', () => {
-		const b = new SigDbBuilder();
-		b.addPackage('p', { latest: '1.0' });
-		b.addVersion('p', '1.0', { ...ver([]), classes: Classes });
-		const db = b.build({ ...meta, features: { classes: false } });
-		expect(db.blobs[db.pkgs['p']].classes).toBeUndefined();
-		expect(db.content.features?.classes).toBe(false);
+		const offDb = buildVersions('1.0', ['1.0'], { classes: Classes, features: { classes: false } });
+		expect(offDb.blobs[offDb.pkgs['p']].classes).toBeUndefined();
+		expect(offDb.content.features?.classes).toBe(false);
 	});
 
 	test('a bundle that states no classes answers with none', async() => {
-		const b = new SigDbBuilder();
-		b.addPackage('p', { latest: '1.0' });
-		b.addVersion('p', '1.0', ver([]));
-		const rd = await writeAndOpen(sigTmpDir('sigdb-classes-none-'), b.build(meta));
+		const rd = await writeAndOpen(sigTmpDir('sigdb-classes-none-'), buildVersions('1.0', ['1.0']));
 		expect(rd.classes('p')).toEqual([]);
 		expect(rd.classes('nosuchpackage')).toBeUndefined();
 		rd.close();

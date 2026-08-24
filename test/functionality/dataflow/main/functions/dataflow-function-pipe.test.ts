@@ -8,7 +8,6 @@ import { argumentInCall } from '../../../_helper/dataflow/environment-builder';
 
 assumeLoadedPackages('magrittr');
 
-
 describe('Function Call Pipes', withTreeSitter(ts => {
 	const pipeConfig = { minRVersion: RPipe.hasPlaceHolderFromRVersion().toString(), expectIsSubgraph: true, resolveIdsAsCriterion: true } as const;
 	describe('Basic Joining', () => {

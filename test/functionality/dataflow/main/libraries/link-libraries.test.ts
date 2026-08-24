@@ -14,7 +14,6 @@ import { loadNodesForNamespace } from '../../../../../src/dataflow/internal/proc
 import { EnvType, REnvironment, builtInEnvJsonReplacer } from '../../../../../src/dataflow/environments/environment';
 import type { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
-
 const ggplot2Callable = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 const namespaceContent = `S3method(fortify,data.frame)
 	S3method(fortify,lm)

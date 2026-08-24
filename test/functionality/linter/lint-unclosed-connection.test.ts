@@ -5,7 +5,6 @@ import { LintingResultCertainty } from '../../../src/linter/linter-format';
 
 assumeLoadedPackages('DBI', 'withr');
 
-
 describe('flowR linter', withTreeSitter(parser => {
 	describe('unclosed-connection', () => {
 		assertLinter('All closed', parser, `a <- textConnection(A)

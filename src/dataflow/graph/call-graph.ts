@@ -193,7 +193,6 @@ function processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefi
 	}
 }
 
-
 /**
  * The caller to record for a function definition found in the body of `from`. A definition the body writes is
  * not called by writing it, so it gets none; a definition flowR synthesizes for a deferred expression
@@ -366,7 +365,6 @@ export const CallGraph = {
 		}
 		return newCg;
 	},
-
 
 	/**
 	 * Computes the call graph from the given dataflow graph.

@@ -72,7 +72,6 @@ export interface BuiltInApplyConfiguration extends MergeableRecord {
 	readonly hasUnknownSideEffects?:  boolean
 }
 
-
 /**
  * Process an apply call like `vapply` or `mapply`.
  */

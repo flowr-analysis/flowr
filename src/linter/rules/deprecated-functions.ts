@@ -268,7 +268,6 @@ export const DEPRECATED_FUNCTIONS = {
 			}
 		}).flat();
 
-
 		// 3. If available, use sigdb to flag deprecated functions
 		const deps = data.inspectContext().deps;
 		if(deps.signatureSources().length === 0) {

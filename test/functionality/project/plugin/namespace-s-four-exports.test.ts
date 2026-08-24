@@ -1,12 +1,8 @@
-import { assert, describe, test } from 'vitest';
+import { assert, test } from 'vitest';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import type { FunctionInfo } from '../../../../src/project/context/flowr-analyzer-functions-context';
-import {
-	getExportedNames,
-	isExportedInInfo,
-	type NamespaceInfo
-} from '../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
+import { getExportedNames, isExportedInInfo, type NamespaceInfo } from '../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
 
 const Namespace = `export(plainFunction)
 exportMethods(show, summary)
@@ -23,44 +19,34 @@ async function contextParsed(): Promise<{ info: NamespaceInfo, fn: (name: string
 	await analyzer.dataflow();
 	const ctx = analyzer.inspectContext();
 	const info = ctx.deps.getDependency('current')?.namespaceInfo as NamespaceInfo;
-	return {
-		info,
-		fn: (name: string) => {
-			const found = ctx.deps.functionsContext.getFunctionInfo('current', name);
-			return found === undefined ? [] : Array.isArray(found) ? found : [found];
-		}
+	const fn = (name: string): FunctionInfo[] => {
+		const found = ctx.deps.functionsContext.getFunctionInfo('current', name);
+		return found === undefined ? [] : Array.isArray(found) ? found : [found];
 	};
+	return { info, fn };
 }
 
-describe('S4 export lists in the namespace model', () => {
-	test('exportMethods and exportClasses are reported apart from ordinary exports', async() => {
-		const { info } = await contextParsed();
-		assert.deepEqual(info.exportedSymbols, ['plainFunction']);
-		assert.deepEqual(info.exportedS4Methods, ['show', 'summary']);
-		assert.deepEqual(info.exportedS4Classes, ['Account', 'Ledger']);
-		assert.notInclude(info.exportedFunctions, 'show', 'an S4 method is no longer an ordinary export');
-		assert.notInclude(info.exportedFunctions, 'Account');
-	});
+const parsed = contextParsed();
 
-	test('they are still exports, so every consumer of the export view sees them', async() => {
-		const { info } = await contextParsed();
-		for(const name of ['plainFunction', 'show', 'summary', 'Account', 'Ledger']) {
-			assert.isTrue(isExportedInInfo(name, info), `${name} is exported`);
-			assert.include(getExportedNames(info), name);
-		}
-	});
+test('exportMethods/exportClasses are reported apart from ordinary exports, yet all remain exports', async() => {
+	const { info, fn } = await parsed;
+	assert.deepEqual(info.exportedSymbols, ['plainFunction']);
+	assert.deepEqual(info.exportedS4Methods, ['show', 'summary']);
+	assert.deepEqual(info.exportedS4Classes, ['Account', 'Ledger']);
+	assert.notInclude(info.exportedFunctions, 'show', 'an S4 method is no longer an ordinary export');
+	assert.notInclude(info.exportedFunctions, 'Account');
+	for(const name of ['plainFunction', 'show', 'summary', 'Account', 'Ledger']) {
+		assert.isTrue(isExportedInInfo(name, info), `${name} is exported`);
+		assert.include(getExportedNames(info), name);
+	}
+	assert.isTrue(fn('plainFunction')[0]?.isExported, 'an ordinary export is still marked as exported');
+});
 
-	test('the functions context records which bit the name carries', async() => {
-		const { fn } = await contextParsed();
-		const [show] = fn('show');
-		assert.isTrue(show?.isS4Method);
-		assert.isNotTrue(show?.isS4Class);
-		const [account] = fn('Account');
-		assert.isTrue(account?.isS4Class);
-		assert.isNotTrue(account?.isS4Method);
-		const [plain] = fn('plainFunction');
-		assert.isNotTrue(plain?.isS4Method);
-		assert.isNotTrue(plain?.isS4Class);
-		assert.isTrue(plain?.isExported);
-	});
+test.each([
+	['show', true, false], ['Account', false, true], ['plainFunction', false, false]
+] as const)('%s carries isS4Method=%s, isS4Class=%s', async(name, isS4Method, isS4Class) => {
+	const { fn } = await parsed;
+	const [found] = fn(name);
+	assert.strictEqual(!!found?.isS4Method, isS4Method, name);
+	assert.strictEqual(!!found?.isS4Class, isS4Class, name);
 });

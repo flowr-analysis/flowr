@@ -187,7 +187,6 @@ export function processAllArguments<OtherInfo>(
 		}
 		argEnv = overwriteEnvironment(argEnv, processed.environment);
 
-
 		if(!RArgument.is(arg) || !arg.name) {
 			callArgs.push({ nodeId: processed.entryPoint, cds: undefined, type: ReferenceType.Argument });
 		} else {
@@ -208,7 +207,6 @@ export interface PatchFunctionCallInput<OtherInfo> {
 	readonly origin:                FunctionOriginInformation
 	readonly link?:                 DataflowGraphVertexAstLink
 }
-
 
 /**
  * Patches a function call vertex into the given dataflow graph.

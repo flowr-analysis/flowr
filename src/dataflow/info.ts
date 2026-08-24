@@ -11,7 +11,6 @@ import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
 import type { DataflowBudgetExhaustion } from '../gas';
 
-
 /**
  * A control dependency links a vertex to the control flow element which
  * may have an influence on its execution.
@@ -93,7 +92,6 @@ export function negateControlDependency(cd: ControlDependency): ControlDependenc
 		when: cd.when === undefined ? undefined : !cd.when,
 	};
 }
-
 
 /**
  * Classifies the type of exit point encountered.
@@ -318,11 +316,7 @@ function coversSet(cds: ReadonlySet<ControlDependency> | readonly ControlDepende
 	return true;
 }
 
-/**
- * Checks whether the given control dependencies are exhaustive (i.e. if for every control dependency on a boolean,
- * the list contains a dependency on the `true` and on the `false` case).
- * @see {@link happensInEveryBranch} - for the array-based version
- */
+/** As {@link happensInEveryBranch}, but for a set of control dependencies. */
 export function happensInEveryBranchSet(cds: ReadonlySet<ControlDependency> | undefined): boolean {
 	return cds === undefined || (cds.size !== 0 && coversSet(cds));
 }

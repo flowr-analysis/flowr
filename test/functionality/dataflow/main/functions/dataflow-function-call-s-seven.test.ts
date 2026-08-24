@@ -10,7 +10,6 @@ import { Identifier } from '../../../../../src/dataflow/environments/identifier'
 
 assumeLoadedPackages('S7', 'ggplot2');
 
-
 describe('S7 Function Calls', withTreeSitter(ts => {
 	assertDataflow(label('Simple S7 Generic Registration', ['function-definitions', 'oop-r7-s7']), ts,
 		`sample <- new_generic("sample", dispatch_args="y", function(y, ..., na.rm = FALSE) {

@@ -1,20 +1,11 @@
-import { assert, describe, test } from 'vitest';
-import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { label } from '../_helper/label';
+import { testAnyCase, testEachCase } from '../_helper/query';
 
 describe('Inspect Exception Query', withTreeSitter(parser => {
+	const mayThrow = (points: readonly unknown[]) => points.length > 0;
 	/** Whether the query says any of the program's function definitions may throw. */
-	function testExceptions(name: string, code: string, expected: boolean) {
-		test(label(name, ['name-normal'], ['other']), async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest(code);
-			const result = await analyzer.query([{ type: 'inspect-exception' }]);
-			const found = result['inspect-exception'].exceptions;
-			assert.isNotEmpty(Object.keys(found), 'the query has to report every function definition');
-			assert.strictEqual(Object.values(found).some(e => e.length > 0), expected, JSON.stringify(found));
-		});
-	}
+	const testExceptions = testAnyCase(parser, 'inspect-exception', r => r.exceptions, mayThrow);
 
 	testExceptions('a stop throws', 'f <- function() stop("x")', true);
 	testExceptions('so does one its callee makes', 'g <- function() stop("x")\nf <- function() g()', true);
@@ -25,19 +16,7 @@ describe('Inspect Exception Query', withTreeSitter(parser => {
 	testExceptions('a warning is no exception', 'f <- function() warning("x")', false);
 
 	/** Whether the query says each definition of the program may throw, keyed by the definition as it is written. */
-	function testEachException(name: string, code: string, expected: Readonly<Record<string, boolean>>) {
-		test(label(name, ['name-normal'], ['other']), async() => {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
-			analyzer.addRequest(code);
-			const result = await analyzer.query([{ type: 'inspect-exception' }]);
-			const idMap = (await analyzer.normalize()).idMap;
-			const found: Record<string, boolean> = {};
-			for(const [id, points] of Object.entries(result['inspect-exception'].exceptions)) {
-				found[idMap.get(Number(id))?.info.fullLexeme ?? id] = points.length > 0;
-			}
-			assert.deepStrictEqual(found, { ...expected });
-		});
-	}
+	const testEachException = testEachCase(parser, 'inspect-exception', r => r.exceptions, mayThrow);
 
 	/* a guard around a call guards what the call raises, just as it does what is written in its place */
 	testEachException('tryCatch around a call to a thrower', 'f <- function() stop("x")\ng <- function() tryCatch(f(), error = function(e) 0)', {

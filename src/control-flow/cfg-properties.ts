@@ -113,10 +113,8 @@ function checkNoDirectCycles(cfg: ControlFlowInformation, type: CfgEdgeType): bo
 	return true;
 }
 
-
 /** either returns true or the name of the property that is not satisfied */
 export type PropertyReport = true | CfgProperty;
-
 
 /**
  * Check if the given CFG satisfies all properties.

@@ -24,7 +24,7 @@
 <header>
 <div class="titles">
 <div class="title-row">
-<h1><a class="brand" href="../../../"><img class="mark" src="../../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><span class="where">Benchmark History</span><a class="version" id="version" data-release="v2.14.4" href="https://github.com/flowr-analysis/flowr/commit/0748dc52cd6d17ff303dcbce4946b5c595fea7dc" target="_blank" rel="noopener" title="a development build of flowR, 20 commits after v2.14.4, with uncommitted changes (0748dc5)">v2.14.4*</a></h1>
+<h1><a class="brand" href="../../../"><img class="mark" src="../../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><span class="where">Benchmark History</span><a class="version" id="version" data-release="v2.14.4" href="https://github.com/flowr-analysis/flowr/commit/69beba184991f981285dc625e620e553bd6099f5" target="_blank" rel="noopener" title="a development build of flowR, 21 commits after v2.14.4, with uncommitted changes (69beba1)">v2.14.4*</a></h1>
 </div>
 <p class="intro">
 One point per release, measured on a shared CI runner.
@@ -33,11 +33,7 @@ One point per release, measured on a shared CI runner.
 </div>
 <div class="theme">
 <label for="theme">Theme</label>
-<select id="theme">
-<option value="system">System</option>
-<option value="light">Light</option>
-<option value="dark">Dark</option>
-</select>
+<select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select>
 </div>
 </header>
 <p id="status" class="status" hidden></p>
@@ -45,71 +41,29 @@ One point per release, measured on a shared CI runner.
 <aside id="controls">
 <details class="panel" id="panel-data" open>
 <summary><span class="panel-title">Data</span><span class="digest" id="digest-data"></span></summary>
-<label class="field">
-<span>Suite</span>
-<select id="suite"></select>
-</label>
-<label class="field">
-<span>Engine</span>
-<select id="engine"></select>
-</label>
-<label class="field">
-<span>Time range</span>
-<select id="range">
-<option value="6">Last 6 months</option>
-<option value="12" selected>Last year</option>
-<option value="24">Last two years</option>
-<option value="0">Everything</option>
-</select>
-</label>
+<label class="field"><span>Suite</span><select id="suite"></select></label>
+<label class="field"><span>Engine</span><select id="engine"></select></label>
+<label class="field"><span>Time range</span><select id="range"><option value="6">Last 6 months</option><option value="12" selected>Last year</option><option value="24">Last two years</option><option value="0">Everything</option></select></label>
 <p class="hint" id="range-note"></p>
 </details>
 <details class="panel" id="panel-view" open>
 <summary><span class="panel-title">View</span><span class="digest" id="digest-view"></span></summary>
-<label class="field">
-<span>Values</span>
-<select id="mode">
-<option value="absolute">Absolute</option>
-<option value="delta">Delta vs. recent median</option>
-</select>
-</label>
-<label class="field" id="baseline-field">
-<span>Baseline: last <output id="baseline-out">3</output> releases</span>
-<input id="baseline" type="range" min="1" max="25" step="1" value="3">
-</label>
-<label class="field" id="smooth-field">
-<span>Smoothing window: <output id="smooth-out">1 run</output></span>
-<input id="smooth" type="range" min="1" max="15" step="2" value="1">
-</label>
-<label class="check">
-<input id="band" type="checkbox">
-<span>Error band (standard deviation)</span>
-</label>
-<label class="check" id="calibrate-field" hidden>
-<input id="calibrate" type="checkbox" checked>
-<span>Divide timings by calibration</span>
-</label>
+<label class="field"><span>Values</span><select id="mode"><option value="absolute">Absolute</option><option value="delta">Delta vs. recent median</option></select></label>
+<label class="field" id="baseline-field"><span>Baseline: last <output id="baseline-out">3</output> releases</span><input id="baseline" type="range" min="1" max="25" step="1" value="3"></label>
+<label class="field" id="smooth-field"><span>Smoothing window: <output id="smooth-out">1 run</output></span><input id="smooth" type="range" min="1" max="15" step="2" value="1"></label>
+<label class="check"><input id="band" type="checkbox"><span>Error band (standard deviation)</span></label>
+<label class="check" id="calibrate-field" hidden><input id="calibrate" type="checkbox" checked><span>Divide timings by calibration</span></label>
 <p class="hint" id="calibration-note" hidden></p>
 </details>
 <details class="panel" id="panel-layout" open>
 <summary><span class="panel-title">Layout</span><span class="digest" id="digest-layout"></span></summary>
-<label class="check">
-<input id="lock" type="checkbox">
-<span>Lock the tiles</span>
-</label>
-<div class="buttons">
-<button type="button" id="reset-layout">Reset</button>
-<button type="button" id="copy-link" title="copy a link that restores this view">Copy link</button>
-</div>
+<label class="check"><input id="lock" type="checkbox"><span>Lock the tiles</span></label>
+<div class="buttons"><button type="button" id="reset-layout">Reset</button><button type="button" id="copy-link" title="copy a link that restores this view">Copy link</button></div>
 <p class="hint">Unlock to drag the tiles into another order. The corner button folds tiles away.</p>
 </details>
 <details class="panel" id="panel-download" open>
 <summary><span class="panel-title">Download</span><span class="digest" id="digest-download"></span></summary>
-<div class="buttons">
-<button type="button" id="dl-suite">Suite JSON</button>
-<button type="button" id="dl-csv">Visible CSV</button>
-<button type="button" id="dl-all">Full data.js</button>
-</div>
+<div class="buttons"><button type="button" id="dl-suite">Suite JSON</button><button type="button" id="dl-csv">Visible CSV</button><button type="button" id="dl-all">Full data.js</button></div>
 </details>
 </aside>
 <section id="charts"></section>

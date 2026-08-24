@@ -1,10 +1,6 @@
 /**
- * What a class *declaration* states, across R's object systems, and how the declarations of one analysis relate.
- *
- * The systems say the same handful of things in different words, so one model carries them all: a name, the
- * classes it {@link ClassDeclaration.contains|contains}, the {@link ClassMember|members} it declares, and
- * whether it can be instantiated. What differs is which argument says what, and that is stated per built-in in
- * a {@link ClassDeclarationConfig} rather than guessed from the call.
+ * What a class declaration states across R's object systems (S4, RC, S7, R6) and how declarations relate;
+ * which argument means what is configured per built-in in {@link ClassDeclarationConfig}, not guessed.
  */
 
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -19,6 +15,7 @@ import type { DataflowGraph } from '../graph/graph';
 import { NoEdges } from '../graph/graph';
 import { DfEdge, EdgeType } from '../graph/edge';
 import { isNotUndefined } from '../../util/assert';
+import { compactRecord } from '../../util/objects';
 import type { SigClassInfo } from '../../project/sigdb/schema';
 import { FunctionCallVertex, VertexType  } from '../graph/vertex';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexInfo } from '../graph/vertex';
@@ -46,10 +43,7 @@ export const enum MemberVisibility {
 /** One declared member of a class: an S4 slot, an S7 property, an RC field, or an R6 public/private entry. */
 export interface ClassMember {
 	readonly name:        string;
-	/**
-	 * The type the declaration states for the member, when it states one: an S4 slot's class
-	 * (`slots = c(x = "numeric")`), an RC field's, or the S7 property class as written. R6 declares no types.
-	 */
+	/** the member's declared type, when one is stated (S4/RC/S7); R6 declares no types */
 	readonly type?:       string;
 	/** whether the member is a function, i.e. a method rather than a field (R6/RC, where both share one list) */
 	readonly method?:     boolean;
@@ -93,10 +87,7 @@ export interface ClassMemberArgRef extends ClassArgRef {
 	readonly methods?:    boolean;
 }
 
-/**
- * How one built-in declares a class, stated alongside the built-in the way `setMethod`'s `target`/`definition`
- * arguments already are, so no processor has to guess an argument's meaning from its position.
- */
+/** How one built-in declares a class, so no processor has to guess an argument's meaning from its position. */
 export interface ClassDeclarationConfig {
 	readonly system:        ClassSystem;
 	/** the argument naming the class */
@@ -118,11 +109,12 @@ export interface ClassDeclarationConfig {
 /** the class name R uses to mark a class as non-instantiable */
 const VirtualClass = 'VIRTUAL';
 
-/** The argument `ref` names, by name when the call gives one and by position among the unnamed ones otherwise. */
-function argFor<Info>(
-	args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[],
-	ref:  ClassArgRef | undefined
-): RNode<Info & ParentInformation> | undefined {
+/**
+ * The argument `ref` names, by name when the call gives one and by position among the unnamed ones otherwise.
+ * Exported so `built-in-s-four.ts` can drop its own copy of this instead of hand-rolling it again; that file
+ * already imports {@link ClassArgRef} from here, so the reverse import would cycle.
+ */
+export function argFor<Info>(args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[], ref: ClassArgRef | undefined): RNode<Info & ParentInformation> | undefined {
 	if(ref === undefined) {
 		return undefined;
 	}
@@ -179,9 +171,8 @@ function literalVector<Info>(node: RNode<Info & ParentInformation> | undefined):
 }
 
 /**
- * The members a `c(x = "numeric")` / `list(x = ...)` / `representation(...)` argument states: one entry per
- * named element, plus the bare strings such a call may carry (an RC `fields = c("x", "y")` names untyped
- * fields, and a bare `"VIRTUAL"` marks the class virtual instead).
+ * The members a `c(x = "numeric")` / `list(x = ...)` / `representation(...)` argument states, one per named
+ * element, plus the bare strings such a call may carry (an RC `fields = c("x", "y")`, or a `"VIRTUAL"` marker).
  */
 function membersOf<Info>(node: RNode<Info & ParentInformation> | undefined, ref: ClassMemberArgRef): { members: ClassMember[], virtual: boolean } {
 	const members: ClassMember[] = [];
@@ -189,13 +180,8 @@ function membersOf<Info>(node: RNode<Info & ParentInformation> | undefined, ref:
 	if(node === undefined) {
 		return { members, virtual };
 	}
-	const shared = { ...(ref.visibility !== undefined ? { visibility: ref.visibility } : {}) };
 	if(!RFunctionCall.isNamed(node)) {
-		const single = literal(node);
-		if(single === VirtualClass) {
-			return { members, virtual: true };
-		}
-		return { members, virtual };
+		return { members, virtual: literal(node) === VirtualClass };
 	}
 	for(const arg of node.arguments) {
 		if(RArgument.isEmpty(arg) || arg.value === undefined) {
@@ -208,19 +194,14 @@ function membersOf<Info>(node: RNode<Info & ParentInformation> | undefined, ref:
 			if(bare === VirtualClass) {
 				virtual = true;
 			} else if(bare !== undefined) {
-				members.push({ name: bare, ...shared, ...(ref.methods ? { method: true } : {}) });
+				members.push(compactRecord({ name: bare, visibility: ref.visibility, method: ref.methods ? true : undefined }));
 			}
 			continue;
 		}
 		/* S7 states a property's class as the `class_numeric` object, S4 as the `"numeric"` string; both name it */
 		const type = ref.typed ? literal(arg.value) ?? (RSymbol.is(arg.value) ? arg.value.lexeme : undefined) : undefined;
 		const isMethod = ref.methods === true || RFunctionDefinition.is(arg.value);
-		members.push({
-			name,
-			...(type !== undefined ? { type } : {}),
-			...(isMethod ? { method: true } : {}),
-			...shared
-		});
+		members.push(compactRecord({ name, type, method: isMethod ? true : undefined, visibility: ref.visibility }));
 	}
 	return { members, virtual };
 }
@@ -232,15 +213,9 @@ function isTrue<Info>(node: RNode<Info & ParentInformation> | undefined): boolea
 
 /**
  * Reads the {@link ClassDeclaration} a call states, following the argument mapping its built-in declares.
- * Nothing is guessed: an argument that resolves to no literal contributes a
- * {@link ClassDeclaration.byVariable|by-variable} name or nothing at all.
- * @param config - what the built-in says about its own arguments
- * @param args   - the arguments of the call, in source order
+ * An argument that resolves to no literal contributes a {@link ClassDeclaration.byVariable|by-variable} name, or nothing.
  */
-export function classDeclarationOf<Info>(
-	config: ClassDeclarationConfig,
-	args:   readonly PotentiallyEmptyRArgument<Info & ParentInformation>[]
-): ClassDeclaration {
+export function classDeclarationOf<Info>(config: ClassDeclarationConfig, args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[]): ClassDeclaration {
 	const byVariable: string[] = [];
 	const nameNode = argFor(args, config.nameArg);
 	const name = literal(nameNode);
@@ -264,18 +239,19 @@ export function classDeclarationOf<Info>(
 	const prototype = config.prototypeArg === undefined ? []
 		: membersOf(argFor(args, config.prototypeArg), config.prototypeArg).members.map(m => m.name);
 
-	return {
-		system: config.system,
-		...(name !== undefined ? { name } : {}),
+	/* a class union is virtual by construction: it exists to be extended, never to be instantiated */
+	const isUnion = union !== undefined && union.length > 0;
+	return compactRecord({
+		system:    config.system,
+		name,
 		contains,
 		members,
-		/* a class union is virtual by construction: it exists to be extended, never to be instantiated */
-		...(virtual || (union !== undefined && union.length > 0) ? { virtual: true } : {}),
-		...(union !== undefined && union.length > 0 ? { union } : {}),
-		...(prototype.length > 0 ? { prototype } : {}),
-		...(config.relation !== undefined ? { relation: config.relation } : {}),
+		virtual:   virtual || isUnion ? true : undefined,
+		union:     isUnion ? union : undefined,
+		prototype: prototype.length > 0 ? prototype : undefined,
+		relation:  config.relation,
 		byVariable
-	};
+	});
 }
 
 /** One class the analysis saw declared, with the call that declared it. */
@@ -286,10 +262,7 @@ export interface DeclaredClass extends ClassDeclaration {
 	readonly name: string;
 }
 
-/**
- * Every class the graph declares, keyed by name. A later declaration of the same name wins, as it would in R.
- * @param graph - the dataflow graph to read
- */
+/** Every class the graph declares, keyed by name. A later declaration of the same name wins, as it would in R. */
 export function declaredClasses(graph: DataflowGraph): Map<string, DeclaredClass> {
 	const classes = new Map<string, DeclaredClass>();
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
@@ -358,8 +331,6 @@ function generatorVariables(graph: DataflowGraph, classes: ReadonlyMap<string, D
 /**
  * The transitive superclasses of `name` among `classes`, nearest first and each named once. A class the
  * analysis never saw declared ends the chain, so what another package contributes is simply not in the answer.
- * @param name    - the class to start from
- * @param classes - what {@link declaredClasses} found
  */
 export function superClassesOf(name: string, classes: ReadonlyMap<string, ClassDeclaration>): string[] {
 	const chain: string[] = [];
@@ -393,27 +364,20 @@ export const ClassDeclarations = {
 } as const;
 
 /**
- * The {@link SigClassInfo} records the signature database stores for the classes an analysis found, so what
- * flowR reads off `setClass`/`R6Class`/`new_class` and what a bundle carries are the same facts.
- *
- * A class the analysis declared is the package's own, so it carries no `package`. For anything it only
- * references* -- a superclass declared elsewhere -- `ownerOf` decides which package defines it; a referenced
- * class it answers for becomes a `foreign` record, and one it cannot place is left out rather than invented.
- * @param classes - what {@link declaredClasses} found
- * @param ownerOf - the package defining a class the analysis did not declare, e.g. `src.classOwner`
+ * The {@link SigClassInfo} records the signature database stores for the classes an analysis found. A class
+ * the analysis declared carries no `package`; a referenced class `ownerOf` can place becomes a `foreign` record.
  */
 export function toSigClasses(classes: ReadonlyMap<string, DeclaredClass>, ownerOf?: (name: string) => string | undefined): SigClassInfo[] {
 	const records: SigClassInfo[] = [];
 	for(const declared of classes.values()) {
-		records.push({
-			name:   declared.name,
-			system: declared.system,
-			supers: declared.union ?? declared.contains,
-			slots:  declared.members.filter(m => !m.method)
-				.map(m => ({ name: m.name, ...(m.type !== undefined ? { type: m.type } : {}) })),
-			...(declared.virtual ? { virtual: true } : {}),
-			...(declared.union !== undefined ? { union: true } : {})
-		});
+		records.push(compactRecord({
+			name:    declared.name,
+			system:  declared.system,
+			supers:  declared.union ?? declared.contains,
+			slots:   declared.members.filter(m => !m.method).map(m => compactRecord({ name: m.name, type: m.type })),
+			virtual: declared.virtual ? true : undefined,
+			union:   declared.union !== undefined ? true : undefined
+		}));
 	}
 	if(ownerOf === undefined) {
 		return records;

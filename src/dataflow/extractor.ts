@@ -75,7 +75,6 @@ export const processors: DataflowProcessors<ParentInformation> = {
 	}
 };
 
-
 function resolveLinkToSideEffects(graph: DataflowGraph, ctx: FlowrAnalyzerContext) {
 	const gasLevel = ctx.gas.checkGas(GasFeatureKey.SideEffectLinking);
 	if(gasLevel >= GasLevel.Critical) {

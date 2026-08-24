@@ -17,11 +17,10 @@ import { RLogical } from '../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { happensInEveryBranch } from '../info';
 
-/**
- * What a function does with its formals, as the {@link ArgProp} bitfield everything else states its arguments
- * with, keyed by the id of each formal's name. Only the formals carrying at least one bit appear, and an unset
- * bit means "nothing says so": a formal handed to a function flowR cannot resolve carries none at all.
- */
+/** What a call states about one of its arguments, paired with the node that argument is. */
+type ArgumentProps = readonly (readonly [props: ArgProps, argument: NodeId])[];
+
+/** What a function does with its formals, as an {@link ArgProp} bitfield keyed by the id of each formal's name. */
 export type FunctionArgumentRoles = Record<NodeId, ArgProps>;
 
 /** How far a value is followed back: enough for `y <- x; y`, not a whole slice. */
@@ -36,14 +35,8 @@ export interface ArgumentRolesOptions {
 }
 
 /**
- * What each definition in `ids` does with its formals, as {@link ArgProps}. Complements
- * {@link strictnessOfFunction}, which answers whether a formal is evaluated; this answers what for.
- *
- * A formal is an {@link ArgProp.Alias} only when the result is *always* that formal, which the walk over the
- * unconditional exit points answers by following identity-preserving steps alone (`return(x)` under an `if` is
- * not one). Every other bit is what the calls in the body state for what they are handed, so `missing(x)` gives
- * {@link ArgProp.Presence} and `lapply(xs, FUN)` gives `FUN` {@link ArgProp.Callee}; a formal reaching several
- * such calls carries the bits of all of them.
+ * What each definition in `ids` does with its formals, as {@link ArgProps}. A formal is {@link ArgProp.Alias}
+ * only when the result is *always* that formal; every other bit is what the calls in the body state for it.
  * @useInstead {@link ArgumentRoles.of}
  */
 function argumentRolesOfFunctions(this: void, ids: Iterable<NodeId>, graph: DataflowGraph, options: ArgumentRolesOptions = {}): Record<NodeId, FunctionArgumentRoles> {
@@ -58,9 +51,7 @@ function argumentRolesOfFunctions(this: void, ids: Iterable<NodeId>, graph: Data
 	return all;
 }
 
-/**
- * What the functions of a program do with the arguments they are handed.
- */
+/** What the functions of a program do with the arguments they are handed. */
 export const ArgumentRoles = {
 	name:     'ArgumentRoles',
 	/** The roles of several definitions, sharing the built-in lookups; see {@link argumentRolesOfFunctions}. */
@@ -70,15 +61,24 @@ export const ArgumentRoles = {
 } as const;
 
 /** What one run carries along, so the built-in lookups are shared between the definitions it answers. */
-interface RoleState {
-	readonly graph:    DataflowGraph
+export interface LookupState {
+	readonly graph: DataflowGraph
 	/** what flowR states about a built-in, answered once per name */
-	readonly info:     BuiltInLookup
+	readonly info:  BuiltInLookup
+}
+
+/** @see {@link LookupState}; also how far a value is followed back, for the walks that need to know. */
+interface RoleState extends LookupState {
 	readonly maxDepth: number
+	/**
+	 * What {@link argumentProps} answered for a call, as the walks ask the same calls over and over and matching
+	 * arguments to formals is the expensive part. Lives for the one run and is dropped with it.
+	 */
+	readonly args:     Map<NodeId, ArgumentProps>
 }
 
 function makeState(graph: DataflowGraph, { ctx, maxDepth = DefaultDepth }: ArgumentRolesOptions): RoleState {
-	return { graph, info: builtInLookup(ctx), maxDepth };
+	return { graph, info: builtInLookup(ctx), maxDepth, args: new Map() };
 }
 
 function rolesOf(id: NodeId, state: RoleState): FunctionArgumentRoles {
@@ -106,11 +106,7 @@ function rolesOf(id: NodeId, state: RoleState): FunctionArgumentRoles {
 /** The bits of a call that say nothing about the value: the alias walk and the parameter list answer these. */
 const NotStatedByACall = ArgProp.Alias | ArgProp.NoDefault;
 
-/**
- * What the result of `nodes` always is, following identity-preserving steps only. Where a node hands back one
- * of several values, only what *every* one of them yields counts: `if(c) x else x` is `x`, `if(c) x else y`
- * neither.
- */
+/** What `nodes` always yield, following identity-preserving steps only: `if(c) x else x` is `x`, `if(c) x else y` neither. */
 function identityOf(nodes: readonly NodeId[], state: RoleState): Set<NodeId> {
 	return intersect(nodes.map(node => identityFrom(node, state, 0, new Set())));
 }
@@ -138,24 +134,12 @@ function identityFrom(node: NodeId, state: RoleState, depth: number, open: Set<N
 
 /** What every one of the sets holds; nothing at all when there is not a single set. */
 function intersect(sets: readonly ReadonlySet<NodeId>[]): Set<NodeId> {
-	if(sets.length === 0) {
-		return new Set();
-	}
-	const found = new Set(sets[0]);
-	for(const other of sets.slice(1)) {
-		for(const id of found) {
-			if(!other.has(id)) {
-				found.delete(id);
-			}
-		}
-	}
-	return found;
+	return sets.length === 0 ? new Set() : sets.slice(1).reduce<Set<NodeId>>((acc, s) => acc.intersection(s), new Set(sets[0]));
 }
 
 /**
  * The nodes the value of `node` may be, split into the branches it picks one of and the steps it always takes.
- * Several `Returns` edges, or a name several definitions reach, say the value is *one* of them. An access
- * (`x$a`, `pkg::name`) draws that edge too, but hands back a part, so nothing is followed through one.
+ * An access (`x$a`, `pkg::name`) draws a `Returns` edge too, but hands back a part, so nothing follows through one.
  */
 function sameValueAs(node: NodeId, state: RoleState): [branches: NodeId[], steps: NodeId[]] {
 	const graph = state.graph;
@@ -227,11 +211,7 @@ function statedRoles(definition: DataflowGraphVertexFunctionDefinition, state: R
 	return roles;
 }
 
-/**
- * What the call reads to find the function it calls: the name it is written with, so `h()` after `h <- g` names
- * `g` just as `g()` does. A call reads more than that, as a closure handed to it resolves what it captures onto
- * the call as well, and a variable the closure merely reads is nothing the call calls.
- */
+/** What the call reads to find the function it calls: the name it is written with, so `h()` after `h <- g` names `g`. */
 function calledNames(id: NodeId, vertex: DataflowGraphVertexFunctionCall, state: RoleState): NodeId[] {
 	const handed = new Set<NodeId>();
 	for(const argument of vertex.args) {
@@ -250,9 +230,8 @@ function calledNames(id: NodeId, vertex: DataflowGraphVertexFunctionCall, state:
 }
 
 /**
- * Which definitions an argument stands for: what a name refers to, not what a value is. Unlike the alias walk
- * this collects what it *may* be, as a role holds as soon as one of them is meant. An argument a call never
- * evaluates has no origin to follow (`quote(x)`), so the name it is written as answers for it.
+ * Which definitions an argument stands for: what a name refers to, not what a value is (collects *may*, not
+ * identity). An argument a call never evaluates has no origin to follow (`quote(x)`), so its written name answers.
  */
 function resolvesTo(node: NodeId, byName: ReadonlyMap<string, NodeId>, state: RoleState): Set<NodeId> {
 	const found = new Set<NodeId>([node]);
@@ -295,11 +274,19 @@ function argumentsWith(vertex: DataflowGraphVertexFunctionCall, state: RoleState
 	return argumentProps(vertex, state).filter(([had]) => (had & props) !== 0).map(([, argument]) => argument);
 }
 
-/**
- * What the call states about each of its arguments, paired with the node the argument is. R's own matching
- * binds them, so a named argument is answered by its formal and everything falling to `...` by that entry.
- */
-function argumentProps(vertex: DataflowGraphVertexFunctionCall, state: RoleState): [props: ArgProps, argument: NodeId][] {
+/** What the call states about each of its arguments, paired with the node the argument is (`...` bound by R's own matching). */
+function argumentProps(vertex: DataflowGraphVertexFunctionCall, state: RoleState): ArgumentProps {
+	const known = state.args.get(vertex.id);
+	if(known !== undefined) {
+		return known;
+	}
+	const found = matchArgumentProps(vertex, state);
+	state.args.set(vertex.id, found);
+	return found;
+}
+
+/** @see {@link argumentProps}, which answers from what this worked out once per call. */
+function matchArgumentProps(vertex: DataflowGraphVertexFunctionCall, state: RoleState): ArgumentProps {
 	const sig: FnSig | undefined = state.info(vertex.name)?.sig;
 	if(sig === undefined) {
 		return [];

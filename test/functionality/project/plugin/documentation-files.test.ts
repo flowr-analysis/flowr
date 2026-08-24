@@ -1,8 +1,9 @@
-import { assert, describe, test } from 'vitest';
+import { assert, test } from 'vitest';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { RdMatch } from '../../../../src/project/plugins/file-plugins/files/flowr-rd-file';
 import type { ReadOnlyFlowrAnalyzerFilesContext } from '../../../../src/project/context/flowr-analyzer-files-context';
+import { testTopicOf } from './plugin-test-helper';
 
 const Files: Record<string, string> = {
 	'man/macros/local.Rd': '\\newcommand{\\pkg}{mypkg}',
@@ -23,42 +24,32 @@ async function filesContext(): Promise<ReadOnlyFlowrAnalyzerFilesContext> {
 	return analyzer.inspectContext().files;
 }
 
-describe('Documentation files an R package carries', () => {
-	test('every one of them is tagged as documentation, the datalist as data', async() => {
-		const files = await filesContext();
-		const documented = files.getFilesByRole(FileRole.Documentation).map(f => f.path());
-		assert.includeMembers(documented, ['man/macros/local.Rd', 'man/lm.Rd', 'man/sin.Rd', 'INDEX']);
-		assert.notInclude(documented, 'data/datalist', 'a datalist states data, not documentation');
-		assert.include(files.getFilesByRole(FileRole.Data).map(f => f.path()), 'data/datalist');
-	});
+const ctx = filesContext();
 
-	test('the manual answers which page documents a name', async() => {
-		const manual = (await filesContext()).documentation();
-		assert.deepEqual(manual.topicOf('lm'), { topic: 'lm', via: RdMatch.Page });
-		assert.deepEqual(manual.topicOf('print.lm'), { topic: 'lm', via: RdMatch.Alias });
-		/* only the `sin,myclass-method` spelling is written down, so the bare generic answers through it */
-		assert.deepEqual(manual.topicOf('sin'), { topic: 'Arith-methods', via: RdMatch.S4Method });
-		assert.isFalse(manual.documents('neverDocumented'));
-	});
+test('every one of them is tagged as documentation, the datalist as data', async() => {
+	const files = await ctx;
+	const documented = files.getFilesByRole(FileRole.Documentation).map(f => f.path());
+	assert.includeMembers(documented, ['man/macros/local.Rd', 'man/lm.Rd', 'man/sin.Rd', 'INDEX']);
+	assert.notInclude(documented, 'data/datalist', 'a datalist states data, not documentation');
+	assert.include(files.getFilesByRole(FileRole.Data).map(f => f.path()), 'data/datalist');
+});
 
-	test('a page states what it renders, with the package\'s own macros expanded', async() => {
-		const manual = (await filesContext()).documentation();
-		assert.strictEqual(manual.page('lm')?.title, 'Fitting mypkg Models');
-		assert.deepEqual(manual.page('lm')?.keywords, ['regression']);
-	});
+testTopicOf('a name is found by its own page', async() => (await ctx).documentation(), 'lm', { topic: 'lm', via: RdMatch.Page });
+testTopicOf('an alias is found by the page it belongs to', async() => (await ctx).documentation(), 'print.lm', { topic: 'lm', via: RdMatch.Alias });
+/* only the `sin,myclass-method` spelling is written down, so the bare generic answers through it */
+testTopicOf('an S4 generic is found from its method', async() => (await ctx).documentation(), 'sin', { topic: 'Arith-methods', via: RdMatch.S4Method });
 
-	test('an INDEX contributes the topics no page was loaded for', async() => {
-		const manual = (await filesContext()).documentation();
-		assert.isTrue(manual.documents('deprecatedOnly'));
-		assert.strictEqual(manual.title('deprecatedOnly'), 'A Topic With No Page');
-		/* the page's own title wins over the table's, as it is the source the table was built from */
-		assert.strictEqual(manual.title('lm'), 'Fitting mypkg Models');
-	});
-
-	test('the datalist says which objects a dataset provides', async() => {
-		const files = await filesContext();
-		assert.deepEqual(files.datasetObjects('both'), ['alpha', 'beta']);
-		assert.deepEqual(files.datasetObjects('CAex'), ['CAex']);
-		assert.deepEqual(files.datasetObjects('notADataset'), []);
-	});
+test('the manual renders macros, and INDEX fills in what has no page', async() => {
+	const files = await ctx;
+	const manual = files.documentation();
+	assert.isFalse(manual.documents('neverDocumented'));
+	assert.strictEqual(manual.page('lm')?.title, 'Fitting mypkg Models');
+	assert.deepEqual(manual.page('lm')?.keywords, ['regression']);
+	assert.isTrue(manual.documents('deprecatedOnly'));
+	assert.strictEqual(manual.title('deprecatedOnly'), 'A Topic With No Page');
+	/* the page's own title wins over the table's, as it is the source the table was built from */
+	assert.strictEqual(manual.title('lm'), 'Fitting mypkg Models');
+	assert.deepEqual(files.datasetObjects('both'), ['alpha', 'beta']);
+	assert.deepEqual(files.datasetObjects('CAex'), ['CAex']);
+	assert.deepEqual(files.datasetObjects('notADataset'), []);
 });

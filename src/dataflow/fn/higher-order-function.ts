@@ -50,11 +50,7 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 	return false;
 }
 
-/**
- * Whether the argument hands over a built-in function (`f(print)`), which has no definition in the graph and
- * hence no `function-definition` value to resolve to.
- * An argument calling a built-in (`lapply(1:3, f)`) hands over its result, not the built-in itself.
- */
+/** Whether the argument hands over a built-in function (`f(print)`) rather than calling one (`lapply(1:3, f)`, which hands over its result). */
 function readsBuiltInFunction(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
 		if(!DfEdge.includesType(edge, EdgeType.Reads) || DfEdge.includesType(edge, EdgeType.Calls) || !NodeId.isBuiltIn(target)) {
@@ -68,10 +64,7 @@ function readsBuiltInFunction(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlo
 	return false;
 }
 
-/**
- * The definitions the given node can hand over, following the names and results leading up to them.
- * Used to tell an argument that is the very definition under inspection from one holding another function.
- */
+/** The definitions the given node can hand over, to tell an argument being the definition under inspection from one holding another. */
 function definitionsBehind(id: NodeId, graph: DataflowGraph): ReadonlySet<NodeId> {
 	const found = new Set<NodeId>();
 	const seen = new Set<NodeId>();
@@ -131,12 +124,8 @@ function callsAFormal(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyz
 }
 
 /**
- * Determines whether the function with the given id is a higher-order function, i.e.,
- * either takes a function as an argument or (may) returns a function.
- * A parameter the body calls counts as well, whatever the call sites hand over.
- * If the return is an identity, e.g., `function(x) x`, this is not considered higher-order,
- * if no function is passed as an argument.
- * Please note that inspecting higher order functions can be sped up (if queries multiple times) by providing an inverted graph as well!
+ * Whether the function is higher-order: it takes a function argument, may return one, or calls one of its own
+ * formals as a function. `function(x) x` alone is not higher-order; pass an inverted graph to speed up repeat queries.
  */
 export function isFunctionHigherOrder(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph): boolean {
 	const vert = graph.getVertex(id);
@@ -144,16 +133,5 @@ export function isFunctionHigherOrder(id: NodeId, graph: DataflowGraph, ctx: Rea
 		return false;
 	}
 
-	// 1. check whether any of the exit types is a function
-	if(isAnyReturnAFunction(vert, graph)) {
-		return true;
-	}
-
-	// 2. check whether the body calls one of its own parameters
-	if(callsAFormal(id, graph, ctx)) {
-		return true;
-	}
-
-	// 3. check whether any of the callsites passes a function
-	return inspectCallSitesArgumentsFns(vert, graph, ctx, invertedGraph);
+	return isAnyReturnAFunction(vert, graph) || callsAFormal(id, graph, ctx) || inspectCallSitesArgumentsFns(vert, graph, ctx, invertedGraph);
 }

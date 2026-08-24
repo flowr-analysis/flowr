@@ -601,7 +601,6 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 		});
 	});
 
-
 	describe('if-then-else', () => {
 		// spacing issues etc. are dealt with within the parser; however, braces are not allowed to introduce scoping artifacts
 		describe('if-then, no else', () => {

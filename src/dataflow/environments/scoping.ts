@@ -38,11 +38,8 @@ export function padToCommonScope(base: REnvironmentInformation, next: REnvironme
 }
 
 /**
- * The environment's search path with an empty global frame: everything `library()` (or the project) attached
- * stays visible, what the global frame holds does not. Use this instead of
- * {@link ReadOnlyFlowrAnalyzerEnvironmentContext#makeCleanEnv|makeCleanEnv} wherever an environment is at hand:
- * a clean environment knows the built-ins alone, so a name an attached package brought in would go unresolved.
- * The chain below the global is shared, not rebuilt, so this costs one frame.
+ * The environment's search path with an empty global frame: attached packages stay visible, the global frame's
+ * binds do not. Prefer this over `makeCleanEnv` wherever an environment is at hand; the chain below is shared.
  */
 export function cleanEnvOf({ current }: REnvironmentInformation): REnvironmentInformation {
 	const inner = REnvironment.findGlobal(current);

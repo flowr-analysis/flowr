@@ -33,11 +33,7 @@
 	</div>
 	<div class="theme">
 		<label for="theme">Theme</label>
-		<select id="theme">
-			<option value="system">System</option>
-			<option value="light">Light</option>
-			<option value="dark">Dark</option>
-		</select>
+		<select id="theme"><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select>
 	</div>
 </header>
 
@@ -47,78 +43,32 @@
 	<aside id="controls">
 		<details class="panel" id="panel-data" open>
 			<summary><span class="panel-title">Data</span><span class="digest" id="digest-data"></span></summary>
-
-			<label class="field">
-				<span>Suite</span>
-				<select id="suite"></select>
-			</label>
-			<label class="field">
-				<span>Engine</span>
-				<select id="engine"></select>
-			</label>
-			<label class="field">
-				<span>Time range</span>
-				<select id="range">
-					<option value="6">Last 6 months</option>
-					<option value="12" selected>Last year</option>
-					<option value="24">Last two years</option>
-					<option value="0">Everything</option>
-				</select>
-			</label>
+			<label class="field"><span>Suite</span><select id="suite"></select></label>
+			<label class="field"><span>Engine</span><select id="engine"></select></label>
+			<label class="field"><span>Time range</span><select id="range"><option value="6">Last 6 months</option><option value="12" selected>Last year</option><option value="24">Last two years</option><option value="0">Everything</option></select></label>
 			<p class="hint" id="range-note"></p>
 		</details>
 
 		<details class="panel" id="panel-view" open>
 			<summary><span class="panel-title">View</span><span class="digest" id="digest-view"></span></summary>
-
-			<label class="field">
-				<span>Values</span>
-				<select id="mode">
-					<option value="absolute">Absolute</option>
-					<option value="delta">Delta vs. recent median</option>
-				</select>
-			</label>
-			<label class="field" id="baseline-field">
-				<span>Baseline: last <output id="baseline-out">3</output> releases</span>
-				<input id="baseline" type="range" min="1" max="25" step="1" value="3">
-			</label>
-			<label class="field" id="smooth-field">
-				<span>Smoothing window: <output id="smooth-out">1 run</output></span>
-				<input id="smooth" type="range" min="1" max="15" step="2" value="1">
-			</label>
-			<label class="check">
-				<input id="band" type="checkbox">
-				<span>Error band (standard deviation)</span>
-			</label>
-			<label class="check" id="calibrate-field" hidden>
-				<input id="calibrate" type="checkbox" checked>
-				<span>Divide timings by calibration</span>
-			</label>
+			<label class="field"><span>Values</span><select id="mode"><option value="absolute">Absolute</option><option value="delta">Delta vs. recent median</option></select></label>
+			<label class="field" id="baseline-field"><span>Baseline: last <output id="baseline-out">3</output> releases</span><input id="baseline" type="range" min="1" max="25" step="1" value="3"></label>
+			<label class="field" id="smooth-field"><span>Smoothing window: <output id="smooth-out">1 run</output></span><input id="smooth" type="range" min="1" max="15" step="2" value="1"></label>
+			<label class="check"><input id="band" type="checkbox"><span>Error band (standard deviation)</span></label>
+			<label class="check" id="calibrate-field" hidden><input id="calibrate" type="checkbox" checked><span>Divide timings by calibration</span></label>
 			<p class="hint" id="calibration-note" hidden></p>
 		</details>
 
 		<details class="panel" id="panel-layout" open>
 			<summary><span class="panel-title">Layout</span><span class="digest" id="digest-layout"></span></summary>
-
-			<label class="check">
-				<input id="lock" type="checkbox">
-				<span>Lock the tiles</span>
-			</label>
-			<div class="buttons">
-				<button type="button" id="reset-layout">Reset</button>
-				<button type="button" id="copy-link" title="copy a link that restores this view">Copy link</button>
-			</div>
+			<label class="check"><input id="lock" type="checkbox"><span>Lock the tiles</span></label>
+			<div class="buttons"><button type="button" id="reset-layout">Reset</button><button type="button" id="copy-link" title="copy a link that restores this view">Copy link</button></div>
 			<p class="hint">Unlock to drag the tiles into another order. The corner button folds tiles away.</p>
 		</details>
 
 		<details class="panel" id="panel-download" open>
 			<summary><span class="panel-title">Download</span><span class="digest" id="digest-download"></span></summary>
-
-			<div class="buttons">
-				<button type="button" id="dl-suite">Suite JSON</button>
-				<button type="button" id="dl-csv">Visible CSV</button>
-				<button type="button" id="dl-all">Full data.js</button>
-			</div>
+			<div class="buttons"><button type="button" id="dl-suite">Suite JSON</button><button type="button" id="dl-csv">Visible CSV</button><button type="button" id="dl-all">Full data.js</button></div>
 		</details>
 	</aside>
 

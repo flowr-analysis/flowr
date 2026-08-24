@@ -99,9 +99,8 @@ export interface ReadOnlyFlowrAnalyzerGasContext {
 	 */
 	checkGas(key: string): GasLevel;
 	/**
-	 * The counted bounds of `key`, resolved once against the current contingent, or `undefined` when the
-	 * feature is disabled or bounds nothing. This is the arming counterpart of {@link checkGas}, for the one
-	 * site that cannot afford to ask per step -- the dataflow fold, see {@link GasFeatureKey.Dataflow}.
+	 * The counted bounds of `key`, resolved once against the current contingent, or `undefined` when disabled or
+	 * unbounded. Arming counterpart of {@link checkGas} for the dataflow fold, see {@link GasFeatureKey.Dataflow}.
 	 */
 	budget(key: string): DataflowBudgetTracker | undefined;
 	/**
@@ -282,11 +281,7 @@ export class FlowrAnalyzerGasContext implements WriteableFlowrAnalyzerGasContext
 		return this.budgetFor(key, this.activeScope());
 	}
 
-	/**
-	 * The bounds `key` is armed with, already divided by its factor so the tracker only ever compares: gas
-	 * scales the *measured* value by the factor, and pre-scaling the bound is the same comparison without
-	 * a multiplication per step.
-	 */
+	/** The bounds `key` is armed with, pre-divided by its factor so the tracker only ever compares, never multiplies. */
 	private budgetFor(key: string, scope: GasScope): DataflowBudgetTracker | undefined {
 		const factor = this.factorFor(scope, key);
 		if(!factor) {

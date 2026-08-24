@@ -28,7 +28,6 @@ import { VariableDefinitionVertex, FunctionCallVertex } from '../../../../../gra
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
-
 /**
  * Process a replacement function call like `<-`, `[[<-`, `$<-`, etc.
  * These are automatically created when doing assignments like `x[y] <- value` or in general `fun(x) <- value` will call `fun<- (x, value)`.

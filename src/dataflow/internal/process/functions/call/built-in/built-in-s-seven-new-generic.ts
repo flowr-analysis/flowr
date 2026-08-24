@@ -26,9 +26,8 @@ import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { VertexType, UseVertex, FunctionCallVertex, FunctionDefinitionVertex } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { type ClassDeclarationConfig, classDeclarationOf } from '../../../../../fn/class-declaration';
-import { linkS4Declaration, linkS4Generic } from './built-in-s-four';
+import { argFor, linkS4Declaration, linkS4Generic } from './built-in-s-four';
 
 /** e.g. new_generic(name, dispatch_args, fun=NULL) */
 interface S7GenericDispatchConfig {
@@ -158,27 +157,11 @@ function linkWrappedFunction<OtherInfo>(
 	wrapName: string | undefined,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): void {
-	let wrapped: PotentiallyEmptyRArgument<OtherInfo & ParentInformation> | undefined = undefined;
-	if(wrapName !== undefined) {
-		wrapped = args.find(a => a !== EmptyArgument && a.name?.content === wrapName);
-	}
+	const wrapped = argFor(args, { name: wrapName, idx: wrapIndex });
 	if(wrapped === undefined) {
-		let pos = 0;
-		for(const a of args) {
-			if(RArgument.isEmpty(a) || a.name) {
-				continue;
-			}
-			if(pos === wrapIndex) {
-				wrapped = a;
-				break;
-			}
-			pos++;
-		}
-	}
-	if(wrapped === undefined || RArgument.isEmpty(wrapped) || !wrapped.value) {
 		return;
 	}
-	const resolved = resolveFunctionArgument(wrapped.value, data, {});
+	const resolved = resolveFunctionArgument(wrapped, data, {});
 	if(resolved === undefined || resolved.anonymous) {
 		return;
 	}

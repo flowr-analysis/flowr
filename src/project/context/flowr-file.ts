@@ -67,8 +67,6 @@ export enum FileRole {
 
 export type StringableContent = { toString(): string };
 
-
-
 /**
  * This is the basic interface for all files known to the FlowrAnalyzer.
  * You can implement this interface to provide custom file loading mechanisms.
@@ -240,5 +238,23 @@ export class FlowrInlineTextFile extends FlowrFile<string> {
 	public updateInlineContent(newContent: string): void {
 		this.contentStr = newContent;
 		this.invalidate();
+	}
+}
+
+/**
+ * A {@link FlowrFile} that decorates another file to expose its raw content as something parsed.
+ * Prefer the static {@link FlowrWrappedFile.from|from}, which avoids re-wrapping and handles roles.
+ */
+export abstract class FlowrWrappedFile<Content extends StringableContent = StringableContent> extends FlowrFile<Content> {
+	public constructor(protected readonly wrapped: FlowrFileProvider) {
+		super(wrapped.path(), wrapped.roles);
+	}
+
+	/** Lifts a file to the class this is called on, reusing it if already one and assigning `role`. */
+	public static from<T>(this: new(file: FlowrFileProvider) => T, file: FlowrFileProvider, role?: FileRole): T {
+		if(role) {
+			file.assignRole(role);
+		}
+		return file instanceof this ? file : new this(file);
 	}
 }

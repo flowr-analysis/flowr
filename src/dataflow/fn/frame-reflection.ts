@@ -14,13 +14,9 @@ import { RConstant } from '../../r-bridge/lang-4.x/ast/model/model';
 export type BuiltInLookup = (name: Identifier) => BuiltInFnInfo | undefined;
 
 /**
- * What the body of `definition` reaches about its own formals through the frame or the call it sits in, as the
- * {@link BuiltInFnInfo#frame} bits of the reflective calls it makes (`0` when it makes none).
- *
- * Only reflection flowR loses track of counts. `get("x", envir = e)` and `e$x` are followed to the name they
- * read, so they draw their own edges and the formals they reach need nothing added here; `as.list(environment())`,
- * `get(nm, envir = e)` and a frame handed on to someone else are the cases where any formal may be meant, and
- * `environment(g)` speaks about another function's frame altogether.
+ * What `definition`'s body reaches about its own formals through the frame or call it sits in, as the
+ * {@link BuiltInFnInfo#frame} bits of the reflective calls it makes (`0` for none). `get("x", envir = e)` and
+ * `e$x` are followed to the name directly; `as.list(environment())` and a frame handed elsewhere mean any formal.
  */
 export function reflectiveRoles(definition: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, known: BuiltInLookup): ArgProps {
 	let roles = 0;
@@ -46,11 +42,7 @@ function handedAnotherFrame(vertex: DataflowGraphVertexFunctionCall, known: Buil
 	return sig !== undefined && Sig.posWith(Sig.layout(sig), vertex.args.length, ArgProp.Handle).length > 0;
 }
 
-/**
- * Whether everything done with what the reflective call at `frame` handed out is something flowR followed: at
- * least one consumer, and every one of them an access it resolved to a name of the definition. A frame nobody
- * consumes was handed to the caller, which is as good as lost.
- */
+/** Whether every consumer of what the reflective call at `frame` handed out resolves to a formal, and there is at least one. */
 function resolvedThroughout(frame: NodeId, definition: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): boolean {
 	const formals = new Set(Object.keys(definition.params).map(NodeId.normalize));
 	const carrying = carriersOf(frame, definition, graph);
@@ -68,11 +60,7 @@ function resolvedThroughout(frame: NodeId, definition: DataflowGraphVertexFuncti
 	return consumers > 0;
 }
 
-/**
- * The nodes carrying what the reflective call handed out: the call itself, the names it was stored under, and
- * the uses reading them. Storing a frame and reading it back is no use of it, so the assignment and the
- * expression list around it carry the value on rather than consuming it.
- */
+/** The nodes carrying what the reflective call handed out: the call itself, the names stored under it, and reads of them. */
 function carriersOf(frame: NodeId, definition: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): Set<NodeId> {
 	const carrying = new Set<NodeId>([frame]);
 	let grew = true;
@@ -123,11 +111,7 @@ function argumentsOf(vertex: DataflowGraphVertexFunctionCall): NodeId[] {
 	return ids;
 }
 
-/**
- * Whether the access was followed to a formal of the definition, which is what `get("x", envir = e)` and `e$x`
- * leave behind: a read of the formal from the call itself or from the constant naming it. A name the code works
- * out for itself (`get(nm, envir = e)`) reads its own variable instead, and reaches whichever name it pleases.
- */
+/** Whether the access reads a formal directly, or via the constant naming it (`get("x", ...)`); a computed name (`get(nm, ...)`) does not. */
 function resolvedToAFormal(vertex: DataflowGraphVertexFunctionCall, formals: ReadonlySet<NodeId>, graph: DataflowGraph): boolean {
 	const idMap = graph.idMap;
 	for(const node of [vertex.id, ...argumentsOf(vertex)]) {

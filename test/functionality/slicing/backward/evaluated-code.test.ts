@@ -6,7 +6,6 @@ import type { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 
 assumeLoadedPackages('glue');
 
-
 /**
  * Code flowR only gets to run through a detour -- a captured expression handed to `eval`, or the R inside a
  * string template -- still has to reach the slice, in both directions.

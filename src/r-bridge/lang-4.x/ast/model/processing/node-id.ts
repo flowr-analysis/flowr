@@ -116,7 +116,6 @@ export const NodeId = {
 
 const builtInPrefixLength = NodeId.builtInPrefix.length;
 
-
 /**
  * Recovers the lexeme of a {@link RNode|node} from its id in the {@link AstIdMap|id map}.
  * @see {@link recoverContent} - to recover the content of a node

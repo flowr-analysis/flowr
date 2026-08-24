@@ -70,7 +70,6 @@ export interface BuiltInFunctionOrigin {
 	readonly fn:   OriginIdentifier;
 }
 
-
 interface OriginIdentifier {
 	readonly name: Identifier;
 }
@@ -201,7 +200,6 @@ function getCallTarget(dfg: DataflowGraph, call: DataflowGraphVertexFunctionCall
 			id:   target
 		};
 	}).filter(isNotUndefined));
-
 
 	return origins;
 }

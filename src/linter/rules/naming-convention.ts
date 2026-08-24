@@ -9,7 +9,6 @@ import { SourceLocation } from '../../util/range';
 import { type LintingResult, type LintingRule, type LintQuickFixReplacement, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 
-
 export enum CasingConvention {
 	CamelCase       = 'camelCase',
 	PascalCase      = 'PascalCase',

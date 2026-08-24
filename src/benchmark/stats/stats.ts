@@ -45,7 +45,6 @@ export interface SlicerStatsInput<T = number> {
 	numberOfNormalizedTokensNoComments:        T
 }
 
-
 export interface SlicerStatsDataflow<T = number> {
 	numberOfNodes:               T
 	numberOfEdges:               T

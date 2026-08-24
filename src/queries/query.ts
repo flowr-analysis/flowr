@@ -269,7 +269,6 @@ export type QueryResults<Base extends SupportedQueryTypes = SupportedQueryTypes>
 	readonly [QueryType in Base]: Awaited<QueryResult<QueryType>>
 } & BaseQueryResult;
 
-
 type OmitFromValues<T, K extends string | number | symbol> = {
 	[P in keyof T]?: Omit<T[P], K>
 };
@@ -318,9 +317,8 @@ function errorMessage(e: unknown): string {
 }
 
 /**
- * Re-runs the queries of a batch that failed as a whole one by one, so that a single faulty query does not discard the
- * results of its siblings. The result merges everything that could be computed and carries the errors of all queries
- * that still failed.
+ * Re-runs the queries of a batch that failed as a whole one by one, so a faulty query does not discard its
+ * siblings' results. Merges everything computed and carries the errors of the queries that still failed.
  */
 async function retryQueriesIndividually(data: BasicQueryData, group: readonly Query[], fallback: string): Promise<BaseQueryResult> {
 	if(group.length <= 1) {
@@ -381,7 +379,6 @@ export function AnyQuerySchema() {
 export function QueriesSchema() {
 	return Joi.array().items(AnyQuerySchema()).description('Queries to run on the file analysis information (in the form of an array)');
 }
-
 
 /**
  * Wraps a function that executes a REPL query and, if it fails, checks whether there were any requests to analyze.

@@ -23,7 +23,6 @@ person$name$a$b <- "John"
 print(person)
 		`, ['4@print'], 'person <- list(name = list(a = list(b = "Jane")))\nperson$name$a$b <- "John"\nprint(person)');
 
-
 		for(const pipe of ['%>%', '|>']) {
 			const code = `
 library(dplyr)

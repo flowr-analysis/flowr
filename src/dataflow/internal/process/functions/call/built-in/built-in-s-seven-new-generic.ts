@@ -26,7 +26,7 @@ import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { VertexType, UseVertex, FunctionCallVertex, FunctionDefinitionVertex } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { type ClassDeclarationConfig, classDeclarationOf } from '../../../../../fn/class-declaration';
+import { type ClassDeclarationConfig, ClassDeclarations } from '../../../../../fn/class-declaration';
 import { argFor, linkS4Declaration, linkS4Generic } from './built-in-s-four';
 
 /** e.g. new_generic(name, dispatch_args, fun=NULL) */
@@ -145,7 +145,7 @@ export function attachClassDeclaration<OtherInfo>(
 	}
 	const vertex = info.graph.getVertex(rootId);
 	if(FunctionCallVertex.is(vertex)) {
-		vertex.classDecl = classDeclarationOf(config, args);
+		vertex.classDecl = ClassDeclarations.of(config, args);
 	}
 }
 

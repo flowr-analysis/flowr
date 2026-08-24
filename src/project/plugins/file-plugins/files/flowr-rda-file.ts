@@ -24,7 +24,11 @@ export class FlowrRDAFile extends FlowrFile<RObjectData[]> {
 		return new RDAParser(this.wrapped, this.shortcut).parse() ?? [{}];
 	}
 
-	/** RDA file lifter: reuses `file` if already an {@link FlowrRDAFile}, otherwise wraps it, optionally assigning `role`. */
+	/**
+	 * Lifts a file to a {@link FlowrRDAFile}, reusing it if already one and assigning roles.
+	 * @param file - The file to lift or return if already an RDA file
+	 * @param role - An optional role to assign to the file
+	 */
 	public static from(file: FlowrFileProvider | FlowrRDAFile, role?: FileRole): FlowrRDAFile {
 		if(role) {
 			file.assignRole(role);
@@ -261,6 +265,17 @@ export enum SerializationFormat {
 /** pairlist-based SEXP types {@link RDAParser.readItemIterative} unrolls iteratively rather than recursing per element. */
 const IterativeSexpTypes: ReadonlySet<SexpType> = new Set([
 	SexpType.ListSxp, SexpType.LangSxp, SexpType.CloSxp, SexpType.PromSxp, SexpType.DotSxp
+]);
+
+/** the `{ value, type }` every parameterless special SEXP marker in {@link RDAParser.readItemRecursive} decodes to directly. */
+const SpecialValueSxps: ReadonlyMap<SexpType, { readonly value: RValues, readonly type: SexpType }> = new Map([
+	[SexpType.NilValueSxp,      { value: RValues.NilValue,      type: SexpType.NilSxp }],
+	[SexpType.EmptyEnvSxp,      { value: RValues.EmptyEnv,      type: SexpType.EnvSxp }],
+	[SexpType.BaseEnvSxp,       { value: RValues.BaseEnv,       type: SexpType.EnvSxp }],
+	[SexpType.GlobalEnvSxp,     { value: RValues.GlobalEnv,     type: SexpType.EnvSxp }],
+	[SexpType.UnboundValueSxp,  { value: RValues.UnboundValue,  type: SexpType.EnvSxp }],
+	[SexpType.MissingArgSxp,    { value: RValues.MissingArg,    type: SexpType.EnvSxp }],
+	[SexpType.BaseNamespaceSxp, { value: RValues.BaseNamespace, type: SexpType.EnvSxp }],
 ]);
 
 /**
@@ -673,48 +688,36 @@ export class RDAParser{
 		return this.readItemRecursive(flags);
 	}
 
-	/**
-	 * Resolves a namespace reference by name via `getNamespace()` in R. Simpler variant of {@link R_FindNamespace1}.
-	 * Only `R_GlobalEnv` is currently handled; other results are logged as warnings.
-	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/envir.c#L3795-L3804 | R source: R_FindNamespace}
-	 */
-	R_FindNamespace(info: RObjectData): RObjectData {
-		const namespaceName = (info.value as RObjectData).name as string;
-
-		const code = `getNamespace("${namespaceName}")`;
+	/** Runs `code` in R and answers an `EnvSxp`, `value` set to {@link RValues.GlobalEnv} when the result names it. Shared by {@link R_FindNamespace} and {@link R_FindNamespace1}. */
+	private runNamespaceLookup(code: string): RObjectData {
 		const shell = new RShellExecutor();
 		const result = shell.run(code);
 		shell.close();
 
-		const val: RObjectData = {};
-		val.type = SexpType.EnvSxp;
-
+		const val: RObjectData = { type: SexpType.EnvSxp };
 		if(result === '<environment: R_GlobalEnv>') {
 			val.value = RValues.GlobalEnv;
 		}
-
 		return val;
 	}
 
 	/**
-	 * Resolves a serialized namespace reference by executing R at runtime. See {@link R_FindNamespace} for the
-	 * result shape and current `R_GlobalEnv`-only support.
+	 * Resolves a namespace reference by name via `getNamespace()` in R. Simpler variant of {@link R_FindNamespace1}.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/envir.c#L3795-L3804 | R source: R_FindNamespace}
+	 */
+	R_FindNamespace(info: RObjectData): RObjectData {
+		const namespaceName = (info.value as RObjectData).name as string;
+		return this.runNamespaceLookup(`getNamespace("${namespaceName}")`);
+	}
+
+	/**
+	 * Resolves a serialized namespace reference by executing R at runtime. See {@link R_FindNamespace} for the result shape.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1785-L1796 | R source: R_FindNamespace1}
 	 */
 	R_FindNamespace1(info: RObjectData): RObjectData {
-		const where: RObjectData = {};
-		where.type = SexpType.CharSxp;
-		where.value = this.lastName;
-		const code = `..getNamespace("${(info.value as RObjectData[])[0].name as string}", "${where.value as string}")`;
-		const shell = new RShellExecutor();
-		const result = shell.run(code);
-		shell.close();
-		const val: RObjectData = {};
-		val.type = SexpType.EnvSxp;
-		if(result == '<environment: R_GlobalEnv>') {
-			val.value = RValues.GlobalEnv;
-		}
-		return val;
+		const where = this.lastName;
+		const code = `..getNamespace("${(info.value as RObjectData[])[0].name as string}", "${where as string}")`;
+		return this.runNamespaceLookup(code);
 	}
 
 	/**
@@ -724,37 +727,14 @@ export class RDAParser{
 	readItemRecursive(flags: number): RObjectData {
 		const [type, levels, object, hasAttribute, _hasTag] = this.unpackFlags(flags);
 
-		let s: RObjectData = {};
+		const special = SpecialValueSxps.get(type);
+		if(special) {
+			return { ...special };
+		}
+
+		let s: RObjectData;
 
 		switch(type) {
-			case SexpType.NilValueSxp:
-				s.value = RValues.NilValue;
-				s.type = SexpType.NilSxp;
-				return s;
-			case SexpType.EmptyEnvSxp:
-				s.value = RValues.EmptyEnv;
-				s.type = SexpType.EnvSxp;
-				return s;
-			case SexpType.BaseEnvSxp:
-				s.value = RValues.BaseEnv;
-				s.type = SexpType.EnvSxp;
-				return s;
-			case SexpType.GlobalEnvSxp:
-				s.value = RValues.GlobalEnv;
-				s.type = SexpType.EnvSxp;
-				return s;
-			case SexpType.UnboundValueSxp:
-				s.value = RValues.UnboundValue;
-				s.type = SexpType.EnvSxp;
-				return s;
-			case SexpType.MissingArgSxp:
-				s.value = RValues.MissingArg;
-				s.type = SexpType.EnvSxp;
-				return s;
-			case SexpType.BaseNamespaceSxp:
-				s.value = RValues.BaseNamespace;
-				s.type = SexpType.EnvSxp;
-				return s;
 			case SexpType.RefSxp: return this.getReadRef(this.inRefIndex(flags));
 			case SexpType.PersistSxp: {
 				s = this.inStringVec();
@@ -818,8 +798,7 @@ export class RDAParser{
 	}
 
 	/**
-	 * Reads (or with `skip`, discards) an `EnvSxp` environment frame: the reference is registered and the parent
-	 * chain fixed up either way, but the locked/class-object bookkeeping only matters when the value is kept.
+	 * Reads (or with `skip`, discards) an `EnvSxp` environment frame; the locked/class-object bookkeeping only matters when kept.
 	 * Shared by {@link readItemRecursive} and {@link skipItem}.
 	 */
 	readOrSkipEnv(skip: boolean): RObjectData {
@@ -829,8 +808,7 @@ export class RDAParser{
 		} else {
 			locked = this.inInteger();
 		}
-		const s: RObjectData = {};
-		s.type = SexpType.EnvSxp;
+		const s: RObjectData = { type: SexpType.EnvSxp };
 		this.addReadRef(s);
 
 		this.currentDepth++;
@@ -860,10 +838,8 @@ export class RDAParser{
 	}
 
 	/**
-	 * Reads (or with `skip`, discards) the payload of a leaf SEXP node: every type not handled by
-	 * {@link readItemRecursive}'s and {@link skipItem}'s own outer switches, plus the levels/object/attributes tail
-	 * both share. `skip` mirrors the field-by-field differences between the two callers exactly (some fields are
-	 * left populated with an empty placeholder on skip, others left `undefined`; see the branches below).
+	 * Reads (or with `skip`, discards) the payload of a leaf SEXP node, shared by {@link readItemRecursive} and {@link skipItem}.
+	 * `skip` mirrors their field-by-field differences exactly; see the branches below.
 	 */
 	readOrSkipLeaf(type: number, levels: number, object: boolean, hasAttribute: boolean, skip: boolean): RObjectData {
 		let s: RObjectData = {};
@@ -880,14 +856,12 @@ export class RDAParser{
 				this.currentDepth--;
 				break;
 			}
-			case SexpType.WeakRefSxp:
-				s.value = this.R_MakeWeakRef(
-					{ type: SexpType.NilSxp, value: RValues.NilValue },
-					RValues.NilValue,
-					{ type: SexpType.NilSxp, value: RValues.NilValue },
-					false);
+			case SexpType.WeakRefSxp: {
+				const nilSxp = { type: SexpType.NilSxp, value: RValues.NilValue };
+				s.value = this.R_MakeWeakRef(nilSxp, RValues.NilValue, nilSxp, false);
 				this.addReadRef(s);
 				break;
+			}
 			case SexpType.SpecialSxp:
 			case SexpType.BuiltInSxp: {
 				const len = this.assertInteger(this.inInteger());
@@ -1147,8 +1121,7 @@ export class RDAParser{
 			throw new Error('names in persistent strings are not supported yet');
 		}
 		const len = this.assertInteger(this.inInteger());
-		const s: RObjectData = {};
-		s.type = SexpType.CharSxp;
+		const s: RObjectData = { type: SexpType.CharSxp };
 		s.value = new Array<RObject>(skip ? 0 : len);
 		this.currentDepth++;
 		for(let i = 0; i < len; i++) {
@@ -1197,11 +1170,7 @@ export class RDAParser{
 		while(IterativeSexpTypes.has(type)) {
 			let levels: number, isObject: boolean, hasAttr: boolean, hasTag: boolean;
 			[type, levels, isObject, hasAttr, hasTag] = this.unpackFlags(flags);
-			const s: RObjectData = {};
-
-			s.type = type;
-			s.levels = levels;
-			s.object = isObject;
+			const s: RObjectData = { type, levels, object: isObject };
 			this.currentDepth++;
 
 			s.attributes = hasAttr ? [this.shortcut ? this.skipItem() : this.assertRObjectData(this.readItem())] : undefined;
@@ -1253,7 +1222,7 @@ export class RDAParser{
 	}
 
 	/** Allocates and initializes a weak reference object. Throws error if `key`'s type is invalid. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L1388-L1422 | R source: NewWeakRef} */
-	newWeakRef(key: RObjectData, val: RObject, fin: RObjectData, onexit: boolean): RObject{
+	newWeakRef(key: RObjectData, val: RObject, fin: RObjectData, _onexit: boolean): RObject{
 		switch(key.type) {
 			case SexpType.NilSxp:
 			case SexpType.EnvSxp:
@@ -1264,29 +1233,14 @@ export class RDAParser{
 				throw new Error('can only weakly reference/finalize reference objects');
 		}
 
-		const w: RObjectData = {};
-
-		w.type = SexpType.WeakRefSxp;
+		const w: RObjectData = { type: SexpType.WeakRefSxp };
 
 		if(key.value !== RValues.NilValue){
 			w.key = key;
 			w.value = val;
 			w.finalizer = fin;
 			w.next = this.RWeakRefs;
-			if(w.gp) {
-				w.gp &= ~1;
-			}
-
-			if(onexit){
-				if(w.gp) {
-					w.gp |= 2;
-				}
-			} else {
-				if(w.gp) {
-					w.gp &= ~2;
-				}
-			}
-
+			// gp bitflag bookkeeping omitted: gp is never populated on a freshly built RObjectData, so it was always a no-op
 			this.RWeakRefs = w;
 		}
 		return w;
@@ -1522,9 +1476,7 @@ export class RDAParser{
 
 	/** Deserializes an R bytecode object. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2221-L2228 | R source: ReadBC} */
 	readBC(): RObject {
-		const reps: RObjectData = {};
-		reps.type = SexpType.VecSxp;
-		reps.value = new Array(this.assertInteger(this.inInteger()));
+		const reps: RObjectData = { type: SexpType.VecSxp, value: new Array(this.assertInteger(this.inInteger())) };
 		return this.readBC1(reps);
 	}
 
@@ -1539,34 +1491,7 @@ export class RDAParser{
 		this.currentDepth++;
 		this.skipItem();
 		this.currentDepth--;
-		this.skipBCConsts();
-	}
-
-	/** Advances past all bytecode constants. Mirrors {@link ReadBCConsts}. */
-	skipBCConsts(): void {
-		const n = this.assertInteger(this.inInteger());
-		for(let i = 0; i < n; i++) {
-			const type = this.inInteger();
-			switch(type) {
-				case SexpType.BcodesSxp: {
-					this.skipBC1();
-					break;
-				}
-				case SexpType.LangSxp:
-				case SexpType.ListSxp:
-				case SexpType.BcRepDef:
-				case SexpType.BcRepRef:
-				case SexpType.AltLangSxp:
-				case SexpType.AttrListSxp: {
-					this.skipBCLang(type);
-					break;
-				}
-				default:
-					this.currentDepth++;
-					this.skipItem();
-					this.currentDepth--;
-			}
-		}
+		this.readOrSkipBCConsts(undefined, true);
 	}
 
 	/**
@@ -1579,14 +1504,12 @@ export class RDAParser{
 
 	/** Deserializes a single bytecode object, `reps` is the repetition table shared across all constants. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2205-L2219 | R source: ReadBC1} */
 	readBC1(reps: RObjectData): RObjectData {
-		const s: RObjectData = {};
-		s.type = SexpType.BcodesSxp;
+		const s: RObjectData = { type: SexpType.BcodesSxp };
 		this.currentDepth++;
 		s.car = this.readItem();
 		this.currentDepth--;
-		const _bytes = s.car;
 		// s.car = R_bcEncode(bytes);
-		s.cdr = this.ReadBCConsts(reps);
+		s.cdr = this.readOrSkipBCConsts(reps, false);
 		s.tag = RValues.NilValue;
 		// R_registerBC(bytes, s);
 		return s;
@@ -1597,33 +1520,42 @@ export class RDAParser{
 		throw new Error('Not implemented');
 	}
 
-	/** Reads the `n` constants of a bytecode object into a `VecSxp`, `reps` resolves `BcRepDef`/`BcRepRef`. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2173-L2203 | R source: ReadBCConsts} */
-	ReadBCConsts(reps: RObjectData): RObjectData {
+	/**
+	 * Reads (or with `skip`, discards) the `n` constants of a bytecode object into a `VecSxp`, `reps` resolves `BcRepDef`/`BcRepRef`.
+	 * See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2173-L2203 | R source: ReadBCConsts}
+	 */
+	readOrSkipBCConsts(reps: RObjectData | undefined, skip: boolean): RObjectData {
 		const n = this.assertInteger(this.inInteger());
-		const ans: RObjectData = {};
-		ans.type = SexpType.VecSxp;
-		ans.value = new Array(n);
+		const ans: RObjectData = { type: SexpType.VecSxp, value: new Array(n) };
 		for(let i = 0; i < n; i++) {
 			const type = this.inInteger();
 			switch(type) {
-				case SexpType.BcodesSxp: {
-					const c = this.readBC1(reps);
-					this.SET_VECTOR_ELT(ans, i, c);
+				case SexpType.BcodesSxp:
+					if(skip) {
+						this.skipBC1();
+					} else {
+						this.SET_VECTOR_ELT(ans, i, this.readBC1(reps as RObjectData));
+					}
 					break;
-				}
 				case SexpType.LangSxp:
 				case SexpType.ListSxp:
 				case SexpType.BcRepDef:
 				case SexpType.BcRepRef:
 				case SexpType.AltLangSxp:
-				case SexpType.AttrListSxp: {
-					const c = this.ReadBCLang(type, reps);
-					this.SET_VECTOR_ELT(ans, i, c);
+				case SexpType.AttrListSxp:
+					if(skip) {
+						this.skipBCLang(type);
+					} else {
+						this.SET_VECTOR_ELT(ans, i, this.ReadBCLang(type, reps as RObjectData));
+					}
 					break;
-				}
 				default:
 					this.currentDepth++;
-					this.SET_VECTOR_ELT(ans, i, this.readItem());
+					if(skip) {
+						this.skipItem();
+					} else {
+						this.SET_VECTOR_ELT(ans, i, this.readItem());
+					}
 					this.currentDepth--;
 			}
 		}
@@ -1751,12 +1683,9 @@ export class RDAParser{
 		if(s.type !== SexpType.BcodesSxp) {
 			return false;
 		}
-
-		// const pc = s.code;
-		const pc = 0;
-		const version = pc;
-
-		return (version >= 9 && version <= 12);
+		// const version = s.code;
+		const version = 0;
+		return version >= 9 && version <= 12;
 	}
 
 	/** Source-language expression for an unsupported bytecode object: its first constant pool entry, or {@link RValues.NilValue}. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/eval.c#L5566-L5574 | R source: bytecodeExpr} */
@@ -1849,9 +1778,7 @@ export class RDAParser{
 
 	/** A length-1 {@link SexpType.StrSxp} character vector wrapping `x`. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/include/Rinlinedfuns.h#L1044-L1052 | R source: ScalarString} */
 	ScalarString(x: string): RObjectData{
-		const ans: RObjectData = {};
-		ans.type = SexpType.StrSxp;
-		ans.value = new Array(1);
+		const ans: RObjectData = { type: SexpType.StrSxp, value: new Array(1) };
 		this.SET_STRING_ELT(ans, 0, { name: x });
 		return ans;
 	}

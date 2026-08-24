@@ -301,20 +301,12 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 		});
 
 		async function makeShellAst(): Promise<RProject> {
-			const pipeline = new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, {
-				parser:  shell,
-				context: contextFromInput(input)
-			});
-			const result = await pipeline.allRemainingSteps();
+			const result = await new PipelineExecutor(DEFAULT_NORMALIZE_PIPELINE, { parser: shell, context: contextFromInput(input) }).allRemainingSteps();
 			return result.normalize.ast;
 		}
 
 		async function makeTsAst(): Promise<RProject> {
-			const pipeline = new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, {
-				parser:  ts as TreeSitterExecutor,
-				context: contextFromInput(input)
-			});
-			const result = await pipeline.allRemainingSteps();
+			const result = await new PipelineExecutor(TREE_SITTER_NORMALIZE_PIPELINE, { parser: ts as TreeSitterExecutor, context: contextFromInput(input) }).allRemainingSteps();
 			return result.normalize.ast;
 		}
 	});

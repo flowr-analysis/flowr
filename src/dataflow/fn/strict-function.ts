@@ -1,5 +1,6 @@
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ControlDependency } from '../info';
 import type { DataflowGraph } from '../graph/graph';
@@ -11,7 +12,7 @@ import { BuiltInProcName } from '../environments/built-in-proc-name';
 import type { ArgProps, BuiltInFnInfo, FnSig } from '../environments/built-in-props';
 import { ArgProp, DispatchCallees, FnSig as Sig } from '../environments/built-in-props';
 import type { BuiltInLookup } from './frame-reflection';
-import { reflectiveRoles } from './frame-reflection';
+import { FrameReflection } from './frame-reflection';
 import { BuiltInIndex, queryFnProps } from '../environments/query-fn-props';
 import { Identifier } from '../environments/identifier';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -101,14 +102,7 @@ interface StrictnessState {
 
 /** The definition a node sits in. */
 function enclosingDefinition(id: NodeId, idMap: AstIdMap, graph: DataflowGraph): NodeId | undefined {
-	let node = idMap.get(id);
-	while(node !== undefined) {
-		if(FunctionDefinitionVertex.is(graph.getVertex(node.info.id))) {
-			return node.info.id;
-		}
-		node = node.info.parent === undefined ? undefined : idMap.get(node.info.parent);
-	}
-	return undefined;
+	return RNode.findEnclosing(id, idMap, node => FunctionDefinitionVertex.is(graph.getVertex(node.info.id)));
 }
 
 function makeState(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | undefined): StrictnessState {
@@ -356,7 +350,7 @@ function strictnessOf(id: NodeId, state: StrictnessState): FunctionStrictness {
 		parameters[param] = strictnessOfParameter(NodeId.normalize(param), vertex, state);
 	}
 	/* reflection flowR could not follow may read a parameter without any read of it showing in the code */
-	if((reflectiveRoles(vertex, state.graph, state.fnInfo) & MayEvaluate) !== 0) {
+	if((FrameReflection.of(vertex, state.graph, { known: state.fnInfo }) & MayEvaluate) !== 0) {
 		for(const param of params) {
 			parameters[param] = TernaryLogic.or(parameters[param], Ternary.Maybe);
 		}
@@ -404,18 +398,42 @@ function strictnessOf(id: NodeId, state: StrictnessState): FunctionStrictness {
  * only claims certainty where the code gives it.
  * What a built-in does with an argument comes from the {@link ArgProp} bits its signature states, so a
  * configured or overwritten built-in is the one that answers when the analyzer context is handed along.
- * @see {@link strictnessOfFunctions} - to ask about several definitions at once, sharing the work
+ * @useInstead {@link FunctionStrictnesses.of}
  */
-export function strictnessOfFunction(id: NodeId, graph: DataflowGraph, ctx?: ReadOnlyFlowrAnalyzerContext): FunctionStrictness {
-	return strictnessOf(id, makeState(graph, ctx));
-}
-
-/** The {@link strictnessOfFunction|strictness} of several definitions, sharing the work between them. */
-export function strictnessOfFunctions(ids: Iterable<NodeId>, graph: DataflowGraph, ctx?: ReadOnlyFlowrAnalyzerContext): Record<NodeId, FunctionStrictness> {
+function strictnessOfEach(this: void, ids: Iterable<NodeId>, graph: DataflowGraph, { ctx }: FunctionStrictnessesOptions = {}): Record<NodeId, FunctionStrictness> {
 	const state = makeState(graph, ctx);
 	const result: Record<NodeId, FunctionStrictness> = {};
 	for(const id of ids) {
 		result[id] = strictnessOf(id, state);
 	}
 	return result;
+}
+
+/** What to ask for beyond the definitions themselves, see {@link FunctionStrictnesses.of}. */
+export interface FunctionStrictnessesOptions {
+	/** how to ask what a built-in states, so a configured or overwritten one answers */
+	readonly ctx?: ReadOnlyFlowrAnalyzerContext
+}
+
+/** How the functions of a program treat their parameters, see {@link FunctionStrictness}. */
+export const FunctionStrictnesses = {
+	name: 'FunctionStrictnesses',
+	/** The strictness of several definitions, sharing the work between them; see {@link strictnessOfEach}. */
+	of:   strictnessOfEach
+} as const;
+
+/**
+ * Determines whether the function with the given id is strict, i.e., whether calling it forces its arguments.
+ * {@link Ternary#Always} says every call forces every parameter, {@link Ternary#Never} that no call forces
+ * all of them, and {@link Ternary#Maybe} that it depends on the path taken, on the caller, or on a function
+ * flowR could not resolve. A definition without parameters has nothing to leave unforced and is strict.
+ * @deprecated use {@link FunctionStrictnesses.of} instead
+ */
+export function strictnessOfFunction(id: NodeId, graph: DataflowGraph, ctx?: ReadOnlyFlowrAnalyzerContext): FunctionStrictness {
+	return FunctionStrictnesses.of([id], graph, { ctx })[id];
+}
+
+/** @deprecated use {@link FunctionStrictnesses.of} instead */
+export function strictnessOfFunctions(ids: Iterable<NodeId>, graph: DataflowGraph, ctx?: ReadOnlyFlowrAnalyzerContext): Record<NodeId, FunctionStrictness> {
+	return FunctionStrictnesses.of(ids, graph, { ctx });
 }

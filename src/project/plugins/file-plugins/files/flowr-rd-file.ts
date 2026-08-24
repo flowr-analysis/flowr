@@ -49,10 +49,7 @@ export interface RdTopicMatch {
 /** an S4 method alias, `sin,float32-method`; the generic is everything up to the first comma, as no R name holds one */
 const S4MethodAlias = /^([^,]+),.*-method$/;
 
-/**
- * The manual of a package: its {@link RdPage}s plus the alias-to-topic mapping they (or an installed
- * package's `help/AnIndex`) state. See {@link RdIndex.topicOf} and {@link RdIndex.documents}.
- */
+/** The manual of a package: its {@link RdPage}s plus the alias-to-topic mapping they (or an installed package's `help/AnIndex`) state. See {@link RdIndex.topicOf} and {@link RdIndex.documents}. */
 export class RdIndex {
 	/** alias to the topic documenting it */
 	private readonly aliases  = new Map<string, string>();
@@ -142,10 +139,7 @@ export class RdIndex {
 		return this.aliases.size === 0;
 	}
 
-	/**
-	 * The page documenting `name`, resolved as R's help system does: own alias first, then the fallbacks that
-	 * let a name share a page (replacement, S4 method, S3 generic; longest generic first).
-	 */
+	/** The page documenting `name`, resolved as R's help system does: own alias first, then the fallbacks that let a name share a page (replacement, S4 method, S3 generic; longest generic first). */
 	public topicOf(name: string): RdTopicMatch | undefined {
 		const direct = this.aliases.get(name);
 		if(direct !== undefined) {
@@ -176,11 +170,7 @@ export class RdIndex {
 		return this.topicOf(name) !== undefined;
 	}
 
-	/**
-	 * The manual of the package installed at `dir`, from its `help/AnIndex`: aliases only, as an installed
-	 * package ships no `man/`.
-	 * @param dir - the installation directory, i.e. the one holding the `DESCRIPTION`
-	 */
+	/** The manual of the package installed at `dir` (the installation directory, holding its `DESCRIPTION`), from its `help/AnIndex`: aliases only, as an installed package ships no `man/`. */
 	public static fromInstalledPackage(dir: string): RdIndex | undefined {
 		const index = path.join(dir, 'help', 'AnIndex');
 		if(!fs.existsSync(index)) {
@@ -205,10 +195,7 @@ export function parseAnIndex(content: string): [alias: string, topic: string][] 
 	return lines(content).map(l => AnIndexLine.exec(l)).filter(m => m !== null).map(m => [m[1], m[2]]);
 }
 
-/**
- * Parses R's fixed-width topic table (a package's `INDEX`, a `demo/00Index`): the topic starts in the first
- * column, indented lines continue its title. Answers what a package documents where no `man/` sources are.
- */
+/** Parses R's fixed-width topic table (a package's `INDEX`, a `demo/00Index`): the topic starts in the first column, indented lines continue its title. Answers what a package documents where no `man/` sources are. */
 export function parseRdTopicIndex(content: string): [topic: string, title: string][] {
 	const entries: [string, string][] = [];
 	for(const line of lines(content)) {
@@ -226,10 +213,7 @@ export function parseRdTopicIndex(content: string): [topic: string, title: strin
 	return entries;
 }
 
-/**
- * Parses a package's `data/datalist`: a bare line names a dataset whose object shares its name, a
- * `set: a b c` line one providing several under other names, which is written down nowhere else.
- */
+/** Parses a package's `data/datalist`: a bare line names a dataset whose object shares its name, a `set: a b c` line one providing several under other names, which is written down nowhere else. */
 export function parseDataList(content: string): [dataset: string, objects: readonly string[]][] {
 	return lines(content).map(line => {
 		const entry = line.trim();
@@ -240,10 +224,7 @@ export function parseDataList(content: string): [dataset: string, objects: reado
 	});
 }
 
-/**
- * One page of an installed package's `Meta/Rd.rds`: topic, aliases, keywords and title, i.e. what the `man/`
- * sources state, so an installed-only package answers the same questions a checked out one does.
- */
+/** One page of an installed package's `Meta/Rd.rds`: topic, aliases, keywords and title, i.e. what the `man/` sources state, so an installed-only package answers the same questions a checked out one does. */
 export interface RdMetaEntry {
 	/** the `\name{}` of the page */
 	readonly name:     string;
@@ -284,10 +265,7 @@ export function rdMetaOf(table: RObject): RdMetaEntry[] {
 	})).filter(isNotUndefined);
 }
 
-/**
- * `text` with its Rd comments removed. A `%` starts one in every section unless escaped, and only an *odd*
- * run of backslashes escapes it. Newlines are kept, as a comment ends at one.
- */
+/** `text` with its Rd comments removed. A `%` starts one in every section unless escaped, and only an *odd* run of backslashes escapes it. Newlines are kept, as a comment ends at one. */
 function stripRdComments(text: string): string {
 	let out = '';
 	let kept = 0;
@@ -353,21 +331,84 @@ function* groupsAt(text: string, marker: RegExp, from = 0): Generator<RdGroup> {
 	}
 }
 
-/** every `\macro{...}` of a page by its macro name, collected in one pass rather than one scan per name */
-const RdMacroUse = /\\([A-Za-z]+)\s*\{/g;
+/** Every `marker`-opened group paired with the group right after it, `undefined` when none follows; resumes past whichever of the two was found so neither is read twice. Shared by {@link parseArguments}'s `\item{names}{description}` and {@link parseRdMacros}'s `\newcommand{name}{body}`, which only differ in what a missing second group means to them. */
+function* groupPairsAt(text: string, marker: RegExp): Generator<[first: RdGroup, second: RdGroup | undefined]> {
+	for(const first of groupsAt(text, marker)) {
+		const second = readGroupAfter(text, first.end);
+		yield [first, second];
+		marker.lastIndex = second?.end ?? first.end;
+	}
+}
 
-/** The bodies of every `\macro{...}` in `text`, keyed by macro and in order of appearance. */
+/** matches a `\macro{` opening at the current {@link RegExp.lastIndex}, i.e. it must be set before every use */
+const RdMacroUseAt = /\\([A-Za-z]+)\s*\{/y;
+
+/** one `\macro{body}` a scan found: its name, its body, and the span of its group, see {@link macroGroups}. */
+type RdMacroUseFound = [macro: string, body: string, at: number, end: number];
+
+/** The group opening at `open` (must index a `{`), read in the same sweep as every `\macro{...}` nested inside it -- self first, then each child in the order it was found, matching a macro named `name` (`undefined` for a group with no name of its own, e.g. one just used to scope a run of text). `undefined` when the group never closes: nothing found while scanning it is trustworthy then, so the caller gives up on it too. */
+function consumeGroup(text: string, open: number, name: string | undefined): { end: number, found: RdMacroUseFound[] } | undefined {
+	const bodyStart = open + 1;
+	const found: RdMacroUseFound[] = [];
+	for(let i = bodyStart; i < text.length; i++) {
+		const c = text[i];
+		if(c === '{') {
+			const child = consumeGroup(text, i, undefined);
+			if(child === undefined) {
+				return undefined;
+			}
+			found.push(...child.found);
+			i = child.end - 1;
+		} else if(c === '}') {
+			const self: RdMacroUseFound[] = name === undefined ? [] : [[name, text.slice(bodyStart, i), open, i + 1]];
+			return { end: i + 1, found: [...self, ...found] };
+		} else if(c === '\\') {
+			RdMacroUseAt.lastIndex = i;
+			const use = RdMacroUseAt.exec(text);
+			if(use === null) {
+				i++;   // a lone escape, e.g. `\{` or `\%`, is content, not a boundary
+				continue;
+			}
+			const child = consumeGroup(text, i + use[0].length - 1, use[1]);
+			if(child === undefined) {
+				return undefined;
+			}
+			found.push(...child.found);
+			i = child.end - 1;
+		}
+	}
+	return undefined;
+}
+
+/**
+ * The bodies of every `\macro{...}` in `text`, keyed by macro and in order of appearance. A use of a macro
+ * inside a recorded group of the same macro is not a second use of it, which is how a per-macro scan reads
+ * `\alias{\alias{x}}`; a use of any other macro nested in there is found as usual.
+ */
 function macroGroups(text: string): Map<string, string[]> {
 	const groups = new Map<string, string[]>();
-	RdMacroUse.lastIndex = 0;
-	let match: RegExpExecArray | null;
-	while((match = RdMacroUse.exec(text)) !== null) {
-		const group = readGroup(text, match.index + match[0].length - 1);
-		if(group === undefined) {
-			break;
+	const recordedUntil = new Map<string, number>();
+	for(let i = 0; i < text.length; i++) {
+		if(text[i] !== '\\') {
+			continue;
 		}
-		/* the body is scanned on, as a page may state a macro inside another one */
-		groups.set(match[1], [...groups.get(match[1]) ?? [], group.body]);
+		RdMacroUseAt.lastIndex = i;
+		const use = RdMacroUseAt.exec(text);
+		if(use === null) {
+			continue;
+		}
+		const group = consumeGroup(text, i + use[0].length - 1, use[1]);
+		if(group === undefined) {
+			break;   // an unclosed group swallows the rest of the page; nothing past it can be trusted
+		}
+		for(const [macro, body, at, end] of group.found) {
+			if(at < (recordedUntil.get(macro) ?? 0)) {
+				continue;
+			}
+			recordedUntil.set(macro, end);
+			groups.set(macro, [...groups.get(macro) ?? [], body]);
+		}
+		i = group.end - 1;
 	}
 	return groups;
 }
@@ -386,11 +427,7 @@ const RdMacroOption = /\[[^\]]*\]/y;
 
 const Whitespace = /\s/;
 
-/**
- * Rd markup reduced to the text it renders: escapes resolved, markup macros dropped in favor of what they
- * wrap, whitespace collapsed. Escapes resolve *while* scanning, which is what lets base R's `\alias{\{}`
- * survive; stripping the braces first would leave a stray backslash instead of the name.
- */
+/** Rd markup reduced to the text it renders: escapes resolved, markup macros dropped in favor of what they wrap, whitespace collapsed. Escapes resolve *while* scanning, which is what lets base R's `\alias{\{}` survive; stripping the braces first would leave a stray backslash instead of the name. */
 function plainText(body: string): string {
 	let out = '';
 	for(let i = 0; i < body.length; i++) {
@@ -444,14 +481,12 @@ function parseArguments(block: string | undefined): Map<string, string> {
 	if(block === undefined) {
 		return args;
 	}
-	for(const names of groupsAt(block, RdArgumentItem)) {
-		const description = readGroupAfter(block, names.end);
+	for(const [names, description] of groupPairsAt(block, RdArgumentItem)) {
 		const text = description === undefined ? '' : plainText(description.body);
 		/* `\item{x, y}{...}` documents both names with the one description */
 		for(const name of names.body.split(',').map(n => plainText(n)).filter(n => n.length > 0)) {
 			args.set(name, text);
 		}
-		RdArgumentItem.lastIndex = description?.end ?? names.end;
 	}
 	return args;
 }
@@ -463,11 +498,7 @@ const RdUsageDots = /\\l?dots(?![A-Za-z])/g;
 /** `\special{...}`, which wraps a usage R cannot state as an ordinary call */
 const RdUsageSpecial = /\\special\{([^{}]*)\}/g;
 
-/**
- * The usage entries of a `\usage{}` block as R code, one per *expression*: an entry ends where its brackets
- * balance again, so a call wrapped over three lines stays one usage. Rd escapes resolve to their characters.
- * @param block - the body of the `\usage{}` macro, `undefined` when the page states none
- */
+/** The usage entries of a `\usage{}` block (`block`, `undefined` when the page states none) as R code, one per *expression*: an entry ends where its brackets balance again, so a call wrapped over three lines stays one usage. Rd escapes resolve to their characters. */
 function parseUsage(block: string | undefined): string[] {
 	if(block === undefined) {
 		return [];
@@ -541,19 +572,14 @@ const RdDeclaredMacro = /^\s*\\([A-Za-z]+)\s*$/;
 /** how often {@link expandRdMacros} rescans: a definition may use another, but R allows no recursion among them */
 const MaxMacroExpansions = 4;
 
-/**
- * Parses the `\newcommand{\name}{body}` definitions of a `man/macros/` file (installed: `help/macros/`).
- * It documents nothing itself, so pages have to be parsed {@link parseRdPage|with} it to read what they say.
- */
+/** Parses the `\newcommand{\name}{body}` definitions of a `man/macros/` file (installed: `help/macros/`). It documents nothing itself, so pages have to be parsed {@link parseRdPage|with} it to read what they say. */
 export function parseRdMacros(content: string): Map<string, RdMacro> {
 	const macros = new Map<string, RdMacro>();
 	const text = stripRdComments(content);
-	for(const name of groupsAt(text, RdMacroDefinition)) {
-		const body = readGroupAfter(text, name.end);
+	for(const [name, body] of groupPairsAt(text, RdMacroDefinition)) {
 		if(body === undefined) {
 			break;
 		}
-		RdMacroDefinition.lastIndex = body.end;
 		const declared = RdDeclaredMacro.exec(name.body)?.[1];
 		if(declared !== undefined) {
 			macros.set(declared, { params: highestMacroParameter(body.body), body: body.body });
@@ -573,12 +599,7 @@ function highestMacroParameter(body: string): number {
 	return highest;
 }
 
-/**
- * `text` with every use of a package-defined macro replaced by what it stands for; a use carrying fewer
- * groups than its definition takes is left alone rather than half-applied.
- * @param text   - the Rd source, comments already stripped
- * @param macros - what {@link parseRdMacros} read from the package's macro files
- */
+/** `text` (the Rd source, comments already stripped) with every use of a package-defined macro replaced by what it stands for, using `macros` (what {@link parseRdMacros} read from the package's macro files); a use carrying fewer groups than its definition takes is left alone rather than half-applied. */
 export function expandRdMacros(text: string, macros: RdMacros): string {
 	let out = text;
 	for(let round = 0; round < MaxMacroExpansions; round++) {
@@ -630,12 +651,7 @@ function expandMacrosOnce(text: string, macros: RdMacros): string {
 	return out + text.slice(kept);
 }
 
-/**
- * Parses one `.Rd` manual page.
- * @param content      - the raw page
- * @param fallbackName - the topic to assume when the page states no `\name{}` (usually the file's basename)
- * @param macros       - the package's own `\newcommand`s, so a page using them states what it renders
- */
+/** Parses one `.Rd` manual page: `content` is the raw page, `fallbackName` the topic to assume when the page states no `\name{}` (usually the file's basename), and `macros` the package's own `\newcommand`s, so a page using them states what it renders. */
 export function parseRdPage(content: string, fallbackName = '', macros?: RdMacros): RdPage {
 	const stripped = stripRdComments(content);
 	const text = macros !== undefined && macros.size > 0 ? expandRdMacros(stripped, macros) : stripped;
@@ -665,11 +681,7 @@ export class FlowrRdFile extends FlowrWrappedFile<RdPage> {
 		return this.pageWith();
 	}
 
-	/**
-	 * The page with the package's own `\newcommand`s expanded. Without any it is the cached {@link content};
-	 * with them it is parsed afresh, as the macros live in *other* files this one cannot know when loaded.
-	 * @param macros - what {@link parseRdMacros} read from the package's `man/macros/` files
-	 */
+	/** The page with `macros` (what {@link parseRdMacros} read from the package's `man/macros/` files) expanded. Without any it is the cached {@link content}; with them it is parsed afresh, as the macros live in *other* files this one cannot know when loaded. */
 	public pageWith(macros?: RdMacros): RdPage {
 		if(macros !== undefined && macros.size === 0) {
 			return this.content();
@@ -734,12 +746,7 @@ export class FlowrDataListFile extends FlowrWrappedFile<[dataset: string, object
 	}
 }
 
-/**
- * Collects every loaded manual source into one {@link RdIndex}: `man/` pages, `INDEX` tables, an installed
- * package's `help/AnIndex` and `Meta/Rd.rds`. Nothing is cached, so keep the result rather than asking again.
- * The `man/macros/` definitions come first, as a page using one only renders once they are known.
- * @param files - the project's documentation files, i.e. `ctx.files.getFilesByRole(FileRole.Documentation)`
- */
+/** Collects every loaded manual source of `files` (the project's documentation files, i.e. `ctx.files.getFilesByRole(FileRole.Documentation)`) into one {@link RdIndex}: `man/` pages, `INDEX` tables, an installed package's `help/AnIndex` and `Meta/Rd.rds`. Nothing is cached, so keep the result rather than asking again. The `man/macros/` definitions come first, as a page using one only renders once they are known. */
 export function rdIndexOf(files: Iterable<FlowrFileProvider>): RdIndex {
 	const all = [...files];
 	const macros = new Map<string, RdMacro>();

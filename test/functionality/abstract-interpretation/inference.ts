@@ -7,7 +7,8 @@ import { Identifier } from '../../../src/dataflow/environments/identifier';
 import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { RSymbol } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { ParentInformation } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RoleInParent } from '../../../src/r-bridge/lang-4.x/ast/model/processing/role';
 import type { RShell } from '../../../src/r-bridge/shell';
 import { type SlicingCriteria, SlicingCriterion } from '../../../src/slicing/criterion/parse';
@@ -87,6 +88,26 @@ export async function runInference<Inference extends AbstractInterpretationVisit
 }
 
 /**
+ * Resolves a slicing criterion to the AST node id an inference result should be read at.
+ * For a function call name, that is the call itself rather than the name symbol, since inference results
+ * are recorded on the call.
+ * @param idMap - The id map of the normalized AST the criterion was parsed against.
+ * @param criterion - The slicing criterion to resolve.
+ * @returns The resolved AST node id.
+ */
+export function resolveInferenceNodeId(idMap: AstIdMap<ParentInformation>, criterion: SlicingCriterion): NodeId {
+	let nodeId = SlicingCriterion.parse(criterion, idMap);
+	const node = idMap.get(nodeId);
+
+	if(node?.info.role === RoleInParent.FunctionCallName) {
+		nodeId = node.info.parent ?? nodeId;
+	}
+	guard(isNotUndefined(nodeId), `Slicing criterion ${criterion} does not refer to an AST node`);
+
+	return nodeId;
+}
+
+/**
  * Retrieves the inferred abstract value for a given slicing criterion from the results of the inference.
  * @param inference - The abstract interpretation visitor after performing the inference, which contains the inferred values.
  * @param criterion - The slicing criterion for which to retrieve the inferred value.
@@ -96,15 +117,7 @@ export function getInferredValueForCriterion<Domain extends AnyAbstractDomain>(
 	inference: AbstractInterpretationVisitor<AnyStateDomain<Domain>>,
 	criterion: SlicingCriterion
 ): Domain | undefined {
-	const idMap = inference.config.normalizedAst.idMap;
-	let nodeId = SlicingCriterion.parse(criterion, idMap);
-	const node = idMap.get(nodeId);
-
-	if(node?.info.role === RoleInParent.FunctionCallName) {
-		nodeId = node.info.parent ?? nodeId;
-	}
-	guard(isNotUndefined(nodeId), `Slicing criterion ${criterion} does not refer to an AST node`);
-
+	const nodeId = resolveInferenceNodeId(inference.config.normalizedAst.idMap, criterion);
 	return inference.getAbstractValue(nodeId);
 }
 

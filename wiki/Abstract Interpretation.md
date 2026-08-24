@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's abstract interpretation framework">Generated</span> from '[wiki-absint.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts "src/documentation/wiki-absint.ts")' on 2026-08-24, 11:12:38 UTC (v2.14.3, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's abstract interpretation framework">Generated</span> from '[wiki-absint.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts "src/documentation/wiki-absint.ts")' on 2026-08-24, 16:14:33 UTC (v2.14.3, R v4.6.1), please do not edit directly._
 
 
 This page describes the abstract interpretation framework of _flowR_.
@@ -318,9 +318,14 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              return this.create([Math.max(this.lower, other.lower), Math.min(this.upper, other.upper)]);
          }
      
+         /** The open (unconstrained) lower bound of the interval; subclasses over a restricted domain (e.g. {@link PosIntervalDomain}) may tighten it. */
+         protected minLower(): number {
+             return -Infinity;
+         }
+     
          protected widenValue(this: this & IntervalDomain<IntervalValue>, other: IntervalDomain<IntervalValue>): this {
              return this.create([
-                 this.lower <= other.lower ? this.lower : -Infinity,
+                 this.lower <= other.lower ? this.lower : this.minLower(),
                  this.upper >= other.upper ? this.upper : +Infinity
              ]);
          }
@@ -330,7 +335,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
                  return this.bottom();
              }
              return this.create([
-                 this.lower === -Infinity ? other.lower : this.lower,
+                 this.lower === this.minLower() ? other.lower : this.lower,
                  this.upper === +Infinity ? other.upper : this.upper
              ]);
          }
@@ -385,75 +390,59 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              return this.bottom();
          }
      
-         public add(other: this | IntervalLift): this {
+         /** Unwraps `this` and `other` to {@link IntervalValue}s and runs `op` with them, as long as both are actual values; falls back to Bottom otherwise. Shared by the binary numeric operations below. */
+         protected binaryOp(other: this | IntervalLift, op: (thisValue: IntervalValue, otherValue: IntervalValue) => this): this {
              const otherValue = other instanceof AbstractDomain ? other.value : other;
      
              if(this.isValue() && otherValue !== Bottom) {
-                 return this.create([this.lower + otherValue[0], this.upper + otherValue[1]]);
+                 return op(this.value, otherValue);
              }
              return this.bottom();
+         }
+     
+         public add(other: this | IntervalLift): this {
+             return this.binaryOp(other, (thisValue, otherValue) => this.create([thisValue[0] + otherValue[0], thisValue[1] + otherValue[1]]));
          }
      
          public subtract(other: this | IntervalLift): this {
-             const otherValue = other instanceof AbstractDomain ? other.value : other;
-     
-             if(this.isValue() && otherValue !== Bottom) {
-                 return this.create([this.lower - otherValue[0], this.upper - otherValue[1]]);
-             }
-             return this.bottom();
+             return this.binaryOp(other, (thisValue, otherValue) => this.create([thisValue[0] - otherValue[0], thisValue[1] - otherValue[1]]));
          }
      
          public multiply(other: this | IntervalLift): this {
-             const otherValue = other instanceof AbstractDomain ? other.value : other;
-     
-             if(this.isValue() && otherValue !== Bottom) {
+             return this.binaryOp(other, (thisValue, otherValue) => {
                  const products = [
-                     this.value[0] * otherValue[0],
-                     this.value[0] * otherValue[1],
-                     this.value[1] * otherValue[0],
-                     this.value[1] * otherValue[1]
+                     thisValue[0] * otherValue[0],
+                     thisValue[0] * otherValue[1],
+                     thisValue[1] * otherValue[0],
+                     thisValue[1] * otherValue[1]
                  ];
                  return this.create([Math.min(...products), Math.max(...products)]);
-             }
-             return this.bottom();
+             });
          }
      
          public divide(other: this | IntervalLift): this {
-             const otherValue = other instanceof AbstractDomain ? other.value : other;
-     
-             if(this.isValue() && otherValue !== Bottom) {
+             return this.binaryOp(other, (thisValue, otherValue) => {
                  if(otherValue[0] <= 0 && 0 <= otherValue[1]) {
                      return this.top();
                  }
                  return this.multiply(this.create([1 / otherValue[1], 1 / otherValue[0]]));
-             }
-             return this.bottom();
+             });
          }
      
          public min(other: this | IntervalLift): this {
-             const otherValue = other instanceof AbstractDomain ? other.value : other;
-     
-             if(this.isValue() && otherValue !== Bottom) {
-                 return this.create([Math.min(this.lower, otherValue[0]), Math.min(this.upper, otherValue[1])]);
-             }
-             return this.bottom();
+             return this.binaryOp(other, (thisValue, otherValue) => this.create([Math.min(thisValue[0], otherValue[0]), Math.min(thisValue[1], otherValue[1])]));
          }
      
          public max(other: this | IntervalLift): this {
-             const otherValue = other instanceof AbstractDomain ? other.value : other;
-     
-             if(this.isValue() && otherValue !== Bottom) {
-                 return this.create([Math.max(this.lower, otherValue[0]), Math.max(this.upper, otherValue[1])]);
-             }
-             return this.bottom();
+             return this.binaryOp(other, (thisValue, otherValue) => this.create([Math.max(thisValue[0], otherValue[0]), Math.max(thisValue[1], otherValue[1])]));
          }
      
          /**
-          * Extends the lower bound of the current abstract value down to -∞.
+          * Extends the lower bound of the current abstract value down to {@link minLower}.
           */
          public widenDown(): this {
              if(this.isValue()) {
-                 return this.create([-Infinity, this.upper]);
+                 return this.create([this.minLower(), this.upper]);
              }
              return this.bottom();
          }
@@ -499,12 +488,12 @@ _flowR_ already provides different abstract domains for abstract interpretation 
      
       <details><summary>View more (PosIntervalDomain)</summary>
 
-     * [PosIntervalDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/positive-interval-domain.ts#L22)   
+     * [PosIntervalDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/positive-interval-domain.ts#L21)   
        The positive interval abstract domain as positive intervals with possibly zero lower bounds and infinite upper bounds representing possible numeric values.
        The Bottom element is defined as
        <code>Bottom</code>
        symbol and the Top element is defined as the interval [0, +∞].
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/positive-interval-domain.ts#L22">src/abstract-interpretation/domains/positive-interval-domain.ts#L22</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/positive-interval-domain.ts#L21">src/abstract-interpretation/domains/positive-interval-domain.ts#L21</a></summary>
        
        
        ```ts
@@ -540,40 +529,12 @@ _flowR_ already provides different abstract domains for abstract interpretation 
                return this.create(PosIntervalTop) as this & PosIntervalDomain<PosIntervalTop>;
            }
        
-           protected widenValue(this: this & PosIntervalDomain<PosIntervalValue>, other: PosIntervalDomain<PosIntervalValue>): this {
-               return this.create([
-                   this.lower <= other.lower ? this.lower : 0,
-                   this.upper >= other.upper ? this.upper : +Infinity
-               ]);
-           }
-       
-           protected narrowValue(this: this & PosIntervalDomain<PosIntervalValue>, other: PosIntervalDomain<PosIntervalValue>): this {
-               if(Math.max(this.lower, other.lower) > Math.min(this.upper, other.upper)) {
-                   return this.bottom();
-               }
-               return this.create([
-                   this.lower === 0 ? other.lower : this.lower,
-                   this.upper === +Infinity ? other.upper : this.upper
-               ]);
+           protected minLower(): number {
+               return 0;
            }
        
            public subtract(other: this | PosIntervalLift): this {
-               const otherValue = other instanceof AbstractDomain ? other.value : other;
-       
-               if(this.isValue() && otherValue !== Bottom) {
-                   return this.create([Math.max(this.lower - otherValue[0], 0), Math.max(this.upper - otherValue[1], 0)]);
-               }
-               return this.bottom();
-           }
-       
-           /**
-            * Extends the lower bound of the current abstract value down to 0.
-            */
-           public widenDown(): this {
-               if(this.isValue()) {
-                   return this.create([0, this.upper]);
-               }
-               return this.bottom();
+               return this.binaryOp(other, (thisValue, otherValue) => this.create([Math.max(thisValue[0] - otherValue[0], 0), Math.max(thisValue[1] - otherValue[1], 0)]));
            }
        
            public isTop(): this is this & PosIntervalDomain<PosIntervalTop> {
@@ -587,11 +548,11 @@ _flowR_ already provides different abstract domains for abstract interpretation 
        
 
       </details>
-   * [PartialProductDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/partial-product-domain.ts#L20)   
+   * [PartialProductDomain](https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/partial-product-domain.ts#L23)   
      A partial product abstract domain as named Cartesian product of (optional) sub abstract domains.
      The sub abstract domains are represented by a (partial) record mapping property names to abstract domains.
      The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as having no sub abstract domain value.
-     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/partial-product-domain.ts#L20">src/abstract-interpretation/domains/partial-product-domain.ts#L20</a></summary>
+     <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/partial-product-domain.ts#L23">src/abstract-interpretation/domains/partial-product-domain.ts#L23</a></summary>
      
      
      ```ts
@@ -633,84 +594,71 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              return this.create({} as Product);
          }
      
-         protected equalsValue(other: this): boolean {
+         /** Compares each sub abstract domain value pointwise with `cmp`; `skipWhenOtherUndefined` treats a missing (Top) property on `other` as trivially satisfying `cmp` instead of a mismatch. */
+         private compareValues(other: this, cmp: (a: AnyAbstractDomain, b: AnyAbstractDomain) => boolean, skipWhenOtherUndefined: boolean): boolean {
              if(this.value === other.value) {
                  return true;
              }
              for(const key in this.value) {
-                 if(this.value[key] === other.value[key]) {
+                 if(this.value[key] === other.value[key] || (skipWhenOtherUndefined && other.value[key] === undefined)) {
                      continue;
-                 } else if(this.value[key] === undefined || other.value[key] === undefined || !this.value[key].equals(other.value[key])) {
+                 } else if(this.value[key] === undefined || other.value[key] === undefined || !cmp(this.value[key], other.value[key])) {
                      return false;
                  }
              }
              return true;
+         }
+     
+         protected equalsValue(other: this): boolean {
+             return this.compareValues(other, (a, b) => a.equals(b), false);
          }
      
          protected leqValue(other: this): boolean {
-             if(this.value === other.value) {
-                 return true;
-             }
-             for(const key in this.value) {
-                 if(this.value[key] === other.value[key] || other.value[key] === undefined) {
-                     continue;
-                 } else if(this.value[key] === undefined || !this.value[key].leq(other.value[key])) {
-                     return false;
-                 }
-             }
-             return true;
+             return this.compareValues(other, (a, b) => a.leq(b), true);
          }
      
-         protected joinValue(other: this): this {
+         /** Combines each sub abstract domain value pointwise with `op`, keeping a property only if it is defined on both sides (used by join and widen). */
+         private combineDefined(other: this, op: PointwiseOp): this {
              const result = {} as Product;
      
              for(const key in this.domain) {
                  if(this.value[key] !== undefined && other.value[key] !== undefined) {
-                     result[key] = this.value[key].join(other.value[key]) as typeof result[typeof key];
+                     result[key] = op(this.value[key], other.value[key]) as typeof result[typeof key];
+                 }
+             }
+             return this.create(result);
+         }
+     
+         protected joinValue(other: this): this {
+             return this.combineDefined(other, (a, b) => a.join(b));
+         }
+     
+         protected widenValue(other: this): this {
+             return this.combineDefined(other, (a, b) => a.widen(b));
+         }
+     
+         /** Combines each sub abstract domain value pointwise with `op`, falling back to whichever side has a value if the other property is missing (used by meet and narrow). */
+         private combineOrFallback(other: this, op: PointwiseOp): this {
+             const result = {} as Product;
+     
+             for(const key in this.domain) {
+                 if(this.value[key] === undefined) {
+                     result[key] = other.value[key];
+                 } else if(other.value[key] === undefined) {
+                     result[key] = this.value[key];
+                 } else {
+                     result[key] = op(this.value[key], other.value[key]) as typeof result[typeof key];
                  }
              }
              return this.create(result);
          }
      
          protected meetValue(other: this): this {
-             const result = {} as Product;
-     
-             for(const key in this.domain) {
-                 if(this.value[key] === undefined) {
-                     result[key] = other.value[key];
-                 } else if(other.value[key] === undefined) {
-                     result[key] = this.value[key];
-                 } else {
-                     result[key] = this.value[key].meet(other.value[key]) as typeof result[typeof key];
-                 }
-             }
-             return this.create(result);
-         }
-     
-         protected widenValue(other: this): this {
-             const result = {} as Product;
-     
-             for(const key in this.domain) {
-                 if(this.value[key] !== undefined && other.value[key] !== undefined) {
-                     result[key] = this.value[key].widen(other.value[key]) as typeof result[typeof key];
-                 }
-             }
-             return this.create(result);
+             return this.combineOrFallback(other, (a, b) => a.meet(b));
          }
      
          protected narrowValue(other: this): this {
-             const result = {} as Product;
-     
-             for(const key in this.domain) {
-                 if(this.value[key] === undefined) {
-                     result[key] = other.value[key];
-                 } else if(other.value[key] === undefined) {
-                     result[key] = this.value[key];
-                 } else {
-                     result[key] = this.value[key].narrow(other.value[key]) as typeof result[typeof key];
-                 }
-             }
-             return this.create(result);
+             return this.combineOrFallback(other, (a, b) => a.narrow(b));
          }
      
          protected jsonify(): unknown {
@@ -1061,22 +1009,35 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              return otherLower.isSubsetOf(thisLower) && (otherUpper === Top || (thisUpper !== Top && thisUpper.isSubsetOf(otherUpper)));
          }
      
+         /** Builds a {@link SetRangeValue} from a must set and an upper bound, deriving the may set as the upper bound minus the must set. */
+         private toRangeValue(must: ReadonlySet<T>, upper: ReadonlySet<T> | typeof Top): SetRangeValue<T> {
+             return { must, may: upper === Top ? Top : upper.difference(must) };
+         }
+     
+         /** The upper bound of the union of two sets bounded by `thisUpper` and `otherUpper` ({@link Top} if either is unbounded). Shared by {@link joinValue} and {@link union}. */
+         private unionUpperBound(thisUpper: ReadonlySet<T> | typeof Top, otherUpper: ReadonlySet<T> | typeof Top): ReadonlySet<T> | typeof Top {
+             if(thisUpper === Top || otherUpper === Top) {
+                 return Top;
+             }
+             return thisUpper.union(otherUpper);
+         }
+     
+         /** The upper bound of the intersection of two sets bounded by `thisUpper` and `otherUpper`. Shared by {@link meetValue} and {@link intersect}. */
+         private intersectUpperBound(thisUpper: ReadonlySet<T> | typeof Top, otherUpper: ReadonlySet<T> | typeof Top): ReadonlySet<T> | typeof Top {
+             if(thisUpper === Top) {
+                 return otherUpper;
+             } else if(otherUpper === Top) {
+                 return thisUpper;
+             }
+             return thisUpper.intersection(otherUpper);
+         }
+     
          protected joinValue(this: this & SetRangeDomain<T, SetRangeValue<T>>, other: SetRangeDomain<T, SetRangeValue<T>>): this {
              const thisLower = this.lower(), thisUpper = this.upper();
              const otherLower = other.lower(), otherUpper = other.upper();
      
              const joinLower = thisLower.intersection(otherLower);
-             let joinUpper;
-     
-             if(thisUpper === Top || otherUpper === Top) {
-                 joinUpper = Top;
-             } else {
-                 joinUpper = thisUpper.union(otherUpper);
-             }
-             return this.create({
-                 must: joinLower,
-                 may:  joinUpper === Top ? Top : joinUpper.difference(joinLower)
-             });
+             return this.create(this.toRangeValue(joinLower, this.unionUpperBound(thisUpper, otherUpper)));
          }
      
          protected meetValue(this: this & SetRangeDomain<T, SetRangeValue<T>>, other: SetRangeDomain<T, SetRangeValue<T>>): this {
@@ -1084,22 +1045,12 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              const otherLower = other.lower(), otherUpper = other.upper();
      
              const meetLower = thisLower.union(otherLower);
-             let meetUpper;
+             const meetUpper = this.intersectUpperBound(thisUpper, otherUpper);
      
-             if(thisUpper === Top) {
-                 meetUpper = otherUpper;
-             } else if(otherUpper === Top) {
-                 meetUpper = thisUpper;
-             } else {
-                 meetUpper = thisUpper.intersection(otherUpper);
-             }
              if(meetUpper !== Top && !meetLower.isSubsetOf(meetUpper)) {
                  return this.bottom();
              }
-             return this.create({
-                 must: meetLower,
-                 may:  meetUpper === Top ? Top : meetUpper.difference(meetLower)
-             });
+             return this.create(this.toRangeValue(meetLower, meetUpper));
          }
      
          public union(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
@@ -1112,17 +1063,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              const otherLower = other.lower(), otherUpper = other.upper();
      
              const unionLower = thisLower.union(otherLower);
-             let unionUpper;
-     
-             if(thisUpper === Top || otherUpper === Top) {
-                 unionUpper = Top;
-             } else {
-                 unionUpper = thisUpper.union(otherUpper);
-             }
-             return this.create({
-                 must: unionLower,
-                 may:  unionUpper === Top ? Top : unionUpper.difference(unionLower)
-             });
+             return this.create(this.toRangeValue(unionLower, this.unionUpperBound(thisUpper, otherUpper)));
          }
      
          public intersect(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
@@ -1135,19 +1076,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              const otherLower = other.lower(), otherUpper = other.upper();
      
              const intersectLower = thisLower.intersection(otherLower);
-             let intersectUpper;
-     
-             if(thisUpper === Top) {
-                 intersectUpper = otherUpper;
-             } else if(otherUpper === Top) {
-                 intersectUpper = thisUpper;
-             } else {
-                 intersectUpper = thisUpper.intersection(otherUpper);
-             }
-             return this.create({
-                 must: intersectLower,
-                 may:  intersectUpper === Top ? Top : intersectUpper.difference(intersectLower)
-             });
+             return this.create(this.toRangeValue(intersectLower, this.intersectUpperBound(thisUpper, otherUpper)));
          }
      
          public subtract(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
@@ -1175,10 +1104,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              } else {
                  subtractUpper = thisUpper.difference(otherUpper);
              }
-             return this.create({
-                 must: subtractLower,
-                 may:  subtractUpper === Top ? Top : subtractUpper.difference(subtractLower)
-             });
+             return this.create(this.toRangeValue(subtractLower, subtractUpper));
          }
      
          protected widenValue(this: this & SetRangeDomain<T, SetRangeValue<T>>, other: SetRangeDomain<T, SetRangeValue<T>>): this {
@@ -1199,10 +1125,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              } else {
                  widenUpper = Top;
              }
-             return this.create({
-                 must: widenLower,
-                 may:  widenUpper === Top ? Top : widenUpper.difference(widenLower)
-             });
+             return this.create(this.toRangeValue(widenLower, widenUpper));
          }
      
          protected narrowValue(this: this & SetRangeDomain<T, SetRangeValue<T>>, other: SetRangeDomain<T, SetRangeValue<T>>): this {
@@ -1226,10 +1149,7 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              } else {
                  narrowUpper = thisUpper;
              }
-             return this.create({
-                 must: narrowLower,
-                 may:  narrowUpper === Top ? Top : narrowUpper.difference(narrowLower)
-             });
+             return this.create(this.toRangeValue(narrowLower, narrowUpper));
          }
      
          public satisfies(set: ReadonlySet<T> | T[], comparator: SetComparator = SetComparator.Equal): Ternary {
@@ -1711,35 +1631,31 @@ _flowR_ already provides different abstract domains for abstract interpretation 
              return this.create(Bottom) as this & StateAbstractDomain<Domain, StateDomainBottom>;
          }
      
-         protected equalsValue(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): boolean {
-             if(this.value.size !== other.value.size) {
+         /** Checks the map sizes with `sizeOk`, then compares every entry of `this` against `other` pointwise with `cmp` (used by equals and leq). */
+         private compareValues(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>, sizeOk: (thisSize: number, otherSize: number) => boolean, cmp: (a: Domain, b: Domain) => boolean): boolean {
+             if(!sizeOk(this.value.size, other.value.size)) {
                  return false;
              }
              for(const [key, currValue] of this.value.entries()) {
                  const otherValue = other.get(key);
      
-                 if(otherValue === undefined || !currValue.equals(otherValue)) {
+                 if(otherValue === undefined || !cmp(currValue, otherValue)) {
                      return false;
                  }
              }
              return true;
+         }
+     
+         protected equalsValue(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): boolean {
+             return this.compareValues(other, (a, b) => a === b, (a, b) => a.equals(b));
          }
      
          protected leqValue(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): boolean {
-             if(this.value.size > other.value.size) {
-                 return false;
-             }
-             for(const [key, currValue] of this.value.entries()) {
-                 const otherValue = other.get(key);
-     
-                 if(otherValue === undefined || !currValue.leq(otherValue)) {
-                     return false;
-                 }
-             }
-             return true;
+             return this.compareValues(other, (a, b) => a <= b, (a, b) => a.leq(b));
          }
      
-         protected joinValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
+         /** Merges every entry of `other` into a copy of `this`, applying `op` pointwise where both sides have a value for a key (used by join and widen). */
+         private unionCombine(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>, op: (a: Domain, b: Domain) => Domain): this {
              const result = new Map(this.value);
      
              for(const [key, otherValue] of other.value.entries()) {
@@ -1748,51 +1664,40 @@ _flowR_ already provides different abstract domains for abstract interpretation 
                  if(currValue === undefined) {
                      result.set(key, otherValue);
                  } else {
-                     result.set(key, currValue.join(otherValue));
+                     result.set(key, op(currValue, otherValue));
+                 }
+             }
+             return this.create(result);
+         }
+     
+         protected joinValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
+             return this.unionCombine(other, (a, b) => a.join(b));
+         }
+     
+         protected widenValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
+             return this.unionCombine(other, (a, b) => a.widen(b));
+         }
+     
+         /** Combines only the entries shared between `this` and `other`, applying `op` pointwise (used by meet and narrow). */
+         private intersectCombine(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>, op: (a: Domain, b: Domain) => Domain): this {
+             const result = new Map<NodeId, Domain>();
+     
+             for(const [key, currValue] of this.value.entries()) {
+                 const otherValue = other.value.get(key);
+     
+                 if(otherValue !== undefined) {
+                     result.set(key, op(currValue, otherValue));
                  }
              }
              return this.create(result);
          }
      
          protected meetValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
-             const result = new Map<NodeId, Domain>();
-     
-             for(const [key, currValue] of this.value.entries()) {
-                 const otherValue = other.value.get(key);
-     
-                 if(otherValue !== undefined) {
-                     result.set(key, currValue.meet(otherValue));
-                 }
-             }
-             return this.create(result);
-         }
-     
-         protected widenValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
-             const result = new Map(this.value);
-     
-             for(const [key, otherValue] of other.value.entries()) {
-                 const currValue = result.get(key);
-     
-                 if(currValue === undefined) {
-                     result.set(key, otherValue);
-                 } else {
-                     result.set(key, currValue.widen(otherValue));
-                 }
-             }
-             return this.create(result);
+             return this.intersectCombine(other, (a, b) => a.meet(b));
          }
      
          protected narrowValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
-             const result = new Map<NodeId, Domain>();
-     
-             for(const [key, currValue] of this.value.entries()) {
-                 const otherValue = other.value.get(key);
-     
-                 if(otherValue !== undefined) {
-                     result.set(key, currValue.narrow(otherValue));
-                 }
-             }
-             return this.create(result);
+             return this.intersectCombine(other, (a, b) => a.narrow(b));
          }
      
          protected jsonify(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>): unknown {
@@ -1910,11 +1815,11 @@ click IntervalDomain href "https://github.com/flowr-analysis/flowr/tree/main/src
 class PosIntervalDomain~Value extends PosIntervalLift = PosIntervalLift~{
     <<class>>
 }
-click PosIntervalDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/positive-interval-domain.ts#L22" "The positive interval abstract domain as positive intervals with possibly zero lower bounds and infinite upper bounds representing possible numeric values. The Bottom element is defined as; #60;code#62;Bottom#60;/code#62;; symbol and the Top element is defined as the interval #91;0, #43;∞#93;."
+click PosIntervalDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/positive-interval-domain.ts#L21" "The positive interval abstract domain as positive intervals with possibly zero lower bounds and infinite upper bounds representing possible numeric values. The Bottom element is defined as; #60;code#62;Bottom#60;/code#62;; symbol and the Top element is defined as the interval #91;0, #43;∞#93;."
 class PartialProductDomain~Product extends AbstractProduct~{
     <<class>>
 }
-click PartialProductDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/partial-product-domain.ts#L20" "A partial product abstract domain as named Cartesian product of (optional) sub abstract domains. The sub abstract domains are represented by a (partial) record mapping property names to abstract domains. The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as having no sub abstract domain value."
+click PartialProductDomain href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/partial-product-domain.ts#L23" "A partial product abstract domain as named Cartesian product of (optional) sub abstract domains. The sub abstract domains are represented by a (partial) record mapping property names to abstract domains. The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as having no sub abstract domain value."
 class MultiValueDomain~Product extends AbstractProduct~{
     <<class>>
 }
@@ -2100,30 +2005,30 @@ The AST nodes are represented as slicing criteria for better readability in the 
 
 <h2 id="testing">Testing</h2>
 
-_flowR_ provides a generic testing framework for abstract interpretation in [test/functionality/abstract-interpretation/inference.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts). The framework supports two kinds of tests for testing inferred abstract domain values at given source code locations (as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/slicing/criterion/parse.ts#L100"><code><span title="several SlicingCriterion s, all of which are sliced for at once">SlicingCriteria</span></code></a>):
+_flowR_ provides a generic testing framework for abstract interpretation in [test/functionality/abstract-interpretation/inference.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts). The framework supports two kinds of tests for testing inferred abstract domain values at given source code locations (as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/slicing/criterion/parse.ts#L101"><code><span title="several SlicingCriterion s, all of which are sliced for at once">SlicingCriteria</span></code></a>):
 
- 1. **Assertion tests** — compare the inferred values against manually specified expected values (<a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L162"><code><span title="Asserts that the inferred values at given locations (as slicing criteria) match expected values.">assertInferredValues</span></code></a>).
- 2. **Validation tests** — run the code to output the actual value at each location and compare the inferred values against the actual values (<a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L190"><code><span title="Validates the inferred values at given locations (as slicing criteria) against the actual values when running the code. Only slicing criteria for symbols are allowed (e.g., no slicing criteria for function calls or operators).  Note that this functions inserts print statements for the actual values in the code in the line after each slicing criterion. Make sure that this does not break the provide...">validateInferredValues</span></code></a>).
+ 1. **Assertion tests** — compare the inferred values against manually specified expected values (<a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L175"><code><span title="Asserts that the inferred values at given locations (as slicing criteria) match expected values.">assertInferredValues</span></code></a>).
+ 2. **Validation tests** — run the code to output the actual value at each location and compare the inferred values against the actual values (<a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L203"><code><span title="Validates the inferred values at given locations (as slicing criteria) against the actual values when running the code. Only slicing criteria for symbols are allowed (e.g., no slicing criteria for function calls or operators).  Note that this functions inserts print statements for the actual values in the code in the line after each slicing criterion. Make sure that this does not break the provide...">validateInferredValues</span></code></a>).
 
-The test function <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L129"><code><span title="Combined test to assert that the inferred values match expected values for given slicing criteria and validate the inferred values against the actual values at these locations when running the code. When only providing a list of locations (slicing criteria), only the validation test is performed. The skipRun option of the test options can be used to skip the validation test (skip running the code)...">testInferredValues</span></code></a> combines both tests: it performs an assertion test when an <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L32"><code><span title="A test case for value inference, mapping identifiers specified as slicing criteria to their expected values.">InferenceTestCase</span></code></a> record of expected values is provided, and a validation test (unless the option `skipRun` is set). When only a list of slicing criteria is provided instead of a <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L32"><code><span title="A test case for value inference, mapping identifiers specified as slicing criteria to their expected values.">InferenceTestCase</span></code></a>, only the validation test is performed. For the validation test, it is required that all slicing criteria represent symbols, as the instrumentation of the code adds print statements for each symbol location after the code line of the symbol. The function takes the following arguments:
+The test function <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L142"><code><span title="Combined test to assert that the inferred values match expected values for given slicing criteria and validate the inferred values against the actual values at these locations when running the code. When only providing a list of locations (slicing criteria), only the validation test is performed. The skipRun option of the test options can be used to skip the validation test (skip running the code)...">testInferredValues</span></code></a> combines both tests: it performs an assertion test when an <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L33"><code><span title="A test case for value inference, mapping identifiers specified as slicing criteria to their expected values.">InferenceTestCase</span></code></a> record of expected values is provided, and a validation test (unless the option `skipRun` is set). When only a list of slicing criteria is provided instead of a <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L33"><code><span title="A test case for value inference, mapping identifiers specified as slicing criteria to their expected values.">InferenceTestCase</span></code></a>, only the validation test is performed. For the validation test, it is required that all slicing criteria represent symbols, as the instrumentation of the code adds print statements for each symbol location after the code line of the symbol. The function takes the following arguments:
 
  * `name` — the name or label of the test
  * `shell` — the R shell to use for the validation test
  * `code` — the R code to analyse and (for validation) to execute
- * `expected` — an <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L32"><code><span title="A test case for value inference, mapping identifiers specified as slicing criteria to their expected values.">InferenceTestCase</span></code></a> mapping slicing criteria to expected abstract values, or a list of slicing criteria for validation-only tests
+ * `expected` — an <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L33"><code><span title="A test case for value inference, mapping identifiers specified as slicing criteria to their expected values.">InferenceTestCase</span></code></a> mapping slicing criteria to expected abstract values, or a list of slicing criteria for validation-only tests
  * `inference` — a function that takes an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-visitor.ts#L30"><code>AbsintVisitorConfiguration</code></a> and returns an <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/absint-visitor.ts#L76"><code><span title="A control flow graph visitor to perform abstract interpretation. The worklist below stays within the function it starts in: a function definition produces a closure and its body is a region of its own, which nothing flows into. Calls are not followed by default: flip shouldEnterCall() to step into what a call dispatches to and continue with the state at the function's exit points. Condition semant...">AbstractInterpretationVisitor</span></code></a> to perform the inference
  * `createOutputCode` — a function `(marker, symbol) => string` that returns R code printing the analyzed properties of `symbol` in a line prefixed with `marker`
  * `parseOutput` — a function `(line) => Domain | undefined` that parses the output line produced by `createOutputCode` into an abstract domain value
  * `options` — optional inference test settings (_flowR_ configuration, additional project files, domain matching type, `skipRun`, etc.)
 
-Additionally, <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L162"><code><span title="Asserts that the inferred values at given locations (as slicing criteria) match expected values.">assertInferredValues</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L190"><code><span title="Validates the inferred values at given locations (as slicing criteria) against the actual values when running the code. Only slicing criteria for symbols are allowed (e.g., no slicing criteria for function calls or operators).  Note that this functions inserts print statements for the actual values in the code in the line after each slicing criterion. Make sure that this does not break the provide...">validateInferredValues</span></code></a> are available to only perform the assertions for assertion tests or validation tests without wrapping them into a test case.
+Additionally, <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L175"><code><span title="Asserts that the inferred values at given locations (as slicing criteria) match expected values.">assertInferredValues</span></code></a> and <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L203"><code><span title="Validates the inferred values at given locations (as slicing criteria) against the actual values when running the code. Only slicing criteria for symbols are allowed (e.g., no slicing criteria for function calls or operators).  Note that this functions inserts print statements for the actual values in the code in the line after each slicing criterion. Make sure that this does not break the provide...">validateInferredValues</span></code></a> are available to only perform the assertions for assertion tests or validation tests without wrapping them into a test case.
 
-When comparing inferred values with expected values, the framework supports two matching types via <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L24"><code><span title="Whether an inferred value should equal the expected value, or should be an over-approximation of the expected value.">DomainMatchingType</span></code></a>:
+When comparing inferred values with expected values, the framework supports two matching types via <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L25"><code><span title="Whether an inferred value should equal the expected value, or should be an over-approximation of the expected value.">DomainMatchingType</span></code></a>:
 
- * <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L25"><code>DomainMatchingType::<b>Equal</b></code></a> — the inferred value must equal the expected value (default for assertion tests)
- * <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L26"><code>DomainMatchingType::<b>Overapproximation</b></code></a> — the inferred value must be an over-approximation of the actual value via <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/abstract-domain.ts#L47"><code>AbstractDomain::<b>leq</b></code></a> (default for validation tests)
+ * <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L26"><code>DomainMatchingType::<b>Equal</b></code></a> — the inferred value must equal the expected value (default for assertion tests)
+ * <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L27"><code>DomainMatchingType::<b>Overapproximation</b></code></a> — the inferred value must be an over-approximation of the actual value via <a href="https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/domains/abstract-domain.ts#L47"><code>AbstractDomain::<b>leq</b></code></a> (default for validation tests)
 
-For example, to use the test framework for the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts#L23"><code>IntervalInferenceVisitor</code></a> defined above, we first define how to print the properties of an actual numeric scalar value in R using `createOutputCode` and how to parse it into an abstract domain value using `parseOutput`. Then, we can use <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L129"><code><span title="Combined test to assert that the inferred values match expected values for given slicing criteria and validate the inferred values against the actual values at these locations when running the code. When only providing a list of locations (slicing criteria), only the validation test is performed. The skipRun option of the test options can be used to skip the validation test (skip running the code)...">testInferredValues</span></code></a> to create a test for our code example by providing a test name, an R shell, the code to test, the test locations as slicing criteria with expected values, the inference visitor, and our `createOutputCode` and `parseOutput` function:
+For example, to use the test framework for the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts#L23"><code>IntervalInferenceVisitor</code></a> defined above, we first define how to print the properties of an actual numeric scalar value in R using `createOutputCode` and how to parse it into an abstract domain value using `parseOutput`. Then, we can use <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L142"><code><span title="Combined test to assert that the inferred values match expected values for given slicing criteria and validate the inferred values against the actual values at these locations when running the code. When only providing a list of locations (slicing criteria), only the validation test is performed. The skipRun option of the test options can be used to skip the validation test (skip running the code)...">testInferredValues</span></code></a> to create a test for our code example by providing a test name, an R shell, the code to test, the test locations as slicing criteria with expected values, the inference visitor, and our `createOutputCode` and `parseOutput` function:
 
 
 ```ts
@@ -2168,7 +2073,7 @@ z <- x + y
 ```
 
 
-The assertion test verifies that the inferred intervals match the specified expected values exactly (using <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L25"><code>DomainMatchingType::<b>Equal</b></code></a>). The validation test instruments the code by inserting print statements after each tested location, executes the instrumented code with the R shell, and checks that each inferred interval at these locations is an over-approximation of the actual runtime value (using <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L26"><code>DomainMatchingType::<b>Overapproximation</b></code></a>). For example, the inferred interval `[6, 12]` for `y` is a sound over-approximation of the actual value `6` or `12`, depending on the random branch taken at runtime.
+The assertion test verifies that the inferred intervals match the specified expected values exactly (using <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L26"><code>DomainMatchingType::<b>Equal</b></code></a>). The validation test instruments the code by inserting print statements after each tested location, executes the instrumented code with the R shell, and checks that each inferred interval at these locations is an over-approximation of the actual runtime value (using <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L27"><code>DomainMatchingType::<b>Overapproximation</b></code></a>). For example, the inferred interval `[6, 12]` for `y` is a sound over-approximation of the actual value `6` or `12`, depending on the random branch taken at runtime.
 
-For an existing example of the test framework used in practice, see the data frame shape inference tests in [test/functionality/abstract-interpretation/data-frame/inference.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/data-frame/inference.test.ts), which use a domain-specific wrapper <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/data-frame/data-frame.ts#L58"><code><span title="Combined test to assert that the inferred data frame shapes match expected values for given slicing criteria and validate the inferred shapes against the actual values at these locations when running the code. When only providing a list of locations (slicing criteria), only the validation test is performed. The skipRun option of the test options can be used to skip the validation test (skip runnin...">testInferredDataFrameShape</span></code></a> built on top of <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L129"><code><span title="Combined test to assert that the inferred values match expected values for given slicing criteria and validate the inferred values against the actual values at these locations when running the code. When only providing a list of locations (slicing criteria), only the validation test is performed. The skipRun option of the test options can be used to skip the validation test (skip running the code)...">testInferredValues</span></code></a>.
+For an existing example of the test framework used in practice, see the data frame shape inference tests in [test/functionality/abstract-interpretation/data-frame/inference.test.ts](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/data-frame/inference.test.ts), which use a domain-specific wrapper <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/data-frame/data-frame.ts#L56"><code><span title="Combined test to assert that the inferred data frame shapes match expected values for given slicing criteria and validate the inferred shapes against the actual values at these locations when running the code. When only providing a list of locations (slicing criteria), only the validation test is performed. The skipRun option of the test options can be used to skip the validation test (skip runnin...">testInferredDataFrameShape</span></code></a> built on top of <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/abstract-interpretation/inference.ts#L142"><code><span title="Combined test to assert that the inferred values match expected values for given slicing criteria and validate the inferred values against the actual values at these locations when running the code. When only providing a list of locations (slicing criteria), only the validation test is performed. The skipRun option of the test options can be used to skip the validation test (skip running the code)...">testInferredValues</span></code></a>.
         

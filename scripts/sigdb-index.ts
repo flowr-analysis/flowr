@@ -54,7 +54,7 @@ export interface SigIndex {
 	readonly stated:         ReadonlyMap<string, StatedSignature[]>;
 	/** every name some package records as a generic, which is what makes a dotted name a method of it */
 	readonly generics:       ReadonlySet<string>;
-	/** the formals the database records for base R, `name -> [package, parameters][]`, see {@link baseFormals} */
+	/** the formals the database records for base R, `name -> [package, parameters][]`; only base R fits on a page */
 	readonly formals:        ReadonlyMap<string, [pkg: string, params: string][]>;
 	/**
 	 * `package::alias -> topic` for every documented base R name, the topic empty where it is the name itself.

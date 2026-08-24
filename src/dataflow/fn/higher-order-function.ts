@@ -123,15 +123,40 @@ function callsAFormal(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyz
 	return Object.values(roles).some(props => (props & ArgProp.Callee) !== 0);
 }
 
+/** What to ask for beyond the definition itself, see {@link HigherOrderFunctions.of}. */
+export interface HigherOrderFunctionsOptions {
+	/** how to ask what a built-in states, and to resolve the value an argument carries */
+	readonly ctx:            ReadOnlyFlowrAnalyzerContext
+	/** the graph with edges reversed, to speed up repeat queries over the same call sites */
+	readonly invertedGraph?: DataflowGraph
+}
+
 /**
  * Whether the function is higher-order: it takes a function argument, may return one, or calls one of its own
- * formals as a function. `function(x) x` alone is not higher-order; pass an inverted graph to speed up repeat queries.
+ * formals as a function. `function(x) x` alone is not higher-order.
+ * @useInstead {@link HigherOrderFunctions.of}
  */
-export function isFunctionHigherOrder(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph): boolean {
+function isHigherOrder(this: void, id: NodeId, graph: DataflowGraph, { ctx, invertedGraph }: HigherOrderFunctionsOptions): boolean {
 	const vert = graph.getVertex(id);
 	if(!vert || !FunctionDefinitionVertex.is(vert)) {
 		return false;
 	}
 
 	return isAnyReturnAFunction(vert, graph) || callsAFormal(id, graph, ctx) || inspectCallSitesArgumentsFns(vert, graph, ctx, invertedGraph);
+}
+
+/** Whether the functions of a program take, return, or call one of their own formals as a function. */
+export const HigherOrderFunctions = {
+	name: 'HigherOrderFunctions',
+	/** Whether one definition is higher-order; see {@link isHigherOrder}. */
+	of:   isHigherOrder
+} as const;
+
+/**
+ * Whether the function is higher-order: it takes a function argument, may return one, or calls one of its own
+ * formals as a function. `function(x) x` alone is not higher-order; pass an inverted graph to speed up repeat queries.
+ * @deprecated use {@link HigherOrderFunctions.of} instead
+ */
+export function isFunctionHigherOrder(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph): boolean {
+	return HigherOrderFunctions.of(id, graph, { ctx, invertedGraph });
 }

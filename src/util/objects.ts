@@ -45,22 +45,34 @@ export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable 
 		throw new Error('illegal types for deepMergeObject!');
 	}
 
-	assertSameType(base, addon);
+	return deepMergeObjectCore(base, addon, false);
+}
 
-	const result: MergeableRecord = { ...base };
+/**
+ * The merge logic shared by {@link deepMergeObject} and {@link deepMergeObjectInPlace}, `inPlace` decides whether
+ * `base` is written to and returned, or left untouched in favor of a new object/array.
+ */
+function deepMergeObjectCore(base: Mergeable, addon: Mergeable, inPlace: boolean): Mergeable {
+	assertSameType(base, addon);
 
 	const baseIsArray = Array.isArray(base);
 	const addonIsArray = Array.isArray(addon);
 
 	if(!baseIsArray && !addonIsArray) {
+		const result: MergeableRecord = inPlace ? base : { ...base };
 		deepMergeObjectWithResult(addon, base, result);
+		return result;
 	} else if(baseIsArray && addonIsArray) {
+		if(inPlace) {
+			for(const item of addon) {
+				base.push(item);
+			}
+			return base;
+		}
 		return base.concat(addon);
 	} else {
 		throw new Error('cannot merge object with array!');
 	}
-
-	return result;
 }
 
 function deepMergeObjectWithResult(addon: MergeableRecord, base: MergeableRecord, result: MergeableRecord): void {
@@ -101,22 +113,7 @@ export function deepMergeObjectInPlace(base?: Mergeable, addon?: Mergeable): Mer
 		throw new Error('illegal types for deepMergeObjectInPlace!');
 	}
 
-	assertSameType(base, addon);
-
-	const baseIsArray = Array.isArray(base);
-	const addonIsArray = Array.isArray(addon);
-
-	if(!baseIsArray && !addonIsArray) {
-		deepMergeObjectWithResult(addon, base, base);
-	} else if(baseIsArray && addonIsArray) {
-		for(const item of addon) {
-			(base).push(item);
-		}
-	} else {
-		throw new Error('cannot merge object with array!');
-	}
-
-	return base;
+	return deepMergeObjectCore(base, addon, true);
 }
 
 function assertSameType(base: unknown, addon: unknown): void {

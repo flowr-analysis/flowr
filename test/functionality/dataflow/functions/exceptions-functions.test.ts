@@ -6,7 +6,7 @@ import {
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import type { ExceptionPoint } from '../../../../src/dataflow/fn/exceptions-of-function';
-import { calculateExceptionsOfFunction } from '../../../../src/dataflow/fn/exceptions-of-function';
+import { FunctionExceptions } from '../../../../src/dataflow/fn/exceptions-of-function';
 import type { ControlDependency } from '../../../../src/dataflow/info';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { CallGraph } from '../../../../src/dataflow/graph/call-graph';
@@ -33,7 +33,7 @@ describe('get-exceptions-of-function', withTreeSitter(ts => {
 			// move up the error message :sparkles:
 			assert.isDefined(id, `could not resolve criterion ${c}`);
 			try {
-				const e = calculateExceptionsOfFunction(id, await analyzer.callGraph());
+				const e = FunctionExceptions.of(id, await analyzer.callGraph());
 				assert.deepStrictEqual(e[id], expIds);
 			} catch(e) {
 				console.error(`Error while testing criterion ${c} in code:\n${code}`);
@@ -81,7 +81,7 @@ j <- function() { tryCatch({ g() }, finally={stop("also direct")}) }
 		analyzer.addRequest(requestFromInput('h <- function() stop("boom")\ng <- function() h()\nf <- function() g()'));
 		const idMap = (await analyzer.normalize()).idMap;
 		const at = (c: SlicingCriterion) => SlicingCriterion.parse(c, idMap);
-		const found = calculateExceptionsOfFunction(at('3@function'), await analyzer.callGraph());
+		const found = FunctionExceptions.of(at('3@function'), await analyzer.callGraph());
 		const raised = [{ id: at('1@stop'), cds: undefined }];
 		/* asking about `f` also answers for the `g` between it and the `stop`, which is what makes the
 		   answer fit to hand back as `knownThrower` */
@@ -94,7 +94,7 @@ j <- function() { tryCatch({ g() }, finally={stop("also direct")}) }
 		const analyzer = new FlowrAnalyzerBuilder().setParser(ts).buildSync();
 		analyzer.addRequest(requestFromInput('h <- function() stop("boom")\nf <- function() { h(); h() }'));
 		const idMap = (await analyzer.normalize()).idMap;
-		const found = calculateExceptionsOfFunction(SlicingCriterion.parse('2@function', idMap), await analyzer.callGraph());
+		const found = FunctionExceptions.of(SlicingCriterion.parse('2@function', idMap), await analyzer.callGraph());
 		assert.deepStrictEqual(found[SlicingCriterion.parse('2@function', idMap)], [{ id: SlicingCriterion.parse('1@stop', idMap), cds: undefined }]);
 	});
 
@@ -103,7 +103,7 @@ j <- function() { tryCatch({ g() }, finally={stop("also direct")}) }
 		analyzer.addRequest(requestFromInput('a <- function() { b(); stop("x") }\nb <- function() a()'));
 		const idMap = (await analyzer.normalize()).idMap;
 		const raised = [{ id: SlicingCriterion.parse('1@stop', idMap), cds: undefined }];
-		const found = calculateExceptionsOfFunction(SlicingCriterion.parse('1@function', idMap), await analyzer.callGraph());
+		const found = FunctionExceptions.of(SlicingCriterion.parse('1@function', idMap), await analyzer.callGraph());
 		assert.deepStrictEqual(found[SlicingCriterion.parse('1@function', idMap)], raised, 'a');
 		assert.deepStrictEqual(found[SlicingCriterion.parse('2@function', idMap)], raised, 'b');
 	});

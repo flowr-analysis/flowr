@@ -10,6 +10,7 @@ import { ansiFormatter } from '../../../../src/util/text/ansi';
 import { Package } from '../../../../src/project/plugins/package-version-plugins/package';
 import { FlowrNamespaceFile } from '../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
 import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
+import type { GuessDepVersionsQueryResult } from '../../../../src/queries/catalog/guess-dep-versions-query/guess-dep-versions-query-format';
 
 assumeLoadedPackages('S7', 'cohortBuilder', 'ggplot2');
 
@@ -28,6 +29,17 @@ function noSigDb(): FlowrConfig {
 }
 
 describe('Guess dependency versions query', withTreeSitter(ts => {
+	/** builds the scenario's analyzer, attaches `namespace` as the analyzed project's own NAMESPACE content, then runs the query */
+	async function guessWithNamespace(scenario: GuessScenario, namespace: string): Promise<GuessDepVersionsQueryResult> {
+		const analyzer = await buildGuessAnalyzer(ts, scenario);
+		analyzer.context().deps.addDependency(new Package({
+			name:          'current',
+			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', namespace)).content().current
+		}));
+		const res = await executeQueries({ analyzer }, [{ type: 'guess-dep-versions', ...scenario.query }]);
+		return res['guess-dep-versions'];
+	}
+
 	test('a named argument only added in a later version raises the lower bound', async() => {
 		const dep = await guessDep(ts, {
 			code:     'library(dplyr)\nfilter(x, .by = grp)',
@@ -70,66 +82,47 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 	});
 
 	test('a bare call to a function imported via NAMESPACE importFrom marks its source package as used', async() => {
-		const analyzer = await buildGuessAnalyzer(ts, {
+		const res = await guessWithNamespace({
 			code:     'index(x)',
 			packages: { zoo: { versions: { '1.0': { date: '2020-01-01', fns: { index: [] } } } } }
-		});
-		analyzer.context().deps.addDependency(new Package({
-			name:          'current',
-			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'importFrom(zoo, index)')).content().current
-		}));
-		const res = await executeQueries({ analyzer }, [{ type: 'guess-dep-versions' as const }]);
-		expect(guessed(res['guess-dep-versions'], 'zoo')?.used).toBe(true);
+		}, 'importFrom(zoo, index)');
+		expect(guessed(res, 'zoo')?.used).toBe(true);
 	});
 
 	test('an S3 method registered for a class the sigdb marks as owned marks that package as used (no direct call)', async() => {
 		// mirrors tseries's `S3method("as.irts","zoo")`: the analyzed project never calls zoo directly, but its own
 		// NAMESPACE registers a method for class `zoo`, which the sigdb says the `zoo` package OWNS (it exports a
 		// same-named constructor `zoo` and registers an S3 method for it)
-		const analyzer = await buildGuessAnalyzer(ts, {
+		const res = await guessWithNamespace({
 			code:     'x <- 1', // no call to zoo at all
 			packages: { zoo: { versions: { '1.0': { date: '2020-01-01', fns: { zoo: [], 'print.zoo': [] }, s3Classes: ['zoo'] } } } }
-		});
-		analyzer.context().deps.addDependency(new Package({
-			name:          'current',
-			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'S3method(as.irts,zoo)')).content().current
-		}));
-		const res = await executeQueries({ analyzer }, [{ type: 'guess-dep-versions' as const }]);
-		expect(guessed(res['guess-dep-versions'], 'zoo')?.used).toBe(true);
+		}, 'S3method(as.irts,zoo)');
+		expect(guessed(res, 'zoo')?.used).toBe(true);
 	});
 
 	test('a class owned by a declared but never called dependency is resolved without scanning the database', async() => {
 		// `dbpkg` also owns the class, and comes first in the database; the declared `zoo` is the answer that is in play
-		const analyzer = await buildGuessAnalyzer(ts, {
+		const res = await guessWithNamespace({
 			code:     'x <- 1',
 			declared: { zoo: '*' },
 			packages: {
 				dbpkg: { versions: { '1.0': { date: '2019-01-01', fns: { zoo: [] }, s3Classes: ['zoo'] } } },
 				zoo:   { versions: { '1.0': { date: '2020-01-01', fns: { zoo: [], 'print.zoo': [] }, s3Classes: ['zoo'] } } }
 			}
-		});
-		analyzer.context().deps.addDependency(new Package({
-			name:          'current',
-			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'S3method(as.irts,zoo)')).content().current
-		}));
-		const res = await executeQueries({ analyzer }, [{ type: 'guess-dep-versions' as const }]);
-		expect(guessed(res['guess-dep-versions'], 'zoo')?.used).toBe(true);
-		expect(guessed(res['guess-dep-versions'], 'dbpkg')).toBeUndefined();
+		}, 'S3method(as.irts,zoo)');
+		expect(guessed(res, 'zoo')?.used).toBe(true);
+		expect(guessed(res, 'dbpkg')).toBeUndefined();
 	});
 
 	test('an S3 method registered for a class NOT owned by any package does not mark anything used', async() => {
-		const analyzer = await buildGuessAnalyzer(ts, {
+		// force `zoo` into the guessed set (it is neither called nor a declared dependency) so `used` is reported at all
+		const res = await guessWithNamespace({
 			code:     'x <- 1',
 			// zoo does not export a same-named constructor -> does not own class `zoo` -> not an owner
-			packages: { zoo: { versions: { '1.0': { date: '2020-01-01', fns: { 'print.zoo': [] } } } } }
-		});
-		analyzer.context().deps.addDependency(new Package({
-			name:          'current',
-			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'S3method(as.irts,zoo)')).content().current
-		}));
-		// force `zoo` into the guessed set (it is neither called nor a declared dependency) so `used` is reported at all
-		const res = await executeQueries({ analyzer }, [{ type: 'guess-dep-versions' as const, packages: ['zoo'] }]);
-		expect(guessed(res['guess-dep-versions'], 'zoo')?.used).toBe(false);
+			packages: { zoo: { versions: { '1.0': { date: '2020-01-01', fns: { 'print.zoo': [] } } } } },
+			query:    { packages: ['zoo'] }
+		}, 'S3method(as.irts,zoo)');
+		expect(guessed(res, 'zoo')?.used).toBe(false);
 	});
 
 	test('a bare class-name string in code does NOT introduce an unrelated package (weak evidence)', async() => {

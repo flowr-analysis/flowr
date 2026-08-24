@@ -45,9 +45,9 @@ export interface GasThresholdPair extends MergeableRecord {
  * bound, a feature entry wins over `default`, which wins over the direct pair. A bound nowhere given never triggers.
  */
 export interface GasThresholdSpec extends MergeableRecord {
-	/** Shared bound, for every feature without a more specific entry. */
+	/** the shared *problematic* bound, for every feature without a more specific entry */
 	readonly problematic?:      number;
-	/** Shared bound, for every feature without a more specific entry. */
+	/** the shared *critical* bound, for every feature without a more specific entry */
 	readonly critical?:         number;
 	/** Bounds for the features that have no entry of their own. */
 	readonly default?:          Partial<GasThresholdPair>;

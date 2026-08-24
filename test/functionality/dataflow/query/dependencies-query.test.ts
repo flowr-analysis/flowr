@@ -68,6 +68,32 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		}));
 	}
 
+	/**
+	 * The 'Custom' block every category runs: register `fnName` via `functions`, check it resolves both by
+	 * index and by name, then check `ignoreDefaultFunctions`/`enabledCategories` toggle the built-in default
+	 * (`defaultCode`/`defaultExpected`) as expected. `extra` runs additional category-specific cases in the block.
+	 */
+	function testCustomFunctions(
+		category: 'library' | 'source' | 'read' | 'write',
+		functions: Partial<DependenciesQuery>,
+		fnName: string,
+		defaultCode: string,
+		defaultExpected: Partial<DependenciesQueryResult>,
+		disabledOthers: (keyof DependenciesQueryResult)[],
+		disabledExpected: Partial<DependenciesQueryResult> = {},
+		extra?: () => void
+	): void {
+		describe('Custom', () => {
+			const expected: Partial<DependenciesQueryResult> = { [category]: [{ nodeId: `1@${fnName}`, functionName: fnName, value: 'my-custom-file' }] };
+			testQuery('Custom (by index)', `${fnName}(1, "my-custom-file", 2)`, expected, functions);
+			testQuery('Custom (by name)', `${fnName}(num1 = 1, num2 = 2, file = "my-custom-file")`, expected, functions);
+			testQuery('Ignore default', defaultCode, {}, { ignoreDefaultFunctions: true });
+			testQuery('Disabled', defaultCode, disabledExpected, { enabledCategories: disabledOthers });
+			testQuery('Enabled', defaultCode, defaultExpected, { enabledCategories: [category] });
+			extra?.();
+		});
+	}
+
 	describe('Simple', () => {
 		/* `x + 1` at the top level is echoed, so it is an output even though nothing else happens */
 		testQuery('No dependencies', 'x + 1', { write: [{ nodeId: 2, functionName: '+', value: 'stdout', implicit: true }] });
@@ -83,9 +109,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			['load_all', true]
 			/* support attach, support with, support pacman::p_load and the like? */
 		] as const) {
-			testQuery(`${loadFn} (${str ? 'string' : 'symbol'})`, `${loadFn}(${str ? '"a"' : 'a'})`, {
-				library: [{ nodeId: '1@' + loadFn, functionName: loadFn, value: 'a' }]
-			});
+			testQuery(`${loadFn} (${str ? 'string' : 'symbol'})`, `${loadFn}(${str ? '"a"' : 'a'})`, { library: [{ nodeId: '1@' + loadFn, functionName: loadFn, value: 'a' }] });
 		}
 
 		testQuery('Multiple Libraries', 'library(a)\nlibrary(b)\nrequire(c)', { library: [
@@ -132,11 +156,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '1@p_load', functionName: 'p_load', value: 'c' }
 		] });
 
-		testQuery('rlang on_package_load', 'on_load({ x <- read.csv("a.csv") })\non_package_load("dplyr", message("hi"))', {
-			library: [{ nodeId: '2@on_package_load', functionName: 'on_package_load', value: 'dplyr' }],
-			read:    [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'a.csv' }],
-			write:   [{ nodeId: '2@message', functionName: 'message', value: 'stdout' }]
-		});
+		testQuery('rlang on_package_load', 'on_load({ x <- read.csv("a.csv") })\non_package_load("dplyr", message("hi"))', { library: [{ nodeId: '2@on_package_load', functionName: 'on_package_load', value: 'dplyr' }], read: [{ nodeId: '1@read.csv', functionName: 'read.csv', value: 'a.csv' }], write: [{ nodeId: '2@message', functionName: 'message', value: 'stdout' }] });
 
 		testQuery('Load implicitly', 'foo::x\nbar:::y()', {
 			write: [
@@ -239,25 +259,12 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			{ nodeId: '3@library', functionName: 'library', value: 'tidyr' },
 		] });
 
-		describe('Custom', () => {
-			const readCustomFile: Partial<DependenciesQuery> = {
-				libraryFunctions: [{ package: 'custom', name: 'custom.library', argIdx: 1, argName: 'file' }]
-			};
-			const expected: Partial<DependenciesQueryResult> = {
-				library: [{ nodeId: '1@custom.library', functionName: 'custom.library', value: 'my-custom-file' }]
-			};
-			testQuery('Custom (by index)', 'custom.library(1, "my-custom-file", 2)', expected, readCustomFile);
-			testQuery('Custom (by name)', 'custom.library(num1 = 1, num2 = 2, file = "my-custom-file")', expected, readCustomFile);
-			testQuery('Ignore default', 'library(testLibrary)', {}, { ignoreDefaultFunctions: true });
-			testQuery('Disabled', 'library(testLibrary)', {}, { enabledCategories: ['source', 'read', 'write'] });
-			testQuery('Disabled', 'a::dep', {}, { enabledCategories: [] });
-			testQuery('Enabled', 'library(testLibrary)', {
-				library: [{ nodeId: '1@library', functionName: 'library', value: 'testLibrary' }]
-			}, { enabledCategories: ['library'] });
-			testQuery('Empty enabled', 'library(testLibrary)', {
-				library: [{ nodeId: '1@library', functionName: 'library', value: 'testLibrary' }]
-			}, { enabledCategories: undefined });
-		});
+		testCustomFunctions('library', { libraryFunctions: [{ package: 'custom', name: 'custom.library', argIdx: 1, argName: 'file' }] }, 'custom.library',
+			'library(testLibrary)', { library: [{ nodeId: '1@library', functionName: 'library', value: 'testLibrary' }] },
+			['source', 'read', 'write'], {}, () => {
+				testQuery('Disabled', 'a::dep', {}, { enabledCategories: [] });
+				testQuery('Empty enabled', 'library(testLibrary)', { library: [{ nodeId: '1@library', functionName: 'library', value: 'testLibrary' }] }, { enabledCategories: undefined });
+			});
 	});
 
 	describe('Remote installs', () => {
@@ -279,10 +286,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testInstall('a reference we cannot resolve names nothing', 'remotes::install_github(x)', 'install_github', Unknown, { lexemeOfArgument: 'x', argumentId: '1:25' });
 
 		/* nothing states the package of a bare call, the loaded library is what makes it resolve at all */
-		testQuery('the bare name once the library is loaded', 'library(remotes)\ninstall_github("user/repo")', {
-			library: [{ nodeId: '1@library', functionName: 'library', value: 'remotes' }],
-			remote:  [{ nodeId: '2@install_github', functionName: 'install_github', value: 'user/repo', packageName: 'repo' }]
-		});
+		testQuery('the bare name once the library is loaded', 'library(remotes)\ninstall_github("user/repo")', { library: [{ nodeId: '1@library', functionName: 'library', value: 'remotes' }], remote: [{ nodeId: '2@install_github', functionName: 'install_github', value: 'user/repo', packageName: 'repo' }] });
 		/* a CRAN install is no remote one, whatever it installs comes from a configured repository */
 		testQuery('install.packages is no remote install', 'install.packages("dplyr")', {});
 	});
@@ -301,21 +305,9 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 		testQuery('source with empty string', 'source("")', { source: [{ nodeId: '1@source', functionName: 'source', value: 'stdin', lexemeOfArgument: '""', argumentId: '1:8' }] });
 
-		describe('Custom', () => {
-			const sourceCustomFile: Partial<DependenciesQuery> = {
-				sourceFunctions: [{ name: 'source.custom.file', argIdx: 1, argName: 'file' }]
-			};
-			const expected: Partial<DependenciesQueryResult> = {
-				source: [{ nodeId: '1@source.custom.file', functionName: 'source.custom.file', value: 'my-custom-file' }]
-			};
-			testQuery('Custom (by index)', 'source.custom.file(1, "my-custom-file", 2)', expected, sourceCustomFile);
-			testQuery('Custom (by name)', 'source.custom.file(num1 = 1, num2 = 2, file = "my-custom-file")', expected, sourceCustomFile);
-			testQuery('Ignore default', 'source("test/file.R")', {}, { ignoreDefaultFunctions: true });
-			testQuery('Disabled', 'source("test/file.R")', {}, { enabledCategories: ['read', 'write', 'library'] });
-			testQuery('Enabled', 'source("test/file.R")', {
-				source: [{ nodeId: '1@source', functionName: 'source', value: 'test/file.R' }]
-			}, { enabledCategories: ['source'] });
-		});
+		testCustomFunctions('source', { sourceFunctions: [{ name: 'source.custom.file', argIdx: 1, argName: 'file' }] }, 'source.custom.file',
+			'source("test/file.R")', { source: [{ nodeId: '1@source', functionName: 'source', value: 'test/file.R' }] },
+			['read', 'write', 'library']);
 	});
 
 	describe('Read Files', () => {
@@ -400,24 +392,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('substituted body', 'while(TRUE) substitute(read.csv("test.csv"))', {});
 		});
 
-		describe('Custom', () => {
-			const readCustomFile: Partial<DependenciesQuery> = {
-				readFunctions: [{ name: 'read.custom.file', argIdx: 1, argName: 'file' }]
-			};
-			const expected: Partial<DependenciesQueryResult> = {
-				read: [{ nodeId: '1@read.custom.file', functionName: 'read.custom.file', value: 'my-custom-file' }]
-			};
-			testQuery('Custom (by index)', 'read.custom.file(1, "my-custom-file", 2)', expected, readCustomFile);
-			testQuery('Custom (by name)', 'read.custom.file(num1 = 1, num2 = 2, file = "my-custom-file")', expected, readCustomFile);
-			testQuery('Ignore default', "read.table('test.csv')", {}, { ignoreDefaultFunctions: true });
-			/* the read category is off, but `read.table` still prints the frame it read, and outputs are on */
-			testQuery('Disabled', "read.table('test.csv')", {
-				write: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'stdout', implicit: true }]
-			}, { enabledCategories: ['library', 'write', 'source'] });
-			testQuery('Enabled', "read.table('test.csv')", {
-				read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }]
-			}, { enabledCategories: ['read'] });
-		});
+		/* the read category is off, but `read.table` still prints the frame it read, and outputs are on */
+		testCustomFunctions('read', { readFunctions: [{ name: 'read.custom.file', argIdx: 1, argName: 'file' }] }, 'read.custom.file',
+			"read.table('test.csv')", { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }] },
+			['library', 'write', 'source'], { write: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'stdout', implicit: true }] });
 	});
 
 	describe('Write Files', () => {
@@ -434,14 +412,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 		// regression: once the owning library is loaded the call resolves to that origin namespace, so a wrong
 		// `package` attribution makes the namespace check drop the call (e.g. ggsave was attributed to `ggplot`)
-		testQuery('ggsave after library', 'library(ggplot2)\nggsave("a")', {
-			library: [{ nodeId: '1@library', functionName: 'library', value: 'ggplot2' }],
-			write:   [{ nodeId: '2@ggsave', functionName: 'ggsave', value: 'a' }]
-		});
-		testQuery('write_dta after library', 'library(haven)\nwrite_dta(d, "a")', {
-			library: [{ nodeId: '1@library', functionName: 'library', value: 'haven' }],
-			write:   [{ nodeId: '2@write_dta', functionName: 'write_dta', value: 'a' }]
-		});
+		testQuery('ggsave after library', 'library(ggplot2)\nggsave("a")', { library: [{ nodeId: '1@library', functionName: 'library', value: 'ggplot2' }], write: [{ nodeId: '2@ggsave', functionName: 'ggsave', value: 'a' }] });
+		testQuery('write_dta after library', 'library(haven)\nwrite_dta(d, "a")', { library: [{ nodeId: '1@library', functionName: 'library', value: 'haven' }], write: [{ nodeId: '2@write_dta', functionName: 'write_dta', value: 'a' }] });
 
 		testQuery('visSave', 'visSave(obj, "a")', { write: [{ nodeId: '1@visSave', functionName: 'visSave', value: 'a' }] });
 		testQuery('save_graph', 'save_graph(obj, "a")', { write: [{ nodeId: '1@save_graph', functionName: 'save_graph', value: 'a' }] });
@@ -473,21 +445,9 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('with outfile and silent b', 'try(u, silent=TRUE, outFile="myfile.txt")', { write: [] });
 		});
 
-		describe('Custom', () => {
-			const writeCustomFile: Partial<DependenciesQuery> = {
-				writeFunctions: [{ name: 'write.custom.file', argIdx: 1, argName: 'file' }]
-			};
-			const expected: Partial<DependenciesQueryResult> = {
-				write: [{ nodeId: '1@write.custom.file', functionName: 'write.custom.file', value: 'my-custom-file' }]
-			};
-			testQuery('Custom (by index)', 'write.custom.file(1, "my-custom-file", 2)', expected, writeCustomFile);
-			testQuery('Custom (by name)', 'write.custom.file(num1 = 1, num2 = 2, file = "my-custom-file")', expected, writeCustomFile);
-			testQuery('Ignore default', 'dump("My text", "MyTextFile.txt")', {}, { ignoreDefaultFunctions: true });
-			testQuery('Disabled', 'dump("My text", "MyTextFile.txt")', {}, { enabledCategories: ['library', 'read', 'source'] });
-			testQuery('Disabled', 'dump("My text", "MyTextFile.txt")', {
-				write: [{ nodeId: '1@dump', functionName: 'dump', value: 'MyTextFile.txt' }]
-			}, { enabledCategories: ['write'] });
-		});
+		testCustomFunctions('write', { writeFunctions: [{ name: 'write.custom.file', argIdx: 1, argName: 'file' }] }, 'write.custom.file',
+			'dump("My text", "MyTextFile.txt")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'MyTextFile.txt' }] },
+			['library', 'read', 'source']);
 	});
 
 	describe('Visualize', () => {
@@ -608,14 +568,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 					{ nodeId: '2@ggthemes::theme_wsj', functionName: Identifier.make('theme_wsj', 'ggthemes'), linkedIds: [1] }
 				]
 			});
-			testQuery('a plot creator keeps its own package', 'plotly::ggplotly(p)', {
-				library:   [{ nodeId: '1@ggplotly', functionName: '::', value: 'plotly' }],
-				visualize: [{ nodeId: '1@plotly::ggplotly', functionName: Identifier.make('ggplotly', 'plotly') }]
-			});
-			testQuery('maps::map stays a visualization', 'maps::map(x)', {
-				library:   [{ nodeId: '1@map', functionName: '::', value: 'maps' }],
-				visualize: [{ nodeId: '1@maps::map', functionName: Identifier.make('map', 'maps') }]
-			});
+			testQuery('a plot creator keeps its own package', 'plotly::ggplotly(p)', { library: [{ nodeId: '1@ggplotly', functionName: '::', value: 'plotly' }], visualize: [{ nodeId: '1@plotly::ggplotly', functionName: Identifier.make('ggplotly', 'plotly') }] });
+			testQuery('maps::map stays a visualization', 'maps::map(x)', { library: [{ nodeId: '1@map', functionName: '::', value: 'maps' }], visualize: [{ nodeId: '1@maps::map', functionName: Identifier.make('map', 'maps') }] });
 		});
 		describe('Modification', () => {
 			for(const f of ['coord_trans', 'scale_colour_hue', 'tinyplot_add']) {
@@ -640,14 +594,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 	describe('With file connections', () => {
 		for(const ro of ['r', 'rb', 'rt'] as const) {
-			testQuery('read only file connection', `file("test.txt", "${ro}")`, {
-				read: [{ nodeId: '1@file', functionName: 'file', value: 'test.txt' }]
-			});
+			testQuery('read only file connection', `file("test.txt", "${ro}")`, { read: [{ nodeId: '1@file', functionName: 'file', value: 'test.txt' }] });
 		}
 		for(const wo of ['w', 'wb', 'wt', 'a', 'ab', 'at'] as const) {
-			testQuery('write only file connection', `file("test.txt", "${wo}")`, {
-				write: [{ nodeId: '1@file', functionName: 'file', value: 'test.txt' }]
-			});
+			testQuery('write only file connection', `file("test.txt", "${wo}")`, { write: [{ nodeId: '1@file', functionName: 'file', value: 'test.txt' }] });
 		}
 	});
 
@@ -664,38 +614,20 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	describe('Shared function names', () => {
 		/* regression: a name several packages export used to keep only the entry declared last, so a call to any
 		   other package's function of that name went unreported, or was read with the wrong argument */
-		testQuery('a readr write is a write', 'readr::write_csv(d, "o.csv")', {
-			library: [{ nodeId: '1@write_csv', functionName: '::', value: 'readr' }],
-			write:   [{ nodeId: '1@readr::write_csv', functionName: Identifier.make('write_csv', 'readr'), value: 'o.csv' }]
-		});
-		testQuery('a readr read is a read', 'readr::read_lines("a.txt")', {
-			library: [{ nodeId: '1@read_lines', functionName: '::', value: 'readr' }],
-			read:    [{ nodeId: '1@readr::read_lines', functionName: Identifier.make('read_lines', 'readr'), value: 'a.txt' }]
-		});
+		testQuery('a readr write is a write', 'readr::write_csv(d, "o.csv")', { library: [{ nodeId: '1@write_csv', functionName: '::', value: 'readr' }], write: [{ nodeId: '1@readr::write_csv', functionName: Identifier.make('write_csv', 'readr'), value: 'o.csv' }] });
+		testQuery('a readr read is a read', 'readr::read_lines("a.txt")', { library: [{ nodeId: '1@read_lines', functionName: '::', value: 'readr' }], read: [{ nodeId: '1@readr::read_lines', functionName: Identifier.make('read_lines', 'readr'), value: 'a.txt' }] });
 		/* arrow takes the sink as its second argument, the other package declaring the name takes a file as its first */
-		testQuery('the sink of an arrow write is its own argument', 'arrow::write_parquet(d, "o.pq")', {
-			library: [{ nodeId: '1@write_parquet', functionName: '::', value: 'arrow' }],
-			write:   [{ nodeId: '1@arrow::write_parquet', functionName: Identifier.make('write_parquet', 'arrow'), value: 'o.pq' }]
-		});
-		testQuery('a testthat test is a test dependency', 'testthat::test_package("p")', {
-			library: [{ nodeId: '1@test_package', functionName: '::', value: 'testthat' }],
-			test:    [{ nodeId: '1@testthat::test_package', functionName: Identifier.make('test_package', 'testthat') }]
-		});
+		testQuery('the sink of an arrow write is its own argument', 'arrow::write_parquet(d, "o.pq")', { library: [{ nodeId: '1@write_parquet', functionName: '::', value: 'arrow' }], write: [{ nodeId: '1@arrow::write_parquet', functionName: Identifier.make('write_parquet', 'arrow'), value: 'o.pq' }] });
+		testQuery('a testthat test is a test dependency', 'testthat::test_package("p")', { library: [{ nodeId: '1@test_package', functionName: '::', value: 'testthat' }], test: [{ nodeId: '1@testthat::test_package', functionName: Identifier.make('test_package', 'testthat') }] });
 		/* nothing pins the call down, so the first entry able to apply answers (and reads the file it declares) */
-		testQuery('an unqualified call still reports', 'write_csv(d, "o.csv")', {
-			write: [{ nodeId: '1@write_csv', functionName: 'write_csv', value: 'o.csv' }]
-		});
+		testQuery('an unqualified call still reports', 'write_csv(d, "o.csv")', { write: [{ nodeId: '1@write_csv', functionName: 'write_csv', value: 'o.csv' }] });
 		/* a call qualified to a package that declares none of the entries is none of them */
-		testQuery('a write_csv of another package is no write', 'mypkg::write_csv(d, "o.csv")', {
-			library: [{ nodeId: '1@write_csv', functionName: '::', value: 'mypkg' }]
-		});
+		testQuery('a write_csv of another package is no write', 'mypkg::write_csv(d, "o.csv")', { library: [{ nodeId: '1@write_csv', functionName: '::', value: 'mypkg' }] });
 	});
 
 	describe('Where a call resolves', () => {
 		/* a library call that cannot have run attaches nothing, so no dependency on it is reported */
-		testQuery('a library call that never runs is no library dependency', 'if (FALSE) library(readr)\nread_csv("a.csv")', {
-			read: [{ nodeId: '2@read_csv', functionName: 'read_csv', value: 'a.csv' }]
-		});
+		testQuery('a library call that never runs is no library dependency', 'if (FALSE) library(readr)\nread_csv("a.csv")', { read: [{ nodeId: '2@read_csv', functionName: 'read_csv', value: 'a.csv' }] });
 	});
 
 	describe('Custom categories', () => {
@@ -788,62 +720,20 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	});
 
 	describe('Read from string', () => {
-		testQuery('read.csv text parameter', 'a <- read.csv(text="hello, world")', {
-			read:  [],
-			write: []
-		});
-
-		testQuery('read.csv file (positional) arg has priority', 'a <- read.csv("test.csv", text="hello, world")', {
-			read: [
-				{
-					functionName: 'read.csv',
-					nodeId:       7,
-					value:        'test.csv',
-				},
-			],
-			write: []
-		});
-
-		testQuery('read.csv file arg (named) has priority', 'a <- read.csv(file="test.csv", text="hello, world")', {
-			read: [
-				{
-					functionName: 'read.csv',
-					nodeId:       8,
-					value:        'test.csv',
-				},
-			],
-			write: []
-		});
+		testQuery('read.csv text parameter', 'a <- read.csv(text="hello, world")', { read: [], write: [] });
+		testQuery('read.csv file (positional) arg has priority', 'a <- read.csv("test.csv", text="hello, world")', { read: [{ functionName: 'read.csv', nodeId: 7, value: 'test.csv' }], write: [] });
+		testQuery('read.csv file arg (named) has priority', 'a <- read.csv(file="test.csv", text="hello, world")', { read: [{ functionName: 'read.csv', nodeId: 8, value: 'test.csv' }], write: [] });
 	});
 
 	describe('Statistical Tests', () => {
 		/* what a test is asked for is the statistic it prints, so a top-level one is an output as well */
-		testQuery('t.test', 'x <- 1\nt.test(x)', {
-			statistics: [{ nodeId: '2@t.test', functionName: 't.test' }],
-			write:      [{ nodeId: '2@t.test', functionName: 't.test', value: 'stdout', implicit: true }]
-		});
-		testQuery('anova', 'anova(m)', {
-			statistics: [{ nodeId: '1@anova', functionName: 'anova' }],
-			write:      [{ nodeId: '1@anova', functionName: 'anova', value: 'stdout', implicit: true }]
-		});
-		testQuery('a namespaced test keeps its package', 'stats::wilcox.test(x, y)', {
-			library:    [{ nodeId: '1@wilcox.test', functionName: '::', value: 'stats' }],
-			statistics: [{ nodeId: '1@stats::wilcox.test', functionName: Identifier.make('wilcox.test', 'stats') }],
-			write:      [{ nodeId: '1@stats::wilcox.test', functionName: Identifier.make('wilcox.test', 'stats'), value: 'stdout', implicit: true }]
-		});
-		testQuery('a test of another package is not attributed to stats', 'car::leveneTest(y ~ g)', {
-			library:    [{ nodeId: '1@leveneTest', functionName: '::', value: 'car' }],
-			statistics: [{ nodeId: '1@car::leveneTest', functionName: Identifier.make('leveneTest', 'car') }],
-			write:      [{ nodeId: '1@car::leveneTest', functionName: Identifier.make('leveneTest', 'car'), value: 'stdout', implicit: true }]
-		});
+		testQuery('t.test', 'x <- 1\nt.test(x)', { statistics: [{ nodeId: '2@t.test', functionName: 't.test' }], write: [{ nodeId: '2@t.test', functionName: 't.test', value: 'stdout', implicit: true }] });
+		testQuery('anova', 'anova(m)', { statistics: [{ nodeId: '1@anova', functionName: 'anova' }], write: [{ nodeId: '1@anova', functionName: 'anova', value: 'stdout', implicit: true }] });
+		testQuery('a namespaced test keeps its package', 'stats::wilcox.test(x, y)', { library: [{ nodeId: '1@wilcox.test', functionName: '::', value: 'stats' }], statistics: [{ nodeId: '1@stats::wilcox.test', functionName: Identifier.make('wilcox.test', 'stats') }], write: [{ nodeId: '1@stats::wilcox.test', functionName: Identifier.make('wilcox.test', 'stats'), value: 'stdout', implicit: true }] });
+		testQuery('a test of another package is not attributed to stats', 'car::leveneTest(y ~ g)', { library: [{ nodeId: '1@leveneTest', functionName: '::', value: 'car' }], statistics: [{ nodeId: '1@car::leveneTest', functionName: Identifier.make('leveneTest', 'car') }], write: [{ nodeId: '1@car::leveneTest', functionName: Identifier.make('leveneTest', 'car'), value: 'stdout', implicit: true }] });
 		/* the call is not the test it looks like, but it still prints what it returns */
-		testQuery('a wrong namespace drops the call', 'utils::t.test(x)', {
-			library: [{ nodeId: '1@t.test', functionName: '::', value: 'utils' }],
-			write:   [{ nodeId: '1@utils::t.test', functionName: Identifier.make('t.test', 'utils'), value: 'stdout', implicit: true }]
-		});
-		testQuery('a nested test is still a test', 'f <- function() t.test(x)', {
-			statistics: [{ nodeId: '1@t.test', functionName: 't.test' }]
-		});
+		testQuery('a wrong namespace drops the call', 'utils::t.test(x)', { library: [{ nodeId: '1@t.test', functionName: '::', value: 'utils' }], write: [{ nodeId: '1@utils::t.test', functionName: Identifier.make('t.test', 'utils'), value: 'stdout', implicit: true }] });
+		testQuery('a nested test is still a test', 'f <- function() t.test(x)', { statistics: [{ nodeId: '1@t.test', functionName: 't.test' }] });
 		test('the category is what the built-ins state, with a package for every entry', () => {
 			const stated = BuiltInIndex.default().with(CallProp.Statistics);
 			assert.isNotEmpty(stated);
@@ -859,9 +749,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 	describe('Implicit echo', () => {
 		describe('Visible results are auto-printed', () => {
-			testQuery('a plain call', 'summary(x)', {
-				write: [{ nodeId: '1@summary', functionName: 'summary', value: 'stdout', implicit: true }]
-			});
+			testQuery('a plain call', 'summary(x)', { write: [{ nodeId: '1@summary', functionName: 'summary', value: 'stdout', implicit: true }] });
 			testQuery('every top-level call', 'summary(x)\nmean(x)', {
 				write: [
 					{ nodeId: '1@summary', functionName: 'summary', value: 'stdout', implicit: true },
@@ -875,17 +763,11 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			}
 			testQuery('an assignment', 'x <- summary(y)', {});
 			testQuery('a call below the top level', 'f <- function() summary(x)', {});
-			testQuery('a call as an argument', 'print(summary(x))', {
-				write: [{ nodeId: '1@print', functionName: 'print', value: 'stdout' }]
-			});
+			testQuery('a call as an argument', 'print(summary(x))', { write: [{ nodeId: '1@print', functionName: 'print', value: 'stdout' }] });
 		});
 		describe('Calls another category already accounts for are not repeated', () => {
-			testQuery('a plot', 'plot(x)', {
-				visualize: [{ nodeId: '1@plot', functionName: 'plot' }]
-			});
-			testQuery('a write', 'write.csv(x, "out.csv")', {
-				write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'out.csv' }]
-			});
+			testQuery('a plot', 'plot(x)', { visualize: [{ nodeId: '1@plot', functionName: 'plot' }] });
+			testQuery('a write', 'write.csv(x, "out.csv")', { write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'out.csv' }] });
 			testQuery('an assertion', 'expect_equal(1 + 1, 2)', {});
 		});
 		describe('A statement that is not a call', () => {
@@ -894,25 +776,17 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('an operator', 'x + 1', { write: [{ nodeId: 2, functionName: '+', value: 'stdout', implicit: true }] });
 			testQuery('an access', 'df$col', { write: [{ nodeId: 3, functionName: '$', value: 'stdout', implicit: true }] });
 			testQuery('a function definition', 'function(x) x', { write: [{ nodeId: 4, functionName: 'function', value: 'stdout', implicit: true }] });
-			testQuery('a pipe reports the call it feeds', 'x |> summary()', {
-				write: [{ nodeId: '1@summary', functionName: 'summary', value: 'stdout', implicit: true }]
-			});
+			testQuery('a pipe reports the call it feeds', 'x |> summary()', { write: [{ nodeId: '1@summary', functionName: 'summary', value: 'stdout', implicit: true }] });
 			testQuery('a pipe into an invisible call prints nothing', 'x |> invisible()', {});
 			/* magrittr's pipe is a call of its own, and what it prints is what the call it feeds does */
-			testQuery('a magrittr pipe reports the call it feeds', 'x %>% summary()', {
-				write: [{ nodeId: '1@summary', functionName: 'summary', value: 'stdout', implicit: true }]
-			});
+			testQuery('a magrittr pipe reports the call it feeds', 'x %>% summary()', { write: [{ nodeId: '1@summary', functionName: 'summary', value: 'stdout', implicit: true }] });
 			testQuery('a magrittr pipe into an invisible call prints nothing', 'x %>% invisible()', {});
 			testQuery('a magrittr assignment pipe prints nothing', 'x %<>% summary()', {});
 		});
 		describe('A group is visible, whatever it holds', () => {
 			/* `(` hands its argument back visibly, which is the idiom for assigning and seeing the value */
-			testQuery('a parenthesized assignment', '(x <- 1)', {
-				write: [{ nodeId: 4, functionName: '<-', value: 'stdout', implicit: true }]
-			});
-			testQuery('a parenthesized invisible call', '(invisible(1))', {
-				write: [{ nodeId: '1@invisible', functionName: 'invisible', value: 'stdout', implicit: true }]
-			});
+			testQuery('a parenthesized assignment', '(x <- 1)', { write: [{ nodeId: 4, functionName: '<-', value: 'stdout', implicit: true }] });
+			testQuery('a parenthesized invisible call', '(invisible(1))', { write: [{ nodeId: '1@invisible', functionName: 'invisible', value: 'stdout', implicit: true }] });
 		});
 		describe('A statement returning invisibly', () => {
 			/* every loop hands back an invisible NULL, however often its body runs */
@@ -925,23 +799,17 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('a super assignment', 'x <<- 1', {});
 			testQuery('a replacement', 'names(x) <- "a"', {});
 			/* the body still runs, so what it prints on its own is still an output */
-			testQuery('a loop printing in its body', 'for(i in 1:10) print(i)', {
-				write: [{ nodeId: '1@print', functionName: 'print', value: 'stdout' }]
-			});
+			testQuery('a loop printing in its body', 'for(i in 1:10) print(i)', { write: [{ nodeId: '1@print', functionName: 'print', value: 'stdout' }] });
 		});
 		describe('A block hands on the value of its last statement', () => {
-			testQuery('a visible last statement', '{ invisible(1); 2 }', {
-				write: [{ nodeId: 6, functionName: '2', value: 'stdout', implicit: true }]
-			});
+			testQuery('a visible last statement', '{ invisible(1); 2 }', { write: [{ nodeId: 6, functionName: '2', value: 'stdout', implicit: true }] });
 			testQuery('an invisible last statement', '{ 1; invisible(2) }', {});
 			testQuery('an empty block', '{}', { write: [{ nodeId: 2, functionName: '{', value: 'stdout', implicit: true }] });
 		});
 		describe('An if hands on the value of the branch that runs', () => {
 			testQuery('a visible branch', 'if(c) 42', { write: [{ nodeId: 1, functionName: '42', value: 'stdout', implicit: true }] });
 			testQuery('an invisible branch', 'if(c) invisible(1)', {});
-			testQuery('only the else branch is visible', 'if(c) invisible(1) else 42', {
-				write: [{ nodeId: 6, functionName: '42', value: 'stdout', implicit: true }]
-			});
+			testQuery('only the else branch is visible', 'if(c) invisible(1) else 42', { write: [{ nodeId: 6, functionName: '42', value: 'stdout', implicit: true }] });
 			testQuery('both branches are invisible', 'if(c) invisible(1) else invisible(2)', {});
 		});
 		/**

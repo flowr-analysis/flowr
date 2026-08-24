@@ -1,30 +1,13 @@
-import { afterAll, assert, describe, test } from 'vitest';
-import fs from 'fs';
-import os from 'os';
+import { assert, describe, test } from 'vitest';
 import path from 'path';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { FlowrConfig } from '../../../../src/config';
 import { FlowrAnalyzerDefaultProjectDiscoveryPlugin } from '../../../../src/project/plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { isParseRequest } from '../../../../src/r-bridge/retriever';
 import type { FlowrFile } from '../../../../src/project/context/flowr-file';
+import { projectFixture } from './plugin-test-helper';
 
-const roots: string[] = [];
-afterAll(() => {
-	for(const r of roots) {
-		fs.rmSync(r, { recursive: true, force: true });
-	}
-});
-
-function project(files: Record<string, string>): string {
-	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-intel-'));
-	roots.push(root);
-	for(const [file, content] of Object.entries(files)) {
-		const target = path.join(root, file);
-		fs.mkdirSync(path.dirname(target), { recursive: true });
-		fs.writeFileSync(target, content);
-	}
-	return root;
-}
+const project = projectFixture('flowr-intel-');
 
 /** the root-relative posix paths the intelligent plugin discovers under `config` */
 function discovered(root: string, config: FlowrConfig = FlowrConfig.default()): string[] {

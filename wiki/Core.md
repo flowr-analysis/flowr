@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-08-24, 13:26:44 UTC (v2.14.3, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-08-24, 15:16:56 UTC (v2.14.3, R v4.6.1), please do not edit directly._
 
 
 This wiki page provides an overview of the inner workings of _flowR_.
@@ -358,7 +358,7 @@ x"])
 
 ```
 	
-(The analysis required _1.8 ms_ (including parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+(The analysis required _2.6 ms_ (including parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 
 
 
@@ -423,7 +423,7 @@ print`"]
 ```
 
 	
-(The analysis required _1.5 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _2.3 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
@@ -531,7 +531,7 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 > 
 > ```
 > 	
-> (The analysis required _0.4 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+> (The analysis required _0.8 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 > 
 > 
 > 
@@ -596,7 +596,7 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 > ```
 > 
 > 	
-> (The analysis required _0.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+> (The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 > 
 > 
 > 
@@ -1288,7 +1288,7 @@ by mapping function names to <a href="https://github.com/flowr-analysis/flowr/tr
 There you can find functions like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-access.ts#L51"><code><span title="Processes different types of access operations.  Example:   a[i] a$foo a[[i]] a@foo  ">processAccess</span></code></a> which handles the (subset) access to a variable,
 or <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-for-loop.ts#L38"><code><span title="Processes a for-loop call: for(<variable> in <vector>) <body> desugared as:   for(<variable>, <vector>, <body>)  ">processForLoop</span></code></a> which handles the primitive for loop construct (whenever it is not overwritten).
 
-Besides the processor, an entry states what the function does with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L333"><code><span title="Semantics of a built-in that hold no matter which processor handles the call. The remaining facts already have a home: the exit behavior in cfg, whether flowR can fold the call in the evalHandler of the definition, and the fallback for everything unmodelled in hasUnknownSideEffects.">BuiltInFnInfo</span></code></a> -- see
+Besides the processor, an entry states what the function does with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L327"><code><span title="Semantics of a built-in that hold no matter which processor handles the call. The remaining facts already have a home: the exit behavior in cfg, whether flowR can fold the call in the evalHandler of the definition, and the fallback for everything unmodelled in hasUnknownSideEffects.">BuiltInFnInfo</span></code></a> -- see
 [Labeling the Built-Ins](#labeling-the-built-ins) below for the labels it may carry.
 
 #### Labeling the Built-Ins
@@ -1361,7 +1361,7 @@ function calls over to the function calling it).
 | `Deprecated` | 135 | marked for removal, with a better alternative available, like `dplyr::funs` |
 | `Concurrent`<sup>db</sup> | 43 | runs its work in parallel (workers, a cluster, a future/promise backend); says nothing about purity, only reproducibility and where an error surfaces. The last bit of the 32 a JS bitfield holds, so stay bitwise. |
 
-Most of these combine freely. The exceptions are <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L149"><code><span title="Which CallProp bits rule each other out, as [bit, everything stating it forbids]. A definition that carries the left bit must carry none of the right ones; a test checks the DefaultBuiltinConfig (and any configured built-ins) against this. Every other pair of bits combines freely.">ExclusiveCallProps</span></code></a>, which a test checks the whole
+Most of these combine freely. The exceptions are <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L148"><code><span title="Which CallProp bits rule each other out, as [bit, everything stating it forbids]. A definition that carries the left bit must carry none of the right ones; a test checks the DefaultBuiltinConfig (and any configured built-ins) against this. Every other pair of bits combines freely.">ExclusiveCallProps</span></code></a>, which a test checks the whole
 configuration against:
 
 * `Pure` rules out `MayPure`, `Scope`, `NonDet`, `Random`, `Ambient`, `File`, `TempFile`, `Network`, `Process`, `Ffi`, `Lang`, `User`, `Graphics`, `Database`, `Reads`, `Writes`, `Prints`, `Configures`, `Closes`, `CommandLine`, `Opens`
@@ -1377,7 +1377,7 @@ system, so a call doing both states both), and `Reads`/`Writes` say what happens
 
 <details><summary>What each argument role means</summary>
 
-A role is stated per parameter in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L196"><code><span title="The formals of a built-in, in the order they are declared in, each with what its argument is used for. A ... entry stands for every argument from the position it appears at, and the entries behind it are matched by their full name only.">FnSig</span></code></a> of a built-in, in the order R declares
+A role is stated per parameter in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L192"><code><span title="The formals of a built-in, in the order they are declared in, each with what its argument is used for. A ... entry stands for every argument from the position it appears at, and the entries behind it are matched by their full name only.">FnSig</span></code></a> of a built-in, in the order R declares
 them, with `...` covering every position from where it appears. The count is how many built-ins have at least one
 parameter in that role.
 
@@ -1534,7 +1534,7 @@ product <- 1
 N <- 10
 for(i in 1:(N-1)) product <- product  i
 product
-All queries together required ≈4 ms (1ms accuracy, total 4 ms)
+All queries together required ≈5 ms (1ms accuracy, total 5 ms)
 ```
 
 

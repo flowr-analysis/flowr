@@ -232,19 +232,28 @@ function mapDataFrameColNamesAssignment(
 	}];
 }
 
-function mapDataFrameRowNamesAssignment(
+/** shared by {@link mapDataFrameRowNamesAssignment} and {@link mapDataFrameUnknownAssignment}, only the operation differs */
+function mapDataFrameOperandModification(
 	operand: RArgument<ParentInformation>,
-	_expression: RNode<ParentInformation>,
-	inference: DataFrameShapeInferenceVisitor
+	inference: DataFrameShapeInferenceVisitor,
+	operation: 'identity' | 'unknown'
 ): DataFrameOperations {
 	if(!isDataFrameArgument(operand, inference)) {
 		return;
 	}
 	return [{
-		operation: 'identity',
-		operand:   operand.value?.info.id,
-		type:      ConstraintType.OperandModification
+		operation,
+		operand: operand.value?.info.id,
+		type:    ConstraintType.OperandModification
 	}];
+}
+
+function mapDataFrameRowNamesAssignment(
+	operand: RArgument<ParentInformation>,
+	_expression: RNode<ParentInformation>,
+	inference: DataFrameShapeInferenceVisitor
+): DataFrameOperations {
+	return mapDataFrameOperandModification(operand, inference, 'identity');
 }
 
 function mapDataFrameDimNamesAssignment(
@@ -267,12 +276,5 @@ function mapDataFrameUnknownAssignment(
 	_expression: RNode<ParentInformation>,
 	inference: DataFrameShapeInferenceVisitor
 ): DataFrameOperations {
-	if(!isDataFrameArgument(operand, inference)) {
-		return;
-	}
-	return [{
-		operation: 'unknown',
-		operand:   operand.value?.info.id,
-		type:      ConstraintType.OperandModification
-	}];
+	return mapDataFrameOperandModification(operand, inference, 'unknown');
 }

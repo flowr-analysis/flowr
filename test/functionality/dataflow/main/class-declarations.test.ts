@@ -1,16 +1,16 @@
 import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { ClassSystem, type DeclaredClass, MemberVisibility, declaredClasses, superClassesOf, toSigClasses } from '../../../../src/dataflow/fn/class-declaration';
+import { ClassDeclarations, ClassSystem, type DeclaredClass, MemberVisibility } from '../../../../src/dataflow/fn/class-declaration';
 import { applyAssumedPackages, assumedPackagesOf, assumeLoadedPackages } from '../../_helper/shell';
 
 assumeLoadedPackages('R6', 'S7');
 
-/** the classes {@link declaredClasses} finds in `code`; `attach` leaves nothing assumed, so the snippet's own `library()` has to bring the package in */
+/** the classes {@link ClassDeclarations.declared} finds in `code`; `attach` leaves nothing assumed, so the snippet's own `library()` has to bring the package in */
 async function classesOf(code: string, attach = false): Promise<Map<string, DeclaredClass>> {
 	const builder = attach ? new FlowrAnalyzerBuilder() : applyAssumedPackages(new FlowrAnalyzerBuilder(), assumedPackagesOf(undefined));
 	const analyzer = await builder.build();
 	analyzer.addRequest(code);
-	return declaredClasses((await analyzer.dataflow()).graph);
+	return ClassDeclarations.declared((await analyzer.dataflow()).graph);
 }
 
 /** runs `pick` over what {@link classesOf} finds in `code` and compares it against `expected` */
@@ -38,7 +38,7 @@ setValidity("Derived", function(object) TRUE)
 		c => ({ union: c.get('NumOrChar')?.union, virtual: c.get('NumOrChar')?.virtual }), { union: ['numeric', 'character'], virtual: true });
 	testClasses('setValidity attributes to a class rather than declaring one, so it contributes no class of its own', code, c => c.has('object'), false);
 	testClasses('setIs extends the contains chain the way it would state itself, and the superclass chain resolves it', code,
-		c => ({ hasBase: (c.get('Derived')?.contains ?? []).includes('Base'), hasAbstract: (c.get('Derived')?.contains ?? []).includes('Abstract'), supers: superClassesOf('Derived', c).toSorted() }),
+		c => ({ hasBase: (c.get('Derived')?.contains ?? []).includes('Base'), hasAbstract: (c.get('Derived')?.contains ?? []).includes('Abstract'), supers: ClassDeclarations.superOf('Derived', c).toSorted() }),
 		{ hasBase: true, hasAbstract: true, supers: ['Abstract', 'Base'] });
 });
 
@@ -59,7 +59,7 @@ Range <- S7::new_class("Range", parent = S7::S7_object, properties = list(start 
 			{ name: 'name', visibility: MemberVisibility.Public }, { name: 'greet', method: true, visibility: MemberVisibility.Public },
 			{ name: 'secret', visibility: MemberVisibility.Private }, { name: 'upper', method: true, visibility: MemberVisibility.Active }] });
 	testClasses('an R6 parent by generator variable resolves', code,
-		c => ({ byVariable: c.get('Employee')?.byVariable, contains: c.get('Employee')?.contains, supers: superClassesOf('Employee', c) }),
+		c => ({ byVariable: c.get('Employee')?.byVariable, contains: c.get('Employee')?.contains, supers: ClassDeclarations.superOf('Employee', c) }),
 		{ byVariable: ['Person'], contains: ['Person'], supers: ['Person'] });
 	testClasses('an S7 class states its properties and abstractness', code,
 		c => ({ system: c.get('Range')?.system, members: c.get('Range')?.members, virtual: c.get('Range')?.virtual }),
@@ -68,9 +68,9 @@ Range <- S7::new_class("Range", parent = S7::S7_object, properties = list(start 
 
 describe('Handing the declarations to the signature database', () => {
 	testClasses('a declared class becomes a record the package owns, with no package of its own', 'setClass("A", contains = "B", slots = c(x = "numeric"))',
-		c => toSigClasses(c)[0], { name: 'A', system: 's4', supers: ['B'], slots: [{ name: 'x', type: 'numeric' }] });
+		c => ClassDeclarations.toSig(c)[0], { name: 'A', system: 's4', supers: ['B'], slots: [{ name: 'x', type: 'numeric' }] });
 	testClasses('a superclass declared elsewhere is attributed to its package, or left out if nothing places it', 'setClass("A", contains = "B")',
-		c => ({ withOwner: toSigClasses(c, n => n === 'B' ? 'otherpkg' : undefined).find(r => r.name === 'B'), withoutOwner: toSigClasses(c, () => undefined).length }),
+		c => ({ withOwner: ClassDeclarations.toSig(c, n => n === 'B' ? 'otherpkg' : undefined).find(r => r.name === 'B'), withoutOwner: ClassDeclarations.toSig(c, () => undefined).length }),
 		{ withOwner: { name: 'B', system: 's4', supers: [], slots: [], package: 'otherpkg' }, withoutOwner: 1 });
 });
 

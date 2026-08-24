@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-08-24, 11:12:39 UTC (v2.14.3, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's linting and testing definitions">Generated</span> from '[wiki-linting-and-testing.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linting-and-testing.ts "src/documentation/wiki-linting-and-testing.ts")' on 2026-08-24, 14:36:06 UTC (v2.14.3, R v4.6.1), please do not edit directly._
 
 
 For the latest code coverage information, see [codecov.io](https://app.codecov.io/gh/flowr-analysis/flowr), 
@@ -143,13 +143,13 @@ assertDataflow(label('simple variable', ['name-normal']), shell,
 );
 ```
 
-Have a look at <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L400"><code><span title="Your best friend whenever you want to test whether the dataflow graph produced by flowR is as expected. See DataflowTestConfiguration for what you can configure; context: 'call-graph' tests the call graph as a view of the dataflow graph.">assertDataflow</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/cli/repl/print-version.ts#L24"><code>label</code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/dataflowgraph-builder.ts#L35"><code><span title="Creates an empty dataflow graph. Should only be used in tests and documentation.">emptyGraph</span></code></a> for more information.
+Have a look at <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L392"><code><span title="Your best friend whenever you want to test whether the dataflow graph produced by flowR is as expected. See DataflowTestConfiguration for what you can configure; context: 'call-graph' tests the call graph as a view of the dataflow graph.">assertDataflow</span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/cli/repl/print-version.ts#L24"><code>label</code></a>, and <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/dataflowgraph-builder.ts#L35"><code><span title="Creates an empty dataflow graph. Should only be used in tests and documentation.">emptyGraph</span></code></a> for more information.
 
 When writing dataflow tests, additional settings can be used to reduce the amount of graph data that needs to be pre-written. Notably:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L373"><code><span title="Specify just a subset of what the dataflow graph will actually be.">expectIsSubgraph</span></code></a> indicates that the expected graph is a subgraph, rather than the full graph that the test should generate. 
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L365"><code><span title="Specify just a subset of what the dataflow graph will actually be.">expectIsSubgraph</span></code></a> indicates that the expected graph is a subgraph, rather than the full graph that the test should generate. 
   The test will then only check if the supplied graph is contained in the result graph, rather than an exact match.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L378"><code><span title="Before comparing, resolve every NodeId in the expected graph as if it were a slicing criterion (e.g. 12@a). Still a work in progress.">resolveIdsAsCriterion</span></code></a> indicates that the ids given in the expected (sub)graph should be resolved as [slicing criteria](https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion) rather than actual ids. 
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/test/functionality/_helper/shell.ts#L370"><code><span title="Before comparing, resolve every NodeId in the expected graph as if it were a slicing criterion (e.g. 12@a). Still a work in progress.">resolveIdsAsCriterion</span></code></a> indicates that the ids given in the expected (sub)graph should be resolved as [slicing criteria](https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion) rather than actual ids. 
   For example, passing `12@a` as an id in the expected (sub)graph will cause it to be resolved as the corresponding id.
 
 The following example shows both in use:

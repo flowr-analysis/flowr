@@ -10,6 +10,7 @@ import { SexpType } from '../../../../src/project/plugins/file-plugins/files/flo
 import { DfEdge, EdgeType } from '../../../../src/dataflow/graph/edge';
 import { NoEdges, type DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { writeFilesUnder } from './plugin-test-helper';
 
 const tempFolder = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-sysdata-test-'));
 process.on('exit', () => fs.rmSync(tempFolder, { recursive: true, force: true }));
@@ -17,10 +18,7 @@ process.on('exit', () => fs.rmSync(tempFolder, { recursive: true, force: true })
 /** Writes a project below {@link tempFolder}, running `rSetup` in it so a test can have R produce the binary files a package ships. Returns the project root. */
 function project(name: string, files: Record<string, string>, rSetup?: (root: string) => string): string {
 	const root = path.join(tempFolder, name);
-	for(const [file, content] of Object.entries(files)) {
-		fs.mkdirSync(path.join(root, path.dirname(file)), { recursive: true });
-		fs.writeFileSync(path.join(root, file), content);
-	}
+	writeFilesUnder(root, files);
 	if(rSetup) {
 		const shell = new RShellExecutor();
 		shell.run(rSetup(rPath(root)));

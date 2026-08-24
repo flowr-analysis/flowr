@@ -109,12 +109,8 @@ export interface ClassDeclarationConfig {
 /** the class name R uses to mark a class as non-instantiable */
 const VirtualClass = 'VIRTUAL';
 
-/**
- * The argument `ref` names, by name when the call gives one and by position among the unnamed ones otherwise.
- * Exported so `built-in-s-four.ts` can drop its own copy of this instead of hand-rolling it again; that file
- * already imports {@link ClassArgRef} from here, so the reverse import would cycle.
- */
-export function argFor<Info>(args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[], ref: ClassArgRef | undefined): RNode<Info & ParentInformation> | undefined {
+/** The argument `ref` names, by name when the call gives one and by position among the unnamed ones otherwise. */
+function argForImpl<Info>(args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[], ref: ClassArgRef | undefined): RNode<Info & ParentInformation> | undefined {
 	if(ref === undefined) {
 		return undefined;
 	}
@@ -137,6 +133,16 @@ export function argFor<Info>(args: readonly PotentiallyEmptyRArgument<Info & Par
 		}
 	}
 	return undefined;
+}
+
+/**
+ * The argument `ref` names, by name when the call gives one and by position among the unnamed ones otherwise.
+ * Exported so `built-in-s-four.ts` can drop its own copy of this instead of hand-rolling it again; that file
+ * already imports {@link ClassArgRef} from here, so the reverse import would cycle.
+ * @deprecated use {@link ClassDeclarations.argFor} instead
+ */
+export function argFor<Info>(args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[], ref: ClassArgRef | undefined): RNode<Info & ParentInformation> | undefined {
+	return ClassDeclarations.argFor(args, ref);
 }
 
 /** The string a node states literally, `undefined` for anything that is not a literal (a variable, a call, ...). */
@@ -215,29 +221,29 @@ function isTrue<Info>(node: RNode<Info & ParentInformation> | undefined): boolea
  * Reads the {@link ClassDeclaration} a call states, following the argument mapping its built-in declares.
  * An argument that resolves to no literal contributes a {@link ClassDeclaration.byVariable|by-variable} name, or nothing.
  */
-export function classDeclarationOf<Info>(config: ClassDeclarationConfig, args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[]): ClassDeclaration {
+function classDeclarationOfImpl<Info>(config: ClassDeclarationConfig, args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[]): ClassDeclaration {
 	const byVariable: string[] = [];
-	const nameNode = argFor(args, config.nameArg);
+	const nameNode = argForImpl(args, config.nameArg);
 	const name = literal(nameNode);
 	if(name === undefined && nameNode !== undefined && RSymbol.is(nameNode)) {
 		byVariable.push(nameNode.lexeme);
 	}
 
-	const parents = literalVector(argFor(args, config.containsArg));
+	const parents = literalVector(argForImpl(args, config.containsArg));
 	byVariable.push(...parents.byVariable);
 	const contains = parents.values.filter(c => c !== VirtualClass);
-	let virtual = parents.values.includes(VirtualClass) || isTrue(argFor(args, config.virtualArg));
+	let virtual = parents.values.includes(VirtualClass) || isTrue(argForImpl(args, config.virtualArg));
 
 	const members: ClassMember[] = [];
 	for(const ref of config.memberArgs ?? []) {
-		const found = membersOf(argFor(args, ref), ref);
+		const found = membersOf(argForImpl(args, ref), ref);
 		members.push(...found.members);
 		virtual ||= found.virtual;
 	}
 
-	const union = config.unionArg === undefined ? undefined : literalVector(argFor(args, config.unionArg)).values;
+	const union = config.unionArg === undefined ? undefined : literalVector(argForImpl(args, config.unionArg)).values;
 	const prototype = config.prototypeArg === undefined ? []
-		: membersOf(argFor(args, config.prototypeArg), config.prototypeArg).members.map(m => m.name);
+		: membersOf(argForImpl(args, config.prototypeArg), config.prototypeArg).members.map(m => m.name);
 
 	/* a class union is virtual by construction: it exists to be extended, never to be instantiated */
 	const isUnion = union !== undefined && union.length > 0;
@@ -254,6 +260,11 @@ export function classDeclarationOf<Info>(config: ClassDeclarationConfig, args: r
 	});
 }
 
+/** @deprecated use {@link ClassDeclarations.of} instead */
+export function classDeclarationOf<Info>(config: ClassDeclarationConfig, args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[]): ClassDeclaration {
+	return ClassDeclarations.of(config, args);
+}
+
 /** One class the analysis saw declared, with the call that declared it. */
 export interface DeclaredClass extends ClassDeclaration {
 	/** the id of the declaring call */
@@ -263,7 +274,7 @@ export interface DeclaredClass extends ClassDeclaration {
 }
 
 /** Every class the graph declares, keyed by name. A later declaration of the same name wins, as it would in R. */
-export function declaredClasses(graph: DataflowGraph): Map<string, DeclaredClass> {
+function declaredClassesImpl(graph: DataflowGraph): Map<string, DeclaredClass> {
 	const classes = new Map<string, DeclaredClass>();
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		const decl = (vertex as DataflowGraphVertexFunctionCall).classDecl;
@@ -306,6 +317,11 @@ export function declaredClasses(graph: DataflowGraph): Map<string, DeclaredClass
 	return classes;
 }
 
+/** @deprecated use {@link ClassDeclarations.declared} instead */
+export function declaredClasses(graph: DataflowGraph): Map<string, DeclaredClass> {
+	return ClassDeclarations.declared(graph);
+}
+
 /** Variable name to the class its generator declares, for the `Cls <- R6Class(...)`/`Cls <- new_class(...)` bindings. */
 function generatorVariables(graph: DataflowGraph, classes: ReadonlyMap<string, DeclaredClass>): Map<string, string> {
 	const byName = new Map<NodeId, string>();
@@ -332,7 +348,7 @@ function generatorVariables(graph: DataflowGraph, classes: ReadonlyMap<string, D
  * The transitive superclasses of `name` among `classes`, nearest first and each named once. A class the
  * analysis never saw declared ends the chain, so what another package contributes is simply not in the answer.
  */
-export function superClassesOf(name: string, classes: ReadonlyMap<string, ClassDeclaration>): string[] {
+function superClassesOfImpl(name: string, classes: ReadonlyMap<string, ClassDeclaration>): string[] {
 	const chain: string[] = [];
 	const seen = new Set<string>([name]);
 	const queue = [...(classes.get(name)?.contains ?? [])];
@@ -348,26 +364,16 @@ export function superClassesOf(name: string, classes: ReadonlyMap<string, ClassD
 	return chain;
 }
 
-/** Utilities for the class declarations of an analysis. */
-export const ClassDeclarations = {
-	name:     'ClassDeclarations',
-	/** @see {@link classDeclarationOf} */
-	of:       classDeclarationOf,
-	/** @see {@link declaredClasses} */
-	declared: declaredClasses,
-	/** @see {@link superClassesOf} */
-	superOf:  superClassesOf,
-	/** Whether the vertex is a call that declares a class; its {@link DataflowGraphVertexFunctionCall.classDecl} is then set. */
-	isDeclaring(this: void, vertex: DataflowGraphVertexInfo | undefined): boolean {
-		return FunctionCallVertex.is(vertex) && vertex.classDecl !== undefined;
-	}
-} as const;
+/** @deprecated use {@link ClassDeclarations.superOf} instead */
+export function superClassesOf(name: string, classes: ReadonlyMap<string, ClassDeclaration>): string[] {
+	return ClassDeclarations.superOf(name, classes);
+}
 
 /**
  * The {@link SigClassInfo} records the signature database stores for the classes an analysis found. A class
  * the analysis declared carries no `package`; a referenced class `ownerOf` can place becomes a `foreign` record.
  */
-export function toSigClasses(classes: ReadonlyMap<string, DeclaredClass>, ownerOf?: (name: string) => string | undefined): SigClassInfo[] {
+function toSigClassesImpl(classes: ReadonlyMap<string, DeclaredClass>, ownerOf?: (name: string) => string | undefined): SigClassInfo[] {
 	const records: SigClassInfo[] = [];
 	for(const declared of classes.values()) {
 		records.push(compactRecord({
@@ -395,3 +401,27 @@ export function toSigClasses(classes: ReadonlyMap<string, DeclaredClass>, ownerO
 	}
 	return records;
 }
+
+/** @deprecated use {@link ClassDeclarations.toSig} instead */
+export function toSigClasses(classes: ReadonlyMap<string, DeclaredClass>, ownerOf?: (name: string) => string | undefined): SigClassInfo[] {
+	return ClassDeclarations.toSig(classes, ownerOf);
+}
+
+/** Utilities for the class declarations of an analysis. */
+export const ClassDeclarations = {
+	name:     'ClassDeclarations',
+	/** The declaration a call states; see {@link classDeclarationOfImpl}. */
+	of:       classDeclarationOfImpl,
+	/** Every class the graph declares, keyed by name; see {@link declaredClassesImpl}. */
+	declared: declaredClassesImpl,
+	/** The transitive superclasses of a declared class; see {@link superClassesOfImpl}. */
+	superOf:  superClassesOfImpl,
+	/** The signature-database records for a set of declared classes; see {@link toSigClassesImpl}. */
+	toSig:    toSigClassesImpl,
+	/** The argument a class-declaring built-in's config names; see {@link argForImpl}. */
+	argFor:   argForImpl,
+	/** Whether the vertex is a call that declares a class; its {@link DataflowGraphVertexFunctionCall.classDecl} is then set. */
+	isDeclaring(this: void, vertex: DataflowGraphVertexInfo | undefined): boolean {
+		return FunctionCallVertex.is(vertex) && vertex.classDecl !== undefined;
+	}
+} as const;

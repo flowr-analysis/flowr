@@ -1,13 +1,11 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import { filterLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
 import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
-import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
+import type { QueryResults, SupportedQuery } from '../../query';
 import { executeHigherOrderQuery } from './inspect-higher-order-query-executor';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
-import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { FlowrConfig } from '../../../config';
-import { criteriaQueryCompleter, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter } from '../../../cli/repl/parser/slice-query-parser';
 import { SourceLocation } from '../../../util/range';
 
 /**
@@ -23,17 +21,6 @@ export interface InspectHigherOrderQueryResult extends BaseQueryResult {
 	readonly higherOrder: Record<NodeId, boolean>;
 }
 
-function inspectHoLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'inspect-higher-order'> {
-	const criteria = sliceCriteriaParser(line[0]);
-	return {
-		query: {
-			type:   'inspect-higher-order',
-			filter: criteria
-		},
-		rCode: queryLineCode(line, criteria ? 1 : 0)
-	};
-}
-
 export const InspectHigherOrderQueryDefinition = {
 	title:           'Inspect Higher-Order Functions Query',
 	executor:        executeHigherOrderQuery,
@@ -47,7 +34,7 @@ export const InspectHigherOrderQueryDefinition = {
 		}
 		return true;
 	},
-	fromLine:  inspectHoLineParser,
+	fromLine:  filterLineParser('inspect-higher-order'),
 	completer: criteriaQueryCompleter,
 	syntax:    '@inspect-higher-order [(<crit>;...)] <code | file://path>',
 	schema:    Joi.object({

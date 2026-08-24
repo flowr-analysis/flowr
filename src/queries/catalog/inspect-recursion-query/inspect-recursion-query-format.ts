@@ -1,13 +1,10 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import { filterLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
 import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
-import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
+import type { QueryResults, SupportedQuery } from '../../query';
 import { executeRecursionQuery } from './inspect-recursion-query-executor';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
-import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { FlowrConfig } from '../../../config';
-import { queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { SourceLocation } from '../../../util/range';
 
 /**
@@ -23,17 +20,6 @@ export interface InspectRecursionQueryResult extends BaseQueryResult {
 	readonly recursive: Record<NodeId, boolean>;
 }
 
-function inspectRecLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'inspect-recursion'> {
-	const criteria = sliceCriteriaParser(line[0]);
-	return {
-		query: {
-			type:   'inspect-recursion',
-			filter: criteria
-		},
-		rCode: queryLineCode(line, criteria ? 1 : 0)
-	};
-}
-
 export const InspectRecursionQueryDefinition = {
 	title:           'Inspect Recursive Functions Query',
 	executor:        executeRecursionQuery,
@@ -47,7 +33,7 @@ export const InspectRecursionQueryDefinition = {
 		}
 		return true;
 	},
-	fromLine: inspectRecLineParser,
+	fromLine: filterLineParser('inspect-recursion'),
 	syntax:   '@inspect-recursion [(<crit>;...)] <code | file://path>',
 	schema:   Joi.object({
 		type:   Joi.string().valid('inspect-recursion').required().description('The type of the query.'),

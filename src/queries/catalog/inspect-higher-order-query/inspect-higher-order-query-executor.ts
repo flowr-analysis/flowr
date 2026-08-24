@@ -1,7 +1,7 @@
 import type { InspectHigherOrderQuery, InspectHigherOrderQueryResult } from './inspect-higher-order-query-format';
 import type { BasicQueryData } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { isFunctionHigherOrder } from '../../../dataflow/fn/higher-order-function';
+import { HigherOrderFunctions } from '../../../dataflow/fn/higher-order-function';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { QueryFunctionFilter } from '../../query-function-filter';
@@ -24,7 +24,7 @@ export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, quer
 
 	const result: Record<NodeId, boolean> = {};
 	for(const id of fns) {
-		result[id] = isFunctionHigherOrder(id, graph, analyzer.inspectContext(), invertedGraph);
+		result[id] = HigherOrderFunctions.of(id, graph, { ctx: analyzer.inspectContext(), invertedGraph });
 	}
 
 	return {

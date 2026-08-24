@@ -9,6 +9,7 @@ import { slicerLogger } from '../static/static-slicer';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RExpressionList } from '../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
 /** An optional `(file-regex)` suffix restricting a criterion to nodes stemming from a matching file. */
 type FileFilterSuffix = '' | `(${string})`;
@@ -174,18 +175,6 @@ function fuzzyLocationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: A
 	return (candidates.find(n => RFunctionCall.is(n)) ?? candidates[0])?.info.id;
 }
 
-/** Walks up to the statement `node` belongs to: the outermost node still below the root of its file. */
-function enclosingTopLevelStatement<OtherInfo>(node: RNodeWithParent<OtherInfo>, idMap: AstIdMap<OtherInfo>): RNodeWithParent<OtherInfo> {
-	let current = node;
-	for(;;) {
-		const parent = current.info.parent !== undefined ? idMap.get(current.info.parent) : undefined;
-		if(parent === undefined || parent.info.parent === undefined) {
-			return current;
-		}
-		current = parent;
-	}
-}
-
 /**
  * Resolves a `line^` criterion: the top-level statement covering the line, which is what has to be excised to
  * remove that line from the program. Unlike {@link fuzzyLocationToId} this widens rather than narrows, so an
@@ -196,7 +185,7 @@ function topLevelStatementToId<OtherInfo>(line: number, idMap: AstIdMap<OtherInf
 	let best: RNodeWithParent<OtherInfo> | undefined;
 	let bestRange: SourceRange | undefined;
 	for(const node of SourceRange.nodesContaining(potentials, line)) {
-		const statement = enclosingTopLevelStatement(node, idMap);
+		const statement = RNode.topLevelStatement(node, idMap);
 		const range = SourceRange.fromNode(statement);
 		/* several statements may cover the line (`a <- 1; b <- 2`), the one starting first wins */
 		if(range !== undefined && (bestRange === undefined || SourceRange.compare(range, bestRange) < 0)) {

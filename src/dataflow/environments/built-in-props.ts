@@ -136,10 +136,9 @@ export enum CallProp {
  * The {@link CallProp} bits that state an effect beyond computing a result, so no {@link CallProp.Pure}
  * definition may carry any of them.
  */
-export const ImpureProps = CallProp.MayPure | CallProp.Scope | CallProp.NonDet | CallProp.Random | CallProp.Ambient
-	| CallProp.File | CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang
-	| CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes | CallProp.Prints
-	| CallProp.Configures | CallProp.Closes | CallProp.Opens | CallProp.CommandLine;
+export const ImpureProps = CallProp.MayPure | CallProp.Scope | CallProp.NonDet | CallProp.Random | CallProp.Ambient | CallProp.File
+	| CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang | CallProp.User | CallProp.Graphics
+	| CallProp.Database | CallProp.Reads | CallProp.Writes | CallProp.Prints | CallProp.Configures | CallProp.Closes | CallProp.Opens | CallProp.CommandLine;
 
 /**
  * Which {@link CallProp} bits rule each other out, as `[bit, everything stating it forbids]`. A definition
@@ -157,16 +156,14 @@ export const ExclusiveCallProps: readonly (readonly [bit: CallProp, forbidden: C
  * carries none of these derives its result from its arguments, which is what {@link BuiltInIndex#without}
  * looks for.
  */
-export const InputProps = CallProp.NonDet | CallProp.Random | CallProp.Ambient | CallProp.File
-	| CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang | CallProp.User
-	| CallProp.CommandLine;
+export const InputProps = CallProp.NonDet | CallProp.Random | CallProp.Ambient | CallProp.File | CallProp.TempFile
+	| CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang | CallProp.User | CallProp.CommandLine;
 
 /**
  * The {@link CallProp} bits the signature database states itself, so {@link fnInfoFromSignature} can read them
  * off any package function without anyone writing them down.
  */
-export const SigDbInferable = CallProp.Throws | CallProp.NonDet | CallProp.Method | CallProp.Generic
-	| CallProp.Concurrent;
+export const SigDbInferable = CallProp.Throws | CallProp.NonDet | CallProp.Method | CallProp.Generic | CallProp.Concurrent;
 
 /**
  * The {@link CallProp} bits that say a call takes its data from a file, as {@link CallProp.File} alone also
@@ -178,10 +175,9 @@ export const FileInputProps = CallProp.File | CallProp.Reads;
  * The {@link CallProp} bits that carry over from a callee to its caller: what the called function does, the
  * calling one does too. Purity does not travel this way, which is why it is not in here.
  */
-export const PropagatedProps = CallProp.Throws | CallProp.Scope | CallProp.NonDet | CallProp.Prints
-	| CallProp.Random | CallProp.Ambient | CallProp.File | CallProp.TempFile | CallProp.Network | CallProp.Process
-	| CallProp.Ffi | CallProp.Lang | CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes
-	| CallProp.Configures | CallProp.CommandLine | CallProp.Concurrent;
+export const PropagatedProps = CallProp.Throws | CallProp.Scope | CallProp.NonDet | CallProp.Prints | CallProp.Random | CallProp.Ambient
+	| CallProp.File | CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang | CallProp.User
+	| CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes | CallProp.Configures | CallProp.CommandLine | CallProp.Concurrent;
 
 /** a bitfield of {@link ArgProp} */
 export type ArgProps = number;
@@ -254,9 +250,12 @@ function wordsOf(this: void, entries: readonly (readonly [number, string])[], ma
 	return mask === undefined ? [] : entries.filter(([bit]) => (mask & bit) !== 0).map(([, word]) => word);
 }
 
-/** {@link ArgPropNames}, as `[bit, word]` pairs in ascending bit order, for {@link wordsOf}. */
-const ArgPropEntries: readonly (readonly [ArgProp, string])[] =
-	Object.entries(ArgPropNames).map(([bit, word]) => [Number(bit), word] as const);
+/** A bit-keyed word table as `[bit, word]` pairs in ascending bit order, for {@link wordsOf}; shared by {@link ArgProps} and {@link CallProps}. */
+function bitEntries(this: void, byBit: Readonly<Record<number, string>>): readonly (readonly [number, string])[] {
+	return Object.entries(byBit).map(([bit, word]) => [Number(bit), word] as const);
+}
+
+const ArgPropEntries = bitEntries(ArgPropNames);
 
 /**
  * Utility functions for {@link ArgProps|argument property bitfields}.
@@ -271,48 +270,43 @@ export const ArgProps = {
 	mask:  (names: readonly string[]): ArgProps => maskOfNames(ArgProp, names)
 } as const;
 
-/**
- * The word a reader wants for every {@link CallProp}. Keyed by the member rather than listed, so a bit added to
- * the enum without a word here does not compile instead of silently never showing up in what a reader is told.
- */
-const CallPropWord: Readonly<Record<keyof typeof CallProp, string>> = {
-	Pure:        'pure',
-	MayPure:     'pure but runs what it is handed',
-	Throws:      'can throw',
-	Invisible:   'invisible',
-	Generic:     'generic',
-	Method:      's3 method',
-	Scope:       'changes scope',
-	NonDet:      'non deterministic',
-	Random:      'random',
-	Ambient:     'ambient state',
-	File:        'file system',
-	TempFile:    'temporary path',
-	Network:     'network',
-	Process:     'runs a process',
-	Ffi:         'foreign function interface',
-	Lang:        'language object',
-	User:        'asks the user',
-	Graphics:    'graphics',
-	Database:    'database',
-	Reads:       'reads',
-	Writes:      'writes',
-	Prints:      'prints',
-	Narrows:     'narrows',
-	Configures:  'configures',
-	Closes:      'closes',
-	Glob:        'glob',
-	CommandLine: 'command line',
-	Opens:       'opens',
-	Statistics:  'statistical test',
-	Deprecated:  'deprecated',
-	Strict:      'strict',
-	Concurrent:  'concurrent'
+/** the {@link CallProp} bit to the word a reader wants for it; keyed by bit rather than listed, so a bit added to the enum without a word here does not compile */
+const CallPropWord: Readonly<Record<CallProp, string>> = {
+	[CallProp.Pure]:        'pure',
+	[CallProp.MayPure]:     'pure but runs what it is handed',
+	[CallProp.Throws]:      'can throw',
+	[CallProp.Invisible]:   'invisible',
+	[CallProp.Generic]:     'generic',
+	[CallProp.Method]:      's3 method',
+	[CallProp.Scope]:       'changes scope',
+	[CallProp.NonDet]:      'non deterministic',
+	[CallProp.Random]:      'random',
+	[CallProp.Ambient]:     'ambient state',
+	[CallProp.File]:        'file system',
+	[CallProp.TempFile]:    'temporary path',
+	[CallProp.Network]:     'network',
+	[CallProp.Process]:     'runs a process',
+	[CallProp.Ffi]:         'foreign function interface',
+	[CallProp.Lang]:        'language object',
+	[CallProp.User]:        'asks the user',
+	[CallProp.Graphics]:    'graphics',
+	[CallProp.Database]:    'database',
+	[CallProp.Reads]:       'reads',
+	[CallProp.Writes]:      'writes',
+	[CallProp.Prints]:      'prints',
+	[CallProp.Narrows]:     'narrows',
+	[CallProp.Configures]:  'configures',
+	[CallProp.Closes]:      'closes',
+	[CallProp.Glob]:        'glob',
+	[CallProp.CommandLine]: 'command line',
+	[CallProp.Opens]:       'opens',
+	[CallProp.Statistics]:  'statistical test',
+	[CallProp.Deprecated]:  'deprecated',
+	[CallProp.Strict]:      'strict',
+	[CallProp.Concurrent]:  'concurrent'
 };
 
-/** the {@link CallProp} bits as the words a reader wants, in the order they are declared */
-const CallPropNames: readonly (readonly [CallProp, string])[] =
-	Object.entries(CallPropWord).map(([member, word]) => [CallProp[member as keyof typeof CallProp], word] as const);
+const CallPropEntries = bitEntries(CallPropWord);
 
 /**
  * Utility functions for {@link CallProps|call property bitfields}.
@@ -320,7 +314,7 @@ const CallPropNames: readonly (readonly [CallProp, string])[] =
 export const CallProps = {
 	name:  'CallProps',
 	/** What a call states about itself, as words; see {@link wordsOf}. */
-	words: (props: CallProps | undefined): string[] => wordsOf(CallPropNames, props),
+	words: (props: CallProps | undefined): string[] => wordsOf(CallPropEntries, props),
 	/** The mask the given {@link CallProp} member names stand for; see {@link maskOfNames}. */
 	mask:  (names: readonly string[]): CallProps => maskOfNames(CallProp, names)
 } as const;

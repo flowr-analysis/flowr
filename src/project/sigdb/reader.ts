@@ -77,10 +77,8 @@ export async function readSignatureDb(file: string): Promise<SigDb> {
 }
 
 /**
- * The read interface every package-signature source implements, so a {@link SigDatabase} and a sharded
- * {@link SigDatabaseSet} are interchangeable; queries are synchronous, decompression/caching happens once during
- * `open`. An omitted `version` answers for the database's newest, never the version flowR assumed for the project
- * (nothing here reads the config/`DESCRIPTION`/lockfile) -- a caller wanting that resolves and passes it itself.
+ * The read interface every package-signature source implements, so a {@link SigDatabase} and a sharded {@link SigDatabaseSet}
+ * are interchangeable. An omitted `version` answers for the database's newest, never the version flowR assumed for the project.
  */
 export interface PackageSignatureSource {
 	/** whether the source can resolve the package at all */
@@ -213,6 +211,20 @@ function classOwnerAtVersion(src: PackageSignatureSource, className: string, ver
 	});
 }
 
+/**
+ * Every package any of `sources` states exports `name`, most-downloaded first and ties broken by name.
+ * The shared tail of the fan-out sources, which differ only in where their sub-sources come from.
+ */
+function packagesExportingAcross(name: string, downloads: (pkg: string) => number, sources: Iterable<PackageSignatureSource | undefined>): readonly string[] {
+	const found = new Set<string>();
+	for(const source of sources) {
+		for(const pkg of source?.packagesExporting(name) ?? []) {
+			found.add(pkg);
+		}
+	}
+	return [...found].sort((a, b) => downloads(b) - downloads(a) || a.localeCompare(b));
+}
+
 /** union view over multiple sources for the same package; routes queries to the appropriate source */
 export class MergedSignatureSource implements PackageSignatureSource {
 	public constructor(private readonly sources: readonly PackageSignatureSource[]) {}
@@ -249,13 +261,7 @@ export class MergedSignatureSource implements PackageSignatureSource {
 		return this.pick(pkg, version)?.lookup(pkg, version);
 	}
 	public packagesExporting(name: string): readonly string[] {
-		const found = new Set<string>();
-		for(const s of this.sources) {
-			for(const pkg of s.packagesExporting(name)) {
-				found.add(pkg);
-			}
-		}
-		return [...found].sort((a, b) => this.downloads(b) - this.downloads(a) || a.localeCompare(b));
+		return packagesExportingAcross(name, pkg => this.downloads(pkg), this.sources);
 	}
 	public classOwner(className: string, version?: string): string | undefined {
 		for(const s of this.sources) {
@@ -351,9 +357,8 @@ export interface OpenSyncFromOptions extends SigDbOpenOptions, OpenSyncOptions {
 const NoFile = -1;
 
 /**
- * Fast, partial reader for a single bundle. `open()`/`openSync()` load the string dictionary + `.idx` once (one
- * ranged read, no full parse), then every query seeks straight to one package blob; `open()` additionally
- * decompresses a `.br`/`.gz` source into a hash-keyed cache. Implements {@link PackageSignatureSource}.
+ * Fast, partial reader for a single bundle. `open()`/`openSync()` load the string dictionary + `.idx` once, then every
+ * query seeks straight to one package blob; `open()` additionally decompresses a `.br`/`.gz` source into a hash-keyed cache.
  */
 export class SigDatabase implements PackageSignatureSource {
 	private closed = false;
@@ -473,9 +478,8 @@ export class SigDatabase implements PackageSignatureSource {
 	}
 
 	/**
-	 * Whether `pkg` can offer `name` in any of its versions, answered from {@link nameIdsOfBlob} alone.
-	 * `true` whenever nothing is known about the package yet, so this only ever skips work that would have
-	 * found nothing: the ids cover every function record, of which a version selects a subset.
+	 * Whether `pkg` can offer `name` in any of its versions, answered from {@link nameIdsOfBlob} alone; `true` whenever
+	 * nothing is known about the package yet, so this only ever skips work that would have found nothing.
 	 */
 	private mayOffer(pkg: string, name: string): boolean {
 		const blobIdx = this.index.pkgs[pkg];
@@ -553,13 +557,16 @@ export class SigDatabase implements PackageSignatureSource {
 		return idx === undefined ? undefined : this.strings[idx];
 	}
 
-	public lookup(pkg: string, version?: string): LibraryExports | undefined {
+	/** `{ blob, meta }` for `pkg` when this bundle carries both, `undefined` otherwise; the shared prologue of most per-package queries below. */
+	private blobMeta(pkg: string): { blob: PkgBlob, meta: SigDbPkgMeta } | undefined {
 		const blob = this.blob(pkg);
 		const meta = this.index.meta[pkg];
-		if(!blob || !meta) {
-			return undefined;
-		}
-		return deriveLibraryExports(this.strings, blob, meta, pkg, version, this.cranBase);
+		return blob && meta ? { blob, meta } : undefined;
+	}
+
+	public lookup(pkg: string, version?: string): LibraryExports | undefined {
+		const bm = this.blobMeta(pkg);
+		return bm && deriveLibraryExports(this.strings, bm.blob, bm.meta, pkg, version, this.cranBase);
 	}
 
 	public packagesExporting(name: string): readonly string[] {
@@ -585,13 +592,12 @@ export class SigDatabase implements PackageSignatureSource {
 
 	/** resolve a package version to its blob and the function-record indices of that version (the shared prologue of {@link functions}/{@link functionByName}) */
 	private versionFns(pkg: string, version?: string): { blob: PkgBlob, idxs: readonly number[], byName?: ReadonlyMap<string, number> } | undefined {
-		const blob = this.blob(pkg);
-		const meta = this.index.meta[pkg];
-		if(!blob || !meta) {
+		const bm = this.blobMeta(pkg);
+		if(!bm) {
 			return undefined;
 		}
 		// keyed on the resolved version, so `undefined` and the version it stands for share one entry
-		const ver = resolveVersion(blob, meta[0], version);
+		const ver = resolveVersion(bm.blob, bm.meta[0], version);
 		if(ver === undefined) {
 			return undefined;
 		}
@@ -600,11 +606,11 @@ export class SigDatabase implements PackageSignatureSource {
 		if(cached !== undefined) {
 			return cached;
 		}
-		const idxs = versionFnIndices(blob, ver);
+		const idxs = versionFnIndices(bm.blob, ver);
 		if(idxs === undefined) {
 			return undefined;
 		}
-		return SigDatabase.cache(this.versionFnCache, key, { blob, idxs });
+		return SigDatabase.cache(this.versionFnCache, key, { blob: bm.blob, idxs });
 	}
 
 	public functions(pkg: string, version?: string): DecodedFunction[] | undefined {
@@ -640,24 +646,19 @@ export class SigDatabase implements PackageSignatureSource {
 		return fns?.some(f => f.name === name) ? transitiveCallees(fns, name) : undefined;
 	}
 
+	/** What `decode` reads off the blob for the asked version, `undefined` when this source carries neither. */
+	private decodedFor<T>(pkg: string, version: string | undefined, decode: (strings: readonly string[], blob: Readonly<PkgBlob>, ver: string) => T): T | undefined {
+		const bm = this.blobMeta(pkg);
+		const ver = bm ? resolveVersion(bm.blob, bm.meta[0], version) : undefined;
+		return bm && ver !== undefined ? decode(this.strings, bm.blob, ver) : undefined;
+	}
+
 	public dependencies(pkg: string, version?: string): ResolvedDependency[] | undefined {
-		const blob = this.blob(pkg);
-		const meta = this.index.meta[pkg];
-		if(!blob || !meta) {
-			return undefined;
-		}
-		const ver = resolveVersion(blob, meta[0], version);
-		return ver !== undefined ? decodeDependencies(this.strings, blob, ver) : undefined;
+		return this.decodedFor(pkg, version, decodeDependencies);
 	}
 
 	public classes(pkg: string, version?: string): SigClassInfo[] | undefined {
-		const blob = this.blob(pkg);
-		const meta = this.index.meta[pkg];
-		if(!blob || !meta) {
-			return undefined;
-		}
-		const ver = resolveVersion(blob, meta[0], version);
-		return ver !== undefined ? decodeClasses(this.strings, blob, ver) : undefined;
+		return this.decodedFor(pkg, version, decodeClasses);
 	}
 
 	/** whether this is an R-core / base package (its versions are the R releases it shipped with; see {@link SigDbPkgMeta}) */
@@ -680,13 +681,12 @@ export class SigDatabase implements PackageSignatureSource {
 
 	/** the release date of a package version (defaulting to the newest release), or `undefined` if unknown */
 	public releaseDate(pkg: string, version?: string): Date | undefined {
-		const blob = this.blob(pkg);
-		const meta = this.index.meta[pkg];
-		if(!blob || !meta) {
+		const bm = this.blobMeta(pkg);
+		if(!bm) {
 			return undefined;
 		}
-		const ver = version ?? newestVersion(blob, meta[0]);
-		const day = ver !== undefined ? blob.dates[ver] : undefined;
+		const ver = version ?? newestVersion(bm.blob, bm.meta[0]);
+		const day = ver !== undefined ? bm.blob.dates[ver] : undefined;
 		return day !== undefined ? new Date(dayToMillis(day)) : undefined;
 	}
 
@@ -697,9 +697,8 @@ export class SigDatabase implements PackageSignatureSource {
 
 	/** the newest version of a package by release date (falling back to the recorded latest, then SemVer order) */
 	public latestVersion(pkg: string): RVersion | undefined {
-		const blob = this.blob(pkg);
-		const meta = this.index.meta[pkg];
-		const ver = blob && meta ? newestVersion(blob, meta[0]) : undefined;
+		const bm = this.blobMeta(pkg);
+		const ver = bm ? newestVersion(bm.blob, bm.meta[0]) : undefined;
 		return ver !== undefined ? RVersion.parseOrZero(ver) : undefined;
 	}
 
@@ -750,9 +749,8 @@ interface MountedShard {
 }
 
 /**
- * A transparent, read-only view over several {@link SigDatabase} shards described by a {@link SigDbManifest}.
- * When the manifest embeds each shard's index (the default), `openManifest()` reads only that small file to
- * build the package to shard routing table.
+ * A transparent, read-only view over several {@link SigDatabase} shards described by a {@link SigDbManifest}. When the
+ * manifest embeds each shard's index (the default), `openManifest()` reads only that small file to build the routing table.
  */
 export class SigDatabaseSet implements PackageSignatureSource {
 	private readonly opened:    (SigDatabase | undefined)[];
@@ -905,13 +903,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 
 	/** decompress the given shards + their shared dictionaries concurrently, then open them (see {@link preload}) */
 	private async warmShards(need: ReadonlySet<number>): Promise<void> {
-		const dicts = new Set<string>();
-		for(const i of need) {
-			const d = this.manifest.shards[i].dict;
-			if(d) {
-				dicts.add(d);
-			}
-		}
+		const dicts = new Set([...need].map(i => this.manifest.shards[i].dict).filter((d): d is string => !!d));
 		const shardJobs = [...need].map(i => ensurePlain(resolveSource(this.baseDir, this.manifest.shards[i].path),
 			{ cacheDir: this.cacheDir, hash: this.manifest.shards[i].hash, index: this.indices[i] }));
 		const dictJobs = [...dicts].map(id => {
@@ -1006,13 +998,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	}
 
 	public packagesExporting(name: string): readonly string[] {
-		const found = new Set<string>();
-		for(const idx of this.indices.keys()) {
-			for(const pkg of this.shard(idx)?.packagesExporting(name) ?? []) {
-				found.add(pkg);
-			}
-		}
-		return [...found].sort((a, b) => this.downloads(b) - this.downloads(a) || a.localeCompare(b));
+		return packagesExportingAcross(name, pkg => this.downloads(pkg), [...this.indices.keys()].map(idx => this.shard(idx)));
 	}
 
 	public classOwner(className: string, version?: string): string | undefined {
@@ -1109,9 +1095,8 @@ function isSyncOpenable(source: string): boolean {
 }
 
 /**
- * Open a path-based source once, process-wide, synchronously. Returns the shared instance (opening it on the
- * first call), or `undefined` if the path needs async opening (a `.br`/`.gz` bundle, use {@link getSharedSigSource}).
- * Throws only if a sync-openable source fails to open.
+ * Open a path-based source once, process-wide, synchronously. Returns the shared instance (opening it on the first call), or
+ * `undefined` if the path needs async opening (a `.br`/`.gz` bundle, use {@link getSharedSigSource}); throws on any other open failure.
  */
 export function getSharedSigSourceSync(source: string): PackageSignatureSource | undefined {
 	const cached = sharedSources.get(source);

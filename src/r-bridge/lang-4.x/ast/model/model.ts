@@ -335,6 +335,20 @@ export const RNode = {
 		}
 	},
 	/**
+	 * Walks up from `id` along the AST parent chain (itself included), returning the id of the first node for
+	 * which `isTarget` holds, `undefined` if the walk reaches the root of the file without a match.
+	 */
+	findEnclosing<OtherInfo>(this: void, id: NodeId, idMap: AstIdMap<OtherInfo & ParentInformation>, isTarget: (node: RNode<OtherInfo & ParentInformation>) => boolean): NodeId | undefined {
+		let node = idMap.get(id);
+		while(node !== undefined) {
+			if(isTarget(node)) {
+				return node.info.id;
+			}
+			node = node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
+		}
+		return undefined;
+	},
+	/**
 	 * A helper function to retrieve the type of a given node.
 	 */
 	getType(this: void, node: RNode): RType {

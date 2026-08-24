@@ -117,11 +117,18 @@ function reach(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction)
 	return { calls, own, defs };
 }
 
+/** What to ask for beyond the definition itself, see {@link FunctionExceptions.of}. */
+export interface FunctionExceptionsOptions {
+	/** seeds additional throwers, e.g. the result of an earlier call, so their callees are counted too */
+	readonly knownThrower?: ExceptionsByFunction
+}
+
 /**
  * The `NodeId`s of functions that may throw exceptions when called by `id`, restricted to functions known by
  * flowR. `knownThrower` seeds additional throwers, e.g. the result of an earlier call, counting its callees.
+ * @useInstead {@link FunctionExceptions.of}
  */
-export function calculateExceptionsOfFunction(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction = {}): ExceptionsByFunction {
+function exceptionsOfFunction(this: void, id: NodeId, graph: CallGraph, { knownThrower = {} }: FunctionExceptionsOptions = {}): ExceptionsByFunction {
 	const { calls, own, defs } = reach(id, graph, knownThrower);
 
 	const raised = new Map<NodeId, Map<NodeId, ExceptionPoint>>();
@@ -149,6 +156,22 @@ export function calculateExceptionsOfFunction(id: NodeId, graph: CallGraph, know
 		}
 	}
 	return result;
+}
+
+/** What the functions of a program may raise, following the calls their bodies reach. */
+export const FunctionExceptions = {
+	name: 'FunctionExceptions',
+	/** The exceptions a definition may raise; see {@link exceptionsOfFunction}. */
+	of:   exceptionsOfFunction
+} as const;
+
+/**
+ * The `NodeId`s of functions that may throw exceptions when called by `id`, restricted to functions known by
+ * flowR. `knownThrower` seeds additional throwers, e.g. the result of an earlier call, counting its callees.
+ * @deprecated use {@link FunctionExceptions.of} instead
+ */
+export function calculateExceptionsOfFunction(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction = {}): ExceptionsByFunction {
+	return FunctionExceptions.of(id, graph, { knownThrower });
 }
 
 const NoPoints: ReadonlyMap<NodeId, ExceptionPoint> = new Map();

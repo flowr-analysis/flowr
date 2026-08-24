@@ -1,6 +1,9 @@
-import { assert, test } from 'vitest';
+import { afterAll, assert, test } from 'vitest';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import type { FlowrFile, FlowrFileProvider } from '../../../../src/project/context/flowr-file';
-import { FileRole } from '../../../../src/project/context/flowr-file';
+import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../../../src/project/flowr-analyzer';
 import { fileProtocol } from '../../../../src/r-bridge/retriever';
@@ -8,6 +11,8 @@ import type { FlowrAnalyzerFilePlugin } from '../../../../src/project/plugins/fi
 import { label } from '../../_helper/label';
 import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
 import type { RdIndex, RdTopicMatch } from '../../../../src/project/plugins/file-plugins/files/flowr-rd-file';
+import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
+import { FlowrConfig } from '../../../../src/config';
 
 export type TestPluginFileType = new (file: FlowrFileProvider<string>) => FlowrFile;
 type LoadFn = (analyzer: FlowrAnalyzer) => void;
@@ -41,4 +46,44 @@ export function testTopicOf(name: string, index: RdIndex | (() => RdIndex | Prom
 		const idx = typeof index === 'function' ? await index() : index;
 		assert.deepEqual(idx.topicOf(query), expected);
 	});
+}
+
+/** Writes `files` (path to content) into files below `root`, creating parent directories as needed. */
+export function writeFilesUnder(root: string, files: Record<string, string>): void {
+	for(const [file, content] of Object.entries(files)) {
+		const target = path.join(root, file);
+		fs.mkdirSync(path.dirname(target), { recursive: true });
+		fs.writeFileSync(target, content);
+	}
+}
+
+/**
+ * Returns a `project(files)` fixture writer that materializes `files` below a fresh temporary directory
+ * (named with `prefix`) and registers an `afterAll` that removes every root it created.
+ *
+ * Each call gets its own tracked roots and its own `afterAll`, so several test files can each call this
+ * once at module scope without stepping on one another even though vitest may run them in one worker.
+ */
+export function projectFixture(prefix: string): (files: Record<string, string>) => string {
+	const roots: string[] = [];
+	afterAll(() => {
+		for(const r of roots) {
+			fs.rmSync(r, { recursive: true, force: true });
+		}
+	});
+	return (files: Record<string, string>): string => {
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+		roots.push(root);
+		writeFilesUnder(root, files);
+		return root;
+	};
+}
+
+/** A fresh context registering `plugin`, with an inline text file (empty content) added for each of `files`. */
+export function ctxWithFiles(plugin: FlowrAnalyzerFilePlugin, ...files: string[]): FlowrAnalyzerContext {
+	const ctx = new FlowrAnalyzerContext(FlowrConfig.default(), [plugin]);
+	for(const f of files) {
+		ctx.addFile(new FlowrInlineTextFile(f, ''));
+	}
+	return ctx;
 }

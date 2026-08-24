@@ -107,7 +107,16 @@ export class FlowrRMarkdownFile extends FlowrFile {
 		return this.included;
 	}
 
-	public static from(file: FlowrFileProvider<string> | FlowrRMarkdownFile, ctx: FlowrAnalyzerContext): FlowrRMarkdownFile {
+	/**
+	 * Lifts a file to a {@link FlowrRMarkdownFile}, reusing it if already one and assigning roles.
+	 * @param file - The file to lift or return if already an R Markdown file
+	 * @param ctx  - The analyzer context the chunks are read with
+	 * @param role - An optional role to assign to the file
+	 */
+	public static from(file: FlowrFileProvider<string> | FlowrRMarkdownFile, ctx: FlowrAnalyzerContext, role?: FileRole): FlowrRMarkdownFile {
+		if(role) {
+			file.assignRole(role);
+		}
 		return file instanceof FlowrRMarkdownFile ? file : new FlowrRMarkdownFile(file, ctx);
 	}
 }

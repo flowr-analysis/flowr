@@ -64,16 +64,14 @@ function compareByLocation({ node: a }: FlowrSearchElement<ParentInformation>, {
 	return b.location ? 1 : 0;
 }
 
+/** The element `keep` prefers over every other, `undefined` for an empty set. */
+function pickByLocation(elements: FlowrSearchElement<ParentInformation>[], keep: (comparison: number) => boolean): FlowrSearchElement<ParentInformation> | undefined {
+	return elements.reduce<FlowrSearchElement<ParentInformation> | undefined>(
+		(acc, cur) => acc !== undefined && keep(compareByLocation(acc, cur)) ? acc : cur, undefined);
+}
+
 function getFirstByLocation(elements: FlowrSearchElement<ParentInformation>[]): FlowrSearchElement<ParentInformation> | undefined {
-	if(elements.length === 0) {
-		return undefined;
-	}
-	return elements.reduce((acc, cur) => {
-		if(acc === undefined) {
-			return cur;
-		}
-		return compareByLocation(acc, cur) < 0 ? acc : cur;
-	}, undefined as unknown as FlowrSearchElement<ParentInformation>);
+	return pickByLocation(elements, comparison => comparison < 0);
 }
 
 /* later we can add something like sort partially to get the first k elements */
@@ -82,15 +80,7 @@ function sortFully(elements: FlowrSearchElement<ParentInformation>[]): FlowrSear
 }
 
 function getLastByLocation(elements: FlowrSearchElement<ParentInformation>[]): FlowrSearchElement<ParentInformation> | undefined {
-	if(elements.length === 0) {
-		return undefined;
-	}
-	return elements.reduce((acc, cur) => {
-		if(acc === undefined) {
-			return cur;
-		}
-		return compareByLocation(acc, cur) > 0 ? acc : cur;
-	}, undefined as unknown as FlowrSearchElement<ParentInformation>);
+	return pickByLocation(elements, comparison => comparison > 0);
 }
 
 /** wraps the picked element, dropping it if there is none (e.g., when picking from an empty set) */

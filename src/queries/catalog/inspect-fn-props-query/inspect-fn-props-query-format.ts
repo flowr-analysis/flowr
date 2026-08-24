@@ -1,21 +1,15 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import { filterLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
 import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
-import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
+import type { QueryResults, SupportedQuery } from '../../query';
 import { executeFnPropsQuery } from './inspect-fn-props-query-executor';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
-import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { FlowrConfig } from '../../../config';
-import { queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { SourceLocation } from '../../../util/range';
 import type { FunctionArgumentRoles } from '../../../dataflow/fn/argument-roles';
 import { ArgumentRoles } from '../../../dataflow/fn/argument-roles';
 import { ArgProp, ArgProps, CallProp, CallProps } from '../../../dataflow/environments/built-in-props';
 import { enumMembers } from '../../../util/objects';
-
-/** the {@link ArgProp} and {@link CallProp} members a query may name, which is what its schema accepts */
-const PropNames: readonly string[] = [...enumMembers(ArgProp), ...enumMembers(CallProp)].map(([name]) => name);
 
 /** refuses a query that can only answer with nothing: `formals` narrowing an answer that carries none, or `props` naming only properties the single half it asks for cannot state */
 function rejectEmptyAnswer(query: InspectFnPropsQuery, helpers: Joi.CustomHelpers): InspectFnPropsQuery {
@@ -51,17 +45,6 @@ export interface InspectFnPropsQueryResult extends BaseQueryResult {
 	readonly props: Record<NodeId, CallProps>;
 }
 
-function inspectFnPropsLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'inspect-fn-props'> {
-	const criteria = sliceCriteriaParser(line[0]);
-	return {
-		query: {
-			type:   'inspect-fn-props',
-			filter: criteria
-		},
-		rCode: queryLineCode(line, criteria ? 1 : 0)
-	};
-}
-
 export const InspectFnPropsQueryDefinition = {
 	title:           'Inspect Argument Roles Query',
 	executor:        executeFnPropsQuery,
@@ -80,7 +63,7 @@ export const InspectFnPropsQueryDefinition = {
 		}
 		return true;
 	},
-	fromLine: inspectFnPropsLineParser,
+	fromLine: filterLineParser('inspect-fn-props'),
 	syntax:   '@inspect-fn-props [(<crit>;...)] <code | file://path>',
 	schema:   Joi.object({
 		type:     Joi.string().valid('inspect-fn-props').required().description('The type of the query.'),
@@ -88,7 +71,7 @@ export const InspectFnPropsQueryDefinition = {
 		maxDepth: Joi.number().integer().min(1).optional().description(`How far a value is followed back through names and calls when deciding what a formal stands for (default ${ArgumentRoles.maxDepth}).`),
 		only:     Joi.string().valid('arguments', 'function').optional().description('Infer only what the formals do, or only what the function itself does; both are inferred when this is left out.'),
 		formals:  Joi.array().items(Joi.string()).min(1).optional().description('Keep only the formals written as one of these names.'),
-		props:    Joi.array().items(Joi.string().valid(...PropNames)).min(1).optional().description('Keep only these properties, named as the ArgProp/CallProp members they are.')
+		props:    Joi.array().items(Joi.string().valid(...[...enumMembers(ArgProp), ...enumMembers(CallProp)].map(([name]) => name))).min(1).optional().description('Keep only these properties, named as the ArgProp/CallProp members they are.')
 	}).custom(rejectEmptyAnswer).description('Either returns all function definitions alongside what they and their formals do, or just those matching the filters.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
 		const out = queryResults as QueryResults<'inspect-fn-props'>['inspect-fn-props'];

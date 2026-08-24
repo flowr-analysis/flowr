@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-08-21, 10:01:47 UTC (v2.14.2, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-08-24, 16:09:39 UTC (v2.14.3, R v4.6.1), please do not edit directly._
 
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST),
@@ -1664,11 +1664,11 @@ The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang
 
 ### Visitors
 
-If you want a simple visitor which traverses the AST, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L350"><code><span title="Visits all node ids within a tree given by a respective root node using a depth-first search with prefix order.">RNode::<b>visitAst</b></span></code></a> function is a good starting point.
+If you want a simple visitor which traverses the AST, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L364"><code><span title="Visits all node ids within a tree given by a respective root node using a depth-first search with prefix order.">RNode::<b>visitAst</b></span></code></a> function is a good starting point.
 You may specify functions to be called whenever you enter and exit a node during the traversal, and any
 computation is to be done by side effects.
 For example, if you want to collect all the `id`s present within a normalized (sub-)AST,
-as it is done by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L359"><code><span title="Collects all node ids within a tree given by a respective root node">RNode::<b>collectAllIds</b></span></code></a> (and corresponding <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L438"><code><span title="Collects all node ids within a tree given by a respective root node, but stops collecting at nodes where the given stop function returns true.   This can be used to exclude certain subtrees from the collection, for example to exclude function bodies when collecting ids on the root level.">RNode::<b>collectAllIdsWithStop</b></span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L53"><code><span title="Collects all node ids within a project">RProject::<b>collectAllIds</b></span></code></a>, ...) function, you can use the following visitor:
+as it is done by the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L373"><code><span title="Collects all node ids within a tree given by a respective root node">RNode::<b>collectAllIds</b></span></code></a> (and corresponding <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L452"><code><span title="Collects all node ids within a tree given by a respective root node, but stops collecting at nodes where the given stop function returns true.   This can be used to exclude certain subtrees from the collection, for example to exclude function bodies when collecting ids on the root level.">RNode::<b>collectAllIdsWithStop</b></span></code></a>, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-project.ts#L53"><code><span title="Collects all node ids within a project">RProject::<b>collectAllIds</b></span></code></a>, ...) function, you can use the following visitor:
 
 
 ```ts

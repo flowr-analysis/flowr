@@ -19,25 +19,28 @@ export const enum AccessType {
 	Dollar = '$',
 }
 
+/** The closing bracket for each access type, keyed so a missing entry is a compile error. */
+const ClosingBracketOf: Record<AccessType, string> = {
+	[AccessType.DoubleBracket]: ']]',
+	[AccessType.SingleBracket]: ']',
+	[AccessType.Dollar]:        ''
+};
+
 /**
  * Returns the closing bracket for the given access type.
  * @param type - Access type
  * @returns Closing bracket
  */
 function getClosingBracket(type: AccessType): string {
-	switch(type) {
-		case AccessType.DoubleBracket:
-			return ']]';
-		case AccessType.SingleBracket:
-			return ']';
-		case AccessType.Dollar:
-			return '';
-		default: {
-			const ex: never = type;
-			throw new Error(`Unknown access type: ${ex as string}`);
-		}
-	}
+	return ClosingBracketOf[type];
 }
+
+/** The capability id for each access type, keyed so a missing entry is a compile error. */
+const AccessCapabilityOf: Record<AccessType, SupportedFlowrCapabilityId> = {
+	[AccessType.DoubleBracket]: 'double-bracket-access',
+	[AccessType.SingleBracket]: 'single-bracket-access',
+	[AccessType.Dollar]:        'dollar-access'
+};
 
 /**
  * Returns the capability for the given access type.
@@ -45,18 +48,7 @@ function getClosingBracket(type: AccessType): string {
  * @returns Capability ID
  */
 function getAccessCapability(type: AccessType): SupportedFlowrCapabilityId {
-	switch(type) {
-		case AccessType.DoubleBracket:
-			return 'double-bracket-access';
-		case AccessType.SingleBracket:
-			return 'single-bracket-access';
-		case AccessType.Dollar:
-			return 'dollar-access';
-		default: {
-			const ex: never = type;
-			throw new Error(`Unknown access type: ${ex as string}`);
-		}
-	}
+	return AccessCapabilityOf[type];
 }
 
 /**

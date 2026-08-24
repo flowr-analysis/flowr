@@ -1,4 +1,4 @@
-import { EmptyArgument, type PotentiallyEmptyRArgument, type RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -43,17 +43,10 @@ export const MatchArgs = {
 	 * @param args       - The arguments as they stand in the normalized AST.
 	 * @param paramNames - The formals of the called function, in order.
 	 * @returns Per formal name the argument bound to it.
+	 * @see {@link RFunctionCall.matchArgsToParams} - the implementation, kept there to avoid a load-time import cycle.
 	 */
 	toNames<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], paramNames: readonly string[]): ReadonlyMap<string, RArgument<Info>> {
-		const matched = matchArgumentsToParameters(args.map(a => a === EmptyArgument ? undefined : a.name?.content), paramNames);
-		const bound = new Map<string, RArgument<Info>>();
-		for(let i = 0; i < args.length; i++) {
-			const arg = args[i], param = matched[i];
-			if(arg !== EmptyArgument && param !== undefined) {
-				bound.set(paramNames[param], arg);
-			}
-		}
-		return bound;
+		return RFunctionCall.matchArgsToParams(args, paramNames);
 	},
 	/**
 	 * Binds a call's graph `args` against the formals, reading nothing from the graph, so it also serves a

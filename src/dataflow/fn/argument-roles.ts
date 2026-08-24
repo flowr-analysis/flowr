@@ -7,7 +7,7 @@ import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefini
 import { FunctionCallVertex, FunctionDefinitionVertex, UseVertex, VariableDefinitionVertex } from '../graph/vertex';
 import type { ArgProps, FnSig } from '../environments/built-in-props';
 import { ArgProp } from '../environments/built-in-props';
-import { reflectiveRoles, type BuiltInLookup } from './frame-reflection';
+import { callsIn, edgeTargets, FrameReflection, type BuiltInLookup } from './frame-reflection';
 import { builtInLookup } from '../environments/query-fn-props';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -91,7 +91,7 @@ function rolesOf(id: NodeId, state: RoleState): FunctionArgumentRoles {
 	const returned = identityOf(unconditional, state);
 	const stated = statedRoles(definition, state);
 	/* reflection flowR could not follow reaches every formal alike */
-	const reflective = reflectiveRoles(definition, state.graph, state.info);
+	const reflective = FrameReflection.of(definition, state.graph, { known: state.info });
 	const roles: FunctionArgumentRoles = {};
 	for(const formal of Object.keys(definition.params)) {
 		const at = NodeId.normalize(formal);
@@ -144,9 +144,7 @@ function intersect(sets: readonly ReadonlySet<NodeId>[]): Set<NodeId> {
 function sameValueAs(node: NodeId, state: RoleState): [branches: NodeId[], steps: NodeId[]] {
 	const graph = state.graph;
 	const vertex = graph.getVertex(node);
-	const returns = takesApart(vertex) ? [] : [...graph.outgoingEdges(node) ?? NoEdges]
-		.filter(([, edge]) => DfEdge.includesType(edge, EdgeType.Returns))
-		.map(([target]) => target);
+	const returns = takesApart(vertex) ? [] : edgeTargets(graph, node, EdgeType.Returns);
 	if(FunctionCallVertex.is(vertex)) {
 		const alias = argumentsWith(vertex, state, ArgProp.Alias);
 		if(missesItsElse(vertex, state)) {
@@ -161,9 +159,7 @@ function sameValueAs(node: NodeId, state: RoleState): [branches: NodeId[], steps
 		return origins.length > 1 ? [origins, []] : [[], origins];
 	} else if(VariableDefinitionVertex.is(vertex)) {
 		/* what the name was given, a call included: what that yields in turn is for the next step to say */
-		return [[], [...graph.outgoingEdges(node) ?? NoEdges]
-			.filter(([, edge]) => DfEdge.includesType(edge, EdgeType.DefinedBy))
-			.map(([target]) => target)];
+		return [[], edgeTargets(graph, node, EdgeType.DefinedBy)];
 	}
 	return [[], []];
 }
@@ -192,11 +188,7 @@ function statedRoles(definition: DataflowGraphVertexFunctionDefinition, state: R
 			roles.set(formal, (roles.get(formal) ?? 0) | props);
 		}
 	};
-	for(const node of definition.subflow.graph) {
-		const vertex = state.graph.getVertex(node);
-		if(!FunctionCallVertex.is(vertex)) {
-			continue;
-		}
+	for(const [node, vertex] of callsIn(definition, state.graph)) {
 		/* a formal the body calls is what it is used as, whether or not any built-in says so */
 		for(const callee of calledNames(node, vertex, state)) {
 			add(callee, ArgProp.Callee);

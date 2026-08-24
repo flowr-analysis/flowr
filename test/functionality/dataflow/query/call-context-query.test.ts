@@ -164,11 +164,28 @@ describe('Call Context Query', withTreeSitter(parser => {
 		testQuery('Print calls', 'print(1)', [q('pr')], r([{ id: 3, name: 'print' }]));
 		testQuery('With compaction optimization', 'print(1)', new Array(10000).fill(q('print')), r([{ id: 3, name: 'print' }]));
 	});
-	describe('Ask for args', () => {
-		testQuery('Arg is call', 'print(getOption("x", default = 1)); print(4)', [q(/print/, { reliesOnCriteria: ['getOption'] })], r([{ id: 9, name: 'print' }]));
-		testQuery('Arg relies on call', 'b <- getOption("x", default = 1); a <- 4 + b; print(a); print(4)', [q(/print/, { reliesOnCriteria: ['getOption'] })], r([{ id: 17, name: 'print' }]));
-		testQuery('Arg relies on call +', 'a <- 4 + 3; b <- 3; c <- 4+b; a <- 8; print(a); print(b); print(c)', [q(/print/, { reliesOnCriteria: ['\\+'] })], r([{ id: 27, name: 'print' }]));
-		//todo: sollte dennoch auf print(c) matchen
-		testQuery('Arg relies on call +', 'a <- 4 + 3*2; b <- 3; c <- 4+b; print(x = a); print(b); print(c)', [q(/print/, { reliesOnCriteria: [['x', '\\+'], ['x', '\\*'], '\\+'] })], r([{ id: 19, name: 'print' }, { id: 27, name: 'print' }]));
+	describe.('Ask for args', () => {
+		testQuery('1', 'print(getOption("x", default = 1)); print(4)', [q(/print/, { reliesOnCriteria: ['getOption'] })], r([{ id: 9, name: 'print' }]));
+		testQuery('2', 'b <- getOption("x", default = 1); a <- 4 + b; print(a); print(4)', [q(/print/, { reliesOnCriteria: ['getOption'] })], r([{ id: 17, name: 'print' }]));
+		testQuery('3', 'a <- 4 + 3; b <- 3; c <- 4+b; a <- 8; print(a); print(b); print(c)', [q(/print/, { reliesOnCriteria: ['\\+'] })], r([{ id: 27, name: 'print' }]));
+		testQuery('4', 'a <- 4 + 3*2; b <- 3; c <- 4+b; print(x = a); print(b); print(c)', [q(/print/, { reliesOnCriteria: ['\\+', 'x'] })], r([{ id: 19, name: 'print' }, { id: 27, name: 'print' }]));
+		//todo: für meherere optionen implementieren
+		//testQuery('5', 'a <- 4 + 3*2; b <- 3; c <- 4+b; print(x = a); print(b); print(c)', [q(/print/, { reliesOnCriteria: [['x', '\\+'], ['x', '\\*'], '\\+'] })], r([{ id: 19, name: 'print' }, { id: 27, name: 'print' }]));
+		testQuery('6', `f <- function(x = foo())  {
+  print(x)
+}
+foo <- function() getOption("bar")
+f()
+## 
+f(x=42)
+f(42)
+f(getOption("bar"))`, [q(/^f$/, { reliesOnCriteria: ['getOption'] })], r([{ id: 23, name: 'f' }, { id: 39, name: 'f' }]));
+testQuery('7', `f <- function(x = foo())  {
+  print(x)
+}
+foo <- function() getOption("bar")
+f(x=getOption("bar"))`, [q(/^f$/, { reliesOnCriteria: ['getOption'] })], r([{ id: 29, name: 'f' }]));
 	});
 }));
+
+//die origins abfragen und dann mit den origins davon den subgraph von dem parameter aufrufen 

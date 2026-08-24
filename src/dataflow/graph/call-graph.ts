@@ -371,7 +371,6 @@ export const CallGraph = {
 			visited:    new Set(),
 			potentials: []
 		};
-		//todo: dem hier nur die gewünschten call vertices geben, anstatt durch alle zu gehen; in processCall werden schon die dazugehörigen FunctionDefinitions angehängt?
 		for(const [,vert] of graph.vertices(false)) {
 			if(vert.tag === VertexType.FunctionCall) {
 				processCall(vert, undefined, graph, result, state);

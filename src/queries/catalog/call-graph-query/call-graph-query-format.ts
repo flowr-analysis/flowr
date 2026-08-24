@@ -19,10 +19,6 @@ export interface CallGraphQuery extends BaseQueryFormat {
 	readonly expandLibraryInternals?: boolean;
 	/** If set, also report the calls top-level execution never reaches. Default false. */
 	readonly reportUnreachable?:      boolean;
-	/** 
-	 * Only keep calls that match all of the given criteria. Criteria of form x means:  Any of the arguments depend on a function call that matches to the regex x. Criteria of form [x, y] means: Any argument that matches regex x must depend on a function call that matches the regex y.
-	*/
-	readonly reliesOnCriteria?:              (string | [string, string])[];
 }
 
 export interface CallGraphQueryResult extends BaseQueryResult {
@@ -47,7 +43,6 @@ export const CallGraphQueryDefinition = {
 	schema: Joi.object({
 		type:                   Joi.string().valid('call-graph').required().description('The type of the query.'),
 		expandLibraryInternals: Joi.boolean().optional().description('Expand library/built-in leaf calls into their internal callees via the signature database (default false).'),
-		reliesOnCriteria:       Joi.optional(),
 		reportUnreachable:      Joi.boolean().optional().description('Also report the calls that top-level execution never reaches (default false).'),
 	}).description('A query to compute the Call Graph of the analyzed project.'),
 	flattenInvolvedNodes: queryResults => {

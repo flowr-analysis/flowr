@@ -1,5 +1,5 @@
 import {
-	type CfgBasicBlockVertex, type CfgMarkerVertex, type CfgExpressionVertex,
+	type CfgBasicBlockVertex, type CfgExpressionVertex,
 	CfgVertex,
 	type CfgStatementVertex,
 	type ControlFlowInformation
@@ -50,12 +50,7 @@ export class BasicCfgGuidedVisitor<
 
 	protected startVisitor(start: readonly NodeId[]): void {
 		const graph = this.config.controlFlow.graph;
-		let getNext: (node: NodeId) => MapIterator<NodeId> | NodeId[] | undefined;
-		if(this.config.defaultVisitingOrder === 'forward') {
-			getNext = (node: NodeId) => graph.ingoingEdges(node)?.keys().toArray().reverse();
-		} else {
-			getNext = (node: NodeId) => graph.outgoingEdges(node)?.keys();
-		}
+		const forward = this.config.defaultVisitingOrder === 'forward';
 		const stack = Array.from(start);
 		while(stack.length > 0) {
 			const current = stack.pop() as NodeId;
@@ -63,8 +58,29 @@ export class BasicCfgGuidedVisitor<
 			if(!this.visitNode(current)) {
 				continue;
 			}
-			for(const next of getNext(current) ?? []) {
-				stack.push(next);
+			const block = graph.mayHaveBasicBlocks() ? graph.getVertex(current) : undefined;
+			if(CfgVertex.isBlock(block)) {
+				/* a block holds the vertices themselves, so the function bodies to step into sit inside it */
+				for(const elem of CfgVertex.getBasicBlockElements(block)) {
+					for(const child of CfgVertex.getChildren(elem) ?? []) {
+						stack.push(child);
+					}
+				}
+			} else {
+				for(const child of graph.childrenOf(current) ?? []) {
+					stack.push(child);
+				}
+			}
+			if(forward) {
+				/* reversed so that the first successor is the one visited next */
+				const next = [...graph.successors(current)];
+				for(let i = next.length - 1; i >= 0; i--) {
+					stack.push(next[i]);
+				}
+			} else {
+				for(const next of graph.predecessors(current)) {
+					stack.push(next);
+				}
 			}
 		}
 	}
@@ -84,6 +100,15 @@ export class BasicCfgGuidedVisitor<
 	}
 
 
+	/**
+	 * The constructs whose outcome the given vertex decides, e.g. the `if` a condition belongs to.
+	 * This is what tells you, standing on `u` in `if(u) a else b`, that you are evaluating the condition of that `if`.
+	 * @see {@link ReadOnlyControlFlowGraph#decides|decides()} - for the underlying query
+	 */
+	protected getDecidedConstructs(id: NodeId): readonly NodeId[] {
+		return this.config.controlFlow.graph.decides(id);
+	}
+
 	protected onVisitNode(node: NodeId): void {
 		const vertex = this.getCfgVertex(node);
 		if(vertex === undefined) {
@@ -97,9 +122,6 @@ export class BasicCfgGuidedVisitor<
 			case CfgVertexType.Expression:
 				this.onExpressionNode(vertex as CfgExpressionVertex);
 				break;
-			case CfgVertexType.Marker:
-				this.onEndMarkerNode(vertex as CfgMarkerVertex);
-				break;
 			case CfgVertexType.Block:
 				this.onBasicBlockNode(vertex as CfgBasicBlockVertex);
 				break;
@@ -110,14 +132,9 @@ export class BasicCfgGuidedVisitor<
 
 	protected onBasicBlockNode(node: CfgBasicBlockVertex): void {
 		const elems = CfgVertex.getBasicBlockElements(node);
-		if(this.config.defaultVisitingOrder === 'forward') {
-			for(const elem of elems.toReversed()) {
-				this.visitNode(CfgVertex.getId(elem));
-			}
-		} else {
-			for(const elem of elems) {
-				this.visitNode(CfgVertex.getId(elem));
-			}
+		/* the elements of a block are stored in the order they run */
+		for(const elem of this.config.defaultVisitingOrder === 'forward' ? elems : elems.toReversed()) {
+			this.visitNode(CfgVertex.getId(elem));
 		}
 	}
 
@@ -129,7 +146,4 @@ export class BasicCfgGuidedVisitor<
 		/* does nothing by default */
 	}
 
-	protected onEndMarkerNode(_node: CfgMarkerVertex): void {
-		/* does nothing by default */
-	}
 }

@@ -5,6 +5,7 @@ import { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
 import type { IdentifierReference } from '../../../environments/identifier';
 import { DataflowGraph } from '../../../graph/graph';
 import { EdgeType } from '../../../graph/edge';
+import { ControlFlow } from '../../control-flow';
 import { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { VertexType } from '../../../graph/vertex';
 import { RFunctionDefinition } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
@@ -57,6 +58,10 @@ export function processFunctionArgument<OtherInfo>(
 
 	const ingoingRefs = value ? value.unknownReferences.concat(value.in, name?.in ?? []) : name?.in;
 
+	if(argumentName && value) {
+		ControlFlow.continuesWith(graph, value, argument.info.id);
+	}
+
 	if(entryPoint && RFunctionDefinition.is(argument.value)) {
 		graph.addEdge(entryPoint, argument.value.info.id, EdgeType.Reads);
 	} else if(argumentName && ingoingRefs) {
@@ -72,6 +77,8 @@ export function processFunctionArgument<OtherInfo>(
 		graph:             graph,
 		environment:       value?.environment ?? data.environment,
 		entryPoint:        entryPoint ?? argument.info.id,
+		cfgEntry:          argumentName ? (value ? ControlFlow.entryOf(value) : undefined) : value?.cfgEntry,
+		cfgExit:           argumentName ? argument.info.id : value?.cfgExit,
 		exitPoints:        value?.exitPoints ?? name?.exitPoints ?? [{ nodeId: argument.info.id, type: ExitPointType.Default, cds: data.cds }],
 		hooks:             [],
 		kill:              value?.kill

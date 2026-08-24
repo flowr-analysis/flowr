@@ -15,6 +15,9 @@ import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/proce
 import { assert, describe, test } from 'vitest';
 import { skipTestBecauseConfigNotMet, withTreeSitter } from '../../_helper/shell';
 import { execFileSync } from 'child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { DefaultBuiltinConfig } from '../../../../src/dataflow/environments/default-builtin-config';
 import { builtInNames, BuiltInIndex } from '../../../../src/dataflow/environments/query-fn-props';
@@ -896,9 +899,20 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		 * actually writes to stdout for the same code.
 		 */
 		describe.skipIf(skipTestBecauseConfigNotMet({ minRVersion: '4.0.0' }))('What R prints', () => {
-			/** whether R writes anything to stdout when running `code` at the top level */
+			/**
+			 * whether R writes anything to stdout when running `code` at the top level;
+			 * the code goes through a file because a newline within a `-e` argument does not survive
+			 * the command line on Windows
+			 */
 			function rPrints(code: string): boolean {
-				return execFileSync('Rscript', ['--vanilla', '-e', code], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().length > 0;
+				const dir = mkdtempSync(join(tmpdir(), 'flowr-echo-'));
+				const file = join(dir, 'code.R');
+				try {
+					writeFileSync(file, code, { encoding: 'utf8' });
+					return execFileSync('Rscript', ['--vanilla', file], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().length > 0;
+				} finally {
+					rmSync(dir, { recursive: true, force: true });
+				}
 			}
 			async function flowrPrints(code: string): Promise<boolean> {
 				const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();

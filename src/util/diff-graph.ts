@@ -95,6 +95,21 @@ interface EdgeIndexedGraph<EdgeMap> {
 	hasVertex(id: NodeId): boolean
 }
 
+/**
+ * Index the edges of a graph, optionally narrowing every entry to the part the comparison cares about.
+ * Sources whose edges the projection drops entirely do not take part in the comparison.
+ */
+function collectEdges<EdgeMap>(graph: EdgeIndexedGraph<EdgeMap>, project?: (edges: EdgeMap) => EdgeMap | undefined): Map<NodeId, EdgeMap> {
+	const result = new Map<NodeId, EdgeMap>();
+	for(const [id, edges] of graph.edges()) {
+		const projected = project ? project(edges) : edges;
+		if(projected !== undefined) {
+			result.set(id, projected);
+		}
+	}
+	return result;
+}
+
 /** The edge-differencing steps shared by the dataflow and the control flow graph diff. */
 export const GraphDiff = {
 	name: 'GraphDiff',
@@ -102,10 +117,11 @@ export const GraphDiff = {
 	outgoingEdges<EdgeMap, Graph extends EdgeIndexedGraph<EdgeMap>>(
 		this: void,
 		ctx: GraphDiffContext<Graph>,
-		diffEdges: (ctx: GraphDiffContext<Graph>, id: NodeId, lEdges: EdgeMap | undefined, rEdges: EdgeMap | undefined) => void
+		diffEdges: (ctx: GraphDiffContext<Graph>, id: NodeId, lEdges: EdgeMap | undefined, rEdges: EdgeMap | undefined) => void,
+		project?: (edges: EdgeMap) => EdgeMap | undefined
 	): void {
-		const lEdges = new Map(ctx.left.edges());
-		const rEdges = new Map(ctx.right.edges());
+		const lEdges = collectEdges(ctx.left, project);
+		const rEdges = collectEdges(ctx.right, project);
 
 		if(lEdges.size < rEdges.size && !ctx.config.leftIsSubgraph || lEdges.size > rEdges.size && !ctx.config.rightIsSubgraph) {
 			ctx.report.addComment(`Detected different number of edges! ${ctx.leftname} has ${lEdges.size} (${JSON.stringify(lEdges, jsonReplacer)}). ${ctx.rightname} has ${rEdges.size} ${JSON.stringify(rEdges, jsonReplacer)}`);

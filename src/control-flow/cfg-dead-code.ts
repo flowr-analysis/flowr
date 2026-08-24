@@ -1,6 +1,6 @@
 /* currently this does not do work on function definitions */
 import type { ControlFlowInformation } from './control-flow-graph';
-import { CfgVertex, CfgEdge } from './control-flow-graph';
+import { CfgEdge } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Ternary } from '../util/logic';
 import type { CfgPassInfo } from './cfg-simplification';
@@ -12,9 +12,9 @@ import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { log } from '../util/log';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isValue } from '../dataflow/eval/values/r-value';
-import { visitCfgInOrder } from './simple-visitor';
 import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
 import { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 
 type CachedValues<Val> = Map<NodeId, Val>;
@@ -24,7 +24,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	private readonly cachedConditions: CachedValues<Ternary> = new Map();
 	private readonly cachedStatements: CachedValues<boolean> = new Map();
 	private readonly cachedSwitch:     Map<NodeId, { id: NodeId | undefined } | 'unknown'> = new Map();
-	private readonly jumpIsolated:     Set<NodeId> = new Set<NodeId>();
+	private readonly caught:           Map<NodeId, boolean> = new Map();
 
 	private getValue(id: NodeId): Ternary {
 		const has = this.cachedConditions.get(id);
@@ -36,7 +36,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	private isUnconditionalJump(id: NodeId): boolean {
-		if(this.jumpIsolated.has(id)) {
+		if(this.isCaught(id)) {
 			return false;
 		}
 		const has = this.cachedStatements.get(id);
@@ -75,7 +75,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 			for(const [target, edge] of targets) {
 				if(CfgEdge.isControlDependency(edge)) {
 					const cause = CfgEdge.unpackCause(edge);
-					if(this.switchArmDefinitelyNotTaken(cause, from)) {
+					if(this.switchArmDefinitelyNotTaken(cause, target)) {
 						cfg.removeEdge(from, target);
 						continue;
 					}
@@ -86,15 +86,9 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 					} else if(og === Ternary.Never && w === RTrue) {
 						cfg.removeEdge(from, target);
 					}
-				} else if(CfgEdge.isFlowDependency(edge) && this.isUnconditionalJump(target)) {
-					// for each unconditional jump, we find the corresponding end/exit nodes and remove any flow edges
-					for(const end of CfgVertex.getEnd(this.getCfgVertex(target)) as NodeId[] ?? []) {
-						for(const [target, edge] of cfg.ingoingEdges(end) ?? []) {
-							if(CfgEdge.isFlowDependency(edge)) {
-								cfg.removeEdge(target, end);
-							}
-						}
-					}
+				} else if(CfgEdge.isFlowDependency(edge) && this.isUnconditionalJump(from)) {
+					/* what follows an unconditional jump is never reached through it */
+					cfg.removeEdge(from, target);
 				}
 			}
 		}
@@ -123,6 +117,14 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	protected onIfThenElseCall(data: OnCall & { condition?: NodeId }) {
+		/*
+		 * Only the `if` keyword leaves a branch unevaluated; `ifelse` and its relatives are ordinary functions
+		 * whose arguments R evaluates whatever the condition says, so their arms are never dead.
+		 */
+		if(!RIfThenElse.is(this.getNormalizedAst(data.call.id))) {
+			this.unableToCalculateValue(data.call.id);
+			return;
+		}
 		this.handleWithCondition(data);
 	}
 
@@ -144,25 +146,27 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		}
 	}
 
-	private protectSubgraph(nodeId: NodeId): void {
-		const start = this.getCfgVertex(nodeId);
-		if(!start) {
-			return;
+	/**
+	 * Whether an error raised here is caught before it can cut the flow, which is what `try` and `tryCatch`
+	 * do to a `stop()` nested in them. The enclosing calls come from the AST: in the control flow graph a
+	 * construct is where its parts join again, so there is no edge that would delimit it on its own.
+	 */
+	private isCaught(id: NodeId): boolean {
+		const cached = this.caught.get(id);
+		if(cached !== undefined) {
+			return cached;
 		}
-		visitCfgInOrder(this.config.controlFlow.graph, [CfgVertex.getId(start)], n => {
-			if(CfgVertex.getEnd(start)?.includes(n)) {
-				return true;
+		let result = false;
+		for(let node = this.getNormalizedAst(id)?.info.parent; node !== undefined; ) {
+			const vertex = this.getDataflowGraph(node);
+			if(FunctionCallVertex.is(vertex) && Array.isArray(vertex.origin) && vertex.origin.includes(BuiltInProcName.Try)) {
+				result = true;
+				break;
 			}
-			this.jumpIsolated.add(n);
-			return false;
-		});
-	}
-
-	protected onTryCall(data: OnCall): void {
-		if(data.call.args.length < 1 || data.call.args[0] === EmptyArgument) {
-			return;
+			node = this.getNormalizedAst(node)?.info.parent;
 		}
-		this.protectSubgraph(data.call.args[0].nodeId);
+		this.caught.set(id, result);
+		return result;
 	}
 
 	private switchArmDefinitelyNotTaken(cause: NodeId, from: NodeId): boolean {
@@ -174,8 +178,13 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		if(selected === 'unknown') {
 			return false;
 		}
-		const isArm = v.args.slice(1).some(a => FunctionArgument.getReference(a) !== undefined && FunctionArgument.getId(a) === from);
-		return isArm && from !== selected.id;
+		/*
+		 * The control flow enters an arm at what it evaluates first, which for a named arm (`a = 1`) is its
+		 * value rather than the argument that binds it.
+		 */
+		const arm = v.args.slice(1).find(a => FunctionArgument.getReference(a) !== undefined
+			&& (FunctionArgument.getId(a) === from || FunctionArgument.getReference(a) === from));
+		return arm !== undefined && FunctionArgument.getId(arm) !== selected.id;
 	}
 
 	private selectedSwitchArm(v: DataflowGraphVertexFunctionCall): { id: NodeId | undefined } | 'unknown' {

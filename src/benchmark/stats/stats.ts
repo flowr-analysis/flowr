@@ -49,6 +49,13 @@ export interface SlicerStatsInput<T = number> {
 export interface SlicerStatsDataflow<T = number> {
 	numberOfNodes:               T
 	numberOfEdges:               T
+	/**
+	 * The edges that carry the control flow the {@link ControlFlowGraph} is a view on.
+	 * They live in the very same graph, so they are counted separately to keep the dataflow numbers comparable.
+	 * An edge that carries both a dataflow and a control flow type is counted on both sides.
+	 * Missing in data recorded before the control flow moved into the dataflow graph.
+	 */
+	numberOfControlFlowEdges:    T
 	numberOfCalls:               T
 	numberOfFunctionDefinitions: T
 	/* size of object in bytes as measured by v8 serialization */

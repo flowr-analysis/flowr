@@ -120,12 +120,14 @@ export enum CallProp {
 	Opens       = 1 << 27,
 	/** performs a statistical test, so its result is the test statistic a reader is meant to see (`t.test`, `anova`) */
 	Statistics  = 1 << 28,
+	/** marked for removal, with a better alternative available, like `dplyr::funs` */
+	Deprecated  = 1 << 29,
 	/** dynamically executes R code or returns the value of dynamically computed identifiers, like `eval`, `do.call`, or `get` */
-	Eval        = 1 << 29,
+	Eval        = 1 << 30,
 	/** produces raw HTML or JavaScript, such as `shiny::HTML` */
-	Html        = 1 << 30,
-	/** produces raw JavaScript code, such as `shiny::HTML` */
-	JavaScript  = 1 << 31
+	Html        = 1 << 31,
+	/** produces raw JavaScript code, such as `shinyjs::runjs` */
+	JavaScript  = 1 << 32
 }
 
 /**

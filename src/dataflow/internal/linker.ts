@@ -13,6 +13,7 @@ import {
 	ReferenceType
 } from '../environments/identifier';
 import type { FunctionArgument, DataflowGraph } from '../graph/graph';
+import { NoEdges } from '../graph/graph';
 import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowLogger } from '../logger';
@@ -58,15 +59,21 @@ export function findNonLocalReads(graph: DataflowGraph, ignores: ReadonlySet<Nod
 
 			const identifierRef = { nodeId, name, type };
 
-			if(outgoing === undefined) {
-				nonLocalReads.push(identifierRef);
-				continue;
-			}
-			for(const [target, e] of outgoing) {
+			/* control flow edges say nothing about what a name resolves to, so they do not count as a link */
+			let linked = false;
+			let nonLocal = false;
+			for(const [target, e] of outgoing ?? NoEdges) {
+				if(DfEdge.isOnlyControlFlow(e)) {
+					continue;
+				}
+				linked = true;
 				if(DfEdge.includesType(e, EdgeType.Reads) && !defs.has(target)) {
-					nonLocalReads.push(identifierRef);
+					nonLocal = true;
 					break;
 				}
+			}
+			if(!linked || nonLocal) {
+				nonLocalReads.push(identifierRef);
 			}
 		}
 	}

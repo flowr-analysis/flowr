@@ -181,6 +181,7 @@ Input:
 Dataflow:
   Number of nodes:               ${pad(stats.dataflow.numberOfNodes)}
   Number of edges:               ${pad(stats.dataflow.numberOfEdges)}
+  Number of control flow edges:  ${pad(stats.dataflow.numberOfControlFlowEdges)}
   Number of calls:               ${pad(stats.dataflow.numberOfCalls)}
   Number of function defs:       ${pad(stats.dataflow.numberOfFunctionDefinitions)}
   Size of graph:                 ${convertNumberToNiceBytes(stats.dataflow.sizeOfObject)}`;
@@ -314,6 +315,7 @@ Input:
 Dataflow:
   Number of nodes:               ${formatSummarizedMeasure(stats.dataflow.numberOfNodes)}
   Number of edges:               ${formatSummarizedMeasure(stats.dataflow.numberOfEdges)}
+  Number of control flow edges:  ${formatSummarizedMeasure(stats.dataflow.numberOfControlFlowEdges)}
   Number of calls:               ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
   Number of function defs:       ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}
   Size of graph:                 ${formatSummarizedMeasure(stats.dataflow.sizeOfObject, convertNumberToNiceBytes)}`;

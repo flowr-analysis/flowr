@@ -1,6 +1,8 @@
 import { MatchArgs } from '../../../../graph/match-args';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
 import type { DataflowInformation } from '../../../../info';
+import { ControlFlow } from '../../../control-flow';
+import { ExitPointType } from '../../../../info';
 import { processAllArguments } from './common';
 import type { RUnnamedFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -56,7 +58,8 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	const {
 		finalEnv,
 		callArgs,
-		remainingReadInArgs
+		remainingReadInArgs,
+		processedArguments
 	} = processAllArguments({
 		functionName: calledFunction,
 		args:         functionCall.arguments,
@@ -77,6 +80,16 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		args:        callArgs, // same reference
 		origin:      [BuiltInProcName.Unnamed]
 	}, data.ctx.env.makeCleanEnv());
+
+	const cfgEntry = ControlFlow.inSequence(finalGraph, [calledFunction, ...processedArguments], functionRootId);
+	/* a jump within an argument is caught here, just like for a named call */
+	for(const argument of processedArguments) {
+		for(const exit of argument?.exitPoints ?? []) {
+			if(exit.type !== ExitPointType.Default) {
+				finalGraph.addEdge(exit.nodeId, functionRootId, EdgeType.FlowEdge);
+			}
+		}
+	}
 
 	let inIds = remainingReadInArgs;
 	inIds.push({ nodeId: functionRootId, name: functionCallName, cds: data.cds, type: ReferenceType.Function });
@@ -100,6 +113,8 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		graph:             finalGraph,
 		environment:       finalEnv,
 		entryPoint:        functionCall.info.id,
+		cfgEntry:          cfgEntry === functionRootId ? undefined : cfgEntry,
+		cfgExit:           functionRootId,
 		exitPoints:        calledFunction.exitPoints,
 		hooks:             calledFunction.hooks,
 	};

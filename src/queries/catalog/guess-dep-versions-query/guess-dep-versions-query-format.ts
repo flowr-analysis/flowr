@@ -7,7 +7,7 @@ import { printAsMs } from '../../../util/text/time';
 import { RVersion, type VersionString } from '../../../util/r-version';
 import { arraysGroupBy, uniqueArray } from '../../../util/collections/arrays';
 import { Identifier } from '../../../dataflow/environments/identifier';
-import { rdrrDocUrl } from '../signature-query/signature-query-executor';
+import { helpPageUrl } from '../signature-query/signature-query-executor';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { VersionSelection, type FlowrConfig } from '../../../config';
 import { executeGuessDepVersionsQuery } from './guess-dep-versions-query-executor';
@@ -532,7 +532,7 @@ export const GuessDepVersionsQueryDefinition = {
 				const reasons = [evs.some(e => !e.parameter) ? 'new' : undefined, params.length > 0 ? `params: [${truncatedList(params)}]` : undefined,
 					at ? `at ${at}` : undefined].filter(Boolean).join(', ');
 				const name = Identifier.getName(Identifier.parse(fn));
-				const url = rdrrDocUrl(dep.package, name, { base: dep.base, cran: !dep.base });
+				const url = helpPageUrl(dep.package, name, { base: dep.base, cran: !dep.base });
 				const label = (url ? formatter.hyperlink(name, url, true) : name) + (reasons ? ` (${reasons})` : '');
 				const redundant = !(geVer !== undefined && geVer === tightestGe) && !(leVer !== undefined && leVer === tightestLe);
 				return { bounds: [ge, le].filter(Boolean).join(' '), label, redundant, geVer, leVer };

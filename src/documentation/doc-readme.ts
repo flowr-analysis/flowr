@@ -17,7 +17,7 @@ import { prefixLines } from './doc-util/doc-general';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
 import { linkToQueryOfName, showQuery } from './doc-util/doc-query';
 import { NewIssueUrl } from './doc-util/doc-issue';
-import { linkToPlayground, tryInPlayground } from './doc-util/doc-playground';
+import { tryInPlayground } from './doc-util/doc-playground';
 import { PlaygroundBox } from '../util/text/playground-link';
 import { joinWithLast } from '../util/text/strings';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
@@ -273,18 +273,6 @@ ${await printDfGraphForCode(treeSitter, getFileContentFromRoot('test/testfiles/e
 }])}
    
    `), '    ')}
-
-Every ▶&nbsp;_Explore in Browser_ link above opens ${linkToPlayground('flowR\'s playground', { code: playgroundSample })},
-which runs the whole analysis locally in your browser, with no setup at all. Once it is open:
-
-| in the playground | what it does |
-| ----------------- | ------------ |
-| hover a name | what flowR knows about it: its value, its shape, its signature, and what the linter said |
-| ctrl-click a name | jump to where it is defined |
-| click a dependency | slice the script for it |
-| alt-click anything (or <kbd>alt</kbd>+<kbd>m</kbd>) | highlight it, so a link points at it; hold <kbd>shift</kbd> to highlight more than one |
-| _Copy link_ | hand the script, the highlights, and the layout to someone else as one url |
-| the _flowR repl_ drawer | every command the ${ctx.linkPage('wiki/Interface', 'repl', 'using-the-repl')} carries, over the script above |
 
 If you want to use flowR and the features it provides, feel free to check out the:
 

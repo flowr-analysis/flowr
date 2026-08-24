@@ -274,6 +274,7 @@
 		'reduction (dataflow vertices)': 'Dataflow vertices',
 		'memory (df-graph)':             'Dataflow graph',
 		'memory (cfg-graph)':            'Control flow graph',
+		'dataflow control flow edges':   'DF (control) edges',
 		'files with data frames':      'Files',
 		'data frame operations':       'Operations',
 		'data frame operation nodes':  'Operation nodes',
@@ -617,7 +618,6 @@
 		{ id: 'features', title: 'Feature set', about: 'the linting rules, their tags, and the queries this version carries', perVersion: true },
 		{ id: 'builtins', title: 'Built-in definitions', about: 'how the built-ins are handled', perVersion: true },
 		{ id: 'calibration', title: 'Machine calibration', about: 'runtime of the fixed synthetic workload', folded: true },
-		{ id: 'other', title: 'Other', about: '' },
 		{ id: 'sigdb', title: 'Signature database', about: 'the package signatures this version ships', perVersion: true, facts: true },
 		{ id: 'tests', title: 'Test suite', about: 'the labeled tests and what they cover', perVersion: true, facts: true }
 	];
@@ -670,7 +670,7 @@
 			return 'per-line';
 		}
 		// the two sizes of a graph, its calls and definitions are a breakdown of them and stay off the page
-		if(/^(dataflow|control flow) (vertices|edges)$/.test(n)) {
+		if(n === 'dataflow control flow edges' || /^(dataflow|control flow) (vertices|edges)$/.test(n)) {
 			return 'graphs';
 		}
 		if(/^(dataflow|control flow) (calls|function definitions)$/.test(n)) {

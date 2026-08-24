@@ -160,19 +160,35 @@ type Primitive =
 	| Function;
 
 /**
- * Given an object type `T`, produces a union of string literal types representing all possible paths to primitive values within that object.
- * Sadly, right now, the ts-essential paths property breaks when it comes to deeper nested objects
+ * What sits at the given path of `T`, the counterpart of {@link AutocompletablePaths}.
+ * `never` whenever the path names nothing.
  */
-export type AutocompletablePaths<T, Prefix extends string = ''> =
-	T extends Primitive | readonly unknown[]
+export type ValueAtPath<T, Path extends string> =
+	Path extends `${infer Key}.${infer Rest}`
+		? Key extends keyof T ? ValueAtPath<NonNullable<T[Key]>, Rest> : never
+		: Path extends keyof T ? T[Path] : never;
+
+/**
+ * Every path into `T`, as a union of string literals, so that an editor can complete them.
+ *
+ * The paths are built from the leaves up rather than by carrying a prefix down: a prefix that grows with the
+ * recursion costs enough instantiations that TypeScript gives up and hands back `any`, which type-checks
+ * everything and completes nothing. `Depth` bounds it whatever the shape of `T`.
+ */
+type OneLess = [never, 0, 1, 2, 3, 4, 5, 6, 7];
+
+export type AutocompletablePaths<T, Depth extends number = 6> =
+	[Depth] extends [never]
 		? never
-		: {
-			[K in keyof T & string]:
-			| `${Prefix}${K}`
-			| (T[K] extends Primitive | readonly unknown[]
-				? never
-				: AutocompletablePaths<T[K], `${Prefix}${K}.`>)
-		}[keyof T & string];
+		: T extends Primitive | readonly unknown[]
+			? never
+			: {
+				[K in keyof T & string]:
+				| K
+				| (NonNullable<T[K]> extends Primitive | readonly unknown[]
+					? never
+					: `${K}.${AutocompletablePaths<NonNullable<T[K]>, OneLess[Depth]> & string}`)
+			}[keyof T & string];
 
 /**
  * This is a version of a deep clone that preserves unclonable values (like functions, symbols, ...) by keeping the same reference to them.
@@ -299,4 +315,16 @@ export function setOnPath(obj: object, path: string, value: unknown): void {
 		at = at[segment] as Record<string | number, unknown>;
 	}
 	at[segments[segments.length - 1]] = value;
+}
+
+/**
+ * The members of an enum as name-value pairs.
+ * A numeric enum maps its values back to their names as well, which this leaves out.
+ * @example
+ * ```ts
+ * enumMembers(CfgVertexType) // [['Statement', 1], ['Expression', 2], ['Block', 3]]
+ * ```
+ */
+export function enumMembers<T extends object>(enumObject: T): [name: string, value: T[keyof T]][] {
+	return Object.entries(enumObject).filter(([name]) => Number.isNaN(Number(name))) as [string, T[keyof T]][];
 }

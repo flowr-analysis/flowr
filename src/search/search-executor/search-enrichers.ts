@@ -14,10 +14,10 @@ import { NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processin
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import type { Query, QueryResult } from '../../queries/query';
 import { type CfgSimplificationPassName, cfgFindAllReachable, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
+import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import type { AsyncOrSync, DeepWritable } from 'ts-essentials';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { promoteCallName } from '../../queries/catalog/call-context-query/call-context-query-executor';
-import { CfgKind } from '../../project/cfg-kind';
 import {
 	identifyLinkToLastCallRelationSync
 } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
@@ -97,6 +97,12 @@ export interface CfgInformationSearchContent extends MergeableRecord {
 	 */
 	cfg:             ControlFlowInformation
 	/**
+	 * The nodes the control flow reaches, together with the syntax that holds them.
+	 * Only has a value if {@link CfgInformationArguments.checkReachable} was true.
+	 * @see {@link CfgInformationSearchContent.reachableNodes|reachableNodes} - for the vertices themselves
+	 */
+	aliveNodes?:     ReadonlySet<NodeId>
+	/**
 	 * The set of all nodes that are reachable from the root of the CFG, extracted using {@link visitCfgInOrder}.
 	 * Only has a value if {@link CfgInformationArguments.checkReachable} was true.
 	 */
@@ -127,6 +133,46 @@ export interface QueryDataElementContent extends MergeableRecord {
 }
 export interface QueryDataSearchContent extends MergeableRecord {
 	queries: { [QueryType in Query['type']]: Awaited<QueryResult<QueryType>> }
+}
+
+/** Roles a node can have without ever being executed on its own, which is why the control flow ignores them. */
+const StructuralRoles: ReadonlySet<RoleInParent> = new Set([
+	RoleInParent.FunctionCallName, RoleInParent.ArgumentName, RoleInParent.ParameterName
+]);
+
+/**
+ * The nodes the control flow reaches, including everything that holds one of them.
+ *
+ * A construct is running as long as anything within it is, even when the construct itself is never completed
+ * (an endless loop is not dead code, what follows it is), so reachability is carried from every reached vertex
+ * up to the syntax around it. Marking stops at the first node that is already marked, which keeps this linear
+ * instead of walking the subtree of every node.
+ */
+function collectAliveNodes(ast: NormalizedAst, reachable: ReadonlySet<NodeId>): ReadonlySet<NodeId> {
+	const alive = new Set<NodeId>();
+	for(const id of reachable) {
+		let node = ast.idMap.get(id);
+		while(node !== undefined && !alive.has(node.info.id)) {
+			alive.add(node.info.id);
+			node = node.info.parent === undefined ? undefined : ast.idMap.get(node.info.parent);
+		}
+	}
+	return alive;
+}
+
+/**
+ * Whether the control flow reaches this node.
+ *
+ * The graph's vertices are the nodes that make up the execution of a program; syntax that only names something
+ * (the name of a call or of an argument) is never reached on its own and is judged by what it names instead.
+ */
+function isReachedByControlFlow(node: RNodeWithParent, alive: ReadonlySet<NodeId>): boolean {
+	if(alive.has(node.info.id)) {
+		return true;
+	} else if(StructuralRoles.has(node.info.role)) {
+		return node.info.parent !== undefined && alive.has(node.info.parent);
+	}
+	return false;
 }
 
 /**
@@ -207,7 +253,7 @@ export const Enrichments = {
 		enrichSearch: async(_search, data, _args, prev) => prev ?? {
 			dfg: await data.dataflow(),
 			ast: await data.normalize(),
-			cfg: await data.controlflow(undefined, CfgKind.Quick)
+			cfg: await data.controlflow(undefined)
 		},
 		enrichElement: async(e, s, analyzer, args, prev) => {
 			guard(args && args.length, `${Enrichment.LastCall} enrichment requires at least one argument`);
@@ -217,7 +263,7 @@ export const Enrichments = {
 			const vertex = df.getVertex(e.node.info.id);
 			if(FunctionCallVertex.is(vertex)) {
 				const n = shared?.ast ?? await analyzer.normalize();
-				const cfg = (shared?.cfg ?? await analyzer.controlflow(undefined, CfgKind.Quick)).graph;
+				const cfg = (shared?.cfg ?? await analyzer.controlflow(undefined)).graph;
 				for(const arg of args) {
 					const lastCalls = identifyLinkToLastCallRelationSync(vertex.id, cfg, df, {
 						...arg,
@@ -239,7 +285,8 @@ export const Enrichments = {
 			return {
 				...prev,
 				isRoot:      searchContent.cfg.graph.rootIds().has(e.node.info.id),
-				isReachable: searchContent.reachableNodes?.has(e.node.info.id)
+				isReachable: searchContent.reachableNodes === undefined ? undefined
+					: isReachedByControlFlow(e.node, searchContent.aliveNodes ?? searchContent.reachableNodes)
 			};
 		},
 		enrichSearch: async(_search, data, args, prev) => {
@@ -257,10 +304,11 @@ export const Enrichments = {
 
 			const content: CfgInformationSearchContent = {
 				...prev,
-				cfg: await data.controlflow(args.simplificationPasses, CfgKind.WithDataflow),
+				cfg: await data.controlflow(args.simplificationPasses),
 			};
 			if(args.checkReachable) {
 				content.reachableNodes = cfgFindAllReachable(content.cfg);
+				content.aliveNodes = collectAliveNodes(await data.normalize(), content.reachableNodes);
 			}
 			return content;
 		}

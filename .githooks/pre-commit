@@ -1,7 +1,4 @@
 #!/bin/sh
-# Two checks that are cheap enough to run on every commit and catch mistakes the CI would only find much later.
-# Everything expensive (linting, tests) stays in the pre-push hook.
-
 set -eu
 
 staged=$(git diff --cached --name-only --diff-filter=ACM)

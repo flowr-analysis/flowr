@@ -1,4 +1,6 @@
-import { type MergeableRecord,
+import { type AutocompletablePaths,
+	type ValueAtPath,
+	type MergeableRecord,
 	deepMergeObject,
 	deepClonePreserveUnclonable,
 	isPlainObject,
@@ -13,7 +15,7 @@ import { getParentDirectory } from './util/files';
 import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
 import type { KnownParser } from './r-bridge/parser';
-import type { DeepPartial, DeepWritable, Paths, PathValue } from 'ts-essentials';
+import type { DeepPartial, DeepWritable } from 'ts-essentials';
 import type { DataflowProcessors } from './dataflow/processor';
 import type { ParentInformation } from './r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrAnalyzerContext } from './project/context/flowr-analyzer-context';
@@ -131,7 +133,11 @@ export type SpecializeConfigEntry = DeepPartial<FlowrConfig> & { readonly inheri
  * @see {@link FlowrConfig.default} for the default configuration.
  * @see {@link FlowrConfig.Schema} for the Joi schema for validation.
  */
-export interface FlowrConfig extends MergeableRecord {
+/*
+ * Deliberately not a `MergeableRecord`: an index signature turns `keyof` into `string`, which swallows the
+ * literal keys `AutocompletablePaths` needs for `FlowrConfig::configure` and `linkConfig` to complete.
+ */
+export interface FlowrConfig {
 	readonly logLevel?:         LogLevelName
 	/**
 	 * Whether source calls should be ignored, causing {@link processSourceCall}'s behavior to be skipped
@@ -361,6 +367,11 @@ export interface FlowrConfig extends MergeableRecord {
 		 */
 		readonly wideningThreshold: number;
 		/**
+		 * Whether the abstract interpretation is interprocedural, i.e. whether it steps into the functions a call
+		 * may dispatch to instead of describing the call by its result alone
+		 */
+		readonly followCalls:       boolean;
+		/**
 		 * The configuration of the shape inference for data frames
 		 */
 		readonly dataFrame: {
@@ -429,7 +440,11 @@ export interface FlowrConfig extends MergeableRecord {
 	readonly gas: FlowrGasConfig;
 }
 
-export type ValidFlowrConfigPaths = Paths<FlowrConfig, { depth: 9 }>;
+/**
+ * Every path into the configuration, which is what {@link FlowrConfig.setInConfig} and
+ * {@link FlowrAnalyzerBuilder#configure|configure()} take and what an editor completes.
+ */
+export type ValidFlowrConfigPaths = AutocompletablePaths<FlowrConfig>;
 
 /** Whether library exports should be resolved from a signature database (`solver.sigdb.enabled`). */
 export function isSigDbEnabled(config: FlowrConfig | undefined): boolean {
@@ -531,7 +546,8 @@ function mergeOverwrite(parent: DeepPartial<FlowrConfig>, own: DeepPartial<Flowr
 	const result: Record<string, unknown> = { ...parent };
 	for(const [key, value] of Object.entries(own)) {
 		const prev = (parent as Record<string, unknown>)[key];
-		result[key] = isPlainObject(prev) && isPlainObject(value) ? mergeOverwrite(prev, value) : value;
+		result[key] = isPlainObject(prev) && isPlainObject(value)
+			? mergeOverwrite(prev, value as DeepPartial<FlowrConfig>) : value;
 	}
 	return result;
 }
@@ -696,6 +712,7 @@ export const FlowrConfig = {
 			},
 			abstractInterpretation: {
 				wideningThreshold: 4,
+				followCalls:       true,
 				dataFrame:         {
 					maxColNames:    50,
 					readLoadedData: {
@@ -851,6 +868,7 @@ export const FlowrConfig = {
 		}).description('How to resolve constants, constraints, cells, ...'),
 		abstractInterpretation: Joi.object({
 			wideningThreshold: Joi.number().min(1).description('The threshold for the number of visitations of a node at which widening should be performed to ensure the termination of the fixpoint iteration.'),
+			followCalls:       Joi.boolean().description('Whether the abstract interpretation is interprocedural, i.e. whether it steps into the functions a call may dispatch to.'),
 			dataFrame:         Joi.object({
 				maxColNames:    Joi.number().min(0).description('The maximum number of columns names to infer for data frames before over-approximating the column names to top.'),
 				readLoadedData: Joi.object({
@@ -1030,7 +1048,7 @@ export const FlowrConfig = {
 	 * console.log(newConfig.solver.variables); // Output: "builtin"
 	 * ```
 	 */
-	setInConfig<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: PathValue<FlowrConfig, Path>): FlowrConfig {
+	setInConfig<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: ValueAtPath<FlowrConfig, Path>): FlowrConfig {
 		const clone = FlowrConfig.clone(config);
 		setOnPath(clone, key, value);
 		return clone;
@@ -1039,7 +1057,7 @@ export const FlowrConfig = {
 	 * Modifies the given config object in place by setting the given value at the given key, where the key is a dot-separated path to the value in the config object.
 	 * @see {@link setInConfig} for a version that returns a new config object instead of modifying the given one in place.
 	 */
-	setInConfigInPlace<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: PathValue<FlowrConfig, Path>): void {
+	setInConfigInPlace<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: ValueAtPath<FlowrConfig, Path>): void {
 		setOnPath(config, key, value);
 	},
 } as const;

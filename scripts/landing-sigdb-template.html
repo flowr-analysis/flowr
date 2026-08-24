@@ -6,6 +6,7 @@
 <title>flowR &middot; signature database</title>
 <meta name="description" content="Search the R functions flowR knows: <!--FUNCTIONS--> exported names from <!--PACKAGES--> base-R and CRAN packages, the database behind its sophisticated call resolution.">
 <link rel="icon" href="../img/flowR-mark-red.svg" type="image/svg+xml">
+<link rel="search" type="application/opensearchdescription+xml" title="flowR sigdb" href="opensearch.xml">
 <script>
 	/* the stored theme has to sit on the element before the first paint, or the page flashes the other one */
 	try {
@@ -127,7 +128,8 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 .filters button:hover:not(:disabled) { color: var(--fg); border-color: var(--accent); }
 .filters button:disabled { opacity: .4; cursor: default; }
 .mix { order: 2; margin-left: auto; display: flex; align-items: center; gap: .45rem; }
-.mixlabel { font-size: .72rem; color: var(--muted); }
+.mixlabel, .filterlabel { font-size: .72rem; color: var(--muted); }
+.filterlabel { align-self: center; margin-right: .1rem; }
 #scope {
 	font: inherit; font-size: .76rem; font-weight: 600; cursor: pointer; padding: .22rem .7rem;
 	border-radius: 1rem; border: 1px solid transparent; background: var(--accent); color: var(--accent-fg);
@@ -155,9 +157,22 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 #hits .detail .links { display: flex; gap: 1.2rem; margin-top: .6rem; }
 #hits .detail .links a { font-size: .85rem; }
 #hits .owns { display: grid; gap: .1rem; max-height: 19rem; overflow-y: auto; }
+#hits .src {
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .72rem;
+	color: var(--muted); text-decoration: none; justify-self: end;
+	min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 16rem;
+}
+#hits .src:hover { color: var(--accent); text-decoration: underline; }
+/* the same separator the version already uses between itself and its download count */
+#hits .own .src + .ver::before { content: '· '; }
+#hits .src.nofile { font-style: italic; opacity: .7; }
+#hits .own .pkg, #hits .own .go { text-decoration: none; color: inherit; }
+#hits .own .pkg:hover { color: var(--accent); }
 #hits .own {
-	display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto minmax(4.2rem, auto) 1rem; gap: .8rem; align-items: baseline;
+	display: grid; grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto) auto minmax(4.2rem, auto) 1rem;
+	gap: .8rem; align-items: baseline;
 	padding: .3rem .5rem; border-radius: .4rem; text-decoration: none; color: var(--fg); font-size: .85rem;
+	cursor: pointer;
 }
 #hits .own:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 #hits .own.undocumented { color: var(--muted); opacity: .55; }
@@ -174,16 +189,22 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 #hits .flags { display: flex; flex-wrap: wrap; gap: .3rem; }
 #hits .pkghit { border-style: dashed; }
 #hits .pkghit .owners { color: var(--muted); font-size: .78rem; }
+/* every badge is the same pill whatever it says, so only its colour carries the difference */
+#hits .kindtag, #hits .flag {
+	display: inline-flex; align-items: center; white-space: nowrap;
+	padding: .1rem .5rem; border-radius: 1rem; border: 1px solid transparent;
+	font-size: .7rem; line-height: 1.35; letter-spacing: .02em;
+}
 #hits .kindtag {
-	padding: .05rem .5rem; border-radius: 1rem; font-size: .72rem; font-weight: 600;
+	font-weight: 600;
 	color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent);
-	border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+	border-color: color-mix(in srgb, var(--accent) 35%, transparent);
 }
 #hits .generic { font-size: .74rem; text-decoration: none; color: var(--muted); }
 #hits .generic:hover { color: var(--accent); text-decoration: underline; }
 #hits .flag {
-	padding: 0 .4rem; border-radius: 1rem; font-size: .68rem; letter-spacing: .02em;
-	color: var(--muted); background: var(--sunk); border: 1px solid var(--border);
+	font-weight: 500;
+	color: var(--muted); background: var(--sunk); border-color: var(--border);
 }
 #hits .ask {
 	display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; margin: .5rem 0 0;
@@ -201,7 +222,7 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 #hits .kindtag.flowr { color: var(--muted); background: var(--panel); border-color: var(--border); font-weight: 500; }
 #hits .kindtag.gone { color: #d55e00; background: color-mix(in srgb, #d55e00 10%, transparent); border-color: color-mix(in srgb, #d55e00 35%, transparent); }
 /* what flowR states about the name, next to what the database says about it */
-#hits .kindtag.props { border-style: dashed; padding: 0 .35rem; opacity: .8; }
+#hits .kindtag.props { border-style: dashed; opacity: .8; }
 #hits .flag.stated { border-style: dashed; color: var(--accent); }
 #hits .own .stated { max-width: 26rem; }
 #hits .stated {
@@ -231,7 +252,7 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 <main>
 
 <div class="bar">
-	<h2><a class="brand" href="../../"><img class="mark" src="../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><span class="where">Signature DB</span><a class="version" id="version" href="https://github.com/flowr-analysis/flowr/releases/tag/<!--VERSION-->" target="_blank" rel="noopener" title="the release notes of flowR <!--VERSION-->"><!--VERSION--></a></h2>
+	<h2><a class="brand" href="../../"><img class="mark" src="../img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><span class="where">Signature DB</span><a class="version" id="version" data-release="<!--VERSION-RELEASE-->" href="<!--VERSION-HREF-->" target="_blank" rel="noopener" title="<!--VERSION-TITLE-->"><!--VERSION-LABEL--></a></h2>
 	<nav>
 		<a href="../../" target="_blank" rel="noopener">Landing Page</a>
 		<a href="../playground/" target="_blank" rel="noopener">Playground</a>
@@ -268,6 +289,7 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 	</select>
 </div>
 <div class="filters" id="filters">
+	<span class="filterlabel">filter:</span>
 	<button type="button" id="scope" hidden></button>
 	<span class="mix">
 		<span class="mixlabel">match</span>
@@ -285,7 +307,9 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 <script type="text/plain" id="data"><!--DATA--></script>
 <script type="application/json" id="kinds">"<!--KINDS-->"</script>
 <script type="application/json" id="stated">"<!--STATED-->"</script>
+<script type="application/json" id="topics">"<!--TOPICS-->"</script>
 <script type="application/json" id="formals">"<!--FORMALS-->"</script>
+<script type="application/json" id="groups">"<!--GROUPS-->"</script>
 <script>
 /* the ranker the playground shares, written in from `src/util/text/name-rank.ts` by the build */
 <!--RANKER-->
@@ -316,12 +340,22 @@ async function unpack() {
 
 const q = document.getElementById('q'), mode = document.getElementById('mode');
 const sort = document.getElementById('sort');
+/** each filter, with what it says when the pointer rests on it */
 const Filters = [
-	['only', 'package', 'package'], ['pkg', 'archived', 'archived'],
-	['flag', 't', 'throws'], ['flag', 'n', 'non-deterministic'], ['flag', '3', 'S3 method'],
-	['flag', 'x', 'deprecated'], ['flag', 'd', 'calls deprecated'], ['flag', 'v', 'value'],
-	['kind', 'read', 'reads'], ['kind', 'write', 'writes'],
-	['kind', 'visualize', 'plots'], ['kind', 'library', 'loads']
+	['only', 'package', 'packages', 'list packages rather than the names they export'],
+	['pkg', 'archived', 'archived', 'names from a package CRAN no longer carries'],
+	['flag', 't', 'throws', 'may raise an error, so a caller cannot count on getting a value back'],
+	['flag', 'n', 'non-determ.', 'non-deterministic: may answer differently for the same arguments, like random draws or the clock'],
+	['flag', '3', 'S3', 'S3 method: an implementation of a generic for one class, like print.data.frame'],
+	['flag', 'x', 'deprecated', 'marked as deprecated by the package itself'],
+	['flag', 'd', 'calls depr.', 'calls deprecated: calls something deprecated, so it may stop working when that goes'],
+	['flag', 'c', 'value', 'a value rather than a function, like pi or LETTERS'],
+	['flag', 'v', 'no loc', 'no location: the database records no file and line for it. Usually a constant, a dataset or a class object, sometimes a function nothing wrote down, like an S4 generic setGeneric builds'],
+	['name', 'group', 'S4', 'S4 group member: a member of an S4 group generic (Math, Arith, Summary, ...), which a package usually exports because it answered the group for one of its classes'],
+	['kind', 'read', 'reads', 'reads data from somewhere outside the program, like read.csv'],
+	['kind', 'write', 'writes', 'writes data out of the program, like write.csv'],
+	['kind', 'visualize', 'plots', 'draws something, like plot or ggsave'],
+	['kind', 'library', 'loads', 'attaches a package, like library or require']
 ];
 const active = new Set();
 const filters = document.getElementById('filters');
@@ -333,10 +367,11 @@ scope.addEventListener('click', () => {
 const picks = [...document.querySelectorAll('.pick')];
 let how = 'all';
 const buttons = new Map();
-for(const [what, key, label] of Filters) {
+for(const [what, key, label, about] of Filters) {
 	const button = document.createElement('button');
 	button.type = 'button';
 	button.textContent = label;
+	button.title = about + '. Click to filter by it, click again to drop it';
 	button.setAttribute('aria-pressed', 'false');
 	button.addEventListener('click', () => {
 		const id = what + ':' + key;
@@ -368,6 +403,10 @@ function holds(id, name, owners) {
 	const [what, key] = id.split(':');
 	if(what === 'only') {
 		return false;   // it selects what is listed, not which names qualify
+	}
+	if(what === 'name') {
+		/* a property of the name itself, so no owner has to agree for it to hold */
+		return groups.has(name);
 	}
 	if(what === 'pkg') {
 		/* a property of the package rather than of the name: archived means CRAN dropped it */
@@ -444,9 +483,59 @@ function knownNames() {
 }
 
 /** a name with the matched part marked, built as nodes so a function name can never inject markup */
-/** `%o%` and friends have no `man/<name>.html`, so nothing is linked for them */
-function documented(name, flags) {
-	return /^[A-Za-z.][A-Za-z0-9._-]*$/.test(name) && !flags.includes('u');
+/**
+ * Whether a manual page can be named for this one. `%o%` and friends have no `man/<name>.html`, and a name the
+ * database says nothing about (`?`) is only safe to guess at where an alias table settles it.
+ */
+function documented(name, flags, index) {
+	if(flags.includes('u')) {
+		return false;
+	}
+	const pkg = packages[index]?.[0];
+	/* what a link would name: the topic when one is recorded, else the name itself */
+	const page = topics.get(pkg + '::' + name) || name;
+	if(!/^[A-Za-z.][A-Za-z0-9._-]*$/.test(page)) {
+		return false;
+	}
+	/*
+	 * Base R ships an alias table naming every page it has, so nothing has to be guessed: a name it does not
+	 * carry has none. That is most of what a base package exports without documenting, the locals and internals
+	 * (`tmp`, `shell.exec`) as much as the `sinkplot` flowR states and R has never had.
+	 */
+	if(packages[index]?.[2] === '1') {
+		return !topicsKnown || topics.has(pkg + '::' + name);
+	}
+	/* `?` says the database holds nothing about it: a name flowR states rather than one a package is known to
+	   export, and outside base R there is no table to settle it, so guessing only produces a dead link */
+	return !flags.includes('?');
+}
+
+/**
+ * Where the code of a package lives. Base R sits in the read-only mirror of R's own sources, which carries a
+ * branch per release series rather than a tag; everything else is on the read-only CRAN mirror, at its version.
+ */
+/** the file of a package an export lives in, `undefined` where the database records none */
+function sourceFile(index, file) {
+	return file === undefined ? undefined : (packages[index][8] ?? '').split('|')[file] || undefined;
+}
+
+/**
+ * Where the code of an export lives. Base R sits in the read-only mirror of R's own sources, which carries a
+ * branch per release series rather than a tag; everything else is on the read-only CRAN mirror, at its version.
+ * Without a file of its own, the package's sources are as close as this gets.
+ */
+function sourceUrl(pkg, version, base, file, line) {
+	const at = line === undefined ? '' : '#L' + line;
+	if(base) {
+		const series = /^(\d+)\.(\d+)/.exec(version ?? '');
+		const ref = series ? 'R-' + series[1] + '-' + series[2] + '-branch' : 'trunk';
+		const root = 'https://github.com/wch/r-source/' + (file ? 'blob' : 'tree') + '/' + ref
+			+ '/src/library/' + encodeURIComponent(pkg);
+		return file ? root + '/' + file + at : root + '/R';
+	}
+	const root = 'https://github.com/cran/' + encodeURIComponent(pkg) + '/' + (file ? 'blob' : 'tree') + '/'
+		+ encodeURIComponent(version ?? 'master');
+	return file ? root + '/' + file + at : root;
 }
 
 /** where a package documents itself, for a name that has no page of its own */
@@ -457,11 +546,16 @@ function packageDocUrl(index) {
 		: 'https://rdrr.io/cran/' + encodeURIComponent(pkg) + '/';
 }
 
+/*
+ * Base R goes to R's own manual rather than to rdrr.io, which serves an older release: `array2DF`, `sort_by`
+ * and the rest of what R has gained since have no page there. It is also where the alias table above comes
+ * from, so the two can never disagree about which pages exist.
+ */
 function docUrl(name, entry) {
 	const { index, topic } = typeof entry === 'object' ? entry : { index: entry };
 	const [pkg, , base] = packages[index];
-	const page = encodeURIComponent(topic ?? name);
-	return base === '1' ? 'https://rdrr.io/r/' + encodeURIComponent(pkg) + '/' + page + '.html'
+	const page = encodeURIComponent(topic || topics.get(pkg + '::' + name) || name);
+	return base === '1' ? 'https://stat.ethz.ch/R-manual/R-devel/library/' + encodeURIComponent(pkg) + '/html/' + page + '.html'
 		: 'https://rdrr.io/cran/' + encodeURIComponent(pkg) + '/man/' + page + '.html';
 }
 
@@ -519,7 +613,8 @@ function score(name, owners, rank, needle) {
 		base:      pkg?.[0] === 'base',
 		known:     kinds.has(name),
 		s3:        first.flags.includes('3'),
-		variable:  first.flags.includes('v')
+		/* only a stated value ranks lower: a function the database records no definition for is still a function */
+		variable:  first.flags.includes('c')
 	});
 }
 
@@ -539,17 +634,27 @@ function fuzzy(name, needle) {
 const FlagNames = {
 	t: 'can throw', 3: 'S3 method', n: 'non-deterministic', d: 'calls something deprecated',
 	r: 'recursive', i: 'calls internals', o: 'owns an S3 class', 4: 'owns an S4 class',
-	h: 'higher order', x: 'deprecated', v: 'value', u: 'no docs'
+	m: 'S4 method', h: 'higher order', x: 'deprecated', c: 'value', v: 'no loc', u: 'no docs'
 };
 
-/** an owner reads `12`, or `12:tn:4:topic`: package, flags, parameter count, and the help topic */
+/** the few flags whose short form does not speak for itself */
+const FlagAbout = {
+	c: 'the database records it as a value rather than a function',
+	v: 'no location: the database records no file and line for it in this package. Usually a constant, a dataset '
+		+ 'or a class object, sometimes a function nothing wrote down, like an S4 generic setGeneric builds',
+	u: 'no manual page for this name in this package'
+};
+
+/** an owner reads `12`, or `12:tn:4:topic:5:2g`: package, flags, parameters, topic, and file and line in base 36 */
 function owner(entry) {
-	const [index, flags, params, topic] = String(entry).split(':');
+	const [index, flags, params, topic, file, line] = String(entry).split(':');
 	return {
 		index:  Number(index),
 		flags:  [...(flags ?? '')],
 		params: Number(params) || 0,
-		topic:  topic ? decodeURIComponent(topic) : undefined
+		topic:  topic ? decodeURIComponent(topic) : undefined,
+		file:   file ? parseInt(file, 36) : undefined,
+		line:   line ? parseInt(line, 36) : undefined
 	};
 }
 
@@ -557,8 +662,15 @@ function owner(entry) {
 const kinds = new Map(Object.entries(JSON.parse(document.getElementById('kinds').textContent)));
 /* `name -> [call, props]`: what flowR states about the functions it carries a definition for */
 const stated = new Map(Object.entries(JSON.parse(document.getElementById('stated').textContent)));
+/* `package::alias -> topic` for every documented base R name, empty where the topic is the name itself, so the
+   keys are also the set of base R names that have a manual page at all */
+const topics = new Map(Object.entries(JSON.parse(document.getElementById('topics').textContent)));
+/* whether that set is the real one: without an R to read the alias tables from, it holds the primitives alone */
+const topicsKnown = '<!--TOPICS-COMPLETE-->' === 'true';
 /* `name -> [package, parameters][]`: what base R itself declares, which flowR states nothing about */
 const formals = new Map(Object.entries(JSON.parse(document.getElementById('formals').textContent)));
+/* `name -> S4 group generic`: `sin` belongs to `Math`, so a package answering `Math` for its class exports `sin` */
+const groups = new Map(Object.entries(JSON.parse(document.getElementById('groups').textContent)));
 /** how flowR describes what one of its known functions does */
 const KindNames = {
 	library: 'can load a package', source: 'can source a file', read: 'can read a file',
@@ -596,27 +708,35 @@ function detail(name, owners) {
 	const list = document.createElement('div');
 	list.className = 'owns';
 	for(const entry of owners) {
-		const { index, flags, topic } = owner(entry);
+		const { index, flags, topic, file, line } = owner(entry);
 		if(packages[index] === undefined) {
 			continue;   // an index the table does not have: never expected, never fatal
 		}
 		const [pkg, version, base, downloads] = packages[index];
-		const row = document.createElement('a');
+		const row = document.createElement('div');
 		row.className = 'own';
 		row.target = '_blank';
 		row.rel = 'noopener';
-		if(documented(name, flags)) {
+		if(documented(name, flags, index)) {
 			row.href = docUrl(name, { index, topic });
 			row.title = 'the manual page for ' + name + ' in ' + pkg;
 		} else {
 			/* no page of its own, so the package's documentation is the next best thing */
 			row.href = packageDocUrl(index);
 			row.classList.add('undocumented');
-			row.title = name + ' has no manual page in ' + pkg + ', so this links to the package documentation';
+			/* a group member is usually documented under its S4 alias (`sin,float32-method` on float's `trig`
+			   page), which is a name the database does not carry, so say so rather than claim there is nothing */
+			row.title = groups.has(name) && base !== '1'
+				? name + ' has no manual page of its own in ' + pkg + ': an S4 method is documented under its '
+					+ name + ',<class>-method alias, so this links to the package documentation'
+				: name + ' has no manual page in ' + pkg + ', so this links to the package documentation';
 		}
-		const who = document.createElement('span');
+		/* the name and the arrow open the manual page; the row is not one link so the source can sit within it */
+		const docs = [];
+		const who = document.createElement('a');
 		who.className = 'pkg';
 		who.textContent = pkg;
+		docs.push(who);
 		row.append(who);
 		const marks = document.createElement('span');
 		marks.className = 'flags';
@@ -625,6 +745,9 @@ function detail(name, owners) {
 				const one = document.createElement('span');
 				one.className = 'flag';
 				one.textContent = FlagNames[flag];
+				if(FlagAbout[flag]) {
+					one.title = FlagAbout[flag];
+				}
 				marks.append(one);
 			}
 		}
@@ -653,10 +776,44 @@ function detail(name, owners) {
 			one.title = 'flowR states this about ' + pkg + '::' + name;
 			marks.append(one);
 		}
-		const go = document.createElement('span');
+		const go = document.createElement('a');
 		go.className = 'go';
 		go.textContent = '↗';
-		row.append(marks, ver, tag, go);
+		for(const link of docs) {
+			link.target = '_blank';
+			link.rel = 'noopener';
+			if(documented(name, flags, index)) {
+				link.href = docUrl(name, { index, topic });
+				link.title = 'the manual page for ' + name + ' in ' + pkg;
+			} else {
+				/* no page of its own, so the package's documentation is the next best thing */
+				link.href = packageDocUrl(index);
+				row.classList.add('undocumented');
+				link.title = 'no manual page is recorded for ' + name + ' in ' + pkg + ', so this links to the package documentation';
+			}
+		}
+		/* where this very function is written, which the manual page never shows */
+		const where = sourceFile(index, file);
+		const src = document.createElement('a');
+		src.className = 'src';
+		src.target = '_blank';
+		src.rel = 'noopener';
+		src.href = sourceUrl(pkg, version, base === '1', where, line);
+		src.textContent = where === undefined ? '' : where + (line === undefined ? '' : ':' + line);
+		src.title = where === undefined
+			? 'the database records no file for ' + name + ' in ' + pkg + ', so this links to its sources'
+			: 'where ' + pkg + '::' + name + ' is written, in ' + pkg + ' ' + version;
+		if(where === undefined) {
+			src.classList.add('nofile');
+			src.textContent = 'sources';
+		}
+		row.append(marks, src, ver, tag, go);
+		/* the row reads as one thing, so anything on it that is not a link of its own opens the manual page */
+		row.addEventListener('click', event => {
+			if(!event.target.closest('a')) {
+				window.open(who.href, '_blank', 'noopener');
+			}
+		});
 		list.append(row);
 	}
 	const note = document.createElement('p');
@@ -785,16 +942,23 @@ function aboutPackage(index) {
  * The package flowR states a name for, put first among its owners when the database does not list it: `+` is
  * base R's, but a primitive is in no NAMESPACE, so nothing exports it and the reader would see `lubridate`
  * where they expect `base`.
+ *
+ * A statement that names no package adds no owner: flowR recognizes `sinkplot` as a plot call without knowing
+ * whose it is, and the packages the database does list are then the whole answer. What flowR says about the
+ * call still shows, and a name nothing at all exports keeps its row with the flowR badge and no package.
  */
 function withStatedOwner(name, owners) {
+	/* a name no package exports has one empty entry, which is a row rather than an owner */
+	const known = owners.filter(entry => entry !== '');
 	const mine = stated.get(name) ?? [];
 	if(mine.length === 0) {
-		return owners;
+		return known;
 	}
-	const already = new Set(owners.map(entry => packages[owner(entry).index]?.[0]));
-	const missing = mine.map(entry => entry[0]).filter(pkg => !already.has(pkg));
+	const already = new Set(known.map(entry => packages[owner(entry).index]?.[0]));
+	const missing = mine.map(entry => entry[0]).filter(pkg => pkg !== '' && !already.has(pkg));
+	/* `?` says the database holds nothing about it, so nothing about its manual page is guessed either */
 	const found = missing.map(pkg => packages.findIndex(entry => entry[0] === pkg)).filter(at => at >= 0);
-	return found.length === 0 ? owners : [...found.map(String), ...owners];
+	return found.length === 0 ? known : [...found.map(at => at + ':?'), ...known];
 }
 
 /** `name(params)`, the one shape a signature is drawn in wherever it comes from */
@@ -818,14 +982,17 @@ function show(name, needle, at, owners) {
 	const row = document.createElement('li');
 	const head = document.createElement('div');
 	head.className = 'head';
-	/* the package a reader most likely means decides: `pi` is a constant even though something exports a `pi()` */
-	const value = owner(owners[0]).flags.includes('v');
+	/* the package a reader most likely means decides: `pi` is a constant even though something exports a `pi()`.
+	   Only what the database states, `c`: that it records no location (`v`) says too little to head a row,
+	   and it is on the package rows below, where a reader can see which package it is missing for */
+	const value = owner(owners[0]).flags.includes('c');
 	head.append(marked(name, needle, at));
 	if(value) {
 		head.firstChild.classList.add('value');
 		const badge = document.createElement('span');
 		badge.className = 'kindtag value';
 		badge.textContent = 'value';
+		badge.title = 'the database records it as a value rather than a function';
 		head.append(badge);
 	}
 	/* flowR's own statement about the name, which is the one thing the database cannot tell a reader.
@@ -865,6 +1032,19 @@ function show(name, needle, at, owners) {
 		link.href = '?q=' + encodeURIComponent(generic);
 		link.textContent = 'S3 method for ' + generic;
 		link.title = 'search for the generic this method dispatches for';
+		head.append(link);
+	}
+	/* a member of an S4 group: a package exports it because it answered the whole group for one of its
+	   classes, so the name says far less about that package than an ordinary export would */
+	const group = groups.get(name);
+	if(group) {
+		const link = document.createElement('a');
+		link.className = 'generic';
+		link.href = '?q=' + encodeURIComponent(group);
+		link.textContent = group + ' group';
+		link.title = name + ' belongs to R\'s ' + group + ' group generic: a package may answer it for its own '
+			+ 'class with setMethod("' + name + '", ...) or setMethod("' + group + '", ...) instead of defining a '
+			+ 'function of its own. Click to search for ' + group + '.';
 		head.append(link);
 	}
 	const list = document.createElement('span');
@@ -989,8 +1169,9 @@ async function search() {
 	/* a package was named, so only the names it exports count */
 	scope.hidden = true;
 	const wanted = inPackage === undefined ? undefined : byName.get(inPackage);
+	/* `base::sin` is base R's whatever the database holds, so the scope asks the same owners a row shows */
 	const inScope = wanted === undefined ? matches
-		: matches.filter(([, , owners]) => owners.split(',').some(entry => owner(entry).index === wanted));
+		: matches.filter(([name, , owners]) => withStatedOwner(name, owners.split(',')).some(entry => owner(entry).index === wanted));
 	/* the packages whose own name matches; `packages` asks for those alone */
 	const onlyPackages = active.has('only:package') || (needle.length === 0 && active.size === 0 && inPackage === undefined);
 	const allPackages = inPackage !== undefined || (active.size > 0 && !onlyPackages) ? [] : packages
@@ -1072,30 +1253,6 @@ const ready = unpack().then(() => search(), error => {
 });
 q.addEventListener('change', () => history.replaceState(null, '', q.value ? '?q=' + encodeURIComponent(q.value) : location.pathname));
 </script>
-<script>
-	/* the tag says the number, the name that release carries only lives on GitHub, so it is fetched once someone asks for it */
-	(function() {
-		const tag = document.getElementById('version');
-		if(!tag) { return; }
-		let asked = false;
-		const name = () => {
-			if(asked || !tag.textContent) { return; }
-			asked = true;
-			fetch('https://api.github.com/repos/flowr-analysis/flowr/releases/tags/' + tag.textContent)
-				.then(r => r.ok ? r.json() : Promise.reject(r.status))
-				.then(release => {
-				if(release.name) {
-					const when = release.published_at
-						? new Date(release.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-						: '';
-					tag.title = when ? release.name + ', released ' + when : release.name;
-				}
-			})
-				.catch(() => { /* the title it already carries says enough */ });
-		};
-		tag.addEventListener('pointerenter', name);
-		tag.addEventListener('focus', name);
-	})();
-</script>
+<!--VERSION-SCRIPT-->
 </body>
 </html>

@@ -101,7 +101,7 @@ function registerRules(knownParser: KnownParser, tagTypes: TypeElementInSource[]
 	const ruleExplanations = new Map<LintingRuleNames, () => Promise<string>>();
 
 	rule(knownParser,
-		'deprecated-functions', 'FunctionsToDetectConfig', 'DEPRECATED_FUNCTIONS', 'lint-deprecated-functions',
+		'deprecated-functions', 'DeprecatedFunctionsConfig', 'DEPRECATED_FUNCTIONS', 'lint-deprecated-functions',
 		`
 first <- data.frame(x = c(1, 2, 3), y = c(1, 2, 3))
 second <- data.frame(x = c(1, 3, 2), y = c(1, 3, 2))

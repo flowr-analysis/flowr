@@ -305,12 +305,26 @@ function complaint(found: { rule: string, message: string }, cls: string): HTMLE
 	return at;
 }
 
-/** what flowR can say about the name under the pointer: its value, its shape, or where it comes from */
+/**
+ * What flowR can say about the name under the pointer: its value, its shape, or where it comes from.
+ */
 const valueTips = hoverTooltip(async(view, pos) => {
 	const line = view.state.doc.lineAt(pos);
 	const found = targetAt(line.text, line.number, pos - line.from);
 	if(found === undefined) {
 		return null;
+	}
+	/* a package name stands for no value flowR could resolve, so what it knows about it is the package */
+	if(namesPackage(line.text, found)) {
+		const info = packageInfo(found.name);
+		showPointed(found.name, packageFacts(info).join(' · '));
+		showPackage(info);
+		return {
+			pos:    line.from + found.from,
+			end:    line.from + found.to,
+			above:  false,
+			create: () => ({ dom: packageTip(info, lintsOver(line.from + found.from, line.from + found.to)) })
+		};
 	}
 	const criterion = found.criterion;
 	const about = await describe(criterion);
@@ -322,7 +336,7 @@ const valueTips = hoverTooltip(async(view, pos) => {
 	return said === undefined && known === undefined && complaints.length === 0 ? null : {
 		pos:    line.from + found.from,
 		end:    line.from + found.to,
-		above:  true,
+		above:  false,
 		create: () => ({ dom: tip(known, said, complaints) })
 	};
 });
@@ -353,6 +367,12 @@ function builtinSignature(name: string, pkg?: string): Signature | undefined {
 
 /** the packages the script attaches, which is what decides who owns a name */
 let attached = new Set<string>();
+
+/** the lines that attach a package, and the lines that reach into one with `::`, per package */
+const attachedLines = new Map<string, number[]>();
+const qualifiedLines = new Map<string, number[]>();
+/** the version a project pins a package to, when the analysis derived one from the files around it */
+const versionAsked = new Map<string, string>();
 
 /** the package a call belongs to here: an attached one that defines the name wins over base R */
 function ownerOf(name: string, resolved: string | undefined): string | undefined {
@@ -437,6 +457,104 @@ function showSignature(name: string, known: ReturnType<typeof signatureOf>): voi
 	if(known.props.length === 0 && known.where.length === 0) {
 		about.append(link('look it up in the signature database', `../sigdb/?q=${encodeURIComponent(name)}`, 'at'));
 	}
+	at.append(head, call, about);
+}
+
+/** what the page knows about a package: what the build baked in, and what this script does with it */
+interface PackageInfo {
+	name:        string,
+	/** whether the build carries this package at all; without that there is no version to show */
+	known:       boolean,
+	version?:    string,
+	released?:   string,
+	exports:     number,
+	baseR:       boolean,
+	attachedAt:  readonly number[],
+	qualifiedAt: readonly number[],
+	constraint?: string
+}
+
+/** whether the name at this spot names a package: the argument of `library()`, or the left of `::` */
+function namesPackage(text: string, found: { from: number, to: number }): boolean {
+	return /^\s*:{2,3}/.test(text.slice(found.to)) || Loading.test(text.slice(0, found.from));
+}
+
+/** the version the build read a package at, together with what this script asks of it */
+function packageInfo(name: string): PackageInfo {
+	const entry = bakedPackages[name];
+	const [version = '', released = ''] = entry ?? [];
+	return {
+		name,
+		known:       entry !== undefined,
+		version:     version.length > 0 ? version : undefined,
+		released:    released.length > 0 ? released : undefined,
+		exports:     exportsFrom(entry).length,
+		baseR:       BaseRPackages.has(name),
+		attachedAt:  attachedLines.get(name) ?? [],
+		qualifiedAt: qualifiedLines.get(name) ?? [],
+		constraint:  versionAsked.get(name)
+	};
+}
+
+/** `attached on line 3`, and `attached on lines 3, 7` when the script asks for it more than once */
+function onLines(what: string, at: readonly number[]): string | undefined {
+	return at.length === 0 ? undefined : `${what}${at.length === 1 ? '' : 's'} ${at.join(', ')}`;
+}
+
+/** everything the page can say about a package, as the parts a card is written from */
+function packageFacts(info: PackageInfo): string[] {
+	return [
+		info.known ? info.baseR ? 'ships with R' : 'from CRAN' : 'no version info for it in this build',
+		info.released === undefined ? undefined : `released ${info.released}`,
+		info.exports > 0 ? `${info.exports} export${info.exports === 1 ? '' : 's'}` : undefined,
+		info.constraint === undefined ? undefined : `this project asks for ${info.constraint}`,
+		onLines('attached on line', info.attachedAt),
+		onLines('reached into with :: on line', info.qualifiedAt)
+	].filter((fact): fact is string => fact !== undefined);
+}
+
+/** the name at the version it was read at, which heads both the card and the hover */
+function packageHead(info: PackageInfo): string {
+	return info.version === undefined ? info.name : `${info.name} ${info.version}`;
+}
+
+/** the hover card of a package: its version, what came with it, and what the linter said here */
+function packageTip(info: PackageInfo, complaints: readonly { rule: string, message: string }[]): HTMLElement {
+	const dom = document.createElement('div');
+	dom.className = 'cm-valuetip';
+	const head = document.createElement('div');
+	head.className = 'tcall';
+	head.textContent = packageHead(info);
+	dom.append(head);
+	const about = document.createElement('div');
+	about.className = 'tabout';
+	about.textContent = packageFacts(info).join(' · ');
+	dom.append(about);
+	for(const found of complaints) {
+		dom.append(complaint(found, 'tlint'));
+	}
+	return dom;
+}
+
+/** the package under the pointer, in the box a function shows its signature in */
+function showPackage(info: PackageInfo): void {
+	const at = document.getElementById('signature');
+	if(at === null) {
+		return;
+	}
+	at.replaceChildren();
+	at.hidden = false;
+	const head = document.createElement('h3');
+	head.textContent = 'Package';
+	const call = document.createElement('div');
+	call.className = 'scall';
+	call.textContent = packageHead(info);
+	const about = document.createElement('div');
+	about.className = 'sabout';
+	for(const fact of packageFacts(info)) {
+		about.append(tag(fact, 'prop'));
+	}
+	about.append(link('look it up in the signature database', `../sigdb/?q=${encodeURIComponent(info.name)}`, 'at'));
 	at.append(head, call, about);
 }
 
@@ -565,8 +683,16 @@ const knownNames = new Set(builtInNames);
  */
 function ranked(options: readonly (Completion & { boost: number })[]): Completion[] {
 	const sorted = [...options].sort((a, b) => b.boost - a.boost);
-	const last = Math.max(1, sorted.length - 1);
-	return sorted.map((option, at) => ({ ...option, boost: Math.round(99 - at / last * 198) }));
+	/* the same name may reach the list from more than one source (a package the script attached and
+	   flowR's own built-ins both carry `ggplot`); the nearest source ranks first, so the rest go */
+	const seen = new Set<string>();
+	const unique = sorted.filter(option => {
+		const first = !seen.has(option.label);
+		seen.add(option.label);
+		return first;
+	});
+	const last = Math.max(1, unique.length - 1);
+	return unique.map((option, at) => ({ ...option, boost: Math.round(99 - at / last * 198) }));
 }
 
 function complete(context: CompletionContext): CompletionResult | null {
@@ -1270,7 +1396,23 @@ async function analyzer() {
 	return built;
 }
 
-interface Dependency { value?: string, nodeId?: string | number, functionName?: string, linkedIds?: readonly (string | number)[], implicit?: boolean }
+interface Dependency {
+	value?:              string,
+	nodeId?:             string | number,
+	functionName?:       string,
+	linkedIds?:          readonly (string | number)[],
+	implicit?:           boolean,
+	/* semver ranges, which only a project with a DESCRIPTION or a lockfile around it ever carries */
+	derivedRange?:       { format?: () => string },
+	versionConstraints?: readonly { format?: () => string }[]
+}
+
+/** the version a project pins a package to, as the analysis derived it from the files around the script */
+function versionRange(entry: Dependency): string | undefined {
+	return [entry.derivedRange, ...entry.versionConstraints ?? []]
+		.map(range => typeof range?.format === 'function' ? range.format() : undefined)
+		.find((said): said is string => said !== undefined && said.length > 0);
+}
 /** one dependency as the panel shows it, with whatever else was drawn onto it hanging below */
 interface DepRow {
 	kind:      string,
@@ -1616,6 +1758,27 @@ async function analyze(): Promise<number> {
 		return onto === undefined;
 	});
 	attached = new Set(deps.filter(d => d.kind === 'library' && d.value !== undefined).map(d => d.value as string));
+	/* where each package is asked for, so hovering its name says what this script does with it */
+	attachedLines.clear();
+	qualifiedLines.clear();
+	for(const d of deps) {
+		if(d.kind !== 'library' || d.value === undefined || d.line === undefined) {
+			continue;
+		}
+		const where = d.call === '::' || d.call === ':::' ? qualifiedLines : attachedLines;
+		const lines = where.get(d.value) ?? [];
+		if(!lines.includes(d.line)) {
+			lines.push(d.line);
+		}
+		where.set(d.value, lines);
+	}
+	versionAsked.clear();
+	for(const entry of answers.dependencies?.library ?? []) {
+		const asked = entry.value === undefined ? undefined : versionRange(entry);
+		if(asked !== undefined) {
+			versionAsked.set(entry.value as string, asked);
+		}
+	}
 	shownDeps = deps.flatMap(d => {
 		const [startLine, startCol, endLine, endCol] = d.from ?? [];
 		if(startLine === undefined || startLine !== endLine || startCol === undefined || endCol === undefined
@@ -1837,8 +2000,11 @@ document.querySelector('[data-sample]')?.addEventListener('click', () => {
 	showShared('the example is back');
 });
 
-/* the cursor is written here rather than in {@link remember}, so the address bar does not churn on every click */
-document.getElementById('share')?.addEventListener('click', () => {
+/**
+ * Copies the link that brings this playground back, which the button and `ctrl+s` both ask for.
+ * The cursor is written here rather than in {@link remember}, so the address bar does not churn on every click.
+ */
+function copyLink(): void {
 	const fields = shareFields();
 	const head = editor.state.selection.main.head;
 	const line = editor.state.doc.lineAt(head);
@@ -1858,6 +2024,16 @@ document.getElementById('share')?.addEventListener('click', () => {
 			}
 		}
 	);
+}
+
+document.getElementById('share')?.addEventListener('click', copyLink);
+
+/* there is nothing to save here, so `ctrl+s` keeps the script the only way this page can: as a link */
+document.addEventListener('keydown', event => {
+	if((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 's') {
+		event.preventDefault();
+		copyLink();
+	}
 });
 editor.dom.addEventListener('click', event => {
 	if(event.ctrlKey || event.metaKey) {

@@ -201,6 +201,7 @@ export function processPipe<OtherInfo>(
 		in:                uniqueIn,
 		out:               uniqueOut,
 		unknownReferences: uniqueUnknownReferences,
-		entryPoint:        rootId
+		entryPoint:        rootId,
+		cfgEntry:          information.cfgEntry
 	};
 }

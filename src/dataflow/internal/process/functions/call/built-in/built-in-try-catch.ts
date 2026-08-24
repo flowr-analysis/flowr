@@ -3,6 +3,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
 import { ExitPointType, happensInEveryBranch } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
+import { ControlFlow } from '../../../../control-flow';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type {
 	PotentiallyEmptyRArgument
@@ -115,6 +116,30 @@ export function processTryCatch<OtherInfo>(
 			escaping.push(...arg.out);
 			if(arg.kill?.length) {
 				(escapingKills ??= []).push(...arg.kill);
+			}
+		}
+	}
+	/*
+	 * The rewritten exit points describe what the call passes on to its own callers; control flow still leaves
+	 * the construct on the call itself, whether the block completed or a handler took over. An error the block
+	 * raises is caught here as well, so it reaches the call rather than leaving it.
+	 */
+	(info as { cfgExit?: NodeId }).cfgExit = rootId;
+	/*
+	 * An error the block raises lands on the handler when there is one, and the `finally` follows it, which the
+	 * arguments being in sequence already says. Without either, the error simply arrives at the call.
+	 */
+	const handler = res.processedArguments.find(arg => arg !== undefined && errorArg.has(arg.entryPoint));
+	const cleanup = res.processedArguments.find(arg => arg !== undefined && finallyArg.has(arg.entryPoint));
+	const caughtAt = handler !== undefined ? ControlFlow.entryOf(handler)
+		: cleanup === undefined ? rootId : ControlFlow.entryOf(cleanup);
+	for(const arg of res.processedArguments) {
+		if(arg === undefined || errorArg.has(arg.entryPoint) || finallyArg.has(arg.entryPoint)) {
+			continue;
+		}
+		for(const exit of arg.exitPoints) {
+			if(exit.type === ExitPointType.Error) {
+				info.graph.addEdge(exit.nodeId, caughtAt, EdgeType.FlowEdge);
 			}
 		}
 	}

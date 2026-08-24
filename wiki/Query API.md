@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-20, 00:09:23 UTC (v2.14.1, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-20, 22:53:36 UTC (v2.14.1, R v4.6.1), please do not edit directly._
 
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
@@ -539,7 +539,6 @@ print(mean(data2$k))
 flowchart LR
     1{{"`*#91;RSymbol#93;* **ggplot**
       *1.9-14* (**id: 1**)`"}}
-   %% No edges found for 1
     3[["`*#91;RFunctionCall#93;* base#58;#58;**library**
       *1.1-15* (**id: 3**)
     arg: (1)`"]]
@@ -549,20 +548,16 @@ library`"]
     style built-in:library stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     5{{"`*#91;RSymbol#93;* **dplyr**
       *2.9-13* (**id: 5**)`"}}
-   %% No edges found for 5
     7[["`*#91;RFunctionCall#93;* base#58;#58;**library**
       *2.1-14* (**id: 7**)
     arg: (5)`"]]
     9{{"`*#91;RSymbol#93;* **readr**
       *3.9-13* (**id: 9**)`"}}
-   %% No edges found for 9
     11[["`*#91;RFunctionCall#93;* base#58;#58;**library**
       *3.1-14* (**id: 11**)
     arg: (9)`"]]
-    style 11 stroke:red,stroke-width:5px; 
     14{{"`*#91;RString#93;* **#39;data.csv#39;**
       *6.18-27* (**id: 14**)`"}}
-   %% No edges found for 14
     16[["`*#91;RFunctionCall#93;* **read#95;csv**
       *6.9-28* (**id: 16**)
     arg: (14)`"]]
@@ -576,7 +571,6 @@ library`"]
     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     20{{"`*#91;RString#93;* **#39;data2.csv#39;**
       *7.19-29* (**id: 20**)`"}}
-   %% No edges found for 20
     %% Environment of 22 [level: 0]:
     %% Built-in
     %% 1----------------------------------------
@@ -599,7 +593,6 @@ library`"]
       *9.11-14* (**id: 26**)`"])
     27{{"`*#91;RSymbol#93;* **x**
       *9.16* (**id: 27**)`"}}
-   %% No edges found for 27
     29[["`*#91;RAccess#93;* base#58;#58;**$**
       *9.11-16* (**id: 29**)
     arg: (26, 27)`"]]
@@ -629,12 +622,10 @@ print`"]
       *12.1-4* (**id: 38**)`"])
     43(["`*#91;RSymbol#93;* **x**
       *13.24* (**id: 43**)`"])
-   %% No edges found for 43
     44(["`*#91;RArgument#93;* **x**
       *13.20* (**id: 44**)`"])
     46(["`*#91;RSymbol#93;* **y**
       *13.31* (**id: 46**)`"])
-   %% No edges found for 46
     47(["`*#91;RArgument#93;* **y**
       *13.27* (**id: 47**)`"])
     48[["`*#91;RFunctionCall#93;* **aes**
@@ -668,7 +659,6 @@ geom#95;point`"]
       *16.6-10* (**id: 57**)`"])
     58{{"`*#91;RSymbol#93;* **x**
       *16.12* (**id: 58**)`"}}
-   %% No edges found for 58
     60[["`*#91;RAccess#93;* base#58;#58;**$**
       *16.6-12* (**id: 60**)
     arg: (57, 58)`"]]
@@ -676,7 +666,6 @@ geom#95;point`"]
       *16.15-19* (**id: 62**)`"])
     63{{"`*#91;RSymbol#93;* **y**
       *16.21* (**id: 63**)`"}}
-   %% No edges found for 63
     65[["`*#91;RAccess#93;* base#58;#58;**$**
       *16.15-21* (**id: 65**)
     arg: (62, 63)`"]]
@@ -690,7 +679,6 @@ plot`"]
       *17.8-12* (**id: 69**)`"])
     70{{"`*#91;RSymbol#93;* **x**
       *17.14* (**id: 70**)`"}}
-   %% No edges found for 70
     72[["`*#91;RAccess#93;* base#58;#58;**$**
       *17.8-14* (**id: 72**)
     arg: (69, 70)`"]]
@@ -698,7 +686,6 @@ plot`"]
       *17.17-21* (**id: 74**)`"])
     75{{"`*#91;RSymbol#93;* **y**
       *17.23* (**id: 75**)`"}}
-   %% No edges found for 75
     77[["`*#91;RAccess#93;* base#58;#58;**$**
       *17.17-23* (**id: 77**)
     arg: (74, 75)`"]]
@@ -712,7 +699,6 @@ points`"]
       *19.12-16* (**id: 82**)`"])
     83{{"`*#91;RSymbol#93;* **k**
       *19.18* (**id: 83**)`"}}
-   %% No edges found for 83
     85[["`*#91;RAccess#93;* base#58;#58;**$**
       *19.12-18* (**id: 85**)
     arg: (82, 83)`"]]
@@ -722,115 +708,209 @@ points`"]
     89[["`*#91;RFunctionCall#93;* base#58;#58;**print**
       *19.1-20* (**id: 89**)
     arg: (87)`"]]
+    1 -.->|"flow"| 3
+    linkStyle 0 stroke:gray,color:gray;
     3 -->|"arg"| 1
     3 -.->|"reads, calls"| built-in:library
-    linkStyle 1 stroke:gray;
+    linkStyle 2 stroke:gray;
+    3 -.->|"flow"| 5
+    linkStyle 3 stroke:gray,color:gray;
+    5 -.->|"flow"| 7
+    linkStyle 4 stroke:gray,color:gray;
     7 -->|"arg"| 5
     7 -.->|"reads, calls"| built-in:library
-    linkStyle 3 stroke:gray;
+    linkStyle 6 stroke:gray;
+    7 -.->|"flow"| 9
+    linkStyle 7 stroke:gray,color:gray;
+    9 -.->|"flow"| 11
+    linkStyle 8 stroke:gray,color:gray;
     11 -->|"arg"| 9
     11 -.->|"reads, calls"| built-in:library
-    linkStyle 5 stroke:gray;
+    linkStyle 10 stroke:gray;
+    11 -.->|"flow"| 14
+    linkStyle 11 stroke:gray,color:gray;
+    14 -.->|"flow"| 16
+    linkStyle 12 stroke:gray,color:gray;
     16 -->|"arg"| 14
+    16 -.->|"flow"| 12
+    linkStyle 14 stroke:gray,color:gray;
+    12 -->|"defined-by, flow"| 17
     12 -->|"defined-by"| 16
-    12 -->|"defined-by"| 17
     17 -->|"reads, arg"| 16
     17 -->|"returns, arg"| 12
     17 -.->|"reads, calls"| built-in:_-
-    linkStyle 11 stroke:gray;
+    linkStyle 19 stroke:gray;
+    17 -.->|"flow"| 20
+    linkStyle 20 stroke:gray,color:gray;
+    20 -.->|"flow"| 22
+    linkStyle 21 stroke:gray,color:gray;
     22 -->|"arg"| 20
+    22 -.->|"flow"| 18
+    linkStyle 23 stroke:gray,color:gray;
+    18 -->|"defined-by, flow"| 23
     18 -->|"defined-by"| 22
-    18 -->|"defined-by"| 23
     23 -->|"reads, arg"| 22
     23 -->|"returns, arg"| 18
     23 -.->|"reads, calls"| built-in:_-
-    linkStyle 17 stroke:gray;
+    linkStyle 28 stroke:gray;
+    23 -.->|"flow"| 26
+    linkStyle 29 stroke:gray,color:gray;
     26 -->|"reads"| 12
+    26 -.->|"flow"| 27
+    linkStyle 31 stroke:gray,color:gray;
+    27 -.->|"flow"| 29
+    linkStyle 32 stroke:gray,color:gray;
     29 -->|"reads, returns, arg"| 26
     29 -->|"reads, arg"| 27
+    29 -.->|"flow"| 31
+    linkStyle 35 stroke:gray,color:gray;
     29 -.->|"reads, calls"| built-in:_
-    linkStyle 21 stroke:gray;
+    linkStyle 36 stroke:gray;
     31 -->|"reads, arg"| 29
+    31 -.->|"flow"| 24
+    linkStyle 38 stroke:gray,color:gray;
     31 -.->|"reads, calls"| built-in:mean
-    linkStyle 23 stroke:gray;
+    linkStyle 39 stroke:gray;
+    24 -->|"defined-by, flow"| 32
     24 -->|"defined-by"| 31
-    24 -->|"defined-by"| 32
     32 -->|"reads, arg"| 31
     32 -->|"returns, arg"| 24
     32 -.->|"reads, calls"| built-in:_-
-    linkStyle 28 stroke:gray;
+    linkStyle 44 stroke:gray;
+    32 -.->|"flow"| 34
+    linkStyle 45 stroke:gray,color:gray;
     34 -->|"reads"| 24
+    34 -.->|"flow"| 36
+    linkStyle 47 stroke:gray,color:gray;
     36 -->|"reads, returns, arg"| 34
     36 -.->|"reads, calls"| built-in:print
-    linkStyle 31 stroke:gray;
+    linkStyle 49 stroke:gray;
+    36 -.->|"flow"| 38
+    linkStyle 50 stroke:gray,color:gray;
     38 -->|"reads"| 12
+    38 -.->|"flow"| 43
+    linkStyle 52 stroke:gray,color:gray;
+    43 -.->|"flow"| 44
+    linkStyle 53 stroke:gray,color:gray;
     44 -->|"reads"| 43
+    44 -.->|"flow"| 46
+    linkStyle 55 stroke:gray,color:gray;
+    46 -.->|"flow"| 47
+    linkStyle 56 stroke:gray,color:gray;
     47 -->|"reads"| 46
+    47 -.->|"flow"| 48
+    linkStyle 58 stroke:gray,color:gray;
     48 -->|"reads, arg, non-standard-evaluation"| 44
     48 -->|"reads, arg, non-standard-evaluation"| 47
     48 -->|"non-standard-evaluation"| 43
     48 -->|"non-standard-evaluation"| 46
     48 -.->|"reads, calls"| built-in:aes
-    linkStyle 39 stroke:gray;
+    linkStyle 63 stroke:gray;
+    48 -.->|"flow"| 50
+    linkStyle 64 stroke:gray,color:gray;
     50 -->|"reads, arg"| 48
+    50 -.->|"flow"| 52
+    linkStyle 66 stroke:gray,color:gray;
     50 -->|"reads, arg"| 38
     50 -.->|"reads, calls"| built-in:ggplot
-    linkStyle 42 stroke:gray;
+    linkStyle 68 stroke:gray;
     52 -->|"arg"| 38
     52 -->|"returns, arg"| 50
+    52 -.->|"flow"| 54
+    linkStyle 71 stroke:gray,color:gray;
     52 -.->|"reads, calls"| built-in:___
-    linkStyle 45 stroke:gray;
+    linkStyle 72 stroke:gray;
+    54 -.->|"flow"| 55
+    linkStyle 73 stroke:gray,color:gray;
     54 -.->|"reads, calls"| built-in:geom_point
-    linkStyle 46 stroke:gray;
+    linkStyle 74 stroke:gray;
     54 -->|"reads"| 50
     55 -->|"reads, arg"| 52
     55 -->|"reads, arg"| 54
     55 -.->|"reads, calls"| built-in:_
-    linkStyle 50 stroke:gray;
+    linkStyle 78 stroke:gray;
+    55 -.->|"flow"| 57
+    linkStyle 79 stroke:gray,color:gray;
     57 -->|"reads"| 18
+    57 -.->|"flow"| 58
+    linkStyle 81 stroke:gray,color:gray;
+    58 -.->|"flow"| 60
+    linkStyle 82 stroke:gray,color:gray;
     60 -->|"reads, returns, arg"| 57
     60 -->|"reads, arg"| 58
     60 -.->|"reads, calls"| built-in:_
-    linkStyle 54 stroke:gray;
+    linkStyle 85 stroke:gray;
+    60 -.->|"flow"| 62
+    linkStyle 86 stroke:gray,color:gray;
     62 -->|"reads"| 18
+    62 -.->|"flow"| 63
+    linkStyle 88 stroke:gray,color:gray;
+    63 -.->|"flow"| 65
+    linkStyle 89 stroke:gray,color:gray;
     65 -->|"reads, returns, arg"| 62
     65 -->|"reads, arg"| 63
     65 -.->|"reads, calls"| built-in:_
-    linkStyle 58 stroke:gray;
+    linkStyle 92 stroke:gray;
+    65 -.->|"flow"| 67
+    linkStyle 93 stroke:gray,color:gray;
     67 -->|"reads, arg"| 60
     67 -->|"reads, arg"| 65
     67 -.->|"reads, calls"| built-in:plot
-    linkStyle 61 stroke:gray;
+    linkStyle 96 stroke:gray;
+    67 -.->|"flow"| 69
+    linkStyle 97 stroke:gray,color:gray;
     69 -->|"reads"| 18
+    69 -.->|"flow"| 70
+    linkStyle 99 stroke:gray,color:gray;
+    70 -.->|"flow"| 72
+    linkStyle 100 stroke:gray,color:gray;
     72 -->|"reads, returns, arg"| 69
     72 -->|"reads, arg"| 70
     72 -.->|"reads, calls"| built-in:_
-    linkStyle 65 stroke:gray;
+    linkStyle 103 stroke:gray;
+    72 -.->|"flow"| 74
+    linkStyle 104 stroke:gray,color:gray;
     74 -->|"reads"| 18
+    74 -.->|"flow"| 75
+    linkStyle 106 stroke:gray,color:gray;
+    75 -.->|"flow"| 77
+    linkStyle 107 stroke:gray,color:gray;
     77 -->|"reads, returns, arg"| 74
     77 -->|"reads, arg"| 75
     77 -.->|"reads, calls"| built-in:_
-    linkStyle 69 stroke:gray;
+    linkStyle 110 stroke:gray;
+    77 -.->|"flow"| 79
+    linkStyle 111 stroke:gray,color:gray;
     79 -->|"reads, arg"| 72
     79 -->|"reads, arg"| 77
     79 -.->|"reads, calls"| built-in:points
-    linkStyle 72 stroke:gray;
+    linkStyle 114 stroke:gray;
+    79 -.->|"flow"| 82
+    linkStyle 115 stroke:gray,color:gray;
     79 -->|"reads"| 67
     82 -->|"reads"| 18
+    82 -.->|"flow"| 83
+    linkStyle 118 stroke:gray,color:gray;
+    83 -.->|"flow"| 85
+    linkStyle 119 stroke:gray,color:gray;
     85 -->|"reads, returns, arg"| 82
     85 -->|"reads, arg"| 83
+    85 -.->|"flow"| 87
+    linkStyle 122 stroke:gray,color:gray;
     85 -.->|"reads, calls"| built-in:_
-    linkStyle 77 stroke:gray;
+    linkStyle 123 stroke:gray;
     87 -->|"reads, arg"| 85
     87 -.->|"reads, calls"| built-in:mean
-    linkStyle 79 stroke:gray;
+    linkStyle 125 stroke:gray;
+    87 -.->|"flow"| 89
+    linkStyle 126 stroke:gray,color:gray;
     89 -->|"reads, returns, arg"| 87
     89 -.->|"reads, calls"| built-in:print
-    linkStyle 81 stroke:gray;
+    linkStyle 128 stroke:gray;
 ```
 
 	
-(The analysis required _5.7 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _3.8 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
@@ -876,11 +956,11 @@ _Results (prettified and summarized):_
 Query: **call-context** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input** (2 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))\
-_All queries together required ≈7 ms (1ms accuracy, total 8 ms)_
+_All queries together required ≈3 ms (1ms accuracy, total 4 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _8.3 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _3.8 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -918,7 +998,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 7
+    "timing": 3
   }
 }
 ```

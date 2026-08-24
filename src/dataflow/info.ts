@@ -123,7 +123,7 @@ export function doesExitPointPropagateCalls(type: ExitPointType): boolean {
  * This may be as innocent as the last expression or explicit with a `return`/`break`/`next`.
  * @see {@link ExitPointType} - for the different types of exit points
  * @see {@link addNonDefaultExitPoints} - to easily modify lists of exit points
- * @see {@link alwaysExits} - to check whether a list of control dependencies always triggers an exit
+ * @see {@link ControlFlow#alwaysExits|ControlFlow.alwaysExits()} - to check whether a subtree always jumps away
  * @see {@link filterOutLoopExitPoints} - to remove loop exit points from a list
  */
 export interface ExitPoint {
@@ -188,6 +188,20 @@ export type KillReference =
 export interface DataflowCfgInformation {
 	/** The entry node into the subgraph */
 	entryPoint: NodeId,
+	/**
+	 * The node control flow enters this subtree at.
+	 * Control flow is modeled in post-order (operands are evaluated before the operator that consumes them),
+	 * so for compound constructs this is not the {@link DataflowCfgInformation#entryPoint|entryPoint}
+	 * (which names the value-producing node) but the first node that is actually evaluated.
+	 * Left `undefined` whenever both coincide, which is the case for all leaves.
+	 */
+	cfgEntry?:  NodeId,
+	/**
+	 * The node control flow leaves this subtree at, joining the branches of the construct if it has any.
+	 * Left `undefined` whenever the {@link DataflowCfgInformation#exitPoints|exitPoints} already name it,
+	 * which is the case whenever the construct has a single point of exit.
+	 */
+	cfgExit?:   NodeId,
 	/**
 	 * All already identified exit points (active 'return'/'break'/'next'-likes) of the respective structure.
 	 * This also tracks (local knowledge of) exceptions thrown within the structure.
@@ -305,23 +319,6 @@ function coversSet(cds: ReadonlySet<ControlDependency> | readonly ControlDepende
  */
 export function happensInEveryBranchSet(cds: ReadonlySet<ControlDependency> | undefined): boolean {
 	return cds === undefined || (cds.size !== 0 && coversSet(cds));
-}
-
-/**
- * Checks whether the given dataflow information always exits (i.e., if there is a non-default exit point in every branch).
- * @see {@link ExitPoint} - for the different types of exit points
- */
-export function alwaysExits(data: DataflowInformation): boolean {
-	let cds: ControlDependency[] = [];
-	for(const e of data.exitPoints) {
-		if(e.type !== ExitPointType.Default) {
-			if(e.cds === undefined) {
-				return true;
-			}
-			cds = cds.concat(e.cds);
-		}
-	}
-	return happensInEveryBranch(cds);
 }
 
 /**

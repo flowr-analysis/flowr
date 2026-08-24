@@ -422,6 +422,7 @@ footer .ends > div { display: flex; flex-direction: column; gap: .3rem; }
 footer b { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
 footer a { color: var(--fg); text-decoration: none; font-size: .9rem; }
 footer a:hover { color: var(--accent); text-decoration: underline; }
+.updated { margin: .6rem 0 1.5rem; font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .prose { max-width: 58rem; color: var(--muted); }
 .prose.small { font-size: .88rem; margin-top: 2rem; }
 </style>
@@ -430,7 +431,7 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 <main>
 
 <div class="bar">
-	<h2><a class="brand" href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><a class="version" id="version" href="https://github.com/flowr-analysis/flowr/releases/tag/v2.14.1" target="_blank" rel="noopener" title="the release notes of flowR v2.14.1">v2.14.1</a></h2>
+	<h2><a class="brand" href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><a class="version" id="version" data-release="v2.14.4" href="https://github.com/flowr-analysis/flowr/releases/tag/v2.14.4" target="_blank" rel="noopener" title="the release notes of flowR v2.14.4">v2.14.4</a></h2>
 	<nav>
 		<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
 		<a href="wiki/sigdb/" target="_blank" rel="noopener">Signature DB</a>
@@ -450,7 +451,7 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 	<h1>Program Analysis for R</h1>
 	<p class="lead">flowR is an open source static program analyzer for your R code. It helps you understand existing scripts,
 		find quality issues, improve reproducibility, and check the validity of your analyses.</p>
-	<p id="meta"><b>v2.14.1</b> &middot; <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a></p>
+	<p id="meta"><b>v2.14.4</b> &middot; <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a></p>
 	<p class="cta">
 		<a class="primary" href="https://github.com/flowr-analysis/flowr/wiki/Setup" target="_blank" rel="noopener">Get started</a>
 		<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
@@ -486,7 +487,7 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 	<div class="demobody">
 	<div class="explain">
 		<p class="lede" id="lede">Point at any name below, or at an access like survey$age, and flowR keeps only the lines that matter.</p>
-		<p class="more" id="lede-more">It keeps the lines the value depends on, the called functions included, and drops the rest.</p>
+		<p class="more" id="lede-more">It keeps just the lines the value depends on (including called functions).</p>
 		<div class="direction" id="direction">
 			<span class="label">Which way?</span>
 			<div class="ways" role="group" aria-label="Which direction to slice in">
@@ -589,12 +590,12 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 </div>
 
 <p class="prose">
-	On real-world R scripts, flowR (measured for v2.14.1) needs on average:
+	On real-world R scripts, flowR (measured for v2.14.4) needs on average:
 </p>
 <div class="timings">
-		<span class="timing">analyzing a script<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline points="0.0,3.8 1.9,3.2 3.8,2.0 5.8,4.2 7.7,5.9 9.6,4.6 11.5,9.8 13.4,4.3 15.3,3.8 17.3,3.9 19.2,5.0 21.1,4.0 23.0,4.3 24.9,5.3 26.8,4.3 28.8,3.8 30.7,4.4 32.6,3.7 34.5,3.2 36.4,9.7 38.3,11.0 40.3,10.5 42.2,4.2 44.1,3.4 46.0,4.0" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg><b>106 ms</b></span>
-		<span class="timing">linting it<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline points="0.0,8.8 11.5,11.0 23.0,2.8 34.5,2.3 46.0,2.0" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg><b>84 ms</b></span>
-		<span class="timing">slicing for one name<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline points="0.0,4.5 1.9,4.1 3.8,3.8 5.8,2.1 7.7,2.8 9.6,2.0 11.5,4.2 13.4,6.4 15.3,6.3 17.3,6.3 19.2,6.3 21.1,5.6 23.0,7.6 24.9,7.7 26.8,7.6 28.8,7.6 30.7,10.7 32.6,10.4 34.5,10.4 36.4,11.0 38.3,11.0 40.3,11.0 42.2,10.5 44.1,10.2 46.0,10.2" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg><b>0.6 ms</b></span>
+		<span class="timing">analyzing a script<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline points="0.0,3.8 1.7,3.2 3.4,2.0 5.1,4.2 6.8,5.9 8.5,4.6 10.2,9.8 11.9,4.3 13.6,3.8 15.3,3.9 17.0,5.0 18.7,4.0 20.4,4.3 22.1,5.3 23.9,4.3 25.6,3.8 27.3,4.4 29.0,3.7 30.7,3.2 32.4,9.7 34.1,11.0 35.8,10.5 37.5,4.2 39.2,3.4 40.9,4.0 42.6,3.3 44.3,5.1 46.0,3.2" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg><b>110 ms</b></span>
+		<span class="timing">linting it<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline points="0.0,8.8 6.6,11.0 13.1,2.8 19.7,2.3 26.3,2.0 32.9,8.7 39.4,8.3 46.0,5.8" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg><b>76 ms</b></span>
+		<span class="timing">slicing for one name<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline points="0.0,4.5 1.7,4.1 3.4,3.8 5.1,2.1 6.8,2.8 8.5,2.0 10.2,4.2 11.9,6.4 13.6,6.3 15.3,6.3 17.0,6.3 18.7,5.6 20.4,7.6 22.1,7.7 23.9,7.6 25.6,7.6 27.3,10.7 29.0,10.4 30.7,10.4 32.4,11.0 34.1,11.0 35.8,11.0 37.5,10.5 39.2,10.2 40.9,10.2 42.6,10.2 44.3,10.4 46.0,10.2" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg><b>0.6 ms</b></span>
 </div>
 <p class="prose">
 	<a href="wiki/stats/benchmark/" target="_blank" rel="noopener">View the full stats on the benchmark page</a>.
@@ -776,11 +777,13 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 	Maintained at Ulm University by <a href="https://eagleoutice.github.io/portfolio/" target="_blank" rel="noopener">Florian Sihler</a>,
 	<a href="https://www.uni-ulm.de/in/sp/team/oliver-gerstl/" target="_blank" rel="noopener">Oliver Gerstl</a>
 	and <a href="https://github.com/flowr-analysis/flowr/graphs/contributors" target="_blank" rel="noopener">everyone else who pitched in</a>,
-	free software under the <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPLv3</a>.
+	free software under the <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPLv3 License</a>.
 	Funded by the German Research Foundation (DFG), grant
 	<a href="https://gepris.dfg.de/gepris/projekt/504226141" target="_blank" rel="noopener">504226141</a>, with a gift from
 	<a href="https://posit.co/" target="_blank" rel="noopener">Posit</a>.
 </p>
+
+<p class="updated">Last updated 2026-08-22, 19:17</p>
 
 </main>
 <div id="tip" role="tooltip" aria-hidden="true"></div>
@@ -812,15 +815,15 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 	const tabs = [...document.querySelectorAll('.tabs button')];
 	const ledes = {
 		slice:     ['Point at any name, or at an access like survey$age, and flowR reduces the script to the part that computes it.',
-			'It keeps the lines the value depends on, the called functions included, and drops the rest.'],
+			'It keeps just the lines the value depends on (including called functions).'],
 		impact:    ['Point at any name to keep the part of the script its value goes on to affect.',
-			'The other direction: change this line, and these are the lines that notice.'],
+			'The other direction: marks every line impacted by the value (including called functions).'],
 		deps:      ['What this script needs, and every file it reads or writes, without running it.',
 			'flowR follows the calls rather than the text, so a path assembled in a variable still shows up, and so does a library() call behind a condition.'],
 		lint:      ['With the dataflow in hand, flowR checks things a text-based linter has no way to see.',
 			'Every finding knows where its value came from, so an unused definition is one that nothing reads, not one that merely looks unused.'],
 		values:    ['What flowR infers for each name, from data frame shapes to concrete values.',
-			'The shape survives filters and joins, so you learn how many columns a frame holds at a given line, and what they are called.'],
+			'We track the shape through filters and joins, so you learn how many columns a frame holds at a given line, and what they are called.'],
 		origin:    ['Which definition a name really reads, and which function a call really reaches.',
 			'Aliases, reassignments and shadowed names included, which is what makes jump-to-definition work in the editor.'],
 		signature: ['Ask what flowR knows about any R function, resolved from its own database.',
@@ -937,24 +940,26 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 	].join(' &middot; ')).catch(() => { /* the page reads fine without it */ });
 </script>
 <script>
-	/* the tag says the number, the name that release carries only lives on GitHub, so it is fetched once someone asks for it */
 	(function() {
 		const tag = document.getElementById('version');
-		if(!tag) { return; }
+		if(!tag || !tag.dataset.release) { return; }
+		const said = tag.title;
+		const ahead = tag.textContent.trim().endsWith('*');
 		let asked = false;
 		const name = () => {
-			if(asked || !tag.textContent) { return; }
+			if(asked) { return; }
 			asked = true;
-			fetch('https://api.github.com/repos/flowr-analysis/flowr/releases/tags/' + tag.textContent)
+			fetch('https://api.github.com/repos/flowr-analysis/flowr/releases/tags/' + tag.dataset.release)
 				.then(r => r.ok ? r.json() : Promise.reject(r.status))
 				.then(release => {
-				if(release.name) {
-					const when = release.published_at
-						? new Date(release.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-						: '';
-					tag.title = when ? release.name + ', released ' + when : release.name;
-				}
-			})
+					if(release.name) {
+						const when = release.published_at
+							? new Date(release.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+							: '';
+						const also = when ? release.name + ', released ' + when : release.name;
+						tag.title = ahead ? said + ' · ' + also : also;
+					}
+				})
 				.catch(() => { /* the title it already carries says enough */ });
 		};
 		tag.addEventListener('pointerenter', name);

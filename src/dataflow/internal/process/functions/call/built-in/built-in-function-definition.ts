@@ -1,5 +1,6 @@
 import { MatchArgs } from '../../../../../graph/match-args';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
+import { ControlFlow } from '../../../../control-flow';
 import {
 	type DataflowInformation,
 	ExitPointType,
@@ -74,9 +75,11 @@ export function processFunctionDefinition<OtherInfo>(
 	let readInParameters: IdentifierReference[] = [];
 	const allParameterReads: IdentifierReference[] = [];
 	const paramIds: NodeId[] = [];
+	const processedParameters: DataflowInformation[] = [];
 	for(const param of parameters) {
 		guard(param !== EmptyArgument, () => `Empty param arg in function definition ${Identifier.toString(name.content)}, ${JSON.stringify(args)}`);
 		const processed = processDataflowFor(param, data);
+		processedParameters.push(processed);
 		if(RParameter.is(param.value)) {
 			paramIds.push(param.value.name.info.id);
 		}
@@ -191,11 +194,14 @@ export function processFunctionDefinition<OtherInfo>(
 		}
 		outEnvironment = overwriteEnvironment(outEnvironment, hookEnvironment);
 	}
+	const flowEntry = ControlFlow.inSequence(subgraph, processedParameters, ControlFlow.entryOf(body)) ?? ControlFlow.entryOf(body);
+
 	const flow: DataflowFunctionFlowInformation = {
 		unknownReferences: [],
 		in:                remainingRead,
 		out:               [],
 		entryPoint:        body.entryPoint,
+		cfgEntry:          flowEntry === body.entryPoint ? undefined : flowEntry,
 		graph:             new Set(subgraph.rootIds()),
 		environment:       outEnvironment,
 		hooks:             compactedHooks
@@ -274,6 +280,8 @@ export function processFunctionDefinition<OtherInfo>(
 		out:               [],
 		exitPoints:        [],
 		entryPoint:        name.info.id,
+		/* evaluating a function definition produces the closure, it does not run the body */
+		cfgExit:           name.info.id,
 		graph,
 		environment:       originalEnvironment,
 		hooks:             []
@@ -527,16 +535,6 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
 	return { ...data, environment: env };
 }
 
-/**
- * Within something like `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }`
- * `a` will be defined by `b` and `b` will be a promise object bound by the first definition of b it can find.
- * This means that this function returns `2` due to the first `b <- 1` definition.
- * If the code is `f <- function(a=b, m=3) { if(m > 3) { b <- 1; }; a; b <- 5; a + 1 }`, we need a link to `b <- 1` and `b <- 6`
- * as `b` can be defined by either one of them.
- * <p>
- * <b>Currently we may be unable to narrow down every definition within the body as we have not implemented ways to track what covers the first definitions precisely</b>
- */
-/** Links a parameter default read to the body writes of the same name (may), returning whether any was linked. */
 /** Groups body writes by name, each list sorted by descending id (so the lowest id is last), for `linkParameterReadToBodyWrites`. */
 function groupBodyWrites(out: readonly IdentifierReference[]): Map<Identifier, IdentifierReference[]> {
 	const byName = new Map<Identifier, IdentifierReference[]>();
@@ -557,6 +555,17 @@ function groupBodyWrites(out: readonly IdentifierReference[]): Map<Identifier, I
 	return byName;
 }
 
+/**
+ * Within something like `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }`
+ * `a` will be defined by `b` and `b` will be a promise object bound by the first definition of b it can find.
+ * This means that this function returns `2` due to the first `b <- 1` definition.
+ * If the code is `f <- function(a=b, m=3) { if(m > 3) { b <- 1; }; a; b <- 5; a + 1 }`, we need a link to `b <- 1` and `b <- 6`
+ * as `b` can be defined by either one of them.
+ * <p>
+ * <b>Currently we may be unable to narrow down every definition within the body as we have not implemented ways to track what covers the first definitions precisely</b>
+ *
+ * Links a parameter default read to the body writes of the same name (may), returning whether any was linked.
+ */
 function linkParameterReadToBodyWrites(graph: DataflowGraph, read: IdentifierReference, writesByName: ReadonlyMap<Identifier, IdentifierReference[]>): boolean {
 	const writingOuts = read.name === undefined ? undefined : writesByName.get(read.name);
 	if(writingOuts === undefined) {

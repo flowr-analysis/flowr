@@ -204,8 +204,8 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 	}
 }
 
-/** Resolves an id to a single constant string value, or `undefined` if it is not a unique string constant. */
 /**
+ * Resolves an id to a single constant string value, or `undefined` if it is not a unique string constant.
  * @useInstead {@link Resolve.toSingleString}
  */
 export function resolveIdToSingleString(id: NodeId | RNodeWithParent | undefined, info: ResolveInfo): string | undefined {

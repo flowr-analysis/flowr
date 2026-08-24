@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[src/documentation/wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts)' on 2026-08-16, 06:15:25 UTC (v2.13.16), so please do not edit it directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-20, 22:53:36 UTC (v2.14.1), please do not edit directly._
 <h2 id="Inspect Recursive Functions Query">Inspect Recursive Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions are recursive\
@@ -26,11 +26,11 @@ _Results (prettified and summarized):_
 
 Query: **inspect-recursion** (2ms)\
 &nbsp;&nbsp;- Function **21** (1.9-57) is recursive\
-_All queries together required ≈3 ms (1ms accuracy, total 2 ms)_
+_All queries together required ≈2 ms (1ms accuracy, total 3 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _2.4 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _2.9 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -49,7 +49,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 3
+    "timing": 2
   }
 }
 ```
@@ -72,7 +72,7 @@ fact <- function(n) { if(n <= 1) 1 else n * fact(n - 1) }
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _1.7 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _2.3 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -89,7 +89,6 @@ subgraph "flow-21" [function 21]
       *1.26* (**id: 5**)`"])
     6{{"`*#91;RNumber#93;* **1**
       *1.31* (**id: 6**)`"}}
-   %% No edges found for 6
     7[["`*#91;RBinaryOp#93;* base#58;#58;**#60;=**
       *1.26-31* (**id: 7**)
     arg: (5, 6)`"]]
@@ -98,14 +97,12 @@ subgraph "flow-21" [function 21]
     style built-in:__ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     8{{"`*#91;RNumber#93;* **1**
       *1.34* (**id: 8**, 19+)`"}}
-   %% No edges found for 8
     10(["`*#91;RSymbol#93;* **n**
       *1.41* (**id: 10**)`"])
     12(["`*#91;RSymbol#93;* **n**
       *1.50* (**id: 12**)`"])
     13{{"`*#91;RNumber#93;* **1**
       *1.54* (**id: 13**)`"}}
-   %% No edges found for 13
     14[["`*#91;RBinaryOp#93;* base#58;#58;**#45;**
       *1.50-54* (**id: 14**, 19-)
     arg: (12, 13)`"]]
@@ -137,7 +134,6 @@ if`"]
     arg: (19)`"]]
     style 8 stroke:purple,stroke-width:4px; 
 end
-   %% No edges found for 21
     0["`*#91;RSymbol#93;* **fact**
       *1.1-4* (**id: 0**, v: 21)`"]
     22[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -146,49 +142,71 @@ end
     built-in:_-["`Built-In:
 #60;#45;`"]
     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 5
+    linkStyle 0 stroke:gray,color:gray;
     1 -->|"def-by-on-call"| 14
     5 -->|"reads"| 1
+    5 -.->|"flow"| 6
+    linkStyle 3 stroke:gray,color:gray;
+    6 -.->|"flow"| 7
+    linkStyle 4 stroke:gray,color:gray;
     7 -->|"reads, arg"| 5
     7 -->|"reads, arg"| 6
+    7 -.->|"branch (when: true)"| 8
+    linkStyle 7 stroke:gray,color:gray;
+    7 -.->|"branch (when: false)"| 10
+    linkStyle 8 stroke:gray,color:gray;
     7 -.->|"reads, calls"| built-in:__
-    linkStyle 4 stroke:gray;
+    linkStyle 9 stroke:gray;
+    8 -.->|"flow"| 19
+    linkStyle 10 stroke:gray,color:gray;
     10 -->|"reads"| 1
+    10 -.->|"flow"| 12
+    linkStyle 12 stroke:gray,color:gray;
     12 -->|"reads"| 1
+    12 -.->|"flow"| 13
+    linkStyle 14 stroke:gray,color:gray;
+    13 -.->|"flow"| 14
+    linkStyle 15 stroke:gray,color:gray;
     14 -->|"reads, arg"| 12
     14 -->|"reads, arg"| 13
     14 -.->|"reads, calls"| built-in:-
-    linkStyle 9 stroke:gray;
+    linkStyle 18 stroke:gray;
+    14 -.->|"flow"| 16
+    linkStyle 19 stroke:gray,color:gray;
     14 -->|"def-on-call"| 1
-    14 -->|"CD-False"| 19
-    linkStyle 11 stroke:gray,color:gray;
     16 -->|"reads, arg"| 14
+    16 -.->|"flow"| 17
+    linkStyle 22 stroke:gray,color:gray;
     16 -->|"calls"| 21
     16 -->|"returns"| 19
     16 -->|"def-on-call, def-by-on-call"| 0
-    16 -->|"CD-False"| 19
-    linkStyle 16 stroke:gray,color:gray;
     17 -->|"reads, arg"| 10
     17 -->|"reads, arg"| 16
     17 -.->|"reads, calls"| built-in:_
-    linkStyle 19 stroke:gray;
-    17 -->|"CD-False"| 19
-    linkStyle 20 stroke:gray,color:gray;
+    linkStyle 28 stroke:gray;
+    17 -.->|"flow"| 19
+    linkStyle 29 stroke:gray,color:gray;
     19 -->|"returns, arg"| 8
     19 -->|"returns, arg"| 17
     19 -->|"reads, arg"| 7
     19 -.->|"reads, calls"| built-in:if
-    linkStyle 24 stroke:gray;
+    linkStyle 33 stroke:gray;
+    19 -.->|"flow"| 20
+    linkStyle 34 stroke:gray,color:gray;
     20 -->|"returns, arg"| 19
     20 -.->|"reads, calls"| built-in:_
-    linkStyle 26 stroke:gray;
+    linkStyle 36 stroke:gray;
 21 -.-|function| flow-21
 
+    21 -.->|"flow"| 0
+    linkStyle 38 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 22
     0 -->|"defined-by"| 21
-    0 -->|"defined-by"| 22
     22 -->|"reads, arg"| 21
     22 -->|"returns, arg"| 0
     22 -.->|"reads, calls"| built-in:_-
-    linkStyle 32 stroke:gray;
+    linkStyle 43 stroke:gray;
 ```
 
 	
@@ -233,7 +251,7 @@ _All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _2.3 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _2.0 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -275,7 +293,7 @@ fact <- function(n) { if(n <= 1) 1 else n * fact(n - 1) }
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _1.8 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _1.5 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -292,7 +310,6 @@ subgraph "flow-21" [function 21]
       *1.26* (**id: 5**)`"])
     6{{"`*#91;RNumber#93;* **1**
       *1.31* (**id: 6**)`"}}
-   %% No edges found for 6
     7[["`*#91;RBinaryOp#93;* base#58;#58;**#60;=**
       *1.26-31* (**id: 7**)
     arg: (5, 6)`"]]
@@ -301,14 +318,12 @@ subgraph "flow-21" [function 21]
     style built-in:__ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     8{{"`*#91;RNumber#93;* **1**
       *1.34* (**id: 8**, 19+)`"}}
-   %% No edges found for 8
     10(["`*#91;RSymbol#93;* **n**
       *1.41* (**id: 10**)`"])
     12(["`*#91;RSymbol#93;* **n**
       *1.50* (**id: 12**)`"])
     13{{"`*#91;RNumber#93;* **1**
       *1.54* (**id: 13**)`"}}
-   %% No edges found for 13
     14[["`*#91;RBinaryOp#93;* base#58;#58;**#45;**
       *1.50-54* (**id: 14**, 19-)
     arg: (12, 13)`"]]
@@ -340,7 +355,6 @@ if`"]
     arg: (19)`"]]
     style 8 stroke:purple,stroke-width:4px; 
 end
-   %% No edges found for 21
     0["`*#91;RSymbol#93;* **fact**
       *1.1-4* (**id: 0**, v: 21)`"]
     22[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -349,49 +363,71 @@ end
     built-in:_-["`Built-In:
 #60;#45;`"]
     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 5
+    linkStyle 0 stroke:gray,color:gray;
     1 -->|"def-by-on-call"| 14
     5 -->|"reads"| 1
+    5 -.->|"flow"| 6
+    linkStyle 3 stroke:gray,color:gray;
+    6 -.->|"flow"| 7
+    linkStyle 4 stroke:gray,color:gray;
     7 -->|"reads, arg"| 5
     7 -->|"reads, arg"| 6
+    7 -.->|"branch (when: true)"| 8
+    linkStyle 7 stroke:gray,color:gray;
+    7 -.->|"branch (when: false)"| 10
+    linkStyle 8 stroke:gray,color:gray;
     7 -.->|"reads, calls"| built-in:__
-    linkStyle 4 stroke:gray;
+    linkStyle 9 stroke:gray;
+    8 -.->|"flow"| 19
+    linkStyle 10 stroke:gray,color:gray;
     10 -->|"reads"| 1
+    10 -.->|"flow"| 12
+    linkStyle 12 stroke:gray,color:gray;
     12 -->|"reads"| 1
+    12 -.->|"flow"| 13
+    linkStyle 14 stroke:gray,color:gray;
+    13 -.->|"flow"| 14
+    linkStyle 15 stroke:gray,color:gray;
     14 -->|"reads, arg"| 12
     14 -->|"reads, arg"| 13
     14 -.->|"reads, calls"| built-in:-
-    linkStyle 9 stroke:gray;
+    linkStyle 18 stroke:gray;
+    14 -.->|"flow"| 16
+    linkStyle 19 stroke:gray,color:gray;
     14 -->|"def-on-call"| 1
-    14 -->|"CD-False"| 19
-    linkStyle 11 stroke:gray,color:gray;
     16 -->|"reads, arg"| 14
+    16 -.->|"flow"| 17
+    linkStyle 22 stroke:gray,color:gray;
     16 -->|"calls"| 21
     16 -->|"returns"| 19
     16 -->|"def-on-call, def-by-on-call"| 0
-    16 -->|"CD-False"| 19
-    linkStyle 16 stroke:gray,color:gray;
     17 -->|"reads, arg"| 10
     17 -->|"reads, arg"| 16
     17 -.->|"reads, calls"| built-in:_
-    linkStyle 19 stroke:gray;
-    17 -->|"CD-False"| 19
-    linkStyle 20 stroke:gray,color:gray;
+    linkStyle 28 stroke:gray;
+    17 -.->|"flow"| 19
+    linkStyle 29 stroke:gray,color:gray;
     19 -->|"returns, arg"| 8
     19 -->|"returns, arg"| 17
     19 -->|"reads, arg"| 7
     19 -.->|"reads, calls"| built-in:if
-    linkStyle 24 stroke:gray;
+    linkStyle 33 stroke:gray;
+    19 -.->|"flow"| 20
+    linkStyle 34 stroke:gray,color:gray;
     20 -->|"returns, arg"| 19
     20 -.->|"reads, calls"| built-in:_
-    linkStyle 26 stroke:gray;
+    linkStyle 36 stroke:gray;
 21 -.-|function| flow-21
 
+    21 -.->|"flow"| 0
+    linkStyle 38 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 22
     0 -->|"defined-by"| 21
-    0 -->|"defined-by"| 22
     22 -->|"reads, arg"| 21
     22 -->|"returns, arg"| 0
     22 -.->|"reads, calls"| built-in:_-
-    linkStyle 32 stroke:gray;
+    linkStyle 43 stroke:gray;
 ```
 
 	

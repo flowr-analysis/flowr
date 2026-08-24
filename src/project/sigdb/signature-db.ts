@@ -1,4 +1,5 @@
 import { Identifier } from '../../dataflow/environments/identifier';
+import { groupGenericOf } from '../../dataflow/environments/group-generics';
 import type { DecodedFunction } from './decode';
 import type { PackageSignatureSource } from './reader';
 import { MergedSignatureSource } from './reader';
@@ -43,6 +44,10 @@ export interface SignatureDb {
 	/**
 	 * The database entry for a *qualified* call, i.e. a `pkg::fn` {@link Identifier}. Decodes only that one
 	 * function rather than the whole package.
+	 *
+	 * A name the package answers only as part of an S4 group falls back to the group: `Matrix::sin` is served by
+	 * `Matrix`'s `Math` entry when there is no `sin` of its own, because that is what an `sin(x)` call dispatches
+	 * to. The result then carries the group's name, not the one that was asked for.
 	 * @param id      - The qualified identifier of the function.
 	 * @param version - The version to answer for, {@link versionOf} of its package if omitted.
 	 */
@@ -95,7 +100,13 @@ export function signatureDbOf(deps: ReadOnlyFlowrAnalyzerDependenciesContext): S
 			return undefined; // without a package there is nothing to look the function up in
 		}
 		const name = Identifier.getName(id);
-		return answerFor(pkg, version, (src, v) => src.functionByName(pkg, name, v));
+		const found = answerFor(pkg, version, (src, v) => src.functionByName(pkg, name, v));
+		if(found !== undefined) {
+			return found;
+		}
+		/* `setMethod('Math', 'cls', ...)` answers every member of the group at once, so the group is the entry */
+		const group = groupGenericOf(name);
+		return group === undefined ? undefined : answerFor(pkg, version, (src, v) => src.functionByName(pkg, group, v));
 	};
 
 	return {

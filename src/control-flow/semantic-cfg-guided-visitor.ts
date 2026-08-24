@@ -42,6 +42,14 @@ export interface SemanticCfgGuidedVisitorConfiguration<
 }
 
 /**
+ * What every `on...Call` hook of the {@link SemanticCfgGuidedVisitor} receives: the call vertex it fired for.
+ * Hooks that recognize more of the call's shape extend this with the parts they resolved.
+ */
+export interface OnCall {
+	readonly call: DataflowGraphVertexFunctionCall;
+}
+
+/**
  * This visitor extends on the {@link DataflowAwareCfgGuidedVisitor} by dispatching visitors for separate function calls as well,
  * providing more information!
  * In a way, this is the mixin of syntactic and dataflow guided visitation.
@@ -64,14 +72,6 @@ export interface SemanticCfgGuidedVisitorConfiguration<
  *
  * Use {@link BasicCfgGuidedVisitor#start} to start the traversal.
  */
-/**
- * What every `on...Call` hook of the {@link SemanticCfgGuidedVisitor} receives: the call vertex it fired for.
- * Hooks that recognize more of the call's shape extend this with the parts they resolved.
- */
-export interface OnCall {
-	readonly call: DataflowGraphVertexFunctionCall;
-}
-
 export class SemanticCfgGuidedVisitor<
 	OtherInfo = NoInfo,
 	ControlFlow extends ControlFlowInformation = ControlFlowInformation,

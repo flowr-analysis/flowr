@@ -8,7 +8,8 @@ import {
 	ReferenceTypeReverseMapping
 } from '../../dataflow/environments/identifier';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { DfEdge, type EdgeType } from '../../dataflow/graph/edge';
+import type { DFControlFlowEdge } from '../../dataflow/graph/edge';
+import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { VariableDefinitionVertex, FunctionDefinitionVertex, type DataflowGraphVertexInfo, VertexType, FunctionCallVertex } from '../../dataflow/graph/vertex';
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import { MermaidDefaultMarkStyle, type MermaidMarkdownMark, type MermaidMarkStyle } from './info';
@@ -109,7 +110,7 @@ function displayFunctionArgMapping(argMapping: readonly FunctionArgument[]): str
 	}
 	return result.length === 0 ? '' : `\n    arg: (${result.join(', ')})`;
 }
-function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD-True' | 'CD-False' | 'function'>): string {
+function encodeEdge(from: string, to: string, types: Set<EdgeType | 'function'>): string {
 	return `${from}->${to}["${Array.from(types).join(':')}"]`;
 }
 
@@ -249,29 +250,36 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		mermaid.nodeLines.push('   %% No edges found for ' + id);
 		return;
 	}
-	const artificialCdEdges = (info.cds ?? []).map(x => [x.id, { types: new Set<EdgeType | 'CD-True' | 'CD-False'>([x.when ? 'CD-True' : 'CD-False']), file: x.file }] as const);
-
 	// eslint-disable-next-line prefer-const
-	for(let [target, edge] of [...edges, ...artificialCdEdges]) {
+	for(let [target, edge] of edges) {
 		if(includeOnlyIds && !includeOnlyIds.has(target)) {
 			continue;
 		}
 
 		const originalTarget = target;
 		target = Mermaid.escapeId(target);
-		const edgeTypes = typeof edge.types == 'number' ? new Set(DfEdge.splitTypes(edge as DfEdge)) : edge.types;
+		const edgeTypes = typeof edge.types == 'number' ? new Set(DfEdge.splitTypes(edge)) : edge.types;
+		const carriesControlFlow = edgeTypes.has(EdgeType.FlowEdge) || edgeTypes.has(EdgeType.ControlEdge);
+		/* an edge that carries dataflow as well stays a dataflow edge, it just says the control flow goes there too */
+		const onlyControlFlow = carriesControlFlow && ![...edgeTypes].some(t => typeof t === 'number' && (t & ~ControlFlowEdgeTypes) !== 0);
+		if(mermaid.simplified && onlyControlFlow) {
+			/* a simplified view is about the dataflow, and the control flow is a graph of its own */
+			continue;
+		}
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edgeTypes);
 		if(!mermaid.presentEdges.has(edgeId)) {
 			mermaid.presentEdges.add(edgeId);
-			const style = NodeId.isBuiltIn(target) ? '-.->' : '-->';
-			mermaid.edgeLines.push(`    ${idPrefix}${id} ${style}|"${[...edgeTypes].map(e => typeof e === 'number' ? DfEdge.typeToName(e) : e).join(', ')}${
-				'file' in edge && edge.file ? `, from: ${Mermaid.escape(String(edge.file))}` : ''
-			}"| ${idPrefix}${target}`);
+			const style = NodeId.isBuiltIn(target) || onlyControlFlow ? '-.->' : '-->';
+			const names = [...edgeTypes].map(e => typeof e === 'number' ? edgeName(e) : e).join(', ');
+			const cd = edgeTypes.has(EdgeType.ControlEdge) ? (edge as DFControlFlowEdge).cd : undefined;
+			const when = cd === undefined ? '' : ` (when: ${cd.when ?? 'any'})`;
+			const assumedFile = cd?.file ? `, from: ${Mermaid.escape(cd.file)}` : '';
+			mermaid.edgeLines.push(`    ${idPrefix}${id} ${style}|"${names}${when}${assumedFile}"| ${idPrefix}${target}`);
 			if(mermaid.mark?.has(id + '->' + target)) {
 				// who invented this syntax?!
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} ${mermaid.markStyle.edge}`);
 			}
-			if(edgeTypes.has('CD-True') || edgeTypes.has('CD-False')) {
+			if(onlyControlFlow) {
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray,color:gray;`);
 			}
 			if(NodeId.isBuiltIn(target)) {
@@ -283,6 +291,18 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 				}
 			}
 		}
+	}
+}
+
+/** control flow edges are drawn all over the graph, so they get a short name to save space */
+function edgeName(type: EdgeType): string {
+	switch(type) {
+		case EdgeType.FlowEdge:
+			return 'flow';
+		case EdgeType.ControlEdge:
+			return 'branch';
+		default:
+			return DfEdge.typeToName(type);
 	}
 }
 
@@ -305,7 +325,7 @@ export interface MermaidGraphConfiguration {
 // make the passing of root ids more performant again
 function graphToMermaidGraph(
 	rootIds: ReadonlySet<NodeId>,
-	{ simplified, graph, prefix = 'flowchart BT', idPrefix = '', includeEnvironments = !simplified, mark, rootGraph, presentEdges = new Set<string>(), markStyle = MermaidDefaultMarkStyle, includeOnlyIds, qualifyBaseR = true }: MermaidGraphConfiguration
+	{ simplified, graph, prefix = 'flowchart TD', idPrefix = '', includeEnvironments = !simplified, mark, rootGraph, presentEdges = new Set<string>(), markStyle = MermaidDefaultMarkStyle, includeOnlyIds, qualifyBaseR = true }: MermaidGraphConfiguration
 ): MermaidGraph {
 	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, presentVertices: new Set(), mark, rootGraph: rootGraph ?? graph, includeEnvironments, markStyle, simplified, qualifyBaseR };
 
@@ -330,7 +350,7 @@ export function diffGraphsToMermaid(left: LabeledDiffGraph, right: LabeledDiffGr
 	const { string: leftGraph, mermaid } = DataflowMermaid.convert({ graph: left.graph, prefix: '', idPrefix: `l-${left.label}`, includeEnvironments: true, mark: left.mark });
 	const { string: rightGraph } = DataflowMermaid.convert({ graph: right.graph, prefix: '', idPrefix: `r-${right.label}`, includeEnvironments: true, mark: right.mark, presentEdges: mermaid.presentEdges });
 
-	return `${prefix}flowchart BT\nsubgraph "${left.label}"\n${leftGraph}\nend\nsubgraph "${right.label}"\n${rightGraph}\nend`;
+	return `${prefix}flowchart TD\nsubgraph "${left.label}"\n${leftGraph}\nend\nsubgraph "${right.label}"\n${rightGraph}\nend`;
 }
 
 /**

@@ -57,9 +57,9 @@ export interface SignatureFunctionView {
 	readonly line?:      number;
 	/** deep link to the definition on the read-only GitHub mirror of the sources (CRAN, or R's own for a base package) */
 	readonly sourceUrl?: string;
-	/** best-effort rdrr.io documentation link, when the function name maps to a documentable topic */
+	/** best-effort documentation link (R's own manual for base R, rdrr.io for CRAN), when the name maps to a documentable topic */
 	readonly docUrl?:    string;
-	/** link to the `.Rd` help source *at the queried version*, which {@link docUrl} cannot offer (rdrr.io only serves the current release) */
+	/** link to the `.Rd` help source *at the queried version*, which {@link docUrl} cannot offer (it serves the current release alone) */
 	readonly manUrl?:    string;
 	/** whether the function looks like an S3 generic (has `<generic>.<class>` dispatch targets in the same package) */
 	readonly s3generic?: boolean;
@@ -67,6 +67,14 @@ export interface SignatureFunctionView {
 	readonly s3methods?: readonly string[];
 	/** when the function is an S3 method, the generic it dispatches for (`print.rema` is `print` in `base`, class `rema`); lazily computed */
 	readonly s3method?:  { readonly generic: string, readonly class: string, readonly package: string };
+	/**
+	 * The S4 group generic the name belongs to (`sin` is in `Math`, `+` in `Arith`). `viaGroup` says the view was
+	 * answered by the package's entry for the group rather than by one for the name itself: a
+	 * `setMethod('Math', 'cls', ...)` answers every member of the group at once, and that is what a `sin(x)` call
+	 * on such a class dispatches to. A member is often documented only under its `sin,cls-method` Rd alias, which
+	 * is why such a name can carry `no-doc` and still have a help page.
+	 */
+	readonly s4group?:   { readonly group: string, readonly viaGroup?: boolean };
 	/** a mermaid.live link visualizing the transitive call graph from this function (only when requested with `--cg`) */
 	readonly callGraph?: string;
 	/** what flowR itself states about the function, from the built-in environment of the analysis */
@@ -143,7 +151,7 @@ export interface SignatureMatchView {
 	readonly file?:              string;
 	readonly line?:              number;
 	readonly sourceUrl?:         string;
-	/** best-effort rdrr.io documentation link, when the function name maps to a documentable topic */
+	/** best-effort documentation link, see {@link SignatureFunctionView.docUrl} */
 	readonly docUrl?:            string;
 	/** link to the `.Rd` help source at the queried version, see {@link SignatureFunctionView.manUrl} */
 	readonly manUrl?:            string;

@@ -16,7 +16,7 @@ import { LintingResultCertainty } from '../../../linter/linter-format';
 import { Record } from '../../../util/record';
 import { ReadFunctions } from '../dependencies-query/function-info/read-functions';
 import { LinkedInputEntryPoints, LinkedInputObjects, narrowingFunctions } from './input-source-functions';
-import { CallProp, FileInputProps, InputProps } from '../../../dataflow/environments/built-in-props';
+import { CallProp, FileInputProps, InputProps, SemanticProp } from '../../../dataflow/environments/built-in-props';
 import { BuiltInIndex } from '../../../dataflow/environments/query-fn-props';
 
 export type InputSourcesQueryConfig = InputClassifierConfig;
@@ -42,7 +42,7 @@ const builtIns = BuiltInIndex.default();
  * Which functions belong to which input type is stated with the functions themselves, in the
  * {@link DefaultBuiltinConfig|built-in configuration}: a function that states its props and carries none of the
  * {@link InputProps} derives its result from its arguments, the others bring in data of their own, and a
- * {@link CallProp.Narrows} one bounds its result no matter what flows in.
+ * {@link SemanticProp.Narrows} one bounds its result no matter what flows in.
  * Add a function there (or override its props with your own built-in definitions) and it shows up here.
  */
 export const DefaultInputClassifierConfig: InputClassifierConfig = {
@@ -55,16 +55,16 @@ export const DefaultInputClassifierConfig: InputClassifierConfig = {
 	 */
 	[InputTraceType.Pure]:   builtIns.without(InputProps),
 	[InputType.File]:        [...ReadFunctions.map(readFunction => readFunction.name), ...builtIns.withAll(FileInputProps)],
-	[InputType.TempFile]:    builtIns.with(CallProp.TempFile),
+	[InputType.TempFile]:    builtIns.with(SemanticProp.TempFile),
 	[InputType.Glob]:        builtIns.with(CallProp.Glob),
 	[InputType.Network]:     Q.fromQuery({ type: 'linter', rules: ['network-functions'] }, LintingResultCertainty.Certain),
 	[InputType.Random]:      Q.fromQuery({ type: 'linter', rules: ['seeded-randomness'] }),
-	[InputType.System]:      builtIns.with(CallProp.Process),
-	[InputType.Ffi]:         builtIns.with(CallProp.Ffi),
-	[InputType.Lang]:        builtIns.with(CallProp.Lang),
+	[InputType.System]:      builtIns.with(SemanticProp.Process),
+	[InputType.Ffi]:         builtIns.with(SemanticProp.Ffi),
+	[InputType.Lang]:        builtIns.with(SemanticProp.Lang),
 	[InputType.Options]:     builtIns.with(CallProp.Ambient),
 	[InputType.CommandLine]: builtIns.with(CallProp.CommandLine),
-	[InputType.User]:        builtIns.with(CallProp.User),
+	[InputType.User]:        builtIns.with(SemanticProp.User),
 	linkedObjects:           LinkedInputObjects,
 	linkedEntryPoints:       LinkedInputEntryPoints,
 	narrowing:               narrowingFunctions(builtIns)

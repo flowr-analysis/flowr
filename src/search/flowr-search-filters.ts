@@ -12,7 +12,8 @@ import type { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/rol
 import { looselyCompareObjects } from '../util/objects';
 import { searchLogger } from './search-executor/search-generators';
 import { callFnProps } from '../dataflow/environments/query-fn-props';
-import type { CallProp, CallProps } from '../dataflow/environments/built-in-props';
+import type { CallProp, PropSelector, SemanticProp } from '../dataflow/environments/built-in-props';
+import { CallProps } from '../dataflow/environments/built-in-props';
 import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
@@ -49,8 +50,9 @@ export enum FlowrFilter {
 	 */
 	FilePathFilter = 'file-path-filter',
 	/**
-	 * Only returns function calls whose {@link CallProp} bits match the given mask, so that _every call that asks
-	 * the user_ or _every call that closes a device_ can be searched for without naming a single function.
+	 * Only returns function calls carrying the given {@link CallProp}/{@link SemanticProp} properties, so that
+	 * _every call that asks the user_ or _every call that closes a device_ can be searched for without naming a
+	 * single function.
 	 * This filter accepts {@link CallPropsArgs}.
 	 */
 	CallProps = 'call-props'
@@ -88,8 +90,8 @@ export const FlowrFilters = {
 		return rx.test(file ?? '');
 	}) satisfies FlowrFilterFunction<FilePathFilterArgs>,
 	[FlowrFilter.CallProps]: ((e: FlowrSearchElement<ParentInformation>, args: CallPropsArgs, data: { dataflow: DataflowInformation }) => {
-		const props = callFnProps(e.node.info.id, data.dataflow)?.props ?? 0;
-		return args.matchType === 'every' ? (props & args.props) === args.props : (props & args.props) !== 0;
+		const props = callFnProps(e.node.info.id, data.dataflow);
+		return args.matchType === 'every' ? CallProps.all(props, args.props) : CallProps.any(props, args.props);
 	}) satisfies FlowrFilterFunction<CallPropsArgs>
 } as const;
 export type FlowrFilterArgs<F extends FlowrFilter> = typeof FlowrFilters[F] extends FlowrFilterFunction<infer Args> ? Args : never;
@@ -114,9 +116,9 @@ export interface FilePathFilterArgs {
 	filePathRegex: string | RegExp
 }
 export interface CallPropsArgs {
-	/** the {@link CallProp} bits to look for, e.g. `CallProp.User | CallProp.Closes` */
-	props:      CallProps;
-	/** whether a call has to carry every bit of {@link props} or just one of them (the default) */
+	/** the properties to look for, e.g. `[SemanticProp.User, CallProp.Closes]` */
+	props:      PropSelector;
+	/** whether a call has to carry every one of {@link props} or just one of them (the default) */
 	matchType?: 'some' | 'every'
 }
 

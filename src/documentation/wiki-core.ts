@@ -38,7 +38,8 @@ import { contextFromInput } from '../project/context/flowr-analyzer-context';
 import { FlowrAnalyzerGasContext } from '../project/context/flowr-analyzer-gas-context';
 import { FlowrAnalyzerGasPlugin } from '../project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { GasFeatureKey, GasLevel } from '../gas';
-import { ArgProp, CallProp, ExclusiveCallProps, SigDbInferable } from '../dataflow/environments/built-in-props';
+import type { PropSelector } from '../dataflow/environments/built-in-props';
+import { ArgProp, CallProp, ExclusiveCallProps, CallProps, SemanticProp, SigDbInferable } from '../dataflow/environments/built-in-props';
 import { BuiltInIndex, inferFnProps } from '../dataflow/environments/query-fn-props';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import { SemVer } from 'semver';
@@ -116,38 +117,41 @@ async function gasPluginExample() {
 		.build();
 }
 
-/** the names of the {@link CallProp} bits that make up a mask, as inline code */
-function propNames(mask: number): string {
-	return Object.entries(CallProp).filter(([, b]) => typeof b === 'number' && (b & mask) !== 0)
-		.map(([n]) => `\`${n}\``).join(', ');
+/** the names of the properties a selector includes, as inline code */
+function propNames(selector: PropSelector): string {
+	return CallProps.names(selector).map(n => `\`${n}\``).join(', ');
 }
 
 /** The "Labeling the Built-Ins" section of the Core page, with a table per enum taken from the configuration. */
 function builtInLabelsSection(ctx: GeneralDocContext): string {
 	const index = BuiltInIndex.default();
-	/* the doc comment of a bit is its explanation, flattened to fit a table cell; bits nothing carries are left out */
-	const table = (type: 'CallProp' | 'ArgProp', of: (bit: number) => number) => [
-		`| ${type === 'CallProp' ? 'Call property' : 'Argument role'} | Built-ins | Meaning |`,
+	const Enums = { CallProp, SemanticProp, ArgProp };
+	const enumEntries = (type: keyof typeof Enums): [name: string, prop: PropSelector][] =>
+		Object.entries(Enums[type]).map(([name, prop]) => [name, prop as PropSelector]);
+	/* the doc comment of a property is its explanation, flattened to fit a table cell; properties nothing carries are left out */
+	const table = <Key extends keyof typeof Enums>(type: Key, header: string, of: (prop: PropSelector) => number) => [
+		`| ${header} | Built-ins | Meaning |`,
 		'| :-- | --: | :-- |',
-		...Object.entries(type === 'CallProp' ? CallProp : ArgProp)
-			.filter(([, bit]) => typeof bit === 'number' && of(bit) > 0)
-			.map(([name, bit]) => {
+		...enumEntries(type).filter(([, prop]) => of(prop) > 0)
+			.map(([name, prop]) => {
 				/* a `{@link}` has already become an anchor, so dropping the tags leaves the bare name and a stray space */
 				const doc = ctx.doc(`${type}::${name}`).replaceAll(/<[^>]*>/g, '').replaceAll(/\s+/g, ' ')
 					.replaceAll(/ ([),.;])/g, '$1').replaceAll('|', '\\|').trim();
-				const db = type === 'CallProp' && ((bit as number) & SigDbInferable) !== 0 ? '<sup>db</sup>' : '';
-				return `| \`${name}\`${db} | ${of(bit as number)} | ${doc} |`;
+				const db = type === 'CallProp' && ((prop as number) & SigDbInferable) !== 0 ? '<sup>db</sup>' : '';
+				return `| \`${name}\`${db} | ${of(prop)} | ${doc} |`;
 			})
 	].join('\n');
 
 	return `#### Labeling the Built-Ins
 
-Besides the processor, an entry says what the function *is*, in two label vocabularies:
+Besides the processor, an entry says what the function *is*, in three label vocabularies:
 
-* ${ctx.link('CallProp')} labels the call as a whole (\`props\`): whether it is pure, whether it throws, whether it
-  touches the file system, whether it dispatches, and so on. \`print\` is \`Invisible | Generic | Prints\`; R's
+* ${ctx.link('CallProp')} labels how the called code behaves (\`props\`, a bitfield): whether it is pure, whether it
+  throws, whether it returns invisibly, whether it dispatches, what it does to the frames around it. R's
   primitive generics (\`+\`, \`sin\`, \`length\`, ...) are \`Pure | Generic\`, and as they have no R body, the store is
   the only place that can say they dispatch.
+* ${ctx.link('SemanticProp')} labels what semantic a call has (\`tags\`, an array): which resource it accesses,
+  what it produces, what it is used for. \`print\` is \`Invisible | Generic\` with \`[Prints]\`.
 * ${ctx.link('ArgProp')} labels each parameter (\`sig\`), in the order R declares them: which one carries the data,
   which one only selects a behavior, which one names a file, which one is called as a function.
 
@@ -164,29 +168,38 @@ ${codeBlock('ts', `{ type: 'function', names: Identifier.fromAll(PkgName.Base, [
   config:    { indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true,
                props: CallProp.MayPure, sig: [['X', ArgProp.Value], ['FUN', ArgProp.Callee]] } }`)}
 
-The two tables below are generated from the configuration itself, so they always list every label that exists,
+while \`read.csv\` states what it does instead:
+
+${codeBlock('ts', `{ type: 'function', names: [Identifier.from(['read.csv', PkgName.Utils])], processor: BuiltInProcName.Default,
+  config:    { tags: [SemanticProp.File, SemanticProp.Reads], sig: [['file', ArgProp.Resource], ...] } }`)}
+
+The three tables below are generated from the configuration itself, so they always list every label that exists,
 what it means, and how many built-ins carry it.
 
 ${details('What each call property means', `<sup>db</sup> marks the bits the ${ctx.linkPage('wiki/Signature Database', 'signature database')}
 states for any package function on its own (${ctx.link(inferFnProps.name)} reads them off an entry and carries what a
 function calls over to the function calling it).
 
-${table('CallProp', bit => index.with(bit).length)}
+${table('CallProp', 'Call property', prop => index.with(prop).length)}`)}
 
-Most of these combine freely. The exceptions are ${ctx.link('ExclusiveCallProps')}, which a test checks the whole
-configuration against:
+${details('What each semantic property means', `
 
-${ExclusiveCallProps.map(([bit, forbidden]) => `* \`${CallProp[bit]}\` rules out ${propNames(forbidden)}`).join('\n')}
+${table('SemanticProp', 'Semantic property', prop => index.with(prop).length)}
 
 Two pairs read like refinements but are not: \`TempFile\` does not imply \`File\` (making up a path touches no file
 system, so a call doing both states both), and \`Reads\`/\`Writes\` say what happens to the resource an
-\`ArgProp.Resource\` argument names, so they only ever appear next to a resource bit.`)}
+\`ArgProp.Resource\` argument names, so they only ever appear next to a resource property.`)}
+
+Most of these properties combine freely. The exceptions are ${ctx.link('ExclusiveCallProps')}, which a
+test checks the whole configuration against:
+
+${ExclusiveCallProps.map(([prop, forbidden]) => `* ${propNames(prop)} rules out ${propNames(forbidden)}`).join('\n')}
 
 ${details('What each argument role means', `A role is stated per parameter in the ${ctx.link('FnSig')} of a built-in, in the order R declares
 them, with \`...\` covering every position from where it appears. The count is how many built-ins have at least one
 parameter in that role.
 
-${table('ArgProp', bit => new Set(index.params(bit).map(p => p.call)).size)}`)}
+${table('ArgProp', 'Argument role', prop => new Set(index.params(prop as number).map(p => p.call)).size)}`)}
 `;
 }
 

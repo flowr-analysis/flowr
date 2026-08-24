@@ -1,4 +1,5 @@
 import type { DecodedFunction } from '../../project/sigdb/decode';
+import { Record } from '../../util/record';
 
 /**
  * What a single argument of a call is used for, as a bitmask.
@@ -27,7 +28,7 @@ export enum ArgProp {
 	Presence = 1 << 9,
 	/**
 	 * the result is one of this argument's values, like `choices` in `match.arg(arg, choices)`. The bounding
-	 * argument of a {@link CallProp.Narrows} call; without one such a call yields a value of its own making.
+	 * argument of a {@link SemanticProp.Narrows} call; without one such a call yields a value of its own making.
 	 */
 	Bounds   = 1 << 10,
 	/**
@@ -40,8 +41,7 @@ export enum ArgProp {
 }
 
 /**
- * What the call as a whole does, as a bitmask. The resource bits ({@link CallProp.File} and its neighbors)
- * say where the call gets its data from, which is what {@link InputProps} collects.
+ * The properties of the behavior of a call, as a bitmask.
  * @see {@link BuiltInFnInfo#props}
  */
 export enum CallProp {
@@ -64,116 +64,234 @@ export enum CallProp {
 	Scope     = 1 << 6,
 	/** the result may differ between two identical calls for a reason neither `Random` nor `Ambient` covers (see {@link SigDbInferable}) */
 	NonDet    = 1 << 7,
-	/** draws from the random number generator, or sets its state (stated instead of `NonDet`) */
-	Random    = 1 << 8,
 	/** depends on ambient state like the clock, the locale, environment variables, or global options (stated instead of `NonDet`) */
-	Ambient   = 1 << 9,
+	Ambient   = 1 << 8,
+	/**
+	 * sets ambient state later calls read back: the working directory, environment variables, options, the
+	 * locale, the RNG seed. The counterpart of {@link CallProp.Ambient}; a call doing both states both.
+	 */
+	Configures = 1 << 9,
+	/** ends what an opener started: a graphics device, a connection, a sink. Narrower than {@link SemanticProp.Graphics}. */
+	Closes     = 1 << 10,
+	/** yields the paths it matches at run time rather than one it was handed (`list.files`, `Sys.glob`); empty is an answer */
+	Glob       = 1 << 11,
+	/** hands back what the program was invoked with, as `commandArgs` and the option parsers built on it do */
+	CommandLine = 1 << 12,
+	/** hands back a handle the program is expected to close again, like `file` or `DBI::dbConnect` */
+	Opens       = 1 << 13,
+	/** marked for removal, with a better alternative available, like `dplyr::funs` */
+	Deprecated  = 1 << 14
+}
+
+/**
+ * The semantic properties of the behavior of a call.
+ * @see {@link BuiltInFnInfo#tags}
+ */
+export enum SemanticProp {
+	/** draws from the random number generator, or sets its state (stated instead of `NonDet`) */
+	Random     = 'random',
 	/** touches the file system */
-	File      = 1 << 10,
+	File       = 'file',
 	/** produces a temporary path; on its own this touches no file system, so a call that also does states `File` too */
-	TempFile  = 1 << 11,
+	TempFile   = 'temp-file',
 	/**
 	 * always reaches the network, like `curl::curl_download`. Calls that only do so for some arguments, like
 	 * `read.csv` of a URL, are left to the `network-functions` rule, which decides that per call site.
 	 */
-	Network   = 1 << 12,
+	Network    = 'network',
 	/** runs a system command */
-	Process   = 1 << 13,
+	Process    = 'process',
 	/** calls native code through the foreign function interface, like `.Call` */
-	Ffi       = 1 << 14,
+	Ffi        = 'ffi',
 	/** produces a language object, like `quote` or `deparse` */
-	Lang      = 1 << 15,
+	Lang       = 'lang',
 	/** asks the user, like `readline` or a file chooser */
-	User      = 1 << 16,
+	User       = 'user',
 	/** draws on a graphics device */
-	Graphics  = 1 << 17,
+	Graphics   = 'graphics',
 	/** talks to a database */
-	Database  = 1 << 18,
+	Database   = 'database',
 	/** reads the resource its `Resource` arguments name */
-	Reads     = 1 << 19,
+	Reads      = 'reads',
 	/** writes the resource its `Resource` arguments name */
-	Writes    = 1 << 20,
+	Writes     = 'writes',
 	/** may emit to standard output, like `print` or a `cat` without a `file`, and follows a `sink` when one is active */
-	Prints    = 1 << 21,
+	Prints     = 'prints',
 	/**
 	 * the result is bounded no matter what flows in: a count, an index, a logical, or one of the values of the
 	 * argument marked {@link ArgProp.Bounds}. So nothing an argument carries reaches the result, which is what
 	 * lets the input-sources query stop tracing at `length(x)` or `match.arg(arg, choices)`.
 	 */
-	Narrows   = 1 << 22,
-	/**
-	 * sets ambient state later calls read back: the working directory, environment variables, options, the
-	 * locale, the RNG seed. The counterpart of {@link CallProp.Ambient}; a call doing both states both.
-	 */
-	Configures = 1 << 23,
-	/** ends what an opener started: a graphics device, a connection, a sink. Narrower than {@link CallProp.Graphics}. */
-	Closes     = 1 << 24,
-	/** yields the paths it matches at run time rather than one it was handed (`list.files`, `Sys.glob`); empty is an answer */
-	Glob       = 1 << 25,
-	/** hands back what the program was invoked with, as `commandArgs` and the option parsers built on it do */
-	CommandLine = 1 << 26,
-	/** hands back a handle the program is expected to close again, like `file` or `DBI::dbConnect` */
-	Opens       = 1 << 27,
+	Narrows    = 'narrows',
 	/** performs a statistical test, so its result is the test statistic a reader is meant to see (`t.test`, `anova`) */
-	Statistics  = 1 << 28,
-	/** marked for removal, with a better alternative available, like `dplyr::funs` */
-	Deprecated  = 1 << 29
+	Statistics = 'statistics'
 }
-
-/**
- * The {@link CallProp} bits that state an effect beyond computing a result, so no {@link CallProp.Pure}
- * definition may carry any of them.
- */
-export const ImpureProps = CallProp.MayPure | CallProp.Scope | CallProp.NonDet | CallProp.Random | CallProp.Ambient
-	| CallProp.File | CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang
-	| CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes | CallProp.Prints
-	| CallProp.Configures | CallProp.Closes | CallProp.Opens | CallProp.CommandLine;
-
-/**
- * Which {@link CallProp} bits rule each other out, as `[bit, everything stating it forbids]`. A definition
- * that carries the left bit must carry none of the right ones; a test checks the {@link DefaultBuiltinConfig}
- * (and any configured built-ins) against this. Every other pair of bits combines freely.
- */
-export const ExclusiveCallProps: readonly (readonly [bit: CallProp, forbidden: CallProps])[] = [
-	[CallProp.Pure, ImpureProps],
-	[CallProp.NonDet, CallProp.Random | CallProp.Ambient],
-	[CallProp.Random, CallProp.Ambient]
-];
-
-/**
- * The {@link CallProp} bits of calls that bring in data of their own. A function that states its props and
- * carries none of these derives its result from its arguments, which is what {@link BuiltInIndex#without}
- * looks for.
- */
-export const InputProps = CallProp.NonDet | CallProp.Random | CallProp.Ambient | CallProp.File
-	| CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Ffi | CallProp.Lang | CallProp.User
-	| CallProp.CommandLine;
-
-/**
- * The {@link CallProp} bits the signature database states itself, so {@link fnInfoFromSignature} can read them
- * off any package function without anyone writing them down.
- */
-export const SigDbInferable = CallProp.Throws | CallProp.NonDet | CallProp.Method | CallProp.Generic;
-
-/**
- * The {@link CallProp} bits that say a call takes its data from a file, as {@link CallProp.File} alone also
- * covers the calls that only write one.
- */
-export const FileInputProps = CallProp.File | CallProp.Reads;
-
-/**
- * The {@link CallProp} bits that carry over from a callee to its caller: what the called function does, the
- * calling one does too. Purity does not travel this way, which is why it is not in here.
- */
-export const PropagatedProps = CallProp.Throws | CallProp.Scope | CallProp.NonDet | CallProp.Prints
-	| CallProp.Random | CallProp.Ambient | CallProp.File | CallProp.TempFile | CallProp.Network | CallProp.Process
-	| CallProp.Ffi | CallProp.Lang | CallProp.User | CallProp.Graphics | CallProp.Database | CallProp.Reads | CallProp.Writes
-	| CallProp.Configures | CallProp.CommandLine;
 
 /** a bitfield of {@link ArgProp} */
 export type ArgProps = number;
 /** a bitfield of {@link CallProp} */
 export type CallProps = number;
+/** the {@link SemanticProp} entries of a call, in the order they were stated */
+export type SemanticProps = SemanticProp[];
+
+/**
+ * The stated properties of a call, including the {@link CallProp} bitfield and {@link SemanticProp} array.
+ */
+export interface StatedProps {
+	/** the bitfield of {@link CallProp} */
+	readonly props?: CallProps
+	/** the array of {@link SemanticProp} */
+	readonly tags?:  SemanticProps
+}
+
+/**
+ * A selector to check for {@link CallProp}s or {@link SemanticProp}s
+ */
+export type PropSelector = CallProp | CallProps | SemanticProp | readonly (CallProps | SemanticProp)[];
+
+interface PropMask {
+	readonly props: CallProps
+	readonly tags:  ReadonlySet<SemanticProp>
+}
+
+/**
+ * The properties that state an effect beyond computing a result, so no {@link CallProp.Pure} definition may carry any of them.
+ */
+export const ImpureProps: PropSelector = [
+	CallProp.MayPure, CallProp.Scope, CallProp.NonDet, CallProp.Ambient, CallProp.Configures, CallProp.Closes, CallProp.Opens, CallProp.CommandLine,
+	SemanticProp.Random, SemanticProp.File, SemanticProp.TempFile, SemanticProp.Network, SemanticProp.Process,
+	SemanticProp.Ffi, SemanticProp.Lang, SemanticProp.User, SemanticProp.Graphics, SemanticProp.Database,
+	SemanticProp.Reads, SemanticProp.Writes, SemanticProp.Prints
+];
+
+/**
+ * Which properties rule each other out, as `[property, everything stating it forbids]`. A definition that
+ * carries the left one must carry none of the right ones; a test checks the {@link DefaultBuiltinConfig}
+ * (and any configured built-ins) against this. Every other pair combines freely.
+ */
+export const ExclusiveCallProps: readonly (readonly [prop: CallProp | SemanticProp, forbidden: PropSelector])[] = [
+	[CallProp.Pure, ImpureProps],
+	[CallProp.NonDet, [SemanticProp.Random, CallProp.Ambient]],
+	[SemanticProp.Random, CallProp.Ambient]
+];
+
+/**
+ * The properties of calls that bring in data of their own. A function that states its props and carries none
+ * of these derives its result from its arguments, which is what {@link BuiltInIndex#without} looks for.
+ */
+export const InputProps: PropSelector = [
+	CallProp.NonDet, CallProp.Ambient, CallProp.CommandLine,
+	SemanticProp.Random, SemanticProp.File, SemanticProp.TempFile, SemanticProp.Network, SemanticProp.Process,
+	SemanticProp.Ffi, SemanticProp.Lang, SemanticProp.User
+];
+
+/**
+ * The {@link CallProp} bits the signature database states itself, so {@link fnInfoFromSignature} can read them
+ * off any package function without anyone writing them down.
+ */
+export const SigDbInferable: CallProps = CallProp.Throws | CallProp.NonDet | CallProp.Method | CallProp.Generic;
+
+/**
+ * The properties that say a call takes its data from a file, as {@link SemanticProp.File} alone also covers
+ * the calls that only write one.
+ */
+export const FileInputProps: PropSelector = [SemanticProp.File, SemanticProp.Reads];
+
+/**
+ * The properties that carry over from a callee to its caller: what the called function does, the calling one
+ * does too. Purity does not travel this way, which is why it is not in here.
+ */
+export const PropagatedProps: PropSelector = [
+	CallProp.Throws, CallProp.Scope, CallProp.NonDet, CallProp.Ambient, CallProp.Configures, CallProp.CommandLine,
+	SemanticProp.Prints, SemanticProp.Random, SemanticProp.File, SemanticProp.TempFile, SemanticProp.Network,
+	SemanticProp.Process, SemanticProp.Ffi, SemanticProp.Lang, SemanticProp.User, SemanticProp.Graphics,
+	SemanticProp.Database, SemanticProp.Reads, SemanticProp.Writes
+];
+
+/** Generates a {@link PropMask} for a property selector. */
+function getPropMask(this: void, selector: PropSelector): PropMask {
+	if(typeof selector === 'number') {
+		return { props: selector, tags: new Set() };
+	} else if(typeof selector === 'string') {
+		return { props: 0, tags: new Set([selector]) };
+	}
+	let props = 0;
+	const tags = new Set<SemanticProp>();
+
+	for(const prop of selector) {
+		if(typeof prop === 'number') {
+			props |= prop;
+		} else {
+			tags.add(prop);
+		}
+	}
+	return { props, tags };
+}
+
+/**
+ * Helper functions to work with {@link CallProp}s and {@link SemanticProp}s of calls.
+ * All helpers use {@link PropSelector}s to identify call properties.
+ */
+export const CallProps = {
+	name: 'Props',
+	/** Whether stated properties carry at least one property of a selector, or any property at all. */
+	any(this: void, stated: StatedProps | undefined, selector?: PropSelector): boolean {
+		if(selector === undefined) {
+			return stated?.props !== undefined || stated?.tags !== undefined;
+		}
+		const mask = getPropMask(selector);
+
+		return ((stated?.props ?? 0) & mask.props) !== 0 || (stated?.tags?.some(prop => mask.tags.has(prop)) ?? false);
+	},
+	/** Whether stated properties carry every property of a selector. */
+	all(this: void, stated: StatedProps | undefined, selector: PropSelector): boolean {
+		const mask = getPropMask(selector);
+
+		return ((stated?.props ?? 0) & mask.props) === mask.props && mask.tags.values().every(prop => stated?.tags?.includes(prop));
+	},
+	/** Joins the {@link CallProp}s and {@link SemanticProp}s of two stated properties */
+	join(this: void, props1: StatedProps | undefined, props2: StatedProps | undefined): StatedProps {
+		const props = props1?.props === undefined ? props2?.props : (props2?.props === undefined ? props1.props : props1.props | props2.props);
+		const tags = props1?.tags === undefined ? props2?.tags :
+			(props2?.tags === undefined ? props1.tags : [...new Set([...props1.tags, ...props2.tags])]);
+
+		return { props, tags };
+	},
+	/** Keep only the properties in the stated properties that are in the property selector. */
+	filter(this: void, stated: StatedProps | undefined, selector: PropSelector): StatedProps {
+		const mask = getPropMask(selector);
+
+		return {
+			props: (stated?.props ?? 0) & mask.props,
+			tags:  stated?.tags?.filter(prop => mask.tags.has(prop))
+		};
+	},
+	/** Transforms a property selector into a unique string identifier. */
+	key(this: void, selector: PropSelector): string {
+		const mask = getPropMask(selector);
+
+		return `${mask.props}|${[...mask.tags].sort().join(',')}`;
+	},
+	/** Gets the property names for a property selector. */
+	names(this: void, selector: PropSelector): string[] {
+		const mask = getPropMask(selector);
+
+		return [
+			...Record.entries(CallProp).filter(([, prop]) => (prop & mask.props) !== 0).map(([name]) => name),
+			...Record.entries(SemanticProp).filter(([, prop]) => mask.tags.has(prop)).map(([name]) => name)
+		];
+	},
+	/** gets the string labels for stated properties {@link CallPropNames}. */
+	labels(stated: StatedProps | undefined): string[] {
+		if(stated === undefined) {
+			return [];
+		}
+		const callProps = Record.keys(CallPropNames).filter(prop => ((stated?.props ?? 0) & prop) !== 0).map(prop => CallPropNames[prop]);
+		const semanticProps = stated.tags ?? [];
+
+		return [...callProps, ...semanticProps];
+	}
+} as const;
 
 /**
  * The formals of a built-in, in the order they are declared in, each with what its argument is used for.
@@ -195,30 +313,33 @@ export const FnSig = {
 	posWith: argsWith
 } as const;
 
-/** the {@link CallProp} bits as the words a reader wants, in the order they are declared */
-const CallPropNames: readonly (readonly [CallProp, string])[] = [
-	[CallProp.Pure, 'pure'], [CallProp.Throws, 'can throw'], [CallProp.Invisible, 'invisible'],
-	[CallProp.Generic, 'generic'], [CallProp.Method, 's3 method'], [CallProp.Scope, 'changes scope'],
-	[CallProp.NonDet, 'non deterministic'], [CallProp.Random, 'random'], [CallProp.Ambient, 'ambient state'],
-	[CallProp.File, 'file system'], [CallProp.Reads, 'reads'], [CallProp.Writes, 'writes'],
-	[CallProp.Network, 'network'], [CallProp.Prints, 'prints']
-];
-
-/** What a call states about itself, as words rather than as a bit mask, for anything showing it to a reader. */
-export function callPropWords(props: CallProps | undefined): string[] {
-	return props === undefined ? [] : CallPropNames.filter(([bit]) => (props & bit) !== 0).map(([, word]) => word);
-}
+/** the properties as the words a reader wants, in the order they are declared */
+const CallPropNames: Readonly<Record<CallProp, string>> = {
+	[CallProp.Pure]:        'pure',
+	[CallProp.MayPure]:     'maybe pure',
+	[CallProp.Throws]:      'can throw',
+	[CallProp.Invisible]:   'invisible',
+	[CallProp.Generic]:     'generic',
+	[CallProp.Method]:      's3 method',
+	[CallProp.Scope]:       'changes scope',
+	[CallProp.NonDet]:      'non deterministic',
+	[CallProp.Ambient]:     'ambient state',
+	[CallProp.Configures]:  'sets ambient state',
+	[CallProp.Closes]:      'closes handle',
+	[CallProp.Glob]:        'yields runtime path',
+	[CallProp.CommandLine]: 'handles command args',
+	[CallProp.Opens]:       'opens handle',
+	[CallProp.Deprecated]:  'deprecated'
+};
 
 /**
  * Semantics of a built-in that hold no matter which processor handles the call. The remaining facts already
  * have a home: the exit behavior in `cfg`, whether flowR can fold the call in the `evalHandler` of the
  * definition, and the fallback for everything unmodelled in `hasUnknownSideEffects`.
  */
-export interface BuiltInFnInfo {
+export interface BuiltInFnInfo extends StatedProps {
 	/** the parameters and what each of their arguments is used for */
 	readonly sig?:             FnSig
-	/** bitfield of {@link CallProp} */
-	readonly props?:           CallProps
 	/** keep the environment on the call vertex, for a later pass to look names up in */
 	readonly keepEnvironment?: boolean
 }

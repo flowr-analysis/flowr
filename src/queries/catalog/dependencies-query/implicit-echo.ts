@@ -14,7 +14,7 @@ import { RLineDirective } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-lin
 import { FunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
-import { ArgProp, CallProp } from '../../../dataflow/environments/built-in-props';
+import { ArgProp, CallProp, CallProps, SemanticProp } from '../../../dataflow/environments/built-in-props';
 import { ExpectFunctionNames } from './function-info/test-functions';
 
 /** the node whose value R echoes for a statement, `undefined` if the statement yields nothing visible */
@@ -98,8 +98,8 @@ function callName(node: RFunctionCall<ParentInformation>, dataflow: DataflowInfo
 	if(name === undefined) {
 		return undefined;
 	}
-	const props = queryFnProps(name, { environment: dataflow.environment })?.props ?? 0;
-	return (props & (CallProp.Invisible | CallProp.Graphics)) !== 0 || ExpectFunctionNames.test(Identifier.getName(name))
+	const props = queryFnProps(name, { environment: dataflow.environment });
+	return CallProps.any(props, [CallProp.Invisible, SemanticProp.Graphics]) || ExpectFunctionNames.test(Identifier.getName(name))
 		? undefined : name;
 }
 

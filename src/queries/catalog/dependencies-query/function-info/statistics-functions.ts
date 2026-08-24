@@ -1,16 +1,16 @@
 import type { FunctionInfo } from './function-info';
 import { Identifier } from '../../../../dataflow/environments/identifier';
-import { CallProp } from '../../../../dataflow/environments/built-in-props';
+import { SemanticProp } from '../../../../dataflow/environments/built-in-props';
 import { BuiltInIndex } from '../../../../dataflow/environments/query-fn-props';
 
 /**
- * The statistical tests, read back from the {@link CallProp.Statistics} built-ins so the dependency query and
+ * The statistical tests, read back from the {@link SemanticProp.Statistics} built-ins so the dependency query and
  * the built-in configuration cannot disagree about them. Every one of them names the package it belongs to,
  * which is what keeps `stats::t.test` a test and drops a `t.test` of somebody else's package.
  * Label a built-in `Statistics` and it shows up here.
  */
 export function statisticsFunctions(index: BuiltInIndex = BuiltInIndex.default()): FunctionInfo[] {
-	return index.with(CallProp.Statistics).map(call => ({
+	return index.with(SemanticProp.Statistics).map(call => ({
 		name:    Identifier.getName(call),
 		package: Identifier.getNamespace(call)
 	}));

@@ -7,7 +7,7 @@ export const Record = {
 	 * Returns an array of the names of the properties of a record.
 	 * @param object - The record to get the property names from.
 	 */
-	keys<K extends string>(this: void, object: Partial<Record<K, unknown>>): K[] {
+	keys<K extends string | number>(this: void, object: Partial<Record<K, unknown>>): K[] {
 		return Object.keys(object) as K[];
 	},
 	/**

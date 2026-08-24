@@ -94,7 +94,7 @@ export interface SignatureFunctionView {
  * configured or overwritten built-in is what shows up here.
  */
 export interface SignatureFlowrView {
-	/** the {@link CallProp} names the built-in definition carries, like `pure` or `reads` */
+	/** the {@link CallProp}/{@link SemanticProp} names the built-in definition carries, like `pure` or `reads` */
 	readonly props:       readonly string[];
 	/** the {@link ArgProp} names of every parameter flowR declares, in order; a parameter it says nothing about has no roles */
 	readonly args?:       readonly { readonly name: string, readonly roles: readonly string[] }[];

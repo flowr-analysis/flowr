@@ -1,5 +1,4 @@
-import type { ArgProps, BuiltInFnInfo, CallProps, FnSig } from './built-in-props';
-import { CallProp, fnInfoFromSignature, PropagatedProps } from './built-in-props';
+import { type ArgProps, type BuiltInFnInfo, CallProp, CallProps, fnInfoFromSignature, type FnSig, PropagatedProps, type PropSelector, type SemanticProps, type StatedProps } from './built-in-props';
 import type { BuiltIns } from './built-in';
 import type { BuiltInDefinition, BuiltInDefinitions } from './built-in-config';
 import { DefaultBuiltinConfig } from './default-builtin-config';
@@ -60,16 +59,17 @@ function withStatedBuiltIns(definitions: readonly IdentifierDefinition[], enviro
 }
 
 function ofDefinitions(definitions: readonly IdentifierDefinition[] | undefined): BuiltInFnInfo | undefined {
-	let sig, props;
+	let sig: FnSig | undefined;
+	let stated: StatedProps = {};
 	for(const d of definitions ?? []) {
 		if(d.type !== ReferenceType.BuiltInFunction) {
 			continue;
 		}
 		const info = d.config as BuiltInFnInfo | undefined;
 		sig ??= info?.sig;
-		props = info?.props === undefined ? props : (props ?? 0) | info.props;
+		stated = CallProps.join(stated, info);
 	}
-	return sig === undefined && props === undefined ? undefined : { sig, props };
+	return sig === undefined && !CallProps.any(stated) ? undefined : { sig, ...stated };
 }
 
 /**
@@ -98,7 +98,7 @@ export function queryFnProps(name: Identifier, { environment, builtIns, signatur
 	if(known === undefined) {
 		return info;
 	}
-	return { sig: info?.sig ?? known.sig, props: (info?.props ?? 0) | (known.props ?? 0) };
+	return { sig: info?.sig ?? known.sig, ...CallProps.join(info, known) };
 }
 
 /** What flowR states about the call `id` makes, together with the name the call resolved to. */
@@ -131,11 +131,11 @@ export function inferFnProps(src: PackageSignatureSource, pkg: string, name: str
 	}
 	const own = fnInfoFromSignature(fn);
 	const known = BuiltInIndex.default();
-	let props = own.props ?? 0;
+	let props = own;
 	for(const callee of src.transitiveCallees(pkg, name, version) ?? fn.callees) {
-		props |= (known.propsOf(callee) ?? 0) & PropagatedProps;
+		props = CallProps.join(props, CallProps.filter(known.get(callee), PropagatedProps));
 	}
-	return { sig: own.sig, props };
+	return { sig: own.sig, ...props };
 }
 
 /** The identifiers a definition registers, with the suffixes of a replacement spelled out. */
@@ -148,11 +148,13 @@ export function builtInNames(definition: BuiltInDefinition): Identifier[] {
 }
 
 /** One built-in as the {@link BuiltInIndex} sees it: the name it is registered under and what flowR states about it. */
-export interface BuiltInEntry {
+export interface BuiltInEntry extends StatedProps {
 	/** the identifier the built-in is registered under, with a replacement's suffix spelled out */
 	readonly name:   Identifier
 	/** the {@link CallProp} bits the definition states, `undefined` when it states none */
 	readonly props?: CallProps
+	/** the {@link SemanticProp} entries the definition states, `undefined` when it states none */
+	readonly tags?:  SemanticProps
 	/** the declared parameters and what each of their arguments is used for */
 	readonly sig?:   FnSig
 	/** whether the value solver can fold a call of this built-in to a constant */
@@ -175,7 +177,7 @@ function entryOfDefinition(definition: BuiltInDefinition): readonly BuiltInEntry
 	}
 	const info = definition.config as BuiltInFnInfo | undefined;
 	const folds = definition.type === 'function' && definition.evalHandler !== undefined;
-	return builtInNames(definition).map(name => ({ name, props: info?.props, sig: info?.sig, folds }));
+	return builtInNames(definition).map(name => ({ name, props: info?.props, tags: info?.tags, sig: info?.sig, folds }));
 }
 
 function entriesOfMemory(builtIns: BuiltIns): readonly BuiltInEntry[] {
@@ -187,7 +189,7 @@ function entriesOfMemory(builtIns: BuiltIns): readonly BuiltInEntry[] {
 			}
 			const info = d.config as BuiltInFnInfo | undefined;
 			/* the memory is keyed by the bare name, the definition keeps the namespace it was declared with */
-			out.push({ name: d.name ?? registered, props: info?.props, sig: info?.sig, folds: d.evalHandler !== undefined });
+			out.push({ name: d.name ?? registered, props: info?.props, tags: info?.tags, sig: info?.sig, folds: d.evalHandler !== undefined });
 		}
 	}
 	return out;
@@ -240,25 +242,25 @@ export class BuiltInIndex {
 		return found;
 	}
 
-	/** Every built-in whose props carry at least one bit of `props`, like {@link CallProp.File} for the file calls. */
-	public with(props: CallProps): readonly Identifier[] {
-		return this.cached(`with:${props}`, e => ((e.props ?? 0) & props) !== 0);
+	/** Every built-in carrying at least one property of `props`, like {@link SemanticProp.File} for the file calls. */
+	public with(props: PropSelector): readonly Identifier[] {
+		return this.cached(`with:${CallProps.key(props)}`, e => CallProps.any(e, props));
 	}
 
 	/**
-	 * Every built-in whose props carry *every* bit of `props`, for the questions a single bit cannot answer,
+	 * Every built-in carrying *every* property of `props`, for the questions a single one cannot answer,
 	 * like {@link FileInputProps} for the calls that read a file rather than only write one.
 	 */
-	public withAll(props: CallProps): readonly Identifier[] {
-		return this.cached(`all:${props}`, e => e.props !== undefined && (e.props & props) === props);
+	public withAll(props: PropSelector): readonly Identifier[] {
+		return this.cached(`all:${CallProps.key(props)}`, e => CallProps.any(e) && CallProps.all(e, props));
 	}
 
 	/**
-	 * Every built-in that states its props but carries no bit of `props`. With {@link InputProps} this yields
+	 * Every built-in that states its props but carries none of `props`. With {@link InputProps} this yields
 	 * the calls that derive their result from their arguments alone.
 	 */
-	public without(props: CallProps): readonly Identifier[] {
-		return this.cached(`without:${props}`, e => e.props !== undefined && (e.props & props) === 0);
+	public without(props: PropSelector): readonly Identifier[] {
+		return this.cached(`without:${CallProps.key(props)}`, e => CallProps.any(e) && !CallProps.any(e, props));
 	}
 
 	/** Every built-in flowR states computes a result and nothing else ({@link CallProp.Pure}). */

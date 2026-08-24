@@ -2,6 +2,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { Bottom } from './lattice';
 import { type AbstractProduct, type ProductReduction, PartialProductDomain } from './partial-product-domain';
 import { type StateDomainLift, StateAbstractDomain } from './state-abstract-domain';
+import { Record } from '../../util/record';
 
 /**
  * A multi-value state abstract domain that maps AST node IDs to multiple abstract values from different abstract domains.
@@ -11,12 +12,12 @@ import { type StateDomainLift, StateAbstractDomain } from './state-abstract-doma
 export class MultiValueStateDomain<Product extends AbstractProduct, Value extends StateDomainLift<MultiValueDomain<Product>> = StateDomainLift<MultiValueDomain<Product>>>
 	extends StateAbstractDomain<MultiValueDomain<Product>, Value> {
 
-	constructor(value: Value, domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = []) {
-		super(value, new MultiValueDomain(domain, domain, reductions));
+	constructor(value: Value, domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = [], collapseOnBottom = true) {
+		super(value, new MultiValueDomain(domain, domain, reductions), collapseOnBottom);
 	}
 
 	public create(value: StateDomainLift<MultiValueDomain<Product>>): this {
-		return new MultiValueStateDomain(value, this.domain.domain, this.domain.reductions) as this;
+		return new MultiValueStateDomain(value, this.domain.domain, this.domain.reductions, this.collapseOnBottom) as this;
 	}
 
 	public getValue<Key extends keyof Product>(node: NodeId, property: Key): Product[Key] | undefined {
@@ -36,6 +37,10 @@ export class MultiValueStateDomain<Product extends AbstractProduct, Value extend
 			const newValue = { ...oldValue?.value ?? {}, [property]: value };
 			this.set(node, new MultiValueDomain(newValue as Product, this.domain.domain, this.domain.reductions));
 		}
+	}
+
+	public getBottomNodes(): NodeId[] {
+		return this.value === Bottom ? [] : this.value.entries().filter(([, entry]) => Record.values(entry.value).some(value => value?.isBottom())).map(([key]) => key).toArray();
 	}
 }
 

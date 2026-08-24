@@ -22,27 +22,30 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 	extends AbstractDomain<StateDomainValue<Domain>, StateDomainTop, StateDomainBottom, Value>
 	implements StateDomain<Domain> {
 
-	public readonly domain: Domain;
+	public readonly domain:           Domain;
+	/** Whether mapping a single {@link NodeId} to Bottom collapses the whole state to Bottom or keeps it as a regular entry */
+	public readonly collapseOnBottom: boolean;
 
-	constructor(value: Value, domain: Domain) {
-		if(value === Bottom || value.values().some(entry => entry.isBottom())) {
+	constructor(value: Value, domain: Domain, collapseOnBottom = true) {
+		if(value === Bottom || (collapseOnBottom && value.values().some(entry => entry.isBottom()))) {
 			super(Bottom as Value);
 		} else {
 			super(new Map(value) as ReadonlyMap<NodeId, Domain> as Value);
 		}
 		this.domain = domain;
+		this.collapseOnBottom = collapseOnBottom;
 	}
 
 	public create(value: StateDomainLift<Domain>): this {
-		return new StateAbstractDomain(value, this.domain) as this;
+		return new StateAbstractDomain(value, this.domain, this.collapseOnBottom) as this;
 	}
 
-	public static top<Domain extends AnyAbstractDomain, StateDomain extends StateAbstractDomain<Domain, StateDomainTop>>(this: new (value: StateDomainTop, domain: Domain) => StateDomain, domain: Domain): StateDomain {
-		return new this(new Map<NodeId, never>(), domain);
+	public static top<Domain extends AnyAbstractDomain, StateDomain extends StateAbstractDomain<Domain, StateDomainTop>>(this: new (value: StateDomainTop, domain: Domain, collapseOnBottom?: boolean) => StateDomain, domain: Domain, collapseOnBottom = true): StateDomain {
+		return new this(new Map<NodeId, never>(), domain, collapseOnBottom);
 	}
 
-	public static bottom<Domain extends AnyAbstractDomain, StateDomain extends StateAbstractDomain<Domain, StateDomainBottom>>(this: new (value: StateDomainBottom, domain: Domain) => StateDomain, domain: Domain): StateDomain {
-		return new this(Bottom, domain);
+	public static bottom<Domain extends AnyAbstractDomain, StateDomain extends StateAbstractDomain<Domain, StateDomainBottom>>(this: new (value: StateDomainBottom, domain: Domain, collapseOnBottom?: boolean) => StateDomain, domain: Domain, collapseOnBottom = true): StateDomain {
+		return new this(Bottom, domain, collapseOnBottom);
 	}
 
 	public get(node: NodeId): Domain | undefined {
@@ -175,5 +178,9 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 
 	public isValue(): this is this & StateAbstractDomain<Domain, StateDomainValue<Domain>> {
 		return this.value !== Bottom;
+	}
+
+	public getBottomNodes(): NodeId[] {
+		return this.value === Bottom ? [] : this.value.entries().filter(([, entry]) => entry.isBottom()).map(([key]) => key).toArray();
 	}
 }

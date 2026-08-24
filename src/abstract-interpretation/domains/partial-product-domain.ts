@@ -146,7 +146,8 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 	public isBottom(): boolean;
 	public isBottom(): this is this;
 	public isBottom(): this is this {
-		return Record.values(this.value).some(value => value.isBottom());
+		const values = Record.values(this.value);
+		return values.length > 0 && values.every(value => value.isBottom());
 	}
 
 	public isValue(): boolean;

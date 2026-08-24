@@ -12,7 +12,6 @@ import type { AnalyzerCacheType, FlowrAnalyzerCache } from './cache/flowr-analyz
 import type { FlowrSearchLike, SearchOutput } from '../search/flowr-search-builder';
 import { type GetSearchElements, runSearch } from '../search/flowr-search-executor';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
-import { CfgKind } from './cfg-kind';
 import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
 import type { RParseRequest, RParseRequestFromFile } from '../r-bridge/retriever';
 import { isParseRequest, fileProtocol, requestFromInput } from '../r-bridge/retriever';
@@ -23,6 +22,20 @@ import { normalizeTreeSitterTreeToAst } from '../r-bridge/lang-4.x/tree-sitter/t
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { CallGraph } from '../dataflow/graph/call-graph';
 import type { InvalidationEvent } from './cache/flowr-cache';
+import type { GasOverrides } from '../gas';
+
+/** Options for a single analyzer operation, bounding what it may cost. */
+export interface FlowrAnalysisOptions {
+	/**
+	 * Gas bounds for this call (see {@link GasOverrides}), measured from it rather than against whatever the
+	 * analyzer already spent, and winning over `config.gas.thresholds` for its duration:
+	 *
+	 * ```ts
+	 * analyzer.query([...], { gas: { slicer: { critical: 30_000 } } });
+	 * ```
+	 */
+	readonly gas?: GasOverrides;
+}
 
 /**
  * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
@@ -122,15 +135,14 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	/**
 	 * Get the control flow graph (CFG) for the request.
 	 * @param simplifications - Simplification passes to be applied to the CFG.
-	 * @param kind            - The kind of CFG that is requested. By default, the CFG without dataflow information is returned.
 	 * @param force           - Do not use the cache, instead force new analyses.
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekControlflow} - to get the CFG if already available without triggering a new computation.
 	 */
-	controlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind, force?: boolean): Promise<ControlFlowInformation>;
+	controlflow(simplifications?: readonly CfgSimplificationPassName[], force?: boolean): Promise<ControlFlowInformation>;
 	/**
 	 * Peek at the control flow graph (CFG) for the request, if it was already computed.
 	 */
-	peekControlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind): ControlFlowInformation | undefined;
+	peekControlflow(simplifications?: readonly CfgSimplificationPassName[]): ControlFlowInformation | undefined;
 	/**
 	 * Calculate the call graph for the request.
 	 */
@@ -141,17 +153,22 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	peekCallGraph(): CallGraph | undefined;
 	/**
 	 * Access the query API for the request.
-	 * @param query - The list of queries.
+	 * @param query   - The list of queries.
+	 * @param options - Bounds for this call, see {@link FlowrAnalysisOptions}.
 	 */
-	query<Types extends SupportedQueryTypes = SupportedQueryTypes>(query: Queries<Types>): Promise<QueryResults<Types>>;
+	query<Types extends SupportedQueryTypes = SupportedQueryTypes>(query: Queries<Types>, options?: FlowrAnalysisOptions): Promise<QueryResults<Types>>;
 	/**
 	 * Run a search on the current analysis.
+	 * @param search  - The search to run.
+	 * @param options - Bounds for this call, see {@link FlowrAnalysisOptions}.
 	 */
-	runSearch<Search extends FlowrSearchLike>(search: Search): Promise<GetSearchElements<SearchOutput<Search>>>;
+	runSearch<Search extends FlowrSearchLike>(search: Search, options?: FlowrAnalysisOptions): Promise<GetSearchElements<SearchOutput<Search>>>;
 	/**
 	 * This executes all steps of the core analysis (parse, normalize, dataflow).
+	 * @param force   - Do not use the cache, instead force a new analysis.
+	 * @param options - Bounds for this call, see {@link FlowrAnalysisOptions}.
 	 */
-	runFull(force?: boolean): Promise<void>;
+	runFull(force?: boolean, options?: FlowrAnalysisOptions): Promise<void>;
 	/** This is the config used for the analyzer */
 	flowrConfig: FlowrConfig;
 	/** Merge a runtime update into the base config and invalidate the derived config and cached analysis, so it takes effect. */
@@ -248,7 +265,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	public addRequest(...request: (RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string)[]): this {
 		for(const r of request) {
 			if(typeof r === 'string') {
-				const trimmed = r.substring(fileProtocol.length);
+				const trimmed = r.slice(fileProtocol.length);
 				if(r.startsWith(fileProtocol) && !isFilePath(trimmed)) {
 					this.addAnalysisRequest({ request: 'project', content: trimmed });
 				} else {
@@ -307,17 +324,17 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return this.cache.peekDataflow();
 	}
 
-	public async runFull(force?: boolean): Promise<void> {
-		await this.dataflow(force);
+	public async runFull(force?: boolean, options?: FlowrAnalysisOptions): Promise<void> {
+		await this.ctx.gas.withGas(options?.gas, () => this.dataflow(force));
 		return;
 	}
 
-	public async controlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind, force?: boolean): Promise<ControlFlowInformation> {
-		return this.cache.controlflow(force, kind ?? CfgKind.NoDataflow, simplifications);
+	public async controlflow(simplifications?: readonly CfgSimplificationPassName[], force?: boolean): Promise<ControlFlowInformation> {
+		return this.cache.controlflow(force, simplifications);
 	}
 
-	public peekControlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind): ControlFlowInformation | undefined {
-		return this.cache.peekControlflow(kind ?? CfgKind.NoDataflow, simplifications);
+	public peekControlflow(simplifications?: readonly CfgSimplificationPassName[]): ControlFlowInformation | undefined {
+		return this.cache.peekControlflow(simplifications);
 	}
 
 	public async callGraph(force?: boolean): Promise<CallGraph> {
@@ -330,14 +347,14 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public async query<
 		Types extends SupportedQueryTypes = SupportedQueryTypes
-	>(query: Queries<Types>): Promise<QueryResults<Types>> {
-		return executeQueries({ analyzer: this }, query);
+	>(query: Queries<Types>, options?: FlowrAnalysisOptions): Promise<QueryResults<Types>> {
+		return this.ctx.gas.withGas(options?.gas, () => executeQueries({ analyzer: this }, query));
 	}
 
 	public async runSearch<
 		Search extends FlowrSearchLike
-	>(search: Search): Promise<GetSearchElements<SearchOutput<Search>>> {
-		return runSearch(search, this);
+	>(search: Search, options?: FlowrAnalysisOptions): Promise<GetSearchElements<SearchOutput<Search>>> {
+		return this.ctx.gas.withGas(options?.gas, () => runSearch(search, this));
 	}
 
 	/**

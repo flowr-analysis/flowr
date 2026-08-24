@@ -3,11 +3,10 @@ import type { VisitingQueue } from './visiting-queue';
 import { guard } from '../../util/assert';
 import { envFingerprint, type Fingerprint } from './fingerprint';
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker';
-import {
-	type DataflowGraphVertexFunctionCall,
-	type DataflowGraphVertexFunctionDefinition,
-	type DataflowGraphVertexInfo,
-	VertexType
+import type {
+	DataflowGraphVertexFunctionCall,
+	DataflowGraphVertexFunctionDefinition,
+	DataflowGraphVertexInfo
 } from '../../dataflow/graph/vertex';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import {
@@ -15,7 +14,7 @@ import {
 	FunctionArgument,
 	type OutgoingEdges
 } from '../../dataflow/graph/graph';
-import { resolveByName, resolveByNameAnyType } from '../../dataflow/environments/resolve-by-name';
+import { Resolve } from '../../dataflow/environments/resolve-helper';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../../dataflow/environments/identifier';
@@ -26,8 +25,9 @@ import { updatePotentialAddition } from './static-slicer';
 import type { DataflowInformation } from '../../dataflow/info';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { FunctionDefinitionVertex } from '../../dataflow/graph/vertex';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 /**
  * Returns the function call targets (definitions) by the given caller
@@ -43,7 +43,7 @@ export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, 
 
 	const name = callerInfo.name;
 	guard(name !== undefined, () => `name of id: ${callerInfo.id} can not be found in id map`);
-	const functionCallDefs = resolveByNameAnyType(name, activeEnvironment)?.filter(d => !NodeId.isBuiltIn(d.definedAt))?.map(d => d.nodeId) ?? [];
+	const functionCallDefs = Resolve.byName(name, activeEnvironment)?.filter(d => !NodeId.isBuiltIn(d.definedAt))?.map(d => d.nodeId) ?? [];
 
 	for(const [target, outgoingEdge] of outgoingEdges[1].entries()) {
 		if(DfEdge.includesType(outgoingEdge, EdgeType.Calls)) {
@@ -85,7 +85,7 @@ function linkCallTargets(
 		for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
 			// resolve them in the active env
 			if(openIn.name) {
-				const resolved = resolveByNameAnyType(openIn.name, activeEnvironment);
+				const resolved = Resolve.byName(openIn.name, activeEnvironment);
 				for(const res of resolved ?? []) {
 					updatePotentialAddition(queue, functionCallTarget.id, res.nodeId, activeEnvironment, activeEnvironmentFingerprint);
 				}
@@ -121,7 +121,7 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 export function findEnclosingFunctionDefinition(id: NodeId, idMap: AstIdMap): NodeId | undefined {
 	let node = idMap.get(id);
 	while(node !== undefined) {
-		if(node.type === RType.FunctionDefinition) {
+		if(RFunctionDefinition.is(node)) {
 			return node.info.id;
 		}
 		node = node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
@@ -138,7 +138,7 @@ export function findEnclosingFunctionDefinition(id: NodeId, idMap: AstIdMap): No
  */
 export function sliceReachesFunctionInterface(fnDefId: NodeId, graph: DataflowGraph, queue: VisitingQueue, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	const vertex = graph.getVertex(fnDefId);
-	if(vertex === undefined || vertex.tag !== VertexType.FunctionDefinition) {
+	if(vertex === undefined || !FunctionDefinitionVertex.is(vertex)) {
 		return false;
 	}
 	// (a) the slice reaches a parameter of this definition
@@ -172,7 +172,7 @@ export function sliceReachesFunctionInterface(fnDefId: NodeId, graph: DataflowGr
 		if(open.name === undefined || !queue.hasId(open.nodeId)) {
 			continue;
 		}
-		const resolved = resolveByName(open.name, definitionEnvironment, open.type ?? ReferenceType.Unknown);
+		const resolved = Resolve.byNameAndType(open.name, definitionEnvironment, open.type ?? ReferenceType.Unknown);
 		if(resolved?.some(d => !NodeId.isBuiltIn(d.nodeId))) {
 			return true;
 		}

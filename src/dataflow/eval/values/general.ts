@@ -1,10 +1,14 @@
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { intervalFrom } from './intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from './logical/logical-constants';
 import { type Lift, type Value, type ValueSet, Bottom, isBottom, isTop, Top } from './r-value';
 import { stringFrom } from './string/string-constants';
 import { vectorFrom } from './vectors/vector-constants';
+import { Resolve } from '../../environments/resolve-helper';
+import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RLogical } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
+import { RNumber } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 /**
  * Takes n potentially lifted ops and returns `Top` or `Bottom` if any is `Top` or `Bottom`.
@@ -19,12 +23,28 @@ export function bottomTopGuard(...a: Lift<unknown>[]): typeof Top | typeof Botto
 
 /**
  * Returns a value set, if a is not bottom or top, otherwise undefined.
- * Useful when working with values returned by {@link resolveIdToValue}
+ * Useful when working with values returned by {@link Resolve.toValue}
  * @param a - value set to check
  * @returns value set if a is not top or bottom
  */
 export function valueSetGuard(a: Lift<ValueSet<Value[]>>): ValueSet<Value[]> | undefined {
 	return (isBottom(a) || isTop(a)) ? undefined : a;
+}
+
+/**
+ * @useInstead {@link NodeValue.sole}
+ */
+export function soleValue(this: void, set: ValueSet<Value[]> | undefined): Value | undefined;
+export function soleValue<T extends Value['type']>(this: void, set: ValueSet<Value[]> | undefined, type: T): Extract<Value, { type: T }> | undefined;
+/**
+ * The one value a set holds, `undefined` unless it holds exactly one, optionally of the given kind.
+ * @param set  - the set to take the value from
+ * @param type - the kind the value has to have, any kind if unset
+ * @returns the sole value, `undefined` if the set holds another number of them or another kind
+ */
+export function soleValue<T extends Value['type']>(this: void, set: ValueSet<Value[]> | undefined, type?: T): Value | undefined {
+	const only = set?.elements.length === 1 ? set.elements[0] : undefined;
+	return only !== undefined && (type === undefined || only.type === type) ? only : undefined;
 }
 
 /**
@@ -57,12 +77,14 @@ export function valueFromTsValue(a: unknown): Value {
  * @returns abstract value
  */
 export function valueFromRNodeConstant(a: RNodeWithParent): Value {
-	if(a.type === RType.String) {
+	if(RString.is(a)) {
 		return stringFrom(a.content.str);
-	} else if(a.type === RType.Number) {
+	} else if(RNumber.is(a)) {
 		return intervalFrom(a.content.num, a.content.num);
-	} else if(a.type === RType.Logical) {
+	} else if(RLogical.is(a)) {
 		return a.content.valueOf() ? ValueLogicalTrue : ValueLogicalFalse;
+	} else if(RFunctionDefinition.is(a)) {
+		return { type: 'function-definition' };
 	}
 
 	return Top;

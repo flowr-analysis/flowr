@@ -4,17 +4,17 @@ import { ExitPointType } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { DefaultMap } from '../../../../../../util/collections/defaultmap';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
-import { valueSetGuard } from '../../../../../eval/values/general';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isNotUndefined } from '../../../../../../util/assert';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { Identifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /**
  * Processes a built-in 'stopifnot' function call.
@@ -46,7 +46,7 @@ export function processStopIfNot<OtherInfo>(
 	// we can safely extract named args by full name
 	const argMap = new DefaultMap<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]>(() => []);
 	for(const arg of args) {
-		const name = (arg === EmptyArgument ? undefined : arg.name)?.content;
+		const name = (RArgument.isEmpty(arg) ? undefined : arg.name)?.content;
 		if(name === 'exprObject' || name === 'exprs' || name === 'local') {
 			argMap.get(name).push(arg);
 		} else {
@@ -55,13 +55,12 @@ export function processStopIfNot<OtherInfo>(
 	}
 	const localArgs = argMap.get('local');
 	const localArg = localArgs.length > 0 ? localArgs.at(-1) : undefined;
-	const resolveArgs = { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx };
 
 	// we collect all control dependencies from: all '...', all expressions in 'exprs', and 'exprObject'
 	const ids = collectIdsForControl(argMap, data);
 	if(localArg !== undefined && localArg !== EmptyArgument) {
-		const localVal = resolveIdToValue(localArg?.value?.info.id, resolveArgs);
-		const alwaysTrue = valueSetGuard(localVal)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
+		const localVal = NodeValue.setOf(localArg?.value?.info.id, data);
+		const alwaysTrue = localVal?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 		if(!alwaysTrue) {
 			dataflowLogger.warn(`stopifnot (${Identifier.toString(name.content)}) with non-true 'local' argument is not yet supported, over-approximate`);
 			const cds = (data.cds ?? []).concat(Array.from(ids).map(r => ({
@@ -79,8 +78,8 @@ export function processStopIfNot<OtherInfo>(
 
 	const cds: ControlDependency[] = [];
 	for(const id of ids) {
-		const val = resolveIdToValue(id, resolveArgs);
-		const alwaysFalse = valueSetGuard(val)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
+		const val = NodeValue.setOf(id, data);
+		const alwaysFalse = val?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
 		if(alwaysFalse) {
 			// we know that this fails *always*
 			(res.exitPoints as ExitPoint[]).push(data.cds ? {
@@ -93,7 +92,7 @@ export function processStopIfNot<OtherInfo>(
 			});
 			return res;
 		}
-		const alwaysTrue = valueSetGuard(val)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
+		const alwaysTrue = val?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 		if(!alwaysTrue) {
 			cds.push({
 				id:   id,
@@ -118,7 +117,7 @@ export function processStopIfNot<OtherInfo>(
 /** Generator so we can early exit on first always-false */
 function* collectIdsForControl<OtherInfo>(argMap: DefaultMap<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	yield* argMap.get('...')
-		.map(a => a === EmptyArgument ? undefined : a.value?.info.id)
+		.map(a => RArgument.isEmpty(a) ? undefined : a.value?.info.id)
 		.filter(isNotUndefined)
 	;
 	const exprs = argMap.get('exprs');
@@ -126,7 +125,7 @@ function* collectIdsForControl<OtherInfo>(argMap: DefaultMap<string, Potentially
 		const exprsArg = exprs.at(-1);
 		if(exprsArg !== EmptyArgument && exprsArg?.value?.info.id) {
 			const elem = data.completeAst.idMap.get(exprsArg.value?.info.id);
-			if(elem?.type === RType.ExpressionList) {
+			if(RExpressionList.is(elem)) {
 				for(const expr of elem.children) {
 					yield expr.info.id;
 				}

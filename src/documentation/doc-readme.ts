@@ -4,8 +4,7 @@ import {
 	FlowrPositron,
 	FlowrVsCode,
 	getFileContentFromRoot,
-	linkFlowRSourceFile
-} from './doc-util/doc-files';
+	linkFlowRSourceFile, FlowrSiteBaseRef } from './doc-util/doc-files';
 import { codeBlock } from './doc-util/doc-code';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { getLastBenchmarkUpdate, getLatestDfAnalysisTime } from './doc-util/doc-benchmarks';
@@ -18,6 +17,8 @@ import { prefixLines } from './doc-util/doc-general';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
 import { linkToQueryOfName, showQuery } from './doc-util/doc-query';
 import { NewIssueUrl } from './doc-util/doc-issue';
+import { tryInPlayground } from './doc-util/doc-playground';
+import { PlaygroundBox } from '../util/text/playground-link';
 import { joinWithLast } from '../util/text/strings';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
@@ -142,9 +143,14 @@ export class DocReadme extends DocMaker<'README.md'> {
 
 	public async text({ treeSitter, ctx }: DocMakerArgs): Promise<string> {
 		const dateOptions: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' };
+		/* every feature below ends on a link that opens the playground on its own example */
+		const example = getFileContentFromRoot('test/testfiles/example.R');
+		/* the script the playground itself opens with: it loads a package, writes a file, draws a plot, and
+		   leaves one value unused, so every feature below has something real to point at */
+		const playgroundSample = getFileContentFromRoot('scripts/playground/sample.R').trim();
 
 		return `
-[![flowR logo](https://raw.githubusercontent.com/wiki/flowr-analysis/flowr/img/flowR.png)](${FlowrGithubBaseRef}/flowr/wiki)\\
+[![flowR logo](https://raw.githubusercontent.com/wiki/flowr-analysis/flowr/img/flowR.png)](${FlowrSiteBaseRef}/)\\
 [![QA (and potentially deploy)](${FlowrGithubBaseRef}/flowr/actions/workflows/qa.yaml/badge.svg)](${FlowrGithubBaseRef}/flowr/actions/workflows/qa.yaml)
 [![codecov](https://codecov.io/gh/flowr-analysis/flowr/graph/badge.svg)](https://codecov.io/gh/flowr-analysis/flowr)
 [![Docker Image Version (latest semver)](https://img.shields.io/docker/v/eagleoutice/flowr?logo=docker&logoColor=white&label=dockerhub)](${FlowrDockerRef})
@@ -164,6 +170,12 @@ It offers a wide variety of features, for example:
   the data files it reads, the scripts it sources, and the data it outputs.
   Building on it, the ${linkToQueryOfName('guess-dep-versions', 'guess dependency versions query')} narrows down the version range each
   of these libraries has to have, by combining the constraints your project declares with the functions your code actually calls.
+  ${tryInPlayground({
+		code:  playgroundSample,
+		marks: [PlaygroundBox.Deps],
+		at:    '12@write.csv'
+	}, 'the dependency example')}
+
   
   ${prefixLines(details('Example: Dependency Analysis with flowR', `
 The following showcases the dependency view of the ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')}:
@@ -174,6 +186,13 @@ The following showcases the dependency view of the ${ctx.linkPage('flowr:vscode'
 
 * 🐞 **code linting**\\
    Analyze your R scripts for common issues and potential bugs (see the ${ctx.linkPage('wiki/Linter', 'wiki page')} for more information on the currently supported linters).
+   ${tryInPlayground({
+		code:      playgroundSample,
+		marks:     ['lint:unused-definitions'],
+		collapsed: [PlaygroundBox.Deps],
+		at:        '10@unused_total'
+	}, 'the linter example')}
+
 
 	${prefixLines(details('Example: Linting code with flowR', `To lint your code, you can use the ${ctx.linkPage('wiki/Interface', 'REPL', 'using-the-repl')} or the ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')} (see [vscode-flowr#283](https://github.com/flowr-analysis/vscode-flowr/pull/283)).
 	
@@ -197,6 +216,14 @@ ${res}
 * 🍕 **program slicing**\\
    Given a point of interest like the visualization of a plot, _flowR_ reduces the program to just the parts which are relevant
    for the computation of the point of interest.
+   ${tryInPlayground({
+		code:      example,
+		marks:     [PlaygroundBox.Slice],
+		collapsed: [PlaygroundBox.Deps],
+		at:        '11@sum',
+		dim:       true
+	}, 'the slicing example')}
+
 
 ${prefixLines(details('Example: Slicing with flowR', `
 The simplest way to retrieve slices is with flowR's ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')}.
@@ -219,9 +246,14 @@ ${await documentReplSession(treeSitter, [{
    `), '    ')}
 
 * 🚀 **fast call-graph, data-, and control-flow graphs**\\
-  Within just ${ctx.linkPage('flowr:benchmarks', `${'<i>' + textWithTooltip(roundToDecimals(await getLatestDfAnalysisTime('"social-science" Benchmark Suite (tree-sitter)'), 1) + ' ms', 'This measurement is automatically fetched from the latest benchmark!') + '</i>'} (as of ${new Date(await getLastBenchmarkUpdate()).toLocaleDateString('en-US', dateOptions)})`)},
+  Within just ${ctx.linkPage('flowr:benchmarks', `${'<i>' + textWithTooltip(roundToDecimals(await getLatestDfAnalysisTime('"real-world" Benchmark Suite (tree-sitter)'), 1) + ' ms', 'This measurement is automatically fetched from the latest benchmark!') + '</i>'} (as of ${new Date(await getLastBenchmarkUpdate()).toLocaleDateString('en-US', dateOptions)})`)},
   _flowR_ can analyze the data- and control-flow of the average real-world R&nbsp;script. See the ${ctx.linkPage('flowr:benchmarks', 'benchmarks')} for more information,
   and consult the ${ctx.linkPage('wiki/Dataflow Graph', 'wiki pages')} for more details on the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graphs')} as well as ${ctx.linkPage('wiki/Dataflow Graph', 'call graphs', 'perspectives-cg')}.
+  ${tryInPlayground({
+		code: playgroundSample,
+		at:   '13@plot'
+	}, 'this script')}
+
 
 ${prefixLines(details('Example: Generating a dataflow graph with flowR', `
 You can investigate flowR's analyses using the ${ctx.linkPage('wiki/Interface', 'REPL', 'using-the-repl')}.
@@ -294,7 +326,10 @@ ${printPublications()}
 
 ## 🚀 Contributing
 
-We welcome every contribution! Please check out the ${ctx.linkPage('wiki/Onboarding', 'developer onboarding')} section in the wiki for all the information you will need.
+We welcome every contribution! The ${ctx.linkPage('wiki/Onboarding', 'developer onboarding')} page has everything you need to get started.
+With **R** and **Node.js** installed, \`npm run setup:dev\` checks your prerequisites, installs the dependencies, and configures the git hooks.
+The [contributing guidelines](${FlowrGithubBaseRef}/flowr/tree/main/.github/CONTRIBUTING.md) explain our commit conventions,
+and ${ctx.linkPage('wiki/Linting and Testing')} shows how to run the tests.
 
 ### Contributors
 

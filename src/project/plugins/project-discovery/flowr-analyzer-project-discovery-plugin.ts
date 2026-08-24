@@ -123,7 +123,7 @@ export class FlowrAnalyzerFullProjectDiscoveryPlugin extends FlowrAnalyzerProjec
 	}
 }
 
-// noise directories pruned from the scoped walk on top of `ignorePathsWith`: build output, checks, rendered docs and packaged data
+// noise directories pruned from the scoped walk on top of `ignorePathsWith`: build output, checks, rendered docs, and packaged data
 const noiseDirs = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|\.uvr|[^/]*\.Rcheck|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles|cache)[^/]*|build|dist|_build|_site|_book|\.quarto|\.cache|Rtmp[^/]*|man|inst\/(extdata|doc))(\/|$)/i;
 // binary/data blobs, dropped even inside an otherwise kept directory
 const noiseFiles = /\.(rds|rda|rdata|rd|png|jpe?g|gif|svg|pdf|ico|zip|tar|t?gz|bz2|xz|so|o|a|dll|dylib|exe|jar|woff2?|ttf|eot|feather|parquet|xls[xm]?|docx?|pptx?)$/i;
@@ -151,7 +151,7 @@ function resolveRules(override: { include?: string[], exclude?: string[] } | und
 	};
 }
 
-/** over-approximating default: R sources, role metadata and `tests/`/`vignettes/` count as project files */
+/** over-approximating default: R sources, role metadata, and `tests/`/`vignettes/` count as project files */
 function keptByDefault(rel: string): boolean {
 	const base = path.basename(rel);
 	return discoverRSourcesRegex.test(rel) || metadataFilePatterns.some(p => p.test(base)) || testOrVignetteDir.test(rel);

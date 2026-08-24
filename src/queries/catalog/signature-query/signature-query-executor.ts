@@ -12,7 +12,6 @@ import { defaultSigDbPaths } from '../../../project/sigdb/manifest';
 import type { DecodedFunction } from '../../../project/sigdb/decode';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
 import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
-import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
 import type { BuiltInFnInfo } from '../../../dataflow/environments/built-in-props';
 import { ArgProp, CallProp } from '../../../dataflow/environments/built-in-props';
 import { Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
@@ -20,6 +19,9 @@ import { RVersion } from '../../../util/r-version';
 import { baseRPackages, baseRExportOwner } from '../../../util/r-base-packages';
 import { Mermaid } from '../../../util/mermaid/mermaid';
 import type { CommandCompletions } from '../../../cli/repl/core';
+import { Resolve } from '../../../dataflow/environments/resolve-helper';
+import { groupGenericOf } from '../../../dataflow/environments/group-generics';
+import { uniqueArray } from '../../../util/collections/arrays';
 
 /** the CRAN package landing page (only meaningful for CRAN packages, not base R) */
 export function cranPageUrl(pkg: string): string {
@@ -132,20 +134,25 @@ export function rSourceRef(version: string | undefined): string {
 }
 
 /** deep-link a base-R definition into the R sources mirror at the release series of `version` */
-function rSourceUrl(pkg: string, version: string | undefined, file: string, line?: number): string {
+export function rSourceUrl(pkg: string, version: string | undefined, file: string, line?: number): string {
 	const anchor = line !== undefined && line >= 0 ? `#L${line}` : '';
 	return `${RSourceMirror}/blob/${rSourceRef(version)}/src/library/${encodeURIComponent(pkg)}/${file}${anchor}`;
 }
 
 /** function/topic names that map cleanly to a man page (skip operators like `+.gg`, `[.data.frame`; Rd topics allow hyphens, e.g. `dplyr-package`) */
 const RdrrTopicName = /^[A-Za-z.][A-Za-z0-9._-]*$/;
-/** best-effort rdrr.io documentation link: `/r/<pkg>/<fn>` for base R, `/cran/<pkg>/man/<fn>` for CRAN */
-export function rdrrDocUrl(pkg: string, fn: string, opts: { base: boolean, cran: boolean }): string | undefined {
+/**
+ * Best-effort documentation link: R's own manual for a base package, rdrr.io's `/cran/<pkg>/man/<fn>` for CRAN.
+ *
+ * Base R does not go to rdrr.io because that serves an older release, so everything R has gained since (`sort_by`,
+ * `array2DF`, `chooseOpsMethod`, ...) is a dead link there.
+ */
+export function helpPageUrl(pkg: string, fn: string, opts: { base: boolean, cran: boolean }): string | undefined {
 	if(!RdrrTopicName.test(fn)) {
 		return undefined;
 	}
 	if(opts.base) {
-		return `https://rdrr.io/r/${pkg}/${fn}.html`;
+		return `https://stat.ethz.ch/R-manual/R-devel/library/${pkg}/html/${fn}.html`;
 	}
 	if(opts.cran) {
 		return `https://rdrr.io/cran/${pkg}/man/${fn}.html`;
@@ -155,7 +162,7 @@ export function rdrrDocUrl(pkg: string, fn: string, opts: { base: boolean, cran:
 
 /**
  * The `.Rd` help source of a topic *at the queried version*, on the same mirrors the source links use. rdrr.io only
- * serves a package's current release, so {@link rdrrDocUrl} silently answers for the wrong version whenever an older
+ * serves a package's current release, so {@link helpPageUrl} silently answers for the wrong version whenever an older
  * one was asked for; this link cannot drift.
  */
 function manPageUrl(pkg: string, topic: string, version: string | undefined, opts: { base: boolean, cran: boolean }): string | undefined {
@@ -174,7 +181,7 @@ function docUrlsFor(pkg: string, fn: DecodedFunction, version: string | undefine
 		return {};
 	}
 	const topic = fn.topic ?? fn.name;
-	const doc = rdrrDocUrl(pkg, topic, { base, cran });
+	const doc = helpPageUrl(pkg, topic, { base, cran });
 	const man = manPageUrl(pkg, topic, version, { base, cran });
 	return { ...(doc ? { docUrl: doc } : {}), ...(man ? { manUrl: man } : {}) };
 }
@@ -243,7 +250,7 @@ function flowrOnlyFunctionInfo(env: REnvironmentInformation | undefined, pkg: st
 	if(env === undefined) {
 		return undefined;
 	}
-	const resolved = resolveByName(pkg === undefined ? name : Identifier.make(name, pkg), env, ReferenceType.Function);
+	const resolved = Resolve.byNameAndType(pkg === undefined ? name : Identifier.make(name, pkg), env, ReferenceType.Function);
 	const definition = resolved?.find(d => d.type === ReferenceType.BuiltInFunction);
 	if(definition === undefined) {
 		return undefined;
@@ -252,6 +259,7 @@ function flowrOnlyFunctionInfo(env: REnvironmentInformation | undefined, pkg: st
 	if(info === undefined || (info.props === undefined && info.sig === undefined)) {
 		return undefined;
 	}
+	const group = groupGenericOf(name);
 	const namespace = definition.name === undefined ? undefined : Identifier.getNamespace(definition.name);
 	if(pkg !== undefined && namespace !== undefined && namespace !== pkg) {
 		return undefined;
@@ -265,7 +273,8 @@ function flowrOnlyFunctionInfo(env: REnvironmentInformation | undefined, pkg: st
 		/* flowR states no defaults, so `required` stays `false` throughout; whether R forces a parameter it does know */
 		parameters: (info.sig ?? []).map(([n, p]) => ({ name: n, required: false, forced: (p & ArgProp.Forced) !== 0 })),
 		callees:    [],
-		flowr:      flowrViewOf(info, [])
+		flowr:      flowrViewOf(info, []),
+		...(group ? { s4group: { group } } : {})
 	};
 }
 
@@ -296,7 +305,11 @@ function decodedToView(pkg: string, fn: DecodedFunction, version: string | undef
  */
 export function signatureFunctionInfo(src: PackageSignatureSource, pkg: string, fnName: string, version?: string, env?: REnvironmentInformation): SignatureFunctionView | undefined {
 	const fns = src.functions(pkg, version) ?? src.functions(pkg);
-	const fn = fns?.find(f => f.name === fnName);
+	const group = groupGenericOf(fnName);
+	const own = fns?.find(f => f.name === fnName);
+	/* `setMethod('Math', 'cls', ...)` answers every member of the group at once, so the group entry is what a
+	   call to a member it has none of its own for dispatches to */
+	const fn = own ?? (group === undefined ? undefined : fns?.find(f => f.name === group));
 	if(fn === undefined) {
 		return undefined;
 	}
@@ -312,9 +325,12 @@ export function signatureFunctionInfo(src: PackageSignatureSource, pkg: string, 
 	const flowr = flowrView(env, pkg, fnName, view.parameters.map(p => p.name));
 	return {
 		...view,
+		/* the name that was asked for, which is not the entry's own when the group answered for it */
+		name: fnName,
 		...(flowr ? { flowr } : {}),
 		...(methods.length > 0 ? { s3generic: true, s3methods: methods } : {}),
-		...(s3method ? { s3method } : {})
+		...(s3method ? { s3method } : {}),
+		...(group ? { s4group: { group, ...(own === undefined ? { viaGroup: true } : {}) } } : {})
 	};
 }
 
@@ -609,7 +625,7 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 	const owningOf = (pkg: string) => sources.filter(s => s.has(pkg));
 	// the versions of `pkg` matching the spec, unioned across all owning sources (so a `3.*`/date filter reaches history)
 	const matchingVersions = (owners: readonly PackageSignatureSource[], pkg: string, m: (e: AvailableVersion) => boolean) =>
-		[...new Set(owners.flatMap(s => availableVersionEntries(s, pkg).filter(m).map(e => e.version)))];
+		uniqueArray(owners.flatMap(s => availableVersionEntries(s, pkg).filter(m).map(e => e.version)));
 
 	const paramPred = parameterFilter(q);
 	// a parameter filter (with no function name) still means "search functions", not "list packages"
@@ -755,10 +771,10 @@ export function signatureQueryCompleter(line: readonly string[], startingNewArg:
 		const stride = all.length / MaxCompletions;
 		return Array.from({ length: MaxCompletions }, (_, i) => all[Math.floor(i * stride)]);
 	};
-	const packageNames = (): string[] => [...new Set(sources.flatMap(s => s.packageNames()))].sort();
+	const packageNames = (): string[] => uniqueArray(sources.flatMap(s => s.packageNames())).sort();
 	const functionsOf = (pkg: string): string[] => {
 		const src = sources.find(s => s.has(pkg));
-		return src ? [...new Set((src.functions(pkg) ?? []).map(f => f.name))].sort() : [];
+		return src ? uniqueArray((src.functions(pkg) ?? []).map(f => f.name)).sort() : [];
 	};
 
 	// first token: a package spec (`pkg`, `pkg::fn`, `pkg@ver`)

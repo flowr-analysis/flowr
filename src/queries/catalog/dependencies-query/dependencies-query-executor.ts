@@ -11,10 +11,9 @@ import {
 	Unknown
 } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
-import { type DataflowGraphVertexFunctionCall, VertexType } from '../../../dataflow/graph/vertex';
+import { FunctionCallVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { BasicQueryData } from '../../base-query-format';
 import { compactRecord } from '../../../util/objects';
@@ -34,6 +33,7 @@ import { log } from '../../../util/log';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionArgument } from '../../../dataflow/graph/graph';
 import { linkPlotsToDevices } from './link-devices';
+import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 
 /**
@@ -261,7 +261,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 			return undefined;
 		}
 		let get = normalize.idMap.get(id);
-		if(get?.type === RType.Argument) {
+		if(RArgument.is(get)) {
 			get = get.value;
 		}
 		return RNode.lexeme(get);
@@ -285,7 +285,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | und
 		}
 		// collect this one!
 		const vertex = data.dataflow.graph.getVertex(linkedId.id);
-		if(vertex?.tag !== VertexType.FunctionCall) {
+		if(!FunctionCallVertex.is(vertex)) {
 			continue;
 		}
 		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue, data.ctx);
@@ -305,7 +305,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | und
 
 function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, functionFlag: DependencyCategoryName, enabled: DependencyCategoryName[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
 	// "If unset or empty, all function types are searched for."
-	if(enabled !== undefined && (enabled?.length === 0 || enabled.indexOf(functionFlag) < 0)) {
+	if(enabled !== undefined && (enabled?.length === 0 || !enabled.includes(functionFlag))) {
 		return [];
 	}
 	let functions: FunctionInfo[] = ignoreDefaultFunctions ? [] : defaultFunctions.slice();

@@ -5,6 +5,7 @@
  * assignments. This is a source-agnostic resolver over {@link PackageSignatureSource} and the dependencies context;
  * the `guess-dep-versions` query presents it, but it is usable on its own (e.g. for compatibility-matrix tooling).
  */
+import { MatchArgs } from '../dataflow/graph/match-args';
 import { minVersion, type Range } from 'semver';
 import { RRange, RVersion, rReleaseDate, type VersionString } from '../util/r-version';
 import { findByPrefixIfUnique } from '../util/prefix';
@@ -12,20 +13,20 @@ import { RBasePrimitives } from '../data/r-base-primitives.generated';
 import { availableVersionEntries, classOwnerIndexFor, sourceForPackage, type PackageSignatureSource } from './sigdb/reader';
 import type { DecodedFunction, ResolvedDependency } from './sigdb/decode';
 import { DepType } from './sigdb/schema';
-import { matchArgumentsToSignature } from './sigdb/signature-match';
 import { parseDateWindow } from './sigdb/sigdb-version';
 import { Identifier } from '../dataflow/environments/identifier';
 import { VertexType } from '../dataflow/graph/vertex';
 import { FunctionArgument, type DataflowGraph } from '../dataflow/graph/graph';
 import { Dataflow } from '../dataflow/graph/df-helper';
-import { getOriginInDfg, OriginType } from '../dataflow/origin/dfg-get-origin';
+import { OriginType } from '../dataflow/origin/dfg-get-origin';
 import { AttachedBasePackages, baseRExportOwner } from '../util/r-base-packages';
 import { collectScopeDefinedNames, isDefinedInEnclosingScope, isNonStandardEvaluated } from '../linter/rules/undefined-symbol-util';
-import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { S7SyntheticFunArgSuffix } from '../dataflow/internal/process/functions/call/built-in/built-in-s-seven-new-generic';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from './context/flowr-analyzer-dependencies-context';
 import type { ReadonlyFlowrAnalysisProvider } from './flowr-analyzer';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { arraySum, uniqueArray } from '../util/collections/arrays';
 
 /** the pseudo-package standing for the analyzed project itself, never one of its own dependencies */
 export const ProjectPackage = 'current';
@@ -154,7 +155,6 @@ export interface VersionAssignment {
 	readonly unverified?: readonly string[];
 }
 
-/** default safety cap on how many assignments {@link explodeDependencyVersions} yields */
 /** the dependency kinds a load has to satisfy, as `Suggests`/`Enhances` are not enforced when a package is attached */
 const LoadRelevantDeps: ReadonlySet<DepType> = new Set([DepType.Depends, DepType.Imports, DepType.LinkingTo]);
 
@@ -163,6 +163,7 @@ function loadRequirements(src: PackageSignatureSource | undefined, pkg: string, 
 	return (src?.dependencies(pkg, version) ?? []).filter(d => LoadRelevantDeps.has(d.type));
 }
 
+/** default safety cap on how many assignments {@link explodeDependencyVersions} yields */
 export const DefaultExplodeLimit = 256;
 
 /** the date cutoff (end of the named day/month/year) for a `YYYY.MM.DD` spec, or `undefined` if malformed */
@@ -212,7 +213,7 @@ function argStringLiteral(graph: DataflowGraph, arg: FunctionArgument): string |
 		return undefined;
 	}
 	const node = graph.idMap?.get(id);
-	return node?.type === RType.String ? node.content.str : undefined;
+	return RString.is(node) ? node.content.str : undefined;
 }
 
 /** class names used as a string literal in the code (`inherits(x, "zoo")`, `new("Foo")`, ...); only direct literals, not variables or `c(...)` */
@@ -428,7 +429,7 @@ export function collectOrphanUsage(graph: DataflowGraph, deps: ReadOnlyFlowrAnal
 		const name = Identifier.getName(vertex.name);
 		// a call bound to a real definition (local, parameter, closure, or import) *is* that definition, not a package
 		// export; only an unresolved or builtin-modeled call can be an orphan (flowR models e.g. `ggplot` as a builtin)
-		if(getOriginInDfg(graph, id)?.some(o => o.type === OriginType.FunctionCallOrigin) === true) {
+		if(Dataflow.origin(graph, id)?.some(o => o.type === OriginType.FunctionCallOrigin) === true) {
 			continue;
 		}
 		// a bare name from a default-attached base package (or a base primitive) is defined without a library() call
@@ -467,7 +468,7 @@ export function collectOrphanUsage(graph: DataflowGraph, deps: ReadOnlyFlowrAnal
 		}
 		// the exporters that lost, with the same calls recorded, so the guess can report what each of them would fit
 		const losers = providers.filter(p => p !== pkg);
-		alternatives.set(pkg, [...new Set([...alternatives.get(pkg) ?? [], ...losers])]);
+		alternatives.set(pkg, uniqueArray([...alternatives.get(pkg) ?? [], ...losers]));
 		for(const alt of losers) {
 			recordCallUsage(atKey(alternativeUsage, alt, (): PackageUsage => new Map()), name, vertex.args, id);
 		}
@@ -509,7 +510,7 @@ function isCompatible(getFn: FnResolver, version: string, usage: PackageUsage, t
 		}
 		for(const args of use.calls.values()) {
 			// R's matching: exact, pmatch prefix, or positional; `...` absorbs the rest
-			const bound = matchArgumentsToSignature(args, decoded.signature);
+			const bound = MatchArgs.toSpec(args, decoded.signature);
 			let placed = 0;
 			for(const ids of bound.values()) {
 				placed += ids.length;
@@ -692,7 +693,7 @@ export interface VersionSpaceOptions {
 	readonly disabled?: ReadonlySet<ConstraintSource>;
 }
 
-/** a target's sigdb package key, merged source and memoized signature resolver */
+/** a target's sigdb package key, merged source, and memoized signature resolver */
 interface PackageResolution {
 	readonly key:         string;
 	readonly src:         PackageSignatureSource | undefined;
@@ -729,7 +730,7 @@ function makeSignatureFilter(src: PackageSignatureSource | undefined, pkg: strin
 /**
  * The version space of one analysis: the surviving versions of each dependency and the transitive constraints
  * refined to a fixpoint. Holding the shared inputs here keeps the passes to a handful of arguments and lets each
- * package's sigdb key, source and decoded signatures be resolved once. The passes revisit the same versions
+ * package's sigdb key, source, and decoded signatures be resolved once. The passes revisit the same versions
  * repeatedly, so that memoization is what makes the fixpoint affordable.
  */
 export class VersionSpace {
@@ -750,7 +751,7 @@ export class VersionSpace {
 		this.disabled = disabled;
 	}
 
-	/** the sigdb package, source and signature resolver of a target, resolved once */
+	/** the sigdb package, source, and signature resolver of a target, resolved once */
 	public resolve(name: string): PackageResolution {
 		let entry = this.resolved.get(name);
 		if(entry === undefined) {
@@ -976,7 +977,7 @@ function countOverForest(factors: readonly CountFactor[], tree: readonly (Factor
 	let total = 1;
 	for(let i = 0; i < factors.length; i++) {
 		if(!visited[i]) {
-			total *= subtree(i, -1).reduce((a, b) => a + b, 0);
+			total *= arraySum(subtree(i, -1));
 		}
 	}
 	return total;
@@ -1135,7 +1136,7 @@ export function orderedCandidatesOf(src: PackageSignatureSource | undefined, nam
 
 /** the default explosion targets: every declared and used dependency (excluding `current`, the analyzed package's own namespace) */
 export function defaultTargets(deps: ReadOnlyFlowrAnalyzerDependenciesContext, usage: ReadonlyMap<string, PackageUsage>): string[] {
-	return [...new Set([...deps.getDependencies().map(d => d.name), ...usage.keys()])].filter(name => name !== ProjectPackage);
+	return uniqueArray([...deps.getDependencies().map(d => d.name), ...usage.keys()]).filter(name => name !== ProjectPackage);
 }
 
 /** the requirements one concrete version declares, as {@link coInstallability} reads them */

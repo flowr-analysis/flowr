@@ -1,5 +1,7 @@
-import { RType, ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
-import { ValidVertexTypes, VertexType } from '../dataflow/graph/vertex';
+import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import { ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
+import type { VertexType } from '../dataflow/graph/vertex';
+import { FunctionCallVertex, ValidVertexTypes } from '../dataflow/graph/vertex';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrSearchElement } from './flowr-search';
 import type { Enrichment } from './search-executor/search-enrichers';
@@ -9,10 +11,9 @@ import type { BuiltInProcName } from '../dataflow/environments/built-in-proc-nam
 import type { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { looselyCompareObjects } from '../util/objects';
 import { searchLogger } from './search-executor/search-generators';
-import { queryFnProps } from '../dataflow/environments/query-fn-props';
+import { callFnProps } from '../dataflow/environments/query-fn-props';
 import type { CallProp, CallProps } from '../dataflow/environments/built-in-props';
-import { Dataflow } from '../dataflow/graph/df-helper';
-import { REnvironment } from '../dataflow/environments/environment';
+import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
 interface FlowrFilterWithArgs<Filter extends FlowrFilterName, Args extends FlowrFilterArgs<Filter>> {
@@ -29,7 +30,7 @@ export enum FlowrFilter {
 	/**
 	 * Only returns search elements whose enrichments' JSON representations match a given test regular expression.
 	 * This filter accepts {@link MatchesEnrichmentArgs}, which includes the enrichment to match for, as well as the regular expression to test the enrichment's (non-pretty-printed) JSON representation for.
-	 * To test for included function names in an enrichment like {@link Enrichment.CallTargets}, the helper function {@link matchIdentifiers} can be used.
+	 * To test for included function names in an enrichment like {@link Enrichment.CallTargets}, the helper function {@link Identifier.regex} can be used.
 	 */
 	MatchesEnrichment = 'matches-enrichment',
 	/**
@@ -61,7 +62,7 @@ export const ValidFlowrFiltersReverse = Object.fromEntries(Object.entries(FlowrF
 
 export const FlowrFilters = {
 	[FlowrFilter.DropEmptyArguments]: ((e: FlowrSearchElement<ParentInformation>, _args: never) => {
-		return e.node.type !== RType.Argument || e.node.name !== undefined;
+		return !RArgument.is(e.node) || e.node.name !== undefined;
 	}) satisfies FlowrFilterFunction<never>,
 	[FlowrFilter.MatchesEnrichment]: ((e: FlowrSearchElement<ParentInformation>, args: MatchesEnrichmentArgs<Enrichment>) => {
 		const content = enrichmentContent(e, args.enrichment);
@@ -69,7 +70,7 @@ export const FlowrFilters = {
 	}) satisfies FlowrFilterFunction<MatchesEnrichmentArgs<Enrichment>>,
 	[FlowrFilter.OriginKind]: ((e: FlowrSearchElement<ParentInformation>, args: OriginKindArgs, data: { dataflow: DataflowInformation }) => {
 		const dfgNode = data.dataflow.graph.getVertex(e.node.info.id);
-		if(!dfgNode || dfgNode.tag !== VertexType.FunctionCall) {
+		if(!dfgNode || !FunctionCallVertex.is(dfgNode)) {
 			return args.keepNonFunctionCalls ?? false;
 		}
 		const match = typeof args.origin === 'string' ?
@@ -87,17 +88,7 @@ export const FlowrFilters = {
 		return rx.test(file ?? '');
 	}) satisfies FlowrFilterFunction<FilePathFilterArgs>,
 	[FlowrFilter.CallProps]: ((e: FlowrSearchElement<ParentInformation>, args: CallPropsArgs, data: { dataflow: DataflowInformation }) => {
-		const graph = data.dataflow.graph;
-		const vertex = graph.getVertex(e.node.info.id);
-		if(vertex?.tag !== VertexType.FunctionCall) {
-			return false;
-		}
-		/* what the call resolved to decides, as a definition in the analyzed code shadows the built-in; a call
-		 * flowR settled on the built-ins keeps no environment, and a later redefinition must not speak for it */
-		const known = vertex.environment ?? data.dataflow.environment;
-		const environment = vertex.onlyBuiltin ? { level: 0, current: REnvironment.findBuiltIn(known.current) } : known;
-		const name = Dataflow.qualify(e.node.info.id, graph, false) ?? vertex.name;
-		const props = queryFnProps(name, { environment })?.props ?? 0;
+		const props = callFnProps(e.node.info.id, data.dataflow)?.props ?? 0;
 		return args.matchType === 'every' ? (props & args.props) === args.props : (props & args.props) !== 0;
 	}) satisfies FlowrFilterFunction<CallPropsArgs>
 } as const;
@@ -294,33 +285,44 @@ interface FilterData {
 	readonly data:    { dataflow: DataflowInformation }
 }
 
-const evalVisit = {
-	and: ({ left, right }: BooleanBinaryNode<BooleanNode>, data: FilterData) =>
-		evalTree(left, data) && evalTree(right, data),
-	or: ({ left, right }: BooleanBinaryNode<BooleanNode>, data: FilterData) =>
-		evalTree(left, data) || evalTree(right, data),
-	xor: ({ left, right }: BooleanBinaryNode<BooleanNode>, data: FilterData) =>
-		evalTree(left, data) !== evalTree(right, data),
-	not: ({ operand }: BooleanUnaryNode<BooleanNode>, data: FilterData) =>
-		!evalTree(operand, data),
-	'r-type': ({ value }: LeafRType, { element }: FilterData) =>
-		element.node.type === value,
-	'vertex-type': ({ value }: LeafVertexType, { data, element }: FilterData) =>
-		data.dataflow.graph.getVertex(element.node.info.id)?.tag === value,
-	'special': ({ value }: LeafSpecial, { data, element }: FilterData) => {
+/** A filter expression resolved to the function testing one element. */
+export type PreparedFilter = (element: FlowrSearchElement<ParentInformation>, data: { dataflow: DataflowInformation }) => boolean;
+
+const compileVisit = {
+	and: ({ left, right }: BooleanBinaryNode<BooleanNode>): PreparedFilter => {
+		const l = compileTree(left), r = compileTree(right);
+		return (e, d) => l(e, d) && r(e, d);
+	},
+	or: ({ left, right }: BooleanBinaryNode<BooleanNode>): PreparedFilter => {
+		const l = compileTree(left), r = compileTree(right);
+		return (e, d) => l(e, d) || r(e, d);
+	},
+	xor: ({ left, right }: BooleanBinaryNode<BooleanNode>): PreparedFilter => {
+		const l = compileTree(left), r = compileTree(right);
+		return (e, d) => l(e, d) !== r(e, d);
+	},
+	not: ({ operand }: BooleanUnaryNode<BooleanNode>): PreparedFilter => {
+		const o = compileTree(operand);
+		return (e, d) => !o(e, d);
+	},
+	'r-type': ({ value }: LeafRType): PreparedFilter =>
+		e => e.node.type === value,
+	'vertex-type': ({ value }: LeafVertexType): PreparedFilter =>
+		(e, d) => d.dataflow.graph.getVertex(e.node.info.id)?.tag === value,
+	'special': ({ value }: LeafSpecial): PreparedFilter => {
 		const name = typeof value === 'string' ? value : value.name;
 		const args = typeof value === 'string' ? undefined as unknown as FlowrFilterArgs<FlowrFilter> : value.args;
-		const getHandler = FlowrFilters[name];
-		if(getHandler) {
-			return getHandler(element, args, data);
+		const handler = FlowrFilters[name];
+		if(!handler) {
+			throw new Error(`Couldn't find special filter with name ${name}`);
 		}
-		throw new Error(`Couldn't find special filter with name ${name}`);
+		return (e, d) => handler(e, args, d);
 	}
 };
 
-function evalTree(tree: BooleanNode, data: FilterData): boolean {
+function compileTree(tree: BooleanNode): PreparedFilter {
 	/* we ensure that the types fit */
-	return evalVisit[tree.type](tree as never, data);
+	return compileVisit[tree.type](tree as never);
 }
 
 /**
@@ -329,20 +331,18 @@ function evalTree(tree: BooleanNode, data: FilterData): boolean {
  * a bare {@link VertexType}/{@link RType} filter otherwise builds a {@link FlowrFilterCombinator} per element.
  * @see {@link evalFilter} - the one-shot form, if you only test a single element
  */
-export function prepareFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>): (data: FilterData) => boolean {
+export function prepareFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>): PreparedFilter {
 	if(filter instanceof FlowrFilterCombinator) {
-		const tree = filter.get();
-		return data => evalTree(tree, data);
+		return compileTree(filter.get());
 	} else if(typeof filter === 'string' && ValidFlowrFilters.has(filter)) {
 		const handler = FlowrFilters[filter as FlowrFilter];
-		return data => handler(data.element, undefined as unknown as FlowrFilterArgs<FlowrFilter>, data.data);
+		return (e, d) => handler(e, undefined as unknown as FlowrFilterArgs<FlowrFilter>, d);
 	} else if(typeof filter === 'object' && 'name' in filter) {
 		const handler = FlowrFilters[filter.name];
 		const args = ('args' in filter ? filter.args : undefined) as unknown as never;
-		return data => handler(data.element, args, data.data);
+		return (e, d) => handler(e, args, d);
 	} else {
-		const tree = FlowrFilterCombinator.is(filter).get();
-		return data => evalTree(tree, data);
+		return compileTree(FlowrFilterCombinator.is(filter).get());
 	}
 }
 
@@ -351,5 +351,5 @@ export function prepareFilter<Filter extends FlowrFilter>(filter: FlowrFilterExp
  * @see {@link prepareFilter} - resolve once when testing more than one element
  */
 export function evalFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>, data: FilterData): boolean {
-	return prepareFilter(filter)(data);
+	return prepareFilter(filter)(data.element, data.data);
 }

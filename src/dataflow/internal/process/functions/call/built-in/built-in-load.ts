@@ -1,3 +1,4 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -17,8 +18,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { EdgeType } from '../../../../../graph/edge';
 import { unpackArg } from '../argument/unpack-argument';
-import { valueSetGuard } from '../../../../../eval/values/general';
-import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { isValue } from '../../../../../eval/values/r-value';
 import { isNotUndefined } from '../../../../../../util/assert';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
@@ -29,9 +29,8 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import type {
 	PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RFunctionCall
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { resolveArgToEnvir, signatureParamNames } from './built-in-envir-utils';
+import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 /**
  * Processes a built-in 'load' function call by retrieving the names of the variables loaded by the given file.
@@ -68,10 +67,10 @@ export function processLoadCall<OtherInfo>(
 
 	let sourceFile: string[] | undefined;
 
-	if(fileArg.type === RType.String) {
+	if(RString.is(fileArg)) {
 		sourceFile = [removeRQuotes(fileArg.lexeme)];
 	} else {
-		const resolved = valueSetGuard(resolveIdToValue(fileArg.info.id, { environment: envirResolution ? envirResolution.envirData.environment : data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx }));
+		const resolved = NodeValue.setOf(fileArg.info.id, data, { environment: envirResolution?.envirData.environment ?? data.environment });
 		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
 	}
 
@@ -284,7 +283,7 @@ function sexpTypeToReferenceType(type?: SexpType): ReferenceType{
 function getArguments<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	// prefer R's real `base::load` signature from the database, falling back to the known formals when it is absent
 	const loadParams = signatureParamNames(data, Identifier.make('load', PkgName.Base), ['file', 'envir', 'verbose']);
-	const bound = RFunctionCall.matchArgsToParams(args, loadParams);
+	const bound = MatchArgs.toNames(args, loadParams);
 
 	const fileArgBound = bound.get('file');
 	const envirArg = bound.get('envir');

@@ -2,9 +2,9 @@
 // Skips when already present, may silently use only what is already present (offline -> no CRAN, and no base floor unless previously fetched).
 //   ts-node scripts/sigdb-bake.ts [dist/src/data/sigdb]
 
-import fs from 'node:fs';
-import path from 'node:path';
-import crypto from 'node:crypto';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
 import type { SigDbRemote } from '../src/project/sigdb/sigdb-download';
 
 /** the compiled runtime downloader (imported from dist so this step needs no src transpile at bake time) */

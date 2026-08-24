@@ -8,6 +8,8 @@ import { type EdgeTypeBits, EdgeType, DfEdge } from '../graph/edge';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { isNotUndefined } from '../../util/assert';
 import type { Identifier } from '../environments/identifier';
+import { FunctionDefinitionVertex, VariableDefinitionVertex } from '../graph/vertex';
+import { NoEdges } from '../graph/graph';
 
 export const enum OriginType {
 	ReadVariableOrigin = 0,
@@ -90,6 +92,7 @@ export type Origin = SimpleOrigin | FunctionCallOrigin | BuiltInFunctionOrigin;
  * Similarly, requesting the origin of `print` returns a {@link BuiltInFunctionOrigin|`BuiltInFunctionOrigin`}.
  *
  * This returns undefined only if there is no dataflow correspondence (e.g. in case of unevaluated non-standard eval).
+ * @useInstead {@link Dataflow.origin}
  */
 export function getOriginInDfg(this: void, dfg: DataflowGraph, id: NodeId): Origin[] | undefined {
 	const vtx = dfg.getVertex(id);
@@ -114,7 +117,7 @@ const UnwantedVariableTypes: EdgeTypeBits = EdgeType.NonStandardEvaluation;
 function getVariableUseOrigin(dfg: DataflowGraph, use: { id: NodeId }): Origin[] | undefined {
 	// to identify the origins we have to track read edges and definitions on function calls
 	const origins: Origin[] = [];
-	for(const [target, e] of dfg.outgoingEdges(use.id) ?? []) {
+	for(const [target, e] of dfg.outgoingEdges(use.id) ?? NoEdges) {
 		if(DfEdge.doesNotIncludeType(e, WantedVariableTypes) || DfEdge.includesType(e, UnwantedVariableTypes)) {
 			continue;
 		}
@@ -124,7 +127,7 @@ function getVariableUseOrigin(dfg: DataflowGraph, use: { id: NodeId }): Origin[]
 			continue;
 		}
 
-		if(targetVtx.tag === VertexType.VariableDefinition) {
+		if(VariableDefinitionVertex.is(targetVtx)) {
 			origins.push({
 				type: OriginType.ReadVariableOrigin,
 				id:   target
@@ -137,14 +140,14 @@ function getVariableUseOrigin(dfg: DataflowGraph, use: { id: NodeId }): Origin[]
 function getVariableDefinitionOrigin(dfg: DataflowGraph, vtx: DataflowGraphVertexVariableDefinition): Origin[] | undefined {
 	const pool: Origin[] = [{ type: OriginType.WriteVariableOrigin, id: vtx.id }];
 
-	const outgoingReads = dfg.outgoingEdges(vtx.id) ?? [];
+	const outgoingReads = dfg.outgoingEdges(vtx.id) ?? NoEdges;
 	for(const [target, e] of outgoingReads) {
 		if(DfEdge.includesType(e, EdgeType.Reads)) {
 			const targetVtx = dfg.getVertex(target);
 			if(!targetVtx) {
 				continue;
 			}
-			if(targetVtx.tag === VertexType.VariableDefinition) {
+			if(VariableDefinitionVertex.is(targetVtx)) {
 				pool.push({
 					type: OriginType.ReadVariableOrigin,
 					id:   target
@@ -181,11 +184,11 @@ function getCallTarget(dfg: DataflowGraph, call: DataflowGraphVertexFunctionCall
 			};
 		}
 		const get = dfg.getVertex(target);
-		if(get?.tag !== VertexType.FunctionDefinition && get?.tag !== VertexType.VariableDefinition) {
+		if(!FunctionDefinitionVertex.is(get) && !VariableDefinitionVertex.is(get)) {
 			return undefined;
 		}
 		return {
-			type: get.tag === VertexType.FunctionDefinition ? (OriginType.FunctionCallOrigin as const) : (OriginType.ReadVariableOrigin as const),
+			type: FunctionDefinitionVertex.is(get) ? (OriginType.FunctionCallOrigin as const) : (OriginType.ReadVariableOrigin as const),
 			id:   target
 		};
 	}).filter(isNotUndefined));

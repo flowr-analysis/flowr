@@ -1,7 +1,7 @@
 import { LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../linter-format';
-import { functionFinderUtil, type FunctionsMetadata, type FunctionsResult } from './function-finder-util';
+import type {  FunctionsMetadata,  FunctionsResult } from './function-finder-util';
+import { functionFinderUtil } from './function-finder-util';
 import { LintingRuleTag } from '../linter-tags';
-import type { MergeableRecord } from '../../util/objects';
 import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import type { FlowrSearchElement } from '../../search/flowr-search';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -11,6 +11,7 @@ import { WriteFunctions } from '../../queries/catalog/dependencies-query/functio
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Dataflow } from '../../dataflow/graph/df-helper';
+import type { MergeableRecord } from '../../util/objects';
 
 export interface NetworkFunctionsConfig extends MergeableRecord {
 	/**
@@ -18,6 +19,7 @@ export interface NetworkFunctionsConfig extends MergeableRecord {
 	 */
 	fns: readonly (Identifier | NetworkFunction)[]
 }
+
 export interface NetworkFunction extends MergeableRecord{
 	/**
 	 * The name of the network function to find.
@@ -25,7 +27,7 @@ export interface NetworkFunction extends MergeableRecord{
 	name:                     Identifier,
 	/**
 	 * The {@link FunctionInfo} to use for querying the argument whose value should match {@link onlyTriggerWithArgument}.
-	 * If this is not specified, flowR's default database of functions ({@link ReadFunctions}, {@link SourceFunctions} and {@link WriteFunctions}) is queried for appropriate information on the function's read argument.
+	 * If this is not specified, flowR's default database of functions ({@link ReadFunctions}, {@link SourceFunctions}, and {@link WriteFunctions}) is queried for appropriate information on the function's read argument.
 	 */
 	info?:                    Omit<FunctionInfo, 'name'>
 	/**

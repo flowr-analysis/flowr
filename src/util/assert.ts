@@ -101,7 +101,7 @@ node version: ${process.version}
 node arch: ${process.arch}
 node platform: ${process.platform}
 message: \`${message}\`
-stack trace:\n\`\`\`\n${prepareStack(new Error().stack)}\n\`\`\`
+stack trace:\n\`\`\`\n${prepareStack(new Error('stack capture for the issue report').stack)}\n\`\`\`
 
 ---
 	`).replaceAll('(', '%28').replaceAll(')', '%29').replaceAll('-', '%2D');

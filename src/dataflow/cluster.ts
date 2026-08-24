@@ -1,8 +1,8 @@
 import type { DataflowGraph, IngoingEdges } from './graph/graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfEdge, EdgeType } from './graph/edge';
-import { VertexType } from './graph/vertex';
 import { guard } from '../util/assert';
+import { FunctionDefinitionVertex } from './graph/vertex';
 
 export type DataflowGraphClusters = DataflowGraphCluster[];
 export interface DataflowGraphCluster {
@@ -37,6 +37,9 @@ export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
 	const incoming = new Map<NodeId, IngoingEdges>();
 	for(const [source, outgoing] of graph.edges()) {
 		for(const [target, edge] of outgoing) {
+			if(DfEdge.isOnlyControlFlow(edge)) {
+				continue;
+			}
 			const into = incoming.get(target);
 			if(into === undefined) {
 				incoming.set(target, new Map([[source, edge]]));
@@ -77,7 +80,7 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 		}
 
 		// cluster function def exit points
-		if(info.tag === VertexType.FunctionDefinition) {
+		if(FunctionDefinitionVertex.is(info)) {
 			for(const { nodeId } of info.exitPoints){
 				reach(nodeId);
 			}
@@ -86,6 +89,10 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 		// cluster adjacent edges
 		for(const edges of [graph.outgoingEdges(current), incoming.get(current)] as const) {
 			for(const [dest, e] of edges ?? []) {
+				/* control flow connects every statement of a program, so clustering along it would yield one cluster */
+				if(DfEdge.isOnlyControlFlow(e)) {
+					continue;
+				}
 				// don't cluster for function content if it isn't returned
 				if(DfEdge.doesNotIncludeType(e, EdgeType.Returns) && info.onlyBuiltin && info.name === '{') {
 					continue;

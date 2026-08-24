@@ -12,6 +12,8 @@ import type { RFunctionCall } from '../../../../model/nodes/r-function-call';
 import type { RBinaryOp } from '../../../../model/nodes/r-binary-op';
 import type { RPipe } from '../../../../model/nodes/r-pipe';
 import type { NamedJsonEntry } from '../../../json/format';
+import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
+import { RExpressionList } from '../../../../model/nodes/r-expression-list';
 
 
 /**
@@ -35,7 +37,7 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedJsonEntry, operator: Name
 	const parsedLhs = normalizeSingleNode(data, lhs);
 	const parsedRhs = normalizeSingleNode(data, rhs);
 
-	if(parsedLhs.type === RType.Delimiter || parsedRhs.type === RType.Delimiter) {
+	if(RDelimiter.is(parsedLhs) || RDelimiter.is(parsedRhs)) {
 		throw new ParseError(`unexpected under-sided binary op, received ${JSON.stringify([parsedLhs, parsedRhs])} for ${JSON.stringify([lhs, operator, rhs])}`);
 	}
 
@@ -44,8 +46,8 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedJsonEntry, operator: Name
 	const { location, content } = retrieveMetaStructure(operator.content);
 
 	if(startAndEndsWith(operationName, '%')) {
-		const lhsLoc = parsedLhs.type === RType.ExpressionList ? parsedLhs.grouping?.[0].location : parsedLhs.location;
-		const rhsLoc = parsedRhs.type === RType.ExpressionList ? parsedRhs.grouping?.[0].location : parsedRhs.location;
+		const lhsLoc = RExpressionList.is(parsedLhs) ? parsedLhs.grouping?.[0].location : parsedLhs.location;
+		const rhsLoc = RExpressionList.is(parsedRhs) ? parsedRhs.grouping?.[0].location : parsedRhs.location;
 
 		guard(lhsLoc !== undefined && rhsLoc !== undefined,
 			() => `special op lhs and rhs must have a locations, but ${JSON.stringify(parsedLhs)} || ${JSON.stringify(lhsLoc)} and ${JSON.stringify(parsedRhs)} ||  || ${JSON.stringify(rhsLoc)})`);

@@ -13,18 +13,22 @@ import {
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { assert, describe, test } from 'vitest';
-import { withTreeSitter } from '../../_helper/shell';
-import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
+import { skipTestBecauseConfigNotMet, withTreeSitter } from '../../_helper/shell';
+import { execFileSync } from 'child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { DefaultBuiltinConfig } from '../../../../src/dataflow/environments/default-builtin-config';
-import { builtInNames } from '../../../../src/dataflow/environments/query-fn-props';
+import { builtInNames, BuiltInIndex } from '../../../../src/dataflow/environments/query-fn-props';
 import type { BuiltInFnInfo, FnSig } from '../../../../src/dataflow/environments/built-in-props';
-import { ArgProp } from '../../../../src/dataflow/environments/built-in-props';
+import { ArgProp, CallProp } from '../../../../src/dataflow/environments/built-in-props';
 import { ReadFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/read-functions';
 import { WriteFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/write-functions';
 import { OtherPathFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/other-path-functions';
+import { RFunctionCall } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
-const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], remote: [], source: [], read: [], write: [], visualize: [], test: [], print: [] };
+const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], remote: [], source: [], read: [], write: [], visualize: [], test: [], statistics: [] };
 
 function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Partial<DependenciesQueryResult> {
 	const out: Partial<DependenciesQueryResult> = {
@@ -63,7 +67,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	}
 
 	describe('Simple', () => {
-		testQuery('No dependencies', 'x + 1', {});
+		/* `x + 1` at the top level is echoed, so it is an output even though nothing else happens */
+		testQuery('No dependencies', 'x + 1', { write: [{ nodeId: 2, functionName: '+', value: 'stdout', implicit: true }] });
 	});
 
 	describe('Libraries', () => {
@@ -120,42 +125,45 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		});
 
 		testQuery('Load implicitly', 'foo::x\nbar:::y()', {
-			print:   [{ nodeId: 2, functionName: Identifier.make('y' as never, 'bar' as never, true), value: 'stdout' }],
+			write: [
+				{ nodeId: 0, functionName: 'foo::x', value: 'stdout', implicit: true },
+				{ nodeId: 2, functionName: Identifier.make('y' as never, 'bar' as never, true), value: 'stdout', implicit: true }
+			],
 			library: [
 				{ nodeId: '1@x', functionName: '::', value: 'foo' },
 				{ nodeId: '2@y', functionName: ':::', value: 'bar' }
 			] });
 
-		testQuery('Using a vector without character.only', 'lapply(c("a", "b", "c"), library)', { print:   [{ nodeId: '1@lapply', functionName: 'lapply', value: 'stdout' }], library: [
+		testQuery('Using a vector without character.only', 'lapply(c("a", "b", "c"), library)', { write:   [{ nodeId: '1@lapply', functionName: 'lapply', value: 'stdout', implicit: true }], library: [
 			{ nodeId: '1@library', functionName: 'library', value: '"a"' },
 			{ nodeId: '1@library', functionName: 'library', value: '"b"' },
 			{ nodeId: '1@library', functionName: 'library', value: '"c"' }
 		] });
 
-		testQuery('Using a vector to load (missing elements)', 'lapply(c("x", u), library, character.only = TRUE)', { print:   [{ nodeId: '1@lapply', functionName: 'lapply', value: 'stdout' }], library: [
+		testQuery('Using a vector to load (missing elements)', 'lapply(c("x", u), library, character.only = TRUE)', { write:   [{ nodeId: '1@lapply', functionName: 'lapply', value: 'stdout', implicit: true }], library: [
 			// We currently don't support resolving that "x" and some unknown library is loaded
 			{ nodeId: '1@library', functionName: 'library', value: 'unknown', lexemeOfArgument: 'c("x", u)', argumentId: '1:8' },
 		] });
 
-		testQuery('Using an aliased vector to load (missing elements)', 'x <- c("x", u)\nlapply(x, library, character.only = TRUE)', { print:   [{ nodeId: '2@lapply', functionName: 'lapply', value: 'stdout' }], library: [
+		testQuery('Using an aliased vector to load (missing elements)', 'x <- c("x", u)\nlapply(x, library, character.only = TRUE)', { write:   [{ nodeId: '2@lapply', functionName: 'lapply', value: 'stdout', implicit: true }], library: [
 			// We currently don't support resolving that "x" and some unknown library is loaded
 			{ nodeId: '2@library', functionName: 'library', value: 'unknown', lexemeOfArgument: 'x', argumentId: '2:8' },
 		] });
 
-		testQuery('Using a vector to load', 'lapply(c("foo", "bar", "baz"), library, character.only = TRUE)', { print:   [{ nodeId: '1@lapply', functionName: 'lapply', value: 'stdout' }], library: [
+		testQuery('Using a vector to load', 'lapply(c("foo", "bar", "baz"), library, character.only = TRUE)', { write:   [{ nodeId: '1@lapply', functionName: 'lapply', value: 'stdout', implicit: true }], library: [
 			{ nodeId: '1@library', functionName: 'library', value: 'foo' },
 			{ nodeId: '1@library', functionName: 'library', value: 'bar' },
 			{ nodeId: '1@library', functionName: 'library', value: 'baz' }
 		] });
 
-		testQuery('Using a vector to load by variable', 'v <- c("a", "b", "c")\nlapply(v, library, character.only = TRUE)', { print:   [{ nodeId: '2@lapply', functionName: 'lapply', value: 'stdout' }], library: [
+		testQuery('Using a vector to load by variable', 'v <- c("a", "b", "c")\nlapply(v, library, character.only = TRUE)', { write:   [{ nodeId: '2@lapply', functionName: 'lapply', value: 'stdout', implicit: true }], library: [
 			{ nodeId: '2@library', functionName: 'library', value: 'a' },
 			{ nodeId: '2@library', functionName: 'library', value: 'b' },
 			{ nodeId: '2@library', functionName: 'library', value: 'c' }
 		] });
 
 		testQuery('Intermix another library call', 'library(foo)\nv <- c("a", "b", "c")\nlapply(v, library, character.only = TRUE)', {
-			print:   [{ nodeId: '3@lapply', functionName: 'lapply', value: 'stdout' }],
+			write:   [{ nodeId: '3@lapply', functionName: 'lapply', value: 'stdout', implicit: true }],
 			library: [
 				{ nodeId: '1@library', functionName: 'library', value: 'foo' },
 				{ nodeId: '3@library', functionName: 'library', value: 'a' },
@@ -164,35 +172,35 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			]
 		});
 
-		testQuery('Using a nested vector to load', 'lapply(c(c("a", "b"), "c"), library, character.only = TRUE)', { print:   [{ nodeId: '1@lapply', functionName: 'lapply', value: 'stdout' }], library: [
+		testQuery('Using a nested vector to load', 'lapply(c(c("a", "b"), "c"), library, character.only = TRUE)', { write:   [{ nodeId: '1@lapply', functionName: 'lapply', value: 'stdout', implicit: true }], library: [
 			{ nodeId: '1@library', functionName: 'library', value: 'a' },
 			{ nodeId: '1@library', functionName: 'library', value: 'b' },
 			{ nodeId: '1@library', functionName: 'library', value: 'c' }
 		] });
 
-		testQuery('Using a nested vector by variable', 'v <- c(c("a", "b"), "c")\nlapply(v, library, character.only = TRUE)', { print:   [{ nodeId: '2@lapply', functionName: 'lapply', value: 'stdout' }], library: [
+		testQuery('Using a nested vector by variable', 'v <- c(c("a", "b"), "c")\nlapply(v, library, character.only = TRUE)', { write:   [{ nodeId: '2@lapply', functionName: 'lapply', value: 'stdout', implicit: true }], library: [
 			{ nodeId: '2@library', functionName: 'library', value: 'a' },
 			{ nodeId: '2@library', functionName: 'library', value: 'b' },
 			{ nodeId: '2@library', functionName: 'library', value: 'c' }
 		] });
 
-		testQuery('Using a vector by variable (with distractor)', 'if(u) {v <- 42}\nv <- c(c("a", "b"), "c")\nc <- 4\nlapply(v, library, character.only = TRUE)', { print:   [{ nodeId: '4@lapply', functionName: 'lapply', value: 'stdout' }], library: [
+		testQuery('Using a vector by variable (with distractor)', 'if(u) {v <- 42}\nv <- c(c("a", "b"), "c")\nc <- 4\nlapply(v, library, character.only = TRUE)', { write:   [{ nodeId: '4@lapply', functionName: 'lapply', value: 'stdout', implicit: true }], library: [
 			{ nodeId: '4@library', functionName: 'library', value: 'a' },
 			{ nodeId: '4@library', functionName: 'library', value: 'b' },
 			{ nodeId: '4@library', functionName: 'library', value: 'c' }
 		] });
 
-		testQuery('Using a vector (but c is redefined)', 'c <- print\nv <- c(c("a", "b"), "c")\nlapply(v, library, character.only = TRUE)', { print:   [{ nodeId: '3@lapply', functionName: 'lapply', value: 'stdout' }], library: [
+		testQuery('Using a vector (but c is redefined)', 'c <- print\nv <- c(c("a", "b"), "c")\nlapply(v, library, character.only = TRUE)', { write:   [{ nodeId: '3@lapply', functionName: 'lapply', value: 'stdout', implicit: true }], library: [
 			{ nodeId: '3@library', functionName: 'library', value: 'unknown', lexemeOfArgument: 'v', argumentId: '3:8' },
 		] });
 
-		testQuery('Using a vector by variable (real world)', 'packages <- c("ggplot2", "dplyr", "tidyr")\nlapply(packages, library, character.only = TRUE)', { print:   [{ nodeId: '2@lapply', functionName: 'lapply', value: 'stdout' }], library: [
+		testQuery('Using a vector by variable (real world)', 'packages <- c("ggplot2", "dplyr", "tidyr")\nlapply(packages, library, character.only = TRUE)', { write:   [{ nodeId: '2@lapply', functionName: 'lapply', value: 'stdout', implicit: true }], library: [
 			{ nodeId: '2@library', functionName: 'library', value: 'ggplot2' },
 			{ nodeId: '2@library', functionName: 'library', value: 'dplyr'  },
 			{ nodeId: '2@library', functionName: 'library', value: 'tidyr' }
 		] });
 
-		testQuery('Using a deeply nested vector by variable', 'v <- c(c(c("a", c("b")), "c"), "d", c("e", c("f", "g")))\nlapply(v, library, character.only = TRUE)', { print:   [{ nodeId: '2@lapply', functionName: 'lapply', value: 'stdout' }], library: [
+		testQuery('Using a deeply nested vector by variable', 'v <- c(c(c("a", c("b")), "c"), "d", c("e", c("f", "g")))\nlapply(v, library, character.only = TRUE)', { write:   [{ nodeId: '2@lapply', functionName: 'lapply', value: 'stdout', implicit: true }], library: [
 			{ nodeId: '2@library', functionName: 'library', value: 'a' },
 			{ nodeId: '2@library', functionName: 'library', value: 'b' },
 			{ nodeId: '2@library', functionName: 'library', value: 'c' },
@@ -388,7 +396,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('Custom (by index)', 'read.custom.file(1, "my-custom-file", 2)', expected, readCustomFile);
 			testQuery('Custom (by name)', 'read.custom.file(num1 = 1, num2 = 2, file = "my-custom-file")', expected, readCustomFile);
 			testQuery('Ignore default', "read.table('test.csv')", {}, { ignoreDefaultFunctions: true });
-			testQuery('Disabled', "read.table('test.csv')", {}, { enabledCategories: ['library', 'write', 'source'] });
+			/* the read category is off, but `read.table` still prints the frame it read, and outputs are on */
+			testQuery('Disabled', "read.table('test.csv')", {
+				write: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'stdout', implicit: true }]
+			}, { enabledCategories: ['library', 'write', 'source'] });
 			testQuery('Enabled', "read.table('test.csv')", {
 				read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }]
 			}, { enabledCategories: ['read'] });
@@ -629,12 +640,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	describe('Overwritten Function', () => {
 		testQuery('read.csv (overwritten by user)', "read.csv <- function(a) print(a); read.csv('test.csv')", {
 			read:  [],
-			print: [{ value: 'stdout', functionName: 'read.csv', nodeId: '1@[2]read.csv' }],
-			write: [{
-				value:        'stdout',
-				functionName: 'print',
-				nodeId:       '1@print'
-			}]
+			write: [
+				{ value: 'stdout', functionName: 'print', nodeId: '1@print' },
+				{ value: 'stdout', implicit: true, functionName: 'read.csv', nodeId: '1@[2]read.csv' }
+			]
 		});
 	});
 
@@ -661,7 +670,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 					additionalAnalysis: async(data, _id, _f, _qr, results) => {
 						const ns = (await data.analyzer.normalize()).idMap;
 						for(const n of ns.values()) {
-							if(n.type === RType.FunctionCall && n.lexeme === 'cat' && n.arguments.length > 0) {
+							if(RFunctionCall.is(n) && n.lexeme === 'cat' && n.arguments.length > 0) {
 								results.push({
 									nodeId:       n.info.id,
 									functionName: 'cat',
@@ -756,6 +765,208 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		});
 	});
 
+
+	describe('Statistical Tests', () => {
+		/* what a test is asked for is the statistic it prints, so a top-level one is an output as well */
+		testQuery('t.test', 'x <- 1\nt.test(x)', {
+			statistics: [{ nodeId: '2@t.test', functionName: 't.test' }],
+			write:      [{ nodeId: '2@t.test', functionName: 't.test', value: 'stdout', implicit: true }]
+		});
+		testQuery('anova', 'anova(m)', {
+			statistics: [{ nodeId: '1@anova', functionName: 'anova' }],
+			write:      [{ nodeId: '1@anova', functionName: 'anova', value: 'stdout', implicit: true }]
+		});
+		testQuery('a namespaced test keeps its package', 'stats::wilcox.test(x, y)', {
+			library:    [{ nodeId: '1@wilcox.test', functionName: '::', value: 'stats' }],
+			statistics: [{ nodeId: '1@stats::wilcox.test', functionName: Identifier.make('wilcox.test', 'stats') }],
+			write:      [{ nodeId: '1@stats::wilcox.test', functionName: Identifier.make('wilcox.test', 'stats'), value: 'stdout', implicit: true }]
+		});
+		testQuery('a test of another package is not attributed to stats', 'car::leveneTest(y ~ g)', {
+			library:    [{ nodeId: '1@leveneTest', functionName: '::', value: 'car' }],
+			statistics: [{ nodeId: '1@car::leveneTest', functionName: Identifier.make('leveneTest', 'car') }],
+			write:      [{ nodeId: '1@car::leveneTest', functionName: Identifier.make('leveneTest', 'car'), value: 'stdout', implicit: true }]
+		});
+		/* the call is not the test it looks like, but it still prints what it returns */
+		testQuery('a wrong namespace drops the call', 'utils::t.test(x)', {
+			library: [{ nodeId: '1@t.test', functionName: '::', value: 'utils' }],
+			write:   [{ nodeId: '1@utils::t.test', functionName: Identifier.make('t.test', 'utils'), value: 'stdout', implicit: true }]
+		});
+		testQuery('a nested test is still a test', 'f <- function() t.test(x)', {
+			statistics: [{ nodeId: '1@t.test', functionName: 't.test' }]
+		});
+		test('the category is what the built-ins state, with a package for every entry', () => {
+			const stated = BuiltInIndex.default().with(CallProp.Statistics);
+			assert.isNotEmpty(stated);
+			assert.deepStrictEqual(
+				DefaultDependencyCategories.statistics.functions.map(f => `${f.package as string}::${f.name}`).sort(),
+				stated.map(Identifier.toString).sort()
+			);
+			for(const f of DefaultDependencyCategories.statistics.functions) {
+				assert.isDefined(f.package, `${f.name} has no package`);
+			}
+		});
+	});
+
+	describe('Implicit echo', () => {
+		describe('Visible results are auto-printed', () => {
+			testQuery('a plain call', 'summary(x)', {
+				write: [{ nodeId: '1@summary', functionName: 'summary', value: 'stdout', implicit: true }]
+			});
+			testQuery('every top-level call', 'summary(x)\nmean(x)', {
+				write: [
+					{ nodeId: '1@summary', functionName: 'summary', value: 'stdout', implicit: true },
+					{ nodeId: '2@mean', functionName: 'mean', value: 'stdout', implicit: true }
+				]
+			});
+		});
+		describe('Invisible results are not', () => {
+			for(const code of ['invisible(x)', 'assign("x", 1)', 'rm(x)', 'library(a)', 'stopifnot(x)', 'set.seed(42)']) {
+				testQuery(code, code, code.startsWith('library') ? { library: [{ nodeId: '1@library', functionName: 'library', value: 'a' }] } : {});
+			}
+			testQuery('an assignment', 'x <- summary(y)', {});
+			testQuery('a call below the top level', 'f <- function() summary(x)', {});
+			testQuery('a call as an argument', 'print(summary(x))', {
+				write: [{ nodeId: '1@print', functionName: 'print', value: 'stdout' }]
+			});
+		});
+		describe('Calls another category already accounts for are not repeated', () => {
+			testQuery('a plot', 'plot(x)', {
+				visualize: [{ nodeId: '1@plot', functionName: 'plot' }]
+			});
+			testQuery('a write', 'write.csv(x, "out.csv")', {
+				write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'out.csv' }]
+			});
+			testQuery('an assertion', 'expect_equal(1 + 1, 2)', {});
+		});
+		describe('A statement that is not a call', () => {
+			testQuery('a symbol', 'x', { write: [{ nodeId: '1@x', functionName: 'x', value: 'stdout', implicit: true }] });
+			testQuery('a constant', '42', { write: [{ nodeId: 0, functionName: '42', value: 'stdout', implicit: true }] });
+			testQuery('an operator', 'x + 1', { write: [{ nodeId: 2, functionName: '+', value: 'stdout', implicit: true }] });
+			testQuery('an access', 'df$col', { write: [{ nodeId: 3, functionName: '$', value: 'stdout', implicit: true }] });
+			testQuery('a function definition', 'function(x) x', { write: [{ nodeId: 4, functionName: 'function', value: 'stdout', implicit: true }] });
+			testQuery('a pipe reports the call it feeds', 'x |> summary()', {
+				write: [{ nodeId: '1@summary', functionName: 'summary', value: 'stdout', implicit: true }]
+			});
+			testQuery('a pipe into an invisible call prints nothing', 'x |> invisible()', {});
+			/* magrittr's pipe is a call of its own, and what it prints is what the call it feeds does */
+			testQuery('a magrittr pipe reports the call it feeds', 'x %>% summary()', {
+				write: [{ nodeId: '1@summary', functionName: 'summary', value: 'stdout', implicit: true }]
+			});
+			testQuery('a magrittr pipe into an invisible call prints nothing', 'x %>% invisible()', {});
+			testQuery('a magrittr assignment pipe prints nothing', 'x %<>% summary()', {});
+		});
+		describe('A group is visible, whatever it holds', () => {
+			/* `(` hands its argument back visibly, which is the idiom for assigning and seeing the value */
+			testQuery('a parenthesized assignment', '(x <- 1)', {
+				write: [{ nodeId: 4, functionName: '<-', value: 'stdout', implicit: true }]
+			});
+			testQuery('a parenthesized invisible call', '(invisible(1))', {
+				write: [{ nodeId: '1@invisible', functionName: 'invisible', value: 'stdout', implicit: true }]
+			});
+		});
+		describe('A statement returning invisibly', () => {
+			/* every loop hands back an invisible NULL, however often its body runs */
+			testQuery('a for loop', 'for(i in 1:10) i', {});
+			testQuery('a while loop', 'while(x) y', {});
+			testQuery('a repeat loop', 'repeat break', {});
+			testQuery('an assignment', 'x <- 1', {});
+			testQuery('an equals assignment', 'x = 1', {});
+			testQuery('a right assignment', '1 -> x', {});
+			testQuery('a super assignment', 'x <<- 1', {});
+			testQuery('a replacement', 'names(x) <- "a"', {});
+			/* the body still runs, so what it prints on its own is still an output */
+			testQuery('a loop printing in its body', 'for(i in 1:10) print(i)', {
+				write: [{ nodeId: '1@print', functionName: 'print', value: 'stdout' }]
+			});
+		});
+		describe('A block hands on the value of its last statement', () => {
+			testQuery('a visible last statement', '{ invisible(1); 2 }', {
+				write: [{ nodeId: 6, functionName: '2', value: 'stdout', implicit: true }]
+			});
+			testQuery('an invisible last statement', '{ 1; invisible(2) }', {});
+			testQuery('an empty block', '{}', { write: [{ nodeId: 2, functionName: '{', value: 'stdout', implicit: true }] });
+		});
+		describe('An if hands on the value of the branch that runs', () => {
+			testQuery('a visible branch', 'if(c) 42', { write: [{ nodeId: 1, functionName: '42', value: 'stdout', implicit: true }] });
+			testQuery('an invisible branch', 'if(c) invisible(1)', {});
+			testQuery('only the else branch is visible', 'if(c) invisible(1) else 42', {
+				write: [{ nodeId: 6, functionName: '42', value: 'stdout', implicit: true }]
+			});
+			testQuery('both branches are invisible', 'if(c) invisible(1) else invisible(2)', {});
+		});
+		/**
+		 * R itself settles what the top level echoes, so every rule above is checked against what `Rscript`
+		 * actually writes to stdout for the same code.
+		 */
+		describe.skipIf(skipTestBecauseConfigNotMet({ minRVersion: '4.0.0' }))('What R prints', () => {
+			/**
+			 * whether R writes anything to stdout when running `code` at the top level;
+			 * the code goes through a file because a newline within a `-e` argument does not survive
+			 * the command line on Windows
+			 */
+			function rPrints(code: string): boolean {
+				const dir = mkdtempSync(join(tmpdir(), 'flowr-echo-'));
+				const file = join(dir, 'code.R');
+				try {
+					writeFileSync(file, code, { encoding: 'utf8' });
+					return execFileSync('Rscript', ['--vanilla', file], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim().length > 0;
+				} finally {
+					rmSync(dir, { recursive: true, force: true });
+				}
+			}
+			async function flowrPrints(code: string): Promise<boolean> {
+				const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+				analyzer.addRequest(code);
+				const results = await analyzer.query([{ type: 'dependencies' }]);
+				return (results.dependencies.write ?? []).some(d => d.implicit === true);
+			}
+			test.each([
+				/* echoed */
+				'x <- 1\nx',
+				'x <- 1\nx + 1',
+				'df <- data.frame(col = 1)\ndf$col',
+				'function(x) x',
+				'{ invisible(1); 2 }',
+				'{}',
+				'(x <- 1)',
+				'(invisible(1))',
+				'if(TRUE) 42',
+				'summary(1:10)',
+				'suppressWarnings(1)',
+				/* not echoed */
+				'invisible(1)',
+				'for(i in 1:3) i',
+				'while(FALSE) 1',
+				'repeat break',
+				'x <- 1',
+				'x = 1',
+				'1 -> x',
+				'x <<- 1',
+				'x <- 1\nnames(x) <- "a"',
+				'{ 1; invisible(2) }',
+				'if(TRUE) invisible(1)',
+				'library(stats)'
+			])('%s', async(code) => {
+				assert.strictEqual(await flowrPrints(code), rPrints(code), `flowR and R disagree about ${JSON.stringify(code)}`);
+			});
+			test('a branch that is not taken is over-approximated', async() => {
+				/* the condition is generally unknown statically, so flowR reports what the branch would print */
+				assert.isFalse(rPrints('if(FALSE) 42'));
+				assert.isTrue(await flowrPrints('if(FALSE) 42'));
+			});
+		});
+
+		test('nothing is auto-printed without implicit echo', async() => {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser)
+				.amendConfig(c => {
+					c.project.assumeImplicitEcho = false;
+				})
+				.build();
+			analyzer.addRequest('summary(x)');
+			const results = await analyzer.query([{ type: 'dependencies' }]);
+			assert.deepStrictEqual(results.dependencies.write.filter(d => d.implicit), []);
+		});
+	});
 
 	describe('The categories agree with the built-in configuration', () => {
 		const resources = new Map<string, { idx: number, name: string }>();

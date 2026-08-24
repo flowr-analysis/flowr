@@ -1,6 +1,5 @@
 import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
-import { arraysGroupBy } from '../../../../src/util/collections/arrays';
 import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { FlowrConfig } from '../../../../src/config';
 import {
@@ -11,7 +10,7 @@ describe('VirtualEnv-file', function() {
 	function ctxWith(...files: string[]): FlowrAnalyzerContext {
 		const ctx = new FlowrAnalyzerContext(
 			FlowrConfig.default(),
-			arraysGroupBy([new FlowrAnalyzerVirtualEnvFilePlugin()], p => p.type)
+			[new FlowrAnalyzerVirtualEnvFilePlugin()]
 		);
 		for(const f of files) {
 			ctx.addFile(new FlowrInlineTextFile(f, ''));

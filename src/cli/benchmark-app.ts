@@ -6,6 +6,7 @@ import { guard } from '../util/assert';
 import { allRFiles } from '../util/files';
 import { log } from '../util/log';
 import { LimitedThreadPool } from '../util/parallel';
+import { CalibrationSamples } from '../benchmark/calibration';
 import { processCommandLineArgs } from './common/script';
 import type { RParseRequestFromFile } from '../r-bridge/retriever';
 import type { KnownParserName } from '../r-bridge/parser';
@@ -28,6 +29,7 @@ export interface BenchmarkCliOptions {
 	'sampling-strategy':         string
 	cfg?:                        boolean
 	cg?:                         boolean
+	'no-extra-phases'?:          boolean
 }
 
 const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [], {
@@ -96,6 +98,7 @@ async function benchmark() {
 	const limit = options.limit ?? files.length;
 
 	const verboseAdd = options.verbose ? ['--verbose'] : [];
+	const calibrationStep = Math.max(1, Math.ceil(files.length / CalibrationSamples));
 	const args = files.map((f, i) => [
 		'--input', f.request.content,
 		'--file-id', `${i}`,
@@ -108,7 +111,9 @@ async function benchmark() {
 		'--sampling-strategy', options['sampling-strategy'],
 		...(options.seed ? ['--seed', options.seed] : []),
 		...(options.cfg ? ['--cfg'] : []),
-		...(options.cg ? ['--cg'] : [])
+		...(options.cg ? ['--cg'] : []),
+		...(options['no-extra-phases'] ? ['--no-extra-phases'] : []),
+		...(i % calibrationStep === 0 ? ['--calibrate'] : [])
 	]);
 
 	const runs = options.runs ?? 1;

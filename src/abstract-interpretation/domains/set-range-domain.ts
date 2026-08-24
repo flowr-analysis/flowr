@@ -44,8 +44,9 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	protected readonly setType: typeof Set<T>;
 
 	/**
-	 * @param limit -  A limit for the maximum number of elements to store in the must set and may set before over-approximation
-	 * @param newSet - An optional set constructor for the domain elements if the type `T` is not storable in a HashSet
+	 * @param value   - The abstract value to start from.
+	 * @param limit   - A limit for the maximum number of elements to store in the must set and may set before over-approximation
+	 * @param setType - An optional set constructor for the domain elements if the type `T` is not storable in a HashSet
 	 */
 	constructor(value: Value | ArrayRangeValue<T>, limit: SetRangeLimit | number = DEFAULT_INFERENCE_LIMIT, setType: typeof Set<T> = Set) {
 		limit = typeof limit === 'number' ? { must: limit, may: limit } : limit;

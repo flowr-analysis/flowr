@@ -140,7 +140,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 	public isTop(): boolean;
 	public isTop(): this is this;
 	public isTop(): this is this {
-		return Record.values(this.value).filter(isNotUndefined).length === 0;
+		return !Record.values(this.value).some(isNotUndefined);
 	}
 
 	public isBottom(): boolean;

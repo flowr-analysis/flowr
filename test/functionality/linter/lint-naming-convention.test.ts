@@ -15,7 +15,7 @@ function genName(convention: CasingConvention): string {
 		return out;
 	};
 
-	const firstUp = (s: string) => `${s[0].toUpperCase()}${s.substring(1)}`;
+	const firstUp = (s: string) => `${s[0].toUpperCase()}${s.slice(1)}`;
 
 	const tokens = [randToken(), randToken(), randToken()];
 

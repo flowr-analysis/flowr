@@ -1,0 +1,33 @@
+#!/bin/sh
+set -eu
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+if [ -z "$staged" ]; then
+  exit 0
+fi
+
+fail=0
+
+# a focused test silently skips every other test of its file in the CI
+focused=$(echo "$staged" | grep -E '^test/.*\.(ts|tsx)$' || true)
+if [ -n "$focused" ]; then
+  # shellcheck disable=SC2086 # we want the argument splitting
+  hits=$(git grep --cached -n -E '(describe|test|it|bench)\.only\(' -- $focused || true)
+  if [ -n "$hits" ]; then
+    echo "Focused tests are staged, so the rest of their file would not run:"
+    echo "$hits"
+    echo "Remove the '.only' or commit with --no-verify if you know what you are doing."
+    fail=1
+  fi
+fi
+
+# leftover conflict markers compile in some files and break others, and they are never intended
+# shellcheck disable=SC2086 # we want the argument splitting
+markers=$(git grep --cached -n -E '^(<<<<<<< |>>>>>>> |=======$)' -- $staged || true)
+if [ -n "$markers" ]; then
+  echo "Merge conflict markers are staged:"
+  echo "$markers"
+  fail=1
+fi
+
+exit $fail

@@ -1,10 +1,12 @@
 import type { FlowrSearchElement, FlowrSearchElements } from '../flowr-search';
 import type {
+	NormalizedAst,
 	ParentInformation,
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { DataflowInformation } from '../../dataflow/info';
 import { type MergeableRecord, deepMergeObject } from '../../util/objects';
-import { VertexType } from '../../dataflow/graph/vertex';
+import { FunctionCallVertex } from '../../dataflow/graph/vertex';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { guard, isNotUndefined } from '../../util/assert';
 import { type Origin, OriginType } from '../../dataflow/origin/dfg-get-origin';
@@ -12,18 +14,18 @@ import { NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processin
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import type { Query, QueryResult } from '../../queries/query';
 import { type CfgSimplificationPassName, cfgFindAllReachable, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
+import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import type { AsyncOrSync, DeepWritable } from 'ts-essentials';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { promoteCallName } from '../../queries/catalog/call-context-query/call-context-query-executor';
-import { CfgKind } from '../../project/cfg-kind';
 import {
 	identifyLinkToLastCallRelationSync
 } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import type { KnownRoxygenTags, RoxygenTag } from '../../r-bridge/roxygen2/roxygen-ast';
-import { getDocumentationOf } from '../../r-bridge/roxygen2/documentation-provider';
 import { FlowrSearchBuilder } from '../flowr-search-builder';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
@@ -63,8 +65,19 @@ export interface CallTargetsContent extends MergeableRecord {
 	targets: (FlowrSearchElement<ParentInformation> | string)[];
 }
 
+/** Analysis artifacts resolved once for the whole search rather than once per element. */
+export interface CallTargetsSearchContent extends MergeableRecord {
+	dfg: DataflowInformation
+	ast: NormalizedAst
+}
+
 export interface LastCallContent extends MergeableRecord {
 	linkedIds: FlowrSearchElement<ParentInformation>[]
+}
+
+/** @see {@link CallTargetsSearchContent} */
+export interface LastCallSearchContent extends CallTargetsSearchContent {
+	cfg: ControlFlowInformation
 }
 
 export interface CfgInformationElementContent extends MergeableRecord {
@@ -83,6 +96,12 @@ export interface CfgInformationSearchContent extends MergeableRecord {
 	 * The CFG attached to the search, extracted using {@link extractCfg}.
 	 */
 	cfg:             ControlFlowInformation
+	/**
+	 * The nodes the control flow reaches, together with the syntax that holds them.
+	 * Only has a value if {@link CfgInformationArguments.checkReachable} was true.
+	 * @see {@link CfgInformationSearchContent.reachableNodes|reachableNodes} - for the vertices themselves
+	 */
+	aliveNodes?:     ReadonlySet<NodeId>
 	/**
 	 * The set of all nodes that are reachable from the root of the CFG, extracted using {@link visitCfgInOrder}.
 	 * Only has a value if {@link CfgInformationArguments.checkReachable} was true.
@@ -103,6 +122,11 @@ export interface RoxygenElementContent extends MergeableRecord {
 	tags:          { [T in KnownRoxygenTags]?: readonly (RoxygenTag & { type: T })[] }
 }
 
+/** @see {@link CallTargetsSearchContent} */
+export interface RoxygenSearchContent extends MergeableRecord {
+	ast: NormalizedAst
+}
+
 export interface QueryDataElementContent extends MergeableRecord {
 	/** The name of the query that this element originated from. To get each query's data, see {@link QueryDataSearchContent}. */
 	query: Query['type']
@@ -111,19 +135,64 @@ export interface QueryDataSearchContent extends MergeableRecord {
 	queries: { [QueryType in Query['type']]: Awaited<QueryResult<QueryType>> }
 }
 
+/** Roles a node can have without ever being executed on its own, which is why the control flow ignores them. */
+const StructuralRoles: ReadonlySet<RoleInParent> = new Set([
+	RoleInParent.FunctionCallName, RoleInParent.ArgumentName, RoleInParent.ParameterName
+]);
+
+/**
+ * The nodes the control flow reaches, including everything that holds one of them.
+ *
+ * A construct is running as long as anything within it is, even when the construct itself is never completed
+ * (an endless loop is not dead code, what follows it is), so reachability is carried from every reached vertex
+ * up to the syntax around it. Marking stops at the first node that is already marked, which keeps this linear
+ * instead of walking the subtree of every node.
+ */
+function collectAliveNodes(ast: NormalizedAst, reachable: ReadonlySet<NodeId>): ReadonlySet<NodeId> {
+	const alive = new Set<NodeId>();
+	for(const id of reachable) {
+		let node = ast.idMap.get(id);
+		while(node !== undefined && !alive.has(node.info.id)) {
+			alive.add(node.info.id);
+			node = node.info.parent === undefined ? undefined : ast.idMap.get(node.info.parent);
+		}
+	}
+	return alive;
+}
+
+/**
+ * Whether the control flow reaches this node.
+ *
+ * The graph's vertices are the nodes that make up the execution of a program; syntax that only names something
+ * (the name of a call or of an argument) is never reached on its own and is judged by what it names instead.
+ */
+function isReachedByControlFlow(node: RNodeWithParent, alive: ReadonlySet<NodeId>): boolean {
+	if(alive.has(node.info.id)) {
+		return true;
+	} else if(StructuralRoles.has(node.info.role)) {
+		return node.info.parent !== undefined && alive.has(node.info.parent);
+	}
+	return false;
+}
+
 /**
  * The registry of enrichments that are currently supported by the search.
  * See {@link FlowrSearchBuilder.with} for more information on how to apply enrichments.
  */
 export const Enrichments = {
 	[Enrichment.CallTargets]: {
-		enrichElement: async(e, _s, analyzer, args, prev) => {
+		enrichSearch: async(_search, data, _args, prev) => prev ?? {
+			dfg: await data.dataflow(),
+			ast: await data.normalize()
+		},
+		enrichElement: async(e, s, analyzer, args, prev) => {
 			// we don't resolve aliases here yet!
 			const content: CallTargetsContent = { targets: [] };
-			const df = await analyzer.dataflow();
-			const n = await analyzer.normalize();
+			const shared = s.enrichmentContent(Enrichment.CallTargets) as CallTargetsSearchContent | undefined;
+			const df = shared?.dfg ?? await analyzer.dataflow();
+			const n = shared?.ast ?? await analyzer.normalize();
 			const callVertex = df.graph.getVertex(e.node.info.id);
-			if(callVertex?.tag === VertexType.FunctionCall) {
+			if(FunctionCallVertex.is(callVertex)) {
 				const origins = Dataflow.origin(df.graph, callVertex.id);
 				if(!origins || origins.length === 0) {
 					const name = recoverName(callVertex.id, n.idMap);
@@ -179,16 +248,22 @@ export const Enrichments = {
 		},
 		// as built-in call target enrichments are not nodes, we don't return them as part of the mapper!
 		mapper: ({ targets }) => targets.map(t => t as FlowrSearchElement<ParentInformation>).filter(t => t.node !== undefined)
-	} satisfies EnrichmentData<CallTargetsContent, { onlyBuiltin?: boolean, qualifyNames?: boolean }>,
+	} satisfies EnrichmentData<CallTargetsContent, { onlyBuiltin?: boolean, qualifyNames?: boolean }, CallTargetsSearchContent>,
 	[Enrichment.LastCall]: {
-		enrichElement: async(e, _s, analyzer, args, prev) => {
+		enrichSearch: async(_search, data, _args, prev) => prev ?? {
+			dfg: await data.dataflow(),
+			ast: await data.normalize(),
+			cfg: await data.controlflow(undefined)
+		},
+		enrichElement: async(e, s, analyzer, args, prev) => {
 			guard(args && args.length, `${Enrichment.LastCall} enrichment requires at least one argument`);
 			const content = prev ?? { linkedIds: [] };
-			const df = (await analyzer.dataflow()).graph;
+			const shared = s.enrichmentContent(Enrichment.LastCall) as LastCallSearchContent | undefined;
+			const df = (shared?.dfg ?? await analyzer.dataflow()).graph;
 			const vertex = df.getVertex(e.node.info.id);
-			if(vertex?.tag === VertexType.FunctionCall) {
-				const n = await analyzer.normalize();
-				const cfg = (await analyzer.controlflow(undefined, CfgKind.Quick)).graph;
+			if(FunctionCallVertex.is(vertex)) {
+				const n = shared?.ast ?? await analyzer.normalize();
+				const cfg = (shared?.cfg ?? await analyzer.controlflow(undefined)).graph;
 				for(const arg of args) {
 					const lastCalls = identifyLinkToLastCallRelationSync(vertex.id, cfg, df, {
 						...arg,
@@ -203,14 +278,15 @@ export const Enrichments = {
 			return content;
 		},
 		mapper: ({ linkedIds }) => linkedIds
-	} satisfies EnrichmentData<LastCallContent, Omit<LinkToLastCall, 'type'>[]>,
+	} satisfies EnrichmentData<LastCallContent, Omit<LinkToLastCall, 'type'>[], LastCallSearchContent>,
 	[Enrichment.CfgInformation]: {
 		enrichElement: (e, search, _data, _args, prev) => {
 			const searchContent: CfgInformationSearchContent = search.enrichmentContent(Enrichment.CfgInformation);
 			return {
 				...prev,
 				isRoot:      searchContent.cfg.graph.rootIds().has(e.node.info.id),
-				isReachable: searchContent.reachableNodes?.has(e.node.info.id)
+				isReachable: searchContent.reachableNodes === undefined ? undefined
+					: isReachedByControlFlow(e.node, searchContent.aliveNodes ?? searchContent.reachableNodes)
 			};
 		},
 		enrichSearch: async(_search, data, args, prev) => {
@@ -228,23 +304,26 @@ export const Enrichments = {
 
 			const content: CfgInformationSearchContent = {
 				...prev,
-				cfg: await data.controlflow(args.simplificationPasses, CfgKind.WithDataflow),
+				cfg: await data.controlflow(args.simplificationPasses),
 			};
 			if(args.checkReachable) {
 				content.reachableNodes = cfgFindAllReachable(content.cfg);
+				content.aliveNodes = collectAliveNodes(await data.normalize(), content.reachableNodes);
 			}
 			return content;
 		}
 	} satisfies EnrichmentData<CfgInformationElementContent, CfgInformationArguments, CfgInformationSearchContent>,
 	[Enrichment.Roxygen]: {
-		enrichElement: async(e, _search, analyzer, _args, prev) => {
+		enrichSearch:  async(_search, data, _args, prev) => prev ?? { ast: await data.normalize() },
+		enrichElement: async(e, search, analyzer, _args, prev) => {
 			const content = (prev ?? {
 				documentation: [],
 				tags:          {}
 			}) as DeepWritable<RoxygenElementContent>;
 
-			const normalize = await analyzer.normalize();
-			const roxygen = getDocumentationOf(e.node.info.id, normalize.idMap);
+			const shared = search.enrichmentContent(Enrichment.Roxygen) as RoxygenSearchContent | undefined;
+			const normalize = shared?.ast ?? await analyzer.normalize();
+			const roxygen = RNode.documentation(e.node.info.id, normalize.idMap);
 			if(roxygen !== undefined) {
 				const comments = (Array.isArray(roxygen) ? roxygen : [roxygen]) as RoxygenTag[];
 				content.documentation.push(...comments);
@@ -256,7 +335,7 @@ export const Enrichments = {
 
 			return content;
 		}
-	} satisfies EnrichmentData<RoxygenElementContent>,
+	} satisfies EnrichmentData<RoxygenElementContent, undefined, RoxygenSearchContent>,
 	[Enrichment.QueryData]: {
 		// the query data enrichment is just a "pass-through" that passes the query data to the underlying search
 		enrichElement: (_e, _search, _data, args, prev) => (args ?? prev) as QueryDataElementContent,

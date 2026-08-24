@@ -10,6 +10,7 @@ import type { FlowrConfig } from '../../../config';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { startAndEndsWith } from '../../../util/text/strings';
 import { SourceRange } from '../../../util/range';
+import { queryLineCode } from '../../../cli/repl/parser/slice-query-parser';
 
 interface CallsIdConstraint {
 	readonly type: 'calls-id';
@@ -114,7 +115,7 @@ function doesCallQueryLineParser(output: ReplOutput, line: readonly string[], _c
 				call:    constraint.call,
 				calls:   constraint.constraint,
 			}],
-		rCode: line[1]
+		rCode: queryLineCode(line)
 	} ;
 }
 

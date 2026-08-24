@@ -3,46 +3,66 @@
  * @module
  */
 import type { ControlDependency, KillReference } from '../info';
-import { happensInEveryBranch, negateControlDependency } from '../info';
+import { happensInEveryBranch, negateControlDependency, withCds } from '../info';
 import type { Environment, REnvironmentInformation } from './environment';
-import type { IdentifierDefinition, IdentifierReference } from './identifier';
+import type { BrandedIdentifier, IdentifierDefinition, IdentifierReference } from './identifier';
 import { Identifier, ReferenceType } from './identifier';
+import { withAppliedCds } from './reference-to-maybe';
 
 /**
- * Drops the kills that a later write revives: a re-definition cancels a pending `named` removal of that name,
- * and any write cancels a wholesale (`all`/`unknown`) removal. Used when bubbling kills out of an expression
- * list so a merging parent only sees the removals still in effect at the list's exit.
+ * Accounts for the writes after a kill: a re-definition revives a `named` removal (dropping it), a conditional
+ * one only revives it in its branch, and a wholesale (`all`/`unknown`) removal stays but spares the names written
+ * after it.
  */
 export function cancelRevivedKills(kills: readonly KillReference[], writes: readonly IdentifierReference[]): KillReference[] {
-	const written = new Set<Identifier>();
+	const written = new Set<BrandedIdentifier>();
+	const writtenMaybe = new Map<BrandedIdentifier, ControlDependency[]>();
 	for(const w of writes) {
-		if(w.name !== undefined) {
-			written.add(w.name);
+		if(w.name === undefined) {
+			continue;
+		}
+		const name = Identifier.getName(w.name);
+		written.add(name);
+		if(!happensInEveryBranch(w.cds)) {
+			const cds = writtenMaybe.get(name);
+			if(cds) {
+				cds.push(...w.cds as ControlDependency[]);
+			} else {
+				writtenMaybe.set(name, [...w.cds as ControlDependency[]]);
+			}
+		} else {
+			writtenMaybe.delete(name);
 		}
 	}
 	if(written.size === 0) {
 		return kills as KillReference[];
 	}
-	return kills.filter(k => k.kind === 'named' && k.reference.name !== undefined && !written.has(k.reference.name));
+	/* conditional writes that cover every branch together revive the name just as an unconditional one does */
+	for(const [name, cds] of writtenMaybe) {
+		if(happensInEveryBranch(cds)) {
+			writtenMaybe.delete(name);
+		}
+	}
+	const remaining: KillReference[] = [];
+	for(const kill of kills) {
+		if(kill.kind === 'named') {
+			const name = kill.reference.name === undefined ? undefined : Identifier.getName(kill.reference.name);
+			const maybeCds = name === undefined ? undefined : writtenMaybe.get(name);
+			if(maybeCds !== undefined) {
+				/* the removal still stands wherever the conditional re-definition did not happen */
+				remaining.push({ kind: 'named', reference: { ...kill.reference, cds: withCds(kill.reference.cds, maybeCds.map(negateControlDependency)) } });
+			} else if(name === undefined || !written.has(name)) {
+				remaining.push(kill);
+			}
+		} else {
+			remaining.push({ ...kill, except: kill.except ? written.union(kill.except) : written });
+		}
+	}
+	return remaining;
 }
 
 function isBuiltInDef(d: IdentifierDefinition): boolean {
 	return d.type === ReferenceType.BuiltInFunction || d.type === ReferenceType.BuiltInConstant;
-}
-
-function mergeCds(base: readonly ControlDependency[] | undefined, toAdd: readonly ControlDependency[]): ControlDependency[] {
-	const result = base ? Array.from(base) : [];
-	for(const c of toAdd) {
-		if(!result.some(e => e.id === c.id && e.when === c.when)) {
-			result.push(c);
-		}
-	}
-	return result;
-}
-
-/** copy-on-write copy of the definition carrying the additional cds, marking it as maybe */
-function weakenDefinition(def: IdentifierDefinition, cds: readonly ControlDependency[]): IdentifierDefinition {
-	return { ...def, cds: mergeCds(def.cds, cds) };
 }
 
 /** attaches `cds` to every user definition of `name` along the environment chain */
@@ -53,34 +73,37 @@ function weakenName(env: Environment, name: Identifier, cds: readonly ControlDep
 		if(ns === undefined || current.n === ns) {
 			const defs = current.memory.get(plainName);
 			if(defs !== undefined && defs.some(d => !isBuiltInDef(d))) {
-				current.writableMemory.set(plainName, defs.map(d => isBuiltInDef(d) ? d : weakenDefinition(d, cds)));
+				current.writableMemory.set(plainName, defs.map(d => isBuiltInDef(d) ? d : withAppliedCds(d, cds)));
 				current.cache?.delete(plainName);
 			}
 		}
-		current = current.parent;
+		current = current.writableParent;
 	}
 }
 
-/** attaches `cds` to every user definition in the current frame */
-function weakenAll(env: Environment, cds: readonly ControlDependency[]): void {
+/** attaches `cds` to every user definition in the current frame, except the re-defined names */
+function weakenAll(env: Environment, cds: readonly ControlDependency[], except?: ReadonlySet<BrandedIdentifier>): void {
 	if(env.builtInEnv) {
 		return;
 	}
 	for(const [key, defs] of env.memory) {
+		if(except?.has(key)) {
+			continue;
+		}
 		if(defs.some(d => !isBuiltInDef(d))) {
-			env.writableMemory.set(key, defs.map(d => isBuiltInDef(d) ? d : weakenDefinition(d, cds)));
+			env.writableMemory.set(key, defs.map(d => isBuiltInDef(d) ? d : withAppliedCds(d, cds)));
 		}
 	}
 	env.cache?.clear();
 }
 
-/** removes every user definition from the current frame (e.g., `rm(list = ls())`) */
-function removeAllInFrame(env: Environment): void {
+/** removes every user definition from the current frame (e.g., `rm(list = ls())`), except the re-defined names */
+function removeAllInFrame(env: Environment, except?: ReadonlySet<BrandedIdentifier>): void {
 	if(env.builtInEnv) {
 		return;
 	}
 	for(const [key, defs] of env.memory) {
-		if(defs.every(isBuiltInDef)) {
+		if(except?.has(key) || defs.every(isBuiltInDef)) {
 			continue;
 		}
 		const kept = defs.filter(isBuiltInDef);
@@ -93,10 +116,30 @@ function removeAllInFrame(env: Environment): void {
 	env.cache?.clear();
 }
 
+/** Groups the `named` kills by the name they remove, so removals from separate branches are decided together. */
+function groupNamedKills(kills: readonly KillReference[]): Map<Identifier, IdentifierReference[]> {
+	const named = new Map<Identifier, IdentifierReference[]>();
+	for(const kill of kills) {
+		if(kill.kind !== 'named' || kill.reference.name === undefined) {
+			continue;
+		}
+		const group = named.get(kill.reference.name);
+		if(group) {
+			group.push(kill.reference);
+		} else {
+			named.set(kill.reference.name, [kill.reference]);
+		}
+	}
+	return named;
+}
+
+/** A removal is certain if one of its references is unconditional or if they together cover every branch. */
+function isCertainRemoval(refs: readonly IdentifierReference[]): boolean {
+	return refs.some(r => happensInEveryBranch(r.cds)) || happensInEveryBranch(refs.flatMap(r => r.cds ?? []));
+}
+
 function applyNamedKill(env: Environment, name: Identifier, refs: readonly IdentifierReference[]): void {
-	// certain if any kill is unconditional or the kills together cover every branch
-	const certain = refs.some(r => happensInEveryBranch(r.cds)) || happensInEveryBranch(refs.flatMap(r => r.cds ?? []));
-	if(certain) {
+	if(isCertainRemoval(refs)) {
 		env.remove(name);
 	} else {
 		// the definition survives unless the killing branch executed
@@ -116,33 +159,18 @@ export function applyKills(env: REnvironmentInformation, kills: readonly KillRef
 		return env;
 	}
 	const current = env.current.clone(true);
-	// group named kills by name so removals that together cover all branches become a hard removal
-	const named = new Map<Identifier, IdentifierReference[]>();
 	for(const kill of kills) {
-		switch(kill.kind) {
-			case 'named':
-				if(kill.reference.name !== undefined) {
-					const group = named.get(kill.reference.name);
-					if(group) {
-						group.push(kill.reference);
-					} else {
-						named.set(kill.reference.name, [kill.reference]);
-					}
-				}
-				break;
-			case 'all':
-				if(happensInEveryBranch(kill.cds)) {
-					removeAllInFrame(current);
-				} else {
-					weakenAll(current, (kill.cds ?? []).map(negateControlDependency));
-				}
-				break;
-			case 'unknown':
-				weakenAll(current, kill.cds ?? []);
-				break;
+		if(kill.kind === 'all') {
+			if(happensInEveryBranch(kill.cds)) {
+				removeAllInFrame(current, kill.except);
+			} else {
+				weakenAll(current, (kill.cds ?? []).map(negateControlDependency), kill.except);
+			}
+		} else if(kill.kind === 'unknown') {
+			weakenAll(current, kill.cds ?? [], kill.except);
 		}
 	}
-	for(const [name, refs] of named) {
+	for(const [name, refs] of groupNamedKills(kills)) {
 		applyNamedKill(current, name, refs);
 	}
 	return { current, level: env.level };
@@ -155,8 +183,36 @@ export function makeKillsMaybe(kills: readonly KillReference[] | undefined, cds:
 	}
 	return kills.map(k => {
 		if(k.kind === 'named') {
-			return { kind: 'named', reference: { ...k.reference, cds: mergeCds(k.reference.cds, cds) } };
+			return { kind: 'named', reference: { ...k.reference, cds: withCds(k.reference.cds, cds) } };
 		}
-		return { ...k, cds: mergeCds(k.cds, cds) };
+		return { ...k, cds: withCds(k.cds, cds) };
+	});
+}
+
+/**
+ * Drops the writes that a still-effective removal undid: a definite `named` kill takes out its own name and a
+ * definite wholesale kill takes out every name it did not spare. Conditional and `unknown` kills leave the (now
+ * maybe) definition in place, as it may still be visible afterwards.
+ */
+export function dropKilledWrites(out: readonly IdentifierReference[], kills: readonly KillReference[] | undefined): readonly IdentifierReference[] {
+	if(!kills?.length || out.length === 0) {
+		return out;
+	}
+	const removed = new Set<BrandedIdentifier>();
+	for(const [name, refs] of groupNamedKills(kills)) {
+		if(isCertainRemoval(refs)) {
+			removed.add(Identifier.getName(name));
+		}
+	}
+	const cleared = kills.flatMap(k => k.kind === 'all' && happensInEveryBranch(k.cds) ? [k.except] : []);
+	if(removed.size === 0 && cleared.length === 0) {
+		return out;
+	}
+	return out.filter(ref => {
+		if(ref.name === undefined) {
+			return true;
+		}
+		const name = Identifier.getName(ref.name);
+		return !removed.has(name) && !cleared.some(except => !except?.has(name));
 	});
 }

@@ -3,7 +3,7 @@ import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { describe } from 'vitest';
 
-describe.sequential('eval', withShell(shell => {
+describe('eval', { concurrent: false }, withShell(shell => {
 	assertSliced(label('simple eval use', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
 		shell, 'x <- 2\ny <- eval(parse(text="print(x)"))', ['2@y'], 'x <- 2\ny <- eval(parse(text="print(x)"))');
 	assertSliced(label('simple eval no-use', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
@@ -32,7 +32,7 @@ print(y)`, ['2@print'], `for(v in c("x", "y")) eval(parse(text=paste(k, "<- 2"))
 print(y)`);
 }));
 
-describe.sequential('evalText', withShell(shell => {
+describe('evalText', { concurrent: false }, withShell(shell => {
 	assertSliced(label('simple evalText use', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
 		shell, 'x <- 1\ny <- 1\nz <- evalText("x+y")', ['3@z'], 'x <- 1\ny <- 1\nz <- evalText("x+y")');
 	assertSliced(label('simple evalText use', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),

@@ -11,7 +11,7 @@ import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import { assert, test } from 'vitest';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import type { KnownParser } from '../../../src/r-bridge/parser';
-import { extractCfg } from '../../../src/control-flow/extract-cfg';
+import { extractCfg } from '../../../src/control-flow/control-flow-graph';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { CallGraph } from '../../../src/dataflow/graph/call-graph';
@@ -103,7 +103,7 @@ export function assertQuery<
 			assert.deepStrictEqual(normalized, expectedNormalized, 'The result of the query does not match the expected result');
 		} /* v8 ignore next 3 */ catch(e: unknown) {
 			console.error('Dataflow-Graph', Dataflow.visualize.mermaid.url(await analyzer.dataflow()));
-			console.error('Control-Flow-Graph', cfgToMermaidUrl(extractCfg(await analyzer.normalize(), analyzer.inspectContext(), (await analyzer.dataflow()).graph), await analyzer.normalize()));
+			console.error('Control-Flow-Graph', cfgToMermaidUrl(extractCfg(await analyzer.dataflow()), await analyzer.normalize()));
 			console.error('Call-Graph', CallGraph.visualize.mermaid.url(CallGraph.compute((await analyzer.dataflow()).graph)));
 			throw e;
 		}

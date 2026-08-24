@@ -1,3 +1,4 @@
+import { MatchArgs } from '../../dataflow/graph/match-args';
 import {
 	LintingPrettyPrintContext,
 	type LintingResult,
@@ -13,10 +14,10 @@ import { isNotUndefined } from '../../util/assert';
 import type { Writable } from 'ts-essentials';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { VertexType } from '../../dataflow/graph/vertex';
-import { resolveIdToValue } from '../../dataflow/eval/resolve/alias-tracking';
-import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
-import { pMatch } from '../../dataflow/internal/linker';
+import { OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { valueSetGuard } from '../../dataflow/eval/values/general';
+import { Resolve } from '../../dataflow/environments/resolve-helper';
+import { Dataflow } from '../../dataflow/graph/df-helper';
 
 export type StopWithCallResult = LintingResult;
 
@@ -38,7 +39,7 @@ export const STOP_WITH_CALL_ARG = {
 				elements.getElements()
 					.filter(element => {
 						//only built-in functions
-						const origins = getOriginInDfg(dataflow.graph, element.node.info.id);
+						const origins = Dataflow.origin(dataflow.graph, element.node.info.id);
 						if(isNotUndefined(origins)) {
 							const builtIn = origins.every(e => e.type === OriginType.BuiltInFunctionOrigin);
 							if(!builtIn){
@@ -54,10 +55,10 @@ export const STOP_WITH_CALL_ARG = {
 							'call.':  'call.',
 							'domain': 'domain'
 						} as const;
-						const mapping = pMatch(fCall.args, stopParamMap);
+						const mapping = MatchArgs.toSpec(fCall.args, stopParamMap);
 						const mappedToStop = mapping.get('call.') ?? [];
 						for(const argId of mappedToStop) {
-							const res = resolveIdToValue(argId, { graph: dataflow.graph, environment: fCall.environment, ctx: data.inspectContext() });
+							const res = Resolve.toValue(argId, { graph: dataflow.graph, environment: fCall.environment, ctx: data.inspectContext() });
 							const values = valueSetGuard(res);
 							if(values?.type === 'set' && values.elements.length !== 0){
 								if(values.elements[0].type === 'logical'){

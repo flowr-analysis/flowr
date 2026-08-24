@@ -24,7 +24,7 @@ function assertRetrievedIdsWith(shell: RShell, name: string | TestLabel, input: 
 	});
 }
 
-describe.sequential('Retrieve all slicing locations', withShell(shell => {
+describe('Retrieve all slicing locations', { concurrent: false }, withShell(shell => {
 	describe('Test the default all variables filter', () => {
 		function test(input: string, caps: SupportedFlowrCapabilityId[], ...expected: SlicingCriteria[]) {
 			assertRetrievedIdsWith(shell, label(`Retrieve all variables in ${JSON.stringify(input)}`, caps), input, DefaultAllVariablesFilter, ...expected);

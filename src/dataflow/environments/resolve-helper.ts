@@ -1,4 +1,4 @@
-import { resolveByName, resolveByNameAnyType, resolvesToBuiltInConstant } from './resolve-by-name';
+import { resolveByName, resolveByNameAnyType, resolvesToBuiltIn, resolvesToBuiltInConstant } from './resolve-by-name';
 import { resolveIdToValue, resolveIdToSingleString, resolveToConstants } from '../eval/resolve/alias-tracking';
 import {
 	resolveIdToArgName,
@@ -19,6 +19,12 @@ import {
  * - {@link Resolve.byNameAndType} additionally filters and merges the definitions of every layer it passes.
  *   Given the unknown reference type it only forwards to {@link Resolve.byName}, so ask that one directly instead.
  * - {@link Resolve.toValue} and the {@link Resolve.argument} family run the evaluator on top of a resolution.
+ * @example
+ * ```ts
+ * Resolve.byName('x', environment);          // every definition `x` may refer to
+ * Resolve.toValue(id, { graph, ctx });       // the value(s) the node may hold
+ * Resolve.argument.value(call, 'file', ...); // the value of a named argument
+ * ```
  */
 export const Resolve = {
 	name:           'Resolve',
@@ -28,6 +34,8 @@ export const Resolve = {
 	byNameAndType:  resolveByName,
 	/** Whether the name always, never, or maybe refers to a built-in constant of the given value. */
 	toBuiltIn:      resolvesToBuiltInConstant,
+	/** Whether the name is not shadowed by a user definition, so it still refers to the built-in. */
+	isBuiltIn:      resolvesToBuiltIn,
 	/** The constant values the name resolves to. */
 	toConstants:    resolveToConstants,
 	/** The value(s) the node may hold, tracking aliases as the configuration allows. */
@@ -36,8 +44,9 @@ export const Resolve = {
 	toSingleString: resolveIdToSingleString,
 	/** The same, for the arguments of a call. */
 	argument:       {
+		name:         'argument',
 		/** The argument's name. */
-		name:         resolveIdToArgName,
+		toName:       resolveIdToArgName,
 		/** The argument's value. */
 		value:        resolveIdToArgValue,
 		/** The argument's value as a vector of strings. */

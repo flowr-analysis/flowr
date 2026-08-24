@@ -7,7 +7,7 @@ import { describe } from 'vitest';
  * Slicing tests for the R files added to the artificial performance suite
  * (`test/performance/suite-artificial/static`), so that we keep slicing them as expected.
  */
-describe.sequential('Artificial performance suite', withShell(shell => {
+describe('Artificial performance suite', { concurrent: false }, withShell(shell => {
 	assertSliced(label('for-loop-accumulate: total ignores the acc vector', []),
 		shell,
 		'acc <- vector()\ntotal <- 0\nfor (i in 1:50) {\n  total <- total + i\n  acc[i] <- total\n}\nprint(acc)\nprint(total)',

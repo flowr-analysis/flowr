@@ -18,7 +18,7 @@ import { contextFromInput } from '../../../../src/project/context/flowr-analyzer
 
 
 
-describe.sequential('Static Slice Query', withShell(shell => {
+describe('Static Slice Query', { concurrent: false }, withShell(shell => {
 	function testQuery(name: string, code: string, queries: readonly StaticSliceQuery[]) {
 		assertQuery(label(name), shell, code, queries, async() => {
 			const results: StaticSliceQueryResult['results'] = {};

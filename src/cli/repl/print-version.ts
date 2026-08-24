@@ -2,7 +2,7 @@ import type { KnownParser } from '../../r-bridge/parser';
 import { retrieveVersionInformation } from '../../util/version';
 import { defaultSigDbPath, readManifestDate, type SigDbScope } from '../../project/sigdb/manifest';
 import { formatter, italic } from '../../util/text/ansi';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'url';
 
 /**
  * Returns a version string for the REPL including flowR, R, and the engine in use.

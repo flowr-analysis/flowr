@@ -5,7 +5,6 @@ import { unpackNonameArg } from '../argument/unpack-argument';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -16,6 +15,8 @@ import { Identifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { resolveConstantString, resolveEnvirArg } from './built-in-envir-utils';
 import { SourceRange } from '../../../../../../util/range';
+import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /**
  * Processes a built-in 'get' function call.
@@ -41,7 +42,7 @@ export function processGet<OtherInfo>(
 		: undefined;
 
 	let treatTargetAsSymbol: RSymbol<OtherInfo & ParentInformation> | undefined = undefined;
-	if(retrieve !== undefined && retrieve.type === RType.String) {
+	if(retrieve !== undefined && RString.is(retrieve)) {
 		treatTargetAsSymbol = {
 			type:     RType.Symbol,
 			info:     retrieve.info,

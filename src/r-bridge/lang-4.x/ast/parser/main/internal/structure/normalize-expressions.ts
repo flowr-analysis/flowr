@@ -5,7 +5,7 @@ import { getWithTokenType } from '../../normalize-meta';
 import { expensiveTrace, log } from '../../../../../../../util/log';
 import { guard } from '../../../../../../../util/assert';
 import { jsonReplacer } from '../../../../../../../util/json';
-import type { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
+import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 import type { RNode } from '../../../../model/model';
 import { tryNormalizeUnary } from '../operators/normalize-unary';
 import { tryNormalizeRepeat } from '../loops/normalize-repeat';
@@ -173,7 +173,7 @@ export function normalizeExpressions(
 
 		if(segments.length > 1 || braces) {
 			const processed = segments.flatMap(s => normalizeExpressions(data, s)) as RNode[];
-			guard(!processed.some(x => (x as RNode | RDelimiter).type === RType.Delimiter), () => `expected no delimiter tokens in ${JSON.stringify(processed)}`);
+			guard(!processed.some(x => RDelimiter.is(x)), () => `expected no delimiter tokens in ${JSON.stringify(processed)}`);
 			if(braces) {
 				return [processBraces(braces, processed, parsedComments, data)];
 			} else if(processed.length > 0) {

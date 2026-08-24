@@ -7,7 +7,7 @@ import { describe } from 'vitest';
 import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 import { SourceRange } from '../../../../../src/util/range';
 
-describe.sequential('Parse function calls', withShell(shell => {
+describe('Parse function calls', { concurrent: false }, withShell(shell => {
 	describe('functions without arguments', () => {
 		assertAst(label('f()', ['call-normal', 'name-normal']),
 			shell, 'f()', exprList({

@@ -34,7 +34,7 @@ describe('The default classifier configuration follows the built-in labels', () 
 	});
 });
 
-describe.sequential('Input Source Test', withTreeSitter(parser => {
+describe('Input Source Test', { concurrent: false }, withTreeSitter(parser => {
 	function testQuery(name: string, code: string, query: readonly InputSourcesQuery[], expectedOutput: InputSourcesQueryResult['results']) {
 		assertQuery(label(name), parser, code, query, d => {
 			const nast = d.normalize.idMap;

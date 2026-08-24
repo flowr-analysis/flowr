@@ -6,7 +6,7 @@ import { argumentInCall } from '../../../_helper/dataflow/environment-builder';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 
-describe.sequential('Dataflow Plot Dependencies', withShell(shell => {
+describe('Dataflow Plot Dependencies', { concurrent: false }, withShell(shell => {
 	assertDataflow(label('Removing breaks link', ['functions-with-global-side-effects']), shell,
 		'x <- 2\nrm(x)\nx',
 		emptyGraph()
@@ -18,7 +18,7 @@ describe.sequential('Dataflow Plot Dependencies', withShell(shell => {
 			.constant('1@2')
 			.call('1@<-', '<-', [argumentInCall('1'), argumentInCall('0')], { onlyBuiltIn: true, origin: [BuiltInProcName.Assignment], reads: [NodeId.toBuiltIn('<-'), 1] })
 			.calls('1@<-', NodeId.toBuiltIn('<-'))
-			.reads('2@x', '1@x')
+			.nse('2@rm', '2@x')
 			.use('3@x'),
 		{
 			resolveIdsAsCriterion: true

@@ -1,6 +1,5 @@
 import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
-import { arraysGroupBy } from '../../../../src/util/collections/arrays';
 import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { FlowrConfig } from '../../../../src/config';
 import {
@@ -11,9 +10,9 @@ import {
 describe('Inst-file', function() {
 	const ctx = new FlowrAnalyzerContext(
 		FlowrConfig.default(),
-		arraysGroupBy([
+		[
 			new FlowrAnalyzerMetaInstFilesPlugin()
-		], p => p.type)
+		]
 	);
 
 	ctx.addFile(new FlowrInlineTextFile('inst/REFERENCES.R', 'x <- 2'));

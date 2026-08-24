@@ -498,7 +498,7 @@ to produce a new dataflow information to pass upwards in the fold. The ${ctx.lin
 * the ${ctx.link(DataflowGraph)} of the current subtree 
 * the currently active ${ctx.link('REnvironmentInformation')} as an abstraction of all active definitions linking to potential definition locations (see [Advanced R::Environments](https://adv-r.hadley.nz/environments.html))
 * control flow information in ${ctx.link('DataflowCfgInformation')} which is used to enrich the dataflow information with control flow information
-* sets of currently ingoing (read), outgoing (write) and unknown ${ctx.link('IdentifierReference')}s.
+* sets of currently ingoing (read), outgoing (write), and unknown ${ctx.link('IdentifierReference')}s.
 * and a set of ${ctx.link('KillReference')}s which tracks variables that go out of scope within the current subtree (e.g., due to \`rm\`). Just like the reference sets above, kills are carried upwards in the fold so that the enclosing scope (expression list, branch, loop, or function body) can apply the removal (via ${ctx.link('applyKills')}) at the correct location, even when the \`rm\` happens nested within a branch or block. This also covers clearing the whole environment with \`rm(list=ls())\` and conservatively handling removals whose target cannot be resolved statically.
 
 While all of them are essentially empty when processing an “uninteresting leaf”, handling a constant is slightly more interesting with ${ctx.link(processValue)}:
@@ -614,6 +614,64 @@ scaled_elapsed = elapsed_ms              * factor
 
 A factor of \`2\` makes the check twice as sensitive: it triggers \`Problematic\` when the heap
 is at 35% (= 0.7 / 2) instead of 70%.
+
+### Per-Feature Thresholds
+
+A dataflow extraction, a linter pass and a static slice are not worth the same allowance, so each dimension
+of \`config.gas.thresholds\` may be bounded per feature key (see ${ctx.link('GasThresholdSpec')}), with
+\`default\` covering the keys that have no entry of their own:
+
+\`\`\`json
+{
+  "gas": {
+    "thresholds": {
+      "timeMs": {
+        "default": { "problematic": 60000, "critical": 120000 },
+        "slicer":  { "problematic": 24000, "critical": 30000 }
+      }
+    },
+    "features": {
+      "slicer": 1
+    }
+  }
+}
+\`\`\`
+
+An entry only has to name the bounds it changes; the rest falls back to \`default\` and then to a directly
+given \`{ problematic, critical }\` pair, which stays valid and still means "the same bound for everything".
+
+### Per-Operation Contingents
+
+The elapsed-time bound is *not* measured from the creation of the analyzer. Each analysis run (parse,
+normalize, dataflow) and each ${ctx.link(staticSlice.name)} runs against a contingent of its own, so analysing
+a project and then asking for twenty slices gives twenty-one contingents, not one clock the analysis spent.
+
+Anything beginning a new analysis restarts it too: an added file, a cache invalidation, a re-parse, or an
+explicit ${ctx.linkM(FlowrAnalyzer, 'reset')}. Operations in flight keep theirs, as restarting a running
+traversal's clock would defeat the guard bounding it. To split your *own* phases, call
+${ctx.linkM(FlowrAnalyzerGasContext, 'reset', { codeFont: true, realNameWrapper: 'i' })} on the writeable
+context (\`analyzer.context().gas.reset()\`) - supported API, not an internal hook.
+
+### Bounding a Single Call
+
+Bounds for one call, keyed by the same feature names and measured from that call (see ${ctx.link('GasOverrides')}):
+
+${codeBlock('ts', `await analyzer.query([{ type: 'static-slice', criteria: ['12@product'] }], {
+    gas: { slicer: { critical: 30_000 } }
+});`)}
+
+Bare \`problematic\`/\`critical\` numbers are elapsed milliseconds; use \`timeMs\`/\`memory\` to be explicit and
+\`factor\` for the sensitivity. Naming a feature enables gas for it even when \`config.gas.features\` disables
+it (pass \`factor: 0\` to keep it off). ${ctx.linkM(FlowrAnalyzer, 'runFull')} and
+${ctx.linkM(FlowrAnalyzer, 'runSearch')} take the same, and read-only holders of a context can derive a
+bounded view with ${ctx.linkM(FlowrAnalyzerGasContext, 'scope', { codeFont: true, realNameWrapper: 'i' })}.
+
+### When the Slicer Runs Out
+
+A slice cut short comes back with \`stoppedEarly\` and a \`progress\` saying how far it got (see
+${ctx.link('SliceProgress')}). A \`frontier\` of \`0\` means the queue drained after all; a small \`frontier\`
+next to a large \`visited\` says little is missing. Without it a truncated slice is all-or-nothing, and
+"as far as flowR got" is not "what is independent", so it would have to be discarded.
 
 ### Known Feature Keys
 

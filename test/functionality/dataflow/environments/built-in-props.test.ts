@@ -18,6 +18,7 @@ import { Identifier, PkgName } from '../../../../src/dataflow/environments/ident
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
 import { defaultEnv } from '../../_helper/dataflow/environment-builder';
 import { label } from '../../_helper/label';
+import { uniqueArray } from '../../../../src/util/collections/arrays';
 
 /** a handful of definitions to query, so the assertions do not depend on the default configuration */
 const TestDefinitions = [
@@ -58,13 +59,14 @@ const ExpectedLabels: readonly (readonly [Identifier, CallProps])[] = [
 
 /** and the shapes a signature comes in */
 const ExpectedSigs: readonly (readonly [Identifier, FnSig])[] = [
-	[Identifier.from(['+', PkgName.Base]), [['e1', ArgProp.Value], ['e2', ArgProp.Value]]],
+	[Identifier.from(['+', PkgName.Base]), [['e1', ArgProp.Value | ArgProp.Atomic], ['e2', ArgProp.Value | ArgProp.Atomic]]],
 	[Identifier.from(['sum', PkgName.Base]), [['...', ArgProp.Value]]],
 	[Identifier.from(['missing', PkgName.Base]), [['x', ArgProp.Presence]]],
 	/* `Alias` is what states the argument handed back, so these have to keep declaring it */
 	[Identifier.from(['identity', PkgName.Base]), [['x', ArgProp.Alias | ArgProp.Forced]]],
 	[Identifier.from(['match.arg', PkgName.Base]), [['arg', ArgProp.Value], ['choices', ArgProp.Bounds]]],
-	[Identifier.from(['read.csv', PkgName.Utils]), [['file', ArgProp.Resource]]]
+	[Identifier.from(['read.csv', PkgName.Utils]), [['file', ArgProp.Resource], ['header', ArgProp.Flag], ['sep', ArgProp.Value],
+		['quote', ArgProp.Value], ['dec', ArgProp.Value], ['fill', ArgProp.Flag], ['comment.char', ArgProp.Value], ['...', ArgProp.Value]]]
 ];
 
 describe('Built-in properties', () => {
@@ -148,7 +150,7 @@ describe('Built-in properties', () => {
 		test(label('resolving in an environment finds the built-in', ['name-normal'], ['other']), () => {
 			const info = queryFnProps('nchar', { environment: defaultEnv() });
 			assert.strictEqual((info?.props ?? 0) & CallProp.Pure, CallProp.Pure);
-			assert.deepStrictEqual(info?.sig, [['x', ArgProp.Shape]]);
+			assert.deepStrictEqual(info?.sig, [['x', ArgProp.Shape], ['type', ArgProp.Value], ['allowNA', ArgProp.Flag], ['keepNA', ArgProp.Flag]]);
 		});
 		test(label('a definition in the code shadows the built-in', ['name-normal', 'normal-definition'], ['other']), () => {
 			const env = defaultEnv().defineFunction('nchar', '0', '0');
@@ -225,7 +227,7 @@ describe('Built-in properties', () => {
 		test(label('a signature names each parameter once, with at most one `...`', ['name-normal'], ['other']), () => {
 			for(const [names, { sig = [] }] of withInfo) {
 				const declared = sig.map(([n]) => n);
-				assert.deepStrictEqual(declared, Array.from(new Set(declared)), `${names.map(Identifier.toString).join(', ')} repeats a parameter`);
+				assert.deepStrictEqual(declared, uniqueArray(declared), `${names.map(Identifier.toString).join(', ')} repeats a parameter`);
 				assert.isAtMost(declared.filter(n => n === '...').length, 1, `${names.map(Identifier.toString).join(', ')} has two dots`);
 			}
 		});

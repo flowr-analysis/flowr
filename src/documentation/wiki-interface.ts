@@ -304,6 +304,7 @@ ${codeBlock('json', JSON.stringify(
 			},
 			abstractInterpretation: {
 				wideningThreshold: 4,
+				followCalls:       true,
 				dataFrame:         {
 					maxColNames:    20,
 					readLoadedData: {

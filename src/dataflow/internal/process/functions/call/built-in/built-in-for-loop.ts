@@ -1,5 +1,5 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { alwaysExits, type DataflowInformation, filterOutLoopExitPoints } from '../../../../../info';
+import { type DataflowInformation, ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
 import {
 	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,
@@ -18,6 +18,7 @@ import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { define } from '../../../../../environments/define';
 import { appendEnvironment } from '../../../../../environments/append';
 import { EdgeType } from '../../../../../graph/edge';
+import { ControlFlow } from '../../../../control-flow';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { IdentifierDefinition } from '../../../../../environments/identifier';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
@@ -52,7 +53,7 @@ export function processForLoop<OtherInfo>(
 
 	guard(variableArg !== undefined && vectorArg !== undefined && bodyArg !== undefined, () => `For-Loop ${JSON.stringify(args)} has missing arguments! Bad!`);
 	const vector = processDataflowFor(vectorArg, data);
-	if(alwaysExits(vector)) {
+	if(ControlFlow.alwaysExits(vector)) {
 		dataflowLogger.warn(`For-Loop ${rootId} forces exit in vector, skipping rest`);
 		return vector;
 	}
@@ -99,6 +100,10 @@ export function processForLoop<OtherInfo>(
 
 	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out, body.environment);
 
+	/* the loop variable is bound by the head whenever the body runs, so reads of it are not ingoing */
+	const loopVariables = new Set(writtenVariable.map(w => w.name));
+	const bodyReadsOfOthers = [...nameIdShares.entries()].filter(([n]) => !loopVariables.has(n)).flatMap(([, refs]) => refs);
+
 	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), nextGraph);
 
 	patchFunctionCall({
@@ -114,6 +119,15 @@ export function processForLoop<OtherInfo>(
 	// as the for-loop always evaluates its condition
 	nextGraph.addEdge(name.info.id, vector.entryPoint, EdgeType.Reads);
 
+	const bodyEntry = ControlFlow.entryOf(body);
+	const variableEntry = ControlFlow.entryOf(variable);
+	ControlFlow.continuesWith(nextGraph, vector, variableEntry);
+	ControlFlow.branchesTo(nextGraph, variable, bodyEntry, cd[0]);
+	ControlFlow.branchesTo(nextGraph, variable, rootId, { id: cd[0].id, when: false });
+	ControlFlow.continuesWith(nextGraph, body, variableEntry);
+	ControlFlow.jumpsTo(nextGraph, body, ExitPointType.Next, variableEntry);
+	ControlFlow.jumpsTo(nextGraph, body, ExitPointType.Break, rootId);
+
 	// the body may never execute, so a removal within it only happens maybe; apply it as the merge cannot represent it
 	const loopKill = body.kill?.length ? makeKillsMaybe(body.kill, cd) : undefined;
 	const loopEnvironment = appendEnvironment(origEnv, outEnvironment);
@@ -121,10 +135,12 @@ export function processForLoop<OtherInfo>(
 	return {
 		unknownReferences: [],
 		// we only want those not bound by a local variable
-		in:                [{ nodeId: rootId, name: name.content, cds: originalDependency, type: ReferenceType.Function }, ...vector.unknownReferences, ...[...nameIdShares.values()].flat()],
+		in:                [{ nodeId: rootId, name: name.content, cds: originalDependency, type: ReferenceType.Function }, ...vector.unknownReferences, ...bodyReadsOfOthers],
 		out:               outgoing,
 		graph:             nextGraph,
 		entryPoint:        name.info.id,
+		cfgEntry:          ControlFlow.entryOf(vector),
+		cfgExit:           rootId,
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
 		// if we can not be sure that the for-loop runs once, we have to merge back the original environment, as the body may never execute
 		environment:       loopKill ? applyKills(loopEnvironment, loopKill) : loopEnvironment,

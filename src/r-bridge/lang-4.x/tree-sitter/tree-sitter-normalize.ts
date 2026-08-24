@@ -11,7 +11,7 @@ import type { RArgument } from '../ast/model/nodes/r-argument';
 import { splitArrayOn } from '../../../util/collections/arrays';
 import { EmptyArgument } from '../ast/model/nodes/r-function-call';
 import type { RSymbol } from '../ast/model/nodes/r-symbol';
-import type { RString } from '../ast/model/nodes/r-string';
+import { RString } from '../ast/model/nodes/r-string';
 import { startAndEndsWith } from '../../../util/text/strings';
 import type { RParameter } from '../ast/model/nodes/r-parameter';
 import { log } from '../../../util/log';
@@ -19,7 +19,7 @@ import type { RProject } from '../ast/model/nodes/r-project';
 import type { ParseStepOutputSingleFile } from '../../parser';
 import { parseLog } from '../ast/parser/json/parser';
 import { Identifier } from '../../../dataflow/environments/identifier';
-import type { RExpressionList } from '../ast/model/nodes/r-expression-list';
+import { RExpressionList } from '../ast/model/nodes/r-expression-list';
 
 export interface TreeSitterInfo {
 	/** id of the tree-sitter node this AST node was created from, used for traceability and linking back to tree-sitter nodes */
@@ -40,7 +40,7 @@ export function normalizeTreeSitterTreeToAst(tree: ParseStepOutputSingleFile<Tre
 	const files: { filePath: string | undefined, root: RExpressionList<TreeSitterInfo> }[] = [];
 	for(const t of tree) {
 		const root = convertTreeNode(t.parsed.rootNode);
-		if(root.type !== RType.ExpressionList) {
+		if(!RExpressionList.is(root)) {
 			throw new ParseError(`expected root to resolve to an expression list, got a ${root.type}`);
 		}
 		files.push({
@@ -83,6 +83,17 @@ export function makeTreeSitterStrict() {
 	nonErrorChildren = nonErrorChildrenStrict;
 }
 
+function makeDefaultInfo(node: SyntaxNode, fullRange: SourceRange, fullLexeme: string) {
+	return {
+		info: {
+			fullRange,
+			adToks: [],
+			fullLexeme,
+			tsId:   node.id
+		}
+	};
+}
+
 function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 	if(!node) {
 		return {
@@ -108,17 +119,9 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 			textCache ??= node.text;
 			return textCache;
 		};
-		const makeDefaultInfo = () => ({
-			info: {
-				fullRange:  range,
-				adToks:     [],
-				fullLexeme: text(),
-				tsId:       node.id
-			}
-		});
 		let defaultInfoCache: ReturnType<typeof makeDefaultInfo> | undefined = undefined;
 		const defaultInfo = () => {
-			defaultInfoCache ??= makeDefaultInfo();
+			defaultInfoCache ??= makeDefaultInfo(node, range, text());
 			return defaultInfoCache;
 		};
 		switch(node.type as TreeSitterType) {
@@ -404,7 +407,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				};
 				if(func.type === TreeSitterType.Identifier || func.type === TreeSitterType.String || func.type === TreeSitterType.NamespaceOperator || func.type === TreeSitterType.Return) {
 					let funcNode = convertTreeNode(func) as RSymbol<TreeSitterInfo> | RString<TreeSitterInfo>;
-					if(funcNode.type === RType.String) {
+					if(RString.is(funcNode)) {
 						funcNode = {
 							...funcNode,
 							type:    RType.Symbol,
@@ -595,7 +598,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					let name = convertTreeNode(nameNode) as RString<TreeSitterInfo> | RSymbol<TreeSitterInfo, string>;
 
 					// unescape argument names
-					if(name.type === RType.String) {
+					if(RString.is(name)) {
 						name = {
 							...name,
 							type:    RType.Symbol,

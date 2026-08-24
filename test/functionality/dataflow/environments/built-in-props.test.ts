@@ -68,7 +68,7 @@ const ExpectedSigs: readonly (readonly [Identifier, FnSig])[] = [
 	[Identifier.from(['match.arg', PkgName.Base]), [['arg', ArgProp.Value], ['choices', ArgProp.Bounds]]],
 	[Identifier.from(['read.csv', PkgName.Utils]), [['file', ArgProp.Resource], ['header', ArgProp.Flag], ['sep', ArgProp.Value],
 		['quote', ArgProp.Value], ['dec', ArgProp.Value], ['fill', ArgProp.Flag], ['comment.char', ArgProp.Value], ['...', ArgProp.Value]]],
-	[Identifier.from(['dbGetQuery', PkgName.Dbi]), [['conn', ArgProp.Handle], ['statement', ArgProp.Value | ArgProp.Injectable], ['...', ArgProp.Value]]]
+	[Identifier.from(['dbGetQuery', PkgName.Dbi]), [['conn', ArgProp.Handle | ArgProp.Forced], ['statement', ArgProp.Value | ArgProp.Injectable | ArgProp.Forced], ['...', ArgProp.Value]]]
 ];
 
 describe('Built-in properties', () => {

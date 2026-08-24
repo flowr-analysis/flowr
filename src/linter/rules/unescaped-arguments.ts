@@ -1,10 +1,11 @@
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
-import type { ArgProps, CallProps } from '../../dataflow/environments/built-in-props';
-import { ArgProp, CallProp, FnSig } from '../../dataflow/environments/built-in-props';
+import type { ArgProps, CallProps, FnSig } from '../../dataflow/environments/built-in-props';
+import { ArgProp, CallProp } from '../../dataflow/environments/built-in-props';
 import { Identifier, PkgName } from '../../dataflow/environments/identifier';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
+import { MatchArgs } from '../../dataflow/graph/match-args';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { FunctionCallVertex } from '../../dataflow/graph/vertex';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
@@ -18,7 +19,6 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { FlowrSearchElement } from '../../search/flowr-search';
 import { Q } from '../../search/flowr-search-builder';
 import { SlicingCriterion } from '../../slicing/criterion/parse';
-import { matchArgumentsToParameters } from '../../util/arg-matching';
 import { isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
@@ -149,16 +149,6 @@ interface CriticalTargetEntry {
 	readonly depth:  number;
 }
 
-/** Find all arguments of a function call that have a given argument property using the function signature */
-function findArgumentsWithProps(call: DataflowGraphVertexFunctionCall, signature: FnSig, props: ArgProps): NodeId[] {
-	const layout = FnSig.layout(signature);
-	const bound = matchArgumentsToParameters(call.args.map(FunctionArgument.getName), signature.map(([param]) => param));
-
-	return call.args
-		.filter((_, index) => bound[index] !== undefined && (FnSig.propAt(layout, bound[index]) & props) !== 0)
-		.map(FunctionArgument.getReference).filter(isNotUndefined);
-}
-
 /** Get the critical calls of every category that is not disabled */
 function getEnabledCriticalCalls(config: UnescapedArgumentsConfig, index: BuiltInIndex = BuiltInIndex.default()): CriticalCallEntry[] {
 	const result: CriticalCallEntry[] = [];
@@ -216,7 +206,7 @@ function getCriticalTargets(
 			if(!Identifier.matches(name, call.name) && !Identifier.matches(call.name, name)) {
 				continue;
 			}
-			for(const arg of findArgumentsWithProps(call, signature, config.categories[category].criticalArgs)) {
+			for(const arg of MatchArgs.findWithProps(call.args, signature, config.categories[category].criticalArgs)) {
 				const location = SourceLocation.fromNode(graph.idMap?.get(arg));
 				const key = `${category}-${call.id}-${arg}`;
 
@@ -284,7 +274,7 @@ async function getUnescapedSources(
 
 				if((entry.only !== undefined && !entry.only.has(arg)) || isAcceptedInput(source, config)) {
 					continue;
-				} else if(entry.depth < MaxDescentDepth && source.trace === InputTraceType.Known && FunctionCallVertex.is(vertex) && !FunctionCallVertex.hasOrigin(vertex, BuiltInProcName.Access)) {
+				} else if(entry.depth < config.maxDecentDepth && source.trace === InputTraceType.Known && FunctionCallVertex.is(vertex) && !FunctionCallVertex.hasOrigin(vertex, BuiltInProcName.Access)) {
 					next.push({ target: entry.target, call: arg, only: undefined, depth: entry.depth + 1 });
 				} else {
 					found.set(entry.target, [...(found.get(entry.target) ?? []), { ...source, id: arg }]);
@@ -307,7 +297,7 @@ function escapeFix(fix: EscapeQuickFix, target: CriticalTarget, source: InputSou
 	let leading = '';
 
 	if(fix.firstArg !== undefined) {
-		const [arg] = findArgumentsWithProps(target.call, target.signature, fix.firstArg);
+		const [arg] = MatchArgs.findWithProps(target.call.args, target.signature, fix.firstArg);
 		const first = arg === undefined || arg === target.arg ? undefined : RNode.lexeme(idMap.get(arg));
 
 		if(first === undefined) {
@@ -425,7 +415,6 @@ export const UNESCAPED_ARGUMENTS = {
 					sanitizers:    [
 						Identifier.from(['htmlEscape', PkgName.HtmlTools]),
 						Identifier.from(['html_escape', 'xfun']),
-						Identifier.from(['toJSON', 'jsonlite']),
 						Identifier.from(['URLencode', PkgName.Utils])
 					],
 					quickFix: { call: Identifier.from(['htmlEscape', PkgName.HtmlTools]) }
@@ -434,12 +423,12 @@ export const UNESCAPED_ARGUMENTS = {
 					criticalCalls: CallProp.JavaScript,
 					criticalArgs:  ArgProp.Injectable,
 					sanitizers:    [
-						Identifier.from(['toJSON', 'jsonlite']),
-						Identifier.from(['serializeJSON', 'jsonlite']),
+						Identifier.from(['toJSON', PkgName.Jsonlite]),
+						Identifier.from(['serializeJSON', PkgName.Jsonlite]),
 						Identifier.from(['toJSON', 'RJSONIO']),
 						Identifier.from(['toJSON', 'rjson'])
 					],
-					quickFix: { call: Identifier.from(['toJSON', 'jsonlite']), partsOnly: true }
+					quickFix: { call: Identifier.from(['toJSON', PkgName.Jsonlite]), partsOnly: true }
 				}
 			},
 			disabledCategories: [],

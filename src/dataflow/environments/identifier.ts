@@ -322,6 +322,7 @@ export const enum PkgName {
 	Import       = 'import',
 	Inferference = 'inferference',
 	Janitor      = 'janitor',
+	Jsonlite     = 'jsonlite',
 	Lattice      = 'lattice',
 	LmTest       = 'lmtest',
 	Magick       = 'magick',

@@ -15,6 +15,9 @@ import { OriginType } from '../origin/dfg-get-origin';
 import { Dataflow } from './df-helper';
 import { Identifier } from '../environments/identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { isNotUndefined } from '../../util/assert';
+import type { ArgProps } from '../environments/built-in-props';
+import { FnSig } from '../environments/built-in-props';
 
 /** the argument names in the shape {@link matchArgumentsToParameters} takes, unnamed arguments as `undefined` */
 function graphArgumentNames(args: readonly FunctionArgument[]): (string | undefined)[] {
@@ -28,6 +31,7 @@ function graphArgumentNames(args: readonly FunctionArgument[]): (string | undefi
  * - {@link MatchArgs.toSpec|toSpec} - graph arguments and the formals (a spec or a database signature)
  * - {@link MatchArgs.onCallAndLink|onCallAndLink} - as `toSpec`, and **adds the argument edges to the graph**
  * - {@link MatchArgs.toDefinition|toDefinition} - only the call, the formals are looked up for you
+ * - {@link MatchArgs.findWithProps|findWithProps} - graph arguments and a built-in signature, keeping the ones used for given {@link ArgProp}s
  * @example
  * ```ts
  * MatchArgs.toNames(call.arguments, ['x', 'value']).get('value');
@@ -137,6 +141,21 @@ export const MatchArgs = {
 	toDefinition<Info>(this: void, call: RFunctionCall<Info & ParentInformation>, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlyMap<string, RArgument<Info & ParentInformation>> | undefined {
 		const names = formalsOf(call, graph, ctx);
 		return names === undefined ? undefined : MatchArgs.toNames(call.arguments, names);
+	},
+	/**
+	 * Find all arguments of a function call that have a given argument property using the function signature.
+	 * @param args      - The function arguments as the graph holds them.
+	 * @param signature - The function signature whose names are the targets.
+	 * @param props     - The {@link ArgProp}s the function arguments should have.
+	 * @returns The value ids of the matching arguments.
+	 */
+	findWithProps(this: void, args: readonly FunctionArgument[], signature: FnSig, props: ArgProps): NodeId[] {
+		const layout = FnSig.layout(signature);
+		const bound = matchArgumentsToParameters(args.map(FunctionArgument.getName), signature.map(([param]) => param));
+
+		return args
+			.filter((_, index) => bound[index] !== undefined && (FnSig.propAt(layout, bound[index]) & props) !== 0)
+			.map(FunctionArgument.getReference).filter(isNotUndefined);
 	}
 } as const;
 

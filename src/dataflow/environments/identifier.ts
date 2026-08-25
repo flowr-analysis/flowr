@@ -26,6 +26,11 @@ export type BrandedNamespace = string & { __brand?: 'namespace' };
  */
 export type Identifier = BrandedIdentifier | [id: BrandedIdentifier, namespace: BrandedNamespace, internal?: boolean];
 
+/**
+ * A string type representing a namespaced identifier in the format `pkg::name`.
+ */
+export type IdentifierString = `${string}::${string}`;
+
 const dotDotDotAccess = /^\.\.\d+$/;
 
 /**

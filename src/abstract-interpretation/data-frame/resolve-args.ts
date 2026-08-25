@@ -1,14 +1,14 @@
+import { Identifier } from '../../dataflow/environments/identifier';
+import { Resolve } from '../../dataflow/environments/resolve-helper';
 import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isNotUndefined } from '../../util/assert';
 import { unliftRValue, unwrapRValue, unwrapRValueToString, unwrapRVector } from '../../util/r-value';
 import { startAndEndsWith } from '../../util/text/strings';
-import { Identifier } from '../../dataflow/environments/identifier';
-import { Resolve } from '../../dataflow/environments/resolve-helper';
-import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 /**
  * Returns the argument name of a function argument

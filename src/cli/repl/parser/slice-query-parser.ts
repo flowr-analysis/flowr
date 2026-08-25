@@ -125,7 +125,7 @@ export function sliceCriteriaParser(argument: string | undefined): SlicingCriter
 }
 
 /** Last partial criterion fragment after the most recent `;` or after `(`. */
-function lastCriterionFragment(arg: string): string {
+export function lastCriterionFragment(arg: string): string {
 	return arg.slice(Math.max(arg.indexOf('(') + 1, arg.lastIndexOf(';') + 1));
 }
 

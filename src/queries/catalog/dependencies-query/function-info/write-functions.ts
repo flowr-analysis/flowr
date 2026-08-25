@@ -1,5 +1,5 @@
 import { DependencyInfoLinkConstraint, type DependencyInfoLink, type FunctionInfo } from './function-info';
-import { CallProp } from '../../../../dataflow/environments/built-in-props';
+import { SemanticCallTag } from '../../../../dataflow/environments/built-in-props';
 import { functionInfosFromProps } from './derived-functions';
 import { OtherPathFunctions } from './other-path-functions';
 import { ReadFunctions } from './read-functions';
@@ -157,5 +157,5 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 
 export const WriteFunctions: FunctionInfo[] = [
 	...WriteFunctionsWithMore,
-	...functionInfosFromProps(CallProp.File | CallProp.Writes, [...WriteFunctionsWithMore, ...OtherPathFunctions, ...ReadFunctions])
+	...functionInfosFromProps([SemanticCallTag.File, SemanticCallTag.Writes], [...WriteFunctionsWithMore, ...OtherPathFunctions, ...ReadFunctions])
 ];

@@ -1,5 +1,5 @@
 import type { FunctionInfo } from './function-info';
-import { CallProp } from '../../../../dataflow/environments/built-in-props';
+import { SemanticCallTag } from '../../../../dataflow/environments/built-in-props';
 import { functionInfosFromProps } from './derived-functions';
 import { OtherPathFunctions } from './other-path-functions';
 import { PkgName } from '../../../../dataflow/environments/identifier';
@@ -164,5 +164,5 @@ const ReadFunctionsWithMore: FunctionInfo[] = [
 
 export const ReadFunctions: FunctionInfo[] = [
 	...ReadFunctionsWithMore,
-	...functionInfosFromProps(CallProp.File | CallProp.Reads, [...ReadFunctionsWithMore, ...OtherPathFunctions])
+	...functionInfosFromProps([SemanticCallTag.File, SemanticCallTag.Reads], [...ReadFunctionsWithMore, ...OtherPathFunctions])
 ];

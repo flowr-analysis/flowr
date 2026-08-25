@@ -1,6 +1,6 @@
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
-import type { ArgProps, CallProps, FnSig } from '../../dataflow/environments/built-in-props';
-import { ArgProp, CallProp } from '../../dataflow/environments/built-in-props';
+import type { ArgProps, FnSig, PropSelector } from '../../dataflow/environments/built-in-props';
+import { ArgProp, CallProps, SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { Identifier, PkgName } from '../../dataflow/environments/identifier';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
@@ -55,9 +55,9 @@ const UncertainInputs: readonly InputType[] = [InputType.Unknown, InputType.Para
 interface UnescapedArgumentsEntry {
 	/**
 	 * The call properties of critical functions calls that perform a critical operation
-	 * @see {@link CallProps}
+	 * @see {@link PropSelector}
 	 */
-	readonly criticalCalls: CallProps;
+	readonly criticalCalls: PropSelector;
 	/**
 	 * The argument properties of critical arguments of critical functions
 	 * @see {@link ArgProps}
@@ -157,12 +157,12 @@ function getEnabledCriticalCalls(config: UnescapedArgumentsConfig, index: BuiltI
 		const criticalCallProps = config.categories[category].criticalCalls;
 		const criticalArgProps = config.categories[category].criticalArgs;
 
-		if(criticalCallProps === 0 || config.disabledCategories.includes(category)) {
+		if(config.disabledCategories.includes(category)) {
 			continue;
 		}
-		for(const { name, props = 0, sig: signature } of index.entries) {
-			if((props & criticalCallProps) !== 0 && signature?.some(([, prop]) => (prop & criticalArgProps) !== 0)) {
-				result.push({ category, name, signature });
+		for(const entry of index.entries) {
+			if(CallProps.hasAny(entry, criticalCallProps) && entry.sig?.some(([, prop]) => (prop & criticalArgProps) !== 0)) {
+				result.push({ category, name: entry.name, signature: entry.sig });
 			}
 		}
 	}
@@ -382,13 +382,13 @@ export const UNESCAPED_ARGUMENTS = {
 		defaultConfig: {
 			categories: {
 				[UnescapedArgumentCategory.System]: {
-					criticalCalls: CallProp.Process,
+					criticalCalls: SemanticCallTag.Process,
 					criticalArgs:  ArgProp.Injectable,
 					sanitizers:    [Identifier.from(['shQuote', PkgName.Base])],
 					quickFix:      { call: 'shQuote' }
 				},
 				[UnescapedArgumentCategory.Eval]: {
-					criticalCalls: CallProp.Eval,
+					criticalCalls: SemanticCallTag.Eval,
 					criticalArgs:  ArgProp.Injectable,
 					sanitizers:    [
 						Identifier.from(['match.arg', PkgName.Base]),
@@ -397,7 +397,7 @@ export const UNESCAPED_ARGUMENTS = {
 					]
 				},
 				[UnescapedArgumentCategory.Database]: {
-					criticalCalls: CallProp.Database,
+					criticalCalls: SemanticCallTag.Database,
 					criticalArgs:  ArgProp.Injectable,
 					sanitizers:    [
 						Identifier.from(['dbQuoteLiteral', PkgName.Dbi]),
@@ -410,7 +410,7 @@ export const UNESCAPED_ARGUMENTS = {
 					quickFix: { call: Identifier.from(['dbQuoteLiteral', PkgName.Dbi]), firstArg: ArgProp.Handle, partsOnly: true }
 				},
 				[UnescapedArgumentCategory.Html]: {
-					criticalCalls: CallProp.Html,
+					criticalCalls: SemanticCallTag.Html,
 					criticalArgs:  ArgProp.Injectable,
 					sanitizers:    [
 						Identifier.from(['htmlEscape', PkgName.HtmlTools]),
@@ -420,7 +420,7 @@ export const UNESCAPED_ARGUMENTS = {
 					quickFix: { call: Identifier.from(['htmlEscape', PkgName.HtmlTools]) }
 				},
 				[UnescapedArgumentCategory.JavaScript]: {
-					criticalCalls: CallProp.JavaScript,
+					criticalCalls: SemanticCallTag.JavaScript,
 					criticalArgs:  ArgProp.Injectable,
 					sanitizers:    [
 						Identifier.from(['toJSON', PkgName.Jsonlite]),

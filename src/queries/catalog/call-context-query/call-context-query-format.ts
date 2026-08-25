@@ -52,7 +52,7 @@ export interface DefaultCallContextQueryFormat<RegexType extends CallNameTypes> 
 	/**
 	 * Only keep calls that match all of the given criteria. Criteria of form x means:  Any of the arguments depend on a function call that matches to the regex x. Criteria of form [x, y] means: Any argument that matches regex x must depend on a function call that matches the regex y.
 	*/
-	readonly reliesOnCriteria?:      (RegexType | [RegexType, RegexType])[];
+	readonly reliesOnCriteria?:      RegexType[][];
 }
 
 export type CallNameTypes = RegExp | string | string[];

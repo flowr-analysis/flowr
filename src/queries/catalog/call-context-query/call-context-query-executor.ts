@@ -270,45 +270,80 @@ function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
 	return false;
 }
 
-//todo: als iterative funktion umschreiben
-//todo: hier noch die methodenbeschreibung 
-function isDependentOn(parameterThatShouldRelyOn: string | undefined, callThatShouldRelyOn: RegExp, fCall: Required<DataflowGraphVertexFunctionCall> & { tag: VertexType.FunctionCall; }, callGraph: CallGraph, dataflowGraph: DataflowGraph<DataflowGraphVertexInfo, DfEdge>, ctx: ReadOnlyFlowrAnalyzerContext): boolean{
-	//no argument given -> dependency doesn't rely on argument
-	if(parameterThatShouldRelyOn === undefined && fCall.args.length === 0){
-		return true;
-	}
-	//wenn der Funktions_!parameter!_ keine Kante auf den nächsten call in unserer Liste hat, dann können wir nicht voraussagen, ob es von unserem Argument abhängt
-	//case: directly dependent; argument not dependent but function itself -> look for direct call edge to the relies-on-function
-	if(callGraph.outgoingEdges(fCall.id)?.keys().some(directCall => {
-		const v = callGraph.getVertex(directCall);
-		if((isNotUndefined(v) && v?.tag === VertexType.FunctionCall && callThatShouldRelyOn.test(Identifier.getName(v.name)))){
-			return true; 
+function isDependentOn(parameter: string, dep: RegExp, q: CallNameTypes[], fCall: Required<DataflowGraphVertexInfo>  , callGraph: CallGraph, dataflowGraph: DataflowGraph<DataflowGraphVertexInfo, DfEdge>): boolean{
+	let mapped = [];
+	if(FunctionCallVertex.is(fCall)){
+		fCall = fCall as Required<DataflowGraphVertexFunctionCall> & {tag: VertexType.FunctionCall;}
+		
+
+		for(const directCall of callGraph.outgoingEdges(fCall.id)?.keys() ?? []){
+			const v = callGraph.getVertex(directCall);
+			if((isNotUndefined(v) && v?.tag === VertexType.FunctionCall && dep.test(Identifier.getName(v.name)))){
+				if(q.length < 2){
+					return true;
+				} else {
+					parameter = (q.shift() as CallNameTypes).toString();
+					dep = new RegExp((q.shift() as CallNameTypes).toString());
+					isDependentOn(parameter, dep, q, v, callGraph, dataflowGraph)
+				}
+			}
 		}
-	})){
-		return true; 
-	}
-	
-	const standardmap: Record<string, string> = {
-		'...':    '...'
-	}
-	let askFor;
-	if(isNotUndefined(parameterThatShouldRelyOn)){
-		standardmap[parameterThatShouldRelyOn] = parameterThatShouldRelyOn;
-		askFor = parameterThatShouldRelyOn;
+		if(fCall.args.length === 0){
+			const visitedNodes = new Set<NodeId>();
+			const argDepList = callGraph.outgoingEdges(fCall.id)?.keys().toArray() ?? []
+			while(argDepList.length > 0){
+				const elem = argDepList.pop() as NodeId;
+				if(visitedNodes.has(elem)){
+					continue;
+				} else {
+					visitedNodes.add(elem);
+				}
+				const node = callGraph.getVertex(elem);
+				if(isUndefined(node)){
+					continue;
+				}
+				if(dep.test(String(node?.name))){
+					if(q.length < 2){
+						return true;
+					} else {
+						parameter = (q.shift() as CallNameTypes).toString();
+						dep = new RegExp((q.shift() as CallNameTypes).toString());
+						isDependentOn(parameter, dep, q, node, callGraph, dataflowGraph)
+					}
+				} else {
+					argDepList.push(... callGraph.outgoingEdges(node.id)?.keys().toArray() ?? []);
+				}
+			}
+		}
+		
+		const standardmap: Record<string, string> = {
+			'...':    '...'
+		}
+		let askFor;
+		if(parameter !== '*'){
+			standardmap[parameter] = parameter;
+			askFor = parameter;
 	} else {
 		askFor = '...';
 	}
 	const mapping = pMatch(fCall.args, standardmap);
-	//case: we are searching for a non-existent parameter -> cannot be dependent on a non-existing parameter
-	if(parameterThatShouldRelyOn !== undefined && mapping.size === 0){
-		return false; 
-	}
-	const mapped = mapping.get(askFor) ?? [];
+	mapped = mapping.get(askFor) ?? [];
+} else {
+	mapped = dataflowGraph.outgoingEdges(fCall.id)?.entries().map(element => {
+		return element[0] as NodeId;
+	}).toArray() ?? [] as NodeId[]
+}
 	for(const argId of mapped) {
 		//case: argument calls for directly
 		const v = dataflowGraph.getVertex(argId);
-		if(isNotUndefined(v) && FunctionCallVertex.is(v) && callThatShouldRelyOn.test(Identifier.getName(v.name))){
-			return true; 
+		if(isNotUndefined(v) && FunctionCallVertex.is(v) && dep.test(Identifier.getName(v.name))){
+			if(q.length < 2){
+				return true;
+			} else {
+				parameter = (q.shift() as CallNameTypes).toString();
+				dep = new RegExp((q.shift() as CallNameTypes).toString());
+				isDependentOn(parameter, dep, q, v, callGraph, dataflowGraph)
+			}
 		} else {
 			if(isUndefined(dataflowGraph.outgoingEdges(argId))){
 				continue;
@@ -320,15 +355,20 @@ function isDependentOn(parameterThatShouldRelyOn: string | undefined, callThatSh
 			}).map(element => {
 				return dataflowGraph.getVertex(element[0]);
 			}).filter(element => {
-				return FunctionCallVertex.is(element);
+				return isNotUndefined(element);
 			}).some(element => {
-				if(callThatShouldRelyOn.test(Identifier.getName(element.name))){
-					return true;
+				if(FunctionCallVertex.is(element) && dep.test(Identifier.getName(element.name))){
+					if(q.length < 2){
+						return true;
+					} else {
+						parameter = (q.shift() as CallNameTypes).toString();
+						dep = new RegExp((q.shift() as CallNameTypes).toString());
+						isDependentOn(parameter, dep, q, element, callGraph, dataflowGraph)
+					}
 				}
-				return isDependentOn(parameterThatShouldRelyOn, callThatShouldRelyOn, element, callGraph, dataflowGraph, ctx);
+				return isDependentOn(parameter, dep, q, element, callGraph, dataflowGraph);
 			})
 		}
-		//const res = resolveIdToValue(argId, { graph: dataflowGraph, environment: fCall.environment, ctx: ctx });
 	}
 	return false;
 }
@@ -443,33 +483,22 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 				continue;
 			}
 			if(query.reliesOnCriteria){
-				//todo: here still for the specific test case, change to work in general
-				const parameterThatShouldRelyOn = query.reliesOnCriteria.length === 2 ? query.reliesOnCriteria[1].toString() : undefined//query.reliesOnCriteria[0].toString();
-				const rely = new RegExp(query.reliesOnCriteria[0].toString());
-				// is there a path from the node to the call that it should rely on in the callGraph?
-				let isPotentiallyReliant = false;
-				const visitedNodes = new Set<NodeId>();
-				const argDepList = callGraph.outgoingEdges(info.id)?.keys().toArray() ?? []
-				while(argDepList.length > 0){
-					const dep = argDepList.pop() as NodeId;
-					if(visitedNodes.has(dep)){
-						continue;
-					} else {
-						visitedNodes.add(dep);
+				let isDependent = true;
+				for(const q of structuredClone(query.reliesOnCriteria)){
+					if(q.length < 2 || q.length%2!==0){
+						//Fehler
+						continue; 
 					}
-					const node = callGraph.getVertex(dep);
-					if(isUndefined(node)){
-						continue;
-					}
-					if(rely.test(String(node?.name))){
-						isPotentiallyReliant = true;; 
-					} else {
-						argDepList.push(... callGraph.outgoingEdges(node.id)?.keys().toArray() ?? []);
+					const parameter = q.shift() as CallNameTypes;
+					const dep = q.shift() as CallNameTypes;
+					//alle Bedingungen müssen gelten
+					if(!isDependentOn(parameter.toString(), new RegExp(dep.toString()), q, info, callGraph, dataflowGraph)){
+						isDependent = false;
+						break;
 					}
 				}
-				//if there is a path must test how it is influenced by the arguments
-				if(!isPotentiallyReliant || !isDependentOn(parameterThatShouldRelyOn, rely, info, callGraph, dataflowGraph, analyzer.inspectContext())){
-					continue; 
+				if(!isDependent){
+					continue;
 				}
 			}
 			let linkedIds: Set<NodeId | { id: NodeId, info: object }> | undefined = undefined;

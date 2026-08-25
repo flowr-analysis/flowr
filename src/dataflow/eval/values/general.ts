@@ -16,6 +16,11 @@ import { getScalarFromInteger } from './scalar/scalar-constants';
  * Takes n potentially lifted ops and returns `Top` or `Bottom` if any is `Top` or `Bottom`.
  */
 export function bottomTopGuard(...a: Lift<unknown>[]): typeof Top | typeof Bottom | undefined {
+	return bottomTopGuardOf(a);
+}
+
+/** {@link bottomTopGuard} for a list that is already one, which a spread of many elements could not pass on */
+export function bottomTopGuardOf(a: readonly Lift<unknown>[]): typeof Top | typeof Bottom | undefined {
 	if(a.some(isBottom)) {
 		return Bottom;
 	} else if(a.some(isTop)) {

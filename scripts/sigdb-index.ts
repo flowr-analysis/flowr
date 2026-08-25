@@ -38,6 +38,8 @@ export interface PackageEntry {
 	readonly latest:    number;
 	/** the source files its exports live in, which each of them names by position rather than by path */
 	readonly files:     readonly string[];
+	/** the repository the newest known release came from (`cran`, `bioc`, ...), where the database records one */
+	readonly source?:   string;
 	/** every exported name, with what the database records about it */
 	readonly exports:   ReadonlyMap<string, ExportEntry>;
 }
@@ -177,6 +179,7 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 		const base = db.isBaseR(name);
 		all.push({
 			archived:  !base && (onCran ? !onCran.has(name) : (library.cranUrl?.includes('/Archive/') ?? false)),
+			source:    db.sourceOf(name, library.version),
 			name, exports,
 			files:     [...files.keys()],
 			version:   library.version,
@@ -368,7 +371,7 @@ export function encode(packages: readonly PackageEntry[], stated: ReadonlyMap<st
 	owners.delete('');   // an empty name would split the blob apart when the page reads it back
 	return {
 		packages: packages.map(p => [p.name, p.version, p.base ? '1' : '0', p.downloads, p.exports.size,
-			p.releases, p.since, p.archived ? '1' : '0', p.files.join('|')].join('\t')).join('\n'),
+			p.releases, p.since, p.archived ? '1' : '0', p.files.join('|'), p.source ?? ''].join('\t')).join('\n'),
 		/* alphabetical, which is what lets gzip fold the shared prefixes; a page ranks its own hits */
 		names: [...owners.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
 			.map(([name, list]) => `${name}\t${list.join(',')}`).join('\n'),

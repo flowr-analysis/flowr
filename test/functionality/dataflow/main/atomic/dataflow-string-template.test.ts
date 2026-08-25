@@ -56,6 +56,25 @@ describe('Dataflow', withTreeSitter(ts => {
 			assert.isTrue((call?.[1].origin as readonly string[] | undefined)?.includes(BuiltInProcName.Stop));
 		});
 
+		test(label('every interpolation of one template gets a vertex of its own', ['function-calls', 'built-in-evaluation'], ['dataflow']), async() => {
+			const code = 'library(glue)\nuser <- 1\nn <- 2\nglue("hi {user}, {n} items")';
+			const analysis = await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps();
+			const graph = analysis.dataflow.graph;
+			/* the two interpolations are separate reads, so neither may end up merged into the other's vertex */
+			const reads = new Map<string, NodeId[]>();
+			for(const [id] of graph.verticesOfType(VertexType.Use)) {
+				const to = [...graph.outgoingEdges(id) ?? NoEdges]
+					.filter(([, e]) => DfEdge.includesType(e, EdgeType.Reads))
+					.map(([target]) => target);
+				if(to.length > 0) {
+					reads.set(String(id), to);
+				}
+			}
+			const named = (id: NodeId) => NodeId.recoverName(id, analysis.normalize.idMap);
+			const targets = [...reads.values()].map(list => list.map(named).sort().join(','));
+			assert.deepStrictEqual(targets.sort(), ['n', 'user'], `each interpolation reads one name, got ${JSON.stringify([...reads])}`);
+		});
+
 		assertLinked('a plain string stays a string', 'x <- 5\nprint("{x}")', '1@x', false);
 		assertLinked('a write in a template lands here', 'library(glue)\nglue("{ zz <- 3 }")\nprint(zz)', '3@zz', true);
 	});

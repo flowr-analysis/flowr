@@ -505,6 +505,24 @@ function optimizeStringOrder(strings: string[], blobs: PkgBlob[]): string[] {
 		for(const idx of Object.values(blob.sources ?? {})) {
 			bump(idx);
 		}
+		/* a class names itself, its superclasses, its slots and their types, all of them dictionary indices */
+		for(const c of blob.classes ?? []) {
+			bump(c[0]);
+			for(const superIdx of c[3]) {
+				bump(superIdx);
+			}
+			for(const slot of c[4]) {
+				if(typeof slot === 'number') {
+					bump(slot);
+				} else {
+					bump(slot[0]);
+					bump(slot[1]);
+				}
+			}
+			if(c.length === 6) {
+				bump(c[5]);
+			}
+		}
 	}
 	const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => counts[b] - counts[a] || a - b);
 	const remap = new Int32Array(n);
@@ -554,6 +572,24 @@ function optimizeStringOrder(strings: string[], blobs: PkgBlob[]): string[] {
 		}
 		for(const [version, idx] of Object.entries(blob.sources ?? {})) {
 			(blob.sources as Record<string, number>)[version] = remap[idx];
+		}
+		for(const c of blob.classes ?? []) {
+			c[0] = remap[c[0]];
+			for(let i = 0; i < c[3].length; i++) {
+				c[3][i] = remap[c[3][i]];
+			}
+			for(let i = 0; i < c[4].length; i++) {
+				const slot = c[4][i];
+				if(typeof slot === 'number') {
+					c[4][i] = remap[slot];
+				} else {
+					slot[0] = remap[slot[0]];
+					slot[1] = remap[slot[1]];
+				}
+			}
+			if(c.length === 6) {
+				c[5] = remap[c[5]];
+			}
 		}
 	}
 	return order.map(oldI => strings[oldI]);

@@ -63,3 +63,25 @@ describe('Class relations in the signature database', () => {
 		rd.close();
 	});
 });
+
+describe('sigdb class string indices survive the frequency-sort remap', () => {
+	test('a rare class name/super/slot decodes correctly even when the dictionary is heavily reordered', async() => {
+		const b = new SigDbBuilder();
+		/* the classes are interned first, so their strings hold low indices the frequency sort has to move ... */
+		b.addPackage('p', { latest: '1.0' });
+		b.addVersion('p', '1.0', { ...ver([]), classes: Classes });
+		/* ... and a second package full of hot names is what pushes them, since those belong at the front */
+		const hot = Array.from({ length: 50 }, (_, i) => ({ name: `hot${i}`, props: 1, params: [], callees: ['common', 'c', 'paste', 'list'], line: i }));
+		b.addPackage('q', { latest: '1.0' });
+		b.addVersion('q', '1.0', ver(hot));
+		const rd = await writeAndOpen(sigTmpDir('sigdb-classes-remap-'), b.build({ ...meta }));
+		const read = rd.classes('p') as SigClassInfo[];
+		expect(read.map(c => c.name).sort()).toEqual(Classes.map(c => c.name).sort());
+		expect(read.find(c => c.name === 'Account')?.supers).toEqual(['Base']);
+		expect(read.find(c => c.name === 'Account')?.slots)
+			.toEqual([{ name: 'balance', type: 'numeric' }, { name: 'owner' }]);
+		expect(read.find(c => c.name === 'NumOrChar')?.supers).toEqual(['numeric', 'character']);
+		expect(read.find(c => c.name === 'Base')?.package).toBe('otherpkg');
+		rd.close();
+	});
+});

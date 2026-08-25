@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
 import { RVersion, type VersionString } from '../../util/r-version';
-import { DefaultCranBase, SigDbExt, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigClassInfo, type SigDb, type SigDbContent, type SigDbPkgMeta, type SigDbPkgMetaIndex } from './schema';
+import { DefaultCranBase, FnProp, SigDbExt, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigClassInfo, type SigDb, type SigDbContent, type SigDbPkgMeta, type SigDbPkgMetaIndex } from './schema';
 import { dayToMillis, releasesOf, newestVersion, resolveVersion, type VersionRelease } from './sigdb-version';
 import { decodeIndex, readSigDbIndex, type ByteRange, type SigDbIndex } from './index-format';
 import { tupleToBlob, decodeFunction, decodeDependencies, decodeClasses, deriveLibraryExports, versionFnIndices, transitiveCallees, type DecodedFunction, type ResolvedDependency } from './decode';
@@ -23,6 +23,51 @@ function applyDictLine(json: string, strings: string[]): void {
 	for(let k = 0; k < batch.length; k++) {
 		strings[start + k] = batch[k];
 	}
+}
+
+/**
+ * Dictionary ids grouped by first character and length, shared per dictionary rather than per reader (the shards of one
+ * database read the same array). One `Int32Array` per group, ascending, so a lookup answers what `indexOf` would while
+ * comparing a few hundred strings rather than the 1.4 million a scan of the whole dictionary walks.
+ */
+const dictionaryBuckets = new WeakMap<readonly string[], Map<number, Int32Array>>();
+
+/** the group `name` belongs to; the empty string has none of its own, which is what `0` stands for */
+function bucketKeyOf(name: string): number {
+	return name.length === 0 ? 0 : (name.charCodeAt(0) << 8) | Math.min(name.length, 255);
+}
+
+/** the id `strings.indexOf(name)` would give, through {@link dictionaryBuckets}; `-1` when the dictionary lacks it */
+function dictionaryIdOf(strings: readonly string[], name: string): number {
+	let buckets = dictionaryBuckets.get(strings);
+	if(buckets === undefined) {
+		const sizes = new Map<number, number>();
+		for(const entry of strings) {
+			const key = bucketKeyOf(entry);
+			sizes.set(key, (sizes.get(key) ?? 0) + 1);
+		}
+		buckets = new Map();
+		const filled = new Map<number, number>();
+		for(const [key, size] of sizes) {
+			buckets.set(key, new Int32Array(size));
+			filled.set(key, 0);
+		}
+		for(let i = 0; i < strings.length; i++) {
+			const key = bucketKeyOf(strings[i]);
+			const at = filled.get(key) as number;
+			(buckets.get(key) as Int32Array)[at] = i;
+			filled.set(key, at + 1);
+		}
+		dictionaryBuckets.set(strings, buckets);
+	}
+	const bucket = buckets.get(bucketKeyOf(name));
+	/* ascending, so the first match is the one a scan from the front would have found */
+	for(const id of bucket ?? []) {
+		if(strings[id] === name) {
+			return id;
+		}
+	}
+	return -1;
 }
 
 function readDictSection(buf: Buffer, strings: string[]): void {
@@ -472,7 +517,7 @@ export class SigDatabase implements PackageSignatureSource {
 	private nameId(name: string): number {
 		let id = this.nameIds.get(name);
 		if(id === undefined) {
-			this.nameIds.set(name, id = this.strings.indexOf(name));
+			this.nameIds.set(name, id = dictionaryIdOf(this.strings, name));
 		}
 		return id;
 	}
@@ -570,16 +615,37 @@ export class SigDatabase implements PackageSignatureSource {
 	}
 
 	public packagesExporting(name: string): readonly string[] {
-		if(this.nameId(name) < 0) {
+		const id = this.nameId(name);
+		if(id < 0) {
 			return [];
 		}
 		const found: string[] = [];
 		for(const pkg in this.index.pkgs) {
-			if(this.mayOffer(pkg, name) && this.lookup(pkg)?.exported.includes(name)) {
+			if(this.mayOffer(pkg, name) && this.exportsNameId(pkg, id)) {
 				found.push(pkg);
 			}
 		}
 		return found.sort((a, b) => this.downloads(b) - this.downloads(a) || a.localeCompare(b));
+	}
+
+	/**
+	 * Whether the newest version of `pkg` exports the name with dictionary id `id`. The same answer
+	 * {@link lookup}'s `exported` gives, off the function records themselves: asking a package at a time is what
+	 * {@link packagesExporting} does, and deriving a whole export view per package to read one name out of it is not
+	 * worth the five arrays and the map it builds.
+	 */
+	private exportsNameId(pkg: string, id: number): boolean {
+		const r = this.versionFns(pkg);
+		if(r === undefined) {
+			return false;
+		}
+		for(const i of r.idxs) {
+			const fn = r.blob.fns[i];
+			if(fn[0] === id && (fn[3] & FnProp.Exported) !== 0) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public classOwner(className: string, version?: string): string | undefined {
@@ -1243,6 +1309,14 @@ export async function verifyShardedDatabase(
 		for(const d of set.dependencies(pkg) ?? []) {
 			if(typeof d.name !== 'string' || (d.constraint !== undefined && typeof d.constraint !== 'string')) {
 				errors.push(`spot-check: '${pkg}' dependency decoded with a non-string name/constraint (dictionary index out of range?)`);
+				break;
+			}
+		}
+		/* a class names itself, its superclasses and its slots out of the same dictionary the rest reads from */
+		for(const c of set.classes(pkg) ?? []) {
+			const strings = [c.name, ...c.supers, ...c.slots.flatMap(slot => [slot.name, slot.type]), c.package];
+			if(strings.some(entry => entry !== undefined && typeof entry !== 'string')) {
+				errors.push(`spot-check: '${pkg}' class decoded with a non-string name/super/slot (dictionary index out of range?)`);
 				break;
 			}
 		}

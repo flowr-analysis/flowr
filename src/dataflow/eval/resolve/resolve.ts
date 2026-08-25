@@ -113,11 +113,21 @@ export function resolveAsSeq(args: BuiltInEvalHandlerArgs): ValueVector<Lift<Val
 }
 
 /**
+ * How many elements of a sequence are worth naming one by one. `1:148066` is a loop bound rather than a set of
+ * indices anything asks about, and holding one object per element costs more than the precision is worth, so
+ * a longer sequence resolves to {@link Top} instead.
+ */
+const MaxSequenceLength = 4096;
+
+/**
  * The elements `from:to` runs over, counting down whenever `to` is the smaller one, and stopping before it
- * would pass `to` (`1:3.5` ends at `3`). `undefined` for a bound that names no position to count from or to.
+ * would pass `to` (`1:3.5` ends at `3`). `undefined` for a bound that names no position to count from or to,
+ * and for a sequence longer than {@link MaxSequenceLength}.
  */
 function createNumberSequence(start: RNumberValue, end: RNumberValue): RNumberValue[] | undefined {
 	if(!Number.isFinite(start.num) || !Number.isFinite(end.num)) {
+		return undefined;
+	} else if(Math.floor(Math.abs(end.num - start.num)) + 1 > MaxSequenceLength) {
 		return undefined;
 	}
 	const step = start.num <= end.num ? 1 : -1;

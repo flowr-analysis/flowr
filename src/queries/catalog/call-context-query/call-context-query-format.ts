@@ -24,6 +24,12 @@ export interface FileFilter<FilterType> {
 	readonly includeUndefinedFiles?: boolean;
 }
 
+interface ParameterConstraint {
+	name:   string | '*';
+	value?: string;
+	calls?: CallNameTypes
+}
+
 
 export interface DefaultCallContextQueryFormat<RegexType extends CallNameTypes> extends BaseQueryFormat {
 	readonly type:                   'call-context';
@@ -49,10 +55,7 @@ export interface DefaultCallContextQueryFormat<RegexType extends CallNameTypes> 
 	/** Filter that, when set, a node's file attribute must match to be considered */
 	readonly fileFilter?:            FileFilter<RegexType>;
 	//todo: explanation in wiki hinzufügen
-	/**
-	 * Only keep calls that match all of the given criteria. Criteria of form x means:  Any of the arguments depend on a function call that matches to the regex x. Criteria of form [x, y] means: Any argument that matches regex x must depend on a function call that matches the regex y.
-	*/
-	readonly reliesOnCriteria?:      RegexType[][];
+	readonly reliesOnCriteria?:      ParameterConstraint[];
 }
 
 export type CallNameTypes = RegExp | string | string[];

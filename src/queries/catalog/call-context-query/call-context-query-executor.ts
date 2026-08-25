@@ -1,4 +1,3 @@
-import type { OutgoingEdges, type DataflowGraph  } from '../../../dataflow/graph/graph';
 import type {
 	CallContextQuery,
 	CallContextQueryKindResult,
@@ -9,9 +8,6 @@ import type {
 	LinkTo,
 	SubCallContextQueryFormat
 } from './call-context-query-format';
-import { type NodeId, recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexInfo } from '../../../dataflow/graph/vertex';
-import { FunctionCallVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
@@ -24,11 +20,20 @@ import { Identifier } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { ArrayQueue } from '../../../util/collections/queue';
 import { baseRExportOwner } from '../../../util/r-base-packages';
-import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
-import { isNotUndefined, isUndefined } from '../../../util/assert';
-import type { CallGraph } from '../../../dataflow/graph/call-graph';
 import { executeCallGraphQuery } from '../call-graph-query/call-graph-query-executor';
-import { pMatch } from '../../../dataflow/internal/linker';
+import { guard } from '../../../util/assert';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { recoverContent, recoverName } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import { FunctionArgument } from '../../../dataflow/graph/graph';
+import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
+import { VertexType } from '../../../dataflow/graph/vertex';
+import type {
+	ReadOnlyFlowrAnalyzerDependenciesContext
+} from '../../../project/context/flowr-analyzer-dependencies-context';
+import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
+import { SliceDirection } from '../../../util/slice-direction';
 
 function makeReport(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>): CallContextQueryKindResult {
 	const result: CallContextQueryKindResult = {};
@@ -170,7 +175,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 		}
 		const [info, outgoing] = vertex;
 
-		if(!FunctionCallVertex.is(info)) {
+		if(info.tag !== VertexType.FunctionCall) {
 			const wantedTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 			const x = outgoing.entries()
 				.filter(([,e]) => DfEdge.includesType(e, wantedTypes))
@@ -263,104 +268,34 @@ function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
 	return false;
 }
 
-function isDependentOn(parameter: string, dep: RegExp, q: CallNameTypes[], fCall: Required<DataflowGraphVertexInfo>, callGraph: CallGraph, dataflowGraph: DataflowGraph<DataflowGraphVertexInfo, DfEdge>): boolean{
-	let mapped = [];
-	if(FunctionCallVertex.is(fCall)){
-		fCall = fCall;
-
-
-		for(const directCall of callGraph.outgoingEdges(fCall.id)?.keys() ?? []){
-			const v = callGraph.getVertex(directCall);
-			if((isNotUndefined(v) && v?.tag === VertexType.FunctionCall && dep.test(Identifier.getName(v.name)))){
-				if(q.length < 2){
-					return true;
-				} else {
-					parameter = (q.shift() as CallNameTypes).toString();
-					dep = new RegExp((q.shift() as CallNameTypes).toString());
-					isDependentOn(parameter, dep, q, v, callGraph, dataflowGraph);
-				}
-			}
-		}
-		if(fCall.args.length === 0){
-			const visitedNodes = new Set<NodeId>();
-			const argDepList = callGraph.outgoingEdges(fCall.id)?.keys().toArray() ?? [];
-			while(argDepList.length > 0){
-				const elem = argDepList.pop() as NodeId;
-				if(visitedNodes.has(elem)){
-					continue;
-				} else {
-					visitedNodes.add(elem);
-				}
-				const node = callGraph.getVertex(elem);
-				if(isUndefined(node)){
-					continue;
-				}
-				if(dep.test(String(node?.name))){
-					if(q.length < 2){
-						return true;
-					} else {
-						parameter = (q.shift() as CallNameTypes).toString();
-						dep = new RegExp((q.shift() as CallNameTypes).toString());
-						isDependentOn(parameter, dep, q, node, callGraph, dataflowGraph);
-					}
-				} else {
-					argDepList.push(... callGraph.outgoingEdges(node.id)?.keys().toArray() ?? []);
-				}
-			}
-		}
-
-		const standardmap: Record<string, string> = {
-			'...': '...'
-		};
-		let askFor;
-		if(parameter !== '*'){
-			standardmap[parameter] = parameter;
-			askFor = parameter;
-		} else {
-			askFor = '...';
-		}
-		const mapping = pMatch(fCall.args, standardmap);
-		mapped = mapping.get(askFor) ?? [];
-	} else {
-		mapped = dataflowGraph.outgoingEdges(fCall.id)?.entries().map(element => {
-			return element[0];
-		}).toArray() ?? [] as NodeId[];
+async function isDependentOn(parameter: string, dep: PromotedCallTest, fCall: Required<DataflowGraphVertexFunctionCall>, graph: DataflowGraph, analyzer: ReadonlyFlowrAnalysisProvider): Promise<boolean> {
+	/* const astCall = graph.idMap?.get(fCall?.id) as RFunctionCall<ParentInformation> | undefined;
+	if(!RFunctionCall.is(astCall)) {
+		return false;
 	}
-	for(const argId of mapped) {
-		//case: argument calls for directly
-		const v = dataflowGraph.getVertex(argId);
-		if(isNotUndefined(v) && FunctionCallVertex.is(v) && dep.test(Identifier.getName(v.name))){
-			if(q.length < 2){
-				return true;
-			} else {
-				parameter = (q.shift() as CallNameTypes).toString();
-				dep = new RegExp((q.shift() as CallNameTypes).toString());
-				isDependentOn(parameter, dep, q, v, callGraph, dataflowGraph);
-			}
-		} else {
-			if(isUndefined(dataflowGraph.outgoingEdges(argId))){
-				continue;
-			}
-			//todo: are we following only the right edges? (def-on-call dürfen wir auf jeden fall nicht folgen)
-			return (dataflowGraph.outgoingEdges(argId) as OutgoingEdges).entries().filter(element => {
-				const edge = element[1];
-				return DfEdge.includesType(edge, EdgeType.Reads | EdgeType.Argument | EdgeType.DefinedBy | EdgeType.Calls);
-			}).map(element => {
-				return dataflowGraph.getVertex(element[0]);
-			}).filter(element => {
-				return isNotUndefined(element);
-			}).some(element => {
-				if(FunctionCallVertex.is(element) && dep.test(Identifier.getName(element.name))){
-					if(q.length < 2){
-						return true;
-					} else {
-						parameter = (q.shift() as CallNameTypes).toString();
-						dep = new RegExp((q.shift() as CallNameTypes).toString());
-						isDependentOn(parameter, dep, q, element, callGraph, dataflowGraph);
-					}
+	// TODO: match against signaue
+	// const defs = MatchArgs.toDefinition(astCall, graph, analyzer.inspectContext());
+	*/
+	const isParam = parameter === '*' ? () => true : (p: string | undefined) => p === parameter;
+
+	for(const arg of fCall.args) {
+		if(FunctionArgument.isEmpty(arg) || !isParam(arg.name)) {
+			continue;
+		}
+		const argSlice = await analyzer.query([{
+			type:             'static-slice',
+			criteria:         [SlicingCriterion.fromId(arg.nodeId)],
+			noReconstruction: true,
+			direction:        SliceDirection.Backward
+		}]);
+		for(const results of Object.values(argSlice['static-slice'].results)) {
+			for(const resultId of results.slice.result) {
+				// TODO: check it is sreally a functin call
+				const name = recoverName(resultId, graph.idMap);
+				if(name && dep(name)) {
+					return true;
 				}
-				return isDependentOn(parameter, dep, q, element, callGraph, dataflowGraph);
-			});
+			}
 		}
 	}
 	return false;
@@ -424,10 +359,10 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 		/* if we have a vertex, and we check for aliased calls, we want to know if we define this as desired! */
 		if(queriesWhichWantAliases.length > 0) {
 			/*
-			 * yes, we make an expensive call target check, we can probably do a lot of optimization here, e.g.,
-			 * by checking all of these queries would be satisfied otherwise,
-			 * in general, we first want a call to happen, i.e., trace the called targets of this!
-			 */
+             * yes, we make an expensive call target check, we can probably do a lot of optimization here, e.g.,
+             * by checking all of these queries would be satisfied otherwise,
+             * in general, we first want a call to happen, i.e., trace the called targets of this!
+             */
 			const targets = retrieveAllCallAliases(nodeId, dataflow.graph);
 			for(const [l, ids] of targets.entries()) {
 				for(const query of queriesWhichWantAliases) {
@@ -475,22 +410,18 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 			} else if(query.ignoreParameterValues && isParameterDefaultValue(nodeId, ast)) {
 				continue;
 			}
-			if(query.reliesOnCriteria){
+			if(query.reliesOnCriteria) {
 				let isDependent = true;
-				for(const q of structuredClone(query.reliesOnCriteria)){
-					if(q.length < 2 || q.length % 2 !== 0){
-						//Fehler
-						continue;
-					}
-					const parameter = q.shift() as CallNameTypes;
-					const dep = q.shift() as CallNameTypes;
+				for(const { name, calls, value } of query.reliesOnCriteria) {
+					guard(value === undefined, 'not yet supported');
+					guard(calls !== undefined, 'we want calls req.');
 					//alle Bedingungen müssen gelten
-					if(!isDependentOn(parameter.toString(), new RegExp(dep.toString()), q, info, callGraph, dataflowGraph)){
+					if(!await isDependentOn(name, promoteCallName(calls), info, dataflowGraph, analyzer)) {
 						isDependent = false;
 						break;
 					}
 				}
-				if(!isDependent){
+				if(!isDependent) {
 					continue;
 				}
 			}

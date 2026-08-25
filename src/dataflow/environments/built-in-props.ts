@@ -71,12 +71,10 @@ export enum CallProp {
 	 * locale, the RNG seed. The counterpart of {@link CallProp.Ambient}; a call doing both states both.
 	 */
 	Configures = 1 << 9,
-	/** yields the paths it matches at run time rather than one it was handed (`list.files`, `Sys.glob`); empty is an answer */
-	Glob       = 1 << 10,
 	/** calls native code through the foreign function interface, like `.Call` */
-	Ffi        = 1 << 11,
+	Ffi        = 1 << 10,
 	/** produces a language object, like `quote` or `deparse` */
-	Lang       = 1 << 12
+	Lang       = 1 << 11
 }
 
 /**
@@ -101,6 +99,8 @@ export enum SemanticCallTag {
 	User        = 'asks-user',
 	/** hands back what the program was invoked with, as `commandArgs` and the option parsers built on it do */
 	CommandLine = 'command-line',
+	/** yields the paths it matches at run time rather than one it was handed (`list.files`, `Sys.glob`); empty is an answer */
+	Glob        = 'glob',
 	/** draws on a graphics device */
 	Graphics    = 'draws-graphics',
 	/** talks to a database */
@@ -349,7 +349,6 @@ const CallPropLabels: Readonly<Record<CallProp, string>> = {
 	[CallProp.NonDet]:     'non deterministic',
 	[CallProp.Ambient]:    'ambient state',
 	[CallProp.Configures]: 'sets ambient state',
-	[CallProp.Glob]:       'yields runtime path',
 	[CallProp.Ffi]:        'calls native code',
 	[CallProp.Lang]:       'produces language object'
 };

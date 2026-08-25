@@ -1263,10 +1263,10 @@ export const WrittenBuiltinDefinitions = [
 	/* they answer with whatever is on disk when they run */
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['list.files', 'dir', 'list.dirs']),
 		processor:       BuiltInProcName.Default,
-		config:          { forceArgs: 'all', props: CallProp.Glob, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: [['path', ArgProp.Resource]] }, assumePrimitive: false },
+		config:          { forceArgs: 'all', tags: [SemanticCallTag.File, SemanticCallTag.Glob, SemanticCallTag.Reads], sig: [['path', ArgProp.Resource]] }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['Sys.glob', PkgName.Base])],
 		processor:       BuiltInProcName.Default,
-		config:          { forceArgs: 'all', props: CallProp.Glob, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: [['paths', ArgProp.Resource]] }, assumePrimitive: false },
+		config:          { forceArgs: 'all', tags: [SemanticCallTag.File, SemanticCallTag.Glob, SemanticCallTag.Reads], sig: [['paths', ArgProp.Resource]] }, assumePrimitive: false },
 	/* language objects */
 	{
 		type:  'function',

@@ -56,7 +56,7 @@ export const DefaultInputClassifierConfig: InputClassifierConfig = {
 	[InputTraceType.Pure]:   builtIns.without(InputProps),
 	[InputType.File]:        [...ReadFunctions.map(readFunction => readFunction.name), ...builtIns.withAll(FileInputProps)],
 	[InputType.TempFile]:    builtIns.with(SemanticCallTag.TempFile),
-	[InputType.Glob]:        builtIns.with(CallProp.Glob),
+	[InputType.Glob]:        builtIns.with(SemanticCallTag.Glob),
 	[InputType.Network]:     Q.fromQuery({ type: 'linter', rules: ['network-functions'] }, LintingResultCertainty.Certain),
 	[InputType.Random]:      Q.fromQuery({ type: 'linter', rules: ['seeded-randomness'] }),
 	[InputType.System]:      builtIns.with(SemanticCallTag.Process),

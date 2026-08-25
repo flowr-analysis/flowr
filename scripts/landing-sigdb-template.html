@@ -520,8 +520,8 @@ function sourceFile(index, file) {
 	return file === undefined ? undefined : (packages[index][8] ?? '').split('|')[file] || undefined;
 }
 
-/** where the code of an export lives: base R in the read-only mirror of R's sources (a branch per release series, not a tag), everything else on the CRAN mirror at its version; without a file of its own, the package's sources are as close as this gets */
-function sourceUrl(pkg, version, base, file, line) {
+/** where the code of an export lives: base R in the read-only mirror of R's sources (a branch per release series, not a tag), CRAN packages on the CRAN mirror at their version; without a file of its own, the package's sources are as close as this gets, and a package from anywhere else has only its repository to point at */
+function sourceUrl(pkg, version, base, file, line, repository) {
 	const at = line === undefined ? '' : '#L' + line;
 	if(base) {
 		const series = /^(\d+)\.(\d+)/.exec(version ?? '');
@@ -530,9 +530,38 @@ function sourceUrl(pkg, version, base, file, line) {
 			+ '/src/library/' + encodeURIComponent(pkg);
 		return file ? root + '/' + file + at : root + '/R';
 	}
+	if(repository !== undefined && repository !== Repositories['cran']) {
+		return repository.home(pkg);
+	}
 	const root = 'https://github.com/cran/' + encodeURIComponent(pkg) + '/' + (file ? 'blob' : 'tree') + '/'
 		+ encodeURIComponent(version ?? 'master');
 	return file ? root + '/' + file + at : root;
+}
+
+/**
+ * Where a package comes from, as the database records it: CRAN unless a version states another repository.
+ * `sources` names the repository rather than a URL, so each one says how to reach a package of its own.
+ */
+const Repositories = {
+	'cran':         { label: 'CRAN',          home: pkg => 'https://cran.r-project.org/package=' + encodeURIComponent(pkg) },
+	'bioc':         { label: 'Bioconductor',  home: pkg => 'https://bioconductor.org/packages/' + encodeURIComponent(pkg) },
+	'bioconductor': { label: 'Bioconductor',  home: pkg => 'https://bioconductor.org/packages/' + encodeURIComponent(pkg) },
+	'github':       { label: 'GitHub',        home: pkg => 'https://github.com/search?q=' + encodeURIComponent(pkg) + '+language%3AR&type=repositories' },
+	'r-universe':   { label: 'R-universe',    home: pkg => 'https://r-universe.dev/search?q=' + encodeURIComponent(pkg) },
+	'runiverse':    { label: 'R-universe',    home: pkg => 'https://r-universe.dev/search?q=' + encodeURIComponent(pkg) },
+	'omegahat':     { label: 'Omegahat',      home: pkg => 'https://www.omegahat.net/' + encodeURIComponent(pkg) + '/' },
+	'rforge':       { label: 'R-Forge',       home: pkg => 'https://r-forge.r-project.org/projects/' + encodeURIComponent(pkg) + '/' }
+};
+
+/** the repository of the package at `index`; base R comes with R itself, and an unrecorded one is CRAN */
+function repositoryOf(index) {
+	const [, , base, , , , , , , source] = packages[index] ?? [];
+	if(base === '1') {
+		return { label: 'base R', home: pkg => 'https://stat.ethz.ch/R-manual/R-devel/library/' + encodeURIComponent(pkg) + '/html/00Index.html' };
+	}
+	const stated = (source ?? '').toLowerCase();
+	/* a repository the page has no address for still says its name, which beats claiming CRAN */
+	return Repositories[stated] ?? (stated === '' ? Repositories['cran'] : { label: source, home: () => undefined });
 }
 
 /** where a package documents itself, for a name that has no page of its own */
@@ -683,10 +712,11 @@ function ownerLink(index) {
 	link.target = '_blank';
 	link.rel = 'noopener';
 	link.textContent = name;
-	link.title = name + ' ' + version + (base === '1' ? ' (base R, always available)' : '');
+	const repository = repositoryOf(index);
+	link.title = name + ' ' + version + (base === '1' ? ' (base R, always available)' : ' (' + repository.label + ')');
 	link.className = base === '1' ? 'base' : '';
-	link.href = base === '1' ? 'https://stat.ethz.ch/R-manual/R-devel/library/' + encodeURIComponent(name) + '/html/00Index.html'
-		: 'https://cran.r-project.org/package=' + encodeURIComponent(name);
+	link.href = (base === '1' ? 'https://stat.ethz.ch/R-manual/R-devel/library/' + encodeURIComponent(name) + '/html/00Index.html'
+		: repository.home(name)) ?? '';
 	return link;
 }
 
@@ -786,7 +816,7 @@ function detail(name, owners) {
 		src.className = 'src';
 		src.target = '_blank';
 		src.rel = 'noopener';
-		src.href = sourceUrl(pkg, version, base === '1', where, line);
+		src.href = sourceUrl(pkg, version, base === '1', where, line, repositoryOf(index)) ?? '';
 		src.textContent = where === undefined ? '' : where + (line === undefined ? '' : ':' + line);
 		src.title = where === undefined
 			? 'the database records no file for ' + name + ' in ' + pkg + ', so this links to its sources'
@@ -901,7 +931,8 @@ function aboutPackage(index) {
 			? Number(releases).toLocaleString('en-US') + (Number(since) > 0 ? ', the first in ' + since : '')
 			: 'none recorded'],
 		['downloads', Number(downloads) > 0 ? Number(downloads).toLocaleString('en-US') + ' in the last month' : 'ships with R'],
-		['comes from', base === '1' ? 'base R' : archived === '1' ? 'CRAN, since archived' : 'CRAN']
+		['comes from', base === '1' ? 'base R'
+			: repositoryOf(index).label + (archived === '1' ? ', since archived' : '')]
 	];
 	for(const [label, value] of facts) {
 		const line = document.createElement('p');
@@ -913,10 +944,11 @@ function aboutPackage(index) {
 	}
 	const links = document.createElement('p');
 	links.className = 'links';
+	const repository = repositoryOf(index);
 	const where = base === '1'
 		? ['https://stat.ethz.ch/R-manual/R-devel/library/' + encodeURIComponent(name) + '/html/00Index.html', 'the R manual']
-		: ['https://cran.r-project.org/package=' + encodeURIComponent(name), 'CRAN'];
-	for(const [href, text] of [where, ['?q=' + encodeURIComponent(name + '::'), 'everything it exports']]) {
+		: [repository.home(name), repository.label];
+	for(const [href, text] of [where, ['?q=' + encodeURIComponent(name + '::'), 'everything it exports']].filter(([href]) => href)) {
 		const link = document.createElement('a');
 		link.href = href;
 		if(href.startsWith('http')) {
@@ -1032,7 +1064,7 @@ function readable(name, args, props) {
 	const spelled = argsOf(args).map(([formal, roles]) => roles.length === 0 ? formal : formal + ': ' + roles.join(' + ')).join(', ');
 	const { kind, returns } = parts(props);
 	return name + (kind.length > 0 ? '[' + kind.join(',') + ']' : '') + (args === '' ? '' : '(' + spelled + ')')
-		+ (returns.length > 0 ? ': ' + returns.join(',') : '');
+		+ (returns.length > 0 ? ', returns ' + returns.join(' and ') : '');
 }
 
 /** a signature as `name<kind>(formal: role, ...): returns`; R has no types, so roles stand in, and the parens are left out where no formals are known at all (not the same as a call taking none) */

@@ -247,6 +247,9 @@ jobs:
             submodules: true
             lfs: true
             ref: main
+            # the version marker compares HEAD against the release tag, which a shallow clone without tags cannot do
+            fetch-tags: true
+            fetch-depth: 0
 
       - name: "🌍 Load Versions to Use"
         run: bash .github/workflows/scripts/global-configuration.sh

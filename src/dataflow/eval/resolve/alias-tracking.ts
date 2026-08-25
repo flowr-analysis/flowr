@@ -16,7 +16,7 @@ import { onUnknownSideEffect } from '../../graph/unknown-side-effect';
 import { ValueVertex, VertexType, FunctionDefinitionVertex, FunctionCallVertex } from '../../graph/vertex';
 import { valueFromRNodeConstant, valueFromTsValue, valueSetGuard } from '../values/general';
 import { Bottom, isTop, isValue, type Lift, Top, type Value, type ValueSet } from '../values/r-value';
-import { setFrom } from '../values/sets/set-constants';
+import { setFrom, setOf } from '../values/sets/set-constants';
 import { resolveNode } from './resolve';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -286,7 +286,7 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, env
 		return Top;
 	}
 
-	return setFrom(...values);
+	return setOf([...values]);
 }
 
 /** given an unknown alias, we have to clear all values in the environments */
@@ -397,7 +397,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 	const sequence = iteratedSequence(id, graph, idMap);
 	if(sequence !== undefined) {
 		const value = resolveIdToValue(sequence.info.id, { graph, idMap, ctx, blocked });
-		return isTop(value) ? Top : setFrom(...iteratedElements(value));
+		return isTop(value) ? Top : setOf(iteratedElements(value));
 	}
 
 	const queue = new VisitingQueue(10);
@@ -500,7 +500,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 			values.add(valueFromRNodeConstant(node));
 		}
 	}
-	return values.size === 0 ? Top : setFrom(...values);
+	return values.size === 0 ? Top : setOf([...values]);
 }
 
 /**
@@ -527,5 +527,5 @@ export function resolveToConstants(name: Identifier | undefined, environment: RE
 		const d = (def as BuiltInIdentifierConstant).value;
 		values.add(d === undefined ? Top : valueFromTsValue(d));
 	});
-	return setFrom(...values);
+	return setOf([...values]);
 }

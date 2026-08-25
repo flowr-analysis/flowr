@@ -732,7 +732,7 @@ function mapDataFrameCreate(
 	const argNames = args.map(arg => Resolve.argument.toName(arg, info));
 	const argLengths = args.map(arg => Resolve.argument.vectorLength(arg, info));
 	const allVectors = argLengths.every(isNotUndefined);
-	const rows = allVectors ? Math.max(...argLengths, 0) : undefined;
+	const rows = allVectors ? argLengths.reduce((max, length) => Math.max(max, length), 0) : undefined;
 	let colnames: (string | undefined)[] | undefined = argNames;
 
 	// over-approximate the column names if arguments are present but cannot be resolved to values
@@ -1250,9 +1250,10 @@ function mapDataFrameMutate(
 		.map(arg => Resolve.argument.toName(arg, info));
 
 	// only column names that are not created by mutation are preconditions on the operand
+	const mutatedColSet = new Set(mutatedCols);
 	const accessedNames = mutateArgs
 		.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph))
-		.filter(arg => !mutatedCols?.includes(arg));
+		.filter(arg => !mutatedColSet.has(arg));
 
 	deletedCols = filterValidNames(deletedCols, params.checkNames, params.noDupNames, undefined, true);
 	mutatedCols = filterValidNames(mutatedCols, params.checkNames, params.noDupNames, undefined, true);
@@ -1540,6 +1541,15 @@ function mapDataFrameNamedColumnAccess(
 	}];
 }
 
+/** the largest absolute index of a list, which can hold more entries than a spread could pass as arguments */
+function maxAbs(indices: readonly number[]): number {
+	let max = -Infinity;
+	for(const index of indices) {
+		max = Math.max(max, Math.abs(index));
+	}
+	return max;
+}
+
 /**
  * Maps an index-based access of the rows and columns of a data frame, such as `df[1, ]` or `df[["id"]]`, to abstract data frame operations.
  */
@@ -1607,7 +1617,7 @@ function mapDataFrameIndexColRowAccess(
 		const colSubset = columns === undefined || columns.every(col => isColName(col) || col >= 0);
 		const rowZero = rows?.length === 1 && rows[0] === 0;
 		const colZero = columns?.length === 1 && columns[0] === 0;
-		const duplicateCols = columns?.some((col, index, list) => list.indexOf(col as never) !== index);
+		const duplicateCols = columns !== undefined && new Set<string | number>(columns).size !== columns.length;
 
 		let operand: RNode<ParentInformation> | undefined = dataFrame;
 
@@ -1624,7 +1634,7 @@ function mapDataFrameIndexColRowAccess(
 					operand:   operand?.info.id,
 					rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length,
 					/* R drops nothing for an index beyond the extent, so the semantics has to know how far they reach */
-					maxIndex:  rows !== undefined ? Math.max(...rows.map(Math.abs)) : undefined
+					maxIndex:  rows !== undefined ? maxAbs(rows) : undefined
 				});
 			}
 			operand = undefined;
@@ -1642,7 +1652,7 @@ function mapDataFrameIndexColRowAccess(
 					operation: 'removeCols',
 					operand:   operand?.info.id,
 					colnames:  columns?.map(toColName),
-					maxIndex:  columns?.every(isIndex) ? Math.max(...columns.map(Math.abs)) : undefined
+					maxIndex:  columns?.every(isIndex) ? maxAbs(columns) : undefined
 				});
 			}
 			// eslint-disable-next-line no-useless-assignment -- ends the chain

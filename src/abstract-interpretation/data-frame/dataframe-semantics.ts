@@ -104,6 +104,59 @@ type DataFrameReplacementMapping = (
 	info: ResolveInfo
 ) => DataFrameOperations;
 
+/** Shared parameters of the `read.csv`/`read.delim` wrappers around `read.table`, which only differ in their separator. */
+const ReadTableVariantParams = {
+	fileName:   { pos: 0, name: 'file' },
+	header:     { pos: 1, name: 'header', default: true },
+	separator:  { pos: 2, name: 'sep', default: ',' },
+	quote:      { pos: 3, name: 'quote', default: '"' },
+	comment:    { pos: 6, name: 'comment.char', default: '' },
+	skipLines:  { pos: -1, name: 'skip', default: 0 },
+	checkNames: { pos: -1, name: 'check.names', default: true },
+	noDupNames: { pos: -1, name: 'check.names', default: true },
+	text:       { pos: -1, name: 'text' },
+	critical:   [
+		{ pos: -1, name: 'row.names' },
+		{ pos: -1, name: 'col.names' },
+		{ pos: -1, name: 'nrows', default: -1 },
+		{ pos: -1, name: 'strip.white', default: false },
+		{ pos: -1, name: 'blank.lines.skip', default: true },
+		{ pos: -1, name: 'allow.escapes', default: false },
+	]
+};
+
+/** Shared parameters of the readr `read_csv`/`read_tsv` wrappers around `read_delim`, which only differ in their separator. */
+const ReadrDelimitedParams = {
+	fileName:   { pos: 0, name: 'file' },
+	header:     { pos: 1, name: 'col_names', default: true },
+	separator:  { pos: -1, default: ',' },
+	quote:      { pos: 8, name: 'quote', default: '"' },
+	comment:    { pos: 9, name: 'comment', default: '' },
+	skipLines:  { pos: 11, name: 'skip', default: 0 },
+	checkNames: { pos: -1, default: false },
+	noDupNames: { pos: -1, default: true },
+	critical:   [
+		{ pos: 3, name: 'col_select' },
+		{ pos: 4, name: 'id' },
+		{ pos: 10, name: 'trim_ws', default: true },
+		{ pos: 12, name: 'n_max', default: Infinity },
+		{ pos: 14, name: 'name_repair', default: 'unique' },
+		{ pos: 18, name: 'skip_empty_rows', default: true }
+	],
+	noEmptyNames: true
+};
+
+/** Shared parameters of the dplyr `*_join` functions, which only differ in the sides they keep. */
+const DplyrJoinParams = {
+	dataFrame:      { pos: 0, name: 'x' },
+	otherDataFrame: { pos: 1, name: 'y' },
+	by:             { pos: 2, name: 'by' },
+	joinAll:        { pos: -1, default: false },
+	joinLeft:       { pos: -1, default: false },
+	joinRight:      { pos: -1, default: false },
+	critical:       [{ pos: -1, name: 'keep' }]
+};
+
 /**
  * The abstract semantics of the supported concrete data frame functions, access operations, and replacement functions,
  * mapping each supported function to the abstract data frame operations the function is composed of,
@@ -123,99 +176,24 @@ const DataFrameSemantics = {
 			critical:  []
 		}, DataFrameType.DataFrame, true),
 		'utils::read.table': applyFunctionCall(mapDataFrameRead, {
-			fileName:   { pos: 0, name: 'file' },
-			header:     { pos: 1, name: 'header', default: false },
-			separator:  { pos: 2, name: 'sep', default: '\\s' },
-			quote:      { pos: 3, name: 'quote', default: '"\'' },
-			skipLines:  { pos: 12, name: 'skip', default: 0 },
-			checkNames: { pos: 13, name: 'check.names', default: true },
-			noDupNames: { pos: 13, name: 'check.names', default: true },
-			comment:    { pos: 17, name: 'comment.char', default: '#' },
-			text:       { pos: 23, name: 'text' },
-			critical:   [
-				{ pos: 6, name: 'row.names' },
-				{ pos: 7, name: 'col.names' },
-				{ pos: 11, name: 'nrows', default: -1 },
-				{ pos: 15, name: 'strip.white', default: false },
-				{ pos: 16, name: 'blank.lines.skip', default: true },
-				{ pos: 18, name: 'allow.escapes', default: false },
-			]
+			...ReadTableVariantParams,
+			separator: { pos: 2, name: 'sep', default: '\\s' }
 		}, DataFrameType.DataFrame, true),
 		'utils::read.csv': applyFunctionCall(mapDataFrameRead, {
-			fileName:   { pos: 0, name: 'file' },
-			header:     { pos: 1, name: 'header', default: true },
-			separator:  { pos: 2, name: 'sep', default: ',' },
-			quote:      { pos: 3, name: 'quote', default: '"' },
-			comment:    { pos: 6, name: 'comment.char', default: '' },
-			skipLines:  { pos: -1, name: 'skip', default: 0 },
-			checkNames: { pos: -1, name: 'check.names', default: true },
-			noDupNames: { pos: -1, name: 'check.names', default: true },
-			text:       { pos: -1, name: 'text' },
-			critical:   [
-				{ pos: -1, name: 'row.names' },
-				{ pos: -1, name: 'col.names' },
-				{ pos: -1, name: 'nrows', default: -1 },
-				{ pos: -1, name: 'strip.white', default: false },
-				{ pos: -1, name: 'blank.lines.skip', default: true },
-				{ pos: -1, name: 'allow.escapes', default: false },
-			]
+			...ReadTableVariantParams,
+			separator: { pos: 2, name: 'sep', default: ',' }
 		}, DataFrameType.DataFrame, true),
 		'utils::read.csv2': applyFunctionCall(mapDataFrameRead, {
-			fileName:   { pos: 0, name: 'file' },
-			header:     { pos: 1, name: 'header', default: true },
-			separator:  { pos: 2, name: 'sep', default: ';' },
-			quote:      { pos: 3, name: 'quote', default: '"' },
-			comment:    { pos: 6, name: 'comment.char', default: '' },
-			skipLines:  { pos: -1, name: 'skip', default: 0 },
-			checkNames: { pos: -1, name: 'check.names', default: true },
-			noDupNames: { pos: -1, name: 'check.names', default: true },
-			text:       { pos: -1, name: 'text' },
-			critical:   [
-				{ pos: -1, name: 'row.names' },
-				{ pos: -1, name: 'col.names' },
-				{ pos: -1, name: 'nrows', default: -1 },
-				{ pos: -1, name: 'strip.white', default: false },
-				{ pos: -1, name: 'blank.lines.skip', default: true },
-				{ pos: -1, name: 'allow.escapes', default: false },
-			]
+			...ReadTableVariantParams,
+			separator: { pos: 2, name: 'sep', default: ';' }
 		}, DataFrameType.DataFrame, true),
 		'utils::read.delim': applyFunctionCall(mapDataFrameRead, {
-			fileName:   { pos: 0, name: 'file' },
-			header:     { pos: 1, name: 'header', default: true },
-			separator:  { pos: 2, name: 'sep', default: '\\t' },
-			quote:      { pos: 3, name: 'quote', default: '"' },
-			comment:    { pos: 6, name: 'comment.char', default: '' },
-			skipLines:  { pos: -1, name: 'skip', default: 0 },
-			checkNames: { pos: -1, name: 'check.names', default: true },
-			noDupNames: { pos: -1, name: 'check.names', default: true },
-			text:       { pos: -1, name: 'text' },
-			critical:   [
-				{ pos: -1, name: 'row.names' },
-				{ pos: -1, name: 'col.names' },
-				{ pos: -1, name: 'nrows', default: -1 },
-				{ pos: -1, name: 'strip.white', default: false },
-				{ pos: -1, name: 'blank.lines.skip', default: true },
-				{ pos: -1, name: 'allow.escapes', default: false },
-			]
+			...ReadTableVariantParams,
+			separator: { pos: 2, name: 'sep', default: '\\t' }
 		}, DataFrameType.DataFrame, true),
 		'utils::read.delim2': applyFunctionCall(mapDataFrameRead, {
-			fileName:   { pos: 0, name: 'file' },
-			header:     { pos: 1, name: 'header', default: true },
-			separator:  { pos: 2, name: 'sep', default: '\\t' },
-			quote:      { pos: 3, name: 'quote', default: '"' },
-			comment:    { pos: 6, name: 'comment.char', default: '' },
-			skipLines:  { pos: -1, name: 'skip', default: 0 },
-			checkNames: { pos: -1, name: 'check.names', default: true },
-			noDupNames: { pos: -1, name: 'check.names', default: true },
-			text:       { pos: -1, name: 'text' },
-			critical:   [
-				{ pos: -1, name: 'row.names' },
-				{ pos: -1, name: 'col.names' },
-				{ pos: -1, name: 'nrows', default: -1 },
-				{ pos: -1, name: 'strip.white', default: false },
-				{ pos: -1, name: 'blank.lines.skip', default: true },
-				{ pos: -1, name: 'allow.escapes', default: false },
-			]
+			...ReadTableVariantParams,
+			separator: { pos: 2, name: 'sep', default: '\\t' }
 		}, DataFrameType.DataFrame, true),
 		'readr::read_table': applyFunctionCall(mapDataFrameRead, {
 			fileName:   { pos: 0, name: 'file' },
@@ -233,61 +211,16 @@ const DataFrameSemantics = {
 			noEmptyNames: true
 		}, DataFrameType.Tibble, true),
 		'readr::read_csv': applyFunctionCall(mapDataFrameRead, {
-			fileName:   { pos: 0, name: 'file' },
-			header:     { pos: 1, name: 'col_names', default: true },
-			separator:  { pos: -1, default: ',' },
-			quote:      { pos: 8, name: 'quote', default: '"' },
-			comment:    { pos: 9, name: 'comment', default: '' },
-			skipLines:  { pos: 11, name: 'skip', default: 0 },
-			checkNames: { pos: -1, default: false },
-			noDupNames: { pos: -1, default: true },
-			critical:   [
-				{ pos: 3, name: 'col_select' },
-				{ pos: 4, name: 'id' },
-				{ pos: 10, name: 'trim_ws', default: true },
-				{ pos: 12, name: 'n_max', default: Infinity },
-				{ pos: 14, name: 'name_repair', default: 'unique' },
-				{ pos: 18, name: 'skip_empty_rows', default: true }
-			],
-			noEmptyNames: true
+			...ReadrDelimitedParams,
+			separator: { pos: -1, default: ',' }
 		}, DataFrameType.Tibble, true),
 		'readr::read_csv2': applyFunctionCall(mapDataFrameRead, {
-			fileName:   { pos: 0, name: 'file' },
-			header:     { pos: 1, name: 'col_names', default: true },
-			separator:  { pos: -1, default: ';' },
-			quote:      { pos: 8, name: 'quote', default: '"' },
-			comment:    { pos: 9, name: 'comment', default: '' },
-			skipLines:  { pos: 11, name: 'skip', default: 0 },
-			checkNames: { pos: -1, default: false },
-			noDupNames: { pos: -1, default: true },
-			critical:   [
-				{ pos: 3, name: 'col_select' },
-				{ pos: 4, name: 'id' },
-				{ pos: 10, name: 'trim_ws', default: true },
-				{ pos: 12, name: 'n_max', default: Infinity },
-				{ pos: 14, name: 'name_repair', default: 'unique' },
-				{ pos: 18, name: 'skip_empty_rows', default: true }
-			],
-			noEmptyNames: true
+			...ReadrDelimitedParams,
+			separator: { pos: -1, default: ';' }
 		}, DataFrameType.Tibble, true),
 		'readr::read_tsv': applyFunctionCall(mapDataFrameRead, {
-			fileName:   { pos: 0, name: 'file' },
-			header:     { pos: 1, name: 'col_names', default: true },
-			separator:  { pos: -1, default: '\\t' },
-			quote:      { pos: 8, name: 'quote', default: '"' },
-			comment:    { pos: 9, name: 'comment', default: '' },
-			skipLines:  { pos: 11, name: 'skip', default: 0 },
-			checkNames: { pos: -1, default: false },
-			noDupNames: { pos: -1, default: true },
-			critical:   [
-				{ pos: 3, name: 'col_select' },
-				{ pos: 4, name: 'id' },
-				{ pos: 10, name: 'trim_ws', default: true },
-				{ pos: 12, name: 'n_max', default: Infinity },
-				{ pos: 14, name: 'name_repair', default: 'unique' },
-				{ pos: 18, name: 'skip_empty_rows', default: true }
-			],
-			noEmptyNames: true
+			...ReadrDelimitedParams,
+			separator: { pos: -1, default: '\\t' }
 		}, DataFrameType.Tibble, true),
 		'readr::read_delim': applyFunctionCall(mapDataFrameRead, {
 			fileName:   { pos: 0, name: 'file' },
@@ -365,40 +298,19 @@ const DataFrameSemantics = {
 			special:   ['.by', '.groups']
 		}, DataFrameType.DataFrame, true),
 		'dplyr::inner_join': applyFunctionCall(mapDataFrameJoin, {
-			dataFrame:      { pos: 0, name: 'x' },
-			otherDataFrame: { pos: 1, name: 'y' },
-			by:             { pos: 2, name: 'by' },
-			joinAll:        { pos: -1, default: false },
-			joinLeft:       { pos: -1, default: false },
-			joinRight:      { pos: -1, default: false },
-			critical:       [{ pos: -1, name: 'keep' }]
+			...DplyrJoinParams
 		}, DataFrameType.DataFrame, true),
 		'dplyr::left_join': applyFunctionCall(mapDataFrameJoin, {
-			dataFrame:      { pos: 0, name: 'x' },
-			otherDataFrame: { pos: 1, name: 'y' },
-			by:             { pos: 2, name: 'by' },
-			joinAll:        { pos: -1, default: false },
-			joinLeft:       { pos: -1, default: true },
-			joinRight:      { pos: -1, default: false },
-			critical:       [{ pos: -1, name: 'keep' }]
+			...DplyrJoinParams,
+			joinLeft: { pos: -1, default: true }
 		}, DataFrameType.DataFrame, true),
 		'dplyr::right_join': applyFunctionCall(mapDataFrameJoin, {
-			dataFrame:      { pos: 0, name: 'x' },
-			otherDataFrame: { pos: 1, name: 'y' },
-			by:             { pos: 2, name: 'by' },
-			joinAll:        { pos: -1, default: false },
-			joinLeft:       { pos: -1, default: false },
-			joinRight:      { pos: -1, default: true },
-			critical:       [{ pos: -1, name: 'keep' }]
+			...DplyrJoinParams,
+			joinRight: { pos: -1, default: true },
 		}, DataFrameType.DataFrame, true),
 		'dplyr::full_join': applyFunctionCall(mapDataFrameJoin, {
-			dataFrame:      { pos: 0, name: 'x' },
-			otherDataFrame: { pos: 1, name: 'y' },
-			by:             { pos: 2, name: 'by' },
-			joinAll:        { pos: -1, default: true },
-			joinLeft:       { pos: -1, default: false },
-			joinRight:      { pos: -1, default: false },
-			critical:       [{ pos: -1, name: 'keep' }]
+			...DplyrJoinParams,
+			joinAll: { pos: -1, default: true }
 		}, DataFrameType.DataFrame, true),
 		'base::merge': applyFunctionCall(mapDataFrameJoin, {
 			dataFrame:      { pos: 0, name: 'x' },

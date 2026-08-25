@@ -1,5 +1,6 @@
 import {
 	type CallContextQuery,
+	type CallContextQuerySubKindResult,
 	CallContextQueryDefinition
 } from './catalog/call-context-query/call-context-query-format';
 import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from './base-query-format';
@@ -92,7 +93,7 @@ import {
 } from './catalog/input-sources-query/input-sources-query-format';
 import type { ProvenanceQuery } from './catalog/provenance-query/provenance-query-format';
 import { ProvenanceQueryDefinition } from './catalog/provenance-query/provenance-query-format';
-import type { LintingResultCertainty } from '../linter/linter-format';
+import type { LintingResult, LintingResultCertainty } from '../linter/linter-format';
 import { type DiceQuery, DiceQueryDefinition } from './catalog/dice-query/dice-query-format';
 import {
 	type GuessDepVersionsQuery,
@@ -409,3 +410,101 @@ export async function genericWrapReplFailIfNoRequest<T>(
 		}
 	}
 }
+
+/** What a query reports per key, for the queries that report anything per key. */
+type ResultsOf<Type extends SupportedQueryTypes> =
+	Awaited<QueryResult<Type>> extends { readonly results: infer R } ? R : never;
+
+/** The keys {@link ResultsOf} is indexed by, e.g. the slicing criterion a slice was taken at. */
+type KeyOf<Type extends SupportedQueryTypes> = Extract<keyof ResultsOf<Type>, string>;
+
+/** What one key of {@link ResultsOf} holds, e.g. one slice with its reconstruction. */
+type ValueOf<Type extends SupportedQueryTypes> = ResultsOf<Type>[KeyOf<Type>];
+
+/** One call a `call-context` query found, with the kind and subkind it was found under. */
+export interface FoundCall extends CallContextQuerySubKindResult {
+	readonly kind:    string;
+	readonly subkind: string;
+}
+
+/** One finding a `linter` query reported, with the rule that reported it. */
+export interface FoundLint {
+	readonly rule:   string;
+	readonly result: LintingResult;
+}
+
+/**
+ * Running queries and reading what they reported, without `Object.entries` and the casts it forces. Reading
+ * changes nothing: the results keep the shape they are serialized in.
+ * @example
+ * ```ts
+ * const out = await executeQueries({ analyzer }, [{ type: 'static-slice', criteria: ['2@x'] }]);
+ * Query.get(out, 'static-slice', '2@x');                       // the slice taken at `2@x`
+ * Query.first(out, 'static-slice');                            // the only slice, when one was asked for
+ * for(const [criterion, slice] of Query.entries(out, 'static-slice')) { ... }
+ * ```
+ */
+export const Query = {
+	name: 'Query',
+	/**
+	 * Run a single query and answer with what it reported, so a caller asking one thing is handed that one
+	 * thing instead of a {@link QueryResults} to index into.
+	 */
+	async one<Type extends SupportedQueryTypes>(
+		this: void, data: BasicQueryData, query: Extract<Query, { type: Type }>
+	): Promise<Awaited<QueryResult<Type>>> {
+		const results = await executeQueries<Type>(data, [query] as never);
+		return results[query.type] as Awaited<QueryResult<Type>>;
+	},
+	/** Every key and result of one query, typed as that query reports them. */
+	entries<Base extends SupportedQueryTypes, Type extends Base>(
+		this: void, results: QueryResults<Base>, type: Type
+	): [KeyOf<Type>, ValueOf<Type>][] {
+		const found = results[type] as { results?: Record<string, unknown> } | undefined;
+		return Object.entries(found?.results ?? {}) as [KeyOf<Type>, ValueOf<Type>][];
+	},
+	/** Every result of one query, for when the keys are not what you are after. */
+	values<Base extends SupportedQueryTypes, Type extends Base>(
+		this: void, results: QueryResults<Base>, type: Type
+	): ValueOf<Type>[] {
+		return Query.entries(results, type).map(([, value]) => value);
+	},
+	/** The result of one query under one key, `undefined` when it reported none. */
+	get<Base extends SupportedQueryTypes, Type extends Base>(
+		this: void, results: QueryResults<Base>, type: Type, key: KeyOf<Type>
+	): ValueOf<Type> | undefined {
+		const found = results[type] as { results?: Record<string, unknown> } | undefined;
+		return found?.results?.[key] as ValueOf<Type> | undefined;
+	},
+	/** The one result of a query that was asked for one thing, `undefined` when it reported none. */
+	first<Base extends SupportedQueryTypes, Type extends Base>(
+		this: void, results: QueryResults<Base>, type: Type
+	): ValueOf<Type> | undefined {
+		return Query.values(results, type)[0];
+	},
+	/**
+	 * Every call a `call-context` query found, flat, each carrying the kind and subkind it was found under
+	 * rather than leaving them as the two levels of record the result nests them in.
+	 */
+	calls(this: void, results: Partial<QueryResults<'call-context'>>): FoundCall[] {
+		const found: FoundCall[] = [];
+		for(const [kind, { subkinds }] of Object.entries(results['call-context']?.kinds ?? {})) {
+			for(const [subkind, hits] of Object.entries(subkinds)) {
+				for(const hit of hits) {
+					found.push({ ...hit, kind, subkind });
+				}
+			}
+		}
+		return found;
+	},
+	/** Every finding a `linter` query reported, flat, each carrying the rule that reported it. */
+	lints(this: void, results: Partial<QueryResults<'linter'>>): FoundLint[] {
+		const found: FoundLint[] = [];
+		for(const [rule, reported] of Object.entries(results['linter']?.results ?? {})) {
+			for(const result of (reported as { results?: readonly LintingResult[] }).results ?? []) {
+				found.push({ rule, result });
+			}
+		}
+		return found;
+	}
+};

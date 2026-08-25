@@ -458,6 +458,11 @@ class InputClassifier {
 				if(callee !== undefined) {
 					return this.classifyCdsAndReturn(call, { ...callee, id: call.id });
 				}
+				// a call of a function the code defines yields whatever that function returns
+				const returned = this.classifyDefinitionResult(call);
+				if(returned !== undefined) {
+					return this.classifyCdsAndReturn(call, returned);
+				}
 				// if it is not pure, we cannot classify based on the inputs, in that case we do not know!
 				types.push(InputType.Unknown);
 			}
@@ -499,6 +504,67 @@ class InputClassifier {
 
 		argTypes.push(InputType.DerivedConstant);
 		return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, types: uniqueArray(argTypes), trace: InputTraceType.Known, cds }));
+	}
+
+	/**
+	 * What a call of a function the analyzed code defines yields: what its exit points do, as a function whose
+	 * body is `system(x)` runs a system command whether the call reads `f(cmd)` or `system(cmd)`. `undefined`
+	 * when the call names no definition here or when none of them says anything about what it returns.
+	 */
+	private classifyDefinitionResult(call: DataflowGraphVertexFunctionCall): InputSource | undefined {
+		const graph = this.fullDfg ?? this.dfg;
+		const acc = new ClassificationAccumulator();
+		let known = false;
+		for(const fn of this.functionDefinitionsAt(call.id)) {
+			const definition = graph.getVertex(fn);
+			if(!FunctionDefinitionVertex.is(definition)) {
+				continue;
+			}
+			for(const { nodeId } of definition.exitPoints) {
+				for(const value of this.exitValues(nodeId)) {
+					const vtx = value === undefined ? undefined : this.dfg.getVertex(value) ?? graph.getVertex(value);
+					const classified = vtx ? this.classifyEntry(vtx) : undefined;
+					if(classified === undefined) {
+						/* an exit flowR cannot place says nothing about the call, so neither can the others */
+						return undefined;
+					}
+					known = true;
+					acc.merge(classified);
+				}
+			}
+		}
+		if(!known) {
+			return undefined;
+		}
+		const built = acc.build(call.id);
+		return built.types.includes(InputType.Unknown) ? undefined : built;
+	}
+
+	/**
+	 * What an exit point hands back, descending through the branches of an `if` (which yields one of them, while
+	 * {@link classifyFunctionCall} reports the condition it depends on). Yields `undefined` for a construct whose
+	 * value flowR cannot name, a loop above all, so the caller stops rather than answers with the branches alone.
+	 */
+	private *exitValues(id: NodeId, depth = 0): Generator<NodeId | undefined> {
+		const vtx = (this.dfg.getVertex(id) ?? (this.fullDfg ?? this.dfg).getVertex(id));
+		if(vtx === undefined || !FunctionCallVertex.is(vtx)) {
+			yield id;
+			return;
+		}
+		if(vtx.origin.includes(BuiltInProcName.WhileLoop) || vtx.origin.includes(BuiltInProcName.ForLoop) || vtx.origin.includes(BuiltInProcName.RepeatLoop)) {
+			yield undefined;
+		} else if(vtx.origin.includes(BuiltInProcName.IfThenElse) && depth <= MaxFunctionResolveDepth) {
+			for(const branch of vtx.args.slice(1)) {
+				const ref = FunctionArgument.isEmpty(branch) ? undefined : FunctionArgument.getReference(branch);
+				if(ref === undefined) {
+					yield undefined;
+				} else {
+					yield* this.exitValues(ref, depth + 1);
+				}
+			}
+		} else {
+			yield id;
+		}
 	}
 
 	/** classifies what a call of a variable (e.g. a shiny reactive `n()`) yields, by what that variable holds */

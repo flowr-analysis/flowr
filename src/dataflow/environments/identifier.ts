@@ -204,12 +204,19 @@ export const Identifier = {
 		/* an omitted flag is the same as an explicit `false`, `pkg::fn` written either way is one identifier */
 		return (idInternal ?? false) === (Identifier.accessesInternal(target) ?? false);
 	},
+	/** The text as a regex matches it literally: `[`, `$` and `.` name functions in R, they are not pattern syntax. */
+	quote(this: void, text: string): string {
+		return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	},
 	/**
 	 * Helper to create a regular expression that matches against an array of {@link Identifier} values. If both the passed identifier and the matched identifier are namespaced, their namespaces are expected to match. If either is not namespaced, the namespace is ignored on both.
 	 */
 	regex(this: void, ...identifiers: readonly Identifier[]): RegExp {
 		// if the passed identifier is not namespaced, we match against *any* namespace. if it is namespaced, we match against the correct namespace or no namespace
-		return new RegExp(`^(${identifiers.map(i => `(${Identifier.getNamespace(i) ?? '.+'}:::?)?${Identifier.getName(i)}`).join('|')})$`);
+		return new RegExp(`^(${identifiers.map(i => {
+			const namespace = Identifier.getNamespace(i);
+			return `(${namespace === undefined ? '.+' : Identifier.quote(namespace)}:::?)?${Identifier.quote(Identifier.getName(i))}`;
+		}).join('|')})$`);
 	},
 	/** Special identifier for the `...` argument */
 	dotdotdot(this: void): BrandedIdentifier {

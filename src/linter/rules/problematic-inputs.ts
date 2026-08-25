@@ -15,7 +15,7 @@ import { Identifier } from '../../dataflow/environments/identifier';
 
 const defaultConsider: readonly string[] = [
 	'^eval$',
-	...BuiltInIndex.default().with(SemanticCallTag.Process).map(n => `^${Identifier.getName(n)}$`)
+	...BuiltInIndex.default().with(SemanticCallTag.Process).map(n => `^${Identifier.quote(Identifier.getName(n))}$`)
 ];
 
 export interface PipeCommandFunctionSpec {

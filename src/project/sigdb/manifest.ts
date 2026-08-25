@@ -278,7 +278,7 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 	// a standalone bundle is a `.sigs.ndjson` that is not a shard of a discovered manifest (`<manifest>.<shard>...`)
 	const prefixes = [...manifests.keys()].map(k => k.replace(/\.manifest\.json$/, ''));
 	const isShard = (name: string): boolean => {
-		const base = name.replace(new RegExp(`${SigDbExt.replace('.', '\\.')}$`), '');
+		const base = name.replace(new RegExp(`${SigDbExt.replace(/\./g, '\\.')}$`), '');
 		return prefixes.some(p => base === p || base.startsWith(p + '.'));
 	};
 	const scopeRank = (name: string): number => {

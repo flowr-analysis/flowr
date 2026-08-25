@@ -4,9 +4,9 @@
  */
 import { EditorView, basicSetup } from 'codemirror';
 import { Decoration, hoverTooltip, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
-import { StateEffect, StateField } from '@codemirror/state';
+import { StateEffect, StateField, type EditorState } from '@codemirror/state';
 import { autocompletion, type Completion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete';
-import { HighlightStyle, StreamLanguage, syntaxHighlighting } from '@codemirror/language';
+import { HighlightStyle, StreamLanguage, syntaxHighlighting, syntaxTree } from '@codemirror/language';
 import { highlightCode, tags } from '@lezer/highlight';
 import { r } from '@codemirror/legacy-modes/mode/r';
 import { json } from '@codemirror/legacy-modes/mode/javascript';
@@ -305,6 +305,11 @@ function complaint(found: { rule: string, message: string }, cls: string): HTMLE
 	return at;
 }
 
+/** whether the offset sits in a string or a comment, where a name is text and not the function it spells */
+function spelledOut(state: EditorState, pos: number): boolean {
+	return /string|comment/i.test(syntaxTree(state).resolveInner(pos, 1).name);
+}
+
 /**
  * What flowR can say about the name under the pointer: its value, its shape, or where it comes from.
  */
@@ -325,6 +330,11 @@ const valueTips = hoverTooltip(async(view, pos) => {
 			above:  false,
 			create: () => ({ dom: packageTip(info, lintsOver(line.from + found.from, line.from + found.to)) })
 		};
+	}
+	/* a name is asked about only where it is one: `read.csv` in `"read.csv"` or behind a `#` is text. The
+	   package branch above runs first, as `library("dplyr")` writes the package it loads as a string */
+	if(spelledOut(view.state, pos)) {
+		return null;
 	}
 	const criterion = found.criterion;
 	const about = await describe(criterion);

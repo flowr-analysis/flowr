@@ -63,12 +63,33 @@ export const SliceQueryOptionsSchema = {
 } as const;
 
 /**
- * How a slicing query's result is keyed: under the name it was given, else under the query itself so that two
- * runs of the same slice are one entry. A name is what keeps a caller from having to parse a serialized query
- * back out of the key.
+ * How a slicing query's result is keyed: under the name it was given, else under what it slices (`2@x`), which
+ * is what a caller looks the result up by. Use {@link sliceResultKeys} for a whole request, as only there can
+ * two queries be seen to want the same key.
  */
-export function sliceResultKey(query: SliceQueryOptions): string {
-	return query.name ?? JSON.stringify(query);
+export function sliceResultKey<T extends SliceQueryOptions>(query: T, describe: (query: T) => string): string {
+	return query.name ?? describe(query);
+}
+
+/**
+ * The keys a whole request's results are reported under (see {@link sliceResultKey}). Two queries that differ
+ * only in their options would want the same key, and only one of them could be reported; those fall back to the
+ * serialized query, so nothing is silently merged. Two *identical* queries still share one entry, as they must.
+ */
+export function sliceResultKeys<T extends SliceQueryOptions>(queries: readonly T[], describe: (query: T) => string): string[] {
+	const short = queries.map(q => sliceResultKey(q, describe));
+	const claimed = new Map<string, string>();
+	const collided = new Set<string>();
+	queries.forEach((query, i) => {
+		const serialized = JSON.stringify(query);
+		const first = claimed.get(short[i]);
+		if(first === undefined) {
+			claimed.set(short[i], serialized);
+		} else if(first !== serialized) {
+			collided.add(short[i]);
+		}
+	});
+	return queries.map((query, i) => query.name === undefined && collided.has(short[i]) ? JSON.stringify(query) : short[i]);
 }
 
 /** Whether a result key is a serialized query rather than the name someone gave the slice. */

@@ -41,22 +41,21 @@ function bucketKeyOf(name: string): number {
 function dictionaryIdOf(strings: readonly string[], name: string): number {
 	let buckets = dictionaryBuckets.get(strings);
 	if(buckets === undefined) {
-		const sizes = new Map<number, number>();
-		for(const entry of strings) {
-			const key = bucketKeyOf(entry);
-			sizes.set(key, (sizes.get(key) ?? 0) + 1);
-		}
-		buckets = new Map();
-		const filled = new Map<number, number>();
-		for(const [key, size] of sizes) {
-			buckets.set(key, new Int32Array(size));
-			filled.set(key, 0);
-		}
+		/* one pass over the 1.4 million entries: sizing them first meant walking all of them twice and a map
+		   lookup per entry to know where in its group the next one goes */
+		const grouped = new Map<number, number[]>();
 		for(let i = 0; i < strings.length; i++) {
 			const key = bucketKeyOf(strings[i]);
-			const at = filled.get(key) as number;
-			(buckets.get(key) as Int32Array)[at] = i;
-			filled.set(key, at + 1);
+			const group = grouped.get(key);
+			if(group === undefined) {
+				grouped.set(key, [i]);
+			} else {
+				group.push(i);
+			}
+		}
+		buckets = new Map();
+		for(const [key, group] of grouped) {
+			buckets.set(key, Int32Array.from(group));
 		}
 		dictionaryBuckets.set(strings, buckets);
 	}
@@ -402,16 +401,45 @@ export interface OpenSyncFromOptions extends SigDbOpenOptions, OpenSyncOptions {
 const NoFile = -1;
 
 /**
+ * One budget for every open bundle, spent in the bytes the blobs take on disk. Per bundle it would not bound
+ * anything: how many shards a query set opens is not something the caller picks, and each would claim the
+ * budget again. A count would not bound anything either -- one package's blob outweighs a hundred small ones.
+ */
+const BlobCacheBudget = 8 * 1024 * 1024;
+
+/** what every open bundle holds decoded, oldest read first, so the budget is spent across all of them */
+const cachedBlobs: { db: SigDatabase, blobIdx: number, bytes: number }[] = [];
+let cachedBlobBytes = 0;
+
+/** keep `blob` decoded for `db`, dropping what any bundle read longest ago until all of them fit the budget */
+function keepBlob(db: SigDatabase, blobIdx: number, bytes: number): void {
+	while(cachedBlobBytes + bytes > BlobCacheBudget && cachedBlobs.length > 0) {
+		const dropped = cachedBlobs.shift() as { db: SigDatabase, blobIdx: number, bytes: number };
+		/* the bytes are off the list either way: a closed bundle already let its blobs go */
+		cachedBlobBytes -= dropped.bytes;
+		dropped.db.dropBlob(dropped.blobIdx);
+	}
+	cachedBlobs.push({ db, blobIdx, bytes });
+	cachedBlobBytes += bytes;
+}
+
+/** the function records of one package version, as {@link SigDatabase.versionFns} keeps them */
+interface VersionFns {
+	readonly idxs: readonly number[];
+	byName?:       ReadonlyMap<string, number>;
+}
+
+/**
  * Fast, partial reader for a single bundle. `open()`/`openSync()` load the string dictionary + `.idx` once, then every
  * query seeks straight to one package blob; `open()` additionally decompresses a `.br`/`.gz` source into a hash-keyed cache.
  */
 export class SigDatabase implements PackageSignatureSource {
 	private closed = false;
-	/** parsed blobs by blob index so repeated lookups skip the re-read + JSON.parse; FIFO-bounded to cap memory */
+	/** parsed blobs by blob index so repeated lookups skip the re-read + JSON.parse; bounded by {@link BlobCacheBudget} */
 	private readonly blobCache = new Map<number, PkgBlob>();
-	private static readonly BlobCacheCap = 2048;
-	/** a version's function indices plus its `name -> index` view; FIFO-bounded like {@link blobCache} */
-	private readonly versionFnCache = new Map<string, { blob: PkgBlob, idxs: readonly number[], byName?: ReadonlyMap<string, number> }>();
+	/** a version's function indices plus its `name -> index` view, keyed by package and version; FIFO-bounded */
+	private readonly versionFnCache = new Map<string, VersionFns>();
+	private static readonly VersionFnCacheCap = 2048;
 	/** which names a package can offer at all, as sorted dictionary ids; filled the first time its blob is read */
 	private readonly nameIdsOfBlob = new Map<number, Int32Array>();
 	/** dictionary id per name asked for, so only the names someone actually queried are ever resolved */
@@ -506,11 +534,14 @@ export class SigDatabase implements PackageSignatureSource {
 		if(this.fd === NoFile) {
 			return undefined;   // an in-memory database starts out with every blob cached
 		}
-		const blob = this.readBlobAt(this.index.blobs[blobIdx]);
+		const range = this.index.blobs[blobIdx];
+		const blob = this.readBlobAt(range);
 		if(!this.nameIdsOfBlob.has(blobIdx)) {
 			this.nameIdsOfBlob.set(blobIdx, Int32Array.from(new Set(blob.fns.map(fn => fn[0]))).sort());
 		}
-		return SigDatabase.cache(this.blobCache, blobIdx, blob);
+		keepBlob(this, blobIdx, range[1]);
+		this.blobCache.set(blobIdx, blob);
+		return blob;
 	}
 
 	/** the dictionary id of `name`, or `-1` if the dictionary does not hold it, so no package can offer it */
@@ -550,9 +581,14 @@ export class SigDatabase implements PackageSignatureSource {
 		return false;
 	}
 
-	/** store `value` under `key`, dropping the oldest entry first once the cache sits at {@link BlobCacheCap} */
-	private static cache<K, V>(cache: Map<K, V>, key: K, value: V): V {
-		if(cache.size >= SigDatabase.BlobCacheCap) {
+	/** drop one decoded blob, for the shared budget to reclaim what it costs (see {@link keepBlob}) */
+	public dropBlob(blobIdx: number): void {
+		this.blobCache.delete(blobIdx);
+	}
+
+	/** store `value` under `key`, dropping the oldest entry first once the cache sits at `cap` */
+	private static cache<K, V>(cache: Map<K, V>, key: K, value: V, cap: number): V {
+		if(cache.size >= cap) {
 			const oldest = cache.keys().next().value;
 			if(oldest !== undefined) {
 				cache.delete(oldest);
@@ -639,7 +675,7 @@ export class SigDatabase implements PackageSignatureSource {
 		if(r === undefined) {
 			return false;
 		}
-		for(const i of r.idxs) {
+		for(const i of r.fns.idxs) {
 			const fn = r.blob.fns[i];
 			if(fn[0] === id && (fn[3] & FnProp.Exported) !== 0) {
 				return true;
@@ -656,8 +692,12 @@ export class SigDatabase implements PackageSignatureSource {
 		return this.classIndex.get(className);
 	}
 
-	/** resolve a package version to its blob and the function-record indices of that version (the shared prologue of {@link functions}/{@link functionByName}) */
-	private versionFns(pkg: string, version?: string): { blob: PkgBlob, idxs: readonly number[], byName?: ReadonlyMap<string, number> } | undefined {
+	/**
+	 * Resolve a package version to its blob and the function records of that version (the shared prologue of
+	 * {@link functions}/{@link functionByName}). The blob comes from {@link blob} every time rather than out of
+	 * {@link versionFnCache}: holding one here would keep it decoded past what {@link BlobCacheBudget} allows.
+	 */
+	private versionFns(pkg: string, version?: string): { blob: PkgBlob, fns: VersionFns } | undefined {
 		const bm = this.blobMeta(pkg);
 		if(!bm) {
 			return undefined;
@@ -670,18 +710,18 @@ export class SigDatabase implements PackageSignatureSource {
 		const key = `${pkg}\0${ver}`;
 		const cached = this.versionFnCache.get(key);
 		if(cached !== undefined) {
-			return cached;
+			return { blob: bm.blob, fns: cached };
 		}
 		const idxs = versionFnIndices(bm.blob, ver);
 		if(idxs === undefined) {
 			return undefined;
 		}
-		return SigDatabase.cache(this.versionFnCache, key, { blob: bm.blob, idxs });
+		return { blob: bm.blob, fns: SigDatabase.cache(this.versionFnCache, key, { idxs }, SigDatabase.VersionFnCacheCap) };
 	}
 
 	public functions(pkg: string, version?: string): DecodedFunction[] | undefined {
 		const r = this.versionFns(pkg, version);
-		return r?.idxs.map(i => decodeFunction(this.strings, r.blob, i));
+		return r?.fns.idxs.map(i => decodeFunction(this.strings, r.blob, i));
 	}
 
 	public functionByName(pkg: string, name: string, version?: string): DecodedFunction | undefined {
@@ -692,18 +732,18 @@ export class SigDatabase implements PackageSignatureSource {
 		if(r === undefined) {
 			return undefined;
 		}
-		if(r.byName === undefined) {
+		if(r.fns.byName === undefined) {
 			const byName = new Map<string, number>();
-			for(const i of r.idxs) {
+			for(const i of r.fns.idxs) {
 				const fn = this.strings[r.blob.fns[i][0]];
 				// first record wins, as the linear scan did
 				if(!byName.has(fn)) {
 					byName.set(fn, i);
 				}
 			}
-			r.byName = byName;
+			r.fns.byName = byName;
 		}
-		const hit = r.byName.get(name);
+		const hit = r.fns.byName.get(name);
 		return hit !== undefined ? decodeFunction(this.strings, r.blob, hit) : undefined;
 	}
 
@@ -773,6 +813,7 @@ export class SigDatabase implements PackageSignatureSource {
 		if(!this.closed) {
 			this.closed = true;
 			this.blobCache.clear();
+			this.versionFnCache.clear();
 			this.classIndex = undefined;
 			if(this.fd !== NoFile) {
 				fs.closeSync(this.fd);

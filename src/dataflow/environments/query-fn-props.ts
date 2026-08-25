@@ -5,7 +5,7 @@ import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { REnvironmentInformation } from './environment';
 import { REnvironment } from './environment';
 import type { IdentifierDefinition } from './identifier';
-import { Identifier, ReferenceType } from './identifier';
+import { Identifier, PkgName, ReferenceType } from './identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PackageSignatureSource } from '../../project/sigdb/reader';
 import { Resolve } from './resolve-helper';
@@ -13,6 +13,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import type { DataflowInformation } from '../info';
 import { FunctionCallVertex } from '../graph/vertex';
 import { Dataflow } from '../graph/df-helper';
+import { AttachedBasePackageSet } from '../../util/r-base-packages';
 
 /**
  * Where to look up what flowR knows about a function, in that order:
@@ -110,13 +111,20 @@ export function queryFnProps(name: Identifier, { environment, builtIns, signatur
  */
 export function builtInLookup(ctx?: ReadOnlyFlowrAnalyzerContext): (name: Identifier) => BuiltInFnInfo | undefined {
 	const environment = ctx?.env.makeCleanEnv();
-	const known = new Map<string, BuiltInFnInfo | undefined>();
+	/* keyed by namespace and name, as `stats::filter` and `dplyr::filter` are not the same function */
+	const known = new Map<string | undefined, Map<string, BuiltInFnInfo | undefined>>();
 	return name => {
+		const namespace = Identifier.getNamespace(name);
 		const key = Identifier.getName(name);
-		if(!known.has(key)) {
-			known.set(key, environment === undefined ? BuiltInIndex.default().get(name) : queryFnProps(name, { environment }));
+		let bucket = known.get(namespace);
+		if(bucket === undefined) {
+			bucket = new Map<string, BuiltInFnInfo | undefined>();
+			known.set(namespace, bucket);
 		}
-		return known.get(key);
+		if(!bucket.has(key)) {
+			bucket.set(key, environment === undefined ? BuiltInIndex.default().get(name) : queryFnProps(name, { environment }));
+		}
+		return bucket.get(key);
 	};
 }
 
@@ -190,16 +198,19 @@ export interface BuiltInParam {
 	readonly props: ArgProps
 }
 
-function entryOfDefinition(definition: BuiltInDefinition): readonly BuiltInEntry[] {
+/** A {@link BuiltInEntry} while the index is built, carrying whether its definition replaces an earlier one. */
+type IndexedEntry = BuiltInEntry & { readonly overrides?: boolean };
+
+function entryOfDefinition(definition: BuiltInDefinition): readonly IndexedEntry[] {
 	if(definition.type === 'constant') {
 		return [];
 	}
 	const info = definition.config as BuiltInFnInfo | undefined;
 	const folds = definition.type === 'function' && definition.evalHandler !== undefined;
-	return builtInNames(definition).map(name => ({ name, props: info?.props, tags: info?.tags, sig: info?.sig, folds }));
+	return builtInNames(definition).map(name => ({ name, props: info?.props, tags: info?.tags, sig: info?.sig, folds, overrides: definition.overrides }));
 }
 
-function entriesOfMemory(builtIns: BuiltIns): readonly BuiltInEntry[] {
+function entriesOfMemory(builtIns: BuiltIns): readonly IndexedEntry[] {
 	const out: BuiltInEntry[] = [];
 	/* the index says what flowR *knows*, not what is in scope, so the packages R does not attach on startup
 	   belong in it as much as the always-on built-ins do -- being gated changes when a name resolves, not
@@ -222,6 +233,35 @@ function entriesOfMemory(builtIns: BuiltIns): readonly BuiltInEntry[] {
 let defaultIndex: BuiltInIndex | undefined;
 
 /**
+ * The one entry for a name several definitions state something about, the later definition winning wherever
+ * it states anything -- a definition that only adds a {@link FnSig} must not drop the props of the one before.
+ * A definition marked `overrides` replaces the earlier one outright, as that is what it says it does.
+ */
+function mergedEntry(known: BuiltInEntry, next: IndexedEntry): BuiltInEntry {
+	return {
+		name:  next.name,
+		props: next.props ?? known.props,
+		tags:  next.tags ?? known.tags,
+		sig:   next.sig ?? known.sig,
+		folds: next.folds || known.folds
+	};
+}
+
+/** The entry alone, without what only the index build needs to know about it. */
+function plainEntry({ name, props, tags, sig, folds }: IndexedEntry): BuiltInEntry {
+	return { name, props, tags, sig, folds };
+}
+
+/** How early R's default search path reaches a name, deciding which package an unqualified ask answers with. */
+function searchPathRank(name: Identifier): number {
+	const namespace = Identifier.getNamespace(name);
+	if(namespace === undefined) {
+		return 0;
+	}
+	return namespace === PkgName.Base ? 1 : AttachedBasePackageSet.has(namespace) ? 2 : 3;
+}
+
+/**
  * The one place to ask what flowR's built-ins are: _every pure function_, _every call that reads a file_,
  * _every parameter that names a resource_, _everything the value solver can fold_. Each answer is derived
  * from the {@link BuiltInFnInfo} the definitions carry, so a built-in that states its {@link CallProp} bits and
@@ -233,12 +273,44 @@ let defaultIndex: BuiltInIndex | undefined;
  * definition in the analyzed code shadows the built-in) use {@link queryFnProps} instead.
  */
 export class BuiltInIndex {
+	/** every built-in the index knows, one entry per namespace and name */
+	public readonly entries: readonly BuiltInEntry[];
+	/** the entry an unqualified name resolves to, the one R's default search path would find */
 	private readonly byName = new Map<string, BuiltInEntry>();
+	/** namespace to name to entry, so a qualified name is two lookups and no string built to ask */
+	private readonly byNamespace = new Map<string, Map<string, BuiltInEntry>>();
 	private readonly cache = new Map<string, readonly Identifier[]>();
 
-	private constructor(public readonly entries: readonly BuiltInEntry[]) {
-		for(const e of entries) {
-			this.byName.set(Identifier.getName(e.name), e);
+	private constructor(definitions: readonly IndexedEntry[]) {
+		const unqualified = new Map<string, BuiltInEntry>();
+		/* where each name was first seen, so the entries keep the order the definitions come in */
+		const order: [Map<string, BuiltInEntry>, string][] = [];
+		for(const e of definitions) {
+			const name = Identifier.getName(e.name);
+			const namespace = Identifier.getNamespace(e.name);
+			let bucket = unqualified;
+			if(namespace !== undefined) {
+				const inNamespace = this.byNamespace.get(namespace);
+				if(inNamespace === undefined) {
+					bucket = new Map<string, BuiltInEntry>();
+					this.byNamespace.set(namespace, bucket);
+				} else {
+					bucket = inNamespace;
+				}
+			}
+			const known = bucket.get(name);
+			bucket.set(name, known === undefined || e.overrides ? plainEntry(e) : mergedEntry(known, e));
+			if(known === undefined) {
+				order.push([bucket, name]);
+			}
+		}
+		this.entries = order.map(([bucket, name]) => bucket.get(name) as BuiltInEntry);
+		for(const e of this.entries) {
+			const name = Identifier.getName(e.name);
+			const known = this.byName.get(name);
+			if(known === undefined || searchPathRank(e.name) < searchPathRank(known.name)) {
+				this.byName.set(name, e);
+			}
 		}
 	}
 
@@ -310,9 +382,22 @@ export class BuiltInIndex {
 		return found;
 	}
 
-	/** What the index states about `name`, ignoring any namespace (built-ins are registered by their bare name). */
+	/**
+	 * What the index states about `name`. A qualified name answers for that package alone, so `stats::filter`
+	 * does not report what `dplyr::filter` states; an unqualified one answers with what R's default search
+	 * path would find, `base` first and the other {@link AttachedBasePackageSet|attached base packages} next.
+	 */
 	public get(name: Identifier): BuiltInEntry | undefined {
-		return this.byName.get(Identifier.getName(name));
+		const namespace = Identifier.getNamespace(name);
+		if(namespace === undefined) {
+			return this.byName.get(Identifier.getName(name));
+		}
+		const found = this.byNamespace.get(namespace)?.get(Identifier.getName(name));
+		if(found === undefined) {
+			return undefined;
+		}
+		/* the maps settled name and namespace, what is left is `::` asking for a name only `:::` states */
+		return Identifier.accessesInternal(found.name) !== true || Identifier.accessesInternal(name) === true ? found : undefined;
 	}
 
 	/** The {@link CallProp} bits of `name`, `undefined` when no built-in of that name states any. */

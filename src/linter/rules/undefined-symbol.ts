@@ -81,7 +81,7 @@ const LibraryLoadFunctions = new Set(['library', 'require', 'requireNamespace', 
 // standard packages attached by default; exports are in scope without library()
 
 /** test frameworks whose namespace a test file runs under implicitly (e.g. `tests/testthat/test-*.R` sees testthat's exports without a `library()`) */
-const ImplicitTestFrameworks = new Set(['testthat', 'tinytest', 'RUnit']);
+const ImplicitTestFrameworks = ['testthat', 'tinytest', 'RUnit'];
 
 /** whether name is an export of a default-attached base package (needs no library()) */
 function isAttachedBaseName(name: string): boolean {
@@ -119,8 +119,10 @@ export const UNDEFINED_SYMBOL = {
 
 		// test files run under their framework's attached namespace, so a bare name a test framework exports is defined there
 		const testFiles = new Set(ctx.files.getFilesByRole(FileRole.Test).map(f => f.path()));
+		const testExports = new Set(testFiles.size === 0 ? [] : deps.signatureSources().flatMap(
+			src => ImplicitTestFrameworks.flatMap(pkg => src.lookup(pkg)?.exported ?? [])));
 		const isImplicitTestExport = (name: string, file: string | undefined): boolean =>
-			file !== undefined && testFiles.has(file) && deps.packagesExporting(name).some(p => ImplicitTestFrameworks.has(p));
+			file !== undefined && testFiles.has(file) && testExports.has(name);
 
 		// a library() we could not resolve could export any of these symbols; we still report but flag the
 		// findings as low-confidence (`mayBeProvidedByUnresolvedLibrary`) so the severity can be lowered

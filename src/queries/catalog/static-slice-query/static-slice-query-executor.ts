@@ -1,17 +1,20 @@
 import type { StaticSliceQuery, StaticSliceQueryResult } from './static-slice-query-format';
 import { staticSlice } from '../../../slicing/static/static-slicer';
-import { reconstructSlice, resolveSliceCriteria, sliceResultKey } from '../slice-query-options';
+import { reconstructSlice, resolveSliceCriteria, sliceResultKey, sliceResultKeys } from '../slice-query-options';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import { SliceDirection } from '../../../util/slice-direction';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 
+/** what a static slice is of, which is what its result is keyed by when it was given no name */
+const slicedBy = (query: StaticSliceQuery): string => query.criteria.join(',');
+
 /**
  * The key a static slice query's result is reported under: the {@link SliceQueryOptions#name|name} it was given,
- * else the query itself, which is what makes two runs of the same slice one entry.
+ * else what it slices. Within a request use {@link sliceResultKeys}, which settles two queries wanting one key.
  */
 export function fingerPrintOfQuery(query: StaticSliceQuery): string {
-	return sliceResultKey(query);
+	return sliceResultKey(query, slicedBy);
 }
 
 /**
@@ -23,8 +26,9 @@ export function fingerPrintOfQuery(query: StaticSliceQuery): string {
 export async function executeStaticSliceQuery({ analyzer }: BasicQueryData, queries: readonly StaticSliceQuery[]): Promise<StaticSliceQueryResult> {
 	const start = Date.now();
 	const results: StaticSliceQueryResult['results'] = {};
-	for(const query of queries) {
-		const key = fingerPrintOfQuery(query);
+	const keys = sliceResultKeys(queries, slicedBy);
+	for(const [at, query] of queries.entries()) {
+		const key = keys[at];
 		if(results[key]) {
 			log.warn(`Duplicate Key for slicing-query: ${key}, skipping...`);
 		}

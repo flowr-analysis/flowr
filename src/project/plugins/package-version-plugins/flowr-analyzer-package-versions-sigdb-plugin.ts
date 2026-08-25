@@ -319,7 +319,9 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		if(cached !== undefined) {
 			return cached;
 		}
-		const sources = this.loadSources();
+		/* the historical bundle is not asked: a name is hinted so a `library()` can be added for it, and a package
+		   only that bundle carries is one nothing can attach today */
+		const sources = this.loadSources().filter(s => describeLoadedDatabase(s).scope !== 'history');
 		const seen = new Set<string>();
 		const owners: string[] = [];
 		for(const src of sources) {

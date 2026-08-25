@@ -90,13 +90,20 @@ export class BiMap<K, V extends object> implements Map<K, V> {
 	}
 
 	public set(key: K, value: V): this {
-		const replaced = this.k2v.get(key);
-		this.k2v.set(key, value);
-		if(replaced !== undefined && replaced !== value) {
-			/* the value this key held may now be unreachable, so its reverse entry cannot stand */
-			this.staleReverse();
+		/* with no reverse direction to keep there is nothing the replaced value could invalidate, so a map
+		   nobody asks in reverse (the id map while it is being filled) pays one lookup per entry rather than two */
+		if(this.v2k === undefined) {
+			this.k2v.set(key, value);
 		} else {
-			this.v2k?.set(value, key);
+			const replaced = this.k2v.get(key);
+			/* the forward direction has to be current before anything rebuilds the reverse one from it */
+			this.k2v.set(key, value);
+			if(replaced !== undefined && replaced !== value) {
+				/* the value this key held may now be unreachable, so its reverse entry cannot stand */
+				this.staleReverse();
+			} else {
+				this.v2k.set(value, key);
+			}
 		}
 		this.size = this.k2v.size;
 		return this;

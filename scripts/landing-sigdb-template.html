@@ -243,18 +243,6 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 #hits .stated .role { font-style: normal; color: color-mix(in srgb, var(--accent) 75%, var(--muted)); }
 #hits .stated .ret { font-style: normal; color: color-mix(in srgb, var(--fg) 45%, var(--muted)); }
 #hits .stated .kind { font-style: normal; color: color-mix(in srgb, var(--muted) 80%, transparent); }
-/* the two statements about one name, side by side: flowR's is the one the database cannot give a reader, so it
-   leads and carries the accent; what the package itself declares follows it, in the muted frame of a record */
-#hits .stated::before {
-	content: attr(data-said); font-size: .62rem; letter-spacing: .04em; text-transform: uppercase;
-	margin-right: .3rem; opacity: .75; flex: none; font-family: var(--sans, inherit);
-}
-#hits .stated.flowr { border: 1px dashed color-mix(in srgb, var(--accent) 45%, transparent); }
-#hits .stated.flowr::before { color: var(--accent); }
-#hits .stated.db { border: 1px solid var(--border); }
-#hits .stated.db::before { color: var(--muted); }
-/* both fit on a wide row and share what is left on a narrow one, the formals giving way first */
-#hits .head > .stated.db { flex: 0 1 auto; }
 #hits .owners { margin-left: auto; display: flex; flex-wrap: wrap; gap: .3rem; flex: none; }
 #hits .owners a {
 	font-size: .78rem; text-decoration: none; padding: .1rem .45rem; border-radius: .8rem;
@@ -744,13 +732,15 @@ function detail(name, owners) {
 		row.append(who);
 		const marks = document.createElement('span');
 		marks.className = 'flags';
-		/* both statements about this package's version: what flowR states (`filter` is `stats`'s to a reader,
-		   dplyr's to flowR) and what the package itself declares, which are two different things to know */
+		/* one signature for this package's version: flowR's formals where it declares them (`filter` is `stats`'s
+		   to a reader, dplyr's to flowR), and the labels of both statements merged into it */
 		const own = statedFor.get(pkg);
-		const mineHere = own ? { args: own[2] ?? '', props: own[1] ?? '' } : undefined;
-		const dbHere = { args: declaredIn(name, pkg) ?? '', props: flagWords(flags) };
-		/* the signatures spell these out a moment later, and a badge saying it once more only costs the line */
-		const said = new Set([...wordsOf(mineHere?.props ?? ''), ...wordsOf(dbHere.props)]);
+		const here = {
+			args:  own?.[2] || declaredIn(name, pkg) || '',
+			props: mergedWords(own?.[1], flagWords(flags))
+		};
+		/* the signature spells these out a moment later, and a badge saying it once more only costs the line */
+		const said = new Set(wordsOf(here.props));
 		for(const flag of flags) {
 			if(FlagNames[flag] && !said.has(FlagNames[flag])) {
 				const one = document.createElement('span');
@@ -771,11 +761,8 @@ function detail(name, owners) {
 		const tag = document.createElement('span');
 		tag.className = 'tag';
 		tag.textContent = base === '1' ? 'base R' : 'CRAN';
-		if(mineHere !== undefined && (mineHere.args !== '' || mineHere.props !== '')) {
-			marks.append(signature(name, mineHere.args, mineHere.props, 'flowr'));
-		}
-		if(dbHere.args !== '' || dbHere.props !== '') {
-			marks.append(signature(name, dbHere.args, dbHere.props, 'db'));
+		if(here.args !== '' || here.props !== '') {
+			marks.append(signature(name, here.args, here.props));
 		}
 		const go = document.createElement('a');
 		go.className = 'go';
@@ -973,6 +960,12 @@ const Words = {
 	'ambient state': 'ambient', 'file system': 'file', 'network': 'net', 'concurrent': 'async',
 	'calls something deprecated': 'calls depr', 'calls internals': 'internal', 'recursive': 'rec',
 	'owns an S3 class': 's3 class', 'owns an S4 class': 's4 class', 'higher order': 'hof', 'deprecated': 'depr',
+	'maybe pure': 'maypure', 'sets ambient state': 'configures', 'calls native code': 'ffi',
+	'produces language object': 'lang',
+	/* the semantic labels, which flowR states as the words its configuration spells them with */
+	'temp-file': 'tmpfile', 'asks-user': 'user', 'command-line': 'argv', 'draws-graphics': 'plot',
+	'opens-handle': 'opens', 'closes-handle': 'closes', 'narrows-args': 'narrows', 'statistics': 'stats',
+	'javascript': 'js',
 	/* when an argument is evaluated is a letter (`F+val`), what it is used for stays a word */
 	'forced': 'F', 'no default': 'R', 'lazy': 'L',
 	'value': 'val', 'resource': 'res', 'written': 'out', 'callee': 'fn', 'presence': 'seen'
@@ -989,6 +982,24 @@ function wordsOf(joined) {
 /** the words as a reader sees them, shortened where {@link Words} has something shorter */
 function short(words) {
 	return words.map(word => Words[word] ?? word);
+}
+
+/**
+ * What several statements about one name say, as one list of words: flowR's labels (its semantic ones
+ * included) and the database's, in that order, with nothing said twice. Two spellings of the same thing are
+ * one word once shortened (`file system` is the database's `file`), so the shortened form decides.
+ */
+function mergedWords(...statements) {
+	const seen = new Set();
+	const kept = [];
+	for(const word of statements.flatMap(statement => wordsOf(statement ?? ''))) {
+		const shortened = Words[word] ?? word;
+		if(!seen.has(shortened)) {
+			seen.add(shortened);
+			kept.push(word);
+		}
+	}
+	return kept.join('|');
 }
 
 /** the words of `props` split into what the call is and does, and what it hands back */
@@ -1024,19 +1035,10 @@ function readable(name, args, props) {
 		+ (returns.length > 0 ? ': ' + returns.join(',') : '');
 }
 
-/** who a signature comes from, as the word the chip carries and the sentence its tooltip opens with */
-const Said = {
-	flowr: ['flowR', 'flowR states'],
-	db:    ['pkg', 'the signature database records']
-};
-
 /** a signature as `name<kind>(formal: role, ...): returns`; R has no types, so roles stand in, and the parens are left out where no formals are known at all (not the same as a call taking none) */
-function signature(name, args, props, from) {
+function signature(name, args, props) {
 	const said = document.createElement('code');
-	said.className = from ? 'stated ' + from : 'stated';
-	if(from) {
-		said.dataset.said = Said[from][0];
-	}
+	said.className = 'stated';
 	const { kind, returns } = parts(props);
 	said.append(Object.assign(document.createElement('b'), { textContent: name }));
 	if(kind.length > 0) {
@@ -1055,7 +1057,7 @@ function signature(name, args, props, from) {
 		said.append(Object.assign(document.createElement('i'), { className: 'ret', textContent: ': ' + short(returns).join(',') }));
 	}
 	/* the short form is for the glance, the words for the reader who stops on it */
-	said.title = (from ? Said[from][1] + ': ' : '') + readable(name, args, props);
+	said.title = readable(name, args, props);
 	return said;
 }
 
@@ -1113,19 +1115,17 @@ function show(name, needle, at, owners) {
 	/* the generics this name answers, which the row states in words rather than the signature in short */
 	const dispatches = [['S3', genericOf(name, owners)], ['S4', s4GenericOf(name, owners)]]
 		.filter(([, generic]) => generic !== undefined);
-	/* where the row states `S3 method for format` next to it, a signature saying `s3` once more says nothing */
+	/* where the row states `S3 method for format` next to it, the signature saying `s3` once more says nothing */
 	const said = dispatches.map(([kind]) => kind.toLowerCase() + ' method');
-	const keep = statement => wordsOf(statement).filter(word => !said.includes(word.toLowerCase())).join('|');
-	/* both statements for the package a reader means, on one line: ellipsis on overflow, words as a tooltip */
-	const mineShown = own ? { args: own[2] ?? '', props: keep(own[1] ?? '') } : undefined;
-	const dbShown = { args: declaredIn(name, first?.[0]) ?? '', props: keep(flagWords(owner(chosen).flags)) };
-	if(mineShown !== undefined && (mineShown.args !== '' || mineShown.props !== '')) {
-		head.append(signature(name, mineShown.args, mineShown.props, 'flowr'));
-	}
-	/* the record's formals repeat flowR's wherever both know them, so the second chip keeps what only it says */
-	const dbArgs = mineShown !== undefined && mineShown.args !== '' ? '' : dbShown.args;
-	if(dbArgs !== '' || dbShown.props !== '') {
-		head.append(signature(name, dbArgs, dbShown.props, 'db'));
+	/* one signature for the package a reader means, flowR's formals leading and both statements' labels in it;
+	   one line, ellipsis on overflow, the words spelled out as a tooltip */
+	const shown = {
+		args:  own?.[2] || declaredIn(name, first?.[0]) || '',
+		props: wordsOf(mergedWords(own?.[1], flagWords(owner(chosen).flags)))
+			.filter(word => !said.includes(word.toLowerCase())).join('|')
+	};
+	if(shown.args !== '' || shown.props !== '') {
+		head.append(signature(name, shown.args, shown.props));
 	}
 	for(const [kind, generic] of dispatches) {
 		const link = document.createElement('a');

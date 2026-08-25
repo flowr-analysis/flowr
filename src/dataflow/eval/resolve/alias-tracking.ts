@@ -1,7 +1,7 @@
 import { VariableResolve } from '../../../config';
 import type { LinkTo } from '../../../queries/catalog/call-context-query/call-context-query-format';
 import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { NodeId, recoverName } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { VisitingQueue } from '../../../slicing/static/visiting-queue';
 import { guard } from '../../../util/assert';
@@ -57,7 +57,7 @@ export interface ResolveInfo {
 function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
 	const vertex = dataflow.getVertex(sourceId);
 	/* the lexeme of an infix call like `a %% b` is the whole expression, so we prefer the effective name of the vertex */
-	const identifier = FunctionCallVertex.is(vertex) ? vertex.name : recoverName(sourceId, dataflow.idMap);
+	const identifier = FunctionCallVertex.is(vertex) ? vertex.name : NodeId.recoverName(sourceId, dataflow.idMap);
 	if(identifier === undefined) {
 		return undefined;
 	}
@@ -74,7 +74,7 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 	const definitions: NodeId[] = [];
 
 	// Source is Symbol -> resolve definitions of symbol
-	const identifier = recoverName(sourceId, dataflow.idMap);
+	const identifier = NodeId.recoverName(sourceId, dataflow.idMap);
 	if(identifier === undefined) {
 		return undefined;
 	}

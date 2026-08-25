@@ -2,7 +2,7 @@ import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { ControlFlowGraph } from '../../../../../control-flow/control-flow-graph';
 import { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { NodeId, recoverName } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../../../../environments/identifier';
 import { Identifier } from '../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
@@ -177,7 +177,7 @@ function capturedArgumentsOf(graph: DataflowGraph, id: NodeId, marked: boolean):
 function bindingsOf<Info>(graph: DataflowGraph, idMap: AstIdMap<Info & ParentInformation>): ReadonlyMap<string, NodeId[]> {
 	const bindings = new Map<string, NodeId[]>();
 	for(const [id] of graph.verticesOfType(VertexType.VariableDefinition)) {
-		const name = recoverName(id, idMap);
+		const name = NodeId.recoverName(id, idMap);
 		if(name === undefined) {
 			continue;
 		}

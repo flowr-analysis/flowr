@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-25, 12:15:37 UTC (v2.14.4, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-25, 14:06:35 UTC (v2.14.4, R v4.6.1), please do not edit directly._
 
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
@@ -230,6 +230,7 @@ Valid item types:
                     - (string)
                 - **direction** [optional] _The direction to slice in. Defaults to backward slicing if unset._ (string)
                     Only allows: 'backward', 'forward'
+                - **name** [optional] _What to call this slice: the results are keyed by it instead of by the serialized query._ (string)
                 - **noReconstruction** [optional] _Do not reconstruct the slice into readable code._ (boolean)
                 - **noMagicComments** [optional] _Should the magic comments (force-including lines within the slice) be ignored?_ (boolean)
                 - **inlineSources** [optional] _Inline resolvable source() calls into the reconstruction so the result is a single self-contained R text._ (boolean)
@@ -473,6 +474,7 @@ Valid item types:
                 - **to** [required] _Slicing criteria for the end of the dice (backward slice seeds)._ (array)
                 Valid item types:
                     - (string)
+                - **name** [optional] _What to call this slice: the results are keyed by it instead of by the serialized query._ (string)
                 - **noReconstruction** [optional] _Do not reconstruct the slice into readable code._ (boolean)
                 - **noMagicComments** [optional] _Should the magic comments (force-including lines within the slice) be ignored?_ (boolean)
                 - **inlineSources** [optional] _Inline resolvable source() calls into the reconstruction so the result is a single self-contained R text._ (boolean)
@@ -1467,7 +1469,7 @@ points`"]
 ```
 
 	
-(The analysis required _4.7 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _5.3 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
@@ -1513,11 +1515,11 @@ _Results (prettified and summarized):_
 Query: **call-context** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input** (2 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))\
-_All queries together required ≈5 ms (1ms accuracy, total 5 ms)_
+_All queries together required ≈4 ms (1ms accuracy, total 5 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _5.0 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _5.4 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -1555,7 +1557,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 5
+    "timing": 4
   }
 }
 ```

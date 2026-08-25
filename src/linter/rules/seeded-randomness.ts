@@ -15,7 +15,7 @@ import { FlowrFilter } from '../../search/flowr-search-filters';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
 import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
-import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { LintingRuleTag } from '../linter-tags';
 import type { BuiltInFunctionDefinition } from '../../dataflow/environments/built-in-config';
 import { NodeValue } from '../../dataflow/eval/resolve/node-value';
@@ -134,7 +134,7 @@ export const SEEDED_RANDOMNESS = {
 					for(const a of assignment ?? []) {
 						const argIdx = assignmentArgIndexes.get(Identifier.getName(a.name)) as number;
 						const dest = FunctionArgument.getReference(a.args[argIdx]);
-						if(dest !== undefined && assignmentProducers.has(recoverName(dest, dataflow.graph.idMap) as string)) {
+						if(dest !== undefined && assignmentProducers.has(NodeId.recoverName(dest, dataflow.graph.idMap) as string)) {
 							// we either have arg index 0 or 1 for the assignmentProducers destination, so we select the assignment value as 1-argIdx here
 							if(isConstantArgument(dataflow.graph, a, 1 - argIdx, data.inspectContext())) {
 								const aCds = new Set(a.cds).difference(cds);

@@ -5,6 +5,7 @@
   "engines": {
     "node": ">=22"
   },
+  "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
   "repository": {
     "type": "git",
@@ -54,7 +55,9 @@
     "test:docker": "func() { b() { docker build ${1:+--network=$1} -t flowr-docker-test -f \"$2\" .; }; r() { docker run --rm ${1:+--network=$1} flowr-docker-test --version; }; for df in scripts/Dockerfile scripts/Dockerfile-NoR; do echo \"=== building $df ===\"; b '' \"$df\" || { echo '(retrying with --network=host: bridge networking unavailable)'; b host \"$df\"; } || return 1; echo \"=== smoke-testing $df ===\"; r '' || r host || return 1; done; }; func",
     "benchmark:test-counts": "ts-node --transpile-only scripts/test-label-counts.ts",
     "benchmark:compact": "ts-node --transpile-only scripts/compact-benchmark-data.ts",
-    "publish-library": "cp .npmignore package.json README.md LICENSE dist/src/ && cd dist/src && npm publish --access public",
+    "stage-library": "ts-node --transpile-only scripts/stage-library.ts",
+    "publish-library": "npm run stage-library && cd dist/src && npm publish --access public",
+    "pack-library": "npm run stage-library && cd dist/src && npm pack --pack-destination ../..",
     "release": "npx release-it --ci"
   },
   "keywords": [
@@ -174,9 +177,8 @@
           },
           {
             "file": "src/util/version.ts",
-            "search": "const versionDate = '[\\d-]+'",
-            "replace": "const versionDate = '{{now}}'",
-            "dateFormat": "yyyy-MM-dd"
+            "search": "const versionDate = '[^']*'",
+            "replace": "const versionDate = '{{now}}'"
           }
         ]
       }

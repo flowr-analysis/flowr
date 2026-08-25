@@ -45,6 +45,19 @@ describe('MatchArgs.toDefinition', withTreeSitter(parser => {
 		assert.strictEqual(bound?.get('envir')?.value?.lexeme, 'e');
 	});
 
+	test('falls back to what flowR states about a call the database has no entry for', async() => {
+		const { analyzer, dfg, call } = await callTo('shinyjs::runjs(code = "alert(1)")', 'runjs');
+		const ctx = analyzer.inspectContext();
+		const db = ctx.deps.signatures();
+		if(db.available() && db.parametersOf(Identifier.make('runjs', PkgName.ShinyJs)) !== undefined) {
+			return; // the database knows it after all, so there is nothing to fall back to
+		}
+		/* the configuration declares `runjs(code)`, which is where the formals come from with no entry to read */
+		assert.deepStrictEqual(MatchArgs.formalsOf(call as never, dfg.graph, ctx), ['code']);
+		const bound = MatchArgs.toDefinition(call as never, dfg.graph, ctx);
+		assert.strictEqual(bound?.get('code')?.value?.lexeme, '"alert(1)"');
+	});
+
 	test('gives up when nothing says what the call resolves to', async() => {
 		const { analyzer, dfg, call } = await callTo('g(1)', 'g');
 		assert.isUndefined(MatchArgs.toDefinition(call as never, dfg.graph, analyzer.inspectContext()));

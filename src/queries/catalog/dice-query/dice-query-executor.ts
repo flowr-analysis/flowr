@@ -1,7 +1,7 @@
 import type { BasicQueryData } from '../../base-query-format';
 import type { DiceQuery, DiceQueryResult } from './dice-query-format';
 import { staticDice } from '../../../slicing/static/static-slicer';
-import { reconstructSlice, resolveSliceCriteria } from '../slice-query-options';
+import { reconstructSlice, resolveSliceCriteria, sliceResultKey } from '../slice-query-options';
 import { log } from '../../../util/log';
 
 /**
@@ -16,7 +16,7 @@ export async function executeDiceQuery({ analyzer }: BasicQueryData, queries: re
 	const df = await analyzer.dataflow();
 
 	for(const query of queries) {
-		const key = JSON.stringify(query);
+		const key = sliceResultKey(query);
 		if(results[key]) {
 			log.warn(`Duplicate key for dice-query: ${key}, skipping...`);
 			continue;

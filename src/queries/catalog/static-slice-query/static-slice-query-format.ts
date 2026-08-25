@@ -16,7 +16,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import { StaticSliceFlags, criteriaQueryCompleter, describeSliceFlags, queryLineCode, sliceCriteriaParser, sliceDirectionParser, sliceQueryOptionsParser, warnAboutSliceFlags } from '../../../cli/repl/parser/slice-query-parser';
-import { type SliceQueryOptions, SliceQueryOptionsSchema } from '../slice-query-options';
+import { isSerializedQuery, type SliceQueryOptions, SliceQueryOptionsSchema } from '../slice-query-options';
 import { SliceDirection } from '../../../util/slice-direction';
 
 /** Calculates and returns the static backward or forward slice from the given criteria */
@@ -33,8 +33,9 @@ export interface StaticSliceQueryResult extends BaseQueryResult {
 	 * only contains the results of the slice steps to not repeat ourselves, this does not contain the reconstruction
 	 * if you set the {@link SliceQueryOptions#noReconstruction|noReconstruction} flag.
 	 *
-	 * The keys are serialized versions of the used queries (i.e., the result of `JSON.stringify`).
-	 * This implies that multiple slice queries with the same query configuration will _not_ be re-executed.
+	 * The keys are the {@link SliceQueryOptions#name|name} each query was given, and the serialized query
+	 * (i.e., the result of `JSON.stringify`) for the ones given none. Without a name, multiple slice queries
+	 * with the same query configuration are therefore _not_ re-executed.
 	 */
 	results: Record<string,
 		(Omit<PipelineOutput<typeof DEFAULT_SLICING_PIPELINE>, keyof PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>> |
@@ -97,16 +98,18 @@ export const StaticSliceQueryDefinition = {
 			}
 		}
 		result.push(`Query: ${bold('static-slice', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		for(const [fingerprint, obj] of Object.entries(out.results)) {
-			const { criteria, noMagicComments, noReconstruction } = JSON.parse(fingerprint) as StaticSliceQuery;
+		for(const [key, obj] of Object.entries(out.results)) {
+			/* a named slice is keyed by its name, which is the whole point of naming it, so there is nothing to parse */
+			const query = isSerializedQuery(key) ? JSON.parse(key) as StaticSliceQuery : undefined;
 			const addons = [];
-			if(noReconstruction) {
+			if(query?.noReconstruction) {
 				addons.push('no reconstruction');
 			}
-			if(noMagicComments) {
+			if(query?.noMagicComments) {
 				addons.push('no magic comments');
 			}
-			result.push(`   ╰ Slice for {${criteria.join(', ')}} ${addons.join(', ')}`);
+			const what = query === undefined ? `"${key}"` : `for {${query.criteria.join(', ')}}`;
+			result.push(`   ╰ Slice ${what} ${addons.join(', ')}`);
 			if('reconstruct' in obj) {
 				const code = Array.isArray(obj.reconstruct.code) ? obj.reconstruct.code : [obj.reconstruct.code];
 				result.push('     ╰ Code (newline as <code>&#92;n</code>): <code>' + code.flatMap(c => c.split('\n')).join('\\n') + '</code>');

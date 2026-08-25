@@ -4,8 +4,7 @@ import { markArgumentsAsNonStandardEvaluation, processKnownFunctionCall } from '
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverName } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType, FunctionCallVertex } from '../../../../../graph/vertex';
 import { dataflowLogger } from '../../../../../logger';
 import { Dataflow } from '../../../../../graph/df-helper';
@@ -106,7 +105,7 @@ function usesByName(expr: DataflowInformation): ReadonlyMap<string, NodeId[]> {
 	const useMap = new Map<string, NodeId[]>();
 	for(const vType of [VertexType.Use, VertexType.FunctionCall]) {
 		for(const [useId] of expr.graph.verticesOfType(vType)) {
-			const rn = recoverName(useId, expr.graph.idMap);
+			const rn = NodeId.recoverName(useId, expr.graph.idMap);
 			if(rn) {
 				const arr = useMap.get(rn);
 				if(arr) {

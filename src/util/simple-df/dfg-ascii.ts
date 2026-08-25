@@ -1,6 +1,6 @@
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { graphlib } from 'dagre';
-import { NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { DfEdge } from '../../dataflow/graph/edge';
 
@@ -94,7 +94,7 @@ export function dfgToAscii(dfg: DataflowGraph): string {
 		ranker:  'longest-path',
 	});
 	for(const [id, v] of verts) {
-		let label = recoverName(id, dfg.idMap) ?? v.tag;
+		let label = NodeId.recoverName(id, dfg.idMap) ?? v.tag;
 
 		if(label.length < 3) {
 			label = label.padStart(2, ' ').padEnd(3, ' ');

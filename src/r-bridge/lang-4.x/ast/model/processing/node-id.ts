@@ -111,34 +111,35 @@ export const NodeId = {
 	 */
 	fromBuiltIn<T extends string>(this: void, id: BuiltIn<T>): T {
 		return id.slice(builtInPrefixLength) as T;
+	},
+	/**
+	 * The lexeme of the {@link RNode|node} the id belongs to, as the analyzed code writes it.
+	 * @see {@link NodeId.recoverContent} - for what a call or a use stands for rather than how it is written
+	 */
+	recoverName(this: void, id: NodeId, idMap?: AstIdMap): string | undefined {
+		return idMap?.get(id)?.lexeme;
+	},
+	/**
+	 * What the node the id belongs to stands for: the name a call resolved to, the unquoted name of a use, and
+	 * the lexeme of anything else.
+	 * @see {@link NodeId.recoverName} - for the lexeme alone, which needs no graph
+	 */
+	recoverContent(this: void, id: NodeId, graph: DataflowGraph): string | undefined {
+		const vertex = graph.getVertex(id);
+		if(vertex && FunctionCallVertex.is(vertex) && vertex.name) {
+			return Identifier.toString(vertex.name);
+		}
+		const node = graph.idMap?.get(id);
+		if(node === undefined) {
+			return undefined;
+		}
+		const lexeme = node.lexeme ?? node.info.fullLexeme ?? '';
+		if(UseVertex.is(vertex)) {
+			return removeRQuotes(lexeme);
+		}
+		return lexeme;
 	}
 } as const;
 
 const builtInPrefixLength = NodeId.builtInPrefix.length;
 
-/**
- * Recovers the lexeme of a {@link RNode|node} from its id in the {@link AstIdMap|id map}.
- * @see {@link recoverContent} - to recover the content of a node
- */
-export function recoverName(id: NodeId, idMap?: AstIdMap): string | undefined {
-	return idMap?.get(id)?.lexeme;
-}
-
-/**
- * Recovers the content of a {@link RNode|node} from its id in the {@link DataflowGraph|dataflow graph}.
- */
-export function recoverContent(id: NodeId, graph: DataflowGraph): string | undefined {
-	const vertex = graph.getVertex(id);
-	if(vertex && FunctionCallVertex.is(vertex) && vertex.name) {
-		return Identifier.toString(vertex.name);
-	}
-	const node = graph.idMap?.get(id);
-	if(node === undefined) {
-		return undefined;
-	}
-	const lexeme = node.lexeme ?? node.info.fullLexeme ?? '';
-	if(UseVertex.is(vertex)) {
-		return removeRQuotes(lexeme);
-	}
-	return lexeme;
-}

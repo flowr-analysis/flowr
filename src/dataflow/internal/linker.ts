@@ -4,7 +4,7 @@ import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import { isNotUndefined } from '../../util/assert';
 import { expensiveTrace } from '../../util/log';
 import type { BuiltIn } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import {
 	type InGraphIdentifierDefinition,
 	Identifier,
@@ -53,7 +53,7 @@ export function findNonLocalReads(graph: DataflowGraph, ignores: ReadonlySet<Nod
 			}
 			const outgoing = graph.outgoingEdges(nodeId);
 			const origin = graph.getVertex(nodeId);
-			const name = recoverName(nodeId, graph.idMap);
+			const name = NodeId.recoverName(nodeId, graph.idMap);
 
 			const type = FunctionCallVertex.is(origin) ? ReferenceType.Function : ReferenceType.Variable;
 
@@ -176,8 +176,8 @@ export function linkFunctionCallWithSingleTarget(
 		}
 	}
 
-	const defName = recoverName(fnId, idMap);
-	expensiveTrace(dataflowLogger, () => `recording expr-list-level call from ${recoverName(info.id, idMap)} to ${defName}`);
+	const defName = NodeId.recoverName(fnId, idMap);
+	expensiveTrace(dataflowLogger, () => `recording expr-list-level call from ${NodeId.recoverName(info.id, idMap)} to ${defName}`);
 	graph.addEdge(id, fnId, EdgeType.Calls);
 	applyForForcedArgs(graph, info.id, params, linkFunctionCallArguments(fnId, idMap, defName, id, info.args, graph));
 	return propagateExitPoints;

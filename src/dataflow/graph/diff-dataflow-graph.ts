@@ -3,7 +3,7 @@ import { type GenericDifferenceInformation, setDifference } from '../../util/dif
 import { jsonReplacer } from '../../util/json';
 import { arrayEqual } from '../../util/collections/arrays';
 import { ControlFlowEdgeTypes, DfEdge } from './edge';
-import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import { Identifier } from '../environments/identifier';
 import { diffEnvironmentInformation, diffIdentifierReferences } from '../environments/diff';
@@ -130,8 +130,8 @@ export function diffVertices(ctx: GraphDiffContext): void {
 
 		/* as names are optional, we have to recover the other name if at least one of them is no longer available */
 		if(lInfo.name !== undefined || rInfo.name !== undefined) {
-			const lname = (lInfo.name as string | undefined) ?? recoverName(id, ctx.left.idMap) ?? '??';
-			const rname = (rInfo.name as string | undefined) ?? recoverName(id, ctx.right.idMap) ?? '??';
+			const lname = (lInfo.name as string | undefined) ?? NodeId.recoverName(id, ctx.left.idMap) ?? '??';
+			const rname = (rInfo.name as string | undefined) ?? NodeId.recoverName(id, ctx.right.idMap) ?? '??';
 			if(lname !== rname) {
 				ctx.report.addComment(`Vertex ${id} differs in names. ${ctx.leftname}: ${String(lname)} vs ${ctx.rightname}: ${String(rname)}`, {
 					tag: 'vertex',

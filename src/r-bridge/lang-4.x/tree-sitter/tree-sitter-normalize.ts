@@ -147,6 +147,8 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				const body = children.slice(1, -1).map(n => [n, convertTreeNode(n)] as SyntaxAndRNode);
 				const remainingComments = linkCommentsToNextNodes(body, comments);
 				const closing = children[children.length - 1];
+				const openText = opening.text;
+				const closeText = closing.text;
 				return {
 					type:     RType.ExpressionList,
 					location: undefined,
@@ -156,14 +158,14 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						{
 							type:     RType.Symbol,
 							location: makeSourceRange(opening),
-							content:  removeRQuotes(opening.text),
-							lexeme:   opening.text,
+							content:  removeRQuotes(openText),
+							lexeme:   openText,
 							...defaultInfo()
 						}, {
 							type:     RType.Symbol,
 							location: makeSourceRange(closing),
-							content:  removeRQuotes(closing.text),
-							lexeme:   closing.text,
+							content:  removeRQuotes(closeText),
+							lexeme:   closeText,
 							...defaultInfo()
 						}
 					],
@@ -257,12 +259,13 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 			case TreeSitterType.UnaryOperator: {
 				const [comments, children] = splitComments(nonErrorChildren(node));
 				const [op, operand] = children;
+				const opText = op.text;
 				return {
 					type:     RType.UnaryOp,
 					operand:  convertTreeNode(operand),
 					location: makeSourceRange(op),
-					operator: op.text,
-					lexeme:   op.text,
+					operator: opText,
+					lexeme:   opText,
 					info:     {
 						...defaultInfo().info,
 						adToks: comments.map(c => c[1]),
@@ -275,11 +278,12 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					break;
 				}
 				const [lhs, int, rhs] = children;
+				const rhsText = rhs.text;
 				return {
 					type:     RType.Symbol,
 					location: makeSourceRange(rhs),
-					content:  Identifier.make(rhs.text, lhs.text, int.text === ':::' ),
-					lexeme:   rhs.text,
+					content:  Identifier.make(rhsText, lhs.text, int.text === ':::' ),
+					lexeme:   rhsText,
 					...defaultInfo(),
 					info:     {
 						...defaultInfo().info,
@@ -327,13 +331,14 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				const body = children[2 + variable.length + 1 + sequence.length + 1];
 				const [variableComments, [variableNode]] = splitComments(variable);
 				const [sequenceComments, [sequenceNode]] = splitComments(sequence);
+				const variableText = variableNode.text;
 				return {
 					type:     RType.ForLoop,
 					variable: {
 						type:     RType.Symbol,
 						location: makeSourceRange(variableNode),
-						content:  removeRQuotes(variableNode.text),
-						lexeme:   variableNode.text,
+						content:  removeRQuotes(variableText),
+						lexeme:   variableText,
 						info:     {
 							fullRange:  undefined,
 							adToks:     [],
@@ -394,11 +399,12 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				const [comments, noCommentrawArgs] = splitComments(rawArgs);
 				const args = splitArrayOn(noCommentrawArgs.slice(1, -1), x => x.type === 'comma');
 				const funcRange = makeSourceRange(func);
+				const funcText = func.text;
 				const mappedArgs = args.map(n => n.length === 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument<TreeSitterInfo>);
 				const call = {
 					arguments: mappedArgs,
 					location:  funcRange,
-					lexeme:    func.text,
+					lexeme:    funcText,
 					...defaultInfo(),
 					info:      {
 						...defaultInfo().info,
@@ -411,7 +417,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						funcNode = {
 							...funcNode,
 							type:    RType.Symbol,
-							content: removeRQuotes(func.text)
+							content: removeRQuotes(funcText)
 						};
 					}
 					return {
@@ -505,13 +511,14 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				const [bracket, ...argsClosing] = nonErrorChildren(content);
 				const [argsComments, argsNoComments] = splitComments(argsClosing.slice(0, -1));
 				const args = splitArrayOn(argsNoComments, x => x.type === 'comma');
+				const bracketText = bracket.text;
 				return {
 					type:     RType.Access,
-					operator: bracket.text as '[' | '[[',
+					operator: bracketText as '[' | '[[',
 					accessed: convertTreeNode(func),
 					access:   args.map(n => n.length === 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument<TreeSitterInfo>),
 					location: makeSourceRange(bracket),
-					lexeme:   bracket.text,
+					lexeme:   bracketText,
 					info:     {
 						...defaultInfo().info,
 						adToks: argsComments.map(c => c[1]),
@@ -521,25 +528,27 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 			case TreeSitterType.ExtractOperator: {
 				const [lhs, operator, rhs] = nonErrorChildren(node);
 				const rhsRange = makeSourceRange(rhs);
+				const rhsText = rhs?.text;
+				const operatorText = operator.text;
 				return {
 					type:     RType.Access,
-					operator: operator.text as '$' | '@',
+					operator: operatorText as '$' | '@',
 					accessed: convertTreeNode(lhs),
 					access:   [{
 						type:     RType.Argument,
 						name:     undefined,
 						value:    convertTreeNode(rhs),
 						location: rhsRange,
-						lexeme:   rhs?.text,
+						lexeme:   rhsText,
 						info:     {
 							fullRange:  rhsRange,
 							adToks:     [],
-							fullLexeme: rhs?.text,
+							fullLexeme: rhsText,
 							tsId:       rhs?.id
 						}
 					}],
 					location: makeSourceRange(operator),
-					lexeme:   operator.text,
+					lexeme:   operatorText,
 					...defaultInfo()
 				};
 			}
@@ -608,17 +617,18 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						name.content = name.content.slice(1, -1);
 					}
 					const nameRange = makeSourceRange(nameNode);
+					const nameLexeme = nameNode.text;
 
 					return {
 						type:     RType.Argument,
 						name,
 						value:    valueNode ? convertTreeNode(valueNode) : undefined,
 						location: nameRange,
-						lexeme:   nameNode.text,
+						lexeme:   nameLexeme,
 						info:     {
 							fullRange:  nameRange,
 							adToks:     commentChildren.map(c => c[1]),
-							fullLexeme: nameNode.text,
+							fullLexeme: nameLexeme,
 							tsId:       nameNode.id
 						}
 					};
@@ -677,13 +687,14 @@ function splitComments(nodes: readonly SyntaxNode[]): [comments: SyntaxAndRNode[
 	const others: SyntaxNode[] = [];
 	for(const node of nodes) {
 		if(node.type === TreeSitterType.Comment) {
+			const commentText = node.text;
 			comments.push([node, {
 				type:     RType.Comment,
 				location: makeSourceRange(node),
-				lexeme:   node.text,
+				lexeme:   commentText,
 				info:     {
 					adToks:     [],
-					fullLexeme: node.text,
+					fullLexeme: commentText,
 					tsId:       node.id
 				}
 			}]);

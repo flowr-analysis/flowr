@@ -15,6 +15,11 @@ import { makeMagicCommentHandler } from '../../reconstruct/auto-select/magic-com
 
 /** The options every slicing query understands, independent of how it picks the nodes to keep. */
 export interface SliceQueryOptions {
+	/**
+	 * What to call this slice. The results are keyed by it, so a named slice comes back under its name rather
+	 * than under the serialized query that produced it. Two slices of one request must not share a name.
+	 */
+	readonly name?:             string
 	/** do not reconstruct the slice into readable code */
 	readonly noReconstruction?: boolean
 	/** Should the magic comments (force-including lines within the slice) be ignored? */
@@ -47,6 +52,7 @@ export interface SliceQueryOptions {
 
 /** The Joi keys of {@link SliceQueryOptions}, to be spread into the schema of every slicing query. */
 export const SliceQueryOptionsSchema = {
+	name:             Joi.string().min(1).optional().description('What to call this slice: the results are keyed by it instead of by the serialized query.'),
 	noReconstruction: Joi.boolean().optional().description('Do not reconstruct the slice into readable code.'),
 	noMagicComments:  Joi.boolean().optional().description('Should the magic comments (force-including lines within the slice) be ignored?'),
 	inlineSources:    Joi.boolean().optional().description('Inline resolvable source() calls into the reconstruction so the result is a single self-contained R text.'),
@@ -55,6 +61,20 @@ export const SliceQueryOptionsSchema = {
 	perFile:          Joi.boolean().optional().description('Reconstruct the slice as the project\'s files, reported in `reconstruct.files` in loading order with their paths, instead of only the entry file.'),
 	reportPackages:   Joi.boolean().optional().description('Also report the packages the slice calls into, i.e. what this selection needs installed rather than what the whole program loads.')
 } as const;
+
+/**
+ * How a slicing query's result is keyed: under the name it was given, else under the query itself so that two
+ * runs of the same slice are one entry. A name is what keeps a caller from having to parse a serialized query
+ * back out of the key.
+ */
+export function sliceResultKey(query: SliceQueryOptions): string {
+	return query.name ?? JSON.stringify(query);
+}
+
+/** Whether a result key is a serialized query rather than the name someone gave the slice. */
+export function isSerializedQuery(key: string): boolean {
+	return key.startsWith('{');
+}
 
 /**
  * Resolves the criteria to their node ids, reporting those that match no node: they would slice nothing,

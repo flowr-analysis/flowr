@@ -1,8 +1,7 @@
 import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverName } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier } from '../../../../environments/identifier';
 import { removeRQuotes } from '../../../../../r-bridge/retriever';
 import { EdgeType, DfEdge  } from '../../../../graph/edge';
@@ -83,7 +82,7 @@ export const Deferred = {
 		const uses = new Map<string, NodeId[]>();
 		for(const [type, index] of [[VertexType.VariableDefinition, definitions], [VertexType.Use, uses]] as const) {
 			for(const [id] of graph.verticesOfType(type)) {
-				const name = recoverName(id, idMap);
+				const name = NodeId.recoverName(id, idMap);
 				if(name !== undefined) {
 					add(index, name, id);
 				}
@@ -143,7 +142,7 @@ export const Deferred = {
 		const reachedByAForce = (use: NodeId) => forces === undefined
 			|| (!forces.sites.includes(use) && forces.sites.some(site => happensBefore(forces.cfg, site, use) !== Ternary.Never));
 		/* `delayedAssign` names its variable with a string literal, so the recovered name still carries quotes */
-		const bindingName = forces === undefined ? undefined : removeRQuotes(recoverName(forces.binding, idMap) ?? '');
+		const bindingName = forces === undefined ? undefined : removeRQuotes(NodeId.recoverName(forces.binding, idMap) ?? '');
 		for(const [node, name, writes] of within) {
 			if(writes) {
 				/* a write of the bound name replaces the binding, so a read it definitely reaches sees only it */

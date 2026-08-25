@@ -10,7 +10,7 @@ import { FunctionCallVertex } from '../../dataflow/graph/vertex';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { guard, isNotUndefined } from '../../util/assert';
 import { type Origin, OriginType } from '../../dataflow/origin/dfg-get-origin';
-import { NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import type { Query, QueryResult } from '../../queries/query';
 import { type CfgSimplificationPassName, cfgFindAllReachable, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
@@ -222,7 +222,7 @@ export const Enrichments = {
 			if(FunctionCallVertex.is(callVertex)) {
 				const origins = Dataflow.origin(df.graph, callVertex.id);
 				if(!origins || origins.length === 0) {
-					const name = recoverName(callVertex.id, n.idMap);
+					const name = NodeId.recoverName(callVertex.id, n.idMap);
 					// we don't have origin information here, so pass undefined
 					content.targets = [qualifyIdentifier(undefined, name)] as (FlowrSearchElement<ParentInformation> | string)[];
 				} else {
@@ -233,7 +233,7 @@ export const Enrichments = {
 								if(NodeId.isBuiltIn(o.id)) {
 									// a built-in target (e.g. a materialized package export from `library()`) has no
 									// user-code node, so surface it as a built-in identifier (see `onlyBuiltin` below)
-									const name = recoverName(o.id, n.idMap);
+									const name = NodeId.recoverName(o.id, n.idMap);
 									return qualifyIdentifier([o], name) ?? String(o.id);
 								} else {
 									return { node: n.idMap.get(o.id) as RNodeWithParent } satisfies FlowrSearchElement<ParentInformation>;
@@ -246,7 +246,7 @@ export const Enrichments = {
 						}
 					}).filter(isNotUndefined);
 					if(content.targets.length === 0) {
-						const name = recoverName(callVertex.id, n.idMap);
+						const name = NodeId.recoverName(callVertex.id, n.idMap);
 						content.targets = [qualifyIdentifier(origins, name)] as (FlowrSearchElement<ParentInformation> | string)[];
 					}
 				}

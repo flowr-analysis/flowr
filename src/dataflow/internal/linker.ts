@@ -4,7 +4,7 @@ import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import { isNotUndefined } from '../../util/assert';
 import { expensiveTrace } from '../../util/log';
 import type { BuiltIn } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import {
 	type InGraphIdentifierDefinition,
 	Identifier,
@@ -53,7 +53,7 @@ export function findNonLocalReads(graph: DataflowGraph, ignores: ReadonlySet<Nod
 			}
 			const outgoing = graph.outgoingEdges(nodeId);
 			const origin = graph.getVertex(nodeId);
-			const name = recoverName(nodeId, graph.idMap);
+			const name = NodeId.recoverName(nodeId, graph.idMap);
 
 			const type = FunctionCallVertex.is(origin) ? ReferenceType.Function : ReferenceType.Variable;
 
@@ -112,12 +112,10 @@ export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[]
 	return MatchArgs.toSpec(args, params);
 }
 
-
 /**
  * Links the function call arguments to the target function definition and returns a map from argument ids to parameter ids.
  */
 function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCallName: string | undefined, functionRootId: NodeId, callArgs: FunctionArgument[], finalGraph: DataflowGraph): Map<NodeId, NodeId> | undefined {
-	// we get them by just choosing the rhs of the definition
 	const linkedFunction = idMap.get(targetId);
 	if(linkedFunction === undefined) {
 		dataflowLogger.trace(`no fdef found for ${functionCallName} (${functionRootId})`);
@@ -156,7 +154,6 @@ export function linkFunctionCallWithSingleTarget(
 						for(const v of value) {
 							graph.addEdge(id, v, EdgeType.Calls);
 							graph.addEdge(ingoing.nodeId, v, EdgeType.Calls);
-							// add s7 to vertex
 							const vInfo = graph.getVertex(v);
 							if(vInfo && FunctionDefinitionVertex.is(vInfo)) {
 								vInfo.mode ??= [];
@@ -175,13 +172,12 @@ export function linkFunctionCallWithSingleTarget(
 	for(const exitPoint of exitPoints) {
 		graph.addEdge(id, exitPoint.nodeId, EdgeType.Returns);
 		if(doesExitPointPropagateCalls(exitPoint.type)) {
-			// add the exit point to the call!
 			propagateExitPoints.push(exitPoint);
 		}
 	}
 
-	const defName = recoverName(fnId, idMap);
-	expensiveTrace(dataflowLogger, () => `recording expr-list-level call from ${recoverName(info.id, idMap)} to ${defName}`);
+	const defName = NodeId.recoverName(fnId, idMap);
+	expensiveTrace(dataflowLogger, () => `recording expr-list-level call from ${NodeId.recoverName(info.id, idMap)} to ${defName}`);
 	graph.addEdge(id, fnId, EdgeType.Calls);
 	applyForForcedArgs(graph, info.id, params, linkFunctionCallArguments(fnId, idMap, defName, id, info.args, graph));
 	return propagateExitPoints;
@@ -215,7 +211,6 @@ function linkFunctionCall(
 ) {
 	const edges = graph.outgoingEdges(id);
 	if(edges === undefined) {
-		/* no outgoing edges */
 		return;
 	}
 
@@ -245,11 +240,8 @@ function linkFunctionCall(
 }
 
 /**
- * Returns the called functions within the current graph, which can be used to merge the environments with the call.
- * Furthermore, it links the corresponding arguments.
- * @param graph     - The graph to use for search and resolution traversals (ideally a superset of the `thisGraph`)
- * @param idMap     - The map to resolve ids to names
- * @param thisGraph - The graph to search for function calls in
+ * Returns the called functions within `graph` (ideally a superset of `thisGraph`, the graph searched for calls), which
+ *  can be used to merge the environments with the call; also links the corresponding arguments.
  */
 export function linkFunctionCalls(
 	graph: DataflowGraph,
@@ -281,21 +273,23 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 		return [];
 	}
 
-	if(environment !== undefined || info.environment !== undefined) {
-		let functionCallDefs: NodeId[] = [];
+	const known = environment ?? info.environment;
+	let functionCallDefs: NodeId[] = [];
+	if(known !== undefined) {
 		const refType = info.origin.includes(BuiltInProcName.S3Dispatch) ? ReferenceType.S3MethodPrefix :
 			info.origin.includes(BuiltInProcName.S7Dispatch) ? ReferenceType.S7MethodPrefix : ReferenceType.Function;
 		if(info.name !== undefined && !Identifier.getName(info.name).startsWith(UnnamedFunctionCallPrefix)) {
-			functionCallDefs = Resolve.byNameAndType(
-				info.name, environment ?? info.environment as REnvironmentInformation, refType
-			)?.map(d => d.nodeId) ?? [];
+			functionCallDefs = Resolve.byNameAndType(info.name, known, refType)?.map(d => d.nodeId) ?? [];
 		}
-		for(const [target, outgoingEdge] of outgoingEdges.entries()) {
-			if(DfEdge.includesType(outgoingEdge, EdgeType.Calls)) {
-				functionCallDefs.push(target);
-			}
+	}
+	/* a call that kept no environment still knows the user definitions it was linked to, and those are targets */
+	for(const [target, outgoingEdge] of outgoingEdges.entries()) {
+		if(DfEdge.includesType(outgoingEdge, EdgeType.Calls) && (known !== undefined || !NodeId.isBuiltIn(target))) {
+			functionCallDefs.push(target);
 		}
+	}
 
+	if(functionCallDefs.length > 0) {
 		const [functionCallTargets, builtInTargets] = getAllLinkedFunctionDefinitions(new Set(functionCallDefs), graph);
 		for(const target of functionCallTargets) {
 			found.add(target.id);
@@ -313,19 +307,8 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 const LinkedFnFollowBits = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 
 /**
- * Finds all linked function definitions starting from the given set of read ids.
- * This is a complicated function, please only call it if you know what you are doing.
- * For example, if you are interested in the called functions of a function call, use {@link getAllFunctionCallTargets} instead.
- * This function here expects you to handle the accessed objects yourself (e.g,. already resolve the first layer of reads/returns/calls/... or resolve the identifier by name)
- * and then pass in the relevant read ids.
- * @example
- * Consider a scenario like this:
- * ```R
- * x <- function() 3
- * x()
- * ```
- * To resolve the call `x` in the second line, use {@link getAllFunctionCallTargets}!
- * To know what fdefs the definition of `x` in the first line links to, you can use {@link getAllLinkedFunctionDefinitions|this function}.
+ * Finds all linked function definitions starting from the given read ids; expects the caller to already have resolved
+ *  the accessed objects (first layer of reads/returns/calls/...). For call targets, use {@link getAllFunctionCallTargets} instead.
  */
 export function getAllLinkedFunctionDefinitions(
 	functionDefinitionReadIds: ReadonlySet<NodeId>,
@@ -355,7 +338,6 @@ export function getAllLinkedFunctionDefinitions(
 			continue;
 		}
 
-		// Found a function definition
 		if(vertex.subflow !== undefined) {
 			result.add(vertex as Required<DataflowGraphVertexFunctionDefinition>);
 			continue;
@@ -418,13 +400,8 @@ export function linkExpressionIn<Info>(this: void, graph: DataflowGraph, expr: N
 }
 
 /**
- * This method links a set of read variables to definitions in an environment.
- * @param referencesToLinkAgainstEnvironment - The set of references to link against the environment
- * @param environmentInformation             - The environment information to link against
- * @param givenInputs                        - The existing list of inputs that might be extended
- * @param graph                              - The graph to enter the found links
- * @param maybeForRemaining                  - Each input that can not be linked, will be added to `givenInputs`. If this flag is `true`, it will be marked as `maybe`.
- * @returns the given inputs, possibly extended with the remaining inputs (those of `referencesToLinkAgainstEnvironment` that could not be linked against the environment)
+ * Links a set of read variables to definitions in `environmentInformation`; each reference that cannot be linked is
+ *  added to `givenInputs` (marked maybe if `maybeForRemaining`), and the extended list is returned.
  */
 export function linkInputs(referencesToLinkAgainstEnvironment: readonly IdentifierReference[], environmentInformation: REnvironmentInformation, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean): IdentifierReference[] {
 	for(const bodyInput of referencesToLinkAgainstEnvironment) {
@@ -437,7 +414,6 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
 		} else {
 			let allBuiltIn = true;
 			for(const target of probableTarget) {
-				// we can stick with maybe even if readId.attribute is always
 				graph.addEdge(bodyInput.nodeId, target.nodeId, EdgeType.Reads);
 				if(!isReferenceType(target.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
 					allBuiltIn = false;
@@ -446,26 +422,14 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
 			if(allBuiltIn) {
 				givenInputs.push(bodyInput);
 			}
-
 		}
 	}
-	// data.graph.get(node.id).definedAtPosition = false
 	return givenInputs;
 }
 
 /**
- * all loops variables which are open read (not already bound by a redefinition within the loop) get a maybe read marker to their last definition within the loop
- * e.g. with:
- * ```R
- * for(i in 1:10) {
- *  x_1 <- x_2 + 1
- * }
- * ```
- * `x_2` must get a read marker to `x_1` as `x_1` is the active redefinition in the second loop iteration.
- *
- * When `environment` is supplied the function uses it to discover ALL definitions that are still live at the
- * loop exit, so sequential overwrites contribute a single candidate while if-else branches contribute one
- * candidate per branch.
+ * A loop variable read before its within-loop redefinition gets a maybe marker to that def (e.g. `x_2` may read the
+ * prior iteration's `x_1` in `for(...) { x_1 <- x_2 + 1 }`); with `environment`, this uses all defs live at loop exit.
  */
 export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openIns: NameIdMap, outgoing: readonly IdentifierReference[], environment?: REnvironmentInformation): void {
 	if(environment !== undefined) {
@@ -510,7 +474,6 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
  * Reapplies the loop exit points' control dependencies to the given identifier references.
  */
 export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: readonly IdentifierReference[], graph: DataflowGraph): void {
-	// just apply the cds of all exit points not already present
 	const exitCds = exits.flatMap(e => e.cds?.map(negateControlDependency))
 		.filter(isNotUndefined)
 		.map(cd => ({ ...cd, byIteration: true }));

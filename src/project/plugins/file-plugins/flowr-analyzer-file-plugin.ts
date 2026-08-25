@@ -55,7 +55,9 @@ export const PathPart = {
 	/** The file name including its extension. */
 	Basename: platformBasename,
 	/** The directory portion of the path. */
-	Dirname:  platformDirname
+	Dirname:  platformDirname,
+	/** The whole path, for patterns that need both the folder and the file name. */
+	Full:     (p: string) => p
 } as const;
 
 /**

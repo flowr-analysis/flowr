@@ -1,4 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { FnSig } from '../../../../../environments/built-in-props';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -23,7 +24,7 @@ export function processS7Dispatch<OtherInfo>(
 	if(!('currentS7name' in data) || !Array.isArray(data.currentS7name)) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.S7Dispatch }).information;
 	}
-	const info = processKnownFunctionCall({ name, forceArgs: 'all', args, rootId, data, origin: BuiltInProcName.S7Dispatch }).information;
+	const info = processKnownFunctionCall({ name, sig: FnSig.every, args, rootId, data, origin: BuiltInProcName.S7Dispatch }).information;
 	for(const id of data.currentS7name as unknown[]) {
 		if(typeof id === 'string') {
 			const newIn = info.in.slice();

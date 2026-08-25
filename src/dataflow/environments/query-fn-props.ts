@@ -9,6 +9,7 @@ import { Identifier, ReferenceType } from './identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PackageSignatureSource } from '../../project/sigdb/reader';
 import { Resolve } from './resolve-helper';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { DataflowInformation } from '../info';
 import { FunctionCallVertex } from '../graph/vertex';
 import { Dataflow } from '../graph/df-helper';
@@ -61,6 +62,7 @@ function withStatedBuiltIns(definitions: readonly IdentifierDefinition[], enviro
 function ofDefinitions(definitions: readonly IdentifierDefinition[] | undefined): BuiltInFnInfo | undefined {
 	let sig: FnSig | undefined;
 	let stated: StatedProps = {};
+	let frame: ArgProps | undefined;
 	for(const d of definitions ?? []) {
 		if(d.type !== ReferenceType.BuiltInFunction) {
 			continue;
@@ -68,8 +70,9 @@ function ofDefinitions(definitions: readonly IdentifierDefinition[] | undefined)
 		const info = d.config as BuiltInFnInfo | undefined;
 		sig ??= info?.sig;
 		stated = CallProps.join(stated, info);
+		frame = info?.frame === undefined ? frame : (frame ?? 0) | info.frame;
 	}
-	return sig === undefined && !CallProps.hasAny(stated) ? undefined : { sig, ...stated };
+	return sig === undefined && frame === undefined && !CallProps.hasAny(stated) ? undefined : { sig, ...stated, frame };
 }
 
 /**
@@ -98,7 +101,23 @@ export function queryFnProps(name: Identifier, { environment, builtIns, signatur
 	if(known === undefined) {
 		return info;
 	}
-	return { sig: info?.sig ?? known.sig, ...CallProps.join(info, known) };
+	return { sig: info?.sig ?? known.sig, ...CallProps.join(info, known), frame: info?.frame };
+}
+
+/**
+ * How to ask what flowR states about a built-in, answering every name once. The analyzer context decides, so a
+ * configured or overwritten built-in is what answers; without one the defaults do.
+ */
+export function builtInLookup(ctx?: ReadOnlyFlowrAnalyzerContext): (name: Identifier) => BuiltInFnInfo | undefined {
+	const environment = ctx?.env.makeCleanEnv();
+	const known = new Map<string, BuiltInFnInfo | undefined>();
+	return name => {
+		const key = Identifier.getName(name);
+		if(!known.has(key)) {
+			known.set(key, environment === undefined ? BuiltInIndex.default().get(name) : queryFnProps(name, { environment }));
+		}
+		return known.get(key);
+	};
 }
 
 /** What flowR states about the call `id` makes, together with the name the call resolved to. */
@@ -182,14 +201,19 @@ function entryOfDefinition(definition: BuiltInDefinition): readonly BuiltInEntry
 
 function entriesOfMemory(builtIns: BuiltIns): readonly BuiltInEntry[] {
 	const out: BuiltInEntry[] = [];
-	for(const [registered, definitions] of builtIns.builtInMemory) {
-		for(const d of definitions) {
-			if(d.type !== ReferenceType.BuiltInFunction) {
-				continue;
+	/* the index says what flowR *knows*, not what is in scope, so the packages R does not attach on startup
+	   belong in it as much as the always-on built-ins do -- being gated changes when a name resolves, not
+	   whether flowR can answer for it */
+	for(const memory of [builtIns.builtInMemory, ...builtIns.packageMemory.values()]) {
+		for(const [registered, definitions] of memory) {
+			for(const d of definitions) {
+				if(d.type !== ReferenceType.BuiltInFunction) {
+					continue;
+				}
+				const info = d.config as BuiltInFnInfo | undefined;
+				/* the memory is keyed by the bare name, the definition keeps the namespace it was declared with */
+				out.push({ name: d.name ?? registered, props: info?.props, tags: info?.tags, sig: info?.sig, folds: d.evalHandler !== undefined });
 			}
-			const info = d.config as BuiltInFnInfo | undefined;
-			/* the memory is keyed by the bare name, the definition keeps the namespace it was declared with */
-			out.push({ name: d.name ?? registered, props: info?.props, tags: info?.tags, sig: info?.sig, folds: d.evalHandler !== undefined });
 		}
 	}
 	return out;

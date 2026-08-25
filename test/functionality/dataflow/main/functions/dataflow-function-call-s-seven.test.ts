@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
+import { applyAssumedPackages, assertDataflow, assumedPackagesOf, assumeLoadedPackages, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
@@ -7,6 +7,8 @@ import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-
 import { FunctionCallVertex, FunctionDefinitionVertex } from '../../../../../src/dataflow/graph/vertex';
 import { getAllFunctionCallTargets } from '../../../../../src/dataflow/internal/linker';
 import { Identifier } from '../../../../../src/dataflow/environments/identifier';
+
+assumeLoadedPackages('S7', 'ggplot2');
 
 describe('S7 Function Calls', withTreeSitter(ts => {
 	assertDataflow(label('Simple S7 Generic Registration', ['function-definitions', 'oop-r7-s7']), ts,
@@ -61,7 +63,7 @@ sample(42)
 			['f <- Negate(is.null)\nf(x)', 'f'],                                           // base factory
 			['g <- Vectorize(paste)\ng(1)', 'g']                                           // base factory
 		] as const) {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+			const analyzer = await applyAssumedPackages(new FlowrAnalyzerBuilder().setParser(ts), assumedPackagesOf(undefined)).build();
 			analyzer.addRequest(code);
 			const g = (await analyzer.dataflow()).graph;
 			const call = g.vertices(true).find(([, v]) => FunctionCallVertex.is(v) && Identifier.getName(v.name) === callName);

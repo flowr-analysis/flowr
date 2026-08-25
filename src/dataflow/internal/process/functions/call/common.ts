@@ -32,12 +32,9 @@ import { EdgeType } from '../../../../graph/edge';
 import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { FunctionCallVertex, ValueVertex, FunctionDefinitionVertex } from '../../../../graph/vertex';
 
-export interface ForceArguments {
-	/** which of the arguments should be forced? this may be all, e.g., if the function itself is unknown on encounter */
-	readonly forceArgs?: 'all' | readonly boolean[]
-}
-
-export interface ProcessAllArgumentInput<OtherInfo> extends ForceArguments {
+export interface ProcessAllArgumentInput<OtherInfo> {
+	/** which of the arguments the call evaluates, as {@link FnSig.forced} answers it for the signature */
+	readonly forced?:        readonly boolean[]
 	readonly functionName:   DataflowInformation
 	readonly args:           readonly (RNode<OtherInfo & ParentInformation> | PotentiallyEmptyRArgument<OtherInfo & ParentInformation>)[]
 	readonly data:           DataflowProcessorInformation<OtherInfo & ParentInformation>
@@ -124,7 +121,7 @@ export function convertFnArgument<OtherInfo>(this: void, arg: typeof EmptyArgume
  * Processes all arguments for a function call, updating the given final graph and environment.
  */
 export function processAllArguments<OtherInfo>(
-	{ functionName, args, data, finalGraph, functionRootId, forceArgs = [], patchData, nonFunction }: ProcessAllArgumentInput<OtherInfo>,
+	{ functionName, args, data, finalGraph, functionRootId, forced = [], patchData, nonFunction }: ProcessAllArgumentInput<OtherInfo>,
 ): ProcessAllArgumentResult {
 	let finalEnv = functionName.environment;
 	// arg env contains the environments with other args defined
@@ -149,7 +146,7 @@ export function processAllArguments<OtherInfo>(
 		} else {
 			processed = RArgument.is(arg) ? processFunctionArgument(arg, data) : processDataflowFor(arg, data);
 		}
-		if(RArgument.isWithValue(arg) && (forceArgs === 'all' || forceArgs[i]) && !RConstant.is(arg.value)) {
+		if(RArgument.isWithValue(arg) && forced[i] && !RConstant.is(arg.value)) {
 			forceVertexArgumentValueReferences(functionRootId, processed, processed.graph, data.environment);
 		}
 		processedArguments.push(processed);
@@ -190,7 +187,6 @@ export function processAllArguments<OtherInfo>(
 		}
 		argEnv = overwriteEnvironment(argEnv, processed.environment);
 
-
 		if(!RArgument.is(arg) || !arg.name) {
 			callArgs.push({ nodeId: processed.entryPoint, cds: undefined, type: ReferenceType.Argument });
 		} else {
@@ -211,7 +207,6 @@ export interface PatchFunctionCallInput<OtherInfo> {
 	readonly origin:                FunctionOriginInformation
 	readonly link?:                 DataflowGraphVertexAstLink
 }
-
 
 /**
  * Patches a function call vertex into the given dataflow graph.

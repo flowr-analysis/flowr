@@ -1,10 +1,12 @@
-import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
+import { assertDataflow, assumeLoadedPackages, withTreeSitter } from '../../../_helper/shell';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { label } from '../../../_helper/label';
 import { describe } from 'vitest';
 import { RPipe } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { argumentInCall } from '../../../_helper/dataflow/environment-builder';
+
+assumeLoadedPackages('magrittr');
 
 describe('Function Call Pipes', withTreeSitter(ts => {
 	const pipeConfig = { minRVersion: RPipe.hasPlaceHolderFromRVersion().toString(), expectIsSubgraph: true, resolveIdsAsCriterion: true } as const;

@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { assertDataflow, withTreeSitter } from '../../_helper/shell';
+import { assertDataflow, assumeLoadedPackages, withTreeSitter } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../_helper/dataflow/environment-builder';
@@ -9,6 +9,8 @@ import {
 } from '../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
+
+assumeLoadedPackages('R6');
 
 describe('Call Graph Generation', withTreeSitter(ts => {
 	assertDataflow(label('sample calls', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments', 'built-in']),
@@ -146,7 +148,6 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 			.calls('8@<-', '8@add')
 		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
-
 
 	assertDataflow(label('higher-order fn', ['function-calls', 'function-definitions', 'resolution', 'resolve-arguments']),
 		ts,
@@ -293,7 +294,6 @@ f.numeric <- function(x) {
 			.calls('6@"f"', '8@function')
 		, { context: 'call-graph', resolveIdsAsCriterion: true, expectIsSubgraph: true }
 	);
-
 
 	assertDataflow(label('Recursion with Recall', ['anonymous-bindings']),
 		ts,

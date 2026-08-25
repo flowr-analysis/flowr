@@ -1,12 +1,10 @@
-import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import { filterLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
 import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
-import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
+import type { QueryResults, SupportedQuery } from '../../query';
 import { executeExceptionQuery } from './inspect-exception-query-executor';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { FlowrConfig } from '../../../config';
-import { criteriaQueryCompleter, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter } from '../../../cli/repl/parser/slice-query-parser';
 import { SourceLocation } from '../../../util/range';
 import type { ExceptionsByFunction } from '../../../dataflow/fn/exceptions-of-function';
 import { happensInEveryBranch } from '../../../dataflow/info';
@@ -28,17 +26,6 @@ export interface InspectExceptionQueryResult extends BaseQueryResult {
 	 * An empty array means the function does not throw any exceptions.
 	 */
 	readonly exceptions: ExceptionsByFunction;
-}
-
-function inspectExceptionLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'inspect-exception'> {
-	const criteria = sliceCriteriaParser(line[0]);
-	return {
-		query: {
-			type:   'inspect-exception',
-			filter: criteria
-		},
-		rCode: queryLineCode(line, criteria ? 1 : 0)
-	};
 }
 
 export const InspectExceptionQueryDefinition = {
@@ -63,7 +50,7 @@ export const InspectExceptionQueryDefinition = {
 		}
 		return true;
 	},
-	fromLine:  inspectExceptionLineParser,
+	fromLine:  filterLineParser('inspect-exception'),
 	completer: criteriaQueryCompleter,
 	syntax:    '@inspect-exception [(<crit>;...)] <code | file://path>',
 	schema:    Joi.object({

@@ -2,46 +2,52 @@ import type { DecodedFunction } from '../../project/sigdb/decode';
 import { Record } from '../../util/record';
 
 /**
- * What a single argument of a call is used for, as a bitmask.
+ * What a single argument of a call is used for, as a bitmask ({@link ArgProp.Forced}/{@link ArgProp.NoDefault}
+ * lead, being the two bits the signature database can also state).
  * @see {@link BuiltInFnInfo#sig}
  */
 export enum ArgProp {
-	/** the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge */
-	Alias    = 1 << 0,
-	/** the result is computed from the argument's value, like `x` in `sum(x)` */
-	Value    = 1 << 1,
-	/** only the shape is used (length, dimensions, names, other attributes), like `x` in `nrow(x)` */
-	Shape    = 1 << 2,
-	/** selects a behavior instead of carrying data, like `na.rm` in `sum(x, na.rm = TRUE)` */
-	Flag     = 1 << 3,
-	/** names the resource the call reads or writes, like `file` in `write.csv(x, file)` */
-	Resource = 1 << 4,
-	/** what it refers to may be modified, like `envir` in `assign(x, v, envir = e)` */
-	Written  = 1 << 5,
 	/** evaluated whenever the call happens, even if the result goes unused, like `x` in `force(x)` */
-	Forced   = 1 << 6,
+	Forced    = 1 << 0,
+	/** declared without a default value, like `x` in `nchar(x, type)`; says nothing about whether a call must supply it */
+	NoDefault = 1 << 1,
+	/** the result is this argument, handed back unchanged, like `x` in `identity(x)`; this is what draws the `Returns` edge */
+	Alias     = 1 << 2,
+	/** the result is computed from the argument's value, like `x` in `sum(x)` */
+	Value     = 1 << 3,
+	/** only the shape is used (length, dimensions, names, other attributes), like `x` in `nrow(x)` */
+	Shape     = 1 << 4,
+	/** selects a behavior instead of carrying data, like `na.rm` in `sum(x, na.rm = TRUE)` */
+	Flag      = 1 << 5,
+	/** names the resource the call reads or writes, like `file` in `write.csv(x, file)` */
+	Resource  = 1 << 6,
+	/** what it refers to may be modified, like `envir` in `assign(x, v, envir = e)` */
+	Written   = 1 << 7,
 	/** quoted or evaluated in another frame, like `expr` in `quote(expr)` */
-	Nse      = 1 << 7,
+	Nse       = 1 << 8,
 	/** called as a function, like `FUN` in `lapply(x, FUN)` */
-	Callee   = 1 << 8,
+	Callee    = 1 << 9,
 	/** only whether it was supplied matters, as with `missing()` */
-	Presence = 1 << 9,
+	Presence  = 1 << 10,
 	/**
 	 * the result is one of this argument's values, like `choices` in `match.arg(arg, choices)`. The bounding
 	 * argument of a {@link SemanticCallTag.Narrows} call; without one such a call yields a value of its own making.
 	 */
-	Bounds   = 1 << 10,
+	Bounds    = 1 << 11,
 	/**
 	 * only atomic data works here, never a closure, as with `e1` in `e1 > e2`. A bare symbol in such an
 	 * argument therefore names a variable even when a function of that name is in scope.
 	 */
-	Atomic   = 1 << 11,
+	Atomic    = 1 << 12,
 	/** the open handle the call acts on, like `con` in `close(con)` */
-	Handle   = 1 << 12,
+	Handle     = 1 << 13,
+	/** never evaluated, the definite counterpart of {@link ArgProp.Forced}: no path of the body reads it */
+	Lazy       = 1 << 14,
 	/**
-	 * the argument is vulnerable to injection attacks and should be escaped, such as system commands, R expressions, database queries, or HTML/JS code.
+	 * open to injection, so a call handing it unescaped data is a finding: system commands, R expressions,
+	 * database queries, HTML, or JavaScript.
 	 */
-	Injectable = 1 << 13
+	Injectable = 1 << 15
 }
 
 /**
@@ -78,7 +84,14 @@ export enum CallProp {
 	/** calls native code through the foreign function interface, like `.Call` */
 	Ffi        = 1 << 10,
 	/** produces a language object, like `quote` or `deparse` */
-	Lang       = 1 << 11
+	Lang       = 1 << 11,
+	/** calling it forces every parameter, so nothing it is handed stays a promise (see {@link strictnessOfFunction}) */
+	Strict     = 1 << 12,
+	/**
+	 * runs its work in parallel (workers, a cluster, a future/promise backend); says nothing about purity, only
+	 * reproducibility and where an error surfaces.
+	 */
+	Concurrent = 1 << 13
 }
 
 /**
@@ -202,7 +215,7 @@ export const InputProps: PropMask = getPropMask([
  * The {@link CallProp} bits the signature database states itself, so {@link fnInfoFromSignature} can read them
  * off any package function without anyone writing them down.
  */
-export const SigDbInferable: CallProps = CallProp.Throws | CallProp.NonDet | CallProp.Method | CallProp.Generic;
+export const SigDbInferable: CallProps = CallProp.Throws | CallProp.NonDet | CallProp.Method | CallProp.Generic | CallProp.Concurrent;
 
 /**
  * The properties that say a call takes its data from a file, as {@link SemanticCallTag.File} alone also covers
@@ -215,7 +228,7 @@ export const FileInputProps: PropMask = getPropMask([SemanticCallTag.File, Seman
  * does too. Purity does not travel this way, which is why it is not in here.
  */
 export const PropagatedProps: PropMask = getPropMask([
-	CallProp.Throws | CallProp.Scope | CallProp.NonDet | CallProp.Ambient | CallProp.Configures | CallProp.Ffi | CallProp.Lang,
+	CallProp.Throws | CallProp.Scope | CallProp.NonDet | CallProp.Ambient | CallProp.Configures | CallProp.Ffi | CallProp.Lang | CallProp.Concurrent,
 	SemanticCallTag.Random, SemanticCallTag.File, SemanticCallTag.TempFile, SemanticCallTag.Network,
 	SemanticCallTag.Process, SemanticCallTag.User, SemanticCallTag.CommandLine, SemanticCallTag.Graphics,
 	SemanticCallTag.Database, SemanticCallTag.Reads, SemanticCallTag.Writes, SemanticCallTag.Prints,
@@ -264,7 +277,7 @@ function getPropMask(this: void, selector: PropSelector): PropMask {
  * All helpers use {@link PropSelector}s to identify call properties.
  */
 export const CallProps = {
-	name: 'Props',
+	name: 'CallProps',
 	/** Checks whether a {@link PropSelector} is a bitfield of {@link CallProp}s. */
 	isCallProp,
 	/** Checks whether a {@link PropSelector} is a {@link SemanticCallTag}. */
@@ -317,7 +330,7 @@ export const CallProps = {
 		];
 	},
 	/** Gets the string labels for stated properties {@link CallPropLabels}. */
-	labels(stated: StatedProps | undefined): string[] {
+	labels(this: void, stated: StatedProps | undefined): string[] {
 		if(stated === undefined) {
 			return [];
 		}
@@ -325,6 +338,25 @@ export const CallProps = {
 		const semanticProps = stated.tags ?? [];
 
 		return [...callProps, ...semanticProps];
+	},
+	/** The {@link CallPropLabels} words for a bare {@link CallProps} bitfield, as inferred functions carry one. */
+	words(this: void, props: CallProps | undefined): string[] {
+		return props === undefined ? [] : Record.keys(CallPropLabels).filter(prop => (props & prop) !== 0).map(prop => CallPropLabels[prop]);
+	},
+	/** The {@link PropMask} the given {@link CallProp}/{@link SemanticCallTag} member names stand for, unknown ones ignored. */
+	mask(this: void, names: readonly string[]): PropMask {
+		const tags = new Set<SemanticCallTag>();
+		for(const name of names) {
+			const tag = (SemanticCallTag as Record<string, SemanticCallTag | undefined>)[name];
+			if(tag !== undefined) {
+				tags.add(tag);
+			}
+		}
+		return { props: maskOfNames(CallProp, names), tags };
+	},
+	/** Whether a {@link PropMask} names nothing at all, so filtering by it can only answer with nothing. */
+	isEmptyMask(this: void, mask: PropMask): boolean {
+		return mask.props === 0 && mask.tags.size === 0;
 	}
 } as const;
 
@@ -336,6 +368,12 @@ export const CallProps = {
 export type FnSig = [name: string, props: ArgProps][];
 
 /**
+ * The signature of a call that evaluates every argument and states nothing else, which is all that is known
+ * about a callee flowR cannot resolve.
+ */
+const ForcingEvery: FnSig = [['...', ArgProp.Forced]];
+
+/**
  * Utility functions for {@link FnSig|function signatures}.
  */
 export const FnSig = {
@@ -345,8 +383,44 @@ export const FnSig = {
 	/** The roles of the argument at a position; see {@link argProp}. */
 	propAt:  argProp,
 	/** The positions carrying any of the given roles; see {@link argsWith}. */
-	posWith: argsWith
+	posWith: argsWith,
+	/** Which of the first `count` arguments a call evaluates; see {@link forcedArgs}. */
+	forced:  forcedArgs,
+	/** A signature saying only that the call evaluates every argument; see {@link ForcingEvery}. */
+	every:   ForcingEvery,
+	/** A signature saying only that the call evaluates one argument; see {@link forcingOnly}. */
+	only:    forcingOnly
 } as const;
+
+/** the {@link ArgProp} bit to its name; integer keys iterate in ascending bit order */
+const ArgPropNames: Readonly<Record<ArgProp, string>> = {
+	[ArgProp.Forced]:     'forced',
+	[ArgProp.NoDefault]:  'no default',
+	[ArgProp.Alias]:      'alias',
+	[ArgProp.Value]:      'value',
+	[ArgProp.Shape]:      'shape',
+	[ArgProp.Flag]:       'flag',
+	[ArgProp.Resource]:   'resource',
+	[ArgProp.Written]:    'written',
+	[ArgProp.Nse]:        'nse',
+	[ArgProp.Callee]:     'callee',
+	[ArgProp.Presence]:   'presence',
+	[ArgProp.Bounds]:     'bounds',
+	[ArgProp.Atomic]:     'atomic',
+	[ArgProp.Handle]:     'handle',
+	[ArgProp.Lazy]:       'lazy',
+	[ArgProp.Injectable]: 'injectable'
+};
+
+/** The bitfield the given {@link ArgProp}/{@link CallProp} member names stand for, unknown ones ignored. */
+function maskOfNames(this: void, of: Record<string, string | number>, names: readonly string[]): number {
+	let mask = 0;
+	for(const name of names) {
+		const bit = of[name];
+		mask |= typeof bit === 'number' ? bit : 0;
+	}
+	return mask;
+}
 
 /** the properties as the words a reader wants, in the order they are declared */
 const CallPropLabels: Readonly<Record<CallProp, string>> = {
@@ -361,8 +435,35 @@ const CallPropLabels: Readonly<Record<CallProp, string>> = {
 	[CallProp.Ambient]:    'ambient state',
 	[CallProp.Configures]: 'sets ambient state',
 	[CallProp.Ffi]:        'calls native code',
-	[CallProp.Lang]:       'produces language object'
+	[CallProp.Lang]:       'produces language object',
+	[CallProp.Strict]:     'strict',
+	[CallProp.Concurrent]: 'concurrent'
 };
+
+/** The words for whichever of `mask`'s bits appear in `entries`, shared by {@link ArgProps.words} and {@link CallProps.words}. */
+function wordsOf(this: void, entries: readonly (readonly [number, string])[], mask: number | undefined): string[] {
+	return mask === undefined ? [] : entries.filter(([bit]) => (mask & bit) !== 0).map(([, word]) => word);
+}
+
+/** A bit-keyed word table as `[bit, word]` pairs in ascending bit order, for {@link wordsOf}; shared by {@link ArgProps} and {@link CallProps}. */
+function bitEntries(this: void, byBit: Readonly<Record<number, string>>): readonly (readonly [number, string])[] {
+	return Object.entries(byBit).map(([bit, word]) => [Number(bit), word] as const);
+}
+
+const ArgPropEntries = bitEntries(ArgPropNames);
+
+/**
+ * Utility functions for {@link ArgProps|argument property bitfields}.
+ */
+export const ArgProps = {
+	name:  'ArgProps',
+	/** the {@link ArgProp} bit to its name, in ascending bit order */
+	names: ArgPropNames,
+	/** What an argument is used for, as words; see {@link wordsOf}. */
+	words: (props: ArgProps | undefined): string[] => wordsOf(ArgPropEntries, props),
+	/** The mask the given {@link ArgProp} member names stand for; see {@link maskOfNames}. */
+	mask:  (names: readonly string[]): ArgProps => maskOfNames(ArgProp, names)
+} as const;
 
 /**
  * Semantics of a built-in that hold no matter which processor handles the call. The remaining facts already
@@ -374,6 +475,11 @@ export interface BuiltInFnInfo extends StatedProps {
 	readonly sig?:             FnSig
 	/** keep the environment on the call vertex, for a later pass to look names up in */
 	readonly keepEnvironment?: boolean
+	/**
+	 * What this call lets the function around it reach about its own formals without naming one of them, e.g.
+	 * `match.call()` ({@link ArgProp.Nse}) or `nargs()` ({@link ArgProp.Presence}); see {@link reflectiveRoles}.
+	 */
+	readonly frame?:           ArgProps
 }
 
 /** A {@link FnSig} in the form the call processors use it, see {@link sigLayout}. */
@@ -414,6 +520,29 @@ function argProp(this: void, { props, rest }: SigLayout, index: number): ArgProp
 	return (rest >= 0 && index >= rest ? props[rest] : props[index]) ?? 0;
 }
 
+/**
+ * The signature of a call that evaluates the argument at `index` and states nothing else, as the apply family
+ * does for the function it is handed. The positions before it are named for their place, having nothing to say.
+ */
+function forcingOnly(this: void, index: number, name: string): FnSig {
+	return [...Array.from({ length: index }, (_, i) => [`..${i + 1}`, 0] as [string, ArgProps]), [name, ArgProp.Forced]];
+}
+
+/**
+ * Which of the first `count` arguments the call evaluates, `undefined` when the signature states it of none.
+ * A signature is the one place that says so, which is why nothing else may state it alongside.
+ */
+function forcedArgs(this: void, sig: FnSig | undefined, count: number): readonly boolean[] | undefined {
+	if(sig === undefined) {
+		return undefined;
+	}
+	const layout = sigLayout(sig);
+	if((layout.any & ArgProp.Forced) === 0) {
+		return undefined;
+	}
+	return Array.from({ length: count }, (_, i) => (argProp(layout, i) & ArgProp.Forced) !== 0);
+}
+
 /** The positions of the first `count` arguments that carry any of `prop`. */
 function argsWith(this: void, layout: SigLayout, count: number, prop: ArgProps): number[] {
 	const found: number[] = [];
@@ -429,30 +558,25 @@ function argsWith(this: void, layout: SigLayout, count: number, prop: ArgProps):
 const SigDbProps: Readonly<Record<string, CallProp>> = {
 	'can-throw':         CallProp.Throws,
 	'non-deterministic': CallProp.NonDet,
-	's3-method':         CallProp.Method
+	's3-method':         CallProp.Method,
+	'generic':           CallProp.Generic
 };
 
 /** the callees that make the calling function itself a generic ({@link CallProp.Generic}) */
 export const DispatchCallees: ReadonlySet<string> = new Set(['UseMethod', 'standardGeneric', 'S7_dispatch']);
 
 /**
- * The part of a {@link BuiltInFnInfo} that the signature database already knows: the parameter names in order
- * (`...` included) with the ones R always forces, plus the properties listed in {@link SigDbProps}. Everything
- * else the database records (`higher-order`, `deprecated`, `recursive`, ...) has no counterpart here and is
- * dropped, and anything it cannot see (purity, resources, what an argument is used for) stays unset.
+ * The part of a {@link BuiltInFnInfo} the signature database already knows: the parameter names in order with
+ * the {@link ArgProp} bits stored for each, plus the {@link SigDbProps} properties; everything else is dropped.
  */
 export function fnInfoFromSignature(fn: DecodedFunction): BuiltInFnInfo {
 	let props = 0;
 	for(const name of fn.props) {
 		props |= SigDbProps[name] ?? 0;
 	}
-	/* a function whose own body dispatches is the generic, which no property of the database states */
-	if(fn.callees.some(c => DispatchCallees.has(c))) {
+	/* the `generic` property settles it; without one (an older bundle, or none stored) the dispatching callee does */
+	if(!(props & CallProp.Generic) && fn.callees.some(c => DispatchCallees.has(c))) {
 		props |= CallProp.Generic;
 	}
-	return {
-		sig: fn.signature.map(p => [p.name,
-			(p.forced ? ArgProp.Forced : 0) | (p.default === 'TRUE' || p.default === 'FALSE' ? ArgProp.Flag : 0)]),
-		props
-	};
+	return { sig: fn.signature.map(p => [p.name, p.props]), props };
 }

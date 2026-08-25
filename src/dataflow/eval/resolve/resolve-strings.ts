@@ -86,7 +86,7 @@ export const PasteLikeCalls: ReadonlySet<string> =
  * when the name is not one of them, an argument does not resolve, or the call does not match what the entry
  * declares. Shared by the value solver ({@link resolveAsStringFn}) and construction-time name resolution.
  */
-export function foldStringCall<Info>(node: RNamedFunctionCall<Info>, resolveArg: (arg: RNode<Info>) => string | undefined): string | number | undefined {
+function foldStringCall<Info>(this: void, node: RNamedFunctionCall<Info>, resolveArg: (arg: RNode<Info>) => string | undefined): string | number | undefined {
 	const known = StringFns[Identifier.getName(node.functionName.content) as keyof typeof StringFns] as StringFn | undefined;
 	if(known === undefined) {
 		return undefined;
@@ -100,9 +100,6 @@ export function foldStringCall<Info>(node: RNamedFunctionCall<Info>, resolveArg:
 	if(matched === undefined) {
 		return undefined;
 	}
-	/* a fold that reads the characters cannot run on source text with an escape still in it (`\t` is two chars
-	 * there); joining does not read them, so the entries collecting a `...` are exempt */
-	const literal = !known.params.includes('...');
 	const args: (string | string[])[] = [];
 	for(const [at, slot] of matched.entries()) {
 		if(Array.isArray(slot)) {
@@ -123,7 +120,7 @@ export function foldStringCall<Info>(node: RNamedFunctionCall<Info>, resolveArg:
 		}
 		// the argument *was* given, so failing to resolve it means we do not know the result, defaults do not apply
 		const value = resolveArg(slot as RNode<Info>);
-		if(value === undefined || (literal && value.includes('\\'))) {
+		if(value === undefined) {
 			return undefined;
 		}
 		args.push(value);
@@ -136,7 +133,7 @@ export function foldStringCall<Info>(node: RNamedFunctionCall<Info>, resolveArg:
  * a join like `paste0("cfg_", k)` when every part resolves to a single string constant, and a transformation
  * like `basename(p)` when its argument does. Anything that does not resolve stays `Top`.
  */
-export function resolveAsStringFn(args: BuiltInEvalHandlerArgs): Value {
+function resolveAsStringFn(this: void, args: BuiltInEvalHandlerArgs): Value {
 	const node = args.node;
 	if(!RFunctionCall.is(node) || !node.named) {
 		return Top;
@@ -147,3 +144,18 @@ export function resolveAsStringFn(args: BuiltInEvalHandlerArgs): Value {
 	}
 	return typeof folded === 'number' ? intervalFrom(folded, folded) : stringFrom(folded);
 }
+
+/**
+ * Folding the string built-ins, from `paste` to `basename`.
+ */
+export const StringFold = {
+	name:      'StringFold',
+	/** every string built-in that is folded, see {@link StringFns} */
+	fns:       StringFns,
+	/** the calls pasting their arguments together, see {@link PasteLikeCalls} */
+	pasteLike: PasteLikeCalls,
+	/** What a string call amounts to; see {@link resolveAsStringFn}. */
+	call:      resolveAsStringFn,
+	/** The string a call in the AST folds to; see {@link foldStringCall}. */
+	fold:      foldStringCall
+} as const;

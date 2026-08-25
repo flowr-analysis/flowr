@@ -6,7 +6,7 @@ import { VisitingQueue } from './visiting-queue';
 import { findEnclosingFunctionDefinition, handleReturns, includeCalleesOfDefinition, sliceForCall, sliceReachesFunctionInterface } from './slice-call';
 import type { AstIdMap, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
-import { NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { FunctionCallVertex, UseVertex } from '../../dataflow/graph/vertex';
 import { DfEdge, EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import type { DataflowInformation } from '../../dataflow/info';
@@ -221,7 +221,7 @@ function freeNamesOf(slice: ReadonlySet<NodeId>, graph: DataflowGraph): readonly
 				break;
 			}
 		}
-		const name = defined ? undefined : recoverName(id, graph.idMap);
+		const name = defined ? undefined : NodeId.recoverName(id, graph.idMap);
 		if(name !== undefined) {
 			free.add(name);
 		}

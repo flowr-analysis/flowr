@@ -1,16 +1,17 @@
 import type { StaticSliceQuery, StaticSliceQueryResult } from './static-slice-query-format';
 import { staticSlice } from '../../../slicing/static/static-slicer';
-import { reconstructSlice, resolveSliceCriteria } from '../slice-query-options';
+import { reconstructSlice, resolveSliceCriteria, sliceResultKey } from '../slice-query-options';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import { SliceDirection } from '../../../util/slice-direction';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 
 /**
- * Produce a fingerprint string for a static slice query
+ * The key a static slice query's result is reported under: the {@link SliceQueryOptions#name|name} it was given,
+ * else the query itself, which is what makes two runs of the same slice one entry.
  */
 export function fingerPrintOfQuery(query: StaticSliceQuery): string {
-	return JSON.stringify(query);
+	return sliceResultKey(query);
 }
 
 /**

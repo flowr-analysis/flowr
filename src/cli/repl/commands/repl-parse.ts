@@ -9,8 +9,9 @@ import { FlowrFile } from '../../../project/context/flowr-file';
 
 type DepthList =  { depth: number, node: JsonEntry, leaf: boolean }[];
 
-function toDepthMap(entry: JsonEntry): DepthList {
-	const visit: { depth: number, node: JsonEntry }[] = [ { depth: 0, node: entry } ];
+/** shared pre-order-to-depth-list traversal, `toEntry` converts a node and `children` reads its (mutable) child array */
+function toDepthList<T>(root: T, toEntry: (node: T) => JsonEntry, children: (node: T) => T[]): DepthList {
+	const visit: { depth: number, node: T }[] = [ { depth: 0, node: root } ];
 	const result: DepthList = [];
 
 	while(visit.length > 0) {
@@ -19,18 +20,22 @@ function toDepthMap(entry: JsonEntry): DepthList {
 			continue;
 		}
 
-		const children = current.node.children;
+		const kids = children(current.node);
 
-		result.push({ ...current, leaf: children.length === 0 });
-		children.reverse();
+		result.push({ depth: current.depth, node: toEntry(current.node), leaf: kids.length === 0 });
+		kids.reverse();
 
 		const nextDepth = current.depth + 1;
 
-		for(const c of children) {
+		for(const c of kids) {
 			visit.push({ depth: nextDepth, node: c });
 		}
 	}
 	return result;
+}
+
+function toDepthMap(entry: JsonEntry): DepthList {
+	return toDepthList(entry, e => e, e => e.children);
 }
 
 function treeSitterToJsonEntry(node: Parser.SyntaxNode): JsonEntry {
@@ -49,28 +54,7 @@ function treeSitterToJsonEntry(node: Parser.SyntaxNode): JsonEntry {
 }
 
 function treeSitterToDepthList(node: Parser.SyntaxNode): DepthList {
-	const visit: { depth: number, node: Parser.SyntaxNode }[] = [ { depth: 0, node } ];
-	const result: DepthList = [];
-
-	while(visit.length > 0) {
-		const current = visit.pop();
-		if(current === undefined) {
-			continue;
-		}
-
-		const children = current.node.children;
-
-		result.push({ depth: current.depth, node: treeSitterToJsonEntry(current.node), leaf: children.length === 0 });
-
-		children.reverse();
-
-		const nextDepth = current.depth + 1;
-
-		for(const c of children) {
-			visit.push({ depth: nextDepth, node: c });
-		}
-	}
-	return result;
+	return toDepthList(node, treeSitterToJsonEntry, n => n.children);
 }
 
 function lastElementInNesting(i: number, list: Readonly<DepthList>, depth: number): boolean {

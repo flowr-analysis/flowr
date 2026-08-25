@@ -9,7 +9,6 @@ import { SourceLocation } from '../../util/range';
 import { type LintingResult, type LintingRule, type LintQuickFixReplacement, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 
-
 export enum CasingConvention {
 	CamelCase       = 'camelCase',
 	PascalCase      = 'PascalCase',
@@ -174,18 +173,26 @@ export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: N
 	if(refs === undefined || idMap === undefined) {
 		return undefined;
 	}
+	/* the name as it is written, which is the only text a rename may overwrite */
+	const original = idMap.get(nodeId)?.lexeme;
+	if(original === undefined || original === replacement) {
+		/* a replacement equal to what is already there is no fix at all */
+		return undefined;
+	}
 
 	const result: LintQuickFixReplacement[] = [];
 	for(const ref of refs) {
 		const node  = idMap.get(ref);
-		if(node === undefined) {
+		if(node === undefined || node.lexeme !== original) {
+			/* a reference reached through something else, as `myfield(x) <- v` reaches `x` through the call it
+			   names, sits at a place holding another name, and writing over it would rename that one instead */
 			continue;
 		}
 
 		const loc = SourceLocation.fromNode(node);
 		if(loc) {
 			// In case of a function call we only need to include the name, not the '()'
-			loc[3] = loc[1] + (node.lexeme as string).length - 1;
+			loc[3] = loc[1] + node.lexeme.length - 1;
 
 			result.push(
 				{
@@ -217,7 +224,10 @@ export const NAMING_CONVENTION = {
 			})).filter(e => isNotUndefined(e.loc));
 		const casing = config.caseing === 'auto' ? getMostUsedCasing(symbols) : config.caseing;
 		const results = symbols
-			.filter(m => (m.detectedCasing !== casing) && (!config.ignoreNonAlpha || containsAlpha(m.name)))
+			/* a name that already reads as the wanted convention is no violation, whatever else it could also be
+			   read as: `f` carries no separator and no capital, so it is snake_case and camelCase at once */
+			.filter(m => !detectPotentialCasings(m.name, config.ignorePrefix).includes(casing)
+				&& (!config.ignoreNonAlpha || containsAlpha(m.name)))
 			.map(({ id, ...m }) => {
 				const fix = fixCasing(m.name, casing, config.ignorePrefix);
 				return {

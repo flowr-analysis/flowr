@@ -8,7 +8,7 @@ import { type EdgeTypeBits, EdgeType, DfEdge } from '../graph/edge';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { isNotUndefined } from '../../util/assert';
 import type { Identifier } from '../environments/identifier';
-import { FunctionDefinitionVertex, VariableDefinitionVertex } from '../graph/vertex';
+import { FunctionDefinitionVertex, ValueVertex, VariableDefinitionVertex } from '../graph/vertex';
 import { NoEdges } from '../graph/graph';
 
 export const enum OriginType {
@@ -70,7 +70,6 @@ export interface BuiltInFunctionOrigin {
 	readonly fn:   OriginIdentifier;
 }
 
-
 interface OriginIdentifier {
 	readonly name: Identifier;
 }
@@ -96,13 +95,15 @@ export type Origin = SimpleOrigin | FunctionCallOrigin | BuiltInFunctionOrigin;
  */
 export function getOriginInDfg(this: void, dfg: DataflowGraph, id: NodeId): Origin[] | undefined {
 	const vtx = dfg.getVertex(id);
-	switch(vtx?.tag) {
-		case undefined:
-			return undefined;
-		case VertexType.Value:
-			return [{ type: OriginType.ConstantOrigin, id }];
-		case VertexType.FunctionDefinition:
-			return [{ type: OriginType.ConstantOrigin, id }];
+	if(vtx === undefined) {
+		return undefined;
+	} else if(ValueVertex.is(vtx) || FunctionDefinitionVertex.is(vtx)) {
+		return [{ type: OriginType.ConstantOrigin, id }];
+	} else if(dfg.isQuoted(id)) {
+		/* a quoted node is never evaluated, so it neither reads, writes, nor calls anything */
+		return undefined;
+	}
+	switch(vtx.tag) {
 		case VertexType.VariableDefinition:
 			return getVariableDefinitionOrigin(dfg, vtx);
 		case VertexType.Use:
@@ -123,11 +124,18 @@ function getVariableUseOrigin(dfg: DataflowGraph, use: { id: NodeId }): Origin[]
 		}
 
 		const targetVtx = dfg.getVertex(target);
-		if(!targetVtx) {
-			continue;
-		}
-
-		if(VariableDefinitionVertex.is(targetVtx)) {
+		if(NodeId.isBuiltIn(target)) {
+			/* a built-in constant such as `pi` carries a value vertex, a built-in function named as a value has none */
+			origins.push(ValueVertex.is(targetVtx) ? {
+				type: OriginType.ConstantOrigin,
+				id:   target
+			} : {
+				type: OriginType.BuiltInFunctionOrigin,
+				fn:   { name: NodeId.fromBuiltIn(target) },
+				id:   use.id,
+				proc: target
+			});
+		} else if(VariableDefinitionVertex.is(targetVtx)) {
 			origins.push({
 				type: OriginType.ReadVariableOrigin,
 				id:   target
@@ -192,7 +200,6 @@ function getCallTarget(dfg: DataflowGraph, call: DataflowGraphVertexFunctionCall
 			id:   target
 		};
 	}).filter(isNotUndefined));
-
 
 	return origins;
 }

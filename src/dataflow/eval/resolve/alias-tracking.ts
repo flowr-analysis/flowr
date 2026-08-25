@@ -1,8 +1,7 @@
 import { VariableResolve } from '../../../config';
 import type { LinkTo } from '../../../queries/catalog/call-context-query/call-context-query-format';
 import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverName } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { VisitingQueue } from '../../../slicing/static/visiting-queue';
 import { guard } from '../../../util/assert';
@@ -58,7 +57,7 @@ export interface ResolveInfo {
 function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
 	const vertex = dataflow.getVertex(sourceId);
 	/* the lexeme of an infix call like `a %% b` is the whole expression, so we prefer the effective name of the vertex */
-	const identifier = FunctionCallVertex.is(vertex) ? vertex.name : recoverName(sourceId, dataflow.idMap);
+	const identifier = FunctionCallVertex.is(vertex) ? vertex.name : NodeId.recoverName(sourceId, dataflow.idMap);
 	if(identifier === undefined) {
 		return undefined;
 	}
@@ -75,7 +74,7 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
 	const definitions: NodeId[] = [];
 
 	// Source is Symbol -> resolve definitions of symbol
-	const identifier = recoverName(sourceId, dataflow.idMap);
+	const identifier = NodeId.recoverName(sourceId, dataflow.idMap);
 	if(identifier === undefined) {
 		return undefined;
 	}
@@ -290,7 +289,6 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, env
 	return setFrom(...values);
 }
 
-
 /** given an unknown alias, we have to clear all values in the environments */
 onUnknownSideEffect((_graph: DataflowGraph, env: REnvironmentInformation, _id: NodeId, target?: LinkTo<RegExp | string>) => {
 	if(target) {
@@ -361,6 +359,19 @@ function iteratedSequence(id: NodeId, graph: DataflowGraph, idMap: AstIdMap): RN
 		sequence = loop.vector;
 	}
 	return sequence;
+}
+
+/** whether the call may run a built-in as well as a definition of the program, so that what it yields is open */
+function callsBuiltInAndDefinition(edges: ReadonlyMap<NodeId, DfEdge>): boolean {
+	let builtIn = false;
+	let defined = false;
+	for(const [target, edge] of edges) {
+		if(DfEdge.includesType(edge, EdgeType.Calls)) {
+			builtIn ||= NodeId.isBuiltIn(target);
+			defined ||= !NodeId.isBuiltIn(target);
+		}
+	}
+	return builtIn && defined;
 }
 
 /**
@@ -435,6 +446,12 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 
 		const isFn = t === VertexType.FunctionCall;
 		const outgoingEdges = graph.outgoingEdges(id) ?? NoEdges;
+		if(isFn && callsBuiltInAndDefinition(outgoingEdges)) {
+			/* `if(u) toupper <- function(x) "z"`: the call may run the built-in just as well as the definition,
+			 * and what the two hand back has nothing to do with each other, so following the one we can walk
+			 * would state the value of a call that may never happen */
+			return Top;
+		}
 		let foundRetuns = false;
 		// travel all read and defined-by edges
 		for(const [targetId, edge] of outgoingEdges) {

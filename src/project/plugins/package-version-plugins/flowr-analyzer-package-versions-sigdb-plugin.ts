@@ -14,6 +14,8 @@ import { FileRole } from '../../context/flowr-file';
 import { isSigDbEnabled, resolveAssumedRVersion, VersionSelection, type FlowrConfig } from '../../../config';
 import { RRange, RVersion } from '../../../util/r-version';
 import { baseRPackages } from '../../../util/r-base-packages';
+import { DefaultMap } from '../../../util/collections/defaultmap';
+import { uniqueArray } from '../../../util/collections/arrays';
 
 /** the plugin's instance name (pass to `unregisterPlugins` to disable the default sigdb resolver) */
 export const SigDbPluginName = 'flowr-analyzer-package-versions-sigdb-plugin';
@@ -34,8 +36,8 @@ function manifestFormat(set: SigDatabaseSet): string {
 		...set.manifest.shards.map(s => s.path),
 		...(set.manifest.dicts?.map(d => d.path) ?? [])
 	];
-	const codecs = new Set(paths.map(p => codecNameOf(compressedExtOf(resolveSource(set.baseDir, p)))));
-	return codecs.size === 1 ? [...codecs][0] : 'mixed';
+	const codecs = uniqueArray(paths.map(p => codecNameOf(compressedExtOf(resolveSource(set.baseDir, p)))));
+	return codecs.length === 1 ? codecs[0] : 'mixed';
 }
 
 /** describe one loaded source for `:version` / diagnostics: a single bundle, a sharded set, or an in-memory source */
@@ -87,53 +89,37 @@ export function reconstructS3Generics(exported: readonly string[]): Map<string, 
 const exportIndices = new WeakMap<PackageSignatureSource, ReadonlyMap<string, ExportIndexEntry>>();
 
 /**
- * `name -> the packages of a source exporting it`, filled one name at a time as it is asked for and shared by
- * every analyzer mounting that source. The eager {@link ExportIndex} answers the same question with no scan at
- * all, but it holds every export name of the bundle (~1.1M for the shipped one); a lint run asks for a few
- * hundred distinct names, so this keeps the memo proportional to what was actually asked instead.
+ * `name -> packages of a source exporting it`, filled lazily per name and shared by every analyzer mounting that
+ * source; unlike the eager {@link ExportIndex} (which scans all ~1.1M export names up front), this stays proportional to what a run actually asks about.
  */
-const exportOwnersBySource = new WeakMap<PackageSignatureSource, Map<string, readonly string[]>>();
+const exportOwnersBySource = new WeakMap<PackageSignatureSource, DefaultMap<string, readonly string[]>>();
 
 /** The packages of `src` exporting `name`, most downloaded first, scanning only the first time a name is asked. */
 function exportOwners(src: PackageSignatureSource, name: string): readonly string[] {
 	let byName = exportOwnersBySource.get(src);
 	if(byName === undefined) {
-		byName = new Map();
+		byName = new DefaultMap(n => src.packagesExporting(n));
 		exportOwnersBySource.set(src, byName);
 	}
-	let owners = byName.get(name);
-	if(owners === undefined) {
-		owners = src.packagesExporting(name);
-		byName.set(name, owners);
-	}
-	return owners;
+	return byName.get(name);
 }
 
 /**
- * The packages exporting one name: the sole exporter bare, the rivals as an array. Roughly 95% of the names in a
- * bundle are exported by exactly one package, so giving those an array of their own would cost more than the
- * index itself.
+ * The packages exporting one name: the sole exporter bare, rivals as an array. About 95% of names have exactly
+ * one exporter, so wrapping those in an array too would cost more than the index itself.
  */
 export type ExportIndexEntry = string | string[];
 
 /**
  * The reverse `export name -> packages exporting it` view of a signature source, each entry ordered by download
- * count (descending, ties by name) so whoever has to pick one exporter starts with the package a script most
- * likely means.
- *
- * Building the view reads every package blob of a bundle, which is why {@link of} memoizes it on the source
- * object rather than on the caller: signature sources are opened once per process (see {@link getSharedSigSource})
- * and are immutable, so every analyzer mounting the same bundle shares one index instead of re-scanning the
- * database per analysis. It is deliberately analyzer-independent -- self-package exclusion belongs to the caller
- * (see {@link FlowrAnalyzerPackageVersionsSigDbPlugin.packagesExporting}), not to the index.
+ * count (descending, ties by name) so whoever has to pick one exporter starts with the package a script most likely means.
  */
 export const ExportIndex = {
 	name: 'ExportIndex',
-	/* not what `packagesExporting` uses: building this reads every package blob of the bundle to hold every export
-	 * name (~1.1M for the shipped one), which measured both slower and ~330MB heavier than the few hundred scans
-	 * {@link exportOwners} does for the names a run actually asks about. Kept for a caller that needs the whole
-	 * reverse mapping at once. */
-	/** The index of `src`, built on first use and shared by every later caller; see {@link ExportIndex}. */
+	/**
+	 * The index of `src`, built on first use and shared by every later caller. Reading it scans every package blob
+	 * of the bundle (~1.1M names for the shipped one) -- see {@link exportOwnersBySource} for the far cheaper per-name alternative {@link FlowrAnalyzerPackageVersionsSigDbPlugin.packagesExporting} actually uses.
+	 */
 	of(this: void, src: PackageSignatureSource): ReadonlyMap<string, ExportIndexEntry> {
 		const cached = exportIndices.get(src);
 		if(cached !== undefined) {
@@ -170,10 +156,8 @@ export const ExportIndex = {
 } as const;
 
 /**
- * Resolves `library(pkg)` / `use(pkg, fn)` from precomputed `flowr-sigdb` databases via the
- * {@link PackageSignatureSource} contract. For an R-core package it picks the version shipped with the assumed
- * R release (`solver.sigdb.assumedRVersion`), so `library(stats)` attaches that release's exports. Plain-file
- * sources load lazily; a `.br` or manifest source is mounted by {@link preload}. On by default.
+ * Resolves `library(pkg)` / `use(pkg, fn)` from precomputed `flowr-sigdb` databases via the {@link PackageSignatureSource}
+ * contract; for an R-core package it picks the version shipped with the assumed R release. Plain-file sources load lazily, a `.br`/manifest source needs {@link preload}; on by default.
  */
 export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackageVersionsPlugin {
 	public readonly name        = SigDbPluginName;
@@ -235,9 +219,8 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	private syncPromise: Promise<void> | undefined;
 
 	/**
-	 * Opt-in (`solver.sigdb.autoSync`) startup re-sync.
-	 * If the committed `sigdb.remote.json` link file lists shards whose cached copies are missing or hash-mismatched,
-	 * this will sync them.
+	 * Opt-in (`solver.sigdb.autoSync`) startup re-sync: if the committed `sigdb.remote.json` link file lists shards
+	 * whose cached copies are missing or hash-mismatched, this downloads and mounts them in the background.
 	 */
 	private startBackgroundSync(ctx: FlowrAnalyzerContext): void {
 		if(this.syncPromise !== undefined) {
@@ -284,9 +267,8 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	}
 
 	/**
-	 * Read the system's installed package versions once (for `versionSelection: 'system'`), off the hot path. Only
-	 * an R-backed parser exposes `installedPackageVersions`; a tree-sitter (no-R) parser skips this, so `system`
-	 * gracefully falls back to `newest` in {@link resolve}. Idempotent; failures leave the map empty (same fallback).
+	 * Read the system's installed package versions once (for `versionSelection: 'system'`), off the hot path; only an
+	 * R-backed parser exposes `installedPackageVersions`, so a tree-sitter parser falls back to `newest` (see {@link resolve}). Idempotent; failures leave the map empty (same fallback).
 	 */
 	private warmInstalledVersions(): void {
 		if(this.installedVersionsPromise !== undefined || this.installedVersions !== undefined) {
@@ -326,12 +308,8 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	}
 
 	/**
-	 * Packages in the loaded sources (respecting `self`-package exclusion) that export `name`, **most downloaded
-	 * first**, so whoever has to pick one (or show only a few) starts with the package a script most likely means.
-	 * Backed by {@link exportOwners}, which memoizes per *source* (and hence shares across every analyzer mounting
-	 * the same bundle), so the repeated hint lookups of a linter run scan every package once per distinct name
-	 * rather than once per call. Self-package exclusion is applied here rather than in that memo, which keeps the
-	 * memo analyzer-independent.
+	 * Packages in the loaded sources exporting `name`, self-package excluded, most downloaded first (so picking
+	 * the first is the package a script most likely means); backed by the per-source memo in {@link exportOwnersBySource}, filtered here rather than there so the memo stays analyzer-independent.
 	 */
 	public override packagesExporting(name: string): readonly string[] {
 		if(!isSigDbEnabled(this.analyzerCtx?.config)) {
@@ -345,8 +323,6 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		const seen = new Set<string>();
 		const owners: string[] = [];
 		for(const src of sources) {
-			/* memoized per source, not per analyzer: the same handful of unresolved names comes back for every
-			 * file the linter walks, and a miss is a scan over every package of the bundle */
 			for(const pkg of exportOwners(src, name)) {
 				if(!seen.has(pkg) && !this.isSelfPackage(pkg)) {
 					seen.add(pkg);
@@ -366,10 +342,8 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	}
 
 	/**
-	 * The raw sources in priority order: explicit constructor sources, `$FLOWR_SIGDB`, then **every** bundled
-	 * database discovered in the data dirs (see {@link defaultSigDbPaths}), so an extra bundle dropped next to
-	 * the default (e.g. a downloaded full-history one) is mounted automatically. All bundled defaults are skipped
-	 * when `$FLOWR_DISABLE_DEFAULT_SIGDB` is set; explicit sources are always honored.
+	 * The raw sources in priority order: explicit constructor sources, `$FLOWR_SIGDB`, then every bundled database
+	 * discovered in the data dirs (see {@link defaultSigDbPaths}), skipped when `$FLOWR_DISABLE_DEFAULT_SIGDB` is set; explicit sources are always honored.
 	 */
 	private rawSources(config?: FlowrConfig): SigDbSource[] {
 		const sources = [...this.extraSources, ...envSources()];
@@ -453,9 +427,8 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	}
 
 	/**
-	 * For a base package, the newest core version `<=` the assumed R version (see
-	 * {@link FlowrAnalyzerContext.resolvedRVersion}). If the assumed version predates every recorded core
-	 * release, the closest supported one (the earliest) is used and the substitution is logged once as info.
+	 * For a base package, the newest core version `<=` the assumed R version (see {@link FlowrAnalyzerContext.resolvedRVersion}).
+	 * If the assumed version predates every recorded core release, the closest supported (earliest) one is used and logged once as info.
 	 */
 	private baseVersionFor(src: PackageSignatureSource, name: string): string | undefined {
 		const versions = src.coreVersions(name);
@@ -544,8 +517,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 
 	/**
 	 * Newest version satisfying the constraint. Fast path: prefer the source's latest (no history decompression for
-	 * the common `>=` case) and accept it when it satisfies; only otherwise enumerate the stored versions and pick
-	 * the highest satisfying one (e.g. an upper-bound or exact-old pin).
+	 * the common `>=` case); only when that fails to satisfy, enumerate stored versions and pick the highest match (e.g. an upper-bound or exact-old pin).
 	 */
 	private newestSatisfying(src: PackageSignatureSource, name: string, range: Range | undefined): LibraryExports | undefined {
 		const pinned = range ? minVersion(range)?.version : undefined;
@@ -588,6 +560,9 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		const namespaceInfo: NamespaceInfo = {
 			exportedSymbols:      exported,
 			exportedFunctions:    [],
+			exportedS4Methods:    [],
+			/* the database derives these from the very `exportClasses()` directives the field stands for */
+			exportedS4Classes:    info.s4Classes.slice(),
 			exportS3Generics:     reconstructS3Generics(exported),
 			exportedPatterns:     [],
 			importedPackages:     new Map(),

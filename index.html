@@ -82,7 +82,14 @@ body::after {
 	body::before, body::after { animation: none; }
 }
 main { max-width: 62rem; margin: 0 auto; }
-a { color: var(--accent); }
+a {
+	color: var(--accent); text-decoration: underline;
+	text-decoration-thickness: from-font; text-underline-offset: .16em;
+	text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+	transition: color .12s, text-decoration-color .12s, opacity .12s;
+}
+a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decoration-color: currentColor; }
+@media (prefers-reduced-motion: reduce) { a { transition: none; } }
 .prose a, .cases a { font-weight: 400; text-decoration: none; color: color-mix(in srgb, var(--accent) 85%, var(--fg)); }
 .prose a:hover, .cases a:hover { text-decoration: underline; color: var(--accent); }
 h1 { font-size: clamp(1.7rem, 6vw, 2.6rem); }
@@ -150,9 +157,10 @@ code, pre, .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, m
 	:root:not([data-theme="light"]) #theme .moon { display: none; }
 }
 
-header { text-align: center; padding: 1.5rem 0 1rem; }
-header p.lead { max-width: 44rem; margin: .6rem auto 1rem; font-size: clamp(.95rem, 3.1vw, 1.12rem); color: var(--muted); }
-#meta { min-height: 1.6em; margin: .4rem 0 1.2rem; color: var(--muted); font-size: .9rem; }
+header { text-align: center; padding: 2.6rem 0 1.6rem; }
+header h1 { margin: 0 0 1.3rem; font-size: clamp(1.95rem, 6.8vw, 3rem); }
+header p.lead { max-width: 46rem; margin: 0 auto 1.6rem; font-size: clamp(1rem, 3.25vw, 1.18rem); color: var(--muted); }
+#meta { min-height: 1.6em; margin: 0 0 1.6rem; color: var(--muted); font-size: .9rem; }
 #meta b { color: var(--fg); }
 #meta a { color: inherit; text-decoration: none; }
 #meta a:hover { color: var(--accent); }
@@ -397,7 +405,7 @@ header p.lead { max-width: 44rem; margin: .6rem auto 1rem; font-size: clamp(.95r
 @media (prefers-reduced-motion: reduce) { .path li em { transition: none; } }
 .path li em code { background: var(--sunk); border: 1px solid var(--border); border-radius: .3rem; padding: 0 .3rem; font-size: .92em; }
 /* the platforms flowR ships for, introduced rather than dropped in */
-.available { margin: 1.4rem 0 .4rem; color: var(--muted); font-size: .82rem; letter-spacing: .06em; text-transform: uppercase; }
+.available { margin: 2.2rem 0 .5rem; color: var(--muted); font-size: .82rem; letter-spacing: .06em; text-transform: uppercase; }
 /* which way a slice runs: a question next to the explanation instead of a switch under the code */
 .demo .direction { margin-top: .9rem; display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
 .demo .direction[hidden] { display: none; }
@@ -429,362 +437,342 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 </head>
 <body>
 <main>
-
 <div class="bar">
-	<h2><a class="brand" href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><a class="version" id="version" data-release="v2.14.4" href="https://github.com/flowr-analysis/flowr/commit/ff89bdb487f9df6d34cc6bbab54f4b77f01782ee" target="_blank" rel="noopener" title="a development build of flowR, 9 commits after v2.14.4 (ff89bdb)">v2.14.4*</a></h2>
-	<nav>
-		<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
-		<a href="wiki/sigdb/" target="_blank" rel="noopener">Signature DB</a>
-		<a href="wiki/stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
-		<a href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
-	</nav>
-	<span class="controls">
-		<a class="gh" href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener" title="flowR on GitHub" aria-label="flowR on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg></a>
-		<button id="theme" type="button" aria-label="Switch between the light and the dark theme" title="Light or dark">
-		<svg class="moon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>
-		<svg class="sun" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="4.6" fill="currentColor"/><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></g></svg>
-	</button>
-	</span>
+<h2><a class="brand" href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><a class="version" id="version" data-release="v2.14.4" href="https://github.com/flowr-analysis/flowr/commit/511fdd5037e5bfab0b63f13ce8b27e5765142ab5" target="_blank" rel="noopener" title="a development build of flowR, 34 commits after v2.14.4, with uncommitted changes (511fdd5)">v2.14.4*</a></h2>
+<nav>
+<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
+<a href="wiki/sigdb/" target="_blank" rel="noopener">Signature DB</a>
+<a href="wiki/stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
+</nav>
+<span class="controls">
+<a class="gh" href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener" title="flowR on GitHub" aria-label="flowR on GitHub"><svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg></a>
+<button id="theme" type="button" aria-label="Switch between the light and the dark theme" title="Light or dark">
+<svg class="moon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/></svg>
+<svg class="sun" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="12" cy="12" r="4.6" fill="currentColor"/><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></g></svg>
+</button>
+</span>
 </div>
-
 <header>
-	<h1>Program Analysis for R</h1>
-	<p class="lead">flowR is an open source static program analyzer for your R code. It helps you understand existing scripts,
-		find quality issues, improve reproducibility, and check the validity of your analyses.</p>
-	<p id="meta"><b>v2.14.4*</b> &middot; <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a></p>
-	<p class="cta">
-		<a class="primary" href="https://github.com/flowr-analysis/flowr/wiki/Setup" target="_blank" rel="noopener">Get started</a>
-		<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
-		<a href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener">★ Star on GitHub</a>
-	</p>
-	<p class="available">Available for</p>
-	<p class="chips">
-		<a href="https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr" target="_blank" rel="noopener">VS Code</a>
-		<a href="https://open-vsx.org/extension/code-inspect/vscode-flowr" target="_blank" rel="noopener">Positron</a>
-		<a href="https://github.com/flowr-analysis/rstudio-addin-flowr" target="_blank" rel="noopener">RStudio</a>
-		<a href="https://github.com/flowr-analysis/flowr-r-adapter" target="_blank" rel="noopener">R package</a>
-		<a href="https://hub.docker.com/r/eagleoutice/flowr" target="_blank" rel="noopener">Docker</a>
-		<a href="https://www.npmjs.com/package/@eagleoutice/flowr" target="_blank" rel="noopener">npm</a>
-	</p>
+<h1>Program Analysis for R</h1>
+<p class="lead">flowR is an open source static program analyzer for your R code. It helps you understand existing scripts,
+find quality issues, improve reproducibility, and check the validity of your analyses.</p>
+<p id="meta"><b>v2.14.4*</b> &middot; <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a></p>
+<p class="cta">
+<a class="primary" href="https://github.com/flowr-analysis/flowr/wiki/Setup" target="_blank" rel="noopener">Get started</a>
+<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
+<a href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener">★ Star on GitHub</a>
+</p>
+<p class="available">Available for</p>
+<p class="chips">
+<a href="https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr" target="_blank" rel="noopener">VS Code</a>
+<a href="https://open-vsx.org/extension/code-inspect/vscode-flowr" target="_blank" rel="noopener">Positron</a>
+<a href="https://github.com/flowr-analysis/rstudio-addin-flowr" target="_blank" rel="noopener">RStudio</a>
+<a href="https://github.com/flowr-analysis/flowr-r-adapter" target="_blank" rel="noopener">R package</a>
+<a href="https://hub.docker.com/r/eagleoutice/flowr" target="_blank" rel="noopener">Docker</a>
+<a href="https://www.npmjs.com/package/@eagleoutice/flowr" target="_blank" rel="noopener">npm</a>
+</p>
 </header>
-
 <h2>Try It Out</h2>
 <p class="prose">
-	These run on the samples below. For your own code, open the
-	<a href="wiki/playground/" target="_blank" rel="noopener">playground</a>, which runs flowR in your browser.
+These run on the samples below. For your own code, open the
+<a href="wiki/playground/" target="_blank" rel="noopener">playground</a>, which runs flowR in your browser.
 </p>
 <!-- Everything in here was computed by `npm run gen:landing`, which runs flowR over these samples.
-     Point at a name to see its slice; the tabs show what the other queries answered. -->
+Point at a name to see its slice; the tabs show what the other queries answered. -->
 <div class="demo card">
-	<div class="tabs" role="tablist">
-		<button role="tab" aria-selected="true" data-tab="slice">Slicing</button>
-		<button role="tab" aria-selected="false" data-tab="deps">Dependencies</button>
-		<button role="tab" aria-selected="false" data-tab="lint">Linting</button>
-		<button role="tab" aria-selected="false" data-tab="values">Values</button>
-		<button role="tab" aria-selected="false" data-tab="origin">Jump to definition</button>
-		<button role="tab" aria-selected="false" data-tab="signature">Signatures</button>
-	</div>
-	<div class="demobody">
-	<div class="explain">
-		<p class="lede" id="lede">Point at any name below, or at an access like survey$age, and flowR keeps only the lines that matter.</p>
-		<p class="more" id="lede-more">It keeps just the lines the value depends on (including called functions).</p>
-		<div class="direction" id="direction">
-			<span class="label">Which way?</span>
-			<div class="ways" role="group" aria-label="Which direction to slice in">
-				<button type="button" class="way" data-way="" aria-pressed="true">
-					<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M10 2 4 8l6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-					origin
-				</button>
-				<button type="button" class="way" data-way=">" aria-pressed="false">
-					impact
-					<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M6 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-				</button>
-			</div>
-			<span class="hint">origin: what the value is built from.<br>impact: what it goes on to affect.</span>
-			<span class="kept" id="slice-hint"></span>
-		</div>
-	</div>
-	<div class="panels">
-
-	<section data-panel="slice">
-		<div class="chrome"><span class="file">survey.R</span></div>
-		<div class="code" id="slice">
-			<span class="line" data-keep="1@clean 1@clean> 1@d 1@d> 2@as.numeric 2:4 2:24 3@d 6@clean 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12"><v data-name="1@clean" data-label="clean">clean</v> <o>&lt;-</o> <k>function</k>(<v data-name="1@d" data-label="d">d</v>) {</span>
-			<span class="line" data-keep="1@d 1@d> 2@as.numeric 2@as.numeric> 2:4 2:4> 2:24 2:24> 3@d 6@clean 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12">  <v data-name="2:4" data-label="d$age">d$age</v> <o>&lt;-</o> <v data-name="2@as.numeric" data-label="as.numeric"><f>as.numeric</f></v>(<v data-name="2:24" data-label="d$age">d$age</v>)</span>
-			<span class="line" data-keep="1@clean> 1@d 1@d> 2@as.numeric 2@as.numeric> 2:4 2:4> 2:24 2:24> 3@d 3@d> 5@survey> 5@read.csv> 6@clean 6@clean> 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12">  <v data-name="3@d" data-label="d">d</v></span>
-			<span class="line" data-keep="1@clean 1@clean> 1@d 2@as.numeric 2:4 2:24 3@d 6@clean 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12">}</span>
-			<span class="line" data-keep="1@d 2@as.numeric 2:4 2:24 3@d 5@survey 5@survey> 5@read.csv 5@read.csv> 6@clean 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12"><v data-name="5@survey" data-label="survey">survey</v>   <o>&lt;-</o> <v data-name="5@read.csv" data-label="read.csv"><f>read.csv</f></v>(<str>&quot;survey.csv&quot;</str>)</span>
-			<span class="line" data-keep="1@clean> 1@d 1@d> 2@as.numeric 2@as.numeric> 2:4 2:4> 2:24 2:24> 3@d 3@d> 5@survey> 5@read.csv> 6@clean 6@clean> 6@survey 6@survey> 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12"><v data-name="6@survey" data-label="survey">survey</v>   <o>&lt;-</o> <v data-name="6@clean" data-label="clean"><f>clean</f></v>(<v data-name="6@survey" data-label="survey">survey</v>)</span>
-			<span class="line" data-keep="1@clean> 1@d> 2@as.numeric> 2:4> 2:24> 3@d> 5@survey> 5@read.csv> 6@clean> 6@survey> 7@mean_age 7@mean_age> 7@mean 7@mean> 7:24 7:24>"><v data-name="7@mean_age" data-label="mean_age">mean_age</v> <o>&lt;-</o> <v data-name="7@mean" data-label="mean"><f>mean</f></v>(<v data-name="7:24" data-label="survey$age">survey$age</v>)</span>
-			<span class="line" data-keep="1@clean> 1@d> 2@as.numeric> 2:4> 2:24> 3@d> 5@survey> 5@read.csv> 6@clean> 6@survey> 8@survey 8@survey> 8@model 8@model> 8@lm 8@lm>"><v data-name="8@model" data-label="model">model</v>    <o>&lt;-</o> <v data-name="8@lm" data-label="lm"><f>lm</f></v>(income ~ age, data = <v data-name="8@survey" data-label="survey">survey</v>)</span>
-			<span class="line" data-keep="1@clean> 1@d> 2@as.numeric> 2:4> 2:24> 3@d> 5@survey> 5@read.csv> 6@clean> 6@survey> 9@plot 9@plot> 9:12 9:12>"><v data-name="9@plot" data-label="plot"><f>plot</f></v>(<v data-name="9:12" data-label="survey$age">survey$age</v>)</span>
-		</div>
-	</section>
-
-	<section data-panel="deps" hidden>
-		<div class="chrome"><span class="file">project.R</span></div>
-		<div class="code">
-			<span class="line dep library" data-line="1" data-run="library" data-kind="library" data-tip="loads dplyr"><f>library</f>(dplyr)</span>
-			<span class="line dep source" data-line="2" data-run="source" data-kind="source" data-tip="sources helpers.R"><f>source</f>(<str>&quot;helpers.R&quot;</str>)</span>
-			<span class="line dep read" data-line="3" data-run="read" data-kind="read" data-tip="reads survey.csv">raw <o>&lt;-</o> <f>read.csv</f>(<str>&quot;survey.csv&quot;</str>)</span>
-			<span class="line" data-line="4">clean <o>&lt;-</o> <f>filter</f>(raw, !<f>is.na</f>(age))</span>
-			<span class="line dep write" data-line="5" data-run="write" data-kind="write" data-tip="writes clean.csv"><f>write.csv</f>(clean, <str>&quot;clean.csv&quot;</str>)</span>
-			<span class="line dep visualize first" data-line="6" data-run="visualize" data-kind="visualize" data-tip="draws a plot"><f>plot</f>(clean$age)</span>
-			<span class="line dep visualize last" data-line="7" data-run="visualize" data-tip="draws a plot"><f>abline</f>(h = <f>mean</f>(clean$age))</span>
-		</div>
-	</section>
-
-	<section data-panel="lint" hidden>
-		<div class="chrome"><span class="file">messy.R</span></div>
-		<div class="code">
-			<span class="line" data-line="1">data   <o>&lt;-</o> <bad data-tip="Path `/root/x.txt` does not point to a valid file + Path `/root/x.txt` is absolute"><f>read.csv</f>(<str>&quot;/root/x.txt&quot;</str>)</bad></span>
-			<span class="line" data-line="2"><bad data-tip="Definition of `unused` is unused">unused</bad> <o>&lt;-</o> 42</span>
-			<span class="line" data-line="3"><k>if</k>(<k>FALSE</k>) {</span>
-			<span class="line" data-line="4">  <bad data-tip="Code can never be executed"><f>print</f>(<str>&quot;never runs&quot;</str>)</bad></span>
-			<span class="line" data-line="5">}</span>
-			<span class="line" data-line="6"><f>print</f>(<f>nrow</f>(data))</span>
-		</div>
-	</section>
-
-	<section data-panel="values" hidden>
-		<div class="chrome"><span class="file">shapes.R</span></div>
-		<div class="code">
-			<span class="line" data-line="1" data-note="# 3 rows, 1 column named id"><v data-name="1@df" data-label="df" data-tip="value: (colnames: [{&quot;id&quot;}, {}], cols: [1, 1], rows: [3, 3])">df</v> <o>&lt;-</o> <f>data.frame</f>(id = 1:3)</span>
-			<span class="line" data-line="2" data-note="# 0 to 3 rows, 1 column named id"><v data-name="2@df" data-label="df" data-tip="value: (colnames: [{&quot;id&quot;}, {}], cols: [1, 1], rows: [0, 3])">df</v> <o>&lt;-</o> <f>filter</f>(<v data-name="2@df" data-label="df" data-tip="value: (colnames: [{&quot;id&quot;}, {}], cols: [1, 1], rows: [0, 3])">df</v>, id &gt; 1)</span>
-			<span class="line" data-line="3" data-note="# 6"><v data-name="3@n" data-label="n" data-tip="value: [6L, 6L]">n</v>  <o>&lt;-</o> 2 * 3</span>
-		</div>
-	</section>
-
-	<section data-panel="origin" hidden>
-		<div class="chrome"><span class="file">aliases.R</span></div>
-		<div class="code">
-			<span class="line" data-line="1"><v data-name="1@square" data-label="square">square</v> <o>&lt;-</o> <k>function</k>(x) x * x</span>
-			<span class="line" data-line="2"><v data-name="2@area" data-label="area">area</v>   <o>&lt;-</o> <v data-name="2@square" data-label="square">square</v></span>
-			<span class="line" data-line="3"><v data-name="3@print" data-label="print"><f>print</f></v>(<v data-name="3@area" data-label="area"><f>area</f></v>(3))</span>
-		</div>
-		<div class="code out">
-			<span class="line" data-for="1@square" data-target="1"><b>1@square</b>writes square (line 1)</span>
-			<span class="line" data-for="2@square" data-target="1"><b>2@square</b>reads square (line 1)</span>
-			<span class="line" data-for="2@area" data-target="2"><b>2@area</b>writes area (line 2)</span>
-			<span class="line" data-for="3@area" data-target="1"><b>3@area</b>calls function (line 1) and reads area (line 2)</span>
-			<span class="line" data-for="3@print" data-target="3"><b>3@print</b>calls built-in print</span>
-		</div>
-	</section>
-
-	<section data-panel="signature" hidden>
-		<form class="ask" id="sig-form" action="wiki/sigdb/" method="get" target="_blank">
-			<input id="sig-q" name="q" type="search" spellcheck="false" autocomplete="off"
-				placeholder="dplyr::filter" aria-label="Search the signature database">
-			<button type="submit">Search</button>
-		</form>
-		<div class="code out">
-			<span class="line"><b>function</b>dplyr::filter (1.2.1)</span>
-			<span class="line"><b>parameters</b>.data, ..., .by = NULL, .preserve = FALSE</span>
-			<span class="line"><b>defined in</b>R/filter.R, line 216</span>
-			<span class="line"><b>calls</b>UseMethod, filter, check_by_typo, check_not_both_by_and_preserve</span>
-		</div>
-		<p class="note"><a href="wiki/sigdb/" target="_blank" rel="noopener">Search every name flowR knows</a></p>
-	</section>
-	</div>
-	</div>
+<div class="tabs" role="tablist">
+<button role="tab" aria-selected="true" data-tab="slice">Slicing</button>
+<button role="tab" aria-selected="false" data-tab="deps">Dependencies</button>
+<button role="tab" aria-selected="false" data-tab="lint">Linting</button>
+<button role="tab" aria-selected="false" data-tab="values">Values</button>
+<button role="tab" aria-selected="false" data-tab="origin">Jump to definition</button>
+<button role="tab" aria-selected="false" data-tab="signature">Signatures</button>
 </div>
-
+<div class="demobody">
+<div class="explain">
+<p class="lede" id="lede">Point at any name below, or at an access like survey$age, and flowR keeps only the lines that matter.</p>
+<p class="more" id="lede-more">It keeps just the lines the value depends on (including called functions).</p>
+<div class="direction" id="direction">
+<span class="label">Which way?</span>
+<div class="ways" role="group" aria-label="Which direction to slice in">
+<button type="button" class="way" data-way="" aria-pressed="true">
+<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M10 2 4 8l6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+origin
+</button>
+<button type="button" class="way" data-way=">" aria-pressed="false">
+impact
+<svg viewBox="0 0 16 16" width="11" height="11" aria-hidden="true"><path d="M6 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+</button>
+</div>
+<span class="hint">origin: what the value is built from.<br>impact: what it goes on to affect.</span>
+<span class="kept" id="slice-hint"></span>
+</div>
+</div>
+<div class="panels">
+<section data-panel="slice">
+<div class="chrome"><span class="file">survey.R</span></div>
+<div class="code" id="slice">
+<span class="line" data-keep="1@clean 1@clean> 1@d 1@d> 2@as.numeric 2:4 2:24 3@d 6@clean 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12"><v data-name="1@clean" data-label="clean">clean</v> <o>&lt;-</o> <k>function</k>(<v data-name="1@d" data-label="d">d</v>) {</span>
+<span class="line" data-keep="1@d 1@d> 2@as.numeric 2@as.numeric> 2:4 2:4> 2:24 2:24> 3@d 6@clean 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12">  <v data-name="2:4" data-label="d$age">d$age</v> <o>&lt;-</o> <v data-name="2@as.numeric" data-label="as.numeric"><f>as.numeric</f></v>(<v data-name="2:24" data-label="d$age">d$age</v>)</span>
+<span class="line" data-keep="1@clean> 1@d 1@d> 2@as.numeric 2@as.numeric> 2:4 2:4> 2:24 2:24> 3@d 3@d> 5@survey> 5@read.csv> 6@clean 6@clean> 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12">  <v data-name="3@d" data-label="d">d</v></span>
+<span class="line" data-keep="1@clean 1@clean> 1@d 2@as.numeric 2:4 2:24 3@d 6@clean 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12">}</span>
+<span class="line" data-keep="1@d 2@as.numeric 2:4 2:24 3@d 5@survey 5@survey> 5@read.csv 5@read.csv> 6@clean 6@survey 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12"><v data-name="5@survey" data-label="survey">survey</v>   <o>&lt;-</o> <v data-name="5@read.csv" data-label="read.csv"><f>read.csv</f></v>(<str>&quot;survey.csv&quot;</str>)</span>
+<span class="line" data-keep="1@clean> 1@d 1@d> 2@as.numeric 2@as.numeric> 2:4 2:4> 2:24 2:24> 3@d 3@d> 5@survey> 5@read.csv> 6@clean 6@clean> 6@survey 6@survey> 7@mean_age 7@mean 7:24 8@survey 8@model 8@lm 9@plot 9:12"><v data-name="6@survey" data-label="survey">survey</v>   <o>&lt;-</o> <v data-name="6@clean" data-label="clean"><f>clean</f></v>(<v data-name="6@survey" data-label="survey">survey</v>)</span>
+<span class="line" data-keep="1@clean> 1@d> 2@as.numeric> 2:4> 2:24> 3@d> 5@survey> 5@read.csv> 6@clean> 6@survey> 7@mean_age 7@mean_age> 7@mean 7@mean> 7:24 7:24>"><v data-name="7@mean_age" data-label="mean_age">mean_age</v> <o>&lt;-</o> <v data-name="7@mean" data-label="mean"><f>mean</f></v>(<v data-name="7:24" data-label="survey$age">survey$age</v>)</span>
+<span class="line" data-keep="1@clean> 1@d> 2@as.numeric> 2:4> 2:24> 3@d> 5@survey> 5@read.csv> 6@clean> 6@survey> 8@survey 8@survey> 8@model 8@model> 8@lm 8@lm>"><v data-name="8@model" data-label="model">model</v>    <o>&lt;-</o> <v data-name="8@lm" data-label="lm"><f>lm</f></v>(income ~ age, data = <v data-name="8@survey" data-label="survey">survey</v>)</span>
+<span class="line" data-keep="1@clean> 1@d> 2@as.numeric> 2:4> 2:24> 3@d> 5@survey> 5@read.csv> 6@clean> 6@survey> 9@plot 9@plot> 9:12 9:12>"><v data-name="9@plot" data-label="plot"><f>plot</f></v>(<v data-name="9:12" data-label="survey$age">survey$age</v>)</span>
+</div>
+</section>
+<section data-panel="deps" hidden>
+<div class="chrome"><span class="file">project.R</span></div>
+<div class="code">
+<span class="line dep library" data-line="1" data-run="library" data-kind="library" data-tip="loads dplyr"><f>library</f>(dplyr)</span>
+<span class="line dep source" data-line="2" data-run="source" data-kind="source" data-tip="sources helpers.R"><f>source</f>(<str>&quot;helpers.R&quot;</str>)</span>
+<span class="line dep read" data-line="3" data-run="read" data-kind="read" data-tip="reads survey.csv">raw <o>&lt;-</o> <f>read.csv</f>(<str>&quot;survey.csv&quot;</str>)</span>
+<span class="line" data-line="4">clean <o>&lt;-</o> <f>filter</f>(raw, !<f>is.na</f>(age))</span>
+<span class="line dep write" data-line="5" data-run="write" data-kind="write" data-tip="writes clean.csv"><f>write.csv</f>(clean, <str>&quot;clean.csv&quot;</str>)</span>
+<span class="line dep visualize first" data-line="6" data-run="visualize" data-kind="visualize" data-tip="draws a plot"><f>plot</f>(clean$age)</span>
+<span class="line dep visualize last" data-line="7" data-run="visualize" data-tip="draws a plot"><f>abline</f>(h = <f>mean</f>(clean$age))</span>
+</div>
+</section>
+<section data-panel="lint" hidden>
+<div class="chrome"><span class="file">messy.R</span></div>
+<div class="code">
+<span class="line" data-line="1">data   <o>&lt;-</o> <bad data-tip="Path `/root/x.txt` does not point to a valid file + Path `/root/x.txt` is absolute + Path `/root/x.txt` is absolute"><f>read.csv</f>(<str>&quot;/root/x.txt&quot;</str>)</bad></span>
+<span class="line" data-line="2"><bad data-tip="Definition of `unused` is unused">unused</bad> <o>&lt;-</o> 42</span>
+<span class="line" data-line="3"><k>if</k>(<k>FALSE</k>) {</span>
+<span class="line" data-line="4">  <bad data-tip="Code can never be executed"><f>print</f>(<str>&quot;never runs&quot;</str>)</bad></span>
+<span class="line" data-line="5">}</span>
+<span class="line" data-line="6"><f>print</f>(<f>nrow</f>(data))</span>
+</div>
+</section>
+<section data-panel="values" hidden>
+<div class="chrome"><span class="file">shapes.R</span></div>
+<div class="code">
+<span class="line" data-line="1" data-note="# 3 rows, 1 column named id"><v data-name="1@df" data-label="df" data-tip="value: (colnames: [{&quot;id&quot;}, {}], cols: [1, 1], rows: [3, 3])">df</v> <o>&lt;-</o> <f>data.frame</f>(id = 1:3)</span>
+<span class="line" data-line="2" data-note="# 0 to 3 rows, 1 column named id"><v data-name="2@df" data-label="df" data-tip="value: (colnames: [{&quot;id&quot;}, {}], cols: [1, 1], rows: [0, 3])">df</v> <o>&lt;-</o> <f>filter</f>(<v data-name="2@df" data-label="df" data-tip="value: (colnames: [{&quot;id&quot;}, {}], cols: [1, 1], rows: [0, 3])">df</v>, id &gt; 1)</span>
+<span class="line" data-line="3" data-note="# 6"><v data-name="3@n" data-label="n" data-tip="value: [6L, 6L]">n</v>  <o>&lt;-</o> 2 * 3</span>
+</div>
+</section>
+<section data-panel="origin" hidden>
+<div class="chrome"><span class="file">aliases.R</span></div>
+<div class="code">
+<span class="line" data-line="1"><v data-name="1@square" data-label="square">square</v> <o>&lt;-</o> <k>function</k>(x) x * x</span>
+<span class="line" data-line="2"><v data-name="2@area" data-label="area">area</v>   <o>&lt;-</o> <v data-name="2@square" data-label="square">square</v></span>
+<span class="line" data-line="3"><v data-name="3@print" data-label="print"><f>print</f></v>(<v data-name="3@area" data-label="area"><f>area</f></v>(3))</span>
+</div>
+<div class="code out">
+<span class="line" data-for="1@square" data-target="1"><b>1@square</b>writes square (line 1)</span>
+<span class="line" data-for="2@square" data-target="1"><b>2@square</b>reads square (line 1)</span>
+<span class="line" data-for="2@area" data-target="2"><b>2@area</b>writes area (line 2)</span>
+<span class="line" data-for="3@area" data-target="1"><b>3@area</b>calls function (line 1) and reads area (line 2)</span>
+<span class="line" data-for="3@print" data-target="3"><b>3@print</b>calls built-in print</span>
+</div>
+</section>
+<section data-panel="signature" hidden>
+<form class="ask" id="sig-form" action="wiki/sigdb/" method="get" target="_blank">
+<input id="sig-q" name="q" type="search" spellcheck="false" autocomplete="off"
+placeholder="dplyr::filter" aria-label="Search the signature database">
+<button type="submit">Search</button>
+</form>
+<div class="code out">
+<span class="line"><b>function</b>dplyr::filter (1.2.1)</span>
+<span class="line"><b>parameters</b>.data, ..., .by = NULL, .preserve = FALSE</span>
+<span class="line"><b>defined in</b>R/filter.R, line 216</span>
+<span class="line"><b>calls</b>UseMethod, filter, check_by_typo, check_not_both_by_and_preserve</span>
+</div>
+<p class="note"><a href="wiki/sigdb/" target="_blank" rel="noopener">Search every name flowR knows</a></p>
+</section>
+</div>
+</div>
+</div>
 <p class="prose">
-	On real-world R scripts, flowR (measured for v2.14.4) needs on average:
+On real-world R scripts, flowR (measured for v2.14.4) needs on average:
 </p>
 <div class="timings">
-		<span class="timing">analyzing a script<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline points="0.0,3.8 1.7,3.2 3.4,2.0 5.1,4.2 6.8,5.9 8.5,4.6 10.2,9.8 11.9,4.3 13.6,3.8 15.3,3.9 17.0,5.0 18.7,4.0 20.4,4.3 22.1,5.3 23.9,4.3 25.6,3.8 27.3,4.4 29.0,3.7 30.7,3.2 32.4,9.7 34.1,11.0 35.8,10.5 37.5,4.2 39.2,3.4 40.9,4.0 42.6,3.3 44.3,5.1 46.0,3.2" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg><b>110 ms</b></span>
-		<span class="timing">linting it<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline points="0.0,8.8 6.6,11.0 13.1,2.8 19.7,2.3 26.3,2.0 32.9,8.7 39.4,8.3 46.0,5.8" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg><b>76 ms</b></span>
-		<span class="timing">slicing for one name<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline points="0.0,4.5 1.7,4.1 3.4,3.8 5.1,2.1 6.8,2.8 8.5,2.0 10.2,4.2 11.9,6.4 13.6,6.3 15.3,6.3 17.0,6.3 18.7,5.6 20.4,7.6 22.1,7.7 23.9,7.6 25.6,7.6 27.3,10.7 29.0,10.4 30.7,10.4 32.4,11.0 34.1,11.0 35.8,11.0 37.5,10.5 39.2,10.2 40.9,10.2 42.6,10.2 44.3,10.4 46.0,10.2" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg><b>0.6 ms</b></span>
+<span class="timing">analyzing a script<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline points="0.0,3.8 1.7,3.2 3.4,2.0 5.1,4.2 6.8,5.9 8.5,4.6 10.2,9.8 11.9,4.3 13.6,3.8 15.3,3.9 17.0,5.0 18.7,4.0 20.4,4.3 22.1,5.3 23.9,4.3 25.6,3.8 27.3,4.4 29.0,3.7 30.7,3.2 32.4,9.7 34.1,11.0 35.8,10.5 37.5,4.2 39.2,3.4 40.9,4.0 42.6,3.3 44.3,5.1 46.0,3.2" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg><b>110 ms</b></span>
+<span class="timing">linting it<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline points="0.0,8.8 6.6,11.0 13.1,2.8 19.7,2.3 26.3,2.0 32.9,8.7 39.4,8.3 46.0,5.8" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg><b>76 ms</b></span>
+<span class="timing">slicing for one name<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline points="0.0,4.5 1.7,4.1 3.4,3.8 5.1,2.1 6.8,2.8 8.5,2.0 10.2,4.2 11.9,6.4 13.6,6.3 15.3,6.3 17.0,6.3 18.7,5.6 20.4,7.6 22.1,7.7 23.9,7.6 25.6,7.6 27.3,10.7 29.0,10.4 30.7,10.4 32.4,11.0 34.1,11.0 35.8,11.0 37.5,10.5 39.2,10.2 40.9,10.2 42.6,10.2 44.3,10.4 46.0,10.2" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg><b>0.6 ms</b></span>
 </div>
 <p class="prose">
-	<a href="wiki/stats/benchmark/" target="_blank" rel="noopener">View the full stats on the benchmark page</a>.
+<a href="wiki/stats/benchmark/" target="_blank" rel="noopener">View the full stats on the benchmark page</a>.
 </p>
-
 <h2>Features</h2>
 <div class="grid washed">
-	<a class="card understand" href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dependencies">
-		<strong><svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h7M4 12h7M4 19h7" /><circle cx="18" cy="5" r="2.2"/><circle cx="18" cy="12" r="2.2"/><circle cx="18" cy="19" r="2.2"/></svg>Dependency analysis</strong>
-		<span>Which packages a project needs, and every file it reads, writes, sources, or plots to.</span>
-	</a>
-	<a class="card understand" href="https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion">
-		<strong><svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h9M4 18h16"/><path d="M17 10.5 20.5 12 17 13.5"/></svg>Program slicing</strong>
-		<span>Backward, for the code that can affect one variable, and forward, for the code it goes on to affect.</span>
-	</a>
-	<a class="card check" href="https://github.com/flowr-analysis/flowr/wiki/Linter">
-		<strong><svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 3.5 19h17z"/><path d="M12 10v4M12 16.6v.2"/></svg>Linting</strong>
-		<span>Unused definitions, absolute paths, dead code, unseeded randomness: findings that need the dataflow, not a regex.</span>
-	</a>
-	<a class="card understand" href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Resolve-Value">
-		<strong><svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="7" r="3"/><path d="M11 7h6M17 7v10h-4"/><circle cx="11" cy="17" r="2.4"/></svg>Value and origin resolution</strong>
-		<span>What a name can hold, which definition it reads, and which function a call really reaches.</span>
-	</a>
-	<a class="card build" href="https://github.com/flowr-analysis/flowr/wiki/Signature-Database">
-		<strong><svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.8"/><path d="M5 6v12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V6"/><path d="M5 12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8"/></svg>Signature Database</strong>
-		<span>Signatures and documentation for every CRAN package, shipped with flowR and resolved without a network.</span>
-	</a>
-	<a class="card build" href="https://github.com/flowr-analysis/flowr/wiki/Analyzer">
-		<strong><svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7 4.5 12 9 17M15 7l4.5 5-4.5 5"/></svg>Programming API</strong>
-		<span>The <code>FlowrAnalyzer</code> API provides you with a simple interface to use flowR programmatically.</span>
-	</a>
+<a class="card understand" href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dependencies">
+<strong><svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h7M4 12h7M4 19h7" /><circle cx="18" cy="5" r="2.2"/><circle cx="18" cy="12" r="2.2"/><circle cx="18" cy="19" r="2.2"/></svg>Dependency analysis</strong>
+<span>Which packages a project needs, and every file it reads, writes, sources, or plots to.</span>
+</a>
+<a class="card understand" href="https://github.com/flowr-analysis/flowr/wiki/Terminology#slicing-criterion">
+<strong><svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h9M4 18h16"/><path d="M17 10.5 20.5 12 17 13.5"/></svg>Program slicing</strong>
+<span>Backward, for the code that can affect one variable, and forward, for the code it goes on to affect.</span>
+</a>
+<a class="card check" href="https://github.com/flowr-analysis/flowr/wiki/Linter">
+<strong><svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 3.5 19h17z"/><path d="M12 10v4M12 16.6v.2"/></svg>Linting</strong>
+<span>Unused definitions, absolute paths, dead code, unseeded randomness: findings that need the dataflow, not a regex.</span>
+</a>
+<a class="card understand" href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Resolve-Value">
+<strong><svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="7" r="3"/><path d="M11 7h6M17 7v10h-4"/><circle cx="11" cy="17" r="2.4"/></svg>Value and origin resolution</strong>
+<span>What a name can hold, which definition it reads, and which function a call really reaches.</span>
+</a>
+<a class="card build" href="https://github.com/flowr-analysis/flowr/wiki/Signature-Database">
+<strong><svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="2.8"/><path d="M5 6v12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8V6"/><path d="M5 12c0 1.5 3.1 2.8 7 2.8s7-1.3 7-2.8"/></svg>Signature Database</strong>
+<span>Signatures and documentation for every CRAN package, shipped with flowR and resolved without a network.</span>
+</a>
+<a class="card build" href="https://github.com/flowr-analysis/flowr/wiki/Analyzer">
+<strong><svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7 4.5 12 9 17M15 7l4.5 5-4.5 5"/></svg>Programming API</strong>
+<span>The <code>FlowrAnalyzer</code> API provides you with a simple interface to use flowR programmatically.</span>
+</a>
 </div>
-
 <h2>Use Cases</h2>
 <div class="cases">
-	<details open>
-		<summary>Inherited code<span class="tags"><span class="tag">comprehension</span><span class="tag">maintenance</span></span></summary>
-		<p>Someone left you a script that produces one number you need. Slice to that name and flowR drops
-			every line that cannot affect it, which is usually most of them. The result still runs.</p>
-		<p class="links">
-			<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Static-Slice" target="_blank" rel="noopener">Static slice query</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/Interface#slicing" target="_blank" rel="noopener">Slicing from the REPL</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dice" target="_blank" rel="noopener">Dicing between two points</a>
-		</p>
-	</details>
-	<details open>
-		<summary>Reproducing a project<span class="tags"><span class="tag">reproducibility</span></span></summary>
-		<p>Before running anything, ask what it will touch: the packages it loads, the files it reads and
-			writes, the plots it draws, and the scripts it sources. No execution, so nothing is overwritten.</p>
-		<p class="links">
-			<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dependencies" target="_blank" rel="noopener">Dependencies query</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Project" target="_blank" rel="noopener">Project query</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/Signature-Database" target="_blank" rel="noopener">Signature Database</a>
-		</p>
-	</details>
-	<details>
-		<summary>Silent mistakes<span class="tags"><span class="tag">code quality</span><span class="tag">correctness</span></span></summary>
-		<p>The script runs, produces a number, and the number is wrong. flowR reads the code the way it will
-			actually execute, so it can point at the parts that will not do what you meant: a path that only
-			exists on your machine, a sample drawn without a seed so nobody can repeat it, a result computed
-			and then never used, a column read after it was dropped, a credential left in the source.</p>
-		<p>It reports these before you run anything, and the same analysis answers what a script writes,
-			which packages it needs, and what a variable can hold at any point.</p>
-		<p class="links">
-			<a href="https://github.com/flowr-analysis/flowr/wiki/Linter" target="_blank" rel="noopener">What it checks for</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API" target="_blank" rel="noopener">Everything you can ask</a>
-		</p>
-	</details>
-	<details>
-		<summary>Where a name comes from<span class="tags"><span class="tag">comprehension</span></span></summary>
-		<p>A variable is reassigned four times and passed through two functions. flowR answers which
-			definition a use actually reads, and which function a call actually reaches, across files.</p>
-		<p class="links">
-			<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Origin" target="_blank" rel="noopener">Origin query</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Resolve-Value" target="_blank" rel="noopener">Resolve value</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph" target="_blank" rel="noopener">The dataflow graph</a>
-		</p>
-	</details>
-	<details>
-		<summary>Data that changes shape<span class="tags"><span class="tag">comprehension</span><span class="tag">correctness</span></span></summary>
-		<p>A pipeline filters, joins and selects until a column is gone. The shape inference reports the
-			rows and columns a data frame can have at every step, without the data.</p>
-		<p class="links">
-			<a href="https://github.com/flowr-analysis/flowr/wiki/Abstract-Interpretation" target="_blank" rel="noopener">Abstract interpretation</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Absint" target="_blank" rel="noopener">Absint query</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Dataframe-Access-Validation" target="_blank" rel="noopener">Data frame access</a>
-		</p>
-	</details>
-	<details>
-		<summary>Tooling of your own<span class="tags"><span class="tag">extensibility</span></span></summary>
-		<p>Every answer on this page is a query. Ask them over the server, the REPL or the
-			<code>FlowrAnalyzer</code> API, and build the editor support your own workflow needs.</p>
-		<p class="links">
-			<a href="https://github.com/flowr-analysis/flowr/wiki/Interface#communicating-with-the-server" target="_blank" rel="noopener">Server protocol</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API" target="_blank" rel="noopener">Query API</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/Analyzer" target="_blank" rel="noopener">The analyzer</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/Search-API" target="_blank" rel="noopener">Search API</a>
-		</p>
-	</details>
+<details open>
+<summary>Inherited code<span class="tags"><span class="tag">comprehension</span><span class="tag">maintenance</span></span></summary>
+<p>Someone left you a script that produces one number you need. Slice to that name and flowR drops
+every line that cannot affect it, which is usually most of them. The result still runs.</p>
+<p class="links">
+<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Static-Slice" target="_blank" rel="noopener">Static slice query</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/Interface#slicing" target="_blank" rel="noopener">Slicing from the REPL</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dice" target="_blank" rel="noopener">Dicing between two points</a>
+</p>
+</details>
+<details open>
+<summary>Reproducing a project<span class="tags"><span class="tag">reproducibility</span></span></summary>
+<p>Before running anything, ask what it will touch: the packages it loads, the files it reads and
+writes, the plots it draws, and the scripts it sources. No execution, so nothing is overwritten.</p>
+<p class="links">
+<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Dependencies" target="_blank" rel="noopener">Dependencies query</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Project" target="_blank" rel="noopener">Project query</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/Signature-Database" target="_blank" rel="noopener">Signature Database</a>
+</p>
+</details>
+<details>
+<summary>Silent mistakes<span class="tags"><span class="tag">code quality</span><span class="tag">correctness</span></span></summary>
+<p>The script runs, produces a number, and the number is wrong. flowR reads the code the way it will
+actually execute, so it can point at the parts that will not do what you meant: a path that only
+exists on your machine, a sample drawn without a seed so nobody can repeat it, a result computed
+and then never used, a column read after it was dropped, a credential left in the source.</p>
+<p>It reports these before you run anything, and the same analysis answers what a script writes,
+which packages it needs, and what a variable can hold at any point.</p>
+<p class="links">
+<a href="https://github.com/flowr-analysis/flowr/wiki/Linter" target="_blank" rel="noopener">What it checks for</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API" target="_blank" rel="noopener">Everything you can ask</a>
+</p>
+</details>
+<details>
+<summary>Where a name comes from<span class="tags"><span class="tag">comprehension</span></span></summary>
+<p>A variable is reassigned four times and passed through two functions. flowR answers which
+definition a use actually reads, and which function a call actually reaches, across files.</p>
+<p class="links">
+<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Origin" target="_blank" rel="noopener">Origin query</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Resolve-Value" target="_blank" rel="noopener">Resolve value</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph" target="_blank" rel="noopener">The dataflow graph</a>
+</p>
+</details>
+<details>
+<summary>Data that changes shape<span class="tags"><span class="tag">comprehension</span><span class="tag">correctness</span></span></summary>
+<p>A pipeline filters, joins and selects until a column is gone. The shape inference reports the
+rows and columns a data frame can have at every step, without the data.</p>
+<p class="links">
+<a href="https://github.com/flowr-analysis/flowr/wiki/Abstract-Interpretation" target="_blank" rel="noopener">Abstract interpretation</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Absint" target="_blank" rel="noopener">Absint query</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/%5BLinting-Rule%5D-Dataframe-Access-Validation" target="_blank" rel="noopener">Data frame access</a>
+</p>
+</details>
+<details>
+<summary>Tooling of your own<span class="tags"><span class="tag">extensibility</span></span></summary>
+<p>Every answer on this page is a query. Ask them over the server, the REPL or the
+<code>FlowrAnalyzer</code> API, and build the editor support your own workflow needs.</p>
+<p class="links">
+<a href="https://github.com/flowr-analysis/flowr/wiki/Interface#communicating-with-the-server" target="_blank" rel="noopener">Server protocol</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API" target="_blank" rel="noopener">Query API</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/Analyzer" target="_blank" rel="noopener">The analyzer</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/Search-API" target="_blank" rel="noopener">Search API</a>
+</p>
+</details>
 </div>
-
 <h2>Ask for Something</h2>
 <div class="reads">
-	<a href="https://github.com/flowr-analysis/flowr/issues/new?template=generic-feature-request.md" target="_blank" rel="noopener">
-		<b>Request a feature</b><span>a question flowR cannot answer yet, or an R idiom it misreads</span></a>
-	<a href="https://github.com/flowr-analysis/flowr/issues/new?template=bug-report.yaml" target="_blank" rel="noopener">
-		<b>Report a bug</b><span>a wrong answer, with the smallest script that shows it</span></a>
-	<a href="https://github.com/flowr-analysis/flowr/issues/new?template=question.yaml" target="_blank" rel="noopener">
-		<b>Ask a question</b><span>how to phrase a query, or whether something is possible at all</span></a>
-	<a href="https://github.com/flowr-analysis/flowr/issues/new?template=linting-rule.yaml" target="_blank" rel="noopener">
-		<b>Suggest a linting rule</b><span>a mistake you keep seeing in R code</span></a>
-	<a href="https://github.com/flowr-analysis/flowr/security/policy" target="_blank" rel="noopener">
-		<b>Report a vulnerability</b><span>privately, through the security policy</span></a>
+<a href="https://github.com/flowr-analysis/flowr/issues/new?template=generic-feature-request.md" target="_blank" rel="noopener">
+<b>Request a feature</b><span>a question flowR cannot answer yet, or an R idiom it misreads</span></a>
+<a href="https://github.com/flowr-analysis/flowr/issues/new?template=bug-report.yaml" target="_blank" rel="noopener">
+<b>Report a bug</b><span>a wrong answer, with the smallest script that shows it</span></a>
+<a href="https://github.com/flowr-analysis/flowr/issues/new?template=question.yaml" target="_blank" rel="noopener">
+<b>Ask a question</b><span>how to phrase a query, or whether something is possible at all</span></a>
+<a href="https://github.com/flowr-analysis/flowr/issues/new?template=linting-rule.yaml" target="_blank" rel="noopener">
+<b>Suggest a linting rule</b><span>a mistake you keep seeing in R code</span></a>
+<a href="https://github.com/flowr-analysis/flowr/security/policy" target="_blank" rel="noopener">
+<b>Report a vulnerability</b><span>privately, through the security policy</span></a>
 </div>
-
 <h2>What flowR Computes</h2>
 <p class="prose">
-	Simplified views of a program: a <a href="https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph" target="_blank" rel="noopener">dataflow
-	graph</a>, a <a href="https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph" target="_blank" rel="noopener">control flow graph</a>, a
-	<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Context" target="_blank" rel="noopener">call graph</a>, a
-	<a href="https://github.com/flowr-analysis/flowr/wiki/Normalized-AST" target="_blank" rel="noopener">normalized syntax tree</a>, and
-	<a href="https://github.com/flowr-analysis/flowr/wiki/Abstract-Interpretation" target="_blank" rel="noopener">abstract values</a> over them.
-	Ask with the <a href="https://github.com/flowr-analysis/flowr/wiki/Query-API" target="_blank" rel="noopener">query API</a>, look around with the
-	<a href="https://github.com/flowr-analysis/flowr/wiki/Search-API" target="_blank" rel="noopener">search API</a>, and start with the
-	<a href="https://github.com/flowr-analysis/flowr/wiki/Overview#using-flowr-as-a-library" target="_blank" rel="noopener"><code>FlowrAnalyzerBuilder</code></a>.
+Simplified views of a program: a <a href="https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph" target="_blank" rel="noopener">dataflow
+graph</a>, a <a href="https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph" target="_blank" rel="noopener">control flow graph</a>, a
+<a href="https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Call-Context" target="_blank" rel="noopener">call graph</a>, a
+<a href="https://github.com/flowr-analysis/flowr/wiki/Normalized-AST" target="_blank" rel="noopener">normalized syntax tree</a>, and
+<a href="https://github.com/flowr-analysis/flowr/wiki/Abstract-Interpretation" target="_blank" rel="noopener">abstract values</a> over them.
+Ask with the <a href="https://github.com/flowr-analysis/flowr/wiki/Query-API" target="_blank" rel="noopener">query API</a>, look around with the
+<a href="https://github.com/flowr-analysis/flowr/wiki/Search-API" target="_blank" rel="noopener">search API</a>, and start with the
+<a href="https://github.com/flowr-analysis/flowr/wiki/Overview#using-flowr-as-a-library" target="_blank" rel="noopener"><code>FlowrAnalyzerBuilder</code></a>.
 </p>
-
 <h2>Contributing</h2>
 <details class="unfold">
 <summary>Expand to see the details</summary>
 <ol class="path">
-	<li><a href="https://github.com/flowr-analysis/flowr/wiki/Onboarding" target="_blank" rel="noopener">Get it running</a>
-		<span>five minutes, and no R needed</span>
-		<em><span>Clone it, run <code>npm ci</code>, then <code>npm run flowr</code>. That is the whole setup, and you do not need R installed: the tree-sitter parser is the default. See <a href="https://github.com/flowr-analysis/flowr/wiki/Setup#-developing-for-flowr" target="_blank" rel="noopener">Developing for flowR</a> for more details.</span></em></li>
-	<li><a href="https://github.com/flowr-analysis/flowr/wiki/Create-Linting-Rules" target="_blank" rel="noopener">Write a linting rule</a>
-		<span>the friendliest first change</span>
-		<em><span>This is where most people start, and it is genuinely small: one file with a name, some config, and a function over the graph. The wiki builds a complete rule with you, tests and all.</span></em></li>
-	<li><a href="https://github.com/flowr-analysis/flowr/wiki/Query-API" target="_blank" rel="noopener">Add a query</a>
-		<span>ask something flowR cannot answer yet</span>
-		<em><span>If you keep asking flowR the same thing by hand, turn it into a query. Everything on this page is one, and yours lands in the REPL, the server and the API at the same time.</span></em></li>
-	<li><a href="https://github.com/flowr-analysis/flowr/wiki/Analyzer" target="_blank" rel="noopener">Propose a plugin</a>
-		<span>teach the analyzer something new</span>
-		<em><span>Plugins decide how versions, sources and configuration are resolved around an analysis. Tell us what you are missing in an issue first, and we will work out the shape with you.</span></em></li>
-	<li><a href="https://github.com/flowr-analysis/flowr/blob/main/.github/CONTRIBUTING.md" target="_blank" rel="noopener">Open a pull request</a>
-		<span>what we look at, and what we do not mind</span>
-		<em><span>Conventional commits, <code>npm run checkup</code> passing, and a sentence about what you changed. Small pull requests get read first, and drafts are welcome if you are unsure.</span></em></li>
+<li><a href="https://github.com/flowr-analysis/flowr/wiki/Onboarding" target="_blank" rel="noopener">Get it running</a>
+<span>five minutes, and no R needed</span>
+<em><span>Clone it, run <code>npm ci</code>, then <code>npm run flowr</code>. That is the whole setup, and you do not need R installed: the tree-sitter parser is the default. See <a href="https://github.com/flowr-analysis/flowr/wiki/Setup#-developing-for-flowr" target="_blank" rel="noopener">Developing for flowR</a> for more details.</span></em></li>
+<li><a href="https://github.com/flowr-analysis/flowr/wiki/Create-Linting-Rules" target="_blank" rel="noopener">Write a linting rule</a>
+<span>the friendliest first change</span>
+<em><span>This is where most people start, and it is genuinely small: one file with a name, some config, and a function over the graph. The wiki builds a complete rule with you, tests and all.</span></em></li>
+<li><a href="https://github.com/flowr-analysis/flowr/wiki/Query-API" target="_blank" rel="noopener">Add a query</a>
+<span>ask something flowR cannot answer yet</span>
+<em><span>If you keep asking flowR the same thing by hand, turn it into a query. Everything on this page is one, and yours lands in the REPL, the server and the API at the same time.</span></em></li>
+<li><a href="https://github.com/flowr-analysis/flowr/wiki/Analyzer" target="_blank" rel="noopener">Propose a plugin</a>
+<span>teach the analyzer something new</span>
+<em><span>Plugins decide how versions, sources and configuration are resolved around an analysis. Tell us what you are missing in an issue first, and we will work out the shape with you.</span></em></li>
+<li><a href="https://github.com/flowr-analysis/flowr/blob/main/.github/CONTRIBUTING.md" target="_blank" rel="noopener">Open a pull request</a>
+<span>what we look at, and what we do not mind</span>
+<em><span>Conventional commits, <code>npm run checkup</code> passing, and a sentence about what you changed. Small pull requests get read first, and drafts are welcome if you are unsure.</span></em></li>
 </ol>
 </details>
-
-
 <footer>
-	<div class="ends">
-		<div>
-			<b>Learn</b>
-			<a href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/Setup" target="_blank" rel="noopener">Setup</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API" target="_blank" rel="noopener">Query API</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/Search-API" target="_blank" rel="noopener">Search API</a>
-			<a href="https://github.com/flowr-analysis/flowr/wiki/Analyzer" target="_blank" rel="noopener">The analyzer</a>
-		</div>
-		<div>
-			<b>Project</b>
-			<a href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener">Source on GitHub</a>
-			<a href="https://github.com/flowr-analysis/flowr/releases" target="_blank" rel="noopener">Releases</a>
-			<a href="doc/" target="_blank" rel="noopener">API docs</a>
-			<a href="https://github.com/flowr-analysis/flowr/security/policy" target="_blank" rel="noopener">Security policy</a>
-			<a href="https://doi.org/10.1145/3763087" target="_blank" rel="noopener">Cite flowR</a>
-		</div>
-		<div>
-			<b>Pages</b>
-			<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
-			<a href="wiki/sigdb/" target="_blank" rel="noopener">Signature DB</a>
-			<a href="wiki/stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
-		</div>
-	</div>
+<div class="ends">
+<div>
+<b>Learn</b>
+<a href="https://github.com/flowr-analysis/flowr/wiki" target="_blank" rel="noopener">Wiki</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/Setup" target="_blank" rel="noopener">Setup</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API" target="_blank" rel="noopener">Query API</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/Search-API" target="_blank" rel="noopener">Search API</a>
+<a href="https://github.com/flowr-analysis/flowr/wiki/Analyzer" target="_blank" rel="noopener">The analyzer</a>
+</div>
+<div>
+<b>Project</b>
+<a href="https://github.com/flowr-analysis/flowr" target="_blank" rel="noopener">Source on GitHub</a>
+<a href="https://github.com/flowr-analysis/flowr/releases" target="_blank" rel="noopener">Releases</a>
+<a href="doc/" target="_blank" rel="noopener">API docs</a>
+<a href="https://github.com/flowr-analysis/flowr/security/policy" target="_blank" rel="noopener">Security policy</a>
+<a href="https://doi.org/10.1145/3763087" target="_blank" rel="noopener">Cite flowR</a>
+</div>
+<div>
+<b>Pages</b>
+<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
+<a href="wiki/sigdb/" target="_blank" rel="noopener">Signature DB</a>
+<a href="wiki/stats/benchmark/" target="_blank" rel="noopener">Benchmarks</a>
+</div>
+</div>
 </footer>
-
 <p class="prose small">
-	Maintained at Ulm University by <a href="https://eagleoutice.github.io/portfolio/" target="_blank" rel="noopener">Florian Sihler</a>,
-	<a href="https://www.uni-ulm.de/in/sp/team/oliver-gerstl/" target="_blank" rel="noopener">Oliver Gerstl</a>
-	and <a href="https://github.com/flowr-analysis/flowr/graphs/contributors" target="_blank" rel="noopener">everyone else who pitched in</a>,
-	free software under the <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPLv3 License</a>.
-	Funded by the German Research Foundation (DFG), grant
-	<a href="https://gepris.dfg.de/gepris/projekt/504226141" target="_blank" rel="noopener">504226141</a>, with a gift from
-	<a href="https://posit.co/" target="_blank" rel="noopener">Posit</a>.
+Maintained at Ulm University by <a href="https://eagleoutice.github.io/portfolio/" target="_blank" rel="noopener">Florian Sihler</a>,
+<a href="https://www.uni-ulm.de/in/sp/team/oliver-gerstl/" target="_blank" rel="noopener">Oliver Gerstl</a>
+and <a href="https://github.com/flowr-analysis/flowr/graphs/contributors" target="_blank" rel="noopener">everyone else who pitched in</a>,
+free software under the <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPLv3 License</a>.
+Funded by the German Research Foundation (DFG), grant
+<a href="https://gepris.dfg.de/gepris/projekt/504226141" target="_blank" rel="noopener">504226141</a>, with a gift from
+<a href="https://posit.co/" target="_blank" rel="noopener">Posit</a>.
 </p>
-
-<p class="updated">Last updated 2026-08-25, 12:56</p>
-
+<p class="updated">Last updated 2026-08-25, 16:57</p>
 </main>
 <div id="tip" role="tooltip" aria-hidden="true"></div>
 <script>
@@ -964,6 +952,15 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 		};
 		tag.addEventListener('pointerenter', name);
 		tag.addEventListener('focus', name);
+	})();
+</script>
+<script>
+	(function() {
+		if(!/(^|\/)index\.html$/.test(location.pathname)) { return; }
+		for(const a of document.querySelectorAll('a[href$="/"]')) {
+			const href = a.getAttribute('href');
+			if(!/^[a-z]+:|^\/\//i.test(href)) { a.setAttribute('href', href + 'index.html'); }
+		}
 	})();
 </script>
 </body>

@@ -10,7 +10,6 @@ import { type Enrichment, type EnrichmentElementArguments, enrichElement } from 
 import { type Mapper, type MapperArguments, map } from './search-mappers';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 
-
 /**
  * This is a union of all possible transformer node types
  */
@@ -65,16 +64,14 @@ function compareByLocation({ node: a }: FlowrSearchElement<ParentInformation>, {
 	return b.location ? 1 : 0;
 }
 
+/** The element `keep` prefers over every other, `undefined` for an empty set. */
+function pickByLocation(elements: FlowrSearchElement<ParentInformation>[], keep: (comparison: number) => boolean): FlowrSearchElement<ParentInformation> | undefined {
+	return elements.reduce<FlowrSearchElement<ParentInformation> | undefined>(
+		(acc, cur) => acc !== undefined && keep(compareByLocation(acc, cur)) ? acc : cur, undefined);
+}
+
 function getFirstByLocation(elements: FlowrSearchElement<ParentInformation>[]): FlowrSearchElement<ParentInformation> | undefined {
-	if(elements.length === 0) {
-		return undefined;
-	}
-	return elements.reduce((acc, cur) => {
-		if(acc === undefined) {
-			return cur;
-		}
-		return compareByLocation(acc, cur) < 0 ? acc : cur;
-	}, undefined as unknown as FlowrSearchElement<ParentInformation>);
+	return pickByLocation(elements, comparison => comparison < 0);
 }
 
 /* later we can add something like sort partially to get the first k elements */
@@ -83,15 +80,12 @@ function sortFully(elements: FlowrSearchElement<ParentInformation>[]): FlowrSear
 }
 
 function getLastByLocation(elements: FlowrSearchElement<ParentInformation>[]): FlowrSearchElement<ParentInformation> | undefined {
-	if(elements.length === 0) {
-		return undefined;
-	}
-	return elements.reduce((acc, cur) => {
-		if(acc === undefined) {
-			return cur;
-		}
-		return compareByLocation(acc, cur) > 0 ? acc : cur;
-	}, undefined as unknown as FlowrSearchElement<ParentInformation>);
+	return pickByLocation(elements, comparison => comparison > 0);
+}
+
+/** wraps the picked element, dropping it if there is none (e.g., when picking from an empty set) */
+function asSingleton(element: FlowrSearchElement<ParentInformation> | undefined): FlowrSearchElement<ParentInformation>[] {
+	return element === undefined ? [] : [element];
 }
 
 /** If we already have no more elements, cascade will not add any but keep the empty elements, otherwise it will now be NewElements */
@@ -101,17 +95,17 @@ type CascadeEmpty<Elements extends FlowrSearchElement<ParentInformation>[], NewE
 function getFirst<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
 	data: ReadonlyFlowrAnalysisProvider, elements: FSE
 ): CascadeEmpty<Elements, [Elements[0]]> {
-	return elements.mutate(e => [getFirstByLocation(e)] as Elements) as unknown as CascadeEmpty<Elements, [Elements[0]]>;
+	return elements.mutate(e => asSingleton(getFirstByLocation(e)) as Elements) as unknown as CascadeEmpty<Elements, [Elements[0]]>;
 }
 
 function getLast<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
 	data: ReadonlyFlowrAnalysisProvider, elements: FSE): CascadeEmpty<Elements, [LastOfArray<Elements>]> {
-	return elements.mutate(e => [getLastByLocation(e)] as Elements) as unknown as CascadeEmpty<Elements, [LastOfArray<Elements>]>;
+	return elements.mutate(e => asSingleton(getLastByLocation(e)) as Elements) as unknown as CascadeEmpty<Elements, [LastOfArray<Elements>]>;
 }
 
 function getIndex<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
 	data: ReadonlyFlowrAnalysisProvider, elements: FSE, { index }: { index: number }): CascadeEmpty<Elements, [Elements[number]]> {
-	return elements.mutate(e => [sortFully(e)[index]] as Elements) as unknown as CascadeEmpty<Elements, [Elements[number]]>;
+	return elements.mutate(e => asSingleton(sortFully(e)[index]) as Elements) as unknown as CascadeEmpty<Elements, [Elements[number]]>;
 }
 
 function getSelect<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
@@ -186,10 +180,10 @@ function getUnique<Elements extends FlowrSearchElement<ParentInformation>[], FSE
 	return elements.mutate(e => {
 		const seen = new Set();
 		return e.filter(cur => {
-			if(seen.has(cur.node.id)) {
+			if(seen.has(cur.node.info.id)) {
 				return false;
 			}
-			seen.add(cur.node.id);
+			seen.add(cur.node.info.id);
 			return true;
 		}) as Elements;
 	}) as unknown as CascadeEmpty<Elements, Elements>;

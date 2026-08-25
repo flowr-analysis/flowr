@@ -10,7 +10,7 @@ import { FunctionCallVertex } from '../../dataflow/graph/vertex';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { guard, isNotUndefined } from '../../util/assert';
 import { type Origin, OriginType } from '../../dataflow/origin/dfg-get-origin';
-import { NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import type { Query, QueryResult } from '../../queries/query';
 import { type CfgSimplificationPassName, cfgFindAllReachable, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
@@ -26,7 +26,6 @@ import { Dataflow } from '../../dataflow/graph/df-helper';
 import type { KnownRoxygenTags, RoxygenTag } from '../../r-bridge/roxygen2/roxygen-ast';
 import { FlowrSearchBuilder } from '../flowr-search-builder';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
 	/**
@@ -176,6 +175,34 @@ function isReachedByControlFlow(node: RNodeWithParent, alive: ReadonlySet<NodeId
 }
 
 /**
+ * One entry per distinct call target. A call to a package export is modelled by the built-in flowR states for
+ * the very same name, so the export and that built-in reach us as two targets naming one function: the
+ * qualified identifier wins, as it is the one that says where the function came from.
+ */
+function dedupeCallTargets(
+	targets: readonly (FlowrSearchElement<ParentInformation> | string)[]
+): (FlowrSearchElement<ParentInformation> | string)[] {
+	const byName = new Map<string, number>();
+	const out: (FlowrSearchElement<ParentInformation> | string)[] = [];
+	for(const target of targets) {
+		if(typeof target !== 'string') {
+			out.push(target);
+			continue;
+		}
+		const id = Identifier.parse(target);
+		const bare = String(Identifier.getName(id));
+		const at = byName.get(bare);
+		if(at === undefined) {
+			byName.set(bare, out.length);
+			out.push(target);
+		} else if(Identifier.getNamespace(id) !== undefined) {
+			out[at] = target;
+		}
+	}
+	return out;
+}
+
+/**
  * The registry of enrichments that are currently supported by the search.
  * See {@link FlowrSearchBuilder.with} for more information on how to apply enrichments.
  */
@@ -195,7 +222,7 @@ export const Enrichments = {
 			if(FunctionCallVertex.is(callVertex)) {
 				const origins = Dataflow.origin(df.graph, callVertex.id);
 				if(!origins || origins.length === 0) {
-					const name = recoverName(callVertex.id, n.idMap);
+					const name = NodeId.recoverName(callVertex.id, n.idMap);
 					// we don't have origin information here, so pass undefined
 					content.targets = [qualifyIdentifier(undefined, name)] as (FlowrSearchElement<ParentInformation> | string)[];
 				} else {
@@ -206,7 +233,7 @@ export const Enrichments = {
 								if(NodeId.isBuiltIn(o.id)) {
 									// a built-in target (e.g. a materialized package export from `library()`) has no
 									// user-code node, so surface it as a built-in identifier (see `onlyBuiltin` below)
-									const name = recoverName(o.id, n.idMap);
+									const name = NodeId.recoverName(o.id, n.idMap);
 									return qualifyIdentifier([o], name) ?? String(o.id);
 								} else {
 									return { node: n.idMap.get(o.id) as RNodeWithParent } satisfies FlowrSearchElement<ParentInformation>;
@@ -219,11 +246,15 @@ export const Enrichments = {
 						}
 					}).filter(isNotUndefined);
 					if(content.targets.length === 0) {
-						const name = recoverName(callVertex.id, n.idMap);
+						const name = NodeId.recoverName(callVertex.id, n.idMap);
 						content.targets = [qualifyIdentifier(origins, name)] as (FlowrSearchElement<ParentInformation> | string)[];
 					}
 				}
 			}
+
+			/* a package export and the built-in flowR models it with are one target seen twice, so keep the
+			   qualified identifier and drop the bare name for it */
+			content.targets = dedupeCallTargets(content.targets);
 
 			// keep only calls whose targets are all built-in; library/package exports arrive as an identifier
 			// targets and count as built-in, a target with a `node` is user code and disqualifies the call

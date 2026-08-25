@@ -20,7 +20,8 @@ import { statisticsFunctions } from '../src/queries/catalog/dependencies-query/f
 import { BasePrimitiveTopics, DefaultBuiltinConfig, statedSignatures, type StatedSignature } from '../src/dataflow/environments/default-builtin-config';
 import { Identifier, PkgName } from '../src/dataflow/environments/identifier';
 import { baseRExportOwner } from '../src/util/r-base-packages';
-import { S4GroupOfMember } from '../src/dataflow/environments/group-generics';
+import { RGroupGenerics, S4GroupOfMember } from '../src/dataflow/environments/group-generics';
+import { RBasePackageStore } from '../src/data/r-base-packages.generated';
 
 export interface PackageEntry {
 	readonly name:      string;
@@ -51,7 +52,9 @@ export interface SigIndex {
 	readonly kinds:          ReadonlyMap<string, string[]>;
 	/** what flowR states about the functions it defines itself, see {@link statedSignatures} */
 	readonly stated:         ReadonlyMap<string, StatedSignature[]>;
-	/** the formals the database records for base R, `name -> [package, parameters][]`, see {@link baseFormals} */
+	/** every name some package records as a generic, which is what makes a dotted name a method of it */
+	readonly generics:       ReadonlySet<string>;
+	/** the formals the database records for base R, `name -> [package, parameters][]`; only base R fits on a page */
 	readonly formals:        ReadonlyMap<string, [pkg: string, params: string][]>;
 	/**
 	 * `package::alias -> topic` for every documented base R name, the topic empty where it is the name itself.
@@ -128,6 +131,9 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 	};
 	const onCran = await currentOnCran();
 	const all: PackageEntry[] = [];
+	/* the names something dispatches on, so `is.datacggm` is not read as a method of `is`, which dispatches
+	   nothing. R's own are known; a package's are whatever the database records as a generic */
+	const generics = new Set<string>([...RBasePackageStore.generics, ...Object.keys(RGroupGenerics)]);
 	for(const name of db.packageNames()) {
 		const library = db.lookup(name);
 		if(library === undefined) {
@@ -148,6 +154,9 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 				const noLocation = fn.file === undefined && fn.line < 0;
 				if(fn.file !== undefined && !files.has(fn.file)) {
 					files.set(fn.file, files.size);
+				}
+				if(fn.props.includes('generic')) {
+					generics.add(fn.name);
 				}
 				exports.set(fn.name, {
 					flags:  fn.props.map(p => letters[p] ?? '').join('') + (noLocation ? 'v' : ''),
@@ -192,13 +201,21 @@ export async function readSigIndex(): Promise<SigIndex | undefined> {
 	const baseNames = db.packageNames().filter(name => db.isBaseR(name));
 	const { topics, complete: topicsComplete } = baseTopics(baseNames);
 	db.close();
+	const stated = statedWithRealPackages(new Set(baseNames), topics, topicsComplete);
+	/* flowR labels every name R dispatches on, which is where the internal generics (`c`, `as.character`) come from */
+	for(const [name, entries] of stated) {
+		if(entries.some(entry => entry.props.includes('generic'))) {
+			generics.add(name);
+		}
+	}
 	all.sort((a, b) => Number(b.base) - Number(a.base) || b.downloads - a.downloads);
 	const newest = all.reduce((latest, p) => p.latest > latest ? p.latest : latest, 0);
 	return {
 		packages: all,
+		generics,
 		names:    new Set(all.flatMap(p => [...p.exports.keys()])).size,
 		kinds:    builtInKinds(),
-		stated:   statedWithRealPackages(new Set(baseNames), topics, topicsComplete),
+		stated,
 		formals,
 		topics,
 		topicsComplete,

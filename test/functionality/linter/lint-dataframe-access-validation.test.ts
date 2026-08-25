@@ -2,8 +2,10 @@ import { describe } from 'vitest';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import type { DataFrameAccessValidationResult } from '../../../src/linter/rules/dataframe-access-validation';
 import { assertLinter } from '../_helper/linter';
-import { withTreeSitter } from '../_helper/shell';
+import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { SourceRange } from '../../../src/util/range';
+
+assumeLoadedPackages('dplyr', 'magrittr');
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('Data frame access validation', () => {

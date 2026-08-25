@@ -89,6 +89,23 @@ export const Identifier = {
 		return ids;
 	},
 	/**
+	 * The names as every one of the given packages exports them, for a function one package owns and others
+	 * re-export unchanged (`dplyr::%>%` is `magrittr::%>%`).
+	 * @example
+	 * ```ts
+	 * Identifier.fromAllIn(['magrittr', 'dplyr'], ['%>%']) // [['%>%', 'magrittr'], ['%>%', 'dplyr']]
+	 * ```
+	 */
+	fromAllIn(this: void, namespaces: readonly BrandedNamespace[], names: readonly BrandedIdentifier[]): Identifier[] {
+		const ids: Identifier[] = [];
+		for(const namespace of namespaces) {
+			for(const name of names) {
+				ids.push([name, namespace]);
+			}
+		}
+		return ids;
+	},
+	/**
 	 * Verify whether an unknown element has a valid identifier shape!
 	 */
 	is(this: void, id: unknown): id is Identifier {
@@ -259,7 +276,8 @@ export const Identifier = {
 				} else if(Identifier.getNamespace(origin.fn.name) !== undefined) {
 					return origin.fn.name;
 				}
-			} else {
+			} else if(!NodeId.isBuiltIn(origin.id)) {
+				/* a read that lands on a built-in (e.g. the constant `pi`) is no user definition and must not block step 3 */
 				sawUserDefinition = true;
 			}
 		}
@@ -304,73 +322,153 @@ export const enum PkgName {
 	Graphics    = 'graphics',
 	GrDevices   = 'grDevices',
 	Methods     = 'methods',
+	Parallel    = 'parallel',
 	Stats       = 'stats',
 	Utils       = 'utils',
 	/* CRAN / third-party */
+	AnnotationHub = 'AnnotationHub',
+	Ape          = 'ape',
+	Arrow        = 'arrow',
 	AssertThat   = 'assertthat',
+	Audio        = 'audio',
+	Av           = 'av',
+	AwsS3        = 'aws.s3',
 	Box          = 'box',
+	Callr        = 'callr',
 	Car          = 'car',
+	Claddis      = 'Claddis',
 	Cli          = 'cli',
 	CohortBuilder = 'cohortBuilder',
+	Cowplot      = 'cowplot',
+	Curl         = 'curl',
 	DataTable    = 'data.table',
 	Dbi          = 'DBI',
 	DbPlyr       = 'dbplyr',
 	Devtools     = 'devtools',
+	DiagrammeR   = 'DiagrammeR',
+	DoFuture     = 'doFuture',
+	DoMc         = 'doMC',
+	DoParallel   = 'doParallel',
+	DoSnow       = 'doSNOW',
 	Dplyr        = 'dplyr',
+	EbImage      = 'EBImage',
+	ExperimentHub = 'ExperimentHub',
+	Expss        = 'expss',
+	FastUtils    = 'FastUtils',
+	Feather      = 'feather',
+	Foreach      = 'foreach',
+	Forecats     = 'forcats',
+	Foreign      = 'foreign',
 	Fs           = 'fs',
+	Fst          = 'fst',
 	Functools    = 'functools',
+	Furrr        = 'furrr',
+	Future       = 'future',
+	FutureApply  = 'future.apply',
+	FutureCallr  = 'future.callr',
+	Geomorph     = 'geomorph',
 	GgPlot2      = 'ggplot2',
+	Gifski       = 'gifski',
+	Glue         = 'glue',
+	GoogleCloudStorageR = 'googleCloudStorageR',
+	GoogleDrive  = 'googledrive',
+	Haven        = 'haven',
 	Here         = 'here',
 	Hmisc        = 'Hmisc',
 	HtmlTools    = 'htmltools',
 	HtmlWidgets  = 'htmlwidgets',
+	Httr         = 'httr',
+	Imager       = 'imager',
 	Import       = 'import',
 	Inferference = 'inferference',
 	Janitor      = 'janitor',
+	Jpeg         = 'jpeg',
 	Jsonlite     = 'jsonlite',
 	Lattice      = 'lattice',
+	Lim          = 'LIM',
 	LmTest       = 'lmtest',
 	Magick       = 'magick',
 	Magrittr     = 'magrittr',
+	Maptools     = 'maptools',
+	Meltr        = 'meltr',
+	Mirai        = 'mirai',
 	Msgr         = 'msgr',
 	Multcomp     = 'multcomp',
+	Ncdf4        = 'ncdf4',
 	NorTest      = 'nortest',
+	OpenImageR   = 'OpenImageR',
+	OpenXlsx     = 'openxlsx',
+	Parallelly   = 'parallelly',
 	PkgLoad      = 'pkgload',
 	Plyr         = 'plyr',
+	Png          = 'png',
 	Processx     = 'processx',
+	Promises     = 'promises',
 	Purrr        = 'purrr',
-	Ragg         = 'ragg',
+	Qs           = 'qs',
 	R6           = 'R6',
+	Ragg         = 'ragg',
+	Raster       = 'raster',
 	RasterPdf    = 'rasterpdf',
+	Rbdat        = 'rBDAT',
 	Rcpp         = 'Rcpp',
+	RcppParallel = 'RcppParallel',
+	Rcurl        = 'RCurl',
+	ReadOds      = 'readODS',
+	Readr        = 'readr',
+	Readstata13  = 'readstata13',
+	Readxl       = 'readxl',
 	Remotes      = 'remotes',
+	Rgdal        = 'rgdal',
+	Rhdf5        = 'rhdf5',
+	Rio          = 'rio',
 	Rlang        = 'rlang',
+	Rmatlab      = 'R.matlab',
 	RmethodsS3   = 'R.methodsS3',
+	Rnetcdf      = 'RNetCDF',
 	Roo          = 'R.oo',
+	RsConnect    = 'rsconnect',
 	Rstatix      = 'rstatix',
 	RstudioApi   = 'rstudioapi',
 	Rutils       = 'R.utils',
+	Rvest        = 'rvest',
 	S7           = 'S7',
+	Seewave      = 'seewave',
+	Seqinr       = 'seqinr',
+	Sf           = 'sf',
 	Shiny        = 'shiny',
 	ShinyCohortBuilder = 'shinyCohortBuilder',
 	ShinyFiles   = 'shinyFiles',
 	ShinyJs      = 'shinyjs',
+	SimPhe       = 'SimPhe',
 	Soda         = 'SoDA',
+	Sourcetools  = 'sourcetools',
 	Sqldf        = 'sqldf',
+	Stars        = 'stars',
+	Stringr      = 'stringr',
 	SvDialogs    = 'svDialogs',
+	Svglite      = 'svglite',
 	Sys          = 'sys',
 	Tcltk        = 'tcltk',
+	Terra        = 'terra',
 	Testthat     = 'testthat',
-	TidyR        = 'tidyr',
 	Tibble       = 'tibble',
-	Glue         = 'glue',
-	Stringr      = 'stringr',
+	TidyR        = 'tidyr',
+	Tiff         = 'tiff',
 	TinyPlot     = 'tinyplot',
 	TryCatchLog  = 'tryCatchLog',
 	Tseries      = 'tseries',
+	TuneR        = 'tuneR',
+	UseThis      = 'usethis',
+	VisNetwork   = 'visNetwork',
+	Vroom        = 'vroom',
 	Withr        = 'withr',
-	Forecats     = 'forcats',
-	Readr        = 'readr'
+	Writexl      = 'writexl',
+	Xfun         = 'xfun',
+	XlConnect    = 'XLConnect',
+	Xlsx         = 'xlsx',
+	Xml2         = 'xml2',
+	Yaml         = 'yaml',
 }
 
 /**

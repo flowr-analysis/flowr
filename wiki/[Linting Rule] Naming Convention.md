@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[src/documentation/wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts)' on 2026-08-16, 06:15:24 UTC (v2.13.16), so please do not edit it directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-24, 13:26:44 UTC (v2.14.3), please do not edit directly._
 <h2 id="naming-convention">Naming Convention&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the style of the code. For example, inconsistent naming conventions, or missing or incorrect formatting."><a href='#style'>![style](https://img.shields.io/badge/style-teal) </a></span>
@@ -7,7 +7,7 @@ _<span title="an overview of flowR's linter">Generated</span> from '[src/documen
 This rule is a `over-approximative` rule.
  
 Checks whether the symbols conform to a certain naming convention\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/naming-convention.ts#L206">src/linter/rules/naming-convention.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/naming-convention.ts#L213">src/linter/rules/naming-convention.ts</a>._
 
 
 ### Configuration
@@ -15,9 +15,9 @@ _This linting rule is implemented in <a href="https://github.com/flowr-analysis/
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `naming-convention` rule accepts the following configuration options:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/naming-convention.ts#L33"><code><span title="which casing convention to enforce">caseing</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/naming-convention.ts#L32"><code><span title="which casing convention to enforce">caseing</span></code></a>\
 which casing convention to enforce
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/naming-convention.ts#L36"><code><span title="if true non alphabetic characters are ignored">ignoreNonAlpha</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/naming-convention.ts#L35"><code><span title="if true non alphabetic characters are ignored">ignoreNonAlpha</span></code></a>\
 if true non alphabetic characters are ignored
 
 ### Examples
@@ -46,13 +46,13 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (2 ms)\
+Query: **linter** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Naming Convention** (naming-convention): _no findings_\
-_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
+_All queries together required ≈1 ms (1ms accuracy, total 1 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _2.1 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _1.0 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -69,17 +69,17 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ".meta": {
           "numMatches": 1,
           "numBreak": 0,
-          "searchTimeMs": 2,
+          "searchTimeMs": 1,
           "processTimeMs": 0
         }
       }
     },
     ".meta": {
-      "timing": 2
+      "timing": 1
     }
   },
   ".meta": {
-    "timing": 2
+    "timing": 1
   }
 }
 ```

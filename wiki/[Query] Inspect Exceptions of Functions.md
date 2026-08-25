@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-20, 22:53:36 UTC (v2.14.1), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-24, 07:43:32 UTC (v2.14.3), please do not edit directly._
 <h2 id="Inspect Exceptions of Functions Query">Inspect Exceptions of Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions throw exceptions (known to flowR)\
@@ -38,17 +38,16 @@ the following query returns the information for all identified function definiti
 
 _Results (prettified and summarized):_
 
-Query: **inspect-exception** (4ms)\
+Query: **inspect-exception** (7ms)\
 &nbsp;&nbsp;- Function **20** (1.12-4.1) throws exceptions:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Exception maybe thrown at id **11** "stop" (2.13-35, cds: true:2.3-3.14)\
 &nbsp;&nbsp;- Function **40** (8.13-30) does not throw exceptions.\
-&nbsp;&nbsp;- Function **44** (5.13-10.1) throws exceptions:\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- Exception maybe thrown at id **11** "stop" (2.13-35, cds: true:2.3-3.14)\
-_All queries together required ≈4 ms (1ms accuracy, total 5 ms)_
+&nbsp;&nbsp;- Function **44** (5.13-10.1) does not throw exceptions.\
+_All queries together required ≈9 ms (1ms accuracy, total 9 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _5.0 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _9.5 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -60,7 +59,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "inspect-exception": {
     ".meta": {
-      "timing": 4
+      "timing": 7
     },
     "exceptions": {
       "20": [
@@ -75,21 +74,11 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         }
       ],
       "40": [],
-      "44": [
-        {
-          "id": 11,
-          "cds": [
-            {
-              "id": 18,
-              "when": true
-            }
-          ]
-        }
-      ]
+      "44": []
     }
   },
   ".meta": {
-    "timing": 4
+    "timing": 9
   }
 }
 ```
@@ -121,7 +110,7 @@ safeFail <- function(x) {
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _3.4 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _6.4 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -217,7 +206,7 @@ subgraph "flow-40" [function 40]
 end
     41(["`*#91;RArgument#93;* **error**
       *8.5-9* (**id: 41**)`"])
-    42[["`*#91;RFunctionCall#93;* base#58;#58;**tryCatch**
+    42[["`*#91;RFunctionCall#93;* **tryCatch**
       *6.3-9.3* (**id: 42**)
     arg: (31, error (41))`"]]
     built-in:tryCatch["`Built-In:

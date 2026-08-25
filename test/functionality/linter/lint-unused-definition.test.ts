@@ -45,6 +45,7 @@ print(x)`,
 				'`[.foo` <- function(x, i) { x[i] }',
 				'as.character.foo <- function(x, ...) { x }',
 				'Ops.foo <- function(e1, e2) { e1 + e2 }\nx <- structure(1, class = "foo")\nprint(x + 1)',
+				'Math.foo <- function(x, ...) { x }\nx <- structure(1, class = "foo")\nprint(round(x, 2))',
 				/* S3 method for a project-local generic that is dispatched somewhere - not unused */
 				'myg <- function(x) UseMethod("myg")\nmyg.foo <- function(x) x\nz <- structure(1, class = "foo")\nmyg(z)',
 				/* R package lifecycle hook called by package machinery - not unused */

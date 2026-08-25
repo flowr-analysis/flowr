@@ -119,14 +119,7 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
  * does not otherwise visit the function-definition vertex itself (nothing within the body links to it).
  */
 export function findEnclosingFunctionDefinition(id: NodeId, idMap: AstIdMap): NodeId | undefined {
-	let node = idMap.get(id);
-	while(node !== undefined) {
-		if(RFunctionDefinition.is(node)) {
-			return node.info.id;
-		}
-		node = node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
-	}
-	return undefined;
+	return RNode.findEnclosing(id, idMap, RFunctionDefinition.is);
 }
 
 /**

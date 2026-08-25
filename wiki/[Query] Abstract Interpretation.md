@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-25, 11:00:21 UTC (v2.14.4), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-25, 11:40:13 UTC (v2.14.4), please do not edit directly._
 <h2 id="Abstract Interpretation Query">Abstract Interpretation Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the abstract values inferred for every expression or at specific locations.\
@@ -21,15 +21,15 @@ This query infers all shapes of dataframes within the code using abstract interp
 
 _Results (prettified and summarized):_
 
-Query: **absint** (8 ms)\
+Query: **absint** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ $7: (colnames: [{"id"}, {}], cols: [1, 1], rows: [3, 3])\
 &nbsp;&nbsp;&nbsp;╰ $14: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])\
 &nbsp;&nbsp;&nbsp;╰ $0: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])\
-_All queries together required ≈13 ms (1ms accuracy, total 13 ms)_
+_All queries together required ≈5 ms (1ms accuracy, total 6 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _13.4 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _6.0 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -41,7 +41,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "absint": {
     ".meta": {
-      "timing": 8
+      "timing": 2
     },
     "result": {
       "domain": {
@@ -61,7 +61,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 13
+    "timing": 5
   }
 }
 ```
@@ -85,7 +85,7 @@ df <- data.frame(id = 1:3) |>
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _3.8 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _2.0 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -147,35 +147,36 @@ filter`"]
     6 -->|"reads"| 5
     6 -.->|"flow"| 7
     linkStyle 7 stroke:gray,color:gray;
+    7 -->|"reads"| 5
     7 -->|"reads, arg"| 6
     7 -.->|"flow"| 10
-    linkStyle 9 stroke:gray,color:gray;
+    linkStyle 10 stroke:gray,color:gray;
     7 -.->|"reads, calls"| built-in:data.frame
-    linkStyle 10 stroke:gray;
+    linkStyle 11 stroke:gray;
     10 -.->|"flow"| 12
-    linkStyle 11 stroke:gray,color:gray;
+    linkStyle 12 stroke:gray,color:gray;
     10 -->|"reads"| 7
     12 -.->|"flow"| 14
-    linkStyle 13 stroke:gray,color:gray;
+    linkStyle 14 stroke:gray,color:gray;
     14 -->|"reads, arg, non-standard-evaluation"| 10
     14 -->|"reads, arg"| 12
     14 -.->|"flow"| 15
-    linkStyle 16 stroke:gray,color:gray;
+    linkStyle 17 stroke:gray,color:gray;
     14 -->|"reads, arg"| 7
     14 -.->|"reads, calls"| built-in:filter
-    linkStyle 18 stroke:gray;
+    linkStyle 19 stroke:gray;
     15 -->|"arg"| 7
     15 -->|"returns, arg"| 14
     15 -.->|"flow"| 0
-    linkStyle 21 stroke:gray,color:gray;
+    linkStyle 22 stroke:gray,color:gray;
     15 -.->|"reads, calls"| built-in:__
-    linkStyle 22 stroke:gray;
+    linkStyle 23 stroke:gray;
     0 -->|"defined-by, flow"| 16
     0 -->|"defined-by"| 15
     16 -->|"reads, arg"| 15
     16 -->|"returns, arg"| 0
     16 -.->|"reads, calls"| built-in:_-
-    linkStyle 27 stroke:gray;
+    linkStyle 28 stroke:gray;
 ```
 
 	
@@ -207,14 +208,14 @@ The query optionally also accepts slice criteria to narrow the results to specif
 
 _Results (prettified and summarized):_
 
-Query: **absint** (2 ms)\
+Query: **absint** (1 ms)\
 &nbsp;&nbsp;&nbsp;╰ 1@df: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])\
 &nbsp;&nbsp;&nbsp;╰ 1@data.frame: (colnames: [{"id"}, {}], cols: [1, 1], rows: [3, 3])\
-_All queries together required ≈5 ms (1ms accuracy, total 5 ms)_
+_All queries together required ≈3 ms (1ms accuracy, total 3 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _5.4 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _3.0 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -226,7 +227,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "absint": {
     ".meta": {
-      "timing": 2
+      "timing": 1
     },
     "result": [
       [
@@ -270,7 +271,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     ]
   },
   ".meta": {
-    "timing": 5
+    "timing": 3
   }
 }
 ```
@@ -294,7 +295,7 @@ df <- data.frame(id = 1:3) |>
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _3.2 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _2.5 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -356,35 +357,36 @@ filter`"]
     6 -->|"reads"| 5
     6 -.->|"flow"| 7
     linkStyle 7 stroke:gray,color:gray;
+    7 -->|"reads"| 5
     7 -->|"reads, arg"| 6
     7 -.->|"flow"| 10
-    linkStyle 9 stroke:gray,color:gray;
+    linkStyle 10 stroke:gray,color:gray;
     7 -.->|"reads, calls"| built-in:data.frame
-    linkStyle 10 stroke:gray;
+    linkStyle 11 stroke:gray;
     10 -.->|"flow"| 12
-    linkStyle 11 stroke:gray,color:gray;
+    linkStyle 12 stroke:gray,color:gray;
     10 -->|"reads"| 7
     12 -.->|"flow"| 14
-    linkStyle 13 stroke:gray,color:gray;
+    linkStyle 14 stroke:gray,color:gray;
     14 -->|"reads, arg, non-standard-evaluation"| 10
     14 -->|"reads, arg"| 12
     14 -.->|"flow"| 15
-    linkStyle 16 stroke:gray,color:gray;
+    linkStyle 17 stroke:gray,color:gray;
     14 -->|"reads, arg"| 7
     14 -.->|"reads, calls"| built-in:filter
-    linkStyle 18 stroke:gray;
+    linkStyle 19 stroke:gray;
     15 -->|"arg"| 7
     15 -->|"returns, arg"| 14
     15 -.->|"flow"| 0
-    linkStyle 21 stroke:gray,color:gray;
+    linkStyle 22 stroke:gray,color:gray;
     15 -.->|"reads, calls"| built-in:__
-    linkStyle 22 stroke:gray;
+    linkStyle 23 stroke:gray;
     0 -->|"defined-by, flow"| 16
     0 -->|"defined-by"| 15
     16 -->|"reads, arg"| 15
     16 -->|"returns, arg"| 0
     16 -.->|"reads, calls"| built-in:_-
-    linkStyle 27 stroke:gray;
+    linkStyle 28 stroke:gray;
 ```
 
 	

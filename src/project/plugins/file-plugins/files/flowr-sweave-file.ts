@@ -40,7 +40,15 @@ export class FlowrSweaveFile extends FlowrFile {
 		return this.data.content;
 	}
 
-	public static from(file: FlowrFileProvider<string> | FlowrSweaveFile): FlowrSweaveFile {
+	/**
+	 * Lifts a file to a {@link FlowrSweaveFile}, reusing it if already one and assigning roles.
+	 * @param file - The file to lift or return if already a Sweave file
+	 * @param role - An optional role to assign to the file
+	 */
+	public static from(file: FlowrFileProvider<string> | FlowrSweaveFile, role?: FileRole): FlowrSweaveFile {
+		if(role) {
+			file.assignRole(role);
+		}
 		return file instanceof FlowrSweaveFile ? file : new FlowrSweaveFile(file);
 	}
 }

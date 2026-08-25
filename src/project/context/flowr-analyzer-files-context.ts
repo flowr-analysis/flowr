@@ -23,13 +23,18 @@ import { globMatcher } from '../../util/glob';
 import type { FlowrNewsFile } from '../plugins/file-plugins/files/flowr-news-file';
 import type { FlowrNamespaceFile } from '../plugins/file-plugins/files/flowr-namespace-file';
 import type { FlowrManifestFile } from '../plugins/file-plugins/files/flowr-manifest-files';
+import type {
+	FlowrRdFile, FlowrRdIndexFile, FlowrRdMacroFile, FlowrRdMetaFile, FlowrRdTopicIndexFile, RdIndex
+} from '../plugins/file-plugins/files/flowr-rd-file';
+import { FlowrDataListFile, rdIndexOf } from '../plugins/file-plugins/files/flowr-rd-file';
+import type { SysdataObject } from '../plugins/file-plugins/files/flowr-sysdata-file';
+import { FlowrSysdataFile } from '../plugins/file-plugins/files/flowr-sysdata-file';
 import type { ProjectKind } from './project-kind';
 import { classifyProjectKind, resolveClassifyOptions, type ContentReader } from './classify-project-kind';
 import { FlowrAnalyzer } from '../flowr-analyzer';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
 import { resetOnFullInvalidation } from '../cache/flowr-cache';
-
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
 
@@ -47,21 +52,24 @@ export interface RProjectAnalysisRequest {
 export type RAnalysisRequest = RParseRequest | RProjectAnalysisRequest;
 
 export type RoleBasedFiles = {
-	[FileRole.Description]: FlowrDescriptionFile[];
-	[FileRole.News]:        FlowrNewsFile[];
-	[FileRole.Namespace]:   FlowrNamespaceFile[];
-	[FileRole.Manifest]:    FlowrManifestFile[];
+	[FileRole.Description]:   FlowrDescriptionFile[];
+	[FileRole.News]:          FlowrNewsFile[];
+	[FileRole.Namespace]:     FlowrNamespaceFile[];
+	[FileRole.Manifest]:      FlowrManifestFile[];
+	/** what states which manual page documents a name: the `man/` pages and macros, an `INDEX`, and an installed package's `help/AnIndex` or `Meta/Rd.rds` */
+	[FileRole.Documentation]: (FlowrRdFile | FlowrRdIndexFile | FlowrRdMacroFile | FlowrRdTopicIndexFile | FlowrRdMetaFile)[];
 	/* currently no special support */
-	[FileRole.Vignette]:    FlowrFileProvider[];
-	[FileRole.Test]:        FlowrFileProvider[];
-	[FileRole.Install]:     FlowrFileProvider[];
-	[FileRole.License]:     FlowrFileProvider[];
-	[FileRole.VirtualEnv]:  FlowrFileProvider[];
-	[FileRole.Startup]:     FlowrFileProvider[];
-	[FileRole.Environment]: FlowrFileProvider[];
-	[FileRole.Source]:      FlowrFileProvider[];
-	[FileRole.Data]:        FlowrFileProvider[];
-	[FileRole.Other]:       FlowrFileProvider[];
+	[FileRole.Vignette]:      FlowrFileProvider[];
+	[FileRole.Test]:          FlowrFileProvider[];
+	[FileRole.Install]:       FlowrFileProvider[];
+	[FileRole.License]:       FlowrFileProvider[];
+	[FileRole.VirtualEnv]:    FlowrFileProvider[];
+	[FileRole.Startup]:       FlowrFileProvider[];
+	[FileRole.Environment]:   FlowrFileProvider[];
+	[FileRole.Source]:        FlowrFileProvider[];
+	/** a `data/datalist` ({@link FlowrDataListFile}), a package's system data ({@link FlowrSysdataFile}), or any other data file, which has no special support */
+	[FileRole.Data]:          (FlowrDataListFile | FlowrSysdataFile | FlowrFileProvider)[];
+	[FileRole.Other]:         FlowrFileProvider[];
 };
 
 function wrapFile(file: string | FlowrFileProvider | RParseRequestFromFile, roles?: readonly FileRole[]): FlowrFileProvider {
@@ -96,6 +104,18 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * ```
 	 */
 	getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role];
+
+	/**
+	 * The project's manual, built from every {@link FileRole.Documentation} file loaded, answering which page
+	 * documents a name. Built on each call rather than kept, so hold on to the result instead of asking per name.
+	 */
+	documentation(): RdIndex;
+
+	/** The R objects `data(dataset)` brings into scope, per the project's `data/datalist`. Empty when no list mentions `dataset`, including projects that ship none. */
+	datasetObjects(dataset: string): readonly string[];
+
+	/** The objects a package's system data (`R/sysdata.rda`/`.rdx`) lazy-loads into its namespace: available package-internally, neither exported nor reachable through `data()`. Empty for a project that ships none. */
+	sysdataObjects(): readonly SysdataObject[];
 
 	/**
 	 * Get all files known to this context.
@@ -336,17 +356,22 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			return;
 		}
 		this.requestedRoots.push(request.content);
+		for(const req of this.activeDiscoveryPlugins().flatMap(p => p.processor(this.ctx, request))) {
+			this.addDiscovered(req);
+		}
+	}
 
-		const active = this.discoveryPlugins.length > 0
-			? this.discoveryPlugins
-			: [FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin()];
-		const expandedRequests = active.flatMap(p => p.processor(this.ctx, request));
-		for(const req of expandedRequests) {
-			if(isParseRequest(req)) {
-				this.addRequest(req);
-			} else {
-				this.addFile(req, req.roles);
-			}
+	/** The registered discovery plugins, or the built-in default when none are registered. */
+	private activeDiscoveryPlugins(): readonly FlowrAnalyzerProjectDiscoveryPlugin[] {
+		return this.discoveryPlugins.length > 0 ? this.discoveryPlugins : [FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin()];
+	}
+
+	/** Adds a request a discovery plugin produced: expands it further if it is itself a parse request, otherwise adds the file directly. */
+	private addDiscovered(req: RParseRequest | FlowrFileProvider): void {
+		if(isParseRequest(req)) {
+			this.addRequest(req);
+		} else {
+			this.addFile(req, req.roles);
 		}
 	}
 
@@ -369,19 +394,12 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			return;
 		}
 		const matchers = implicit.map(entry => globMatcher(entry));
-		const active = this.discoveryPlugins.length > 0
-			? this.discoveryPlugins
-			: [FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin()];
-		for(const req of active.flatMap(p => p.processor(this.ctx, { request: 'project', content: dir }))) {
+		for(const req of this.activeDiscoveryPlugins().flatMap(p => p.processor(this.ctx, { request: 'project', content: dir }))) {
 			const filePath = isParseRequest(req) ? (req.request === 'file' ? req.content : undefined) : req.path();
 			if(filePath === undefined || filePath === fileContent || !matchers.some(m => m(filePath))) {
 				continue;
 			}
-			if(isParseRequest(req)) {
-				this.addRequest(req);
-			} else {
-				this.addFile(req, req.roles);
-			}
+			this.addDiscovered(req);
 		}
 	}
 
@@ -537,6 +555,32 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 */
 	public computeLoadingOrder(): readonly RParseRequest[] {
 		return this.loadingOrder.getLoadingOrder();
+	}
+
+	public documentation(): RdIndex {
+		return rdIndexOf(this.getFilesByRole(FileRole.Documentation));
+	}
+
+	public datasetObjects(dataset: string): readonly string[] {
+		for(const file of this.getFilesByRole(FileRole.Data)) {
+			if(file instanceof FlowrDataListFile) {
+				const objects = file.objectsOf(dataset);
+				if(objects.length > 0) {
+					return objects;
+				}
+			}
+		}
+		return [];
+	}
+
+	public sysdataObjects(): readonly SysdataObject[] {
+		const objects: SysdataObject[] = [];
+		for(const file of this.getFilesByRole(FileRole.Data)) {
+			if(file instanceof FlowrSysdataFile) {
+				objects.push(...file.content());
+			}
+		}
+		return objects;
 	}
 
 	public getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role] {

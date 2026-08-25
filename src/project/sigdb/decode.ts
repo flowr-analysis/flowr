@@ -4,10 +4,13 @@
  * Split out of `../sigdb` so the reader/writer there does not carry the per-record decoding.
  */
 import {
-	DefaultCranBase, FnProp, FnPropNames, ParamFlag,
-	type DepType, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigDbPkgMeta, type SigDefinitionLocation
+	ClassProp, DefaultCranBase, FnProp, FnPropNames, SigClassSystemNames,
+	type DepType, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigClassInfo, type SigDbPkgMeta,
+	type SigDefinitionLocation, type SigSlotInfo
 } from './schema';
+import type { ArgProps } from '../../dataflow/environments/built-in-props';
 import { resolveVersion } from './sigdb-version';
+import { compactRecord } from '../../util/objects';
 
 /** the CRAN status of a version, used to build (or skip) its source-tarball link */
 export interface CranBlobInfo {
@@ -30,20 +33,38 @@ export function cranBlobUrl(cranBase: string, pkg: string, version: string, opts
 		: `${base}Archive/${pkg}/${pkg}_${version}.tar.gz`;
 }
 
-/** a {@link PkgBlob} in its compact on-disk tuple form (drops the trailing `dates` when empty) */
-export const blobTuple = (b: Readonly<PkgBlob>): PkgBlobTuple => Object.keys(b.dates).length > 0
-	? [b.sigs, b.cgs, b.fns, b.versions, b.noncran ?? [], b.deps, b.depsByVersion, b.dates]
-	: [b.sigs, b.cgs, b.fns, b.versions, b.noncran ?? [], b.deps, b.depsByVersion];
+/** whether the record holds anything, without building the array `Object.keys(...).length` would */
+function hasEntries(record: Readonly<Record<string, unknown>> | undefined): boolean {
+	for(const _ in record) {
+		return true;
+	}
+	return false;
+}
+
+/**
+ * A {@link PkgBlob} in its compact on-disk tuple form, dropping the trailing fields it has nothing to say about
+ * (the length says what is there, so no flag needs writing/reading), so a reader that stops earlier keeps working.
+ */
+export const blobTuple = (b: Readonly<PkgBlob>): PkgBlobTuple => {
+	const head = [b.sigs, b.cgs, b.fns, b.versions, b.noncran ?? [], b.deps, b.depsByVersion] as const;
+	if(b.classes?.length) {
+		return [...head, b.dates, b.sources ?? {}, b.classes, b.classesByVersion ?? {}];
+	}
+	if(hasEntries(b.sources)) {
+		return [...head, b.dates, b.sources];
+	}
+	return hasEntries(b.dates) ? [...head, b.dates] : [...head];
+};
 /** the inverse of {@link blobTuple}: rebuild a {@link PkgBlob} from its on-disk tuple */
 export function tupleToBlob(t: PkgBlobTuple): PkgBlob {
-	return { sigs: t[0], cgs: t[1], fns: t[2], versions: t[3], noncran: t[4]?.length ? t[4] : undefined, deps: t[5] ?? [], depsByVersion: t[6] ?? {}, dates: t[7] ?? {} };
+	return { sigs: t[0], cgs: t[1], fns: t[2], versions: t[3], noncran: t[4]?.length ? t[4] : undefined, deps: t[5] ?? [], depsByVersion: t[6] ?? {}, dates: t[7] ?? {}, sources: t[8], classes: t[9], classesByVersion: t[10] };
 }
 
 /** one decoded parameter of a function signature */
 export interface SigParameter {
 	readonly name:     string;
-	readonly forced:   boolean;
-	readonly optional: boolean;
+	/** bitfield of {@link ArgProp}, as flowR's built-ins state it; a bit the extractor cannot see stays unset */
+	readonly props:    ArgProps;
 	readonly default?: string;
 }
 
@@ -86,29 +107,24 @@ export function transitiveCallees(functions: readonly DecodedFunction[], name: s
 export function decodeFunction(strings: readonly string[], blob: Readonly<PkgBlob>, fnIdx: number): DecodedFunction {
 	const [nameIdx, sigIdx, cgIdx, bits, fileIdx, line, topicIdx] = blob.fns[fnIdx];
 	const signature = (sigIdx >= 0 ? blob.sigs[sigIdx] : []).map(p => {
-		const [n, flags, def] = Array.isArray(p) ? [p[0], p[1], p.length === 3 ? p[2] : -1] : [p, 0, -1];
-		return {
-			name:     strings[n],
-			forced:   Boolean(flags & ParamFlag.Forced),
-			optional: !(flags & ParamFlag.Missing),
-			...(def >= 0 ? { default: strings[def] } : {})
-		};
+		const [n, props, def] = Array.isArray(p) ? [p[0], p[1], p.length === 3 ? p[2] : -1] : [p, 0, -1];
+		return compactRecord({ name: strings[n], props, default: def >= 0 ? strings[def] : undefined });
 	});
 	let callees: string[] = [];
 	if(cgIdx >= 0) {
 		let prev = 0;
 		callees = blob.cgs[cgIdx].map(d => strings[prev += d]);
 	}
-	return {
+	return compactRecord({
 		name:     strings[nameIdx],
-		...(topicIdx !== undefined && topicIdx >= 0 ? { topic: strings[topicIdx] } : {}),
-		...(fileIdx >= 0 ? { file: strings[fileIdx] } : {}),
+		topic:    topicIdx !== undefined && topicIdx >= 0 ? strings[topicIdx] : undefined,
+		file:     fileIdx >= 0 ? strings[fileIdx] : undefined,
 		line,
 		exported: Boolean(bits & FnProp.Exported),
 		props:    Object.entries(FnPropNames).filter(([m]) => bits & Number(m)).map(([, n]) => n),
 		signature,
 		callees
-	};
+	});
 }
 
 /** a decoded package dependency of one version (`type` is the compact {@link DepType} enum; map to a label via {@link DepTypeNames}) */
@@ -125,11 +141,37 @@ export function decodeDependencies(strings: readonly string[], blob: Readonly<Pk
 	if(idx === undefined) {
 		return [];
 	}
-	return blob.deps[idx].map(d => ({
-		name: strings[d[0]],
-		type: d[1],
-		...(d.length === 3 ? { constraint: strings[d[2]] } : {})
-	}));
+	return blob.deps[idx].map(d => compactRecord({ name: strings[d[0]], type: d[1], constraint: d.length === 3 ? strings[d[2]] : undefined }));
+}
+
+/** the classes a package version declares, decoded from the blob's class pool */
+export function decodeClasses(strings: readonly string[], blob: Readonly<PkgBlob>, ver: string): SigClassInfo[] {
+	const list = blob.classesByVersion?.[ver];
+	const pool = blob.classes;
+	if(list === undefined || pool === undefined) {
+		return [];
+	}
+	const out: SigClassInfo[] = [];
+	let prev = 0;
+	for(const delta of list) {
+		const rec = pool[prev += delta];
+		if(rec === undefined) {
+			continue;
+		}
+		const [nameIdx, system, props, supers, slots, pkgIdx] = rec;
+		out.push(compactRecord({
+			name:   strings[nameIdx],
+			system: SigClassSystemNames[system] ?? SigClassSystemNames[0],
+			supers: supers.map(i => strings[i]),
+			slots:  slots.map((sl): SigSlotInfo => typeof sl === 'number'
+				? { name: strings[sl] }
+				: { name: strings[sl[0]], type: strings[sl[1]] }),
+			virtual: props & ClassProp.Virtual ? true : undefined,
+			union:   props & ClassProp.Union ? true : undefined,
+			package: pkgIdx !== undefined ? strings[pkgIdx] : undefined
+		}));
+	}
+	return out;
 }
 
 /** the function indices of a blob version (undoing the delta encoding) */

@@ -21,6 +21,7 @@ import { resolveArgToEnvir } from './built-in-envir-utils';
 import { resolveNodeToStackEnv } from './built-in-stack-env';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { cleanEnvOf } from '../../../../../environments/scoping';
 
 /** The variables an `rm` call targets for removal, and the frame it removes them from. */
 interface RmTargets<OtherInfo> {
@@ -223,7 +224,7 @@ export function processRm<OtherInfo>(
 		name, args, rootId, data,
 		origin:    BuiltInProcName.Rm,
 		/* an unevaluated name must not resolve against the environment */
-		patchData: (d, i) => nse.has(i) ? { ...d, environment: d.ctx.env.makeCleanEnv() } : d
+		patchData: (d, i) => nse.has(i) ? { ...d, environment: cleanEnvOf(d.environment) } : d
 	});
 	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, [...nse]);
 

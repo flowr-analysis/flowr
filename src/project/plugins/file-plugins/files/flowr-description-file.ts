@@ -1,4 +1,4 @@
-import { type FlowrFileProvider, type FileRole, FlowrFile, FlowrTextFile } from '../../../context/flowr-file';
+import { type FlowrFileProvider, type FileRole, FlowrWrappedFile, FlowrTextFile } from '../../../context/flowr-file';
 import type { RAuthorInfo } from '../../../../util/r-author';
 import { AuthorRole, parseTextualAuthorString, parseRAuthorString } from '../../../../util/r-author';
 import { splitAtEscapeSensitive } from '../../../../util/text/args';
@@ -19,44 +19,17 @@ export type DCF = Map<string, string[]>;
  * These methods parse and return the relevant information in structured formats.
  * To access raw fields, use the {@link content} method inherited from {@link FlowrFile}.
  */
-export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
-	private readonly wrapped: FlowrFileProvider;
-
-	/**
-	 * Prefer the static {@link FlowrDescriptionFile.from} method to create instances of this class as it will not re-create if already a description file
-	 * and handle role assignments.
-	 */
-	constructor(file: FlowrFileProvider) {
-		super(file.path(), file.roles);
-		this.wrapped = file;
-	}
-
-	/**
-	 * Loads and parses the content of the wrapped file as a DCF structure.
-	 * @see {@link parseDCF} for details on the parsing logic.
-	 */
+export class FlowrDescriptionFile extends FlowrWrappedFile<DeepReadonly<DCF>> {
+	/** @see {@link parseDCF} for details on the parsing logic. */
 	protected loadContent(): DCF {
 		return parseDCF(this.wrapped);
 	}
 
-	/**
-	 * Creates a FlowrDescriptionFile from given DCF content, path, and optional roles.
-	 * This is useful if you already have the DCF content parsed and want to create a description file instance without re-parsing.
-	 */
+	/** Creates a FlowrDescriptionFile from already-parsed DCF content, without re-parsing. */
 	public static fromDCF(dcf: DCF, path: string, roles?: FileRole[]): FlowrDescriptionFile {
 		const file = new FlowrDescriptionFile(new FlowrTextFile(path, roles));
 		file.setContent(dcf);
 		return file;
-	}
-
-	/**
-	 * Description file lifter, this does not re-create if already a description file
-	 */
-	public static from(file: FlowrFileProvider | FlowrDescriptionFile, role?: FileRole): FlowrDescriptionFile {
-		if(role) {
-			file.assignRole(role);
-		}
-		return file instanceof FlowrDescriptionFile ? file : new FlowrDescriptionFile(file);
 	}
 
 	/**
@@ -181,7 +154,6 @@ export function parseRLicenseField(...licenseField: string[]): RLicenseElementIn
 	return licenseField.map(parseRLicense);
 }
 
-
 function emplaceDCF(key: string, val: string, result: Map<string, string[]>) {
 	if(!key) {
 		return;
@@ -195,37 +167,72 @@ function emplaceDCF(key: string, val: string, result: Map<string, string[]>) {
 	result.set(key, values);
 }
 
+const dcfIndentRegex = /^\s/;
+const dcfFirstColonRegex = /:(.*)/s;
+/** a line that separates two records: empty, or the `.`-only line the format also allows */
+const dcfRecordBreakRegex = /^\s*\.?\s*$/;
+
 /**
- * Parses the given file in the 'Debian Control Format'.
- * @param file - The file to parse
+ * Walks `content` in the 'Debian Control Format', emitting one {@link DCF} per record. Records are separated
+ * by blank (or `.`-only) lines, which is what makes a repository `PACKAGES` index differ from a `DESCRIPTION`.
+ * @param content     - The raw text to parse
+ * @param singleRecord - Ignore the separators and fold everything into one record (what a `DESCRIPTION` wants)
  */
-function parseDCF(file: FlowrFileProvider): Map<string, string[]> {
-	const result = new Map<string, string[]>();
+function walkDCF(content: string, singleRecord: boolean): DCF[] {
+	const records: DCF[] = [];
+	// strip a leading UTF-8 BOM (U+FEFF): it matches the indent test (JS `\s` includes U+FEFF), so without this
+	// the first field (typically `Package:`) would be misread as a continuation line and silently dropped
+	const lines = (content.charCodeAt(0) === 0xFEFF ? content.slice(1) : content).split(/\r?\n/);
+	let result: DCF = new Map();
 	let currentKey = '';
 	let currentValue = '';
-	const indentRegex = new RegExp(/^\s/);
-	const firstColonRegex = new RegExp(/:(.*)/s);
 
-	// strip a leading UTF-8 BOM (U+FEFF): it matches `indentRegex` (JS `\s` includes U+FEFF), so without this
-	// the first field (typically `Package:`) would be misread as a continuation line and silently dropped
-	const raw = file.content().toString();
-	const fileContent = (raw.charCodeAt(0) === 0xFEFF ? raw.slice(1) : raw).split(/\r?\n/);
-
-	for(const line of fileContent) {
-		if(indentRegex.test(line)) {
+	for(const line of lines) {
+		if(!singleRecord && dcfRecordBreakRegex.test(line)) {
+			emplaceDCF(currentKey, currentValue, result);
+			currentKey = '';
+			currentValue = '';
+			if(result.size > 0) {
+				records.push(result);
+				result = new Map();
+			}
+		} else if(dcfIndentRegex.test(line)) {
 			currentValue += '\n' + line.trim();
 		} else {
 			emplaceDCF(currentKey, currentValue, result);
 
-			const [key, rest] = line.split(firstColonRegex).map(s => s.trim());
+			const [key, rest] = line.split(dcfFirstColonRegex).map(s => s.trim());
 			currentKey = key?.trim() ?? '';
 			currentValue = rest?.trim() ?? '';
 		}
 	}
-
 	emplaceDCF(currentKey, currentValue, result);
+	if(result.size > 0 || records.length === 0) {
+		records.push(result);
+	}
+	return records;
+}
 
-	return result;
+/**
+ * Parses the given file in the 'Debian Control Format' as a single record, the shape of a `DESCRIPTION`:
+ * blank lines do not separate, and a key given more than once keeps its last value.
+ * @param file - The file (or raw text) to parse
+ * @see {@link parseDCFRecords} - for control files that hold many records
+ */
+export function parseDCF(file: FlowrFileProvider | string): DCF {
+	return walkDCF(typeof file === 'string' ? file : file.content().toString(), true)[0];
+}
+
+/**
+ * Parses a control file that holds **many** records in the 'Debian Control Format', e.g. a repository
+ * `PACKAGES` index or a `packrat.lock`, where each record describes one package and must not be merged
+ * with its neighbors.
+ * @param file - The file (or raw text) to parse
+ * @see {@link parseDCF} - for the single-record shape of a `DESCRIPTION`
+ */
+export function parseDCFRecords(file: FlowrFileProvider | string): DCF[] {
+	return walkDCF(typeof file === 'string' ? file : file.content().toString(), false)
+		.filter(r => r.size > 0);
 }
 
 const splitRegex = /[\n\r]+/g;
@@ -234,7 +241,6 @@ function cleanValues(values: string): string[] {
 		.map(s => s.trim())
 		.filter(s => s.length > 0);
 }
-
 
 const VersionRegex = /([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([^)]+)\))?\s*/;
 

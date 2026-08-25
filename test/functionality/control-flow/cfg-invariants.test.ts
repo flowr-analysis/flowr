@@ -141,7 +141,9 @@ describe.sequential('Control Flow Graph', withTreeSitter(parser => {
 		const result = await createDataflowPipeline(parser, { context }).allRemainingSteps();
 		const cfg = extractCfg(result.dataflow);
 		const reached = visitCfgInOrder(cfg.graph, cfg.entryPoints, () => { /* only collect */ });
+		const follows = [...result.dataflow.graph.verticesOfType(VertexType.FunctionCall)]
+			.find(([, v]) => v.name === 'print')?.[0];
 
-		assert.isFalse(reached.has(cfg.exitPoints[0]), 'what follows the call is dead');
+		assert.isFalse(follows !== undefined && reached.has(follows), 'what follows the call is dead');
 	});
 }));

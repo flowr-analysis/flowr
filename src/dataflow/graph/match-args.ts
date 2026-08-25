@@ -1,4 +1,4 @@
-import { EmptyArgument, type PotentiallyEmptyRArgument, type RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -18,6 +18,8 @@ import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isNotUndefined } from '../../util/assert';
 import type { ArgProps } from '../environments/built-in-props';
 import { FnSig } from '../environments/built-in-props';
+import { builtInLookup } from '../environments/query-fn-props';
+import type { BuiltInLookup } from '../fn/frame-reflection';
 
 /** the argument names in the shape {@link matchArgumentsToParameters} takes, unnamed arguments as `undefined` */
 function graphArgumentNames(args: readonly FunctionArgument[]): (string | undefined)[] {
@@ -47,17 +49,10 @@ export const MatchArgs = {
 	 * @param args       - The arguments as they stand in the normalized AST.
 	 * @param paramNames - The formals of the called function, in order.
 	 * @returns Per formal name the argument bound to it.
+	 * @see {@link RFunctionCall.matchArgsToParams} - the implementation, kept there to avoid a load-time import cycle.
 	 */
 	toNames<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], paramNames: readonly string[]): ReadonlyMap<string, RArgument<Info>> {
-		const matched = matchArgumentsToParameters(args.map(a => a === EmptyArgument ? undefined : a.name?.content), paramNames);
-		const bound = new Map<string, RArgument<Info>>();
-		for(let i = 0; i < args.length; i++) {
-			const arg = args[i], param = matched[i];
-			if(arg !== EmptyArgument && param !== undefined) {
-				bound.set(paramNames[param], arg);
-			}
-		}
-		return bound;
+		return RFunctionCall.matchArgsToParams(args, paramNames);
 	},
 	/**
 	 * Binds a call's graph `args` against the formals, reading nothing from the graph, so it also serves a
@@ -142,6 +137,8 @@ export const MatchArgs = {
 		const names = formalsOf(call, graph, ctx);
 		return names === undefined ? undefined : MatchArgs.toNames(call.arguments, names);
 	},
+	/** The formal names a call binds against, whichever of flowR's sources knows them; see {@link formalsOf}. */
+	formalsOf,
 	/**
 	 * Find all arguments of a function call that have a given argument property using the function signature.
 	 * @param args      - The function arguments as the graph holds them.
@@ -160,10 +157,23 @@ export const MatchArgs = {
 } as const;
 
 /**
- * The formals {@link MatchArgs.toDefinition} binds against. User code is tried first because its parameters are
- * already in the AST, so the common case never touches the signature database.
+ * The formals a call binds against, taken from the first of flowR's three sources that knows them:
+ *
+ * 1. the {@link RFunctionDefinition} the call resolves to in user code, whose parameters are already in the
+ *    AST, so the common case never looks anything up;
+ * 2. the signature database at the version the analysis assumes (see {@link SignatureDb}), which records what
+ *    the package really declares and is therefore the one to believe about a package function;
+ * 3. the {@link BuiltInFnInfo#sig|signature} flowR's own {@link DefaultBuiltinConfig} states, which answers for
+ *    everything the database has no entry for: a built-in of flowR's own, and every package function on a
+ *    machine carrying no database. flowR states the parameters it models rather than all of them, so this is
+ *    a prefix of R's formals -- enough to bind what it names, and never more than R would.
+ *
+ * `undefined` when the call resolves to none of them, so fall back to a hardcoded list then.
+ * @param call  - The call whose formals are wanted.
+ * @param graph - The finished graph the call was analyzed into.
+ * @param ctx   - The analyzer context the database, the assumed versions and the built-ins come from.
  */
-function formalsOf<Info>(call: RFunctionCall<Info & ParentInformation>, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): readonly string[] | undefined {
+function formalsOf<Info>(this: void, call: RFunctionCall<Info & ParentInformation>, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): readonly string[] | undefined {
 	const origins = Dataflow.origin(graph, call.info.id);
 	if(origins === undefined) {
 		return undefined;
@@ -177,14 +187,21 @@ function formalsOf<Info>(call: RFunctionCall<Info & ParentInformation>, graph: D
 		}
 	}
 	let db: SignatureDb | undefined;
+	let stated: BuiltInLookup | undefined;
 	for(const origin of origins) {
 		if(origin.type !== OriginType.BuiltInFunctionOrigin) {
 			continue;
 		}
+		const name = Identifier.toQualified([origin], origin.fn.name) ?? origin.fn.name;
 		db ??= signatureDbOf(ctx.deps);
-		const found = db.parametersOf(Identifier.toQualified([origin], origin.fn.name) ?? origin.fn.name);
+		const found = db.parametersOf(name);
 		if(found !== undefined && found.length > 0) {
 			return found;
+		}
+		stated ??= builtInLookup(ctx);
+		const declared = stated(name)?.sig;
+		if(declared !== undefined && declared.length > 0) {
+			return declared.map(([param]) => param);
 		}
 	}
 	return undefined;

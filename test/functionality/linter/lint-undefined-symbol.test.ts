@@ -1,7 +1,9 @@
 import { describe } from 'vitest';
-import { withTreeSitter } from '../_helper/shell';
+import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { assertLinter, controlledSigDb } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
+
+assumeLoadedPackages('dplyr', 'ggplot2', 'magrittr');
 
 /** base package exports the tests rely on (base R is resolved through the package database) */
 const baseSigDb = controlledSigDb({

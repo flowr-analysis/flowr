@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { withTreeSitter } from '../_helper/shell';
+import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { FlowrSearchGenerator as Q } from '../../../src/search/flowr-search-builder';
 import { assertSearch, assertSearchEnrichment } from '../_helper/search';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
@@ -12,6 +12,8 @@ import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { BuiltInProcName } from '../../../src/dataflow/environments/built-in-proc-name';
 import type { PropSelector } from '../../../src/dataflow/environments/built-in-props';
 import { CallProp, SemanticCallTag } from '../../../src/dataflow/environments/built-in-props';
+
+assumeLoadedPackages('svDialogs');
 
 describe('flowR search', withTreeSitter(parser => {
 	assertSearch('simple search for first', parser, 'x <- 1\nprint(x)', ['1@x'],
@@ -40,6 +42,37 @@ describe('flowR search', withTreeSitter(parser => {
 		Q.var('x').filter(VertexType.Use).last(),
 		Q.var('x').filter(VertexType.Use).tail().last(),
 	);
+
+	describe('picking from an empty set', () => {
+		assertSearch('no element to pick', parser, 'x <- 1\nprint(x)\nprint(2)', [],
+			Q.all().filter(RType.Break).first(),
+			Q.all().filter(RType.Break).last(),
+			Q.all().filter(RType.Break).index(0),
+			Q.all().filter(RType.Break).index(3)
+		);
+		assertSearch('index out of range', parser, 'x <- 1\nprint(x)\nprint(2)', [],
+			Q.all().filter(RType.FunctionCall).index(7)
+		);
+		assertSearch('still picks the first when there is something to pick', parser, 'x <- 1\nprint(x)\nprint(2)', ['2@print'],
+			Q.all().filter(RType.FunctionCall).first(),
+			Q.all().filter(RType.FunctionCall).index(0)
+		);
+		assertSearch('still picks the last when there is something to pick', parser, 'x <- 1\nprint(x)\nprint(2)', ['3@print'],
+			Q.all().filter(RType.FunctionCall).last(),
+			Q.all().filter(RType.FunctionCall).index(1)
+		);
+	});
+
+	describe('unique', () => {
+		assertSearch('drops only the duplicates', parser, 'x <- 1\nprint(x)\nprint(2)', ['2@print', '3@print'],
+			Q.all().filter(RType.FunctionCall).merge(Q.all().filter(RType.FunctionCall)).unique(),
+			Q.all().filter(RType.FunctionCall).merge(Q.all().filter(RType.FunctionCall)).merge(Q.all().filter(RType.FunctionCall)).unique()
+		);
+		assertSearch('keeps a set without duplicates', parser, 'x <- 1\nprint(x)\nprint(2)', ['2@print', '3@print'],
+			Q.all().filter(RType.FunctionCall).unique(),
+			Q.all().filter(RType.FunctionCall).unique().unique()
+		);
+	});
 
 	describe('Filters', () => {
 		describe('matches enrichment', () => {

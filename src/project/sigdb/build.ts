@@ -1,16 +1,14 @@
 /**
- * The build/write half of the sigdb format: the {@link SigDbBuilder} (accumulate analyzed packages, pool +
- * frequency-reorder the dictionary, emit a {@link SigDb}) and the NDJSON writers (single bundle, shared
- * dictionary, blob-only shards, and the sharded {@link SigDbManifest}). Split out of `../sigdb` so the reader
- * there is not weighed down by the (build-time only) encoder; imports only sibling format/codec modules.
+ * The build/write half of the sigdb format: {@link SigDbBuilder} (accumulate, pool, frequency-reorder, emit a
+ * {@link SigDb}) and the NDJSON writers. Split out of `../sigdb` so the reader is not weighed down by the encoder.
  */
 import fs from 'fs';
 import path from 'path';
 import { once } from 'events';
 import {
-	DefaultCranBase, MaxDefaultLength, ParamFlag, SigDbExt, SigDbMagic, SigDbSchema,
+	ClassProp, DefaultCranBase, MaxDefaultLength, SigClassSystem, SigClassSystemNames, SigDbExt, SigDbMagic, SigDbSchema,
 	type PkgBlob, type Sig, type SigDb, type SigDbFeatures, type SigDbPkgMeta, type SigDbPkgMetaIndex, type SigDbShard, type SigDbTier,
-	type SigDep, type SigDependencyInfo, type SigFn, type SigFunctionInfo, type SigParamInfo, type SigVersionInfo } from './schema';
+	type SigClass, type SigClassInfo, type SigDep, type SigDependencyInfo, type SigFn, type SigFunctionInfo, type SigParamInfo, type SigVersionInfo } from './schema';
 import { RVersion } from '../../util/r-version';
 import { blobTuple } from './decode';
 import { contentHash, dictionaryHash, shardHash } from './hash';
@@ -34,14 +32,20 @@ function noteZstdSupport(): void {
 /** resolve the effective features (everything defaults to on) */
 function resolveFeatures(f: SigDbFeatures | undefined): Required<SigDbFeatures> {
 	if(f === undefined) {
-		return { signatures: true, callGraphs: true, locations: true, dependencies: true };
+		return { signatures: true, callGraphs: true, locations: true, dependencies: true, classes: true };
 	}
 	return {
 		signatures:   f.signatures   ?? true,
 		callGraphs:   f.callGraphs   ?? true,
 		locations:    f.locations    ?? true,
-		dependencies: f.dependencies ?? true
+		dependencies: f.dependencies ?? true,
+		classes:      f.classes      ?? true
 	};
+}
+
+/** an ascending list with its duplicates dropped, so a class named twice in one version is stored once */
+function uniqueSortedNumbers(sorted: readonly number[]): number[] {
+	return sorted.filter((n, i) => i === 0 || n !== sorted[i - 1]);
 }
 
 /** first-order delta encoding of an ascending integer list (smaller, more repetitive, compresses better) */
@@ -55,9 +59,7 @@ function deltaEncode(sorted: readonly number[]): number[] {
 	return out;
 }
 
-/**
- * Index based string internalization
- */
+/** index-based string internalization */
 function internalize<V>(arr: V[], map: Map<string, number>, key: string, value: V): number {
 	let i = map.get(key);
 	if(i === undefined) {
@@ -130,6 +132,7 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 	const cgs = new Pool<number[]>();
 	const fns = new Pool<SigFn>();
 	const deps = new Pool<SigDep[]>();
+	const classes = new Pool<SigClass>();
 
 	const sig = (params: readonly SigParamInfo[]): number => {
 		if(!feats.signatures || params.length === 0) {
@@ -137,16 +140,14 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 		}
 		const value: Sig = params.map(par => {
 			const nameI = strings.str(par.name);
-			const flags = (par.forced ? ParamFlag.Forced : 0) | (par.missing ? ParamFlag.Missing : 0);
+			const props = par.props ?? 0;
 			if(par.default !== undefined) {
-				// cap very long default expressions (e.g. a 7 KB `c(...)` column list): they are unique, so they never
-				// dedupe and bloat the dictionary. A truncation marker keeps "has a default" plus a preview. Newlines
-				// are flattened so the string is safe as a delimiter in the newline-blob dictionary.
+				// long defaults never dedupe, so truncate; newlines would split the dictionary
 				const d0 = par.default.replace(/[\r\n]+/g, ' ');
 				const def = d0.length > MaxDefaultLength ? d0.slice(0, MaxDefaultLength) + '…' : d0;
-				return [nameI, flags, strings.str(def)];
+				return [nameI, props, strings.str(def)];
 			}
-			return flags === 0 ? nameI : [nameI, flags];
+			return props === 0 ? nameI : [nameI, props];
 		});
 		return sigs.intern(JSON.stringify(value), value);
 	};
@@ -173,10 +174,28 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 		return deps.intern(JSON.stringify(value), value);
 	};
 
+	/** one class record, pooled like a function so a version that changes nothing about a class reuses its slot */
+	const cls = (c: SigClassInfo): number => {
+		const systemIdx = SigClassSystemNames.indexOf(c.system);
+		const props = (c.virtual ? ClassProp.Virtual : 0) | (c.union ? ClassProp.Union : 0)
+			| (c.package !== undefined ? ClassProp.Foreign : 0);
+		const head: SigClass = [
+			strings.str(c.name),
+			(systemIdx < 0 ? SigClassSystem.S4 : systemIdx),
+			props,
+			c.supers.map(sup => strings.str(sup)),
+			c.slots.map(sl => sl.type === undefined ? strings.str(sl.name) : [strings.str(sl.name), strings.str(sl.type)] as [number, number])
+		];
+		const rec: SigClass = c.package !== undefined ? [...head, strings.str(c.package)] : head;
+		return classes.intern(JSON.stringify(rec), rec);
+	};
+
 	const versions: Record<string, number[]> = {};
+	const classesByVersion: Record<string, number[]> = {};
 	const depsByVersion: Record<string, number> = {};
 	const dates: Record<string, number> = {};
 	const noncran: string[] = [];
+	const sources: Record<string, number> = {};
 	let versionCount = 0;
 	let functionCount = 0;
 	for(const version of keptVersions(p, tier)) {
@@ -188,6 +207,12 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 		if(feats.dependencies && info.dependencies && info.dependencies.length > 0) {
 			depsByVersion[version] = depList(info.dependencies);
 		}
+		if(feats.classes && info.classes && info.classes.length > 0) {
+			const classIdxs = info.classes
+				.toSorted((a, b) => a.name.localeCompare(b.name) || a.system.localeCompare(b.system))
+				.map(cls).sort((a, b) => a - b);
+			classesByVersion[version] = deltaEncode(uniqueSortedNumbers(classIdxs));
+		}
 		if(info.date !== undefined && Number.isFinite(info.date)) {
 			dates[version] = Math.round(info.date / 86_400_000); // days since the Unix epoch (compact; day precision)
 		}
@@ -196,15 +221,17 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 		if(!info.cran) {
 			noncran.push(version);
 		}
+		if(info.source !== undefined) {
+			sources[version] = strings.str(info.source);
+		}
 	}
-	const blob: PkgBlob = { sigs: sigs.items, cgs: cgs.items, fns: fns.items, versions, noncran: noncran.length ? noncran : undefined, deps: deps.items, depsByVersion, dates };
+	const blob: PkgBlob = { sigs: sigs.items, cgs: cgs.items, fns: fns.items, versions, deps: deps.items, depsByVersion, dates, noncran: noncran.length ? noncran : undefined, sources: Object.keys(sources).length ? sources : undefined, classes: classes.items.length ? classes.items : undefined, classesByVersion: Object.keys(classesByVersion).length ? classesByVersion : undefined };
 	return { blob, versionCount, functionCount };
 }
 
 /**
- * Accumulates analyzed functions and serializes a {@link SigDb}. Feed it with {@link addPackage} and
- * {@link addVersion}, then {@link build}. Pooling (dictionary, per-package blobs, whole-package dedup,
- * frequency reordering) happens in {@link build} so the result is deterministic for identical inputs.
+ * Accumulates analyzed functions and serializes a {@link SigDb}. Feed it with {@link addPackage}/{@link addVersion},
+ * then {@link build}; pooling happens there so the result is deterministic for identical inputs.
  */
 export class SigDbBuilder {
 	private readonly raw = new Map<string, RawPkg>();
@@ -259,10 +286,8 @@ export class SigDbBuilder {
 	}
 
 	/**
-	 * Build one {@link SigDb} bundle. `tier: 'current'` keeps only each package's latest version (small,
-	 * fast to load); `tier: 'full'` keeps every version. `topN` + `shard` further restrict to the most-
-	 * downloaded packages (`'top'`) or the remainder (`'rest'`), so a database can be split into several
-	 * small shards routed by a {@link SigDbManifest}.
+	 * Build one {@link SigDb} bundle. `tier: 'current'` keeps only each package's latest version, `'full'` every
+	 * version; `topN` + `shard` further restrict to the top-downloaded packages or the remainder, for a {@link SigDbManifest}.
 	 */
 	public build(opts: SigDbBuildOptions): SigDb {
 		const tier: SigDbTier = opts.tier ?? 'full';
@@ -313,10 +338,8 @@ export class SigDbBuilder {
 	}
 
 	/**
-	 * Build several shards that all reindex into a **single shared string dictionary** (stored once, not
-	 * per shard). All shards' blobs are pooled into one dictionary and frequency-sorted together, so the
-	 * dictionary loads once and no strings are duplicated across shards. Package metadata is likewise
-	 * collected once. This is the compact, fast-loading counterpart of calling {@link build} per shard.
+	 * Build several shards that all reindex into a **single shared string dictionary** (stored once, not per shard,
+	 * pooled + frequency-sorted together); the compact, fast-loading counterpart of calling {@link build} per shard.
 	 */
 	public buildSharded(opts: Omit<SigDbBuildOptions, 'tier' | 'shard' | 'topN'>, specs: readonly ShardSpec[]): ShardedSigDb {
 		const feats = resolveFeatures(opts.features);
@@ -429,8 +452,7 @@ class StringPool {
 	readonly strings: string[] = [];
 	private readonly idx = new Map<string, number>();
 	str(s: string): number {
-		// the dictionary is newline-delimited on disk, so a stored string must never contain one -- otherwise it splits
-		// on read and shifts every later index. Flatten defensively here so no field (name, file, topic, ...) can corrupt it.
+		// the dictionary is newline-delimited on disk, so a stored newline would shift every later index
 		const safe = s.includes('\n') || s.includes('\r') ? s.replace(/[\r\n]+/g, ' ') : s;
 		return internalize(this.strings, this.idx, safe, safe);
 	}
@@ -480,6 +502,9 @@ function optimizeStringOrder(strings: string[], blobs: PkgBlob[]): string[] {
 				}
 			}
 		}
+		for(const idx of Object.values(blob.sources ?? {})) {
+			bump(idx);
+		}
 	}
 	const order = Array.from({ length: n }, (_, i) => i).sort((a, b) => counts[b] - counts[a] || a - b);
 	const remap = new Int32Array(n);
@@ -527,19 +552,19 @@ function optimizeStringOrder(strings: string[], blobs: PkgBlob[]): string[] {
 				}
 			}
 		}
+		for(const [version, idx] of Object.entries(blob.sources ?? {})) {
+			(blob.sources as Record<string, number>)[version] = remap[idx];
+		}
 	}
 	return order.map(oldI => strings[oldI]);
 }
-
 
 /** flush a batch line once its serialized size reaches roughly this many bytes (keeps lines under the string cap) */
 const NdjsonBatchBytes = 8_000_000;
 
 /**
- * Batch the string dictionary into `["d", startIdx, "s1\ns2\n…"]` lines: the strings are joined into ONE
- * newline-delimited blob per line rather than a JSON array of quoted strings. On load this parses as a single
- * string and `split('\n')` -- far faster than `JSON.parse`-ing an array of ~1.4M elements, and a touch smaller
- * Safe because no dictionary string contains a newline (defaults are normalized).
+ * Batch the string dictionary into `["d", startIdx, "s1\ns2\n…"]` lines: one newline-delimited blob per line
+ * rather than a JSON array of quoted strings, which loads as a single `split('\n')` instead of parsing ~1.4M elements.
  */
 function* dictLines(strings: readonly string[]): Generator<string> {
 	let start = 0;
@@ -588,8 +613,7 @@ export interface CompressOptions {
 	/** brotli window bits (10..30); above 24 enables the non-standard large-window mode (reader must opt in) */
 	brotliLgwin?:   number;
 }
-// large window (30) shaves ~15% off the `.br`; every {@link SigDatabase} read path decodes with
-// `BROTLI_DECODER_PARAM_LARGE_WINDOW` enabled, so this is always safe for bundles flowR reads back.
+// large window shaves ~15% off the `.br`; every read path decodes with `BROTLI_DECODER_PARAM_LARGE_WINDOW`
 const DefaultBrotliLgwin = 30;
 
 /** codec-appropriate compression options: brotli takes the quality/window, zstd its own level */
@@ -604,8 +628,7 @@ interface CodecSink { stream: NodeJS.ReadWriteStream; file: fs.WriteStream }
 
 /**
  * Streams NDJSON lines to `<plain>` plus every codec {@link writeCodecs} yields (`.br` always, `.zst` when this
- * Node supports it) at once, tracking the plain byte offset for seek indexes. A `.br` fallback is thus always
- * produced beside any `.zst`.
+ * Node supports it) at once, tracking the plain byte offset for seek indexes.
  */
 class LineWriter {
 	private readonly plainOut: fs.WriteStream;
@@ -729,10 +752,9 @@ export interface ShardedWriteOptions extends CompressOptions {
 }
 
 /**
- * Write a {@link ShardedSigDb}: one shared dictionary file, one blob-only file per shard, and a
- * {@link SigDbManifest} that embeds each shard's index and references the shared dictionary by id. Every
- * shard reindexes into that single dictionary (stored once, not per shard). A reader needs only the compressed
- * files plus the manifest -- no `.idx` sidecars. With `pack`, also assembles a clean copy-into-flowR folder.
+ * Write a {@link ShardedSigDb}: one shared dictionary file, one blob-only file per shard, and a {@link SigDbManifest}
+ * that embeds each shard's index and references the shared dictionary by id; needs no `.idx` sidecars. With `pack`,
+ * also assembles a clean copy-into-flowR folder.
  */
 export async function writeShardedDatabase(outBase: string, db: ShardedSigDb, manifestFile: string, opts: ShardedWriteOptions = {}): Promise<SigDbManifest> {
 	const compress: CompressOptions = { level: opts.level, brotliQuality: opts.brotliQuality, brotliLgwin: opts.brotliLgwin };
@@ -756,7 +778,7 @@ export async function writeShardedDatabase(outBase: string, db: ShardedSigDb, ma
 	};
 	writeManifest(manifestFile, manifest);
 	if(opts.pack) {
-		// a self-contained folder to copy into flowR: every compressed variant of the dictionary + shards + the (index-embedding) manifest
+		// self-contained folder to copy into flowR: every compressed variant plus the manifest
 		fs.mkdirSync(opts.pack, { recursive: true });
 		for(const ext of exts) {
 			fs.copyFileSync(`${outBase}${SigDbDictExt}${ext}`, path.join(opts.pack, `${dictRef.path}${ext}`));

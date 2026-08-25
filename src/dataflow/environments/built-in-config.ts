@@ -12,6 +12,8 @@ export interface BaseBuiltInDefinition {
 	readonly names:            Identifier[];
 	/** Should we assume that the value is a primitive? */
 	readonly assumePrimitive?: boolean;
+	/** Set when this entry deliberately re-states a name an earlier entry defines; without it a repeated name is an accident, and a test says so. */
+	readonly overrides?:       boolean;
 }
 
 /**
@@ -58,7 +60,6 @@ export type AnyBuiltInDefinition = BuiltInConstantDefinition<unknown> | AnyBuilt
  * @see DefaultBuiltinConfig
  */
 export type BuiltInDefinitions<Keys extends (keyof typeof BuiltInProcessorMapper)[] = (keyof typeof BuiltInProcessorMapper)[]> = [...{ [ K in keyof Keys]: BuiltInDefinition<Keys[K]> }];
-
 
 /**
  * Get the {@link BuiltIns#builtInMemory} and {@link BuiltIns#emptyBuiltInMemory} for the {@link DefaultBuiltinConfig}.

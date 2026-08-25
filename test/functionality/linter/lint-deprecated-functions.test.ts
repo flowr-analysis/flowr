@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { withTreeSitter } from '../_helper/shell';
+import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { assertLinter, controlledSigDb } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { DeprecationState } from '../../../src/linter/rules/deprecated-functions';
@@ -10,6 +10,8 @@ import { RRange } from '../../../src/util/r-version';
 import { SigDbBuilder } from '../../../src/project/sigdb/build';
 import { sigTmpDir, writeAndOpen } from '../_helper/sigdb';
 import { Identifier, PkgName } from '../../../src/dataflow/environments/identifier';
+
+assumeLoadedPackages('dplyr');
 
 const fn = (name: string, opts: Partial<SigFunctionInfo> = {}): SigFunctionInfo => ({
 	name, props: FnProp.Exported, params: [], callees: [], line: 1, ...opts
@@ -23,12 +25,14 @@ function sigDbWithDeprecatedFn(pkg: string, fnName: string): PackageSignatureSou
 		has:               p => p === pkg,
 		hasVersion:        (p, version) => p === pkg && version === '1.0.0',
 		isCranVersion:     () => true,
+		sourceOf:          () => undefined,
 		lookup:            p => p === pkg ? view : undefined,
 		classOwner:        () => undefined,
 		packagesExporting: name => name === fnName ? [pkg] : [],
 		functions:         p => p === pkg ? [fn] : undefined,
 		functionByName:    (p, name) => p === pkg && name === fnName ? fn : undefined,
 		transitiveCallees: () => undefined,
+		classes:           () => undefined,
 		dependencies:      () => undefined,
 		packageNames:      () => [pkg],
 		isBaseR:           () => false,
@@ -220,8 +224,6 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 				}
 			);
 
-
-
 			assertLinter('(fn) unresolved version should make result uncertain', parser, 'library(testPkg)\ntestFn()',
 				'deprecated-functions',
 				[{
@@ -257,7 +259,6 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					sigDb:         db
 				}
 			);
-
 
 			assertLinter('(fn) version resolved and constraint not satisfied', parser, 'library(testPkg)\ntestFn()',
 				'deprecated-functions',

@@ -3,7 +3,7 @@ import { withTreeSitter } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
-import { recoverName } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfEdge } from '../../../../src/dataflow/graph/edge';
 
 /** Every shape whose processing takes a type off an edge, so a leftover typeless edge shows up here. */
@@ -28,7 +28,7 @@ describe('Dataflow', withTreeSitter(ts => {
 			for(const [from, targets] of graph.edges()) {
 				for(const [to, edge] of targets) {
 					if(DfEdge.hasNoType(edge)) {
-						typeless.push(`${recoverName(from, graph.idMap)}(${from}) -> ${recoverName(to, graph.idMap)}(${to})`);
+						typeless.push(`${NodeId.recoverName(from, graph.idMap)}(${from}) -> ${NodeId.recoverName(to, graph.idMap)}(${to})`);
 					}
 				}
 			}

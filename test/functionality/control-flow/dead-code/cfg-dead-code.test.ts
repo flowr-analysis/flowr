@@ -1,4 +1,4 @@
-import { withTreeSitter } from '../../_helper/shell';
+import { assumeLoadedPackages, withTreeSitter } from '../../_helper/shell';
 import { describe } from 'vitest';
 import { assertCfg } from '../../_helper/controlflow/assert-control-flow-graph';
 import { ControlFlowGraph } from '../../../../src/control-flow/control-flow-graph';
@@ -6,6 +6,8 @@ import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/process
 import { canReach } from '../../../../src/control-flow/simple-visitor';
 import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
+
+assumeLoadedPackages('foreach', 'rlang');
 
 interface CfgDeadCodeArgs {
 	readonly reachableFromStart:   readonly NodeId[];

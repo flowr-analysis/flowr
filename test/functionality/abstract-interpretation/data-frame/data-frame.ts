@@ -9,14 +9,12 @@ import { Bottom, type Top } from '../../../../src/abstract-interpretation/domain
 import { PosIntervalDomain } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
 import { SetRangeDomain } from '../../../../src/abstract-interpretation/domains/set-range-domain';
 import { FlowrConfig } from '../../../../src/config';
-import { RoleInParent } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/role';
 import type { RShell } from '../../../../src/r-bridge/shell';
-import { type SlicingCriteria, SlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { guard, isNotUndefined } from '../../../../src/util/assert';
+import type { SlicingCriteria, SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { Record } from '../../../../src/util/record';
 import { type TestLabel, decorateLabelContext } from '../../_helper/label';
 import { type TestConfiguration, skipTestBecauseConfigNotMet } from '../../_helper/shell';
-import { type InferenceTestCase, type InferenceTestOptions, runInference, testInferredValues } from '../inference';
+import { type InferenceTestCase, type InferenceTestOptions, resolveInferenceNodeId, runInference, testInferredValues } from '../inference';
 
 /**
  * The expected data frame shape for data frame shape tests.
@@ -146,15 +144,7 @@ function getInferredOperationsForCriterion(
 	semantics: DataFrameShapeSemantics,
 	criterion: SlicingCriterion
 ): Readonly<DataFrameOperations> {
-	const idMap = inference.config.normalizedAst.idMap;
-	let nodeId = SlicingCriterion.parse(criterion, idMap);
-	const node = idMap.get(nodeId);
-
-	if(node?.info.role === RoleInParent.FunctionCallName) {
-		nodeId = node.info.parent ?? nodeId;
-	}
-	guard(isNotUndefined(nodeId), `Slicing criterion ${criterion} does not refer to an AST node`);
-
+	const nodeId = resolveInferenceNodeId(inference.config.normalizedAst.idMap, criterion);
 	return semantics.getAbstractOperations(nodeId);
 }
 

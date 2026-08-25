@@ -5,6 +5,7 @@ import { cranPageUrl } from './signature-query-executor';
 import { baseRPackages } from '../../../util/r-base-packages';
 import type { SignatureFunctionView, SignaturePackageView, SignatureQueryResult } from './signature-query-format';
 import { arraysGroupBy } from '../../../util/collections/arrays';
+import { ArgProp, ArgProps } from '../../../dataflow/environments/built-in-props';
 
 /** print an in-repl usage guide for the signature query */
 export function printSignatureHelp(output: ReplOutput): void {
@@ -12,7 +13,7 @@ export function printSignatureHelp(output: ReplOutput): void {
 	const ex = (cmd: string, desc: string): void => output.stdout(`  ${bold(cmd, f)}\n      ${italic(desc, f)}`);
 	output.stdout(bold('Signature Database Query', f) + italic('  (inspects the databases that resolve library()/`::` calls)', f));
 	output.stdout('');
-	output.stdout(`${bold('Usage', f)}  :query @signature [<package>[@<version>][::<function>] [<function>]] [--param <name>]... [--required <n>] [--cg]`);
+	output.stdout(`${bold('Usage', f)}  :query @signature [<package>[@<version>][::<function>] [<function>]] [--param <name>]... [--required <n>] [--cg] [--cg-max <n>]`);
 	output.stdout('');
 	output.stdout(bold('Examples', f));
 	ex(':query @signature', 'summarize the loaded databases');
@@ -24,6 +25,7 @@ export function printSignatureHelp(output: ReplOutput): void {
 	ex(':query @signature ggplot2 * --param data --param mapping', 'functions with both parameters (repeat/comma-separate --param; alone it searches all packages)');
 	ex(':query @signature stats * --required 3', 'functions with exactly 3 required parameters');
 	ex(':query @signature dplyr::lead --cg', 'a function plus its transitive call graph as a mermaid.live link');
+	ex(':query @signature dplyr::lead --cg-max 80', 'the same, capped at 80 nodes instead of the default');
 	output.stdout('');
 	output.stdout(`${bold('Signature', f)}  ${color('required', Colors.Yellow, f)} params (no default) are yellow, ${italic('non-forced', f)} (lazily evaluated) italic, defaults dimmed`);
 	output.stdout(italic(':query* dumps the full JSON (every function, the whole match set).', f));
@@ -46,13 +48,14 @@ function linkLocation(file: string, line: number | undefined, url: string | unde
 	return url ? f.hyperlink(text, url, true) : text;
 }
 
-/** render one parameter: required (no default) in yellow, non-forced (lazily evaluated) italicised, default dimmed */
+/** render one parameter: without a default in yellow, non-forced (lazily evaluated) italicised, default dimmed */
 function renderParameter(f: OutputFormatter, p: SignatureFunctionView['parameters'][number]): string {
 	if(p.name === '...') {
 		return p.name;
 	}
-	const lazy = p.forced ? {} : { style: FontStyles.Italic };
-	const name = p.default === undefined ? color(p.name, Colors.Yellow, f, lazy) : p.forced ? p.name : italic(p.name, f);
+	const forced = (p.props & ArgProp.Forced) !== 0;
+	const lazy = forced ? {} : { style: FontStyles.Italic };
+	const name = p.default === undefined ? color(p.name, Colors.Yellow, f, lazy) : forced ? p.name : italic(p.name, f);
 	return p.default !== undefined ? `${name} = ${faint(p.default, f)}` : name;
 }
 
@@ -66,6 +69,14 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 	const generic = fn.s3generic ? `  ${color('S3 generic', Colors.Magenta, f, { style: FontStyles.Bold })}` : '';
 	result.push(`   ╰ ${color(fn.package, Colors.Cyan, f, { style: FontStyles.Bold })}::${bold(fn.name, f)}${fn.version ? ` ${color('v' + fn.version, Colors.Green, f)}` : ''}${generic}`);
 	result.push(`      ╰ ${renderSignature(f, fn)}`);
+	/* what the signature styling does not already say: everything the database states beyond forced/no-default */
+	const roles = fn.parameters
+		.map(p => [p.name, ArgProps.words(p.props & ~(ArgProp.Forced | ArgProp.NoDefault))] as const)
+		.filter(([, words]) => words.length > 0)
+		.map(([name, words]) => `${name}: ${words.join('+')}`);
+	if(roles.length > 0) {
+		result.push(`      ╰ ${italic('roles', f)}   ${roles.join(', ')}`);
+	}
 	if(fn.flowrOnly) {
 		// nothing below comes from the database, so say so instead of rendering its empty fields as facts
 		result.push(`      ╰ ${italic('only flowR knows this one, the signature database has no entry', f)}`);
@@ -93,6 +104,9 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 			? `answered by ${fn.package}::${fn.s4group.group}, which covers the whole group`
 			: `a package may answer it for its own class with setMethod('${fn.s4group.group}', ...)`;
 		result.push(`      ╰ ${italic('S4 group', f)} ${color(fn.s4group.group, Colors.Magenta, f)} ${italic(`(${said})`, f)}`);
+		if(fn.s4group.members) {
+			result.push(`        ${italic('covers', f)} ${fn.s4group.members.map(m => color(m, Colors.Cyan, f)).join(', ')}`);
+		}
 	}
 	if(fn.flowr) {
 		const args = (fn.flowr.args ?? []).map(a => `${a.name}${a.roles.length > 0 ? `: ${a.roles.join('+')}` : ''}`);

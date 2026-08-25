@@ -1,6 +1,6 @@
 import { guard } from '../../util/assert';
-import type { DFControlFlowEdge, EdgeType } from './edge';
-import { DfEdge } from './edge';
+import type { DFControlFlowEdge } from './edge';
+import { DfEdge, EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
 import {
 	type DataflowGraphVertexArgument,
@@ -14,6 +14,7 @@ import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { BrandedIdentifier, Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { RLoopConstructs } from '../../r-bridge/lang-4.x/ast/model/model';
 import { Environment, type EnvType, type IEnvironment, type REnvironmentInformation } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
@@ -21,6 +22,7 @@ import type { LinkTo } from '../../queries/catalog/call-context-query/call-conte
 import type { Writable } from 'ts-essentials';
 import type { BuiltInMemory } from '../environments/built-in';
 import { FunctionDefinitionVertex, ValueVertex, UseVertex, VariableDefinitionVertex } from './vertex';
+import { activeDataflowBudget } from '../../gas';
 
 /**
  * Describes the information we store per function body.
@@ -28,28 +30,13 @@ import { FunctionDefinitionVertex, ValueVertex, UseVertex, VariableDefinitionVer
  */
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> };
 
-/**
- * A reference with a name, e.g. `a` and `b` in the following function call:
- *
- * ```r
- * foo(a = 3, b = 2)
- * ```
- * @see #isNamedArgument
- * @see PositionalFunctionArgument
- */
+/** A reference with a name, e.g. `a` and `b` in `foo(a = 3, b = 2)`, see {@link PositionalFunctionArgument}. */
 export interface NamedFunctionArgument extends IdentifierReference {
 	readonly name:    string
 	readonly valueId: NodeId | undefined
 }
 
-/**
- * A reference which does not have a name, like the references to the arguments `3` and `2` in the following:
- *
- * ```r
- * foo(3, 2)
- * ```
- * @see NamedFunctionArgument
- */
+/** A reference without a name, e.g. the references to `3` and `2` in `foo(3, 2)`, see {@link NamedFunctionArgument}. */
 export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'name'> {
 	readonly name?: undefined
 }
@@ -57,105 +44,44 @@ export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'n
 /**
  * Summarizes either named (`foo(a = 3, b = 2)`), unnamed (`foo(3, 2)`), or empty (`foo(,)`) arguments within a function.
  * See the {@link FunctionArgument} helper functions to check for the specific types.
- * @see {@link FunctionArgument.isNamed|`FunctionArgument.isNamed`} - to check for named arguments
- * @see {@link FunctionArgument.isPositional|`FunctionArgument.isPositional`} - to check for positional arguments
- * @see {@link FunctionArgument.isEmpty|`FunctionArgument.isEmpty`} - to check for empty arguments
  */
 export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument;
 
-/**
- * Helper functions to work with {@link FunctionArgument}s.
- * @see {@link EmptyArgument} - the marker for empty arguments
- */
+/** Helper functions to work with {@link FunctionArgument}s. {@link EmptyArgument} marks an empty argument. */
 export const FunctionArgument = {
 	name: 'FunctionArgument',
-	/**
-	 * Checks whether the given argument is a positional argument.
-	 * @example
-	 * ```r
-	 * foo(b=3, 2) # the second argument is positional
-	 * ```
-	 */
+	/** Whether `arg` is positional, e.g. the `2` in `foo(b=3, 2)`. */
 	isPositional(this: void, arg: FunctionArgument): arg is PositionalFunctionArgument {
 		return arg !== EmptyArgument && arg.name === undefined;
 	},
-	/**
-	 * Checks whether the given argument is a named argument.
-	 * @example
-	 * ```r
-	 * foo(b=3, 2) # the first argument is named
-	 * ```
-	 * @see {@link isPositional}
-	 * @see {@link isEmpty}
-	 * @see {@link hasName}
-	 */
+	/** Whether `arg` is named, e.g. the `b=3` in `foo(b=3, 2)`. */
 	isNamed(this: void, arg: FunctionArgument): arg is NamedFunctionArgument {
 		return arg !== EmptyArgument && arg.name !== undefined;
 	},
-	/**
-	 * Checks whether the given argument is an unnamed argument (either positional or empty).
-	 * @example
-	 * ```r
-	 * foo(, 2)   # the first argument is unnamed (empty)
-	 * foo(3, 2)  # both arguments are unnamed (positional)
-	 * ```
-	 * @see {@link isNamed}
-	 */
+	/** Whether `arg` is unnamed, i.e. positional or empty, e.g. both arguments of `foo(, 2)` and `foo(3, 2)`. */
 	isUnnamed(this: void, arg: FunctionArgument): arg is PositionalFunctionArgument | typeof EmptyArgument {
 		return arg === EmptyArgument || arg.name === undefined;
 	},
-	/**
-	 * Checks whether the given argument is an empty argument.
-	 * @example
-	 * ```r
-	 * foo(, 2) # the first argument is empty
-	 * ```
-	 * @see {@link isNotEmpty}
-	 */
+	/** Whether `arg` is the {@link EmptyArgument} marker, e.g. the first argument of `foo(, 2)`. */
 	isEmpty(this: void, arg: unknown): arg is typeof EmptyArgument {
 		return arg === EmptyArgument;
 	},
-	/**
-	 * Checks whether the given argument is not an empty argument.
-	 * @see {@link FunctionArgument.isEmpty}
-	 */
+	/** @see {@link FunctionArgument.isEmpty} */
 	isNotEmpty<T>(this: void, arg: T): arg is Exclude<T, typeof EmptyArgument> {
 		return arg !== EmptyArgument;
 	},
-	/**
-	 * Returns the id of a non-empty argument.
-	 * @example
-	 * ```r
-	 * foo(a=3, 2) # returns the node id of either `a` or `2`
-	 * ```
-	 * @see {@link FunctionArgument.getReference}
-	 * @see {@link FunctionArgument.getName}
-	 */
+	/** The node id of a non-empty `arg`, e.g. of either `a` or `2` in `foo(a=3, 2)`. */
 	getId(this: void, arg: FunctionArgument): NodeId | undefined {
 		if(arg !== EmptyArgument) {
 			return arg?.nodeId;
 		}
 		return undefined;
 	},
-	/**
-	 * Returns the name of a named argument.
-	 * @example
-	 * ```r
-	 * foo(a = 3, 2) # returns 'a' or undefined
-	 * ```
-	 * @see {@link FunctionArgument.getId}
-	 */
+	/** The name of `arg` if named, `undefined` otherwise. */
 	getName(this: void, arg: FunctionArgument): string | undefined {
 		return FunctionArgument.isNamed(arg) ? arg.name : undefined;
 	},
-	/**
-	 * Returns the reference of a non-empty argument.
-	 * @example
-	 * ```r
-	 * foo(a=3, 2) # returns the node id of either `3` or `2`, but skips a
-	 * ```
-	 * @see {@link FunctionArgument.getId}
-	 */
+	/** The value node id of a non-empty `arg`: its own id if positional, or its value's id (skipping the name) if named. */
 	getReference(this: void, arg: FunctionArgument): NodeId | undefined {
 		if(arg === EmptyArgument) {
 			return undefined;
@@ -164,13 +90,7 @@ export const FunctionArgument = {
 		}
 		return arg.valueId;
 	},
-	/**
-	 * Checks whether the given argument is a named argument with the specified name.
-	 * Please note that this only checks whether the name is exactly identical and not whether
-	 * R's argument matching resolves to the correct argument.
-	 * For this, please refer to the {@link pMatch} function!
-	 * @see {@link isNamed}
-	 */
+	/** Whether `arg` is named exactly `name` (textual match only, not R's argument-matching; see {@link pMatch} for that). */
 	hasName(this: void, arg: FunctionArgument, name: string | undefined): arg is NamedFunctionArgument {
 		return FunctionArgument.isNamed(arg) && arg.name === name;
 	}
@@ -215,9 +135,7 @@ interface QualificationCache {
 	complete:       boolean
 }
 
-/**
- * The structure of the serialized {@link DataflowGraph}.
- */
+/** The structure of the serialized {@link DataflowGraph}. */
 export interface DataflowGraphJson {
 	readonly rootVertices:        NodeId[],
 	readonly vertexInformation:   [NodeId, DataflowGraphVertexInfo][],
@@ -265,20 +183,10 @@ export const UnknownSideEffect = {
 } as const;
 
 /**
- * The dataflow graph holds the dataflow information found within the given AST.
- * We differentiate the directed edges in {@link EdgeType} and the vertices indicated by {@link DataflowGraphVertexArgument}.
- * The helper object associated with the DFG is {@link Dataflow}.
- *
- * The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the node ids of its subgraph.
- * However, all *edges* are hoisted at the top level in the form of an (attributed) adjacency list.
- * After the dataflow analysis, all sources and targets of the edges *must* be part of the vertices.
- * However, this does not have to hold during the construction as edges may point from or to vertices which are yet to be constructed.
- *
- * All methods return the modified graph to allow for chaining.
- * @see {@link DataflowGraph#addEdge|`addEdge`} - to add an edge to the graph
- * @see {@link DataflowGraph#addVertex|`addVertex`} - to add a vertex to the graph
- * @see {@link DataflowGraph#fromJson|`fromJson`} - to construct a dataflow graph object from a deserialized JSON object.
- * @see {@link emptyGraph|`emptyGraph`} - to create an empty graph (useful in tests)
+ * The dataflow graph holds the dataflow information found within the given AST: directed edges ({@link EdgeType}) are hoisted
+ * into a flat adjacency list, while vertices ({@link DataflowGraphVertexArgument}) nest hierarchically (a function-definition
+ * vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction.
+ * All methods return the modified graph to allow for chaining. The helper object associated with the DFG is {@link Dataflow}.
  */
 export class DataflowGraph<
 	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,
@@ -313,7 +221,6 @@ export class DataflowGraph<
 	/* the qualified call names, built on demand and dropped on every change, as vertices and edges both decide them */
 	private qualifiedNames?: QualificationCache;
 
-
 	toJSON(): DataflowGraphJson {
 		return {
 			rootVertices:        Array.from(this.rootVertices),
@@ -323,37 +230,19 @@ export class DataflowGraph<
 		};
 	}
 
-	/**
-	 * Get the {@link DataflowGraphVertexInfo} attached to a node as well as all outgoing edges.
-	 * @param id                      - The id of the node to get
-	 * @param includeDefinedFunctions - If true this will search function definitions as well and not just the toplevel
-	 * @returns the node info for the given id (if it exists)
-	 * @see #getVertex
-	 */
+	/** Gets the {@link DataflowGraphVertexInfo} attached to `id` (searching function definitions too if `includeDefinedFunctions`) and its outgoing edges. */
 	public get(id: NodeId, includeDefinedFunctions = true): [Vertex, OutgoingEdges] | undefined {
 		// if we do not want to include function definitions, only retrieve the value if the id is part of the root vertices
 		const vertex: Vertex | undefined = includeDefinedFunctions ? this.getVertex(id) : this.getRootVertex(id);
 		return vertex === undefined ? undefined : [vertex, this.outgoingEdges(id) ?? new Map()];
 	}
 
-	/**
-	 * Get the {@link DataflowGraphVertexInfo} attached to a vertex.
-	 * @param id                      - The id of the node to get
-	 * @returns the node info for the given id (if it exists)
-	 * @see #get
-	 * @see #getRootVertex
-	 */
+	/** Gets the {@link DataflowGraphVertexInfo} attached to `id`, see {@link DataflowGraph#getRootVertex}. */
 	public getVertex(id: NodeId): Vertex | undefined {
 		return this.vertexInformation.get(id);
 	}
 
-	/**
-	 * Get the {@link DataflowGraphVertexInfo} attached to a root-level vertex.
-	 * @param id - The id of the node to get
-	 * @returns the node info for the given id (if it exists)
-	 * @see #get
-	 * @see #getVertex
-	 */
+	/** Gets the {@link DataflowGraphVertexInfo} attached to `id`, but only if it is a root-level vertex, see {@link DataflowGraph#getVertex}. */
 	public getRootVertex(id: NodeId): Vertex | undefined {
 		if(!this.rootVertices.has(id)) {
 			return undefined;
@@ -383,6 +272,20 @@ export class DataflowGraph<
 		/* the historic contract is an (possibly empty) map for every id, never `undefined`; the miss is the common
 		 * case in traversal loops, so it answers with the shared empty map rather than a fresh one */
 		return this.incomingIndex.get(id) ?? NoEdges;
+	}
+
+	/**
+	 * Whether `id` is quoted, i.e. affected by a {@link EdgeType.NonStandardEvaluation} edge that keeps it from being
+	 * evaluated (a loop's own NSE-marked body still is evaluated, so that does not count). `withOutgoing` also checks whether `id` itself quotes something.
+	 */
+	public isQuoted(id: NodeId, withOutgoing = false): boolean {
+		/* an nse edge quotes iff it does not originate from a loop marking its body */
+		const quotes = (source: NodeId, e: DfEdge): boolean =>
+			DfEdge.includesType(e, EdgeType.NonStandardEvaluation) && !RLoopConstructs.is(this.idMap?.get(source));
+		if(this.ingoingEdges(id)?.entries().some(([source, e]) => quotes(source, e))) {
+			return true;
+		}
+		return withOutgoing && (this.outgoingEdges(id)?.values().some(e => quotes(id, e)) ?? false);
 	}
 
 	/**
@@ -437,12 +340,7 @@ export class DataflowGraph<
 		}
 	}
 
-	/**
-	 * Given a node in the normalized AST this either:
-	 * returns the id if the node directly exists in the DFG
-	 * returns the ids of all vertices in the DFG that are linked to this
-	 * returns undefined if the node is not part of the DFG and not linked to any node
-	 */
+	/** For a node of the normalized AST: `nodeId` if it is a DFG vertex itself, else the DFG vertices linked to it, else `undefined`. */
 	public getLinked(nodeId: NodeId): NodeId[] | undefined {
 		if(this.vertexInformation.has(nodeId)) {
 			return [nodeId];
@@ -456,15 +354,12 @@ export class DataflowGraph<
 		return linked.length > 0 ? linked : undefined;
 	}
 
-
 	/** Retrieves the id-map to the normalized AST attached to the dataflow graph */
 	public get idMap(): AstIdMap | undefined {
 		return this._idMap;
 	}
 
-	/**
-	 * Retrieves the set of vertices which have side effects that we do not know anything about.
-	 */
+	/** Retrieves the set of vertices which have side effects that we do not know anything about. */
 	public get unknownSideEffects(): Set<UnknownSideEffect> {
 		return this._unknownSideEffects;
 	}
@@ -474,12 +369,7 @@ export class DataflowGraph<
 		this._idMap = idMap;
 	}
 
-
-	/**
-	 * @param includeDefinedFunctions - If true this will iterate over function definitions as well and not just the toplevel
-	 * @returns the ids of all toplevel vertices in the graph together with their vertex information
-	 * @see #edges
-	 */
+	/** Ids of all toplevel vertices (or all, including those nested in function definitions, if `includeDefinedFunctions`) with their info, see {@link DataflowGraph#edges}. */
 	public* vertices(includeDefinedFunctions: boolean): MapIterator<[NodeId, Vertex]> {
 		if(includeDefinedFunctions) {
 			yield* this.vertexInformation.entries();
@@ -501,26 +391,17 @@ export class DataflowGraph<
 		return this.types.get(type) ?? [];
 	}
 
-	/**
-	 * @returns the ids of all edges in the graph together with their edge information
-	 * @see #vertices
-	 */
+	/** Ids of all edges in the graph together with their edge information, see {@link DataflowGraph#vertices}. */
 	public* edges(): MapIterator<[NodeId, OutgoingEdges]> {
 		yield* this.edgeInformation.entries();
 	}
 
-	/**
-	 * Returns true if the graph contains a node with the given id.
-	 * @param id                      - The id to check for
-	 * @param includeDefinedFunctions - If true this will check function definitions as well and not just the toplevel
-	 */
+	/** Whether the graph contains a node with `id` (checking function definitions too if `includeDefinedFunctions`). */
 	public hasVertex(id: NodeId, includeDefinedFunctions = true): boolean {
 		return includeDefinedFunctions ? this.vertexInformation.has(id) : this.rootVertices.has(id);
 	}
 
-	/**
-	 * Returns true if the root level of the graph contains a node with the given id.
-	 */
+	/** Returns true if the root level of the graph contains a node with the given id. */
 	public isRoot(id: NodeId): boolean {
 		return this.rootVertices.has(id);
 	}
@@ -559,14 +440,8 @@ export class DataflowGraph<
 	}
 
 	/**
-	 * Adds a new vertex to the graph, for ease of use, some arguments are optional and filled automatically.
-	 * @param vertex - The vertex to add
-	 * @param fallbackEnv - A clean environment to use if no environment is given in the vertex
-	 * @param asRoot - If false, this will only add the vertex but do not add it to the {@link rootIds|root vertices} of the graph.
-	 *                 This is probably only of use, when you construct dataflow graphs for tests.
-	 * @param overwrite - If true, this will overwrite the vertex if it already exists in the graph (based on the id).
-	 * @see DataflowGraphVertexInfo
-	 * @see DataflowGraphVertexArgument
+	 * Adds `vertex` to the graph, filling in `fallbackEnv` if it carries no environment. `asRoot = false` skips
+	 * adding it to {@link rootIds|root vertices} (mostly useful when constructing graphs for tests); `overwrite` replaces an existing vertex of the same id.
 	 */
 	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, fallbackEnv: REnvironmentInformation, asRoot = true, overwrite = false): this {
 		const vid = vertex.id;
@@ -579,6 +454,9 @@ export class DataflowGraph<
 		// keep a clone of the original environment, isolating the snapshot from later updates
 		(vertex as { environment: REnvironmentInformation | undefined }).environment = vertex.environment ? cloneEnvironmentInformation(vertex.environment) : (vtag === VertexType.FunctionDefinition || (vtag === VertexType.FunctionCall && !vertex.onlyBuiltin) ? fallbackEnv : undefined);
 		this.vertexInformation.set(vid, vertex as Vertex);
+		if(activeDataflowBudget !== undefined) {
+			activeDataflowBudget.vertex();
+		}
 		const typeIds = this.types.get(vtag);
 		if(typeIds) {
 			typeIds.push(vid);
@@ -630,12 +508,7 @@ export class DataflowGraph<
 		return this;
 	}
 
-	/**
-	 * Merges the other graph into *this* one (in-place). The return value is only for convenience.
-	 * @param otherGraph        - The graph to merge into this one
-	 * @param mergeRootVertices - If false, this will only merge the vertices and edges but exclude the root vertices this is probably only of use
-	 *                            in the context of function definitions
-	 */
+	/** Merges `otherGraph` into *this* one in-place (the return value is only for convenience); `mergeRootVertices = false` excludes its root vertices (useful when merging in a function definition). */
 	public mergeWith(otherGraph: DataflowGraph<Vertex, Edge> | undefined, mergeRootVertices = true): this {
 		if(otherGraph === undefined || otherGraph === this) {
 			return this;
@@ -698,11 +571,7 @@ export class DataflowGraph<
 		}
 	}
 
-	/**
-	 * Marks a vertex in the graph to be a definition
-	 * @param reference - The reference to the vertex to mark as definition
-	 * @param sourceIds - The id of the source vertex of the def, if available
-	 */
+	/** Marks the vertex referenced by `reference` as a definition, with `sourceIds` as the source vertex ids of the def if known. */
 	public setDefinitionOfVertex(reference: IdentifierReference, sourceIds: readonly NodeId[] | undefined): void {
 		this.dropQualifications();
 		const vertex = this.getVertex(reference.nodeId);
@@ -731,10 +600,7 @@ export class DataflowGraph<
 		}
 	}
 
-	/**
-	 * Marks a vertex in the graph to be a function call with the new information
-	 * @param info - The information about the new function call node
-	 */
+	/** Marks the vertex `info.id` in the graph to be a function call with the new `info`. */
 	public updateToFunctionCall(info: DataflowGraphVertexFunctionCall): void {
 		this.dropQualifications();
 		const infoId = info.id;
@@ -787,11 +653,7 @@ export class DataflowGraph<
 		return this;
 	}
 
-	/**
-	 * Constructs a dataflow graph instance from the given JSON data and returns the result.
-	 * This can be useful for data sent by the flowR server when analyzing it further.
-	 * @param data - The JSON data to construct the graph from
-	 */
+	/** Constructs a dataflow graph instance from the given JSON data, e.g. as sent by the flowR server for further analysis. */
 	public static fromJson(data: DataflowGraphJson): DataflowGraph {
 		const graph = new DataflowGraph(undefined);
 		graph.rootVertices = new Set<NodeId>(data.rootVertices);

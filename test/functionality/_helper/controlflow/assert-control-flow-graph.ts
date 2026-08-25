@@ -14,6 +14,7 @@ import { label } from '../label';
 import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
 import { FlowrConfig } from '../../../../src/config';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
+import { assumedPackagesOf, withAssumedPackages } from '../shell';
 
 function normAllIds(ids: readonly NodeId[]): NodeId[] {
 	return ids.map(NodeId.normalize);
@@ -35,8 +36,9 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 	// shallow copy is important to avoid killing the CFG :c
 	const expected: ControlFlowInformation = { ...emptyControlFlowInformation(), ...partialExpected };
 	const effectiveName = label(code, options?.testIds ?? [], ['controlflow']);
+	const assumed = assumedPackagesOf(undefined);
 	return test(effectiveName, async() => {
-		const config = FlowrConfig.default();
+		const config = withAssumedPackages(FlowrConfig.default(), assumed);
 		const analyzer = await new FlowrAnalyzerBuilder()
 			.setConfig(config)
 			.setParser(parser)

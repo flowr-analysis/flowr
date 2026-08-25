@@ -118,7 +118,6 @@ export function isAbsolutePath(p: string, regex: RegExp | undefined): boolean {
 	return typeof normalized === 'string' && normalized === path.normalize(path.resolve(p) + '/');
 }
 
-
 const CorrespondingClose = {
 	'(': ')',
 	'[': ']',
@@ -141,3 +140,12 @@ export function dropRawStringSurround(value: string): string {
 	return value;
 }
 
+/**
+ * The `prefix.suffix` readings of a dotted R name, longest prefix first, which is the order S3 dispatch
+ * resolves them in (`as.data.frame.matrix` reads as `as.data.frame` before `as.data`).
+ */
+export function* dottedSplits(name: string): Generator<readonly [prefix: string, suffix: string]> {
+	for(let dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.', dot - 1)) {
+		yield [name.slice(0, dot), name.slice(dot + 1)];
+	}
+}

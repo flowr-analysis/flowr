@@ -1,8 +1,10 @@
-import { assertSliced, withShell } from '../../../_helper/shell';
+import { assertSliced, assumeLoadedPackages, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { describe } from 'vitest';
 import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
+
+assumeLoadedPackages('magrittr');
 
 describe('dollar access', { concurrent: false }, withShell(shell => {
 	describe('problems in practice', () => {
@@ -20,7 +22,6 @@ person <- list(name = list(a = list(b = "Jane")))
 person$name$a$b <- "John"
 print(person)
 		`, ['4@print'], 'person <- list(name = list(a = list(b = "Jane")))\nperson$name$a$b <- "John"\nprint(person)');
-
 
 		for(const pipe of ['%>%', '|>']) {
 			const code = `

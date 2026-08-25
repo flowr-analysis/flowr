@@ -128,37 +128,19 @@ export class SemanticCfgGuidedVisitor<
 		guard(false, `Unexpected value type ${astNode.type} for value ${astNode.lexeme}`);
 	}
 
-	/**
-	 * See {@link DataflowAwareCfgGuidedVisitor#visitVariableUse} for the base implementation.
-	 *
-	 * This function is called for every use of a variable in the program and dispatches the appropriate event.
-	 * You probably do not have to overwrite it and just use {@link SemanticCfgGuidedVisitor#onVariableUse|`onVariableUse`} instead.
-	 * @protected
-	 */
+	/** Dispatches {@link SemanticCfgGuidedVisitor#onVariableUse|onVariableUse}; overwrite that instead of this base-dispatch override. */
 	protected override visitVariableUse(vertex: DataflowGraphVertexUse) {
 		super.visitVariableUse(vertex);
 		this.onVariableUse({ vertex });
 	}
 
-	/**
-	 * See {@link DataflowAwareCfgGuidedVisitor#visitVariableDefinition} for the base implementation.
-	 *
-	 * This function is called for every variable definition in the program and dispatches the appropriate event.
-	 * You probably do not have to overwrite it and just use {@link SemanticCfgGuidedVisitor#onVariableDefinition|`onVariableDefinition`} instead.
-	 * @protected
-	 */
+	/** Dispatches {@link SemanticCfgGuidedVisitor#onVariableDefinition|onVariableDefinition}; overwrite that instead of this base-dispatch override. */
 	protected override visitVariableDefinition(vertex: DataflowGraphVertexVariableDefinition) {
 		super.visitVariableDefinition(vertex);
 		this.onVariableDefinition({ vertex });
 	}
 
-	/**
-	 * See {@link DataflowAwareCfgGuidedVisitor#visitFunctionDefinition} for the base implementation.
-	 *
-	 * This function is called for every function definition in the program and dispatches the appropriate event.
-	 * You probably do not have to overwrite it and just use {@link SemanticCfgGuidedVisitor#onFunctionDefinition|`onFunctionDefinition`} instead.
-	 * @protected
-	 */
+	/** Dispatches {@link SemanticCfgGuidedVisitor#onFunctionDefinition|onFunctionDefinition}; overwrite that instead of this base-dispatch override. */
 	protected override visitFunctionDefinition(vertex: DataflowGraphVertexFunctionDefinition): void {
 		super.visitFunctionDefinition(vertex);
 		const ast = this.getNormalizedAst(vertex.id);
@@ -170,13 +152,8 @@ export class SemanticCfgGuidedVisitor<
 	}
 
 	/**
-	 * See {@link DataflowAwareCfgGuidedVisitor#visitFunctionCall} for the base implementation.
-	 *
-	 * This function is called for every function call in the program and dispatches the appropriate event.
-	 * You probably do not have to overwrite it and just use {@link SemanticCfgGuidedVisitor#onUnnamedCall|`onUnnamedCall`} for anonymous calls,
-	 * or {@link SemanticCfgGuidedVisitor#onDispatchFunctionCallOrigins|`onDispatchFunctionCallOrigins`} for named calls (or just overwrite
-	 * the events you are interested in directly).
-	 * @protected
+	 * Dispatches {@link SemanticCfgGuidedVisitor#onUnnamedCall|onUnnamedCall} for anonymous calls, or
+	 * {@link SemanticCfgGuidedVisitor#onDispatchFunctionCallOrigins|onDispatchFunctionCallOrigins} for named ones; overwrite those instead of this base-dispatch override.
 	 */
 	protected override visitFunctionCall(vertex: DataflowGraphVertexFunctionCall) {
 		super.visitFunctionCall(vertex);
@@ -187,13 +164,9 @@ export class SemanticCfgGuidedVisitor<
 		}
 	}
 
-
 	/**
-	 * See {@link DataflowAwareCfgGuidedVisitor#visitUnknown} for the base implementation.
-	 * This function is called for every unknown vertex in the program.
-	 * It dispatches the appropriate event based on the type of the vertex.
-	 * In case you have to overwrite this function please make sure to still call this implementation to get a correctly working {@link SemanticCfgGuidedVisitor#onProgram|`onProgram`}.
-	 * @protected
+	 * Dispatches {@link SemanticCfgGuidedVisitor#onProgram|onProgram} for the root program node.
+	 * If you overwrite this, call the base implementation too so `onProgram` keeps firing.
 	 */
 	protected override visitUnknown(vertex: CfgStatementVertex | CfgExpressionVertex) {
 		super.visitUnknown(vertex);
@@ -220,7 +193,7 @@ export class SemanticCfgGuidedVisitor<
 	/**
 	 * This function is responsible for dispatching the appropriate event
 	 * based on a given dataflow vertex. The default serves as a backend
-	 * for the event functions, but you may overwrite and extend this function at will.
+	 * for the event functions below, each of which relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @see {@link onDispatchFunctionCallOrigins} for the aggregation in case the function call target is ambiguous.
 	 * @protected
 	 */
@@ -330,8 +303,10 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.StringTemplate:
 			case BuiltInProcName.S7MakeConstructor:
 			case BuiltInProcName.ClassGenerator:
+			case BuiltInProcName.ClassRelation:
 			case BuiltInProcName.DefineArgument:
 			case BuiltInProcName.Switch:
+			case BuiltInProcName.S4Use:
 				return this.onDefaultFunctionCall({ call });
 			case BuiltInProcName.Load:
 				return this.onLoadCall({ call });
@@ -340,12 +315,8 @@ export class SemanticCfgGuidedVisitor<
 		}
 	}
 
-	/**
-	 * This event is called for the root program node, i.e., the program that is being analyzed.
-	 * @protected
-	 */
+	/** Fires for the root program node being analyzed. */
 	protected onProgram(_data: RExpressionList<OtherInfo>) {}
-
 
 	/**
 	 * A helper function to request the {@link Dataflow.origin|origins} of the given node.
@@ -354,394 +325,164 @@ export class SemanticCfgGuidedVisitor<
 		return Dataflow.origin(this.config.dfg, id);
 	}
 
-	/**
-	 * Called for every occurrence of a `NULL` in the program.
-	 *
-	 * For other symbols that are not referenced as a variable, see {@link SemanticCfgGuidedVisitor#onSymbolConstant|`onSymbolConstant`}.
-	 */
+	/** Fires for every `NULL` occurrence; other symbols go through {@link SemanticCfgGuidedVisitor#onSymbolConstant|onSymbolConstant} instead. */
 	protected onNullConstant(_data: { vertex: DataflowGraphVertexValue, node: RSymbol<OtherInfo & ParentInformation, typeof RNull> }) {}
 
-	/**
-	 * Called for every constant string value in the program.
-	 *
-	 * For example, `"Hello World"` in `print("Hello World")`.
-	 */
+	/** Fires for every constant string, e.g. `"Hello World"` in `print("Hello World")`. */
 	protected onStringConstant(_data: { vertex: DataflowGraphVertexValue, node: RString }) {}
 
-	/**
-	 * Called for every constant number value in the program.
-	 *
-	 * For example, `42` in `print(42)`.
-	 */
+	/** Fires for every constant number, e.g. `42` in `print(42)`. */
 	protected onNumberConstant(_data: { vertex: DataflowGraphVertexValue, node: RNumber }) {}
 
-	/**
-	 * Called for every constant logical value in the program.
-	 *
-	 * For example, `TRUE` in `if(TRUE) { ... }`.
-	 */
+	/** Fires for every constant logical, e.g. `TRUE` in `if(TRUE) { ... }`. */
 	protected onLogicalConstant(_data: { vertex: DataflowGraphVertexValue, node: RLogical }) {}
 
 	/**
-	 * Called for every constant symbol value in the program.
-	 *
-	 * For example, `foo` in `library(foo)` or `a` in `l$a`. This most likely happens as part of non-standard-evaluation, i.e., the symbol is not evaluated to a value,
-	 * but used as a symbol in and of itself.
-	 *
-	 * Please note, that due to its special behaviors, `NULL` is handled in {@link SemanticCfgGuidedVisitor#onNullConstant|`onNullConstant`} and not here.
+	 * Fires for every constant symbol used as itself (non-standard evaluation, not resolved to a value), e.g. `foo` in `library(foo)` or `a` in `l$a`.
+	 * `NULL` goes through {@link SemanticCfgGuidedVisitor#onNullConstant|onNullConstant} instead.
 	 */
 	protected onSymbolConstant(_data: { vertex: DataflowGraphVertexValue, node: RSymbol }) {}
 
-	/**
-	 * Called for every variable that is read within the program.
-	 * You can use {@link getOrigins} to get the origins of the variable.
-	 *
-	 * For example, `x` in `print(x)`.
-	 */
+	/** Fires for every variable read, e.g. `x` in `print(x)`. Use {@link getOrigins} for its origins. */
 	protected onVariableUse(_data: { vertex: DataflowGraphVertexUse }) {}
 
 	/**
-	 * Called for every variable that is written within the program.
-	 * You can use {@link getOrigins} to get the origins of the variable.
-	 *
-	 * For example, `x` in `x <- 42` or `x` in `assign("x", 42)`.
-	 * See {@link SemanticCfgGuidedVisitor#onAssignmentCall} for the assignment call. This event handler also provides you with information on the source.
+	 * Fires for every variable write, e.g. `x` in `x <- 42` or `assign("x", 42)`. Use {@link getOrigins} for its origins.
+	 * See {@link SemanticCfgGuidedVisitor#onAssignmentCall|onAssignmentCall} for the assignment call itself, which also carries the source.
 	 */
 	protected onVariableDefinition(_data: { vertex: DataflowGraphVertexVariableDefinition }) {}
 
-	/**
-	 * Called for every anonymous function definition.
-	 *
-	 * For example, `function(x) { x + 1 }` in `lapply(1:10, function(x) { x + 1 })`.
-	 */
+	/** Fires for every anonymous function definition, e.g. `function(x) { x + 1 }` in `lapply(1:10, function(x) { x + 1 })`. */
 	protected onFunctionDefinition(_data: { vertex: DataflowGraphVertexFunctionDefinition, parameters?: readonly NodeId[] }) {}
 
 	/**
-	 * This event triggers for every anonymous call within the program.
-	 *
-	 * For example, `(function(x) { x + 1 })(42)` or the second call in `a()()`.
-	 *
-	 * This is separate from {@link SemanticCfgGuidedVisitor#onDefaultFunctionCall|`onDefaultFunctionCall`} which is used for named function calls that do not trigger any of these events.
-	 * The main differentiation for these calls is that you may not infer their semantics from any name alone and probably _have_
-	 * to rely on {@link SemanticCfgGuidedVisitor#getOrigins|`getOrigins`} to get more information.
-	 * @protected
+	 * Fires for every anonymous call, e.g. `(function(x) { x + 1 })(42)` or the second call in `a()()`, whose target cannot be inferred from a name
+	 * (use {@link SemanticCfgGuidedVisitor#getOrigins|getOrigins}). Named calls go through {@link SemanticCfgGuidedVisitor#onDefaultFunctionCall|onDefaultFunctionCall} instead.
 	 */
 	protected onUnnamedCall(_data: OnCall) {}
 
 	/**
-	 * This event triggers for every function call that is not handled by a specific overload,
-	 * and hence may be a function that targets a user-defined function. In a way, these are functions that are named,
-	 * but flowR does not specifically care about them (currently) wrt. to their dataflow impact.
-	 *
-	 * Use {@link SemanticCfgGuidedVisitor#getOrigins|`getOrigins`} to get the origins of the call.
-	 *
-	 * For example, this triggers for `foo(x)` in
-	 *
-	 * ```r
-	 * foo <- function(x) { x + 1 }
-	 * foo(x)
-	 * ```
-	 *
-	 * This explicitly will not trigger for scenarios in which the function has no name (i.e., if it is anonymous).
-	 * For such cases, you may rely on the {@link SemanticCfgGuidedVisitor#onUnnamedCall|`onUnnamedCall`} event.
-	 * The main reason for this separation is part of flowR's handling of these functions, as anonymous calls cannot be resolved using the active environment.
-	 * @protected
+	 * Fires for every named call not handled by a specific overload, e.g. `foo(x)` for a user-defined `foo`. flowR does not care about the dataflow
+	 * impact of these (currently); use {@link SemanticCfgGuidedVisitor#getOrigins|getOrigins} to get the call's origins. Anonymous calls, which cannot
+	 * be resolved via the active environment, go through {@link SemanticCfgGuidedVisitor#onUnnamedCall|onUnnamedCall} instead.
 	 */
 	protected onDefaultFunctionCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for every call to the `eval` function.
-	 *
-	 * For example, `eval` in `eval(parse(text = "x + 1"))`.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
-	 */
+	/** Fires for every call to `eval`, e.g. `eval(parse(text = "x + 1"))`. */
 	protected onEvalFunctionCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for every call to any of the `*apply` functions.
-	 *
-	 * For example, `lapply` in `lapply(1:10, function(x) { x + 1 })`.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
-	 */
+	/** Fires for every call to a `*apply` function, e.g. `lapply(1:10, function(x) { x + 1 })`. */
 	protected onApplyFunctionCall(_data: OnCall) {}
 
 	/**
-	 * This event triggers for every expression list - implicit or explicit, _but_ not for the root program (see {@link SemanticCfgGuidedVisitor#onProgram|`onProgram`} for that).
-	 *
-	 * For example, this triggers for the expression list created by `{` and `}` in `ìf (TRUE) { x <- 1; y <- 2; }`. But also for the implicit
-	 * expression list `x <- x + 1` in `for(x in 1:10) x <- x + 1`.
-	 * @protected
+	 * Fires for every expression list, implicit or explicit, other than the root program (see {@link SemanticCfgGuidedVisitor#onProgram|onProgram}
+	 * for that) - e.g. the `{ }` block, or the implicit list `x <- x + 1` forms in `for(x in 1:10) x <- x + 1`.
 	 */
 	protected onExpressionList(_data: OnCall) {}
 
-
 	/**
-	 * This event triggers for every call to the `source` function.
-	 *
-	 * For example, `source` in `source("script.R")`.
-	 *
-	 * By default, this does not provide the resolved source file. Yet you can access the {@link DataflowGraph} to ask for sourced files.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
+	 * Fires for every call to `source`, e.g. `source("script.R")`. Does not provide the resolved source file by default;
+	 * use the {@link DataflowGraph} to ask for sourced files.
 	 */
 	protected onSourceCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for every subsetting call, i.e., for every call to `[[`, `[`, or `$`.
-	 * @protected
-	 */
+	/** Fires for every subsetting call: `[[`, `[`, or `$`. */
 	protected onAccessCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for every call to the `if` function, which is used to implement the `if-then-else` control flow.
-	 * @protected
-	 */
+	/** Fires for every `if`-`then`-`else` call. */
 	protected onIfThenElseCall(_data: OnCall & { condition: NodeId | undefined, yes: NodeId | undefined, no: NodeId | undefined }) {}
 
 	/**
-	 * This event triggers for every call to the `get` function, which is used to access variables in the global environment.
-	 *
-	 * For example, `get` in `get("x")`.
-	 *
-	 * Please be aware, that with flowR resolving the `get` during the dataflow analysis,
-	 * this may very well trigger a {@link SemanticCfgGuidedVisitor#onVariableUse|`onVariableUse`} event as well.
-	 * @protected
+	 * Fires for every call to `get`, e.g. `get("x")`, which is used to access variables in the global environment.
+	 * As flowR resolves `get` during the dataflow analysis, this may also trigger {@link SemanticCfgGuidedVisitor#onVariableUse|onVariableUse}.
 	 */
 	protected onGetCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for every call to the `rm` function, which is used to remove variables from the environment.
-	 *
-	 * For example, `rm` in `rm(x)`.
-	 * @protected
-	 */
+	/** Fires for every call to `rm`, e.g. `rm(x)`, which removes variables from the environment. */
 	protected onRmCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for every call to a function which loads a library.
-	 *
-	 * For example, `library` in `library(dplyr)`.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
-	 */
+	/** Fires for every call that loads a library, e.g. `library(dplyr)`. */
 	protected onLibraryCall(_data: OnCall) {}
 
 	/**
-	 * This event triggers for every assignment call, i.e., for every call to `<-` or `=` that assigns a value to a variable.
-	 *
-	 * For example, this triggers for `<-` in `x <- 42` or `assign` in `assign("x", 42)`.
-	 * This also triggers for the `data.table` assign `:=` active within subsetting calls, e.g., `DT[, x := 42]`.
-	 *
-	 * Please be aware that replacements (e.g. assignments with a function call on the target side) like `names(x) <- 3` are subject to {@link SemanticCfgGuidedVisitor#onReplacementCall|`onReplacementCall`} instead.
-	 * @protected
+	 * Fires for every assignment call, e.g. `<-` in `x <- 42`, `assign("x", 42)`, or the `data.table` assign `:=` in `DT[, x := 42]`.
+	 * Replacements with a function call on the target side, like `names(x) <- 3`, go through {@link SemanticCfgGuidedVisitor#onReplacementCall|onReplacementCall} instead.
 	 */
 	protected onAssignmentCall(_data: OnCall & { target?: NodeId, source?: NodeId }) {}
 
-	/**
-	 * This event triggers for every call to a special binary operator, i.e., every binary function call that starts and ends with a `%` sign.
-	 *
-	 * For example, this triggers for`%in%` in `x %in% y`.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
-	 */
+	/** Fires for every special binary operator call, i.e. a binary call whose name starts and ends with `%`, e.g. `x %in% y`. */
 	protected onSpecialBinaryOpCall(_data: OnCall & { lhs?: FunctionArgument, rhs?: FunctionArgument }) {}
 
-	/**
-	 * This event triggers for every call to R's pipe operator, i.e., for every call to `|>`.
-	 * @protected
-	 */
+	/** Fires for every call to R's pipe operator `|>`. */
 	protected onPipeCall(_data: OnCall & { lhs?: FunctionArgument, rhs?: FunctionArgument }) {}
 
-
-	/**
-	 * This event triggers for every call to the `quote` function, which is used to quote expressions.
-	 *
-	 * For example, `quote` in `quote(x + 1)`.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
-	 */
+	/** Fires for every call to `quote`, e.g. `quote(x + 1)`. */
 	protected onQuoteCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for every call to the `for` loop function, which is used to implement the `for` loop control flow.
-	 *
-	 * For example, this triggers for `for` in `for(i in 1:10) { print(i) }`.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
-	 */
+	/** Fires for every `for` loop, e.g. `for(i in 1:10) { print(i) }`. */
 	protected onForLoopCall(_data: OnCall & { variable: FunctionArgument, vector: FunctionArgument, body: FunctionArgument }) {}
 
-	/**
-	 * This event triggers for every call to the `while` loop function, which is used to implement the `while` loop control flow.
-	 *
-	 * For example, this triggers for `while` in `while(i < 10) { i <- i + 1 }`.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
-	 */
+	/** Fires for every `while` loop, e.g. `while(i < 10) { i <- i + 1 }`. */
 	protected onWhileLoopCall(_data: OnCall & { condition: FunctionArgument, body: FunctionArgument }) {}
 
-	/**
-	 * This event triggers for every call to the `repeat` loop function, which is used to implement the `repeat` loop control flow.
-	 *
-	 * For example, this triggers for `repeat` in `repeat { i <- i + 1; if(i >= 10) break }`.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
-	 */
+	/** Fires for every `repeat` loop, e.g. `repeat { i <- i + 1; if(i >= 10) break }`. */
 	protected onRepeatLoopCall(_data: OnCall & { body: FunctionArgument }) {}
 
 	/**
-	 * This event triggers for every call to a function that replaces a value in a container, such as `names(x) <- 3`.
-	 *
-	 * This is different from {@link SemanticCfgGuidedVisitor#onAssignmentCall|`onAssignmentCall`} in that it does not assign a value to a variable,
-	 * but rather replaces a value in a container.
-	 *
-	 * For example, this triggers for `names` in `names(x) <- 3`, but not for `x <- 3`.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
+	 * Fires for every call that replaces a value in a container, e.g. `names` in `names(x) <- 3` (but not for `x <- 3`).
+	 * Unlike {@link SemanticCfgGuidedVisitor#onAssignmentCall|onAssignmentCall}, this does not assign a value to a variable.
 	 */
 	protected onReplacementCall(_data: OnCall & { source: NodeId | undefined, target: NodeId | undefined }) {}
 
-	/**
-	 * This event triggers for every call that (to the knowledge of flowr) constructs a (new) list.
-	 *
-	 * For example, this triggers for `list` in `list(1, 2, 3)`.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
-	 */
+	/** Fires for every call that (to flowR's knowledge) constructs a list, e.g. `list(1, 2, 3)`. */
 	protected onListCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for every call that (to the knowledge of flowr) constructs a (new) vector.
-	 *
-	 * For example, this triggers for `c` in `c(1, 2, 3)`.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
-	 */
+	/** Fires for every call that (to flowR's knowledge) constructs a vector, e.g. `c(1, 2, 3)`. */
 	protected onVectorCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for every call to the `stop` function.
-	 *
-	 * For example, this triggers for `stop` in `stop()`.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
-	 */
+	/** Fires for every call to `stop`, e.g. `stop()`. */
 	protected onStopCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for every call to the `stopifnot` function.
-	 *
-	 * For example, this triggers for `stopifnot` in `stopifnot(x > 0)`.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
-	 */
+	/** Fires for every call to `stopifnot`, e.g. `stopifnot(x > 0)`. */
 	protected onStopIfNotCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for every call the `try` function, which is used to catch possible errors.
-	 *
-	 * For example, this triggers for `try` in `try(stop("error"))`.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
-	 */
+	/** Fires for every call to `try`, e.g. `try(stop("error"))`, which catches possible errors. */
 	protected onTryCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for every call to a function that performs a local call, such as `local`.
-	 *
-	 * For example, this triggers for `local` in `local({ x <- 1; y <- 2; x + y })`.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
-	 */
+	/** Fires for every call that performs a local call, e.g. `local({ x <- 1; y <- 2; x + y })`. */
 	protected onLocalCall(_data: OnCall) {}
 
 	/**
-	 * This event triggers for every call to a function that performs an S3-like dispatch.
-	 *
-	 * For example, this triggers for `UseMethod` in `UseMethod("print")`.
-	 * @see {@link SemanticCfgGuidedVisitor#onS3DispatchNextCall|`onS3DispatchNextCall`} for `NextMethod` calls.
-	 * @protected
+	 * Fires for every call that performs an S3-like dispatch, e.g. `UseMethod("print")`.
+	 * @see {@link SemanticCfgGuidedVisitor#onS3DispatchNextCall|onS3DispatchNextCall} for `NextMethod` calls.
 	 */
 	protected onS3DispatchCall(_data: OnCall) {}
 
 	/**
-	 * This event triggers for every call to a function that performs an S3-like *next* dispatch.
-	 *
-	 * For example, this triggers for `NextMethod`.
-	 * @see {@link SemanticCfgGuidedVisitor#onS3DispatchCall|`onS3DispatchCall`} for `UseMethod` calls.
-	 * @protected
+	 * Fires for every call that performs an S3-like *next* dispatch, e.g. `NextMethod()`.
+	 * @see {@link SemanticCfgGuidedVisitor#onS3DispatchCall|onS3DispatchCall} for `UseMethod` calls.
 	 */
 	protected onS3DispatchNextCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for every call to a function that creates a new S7 generic, such as `new_generic`.
-	 * @protected
-	 */
+	/** Fires for every call that creates a new S7 generic, e.g. `new_generic`. */
 	protected onS7NewGenericCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for every call to a function that performs an S7 dispatch, such as `S7_dispatch`.
-	 * @protected
-	 */
+	/** Fires for every call that performs an S7 dispatch, e.g. `S7_dispatch`. */
 	protected onS7DispatchCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for every call to a function that registers a hook, such as `on.exit`.
-	 *
-	 * For example, this triggers for `on.exit` in `on.exit(print("exiting function"))`.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
-	 */
+	/** Fires for every call that registers a hook, e.g. `on.exit(print("exiting function"))`. */
 	protected onRegisterHookCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for every call to `break` to exit a loop.
-	 *
-	 * For example, this triggers for `break` in `repeat { break }`.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
-	 */
+	/** Fires for every `break` call, e.g. `repeat { break }`. */
 	protected onBreakCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for every call to `return` to explicitly return a value in a function.
-	 *
-	 * For example, this triggers for `return` in `f <- function() { return(42) }`.
-	 *
-	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @protected
-	 */
+	/** Fires for every `return` call, e.g. `f <- function() { return(42) }`. */
 	protected onReturnCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for every call to `Recall`, which is used to recall the function closure (usually in recursive functions).
-	 * @protected
-	 */
+	/** Fires for every call to `Recall`, used to recall the function closure (usually in recursive functions). */
 	protected onRecallCall(_data: OnCall) {}
 
-	/**
-	 * This event triggers for any purr formula as in `map(df, ~ .x + 1)`
-	 */
+	/** Fires for every purrr formula, e.g. `map(df, ~ .x + 1)`. */
 	protected onPurrFormulaCall(_data: OnCall) {}
 
 	protected getSourceAndTarget(call: DataflowGraphVertexFunctionCall): { target: NodeId | undefined, source: NodeId | undefined } {

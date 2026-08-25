@@ -8,6 +8,7 @@ import { SigDbBuilder, writeSignatureDb } from '../../../../src/project/sigdb/bu
 import { defaultSigDbPaths } from '../../../../src/project/sigdb/manifest';
 import { SigDbExt, FnProp, MaxDefaultLength, type SigFunctionInfo } from '../../../../src/project/sigdb/schema';
 import { executeQueries } from '../../../../src/queries/query';
+import { ArgProp } from '../../../../src/dataflow/environments/built-in-props';
 import { asciiSummaryOfQueryResult } from '../../../../src/queries/query-print';
 import { ansiFormatter } from '../../../../src/util/text/ansi';
 import { SignatureQueryDefinition, type SignatureQuery } from '../../../../src/queries/catalog/signature-query/signature-query-format';
@@ -28,7 +29,7 @@ async function buildDb(dir: string): Promise<SigDatabase> {
 		cran:         true,
 		dependencies: [{ name: 'rlang', type: 1 /* Imports */, constraint: '>= 1.0.0' }],
 		functions:    [fn('foo', {
-			params:  [{ name: 'a', missing: true, forced: true }, { name: 'b', default: '2' }],
+			params:  [{ name: 'a', props: ArgProp.NoDefault | ArgProp.Forced }, { name: 'b', default: '2' }],
 			callees: ['bar'],
 			file:    'R/foo.R',
 			line:    5
@@ -38,7 +39,7 @@ async function buildDb(dir: string): Promise<SigDatabase> {
 		fn('print.myclass', { props: FnProp.Exported | FnProp.S3Method, file: 'R/print.R', line: 8 })]
 	});
 	b.addPackage('base', { latest: '4.5.3', core: true });
-	b.addVersion('base', '4.5.3', { cran: false, functions: [fn('paste2', { file: 'R/paste.R', line: 10 })] });
+	b.addVersion('base', '4.5.3', { cran: false, functions: [fn('paste2', { file: 'R/paste.R', line: 10 }), fn('%*%', { file: 'R/matmul.R', line: 3 })] });
 	// a multi-version CRAN package (dated, so every version is enumerable) for version exact/glob/range tests
 	b.addPackage('multi', { latest: '2.1.0', downloads: 3 });
 	b.addVersion('multi', '1.0.0', { cran: true, date: Date.UTC(2020, 0, 1), functions: [fn('m1')] });
@@ -83,8 +84,8 @@ describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 			expect(info?.exported).toBe(true);
 			expect(info?.version).toBe('1.0.0');
 			expect(info?.parameters).toEqual([
-				{ name: 'a', required: true, forced: true },
-				{ name: 'b', required: false, forced: false, default: '2' }
+				{ name: 'a', props: ArgProp.NoDefault | ArgProp.Forced },
+				{ name: 'b', props: 0, default: '2' }
 			]);
 			expect(info?.callees).toEqual(['bar']);
 			expect(info?.file).toBe('R/foo.R');
@@ -164,7 +165,11 @@ describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 			// no entry of its own, so `Math` answers, under the name that was asked for
 			const via = signatureFunctionInfo(src, 's4pkg', 'sin');
 			expect(via?.name).toBe('sin');
-			expect(via?.s4group).toEqual({ group: 'Math', viaGroup: true });
+			// the entry found is the group, so it also reports every member it answers for
+			expect(via?.s4group?.group).toBe('Math');
+			expect(via?.s4group?.viaGroup).toBe(true);
+			expect(via?.s4group?.members).toContain('sin');
+			expect(via?.s4group?.members).toContain('cumsum');
 			expect(signatureFunctionInfo(src, 's4pkg', 'plain')?.s4group).toBeUndefined();
 			// a name in no group finds nothing to fall back to
 			expect(signatureFunctionInfo(src, 's4pkg', 'nowhere')).toBeUndefined();
@@ -346,6 +351,24 @@ describe('SigDb Query', { concurrent: false }, withTreeSitter(parser => {
 		const { res } = await runQuery([{ type: 'signature', package: 'mypkg', function: 'print*' }]);
 		const names = res.signature.matches?.map(m => m.name).sort();
 		expect(names).toEqual(['print', 'print.myclass']);
+	});
+
+	test(label('a function name that reads like a glob is the function it names', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'base', function: '%*%' }]);
+		expect(res.signature.matches).toBeUndefined();
+		expect(res.signature.function?.name).toBe('%*%');
+		expect(res.signature.function?.line).toBe(3);
+		// `*` is in no package's sources, but flowR models it itself, and that is an exact hit all the same
+		const { res: times } = await runQuery([{ type: 'signature', package: 'base', function: '*' }]);
+		expect(times.signature.matches).toBeUndefined();
+		expect(times.signature.function?.name).toBe('*');
+		expect(times.signature.function?.flowrOnly).toBe(true);
+	});
+
+	test(label('a wildcard name nothing carries verbatim stays a search', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'base', function: 'pas*' }]);
+		expect(res.signature.function).toBeUndefined();
+		expect(res.signature.matches?.map(m => m.name)).toEqual(['paste2']);
 	});
 
 	test(label('a glob package with no function lists matching packages', [], ['other']), async() => {

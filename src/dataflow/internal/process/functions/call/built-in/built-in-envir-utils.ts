@@ -15,7 +15,7 @@ import { DefaultAttachPosition, REnvironment } from '../../../../../environments
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
 import { resolveNodeToStackEnv } from './built-in-stack-env';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
-import { foldStringCall, PasteLikeCalls } from '../../../../../eval/resolve/resolve-strings';
+import { StringFold } from '../../../../../eval/resolve/resolve-strings';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { dataflowLogger } from '../../../../../logger';
 import { Resolve } from '../../../../../environments/resolve-helper';
@@ -105,7 +105,7 @@ export function resolveConstantString<OtherInfo>(
 			return Resolve.toSingleString(n.info.id, info);
 		}
 		const fnName = Identifier.getName(n.functionName.content);
-		if(!PasteLikeCalls.has(fnName)) {
+		if(!StringFold.pasteLike.has(fnName)) {
 			return undefined;
 		}
 		let ok = unshadowed.get(fnName);
@@ -113,7 +113,7 @@ export function resolveConstantString<OtherInfo>(
 			ok = Resolve.isBuiltIn(n.functionName.content, data.environment, ReferenceType.Function);
 			unshadowed.set(fnName, ok);
 		}
-		const folded = ok ? foldStringCall(n, fold) : undefined;
+		const folded = ok ? StringFold.fold(n, fold) : undefined;
 		return typeof folded === 'string' ? folded : undefined;
 	};
 	return fold(node);

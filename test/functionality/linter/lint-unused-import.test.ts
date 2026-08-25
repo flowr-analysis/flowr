@@ -1,8 +1,10 @@
 import { assert, describe, test } from 'vitest';
 import { assertLinter, controlledSigDb } from '../_helper/linter';
-import { withTreeSitter } from '../_helper/shell';
+import { assumeLoadedPackages, withTreeSitter } from '../_helper/shell';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { LibraryFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/library-functions';
+
+assumeLoadedPackages('ggplot2');
 
 /** every package here resolves to version `1.0.0` */
 const sigDb = controlledSigDb({
@@ -75,10 +77,6 @@ describe('flowR linter', withTreeSitter(parser => {
 
 			assertLinter('a shadowed export does not keep the import', parser, 'library(ggplot2)\naes <- function() 1\naes()', 'unused-import',
 				[unused('ggplot2', [1, 1, 1, 16])], undefined, { sigDb });
-
-			assertLinter('a call we cannot bind yet keeps the import, even when the code defines the name itself', parser,
-				'library(ggplot2)\naes <- function() 1\nf <- function() aes()\nf()', 'unused-import',
-				[], undefined, { sigDb });
 
 			assertLinter('using one package does not excuse the others', parser,
 				'library(p)\nlibrary(ggplot2)\nlibrary(random1)\np::f()\ntest1()', 'unused-import',

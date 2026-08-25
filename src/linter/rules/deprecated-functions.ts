@@ -144,7 +144,9 @@ const GgplotLinewidth: DeprecatedFunctionInformation = {
 
 const ConditionallyDeprecated = {
 	/* https://tidyverse.org/blog/2025/09/ggplot2-4-0-0/#violin--quantiles */
-	'ggplot2::geom_violin':  { whenArgs: [{ argName: 'draw_quantiles', state: DeprecationState.Deprecated, replacedBy: 'quantile.linetype', sinceVersion: RRange.parse('>= 4.0.0') }] },
+	/* the quantiles moved to the stat, and the geom only kept arguments styling them, so neither is a rename of
+	   `draw_quantiles = 0.5`: the value is a quantile, not a linetype, and `quantiles` is no formal of the geom */
+	'ggplot2::geom_violin':  { whenArgs: [{ argName: 'draw_quantiles', state: DeprecationState.Deprecated, replacedBy: 'stat_ydensity(quantiles)', sinceVersion: RRange.parse('>= 4.0.0') }] },
 	'ggplot2::element_line': GgplotLinewidth,
 	'ggplot2::element_rect': GgplotLinewidth
 } as Record<BrandedIdentifier, DeprecatedFunctionInformation>;
@@ -264,7 +266,6 @@ export const DEPRECATED_FUNCTIONS = {
 				return deprecateFunctionAlways(candidate, owners as (BrandedNamespace | undefined)[], attached);
 			}
 		}).flat();
-
 
 		// 3. If available, use sigdb to flag deprecated functions
 		const deps = data.inspectContext().deps;
@@ -408,10 +409,19 @@ function doesArgumentValueMatch(info: DeprecatedArgumentInformation, vertex: Dat
 	return true;
 }
 
-/** The rename that carries a finding out, when a replacement name is known. */
+/**
+ * Whether the replacement is a plain name, which is what makes swapping the old one for it a rename at all.
+ * A replacement that names where the thing went instead (`stat_ydensity(quantiles)`) says the right thing to a
+ * reader and the wrong thing to an editor, so it carries no fix.
+ */
+function isRename(replacedBy: string): boolean {
+	return /^(?:[A-Za-z.][A-Za-z0-9._]*|`[^`]+`)$/.test(replacedBy);
+}
+
+/** The rename that carries a finding out, when a replacement name is known and swapping it in is one. */
 function renameFix(node: RNode<ParentInformation> | undefined, replacedBy: string | undefined, what: string): LintQuickFix[] | undefined {
 	const loc = node === undefined ? undefined : SourceLocation.fromNode(node);
-	if(replacedBy === undefined || loc === undefined) {
+	if(replacedBy === undefined || loc === undefined || !isRename(replacedBy)) {
 		return undefined;
 	}
 	return [{ type: 'replace', description: `Replace ${what} with \`${replacedBy}\``, replacement: replacedBy, loc }];

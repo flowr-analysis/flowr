@@ -52,6 +52,7 @@ import {
 	ControlFlowQueryDefinition
 } from './catalog/control-flow-query/control-flow-query-format';
 import type { AsyncOrSync, Writable } from 'ts-essentials';
+import { deepMergeObject, type MergeableRecord } from '../util/objects';
 import type { FlowrConfig } from '../config';
 import {
 	type InspectHigherOrderQuery,
@@ -72,10 +73,10 @@ import {
 	InspectRecursionQueryDefinition
 } from './catalog/inspect-recursion-query/inspect-recursion-query-format';
 import type {
-	InspectStrictnessQuery } from './catalog/inspect-strictness-query/inspect-strictness-query-format';
+	InspectFnPropsQuery } from './catalog/inspect-fn-props-query/inspect-fn-props-query-format';
 import {
-	InspectStrictnessQueryDefinition
-} from './catalog/inspect-strictness-query/inspect-strictness-query-format';
+	InspectFnPropsQueryDefinition
+} from './catalog/inspect-fn-props-query/inspect-fn-props-query-format';
 import type { DoesCallQuery } from './catalog/does-call-query/does-call-query-format';
 import { DoesCallQueryDefinition } from './catalog/does-call-query/does-call-query-format';
 import type {
@@ -122,7 +123,7 @@ export type Query = CallContextQuery
 	| InspectExceptionQuery
     | InspectHigherOrderQuery
 	| InspectRecursionQuery
-	| InspectStrictnessQuery
+	| InspectFnPropsQuery
 	| ResolveValueQuery
 	| ProjectQuery
 	| SignatureQuery
@@ -200,7 +201,7 @@ export const SupportedQueries = {
 	'inspect-exception':    InspectExceptionQueryDefinition,
 	'inspect-higher-order': InspectHigherOrderQueryDefinition,
 	'inspect-recursion':    InspectRecursionQueryDefinition,
-	'inspect-strictness':   InspectStrictnessQueryDefinition,
+	'inspect-fn-props':     InspectFnPropsQueryDefinition,
 	'resolve-value':        ResolveValueQueryDefinition,
 	'project':              ProjectQueryDefinition,
 	'signature':            SignatureQueryDefinition,
@@ -268,7 +269,6 @@ export type QueryResults<Base extends SupportedQueryTypes = SupportedQueryTypes>
 	readonly [QueryType in Base]: Awaited<QueryResult<QueryType>>
 } & BaseQueryResult;
 
-
 type OmitFromValues<T, K extends string | number | symbol> = {
 	[P in keyof T]?: Omit<T[P], K>
 };
@@ -299,9 +299,9 @@ export async function executeQueries<
 			const result = await executeQueriesOfSameType(data, group);
 			results.push([type, result] as [Base, Awaited<QueryResult<Base>>]);
 		} catch(e) {
-			const message = e instanceof Error ? e.message : String(e);
+			const message = errorMessage(e);
 			log.error(`query of type '${type}' failed: ${message.split('\n')[0]}`);
-			results.push([type, { '.meta': { timing: 0 }, error: message } as never]);
+			results.push([type, await retryQueriesIndividually(data, group, message) as never]);
 		}
 	}
 
@@ -310,6 +310,32 @@ export async function executeQueries<
 		timing: Date.now() - now
 	};
 	return r as QueryResults<Base>;
+}
+
+function errorMessage(e: unknown): string {
+	return e instanceof Error ? e.message : String(e);
+}
+
+/**
+ * Re-runs the queries of a batch that failed as a whole one by one, so a faulty query does not discard its
+ * siblings' results. Merges everything computed and carries the errors of the queries that still failed.
+ */
+async function retryQueriesIndividually(data: BasicQueryData, group: readonly Query[], fallback: string): Promise<BaseQueryResult> {
+	if(group.length <= 1) {
+		return { '.meta': { timing: 0 }, error: fallback } as BaseQueryResult;
+	}
+	const errors: string[] = [];
+	let merged: BaseQueryResult | undefined;
+	for(const query of group) {
+		try {
+			const result = await executeQueriesOfSameType(data, [query]);
+			merged = merged === undefined ? result : deepMergeObject(merged as unknown as MergeableRecord, result as unknown as MergeableRecord) as unknown as BaseQueryResult;
+		} catch(e) {
+			errors.push(errorMessage(e));
+		}
+	}
+	const error = errors.length > 0 ? errors.join('\n') : fallback;
+	return merged === undefined ? { '.meta': { timing: 0 }, error } as BaseQueryResult : { ...merged, error } as BaseQueryResult;
 }
 
 /**
@@ -353,7 +379,6 @@ export function AnyQuerySchema() {
 export function QueriesSchema() {
 	return Joi.array().items(AnyQuerySchema()).description('Queries to run on the file analysis information (in the form of an array)');
 }
-
 
 /**
  * Wraps a function that executes a REPL query and, if it fails, checks whether there were any requests to analyze.

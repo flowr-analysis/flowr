@@ -6,7 +6,7 @@
  * without this script noticing.
  */
 import fs from 'fs';
-import { fillVersion, versionMarker } from './version-marker';
+import { template, writePage } from './html-page';
 import { execSync } from 'child_process';
 import path from 'path';
 import { TreeSitterExecutor } from '../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
@@ -387,8 +387,7 @@ async function main(): Promise<void> {
 		signature:    await signatureLines(SignatureSample, 'dplyr', 'filter'),
 	});
 	const target = 'index.html';
-	fs.writeFileSync(target, page);
-	console.log(`  wrote ${target} (${(page.length / 1024).toFixed(1)} kB)`);
+	console.log(`  wrote ${target} (${(writePage(target, page) / 1024).toFixed(1)} kB)`);
 }
 
 interface PageData {
@@ -512,7 +511,7 @@ function render(data: PageData): string {
 		.map(([label, ms, trend]) => `\t\t<span class="timing">${escape(label)}${trend}<b>${escape(ms)} ms</b></span>`)
 		.join('\n');
 
-	return fillVersion(Template, versionMarker())
+	return Template
 		.replace('<!--UPDATED-->', lastUpdated())
 		.replace('<!--TIMES-->', bars)
 		.replace('<!--BENCHFILES-->', measured?.files ?? '')
@@ -530,6 +529,6 @@ function render(data: PageData): string {
 	;
 }
 
-const Template = fs.readFileSync(path.join('scripts', 'landing-template.html'), 'utf8');
+const Template = template('landing-template.html');
 
 void main();

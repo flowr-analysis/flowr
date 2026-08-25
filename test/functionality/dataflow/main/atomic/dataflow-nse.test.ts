@@ -1,5 +1,5 @@
 import { assert, beforeAll, describe, test } from 'vitest';
-import { withTreeSitter } from '../../../_helper/shell';
+import { assumeLoadedPackages, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import { type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../../../../src/core/steps/pipeline/default-pipelines';
@@ -11,6 +11,8 @@ import { NoEdges } from '../../../../../src/dataflow/graph/graph';
 import { DfEdge } from '../../../../../src/dataflow/graph/edge';
 import { OriginType } from '../../../../../src/dataflow/origin/dfg-get-origin';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+
+assumeLoadedPackages('dplyr', 'ggplot2', 'rlang');
 
 /** Whether a criterion still reads a definition: a quoted name does not, one that only looks quoted does. */
 describe('Dataflow', withTreeSitter(ts => {

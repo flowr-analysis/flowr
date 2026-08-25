@@ -5,6 +5,7 @@ import type { SigParameter } from '../../../src/project/sigdb/decode';
 import { SigDbBuilder } from '../../../src/project/sigdb/build';
 import { cleanupSigTmpDirs, expFn, sigTmpDir, ver, writeAndOpen } from '../_helper/sigdb';
 import type { FunctionArgument } from '../../../src/dataflow/graph/graph';
+import { ArgProp } from '../../../src/dataflow/environments/built-in-props';
 
 /** minimal named argument (`name = value`); only `name.content` is read by the matcher */
 const named = (name: string): PotentiallyEmptyRArgument => ({ name: { content: name } } as unknown as PotentiallyEmptyRArgument);
@@ -161,7 +162,7 @@ describe('matching against a real signature-database signature', () => {
 		const b = new SigDbBuilder();
 		b.addPackage('cranpkg', { latest: '1.0.0', downloads: 5 });
 		b.addVersion('cranpkg', '1.0.0', ver([{ ...expFn('cranfn'), params: [
-			{ name: 'x', forced: true }, { name: 'na.rm' }, { name: '...' }
+			{ name: 'x', props: ArgProp.Forced }, { name: 'na.rm' }, { name: '...' }
 		] }]));
 		const db = await writeAndOpen(dir, b.build({ date: '2026-05-23', generated: 0 }));
 		try {

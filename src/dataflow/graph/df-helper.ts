@@ -11,7 +11,6 @@ import type { DataflowGraphVertexInfo } from './vertex';
 import { FunctionCallVertex, ValueVertex } from './vertex';
 import { Identifier } from '../environments/identifier';
 import { Resolve } from '../environments/resolve-helper';
-import { RLoopConstructs } from '../../r-bridge/lang-4.x/ast/model/model';
 import { isBaseRPackage } from '../../util/r-base-packages';
 
 /**
@@ -233,26 +232,9 @@ export const Dataflow = {
 		return df as G;
 	},
 
-	/**
-	 * Whether the node is quoted, i.e., affected by a {@link EdgeType.NonStandardEvaluation} edge that actually
-	 * keeps it from being evaluated (as `quote` and `substitute` do).
-	 *
-	 * Loops mark their body as non-standard-evaluated as well, yet that body really is evaluated (and its symbols
-	 * really are read), so such an edge does not quote. Use this instead of testing for the edge type directly
-	 * whenever you want to know whether something is evaluated at all.
-	 * @param id           - The id of the node to check
-	 * @param graph        - The graph the node is part of
-	 * @param withOutgoing - Whether to also consider the outgoing edges of the node (i.e., whether the node itself
-	 *                       quotes something), and not just the ingoing ones (i.e., whether it is quoted)
-	 */
+	/** See {@link DataflowGraph#isQuoted}, which this answers for `graph`. */
 	isQuoted(this: void, id: NodeId, graph: DataflowGraph, withOutgoing = false): boolean {
-		/* an nse edge quotes iff it does not originate from a loop marking its body */
-		const quotes = (source: NodeId, e: DfEdge): boolean =>
-			DfEdge.includesType(e, EdgeType.NonStandardEvaluation) && !RLoopConstructs.is(graph.idMap?.get(source));
-		if(graph.ingoingEdges(id)?.entries().some(([source, e]) => quotes(source, e))) {
-			return true;
-		}
-		return withOutgoing && (graph.outgoingEdges(id)?.values().some(e => quotes(id, e)) ?? false);
+		return graph.isQuoted(id, withOutgoing);
 	},
 
 	/**

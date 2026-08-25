@@ -27,15 +27,13 @@ import { FlowrFile } from '../project/context/flowr-file';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
 import { VertexType } from './graph/vertex';
-
-/** Round cap for the transitive-side-effect fixpoint. */
-const transitiveSideEffectRounds = 32;
 import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
 import { Identifier } from './environments/identifier';
 import { Quoted } from './internal/process/functions/call/quoted';
 import { SourceRange } from '../util/range';
 import { dataflowLogger } from './logger';
-import { GasFeatureKey, GasLevel, GasWikiRef } from '../gas';
+import { type DataflowBudgetTracker, GasFeatureKey, GasLevel, GasWikiRef, withDataflowBudget } from '../gas';
+import { DefaultTransitiveSideEffectRounds } from '../config';
 import { Dataflow } from './graph/df-helper';
 import { uniqueArray } from '../util/collections/arrays';
 
@@ -76,7 +74,6 @@ export const processors: DataflowProcessors<ParentInformation> = {
 		}, wrapArgumentsUnnamed(children, d.completeAst.idMap), info.id, d);
 	}
 };
-
 
 function resolveLinkToSideEffects(graph: DataflowGraph, ctx: FlowrAnalyzerContext) {
 	const gasLevel = ctx.gas.checkGas(GasFeatureKey.SideEffectLinking);
@@ -136,6 +133,24 @@ function resolveLinkToSideEffects(graph: DataflowGraph, ctx: FlowrAnalyzerContex
 export function produceDataFlowGraph<OtherInfo>(
 	parser:      Parser<KnownParserType>,
 	completeAst: NormalizedAst<OtherInfo & ParentInformation>,
+	ctx:         FlowrAnalyzerContext,
+	budget:      DataflowBudgetTracker | undefined = ctx.gas.budget(GasFeatureKey.Dataflow)
+): DataflowInformation {
+	return withDataflowBudget(budget, () => {
+		const df = extractDataFlowGraph(parser, completeAst, ctx);
+		const cut = budget?.exhausted;
+		if(cut !== undefined) {
+			dataflowLogger.warn(`Dataflow analysis was cut short after ${cut.reached} ${cut.dimension} (budget ${cut.limit}); the graph is partial.`);
+			(df as { cutShort?: typeof cut }).cutShort = cut;
+		}
+		return df;
+	});
+}
+
+/** The extraction itself, always run inside the {@link withDataflowBudget} scope {@link produceDataFlowGraph} opens. */
+function extractDataFlowGraph<OtherInfo>(
+	parser:      Parser<KnownParserType>,
+	completeAst: NormalizedAst<OtherInfo & ParentInformation>,
 	ctx:         FlowrAnalyzerContext
 ): DataflowInformation {
 
@@ -175,7 +190,8 @@ export function produceDataFlowGraph<OtherInfo>(
 	// resolve linkages and propagate transitive side effects across calls to a fixpoint
 	updateNestedFunctionCalls(df.graph, df.environment, ctx);
 	const escapedNames = new Set<string>();
-	for(let round = 0; round < transitiveSideEffectRounds; round++) {
+	const rounds = ctx.config.solver.transitiveSideEffectRounds ?? DefaultTransitiveSideEffectRounds;
+	for(let round = 0; round < rounds; round++) {
 		const { environment, grew, escapedNames: roundNames } = Dataflow.sideEffects.propagateTransitive(df.graph, df.environment, ctx);
 		(df as { environment: REnvironmentInformation }).environment = environment;
 		for(const n of roundNames) {

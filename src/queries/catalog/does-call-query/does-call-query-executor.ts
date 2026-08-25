@@ -70,6 +70,10 @@ function makeCallMatcher(constraint: CallsConstraint): CheckCallMatch {
 			const matchersOr = constraint.calls.map(makeCallMatcher);
 			return (vtx, cg) => matchersOr.some(m => m(vtx, cg));
 		}
+		case 'one-of': {
+			const matchersOneOf = constraint.calls.map(makeCallMatcher);
+			return (vtx, cg) => matchersOneOf.filter(m => m(vtx, cg)).length === 1;
+		}
 		default: {
 			throw new Error(`Unhandled constraint type ${JSON.stringify(constraint)}`);
 		}

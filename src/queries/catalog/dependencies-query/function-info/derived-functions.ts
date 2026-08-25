@@ -12,6 +12,14 @@ function linkTargets(f: FunctionInfo): string[] {
 }
 
 /**
+ * How an entry is looked up among the ones already written down: under the package that declares it where it
+ * names one, so `readr::write_csv` and `rpolars::write_csv` stay two entries rather than one shadowing the other.
+ */
+function writtenAs(f: FunctionInfo): string {
+	return f.package === undefined ? f.name : `${f.package}::${f.name}`;
+}
+
+/**
  * The built-ins that carry all of `props` and name the resource they act on, as entries of a dependency
  * category. This is what the {@link DefaultBuiltinConfig} already states, so only the functions it does not
  * know (most package functions) and the ones needing more than a resource argument (`ignoreIf`, `linkTo`,
@@ -19,7 +27,9 @@ function linkTargets(f: FunctionInfo): string[] {
  * wrote them down.
  */
 export function functionInfosFromProps(props: PropSelector, except: readonly FunctionInfo[]): FunctionInfo[] {
-	const taken = new Set(except.flatMap(f => [f.name, ...linkTargets(f)]));
+	const taken = new Set(except.map(writtenAs));
+	/* a bare name speaks for every package: an entry written down without one, and whatever a link points at */
+	const takenEverywhere = new Set(except.flatMap(f => [...f.package === undefined ? [f.name] : [], ...linkTargets(f)]));
 	const found: FunctionInfo[] = [];
 	for(const d of DefaultBuiltinConfig) {
 		const info = d.type !== 'constant' ? (d as { config?: BuiltInFnInfo }).config : undefined;
@@ -32,8 +42,9 @@ export function functionInfosFromProps(props: PropSelector, except: readonly Fun
 		}
 		for(const id of builtInNames(d)) {
 			const name = Identifier.getName(id);
-			if(!taken.has(name)) {
-				found.push({ package: Identifier.getNamespace(id), name, argIdx, argName: info.sig[argIdx][0], resolveValue: true });
+			const pkg = Identifier.getNamespace(id);
+			if(!takenEverywhere.has(name) && !taken.has(pkg === undefined ? name : `${pkg}::${name}`)) {
+				found.push({ package: pkg, name, argIdx, argName: info.sig[argIdx][0], resolveValue: true });
 			}
 		}
 	}

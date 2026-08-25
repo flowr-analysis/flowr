@@ -9,6 +9,7 @@ import { executeLintingRule } from '../../../../../src/linter/linter-executor';
 import { LintingResults } from '../../../../../src/linter/linter-format';
 import { FunctionCallVertex } from '../../../../../src/dataflow/graph/vertex';
 import { Identifier } from '../../../../../src/dataflow/environments/identifier';
+import { ArgProp } from '../../../../../src/dataflow/environments/built-in-props';
 
 /**
  * A two-library database with real per-function detail: signatures (parameters with defaults/missing),
@@ -19,7 +20,7 @@ function buildLibs(): SigDatabase {
 	b.addPackage('greeter', { latest: '1.0.0', downloads: 9 });
 	b.addVersion('greeter', '1.0.0', { cran:      true, functions: [
 		{ name:   'greet', props:  FnProp.Exported, params: [
-			{ name: 'who', missing: true },
+			{ name: 'who', props: ArgProp.NoDefault },
 			{ name: 'punct', default: '"!"' }
 		], callees: ['paste'], file: 'R/greet.R', line: 2 }
 	] });
@@ -68,8 +69,8 @@ describe('sigdb system: multi-file, multi-library project', withTreeSitter(ts =>
 
 		const greetSig = (db.functions('greeter') ?? []).find(f => f.name === 'greet')?.signature ?? [];
 		expect(greetSig.map(p => p.name)).toEqual(['who', 'punct']);
-		expect(greetSig[0]).toMatchObject({ name: 'who', optional: false });         // `who` has no default (required)
-		expect(greetSig[1]).toMatchObject({ name: 'punct', optional: true, default: '"!"' });
+		expect(greetSig[0]).toMatchObject({ name: 'who', props: ArgProp.NoDefault });  // `who` has no default (required)
+		expect(greetSig[1]).toMatchObject({ name: 'punct', props: 0, default: '"!"' });
 
 		// find the actual `greet("bob")` call and match its arguments against that recorded signature
 		let greetCall: { args: readonly unknown[] } | undefined;

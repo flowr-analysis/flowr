@@ -4,27 +4,25 @@ import { markArgumentsAsNonStandardEvaluation, processKnownFunctionCall } from '
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverName } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType, FunctionCallVertex } from '../../../../../graph/vertex';
 import { dataflowLogger } from '../../../../../logger';
 import { Dataflow } from '../../../../../graph/df-helper';
 import type { IdentifierReference } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
-import type { ForceArguments } from '../common';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { FunctionArgument } from '../../../../../graph/graph';
 import { Nse, Unquote } from '../nse';
 import { linkInputs } from '../../../../linker';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { cleanEnvOf } from '../../../../../environments/scoping';
 
-interface QuoteConfig extends ForceArguments {
+interface QuoteConfig {
 	quoteArgumentsWithIndex: number
 	envArgIndex?:            number
 	/** which unquote escape the function supports, {@link Unquote.None} if unset */
 	unquote?:                Unquote
 }
-
 
 /**
  * Process a call to `quote` or similar nse/substitution functions.
@@ -39,11 +37,11 @@ export function processQuote<OtherInfo>(
 	const startEnv = data.environment;
 	let lastEnv = startEnv;
 	const { information, processedArguments, fnRef } = processKnownFunctionCall({
-		name, args, rootId, data, forceArgs: config.forceArgs, origin: BuiltInProcName.Quote,
+		name, args, rootId, data, origin: BuiltInProcName.Quote,
 		patchData(data: DataflowProcessorInformation<OtherInfo & ParentInformation>, index: number): DataflowProcessorInformation<OtherInfo & ParentInformation> {
 			if(index === config.quoteArgumentsWithIndex) {
 				lastEnv = data.environment;
-				return { ...data, environment: data.ctx.env.makeCleanEnv() };
+				return { ...data, environment: cleanEnvOf(data.environment) };
 			} else {
 				return { ...data, environment: lastEnv };
 			}
@@ -107,7 +105,7 @@ function usesByName(expr: DataflowInformation): ReadonlyMap<string, NodeId[]> {
 	const useMap = new Map<string, NodeId[]>();
 	for(const vType of [VertexType.Use, VertexType.FunctionCall]) {
 		for(const [useId] of expr.graph.verticesOfType(vType)) {
-			const rn = recoverName(useId, expr.graph.idMap);
+			const rn = NodeId.recoverName(useId, expr.graph.idMap);
 			if(rn) {
 				const arr = useMap.get(rn);
 				if(arr) {

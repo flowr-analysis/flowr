@@ -186,6 +186,7 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 	for(const [name, value] of [
 		['linting rules', features.lintingRules],
 		['queries', features.queries],
+		['plugins', features.plugins],
 		['built-in definitions', features.builtinDefinitions],
 		['built-in definitions (default handler)', features.builtinDefinitionsDefault],
 		['built-in definitions (own handler)', features.builtinDefinitionsCustom],
@@ -198,6 +199,12 @@ export async function writeGraphOutput(ultimate: UltimateSlicerStats, outputGrap
 	for(const [tag, value] of Object.entries(features.lintingRulesByTag)) {
 		if(typeof value === 'number') {
 			data.push({ name: `linting rules (${tag})`, unit: '#', value });
+		}
+	}
+	/* the names ride along in `extra`, so the page can say which plugins a type stands for */
+	for(const [type, names] of Object.entries<readonly string[]>(features.pluginsByType ?? {})) {
+		if(Array.isArray(names)) {
+			data.push({ name: `plugins (${type})`, unit: '#', value: names.length, extra: names.slice().sort().join(', ') });
 		}
 	}
 	data.push({

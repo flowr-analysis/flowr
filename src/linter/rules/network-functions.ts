@@ -9,9 +9,12 @@ import { Ternary } from '../../util/logic';
 import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
 import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
-import { Identifier, PkgName } from '../../dataflow/environments/identifier';
+import { Identifier } from '../../dataflow/environments/identifier';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import type { MergeableRecord } from '../../util/objects';
+import { ArgProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
+import type { BuiltInParam } from '../../dataflow/environments/query-fn-props';
+import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 
 export interface NetworkFunctionsConfig extends MergeableRecord {
 	/**
@@ -37,13 +40,59 @@ export interface NetworkFunction extends MergeableRecord{
 	onlyTriggerWithArgument?: RegExp | string
 }
 
-const DefaultFunctionPool = new Map(ReadFunctions.concat(SourceFunctions, WriteFunctions).map(f => [Identifier.toString(Identifier.make(f.name, f.package)), f] as const));
+/**
+ * What an address looks like when one is written down. A call is only a network operation for the argument it
+ * is actually handed, so this is what decides that per call site rather than the name alone.
+ */
+const UrlPattern = /^(https?|ftps?):\/\//;
+
+/** the parameter names that mean "the address", preferred over any other resource the same call names */
+const AddressNames: ReadonlySet<string> = new Set(['url', 'urls', 'uri', 'href', 'link', 'address', 'repo', 'repo_spec', 'pull']);
+
+/**
+ * The resource parameter of a call that carries its address: the one named like an address where the call has
+ * one, else the first resource it names. `curl_upload(file, url)` reads a file and sends it somewhere, so the
+ * address is its second parameter rather than its first.
+ */
+function addressParam(params: readonly BuiltInParam[]): BuiltInParam {
+	return params.find(p => AddressNames.has(p.name)) ?? params[0];
+}
+
+/**
+ * Every built-in that may reach the network, read back from the {@link DefaultBuiltinConfig}: the ones labeled
+ * {@link SemanticCallTag.Network} always do, and any call naming an {@link ArgProp.Resource} does whenever that
+ * resource is a url rather than a path -- which is what {@link UrlPattern} decides per call site. Label a
+ * built-in `Network` or give it a resource parameter and it shows up here; nothing is listed twice.
+ */
+export function networkFunctions(index: BuiltInIndex = BuiltInIndex.default()): NetworkFunction[] {
+	const resources = new Map<string, BuiltInParam[]>();
+	for(const param of index.params(ArgProp.Resource)) {
+		const key = Identifier.toString(param.call);
+		resources.set(key, [...resources.get(key) ?? [], param]);
+	}
+	const names = new Map(index.with(SemanticCallTag.Network).map(call => [Identifier.toString(call), call]));
+	for(const [key, [param]] of resources) {
+		if(!names.has(key)) {
+			names.set(key, param.call);
+		}
+	}
+	return [...names].map(([key, name]) => {
+		const params = resources.get(key);
+		const address = params === undefined ? undefined : addressParam(params);
+		return {
+			name,
+			...(address === undefined ? {} : { info: { argIdx: address.index, argName: address.name, resolveValue: true } }),
+			onlyTriggerWithArgument: UrlPattern
+		};
+	});
+}
+
 export const NETWORK_FUNCTIONS = {
 	createSearch:        (config) => functionFinderUtil.createSearch(config.fns.map(f => Identifier.is(f) ? f : f.name)),
 	processSearchResult: async(e, c, d) => {
 		const df = await d.dataflow();
 		const fnPool = new Map<string, FunctionInfo>([
-			...DefaultFunctionPool,
+			...ReadFunctions.concat(SourceFunctions, WriteFunctions).map(f => [Identifier.toString(Identifier.make(f.name, f.package)), f] as const),
 			...c.fns.flatMap(f => Identifier.is(f) ? [] : f.info === undefined ? [] : [[Identifier.toString(f.name), { name: Identifier.toString(f.name), ...f.info }] as const])
 		]);
 		const onlyTriggerLookup = new Map(c.fns.flatMap(f => Identifier.is(f) ? [] : [[Identifier.toString(f.name), f.onlyTriggerWithArgument] as const]));
@@ -79,40 +128,7 @@ export const NETWORK_FUNCTIONS = {
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Marks network functions that execute network operations, such as downloading files or making HTTP requests.',
 		defaultConfig: {
-			fns: [
-				// subset of default network functions provided by manually reviewed results from analysis based on the signature database, see the dirty-network-funcs-test branch there
-				...['oauth_endpoint', 'DELETE', 'PATCH', 'HEAD', 'GET', 'POST', 'PUT', 'BROWSE', 'RETRY', 'VERB', 'content', 'handle', 'get_callback', 'VERB'].map(f => Identifier.make(f, 'httr')),
-				...['read.table', 'read.csv', 'read.csv2', 'read.delim', 'read.delim2', 'download.file'].map(f => Identifier.make(f, 'utils')),
-				...['socketConnection', 'readRDS', 'url', 'gzcon', 'readlines', 'readLines', 'source', 'load', 'scan'].map(f => Identifier.make(f, 'base')),
-				...['nslookup', 'new_handle', 'multi_download', 'curl', 'curl_upload', 'curl_echo', 'curl_download', 'curl_fetch_memory'].map(f => Identifier.make(f, 'curl')),
-				...['read_html', 'read_xml'].map(f => Identifier.make(f, 'xml2')),
-				...['download_html', 'html_nodes', 'html_text'].map(f => Identifier.make(f, 'rvest')),
-				...['shared_drive_get', 'shared_drive_rm', 'drive_download', 'drive_get'].map(f => Identifier.make(f, 'googledrive')),
-				...['s3read_using', 's3write_using'].map(f => Identifier.make(f, 'aws.s3')),
-				...['url_filename', 'url_accessible', 'url_destination'].map(f => Identifier.make(f, 'xfun')),
-				...['source_url', 'source_gist'].map(f => Identifier.make(f, 'devtools')),
-				...['install_bioc', 'install_bitbucket', 'install_cran', 'install_dev', 'install_git', 'install_github', 'install_gitlab', 'install_svn', 'install_url', 'install_version'].flatMap(f => [Identifier.make(f, 'devtools'), Identifier.make(f, 'remotes')]),
-				...['github_pull', 'update_packages'].map(f => Identifier.make(f, 'remotes')),
-				...['viewer', 'getDelegatedAzureToken'].map(f => Identifier.make(f, 'rstudioapi')),
-				...['runGist', 'runUrl', 'httpResponse', 'session'].map(f => Identifier.make(f, 'shiny')),
-				...['create_from_github', 'use_git_remote', 'use_github_action', 'use_github_file', 'use_tidy_thanks'].map(f => Identifier.make(f, 'usethis')),
-				Identifier.make('copy_to', 'dplyr'),
-				Identifier.make('getURL', 'RCurl'),
-				Identifier.make('fread', 'data.table'),
-				Identifier.make('getForm', 'rBDAT'),
-				Identifier.make('fromJSON', PkgName.Jsonlite),
-				Identifier.make('read.xlsx', 'openxlsx'),
-				Identifier.make('storage_download', 'googleCloudStorageR'),
-				Identifier.make('AnnotationHub', 'AnnotationHub'),
-				Identifier.make('ExperimentHub', 'ExperimentHub'),
-				Identifier.make('datasource', 'readr'),
-				Identifier.make('melt_csv', 'meltr'),
-				Identifier.make('addServer', 'rsconnect'),
-				Identifier.make('vroom', 'vroom'),
-			].map(f => ({
-				name:                    f,
-				onlyTriggerWithArgument: /^(https?|ftps?):\/\//
-			}))
+			fns: networkFunctions()
 		}
 	}
 } as const satisfies LintingRule<FunctionsResult, FunctionsMetadata, NetworkFunctionsConfig>;

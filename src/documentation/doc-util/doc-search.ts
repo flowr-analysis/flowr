@@ -4,7 +4,7 @@ import { codeBlock } from './doc-code';
 import { printAsMs } from '../../util/text/time';
 import type { FlowrSearchLike } from '../../search/flowr-search-builder';
 import { flowrSearchToCode, flowrSearchToMermaid } from '../../search/flowr-search-printer';
-import { recoverContent } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
 import { SourceRange } from '../../util/range';
 
@@ -56,7 +56,7 @@ ${collapseResult ? ' <details> <summary style="color:gray">Show Results</summary
 
 The query returns the following vetices (all references to \`x\` in the code):
 ${
-	result.getElements().map(({ node }) => `<b>${node.info.id} ('${recoverContent(node.info.id, dataflow.graph)}')</b> at L${SourceRange.format(node.location)}`).join(', ')
+	result.getElements().map(({ node }) => `<b>${node.info.id} ('${NodeId.recoverContent(node.info.id, dataflow.graph)}')</b> at L${SourceRange.format(node.location)}`).join(', ')
 }
 
 ${metaInfo}

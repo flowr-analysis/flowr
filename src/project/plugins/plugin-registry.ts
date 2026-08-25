@@ -28,7 +28,16 @@ import { FlowrAnalyzerJupyterFilePlugin } from './file-plugins/notebooks/flowr-a
 import { FlowrAnalyzerNamespaceFilesPlugin } from './file-plugins/flowr-analyzer-namespace-files-plugin';
 import { FlowrAnalyzerPackageVersionsNamespaceFilePlugin } from './package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
 import { FlowrAnalyzerNewsFilePlugin } from './file-plugins/flowr-analyzer-news-file-plugin';
+import {
+	FlowrAnalyzerDataListFilePlugin,
+	FlowrAnalyzerRdFilePlugin,
+	FlowrAnalyzerRdIndexFilePlugin,
+	FlowrAnalyzerRdMacroFilePlugin,
+	FlowrAnalyzerRdMetaFilePlugin,
+	FlowrAnalyzerRdTopicIndexFilePlugin
+} from './file-plugins/flowr-analyzer-rd-file-plugin';
 import { FlowrAnalyzerRdaFilePlugin } from './file-plugins/flowr-analyzer-rda-file-plugin';
+import { FlowrAnalyzerSysdataFilePlugin } from './file-plugins/flowr-analyzer-sysdata-file-plugin';
 import { FlowrAnalyzerMetaVignetteFilesPlugin } from './file-plugins/flowr-analyzer-vignette-file-plugin';
 import { FlowrAnalyzerMetaTestFilesPlugin } from './file-plugins/flowr-analyzer-test-file-plugin';
 import { FlowrAnalyzerMetaInstFilesPlugin } from './file-plugins/flowr-analyzer-inst-file-plugin';
@@ -96,6 +105,15 @@ export const BuiltInPlugins = [
 	['file:namespace', FlowrAnalyzerNamespaceFilesPlugin],
 	['versions:namespace', FlowrAnalyzerPackageVersionsNamespaceFilePlugin],
 	['file:news', FlowrAnalyzerNewsFilePlugin],
+	/* the macro plugin comes first: it claims the `macros/` pages the page plugin deliberately skips */
+	['file:rd-macros', FlowrAnalyzerRdMacroFilePlugin],
+	['file:rd', FlowrAnalyzerRdFilePlugin],
+	['file:rd-index', FlowrAnalyzerRdIndexFilePlugin],
+	['file:rd-topics', FlowrAnalyzerRdTopicIndexFilePlugin],
+	['file:rd-meta', FlowrAnalyzerRdMetaFilePlugin],
+	['file:datalist', FlowrAnalyzerDataListFilePlugin],
+	/* the sysdata plugin comes first: it claims the `R/sysdata.rda` the rda plugin would read as a plain workspace */
+	['file:sysdata', FlowrAnalyzerSysdataFilePlugin],
 	['file:rda', FlowrAnalyzerRdaFilePlugin],
 	['file:license', FlowrAnalyzerLicenseFilePlugin],
 	['file:virtualenv', FlowrAnalyzerVirtualEnvFilePlugin],

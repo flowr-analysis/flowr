@@ -89,7 +89,8 @@ export class Package {
 
 		// a directly exported symbol/function - this also covers dotted plain exports such as
 		// `solve.QP`, `as.Date` or `read.csv` that are not S3 methods
-		if(this.namespaceInfo.exportedFunctions.includes(name) || this.namespaceInfo.exportedSymbols.includes(name)) {
+		if(this.namespaceInfo.exportedFunctions.includes(name) || this.namespaceInfo.exportedSymbols.includes(name)
+			|| this.namespaceInfo.exportedS4Methods.includes(name) || this.namespaceInfo.exportedS4Classes.includes(name)) {
 			return true;
 		}
 

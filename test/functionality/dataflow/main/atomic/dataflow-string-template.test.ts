@@ -9,7 +9,7 @@ import { contextFromInput } from '../../../../../src/project/context/flowr-analy
 import { DfEdge, EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { interpolationsOf } from '../../../../../src/dataflow/internal/process/functions/call/built-in/built-in-string-template';
 import { VertexType } from '../../../../../src/dataflow/graph/vertex';
-import { recoverName } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 import { NoEdges } from '../../../../../src/dataflow/graph/graph';
 
@@ -52,7 +52,7 @@ describe('Dataflow', withTreeSitter(ts => {
 		assertLinked('cli markup text is no code', 'library(cli)\nthing <- 5\ncli_text("{.strong thing}")', '2@thing', false);
 		test(label('cli_abort stays an error exit rather than a template', ['function-calls', 'built-in-evaluation'], ['dataflow']), async() => {
 			const analysis = await createDataflowPipeline(ts, { context: contextFromInput('library(cli)\ncli_abort("boom")') }).allRemainingSteps();
-			const call = [...analysis.dataflow.graph.verticesOfType(VertexType.FunctionCall)].find(([id]) => recoverName(id, analysis.dataflow.graph.idMap) === 'cli_abort');
+			const call = [...analysis.dataflow.graph.verticesOfType(VertexType.FunctionCall)].find(([id]) => NodeId.recoverName(id, analysis.dataflow.graph.idMap) === 'cli_abort');
 			assert.isTrue((call?.[1].origin as readonly string[] | undefined)?.includes(BuiltInProcName.Stop));
 		});
 

@@ -9,7 +9,7 @@ import type { HookInformation } from './hooks';
 import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
-
+import type { DataflowBudgetExhaustion } from '../gas';
 
 /**
  * A control dependency links a vertex to the control flow element which
@@ -92,7 +92,6 @@ export function negateControlDependency(cd: ControlDependency): ControlDependenc
 		when: cd.when === undefined ? undefined : !cd.when,
 	};
 }
-
 
 /**
  * Classifies the type of exit point encountered.
@@ -250,6 +249,11 @@ export interface DataflowInformation extends DataflowCfgInformation {
 	 * @see {@link KillReference}
 	 */
 	kill?:             readonly KillReference[]
+	/**
+	 * Set by {@link produceDataFlowGraph} when a {@link DataflowBudget} ended the extraction early. The
+	 * {@link graph} is then partial: everything processed before the bound was hit, and nothing after it.
+	 */
+	cutShort?:         DataflowBudgetExhaustion
 }
 
 /**
@@ -312,11 +316,7 @@ function coversSet(cds: ReadonlySet<ControlDependency> | readonly ControlDepende
 	return true;
 }
 
-/**
- * Checks whether the given control dependencies are exhaustive (i.e. if for every control dependency on a boolean,
- * the list contains a dependency on the `true` and on the `false` case).
- * @see {@link happensInEveryBranch} - for the array-based version
- */
+/** As {@link happensInEveryBranch}, but for a set of control dependencies. */
 export function happensInEveryBranchSet(cds: ReadonlySet<ControlDependency> | undefined): boolean {
 	return cds === undefined || (cds.size !== 0 && coversSet(cds));
 }

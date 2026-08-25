@@ -270,7 +270,8 @@ const DataFrameSemantics = {
 		}, DataFrameType.DataFrame),
 		'utils::tail': applyFunctionCall(mapDataFrameHeadTail, {
 			dataFrame: { pos: 0, name: 'x' },
-			amount:    { pos: 1, name: 'n', default: 6 }
+			amount:    { pos: 1, name: 'n', default: 6 },
+			fromEnd:   true
 		}, DataFrameType.DataFrame),
 		'base::subset': applyFunctionCall(mapDataFrameSubset, {
 			dataFrame: { pos: 0, name: 'x' },
@@ -956,7 +957,7 @@ function mapDataFrameRowBind(
  */
 function mapDataFrameHeadTail(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
-	params: { dataFrame: FunctionParameterLocation, amount: FunctionParameterLocation<number> },
+	params: { dataFrame: FunctionParameterLocation, amount: FunctionParameterLocation<number>, fromEnd?: boolean },
 	ctx: AbsintContext<DataFrameStateDomain>,
 	info: ResolveInfo
 ): DataFrameOperations {
@@ -976,20 +977,48 @@ function mapDataFrameHeadTail(
 		rows = amount[0];
 		cols = amount[1];
 	}
-	result.push({
-		operation: rows === undefined || rows >= 0 ? 'subsetRows' : 'removeRows',
-		operand:   dataFrame.value.info.id,
-		rows:      rows !== undefined ? Math.abs(rows) : undefined
-	});
+	const amountOfRows = rows !== undefined ? wholeAmount(rows, params.fromEnd) : undefined;
+	if(rows !== undefined && rows < 0) {
+		result.push({ operation: 'removeRows', operand: dataFrame.value.info.id, rows: amountOfRows });
+	} else {
+		/* `head`/`tail` take what the frame has, so asking for more than it holds is not asking for `NA` rows */
+		result.push({ operation: 'subsetRows', operand: dataFrame.value.info.id, rows: amountOfRows, options: { atMost: true } });
+	}
 
 	if(cols !== undefined) {
 		result.push({
 			operation: cols >= 0 ? 'subsetCols' : 'removeCols',
 			operand:   undefined,
-			colnames:  Array(Math.abs(cols)).fill(undefined)
+			colnames:  unnamedColumns(wholeAmount(cols, params.fromEnd))
 		});
 	}
 	return result;
+}
+
+/**
+ * How many entries `head`/`tail` keep or drop for a fractional count. R rounds differently on each side: `head`
+ * takes the floor of what it keeps and the ceiling of what it drops, while `tail` rounds either way (`fromEnd`).
+ */
+function wholeAmount(amount: number, fromEnd?: boolean): number {
+	const size = Math.abs(amount);
+	if(fromEnd) {
+		return amount < 0 ? Math.floor(size) : Math.round(size);
+	}
+	return amount < 0 ? Math.ceil(size) : Math.floor(size);
+}
+
+/**
+ * The most columns an answer names one by one. A count comes out of the analyzed source, so it may say anything
+ * at all -- `head(df, c(2, 2e9))` asks for two billion -- and no answer is worth the memory of writing that out.
+ */
+const MaxNamedColumns = 4096;
+
+/**
+ * The `count` columns an operation names without knowing what they are called, or `undefined` when there are more
+ * of them than {@link MaxNamedColumns}, which widens the answer instead of allocating for it.
+ */
+function unnamedColumns(count: number): undefined[] | undefined {
+	return Number.isSafeInteger(count) && count >= 0 && count <= MaxNamedColumns ? Array(count).fill(undefined) : undefined;
 }
 
 /**
@@ -1578,7 +1607,6 @@ function mapDataFrameIndexColRowAccess(
 		const colSubset = columns === undefined || columns.every(col => isColName(col) || col >= 0);
 		const rowZero = rows?.length === 1 && rows[0] === 0;
 		const colZero = columns?.length === 1 && columns[0] === 0;
-		const duplicateRows = rows?.some((row, index, list) => list.indexOf(row) !== index);
 		const duplicateCols = columns?.some((col, index, list) => list.indexOf(col as never) !== index);
 
 		let operand: RNode<ParentInformation> | undefined = dataFrame;
@@ -1588,14 +1616,15 @@ function mapDataFrameIndexColRowAccess(
 				result.push({
 					operation: 'subsetRows',
 					operand:   operand?.info.id,
-					rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length,
-					...(duplicateRows ? { options: { duplicateRows: true } } : {})
+					rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length
 				});
 			} else {
 				result.push({
 					operation: 'removeRows',
 					operand:   operand?.info.id,
-					rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length
+					rows:      rowZero ? 0 : rows?.filter(index => index !== 0).length,
+					/* R drops nothing for an index beyond the extent, so the semantics has to know how far they reach */
+					maxIndex:  rows !== undefined ? Math.max(...rows.map(Math.abs)) : undefined
 				});
 			}
 			operand = undefined;
@@ -1612,7 +1641,8 @@ function mapDataFrameIndexColRowAccess(
 				result.push({
 					operation: 'removeCols',
 					operand:   operand?.info.id,
-					colnames:  columns?.map(toColName)
+					colnames:  columns?.map(toColName),
+					maxIndex:  columns?.every(isIndex) ? Math.max(...columns.map(Math.abs)) : undefined
 				});
 			}
 			// eslint-disable-next-line no-useless-assignment -- ends the chain

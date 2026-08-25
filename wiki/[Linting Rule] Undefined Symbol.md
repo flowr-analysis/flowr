@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[src/documentation/wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts)' on 2026-08-16, 06:15:25 UTC (v2.13.16), so please do not edit it directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-24, 13:26:44 UTC (v2.14.3), please do not edit directly._
 <h2 id="undefined-symbol">Undefined Symbol&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This marks rules which are currently considered experimental, _not_ that they detect experimental code."><a href='#experimental'>![experimental](https://img.shields.io/badge/experimental-teal) </a></span>
@@ -49,16 +49,16 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (168 ms)\
+Query: **linter** (32 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ uncertain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Undefined function `undefined_helper` at 1.1-20\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalFunctionCalls: 1, totalVariableUses: 0, suppressed: 0, searchTimeMs: 0, processTimeMs: 168\
-_All queries together required ≈168 ms (1ms accuracy, total 169 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalFunctionCalls: 1, totalVariableUses: 0, suppressed: 0, searchTimeMs: 0, processTimeMs: 32\
+_All queries together required ≈32 ms (1ms accuracy, total 33 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _169.1 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _32.7 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -96,16 +96,16 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             "subscript": 0
           },
           "searchTimeMs": 0,
-          "processTimeMs": 168
+          "processTimeMs": 32
         }
       }
     },
     ".meta": {
-      "timing": 168
+      "timing": 32
     }
   },
   ".meta": {
-    "timing": 168
+    "timing": 32
   }
 }
 ```
@@ -143,7 +143,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L16) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L18) for the test-case implementation.
 		
 <h4 id="Test_Case:_locally_defined_function_is_not_flagged">Test Case: locally defined function is not flagged</h4>
 
@@ -164,7 +164,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L19) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L21) for the test-case implementation.
 		
 <h4 id="Test_Case:_builtin_is_not_flagged">Test Case: builtin is not flagged</h4>
 
@@ -185,7 +185,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L22) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L24) for the test-case implementation.
 		
 <h4 id="Test_Case:_only_the_undefined_call_is_flagged">Test Case: only the undefined call is flagged</h4>
 
@@ -207,7 +207,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L25) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L27) for the test-case implementation.
 		
 <h4 id="Test_Case:_flagged_low-confidence_when_an_unknown_library_is_loaded">Test Case: flagged low-confidence when an unknown library is loaded</h4>
 
@@ -229,7 +229,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L29) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L31) for the test-case implementation.
 		
 <h4 id="Test_Case:_default-attached_base_functions_are_not_flagged">Test Case: default-attached base functions are not flagged</h4>
 
@@ -261,7 +261,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L34) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L36) for the test-case implementation.
 		
 <h4 id="Test_Case:_namespace-qualified_base_function_is_not_flagged">Test Case: namespace-qualified base function is not flagged</h4>
 
@@ -286,7 +286,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L38) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L40) for the test-case implementation.
 		
 <h4 id="Test_Case:_base_primitives_and_constants_are_not_flagged">Test Case: base primitives and constants are not flagged</h4>
 
@@ -320,7 +320,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L43) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L45) for the test-case implementation.
 		
 <h4 id="Test_Case:_non-attached_base_package_function_is_flagged_with_a_hint">Test Case: non-attached base package function is flagged with a hint</h4>
 
@@ -346,7 +346,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L48) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L50) for the test-case implementation.
 		
 <h4 id="Test_Case:_suggests_loading_a_package_that_exports_the_symbol">Test Case: suggests loading a package that exports the symbol</h4>
 
@@ -371,7 +371,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L54) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L56) for the test-case implementation.
 		
 <h4 id="Test_Case:_resolves_a_loaded_dotted_export_yet_still_flags_a_typo">Test Case: resolves a loaded dotted export yet still flags a typo</h4>
 
@@ -399,7 +399,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L59) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L61) for the test-case implementation.
 		
 <h4 id="Test_Case:_a_testthat_export_is_not_flagged_inside_a_test_file">Test Case: a testthat export is not flagged inside a test file</h4>
 
@@ -425,7 +425,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L67) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L69) for the test-case implementation.
 		
 <h4 id="Test_Case:_the_same_testthat_export_is_flagged_outside_a_test_file">Test Case: the same testthat export is flagged outside a test file</h4>
 
@@ -451,7 +451,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L72) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L74) for the test-case implementation.
 		
 <h4 id="Test_Case:_undefined_variable_read_is_flagged__checked_by_default_">Test Case: undefined variable read is flagged (checked by default)</h4>
 
@@ -471,7 +471,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L78) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L80) for the test-case implementation.
 		
 <h4 id="Test_Case:_variable_checking_can_be_disabled">Test Case: variable checking can be disabled</h4>
 
@@ -496,7 +496,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L81) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L83) for the test-case implementation.
 		
 <h4 id="Test_Case:_parameters_and_locals_are_not_flagged">Test Case: parameters and locals are not flagged</h4>
 
@@ -517,7 +517,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L84) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L86) for the test-case implementation.
 		
 <h4 id="Test_Case:_builtin_constants_are_not_flagged">Test Case: builtin constants are not flagged</h4>
 
@@ -539,7 +539,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L87) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L89) for the test-case implementation.
 		
 <h4 id="Test_Case:_quoted_symbols_are_not_flagged">Test Case: quoted symbols are not flagged</h4>
 
@@ -561,7 +561,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L91) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L93) for the test-case implementation.
 		
 <h4 id="Test_Case:_a_braceless_for-loop_body_is_still_flagged">Test Case: a braceless for-loop body is still flagged</h4>
 
@@ -582,7 +582,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L95) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L97) for the test-case implementation.
 		
 <h4 id="Test_Case:_a_braceless_while-loop_body_is_still_flagged">Test Case: a braceless while-loop body is still flagged</h4>
 
@@ -602,7 +602,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L98) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L100) for the test-case implementation.
 		
 <h4 id="Test_Case:_a_braceless_repeat_body_is_still_flagged">Test Case: a braceless repeat body is still flagged</h4>
 
@@ -622,7 +622,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L101) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L103) for the test-case implementation.
 		
 <h4 id="Test_Case:_a_quotation_within_a_loop_body_is_still_not_flagged">Test Case: a quotation within a loop body is still not flagged</h4>
 
@@ -642,7 +642,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L104) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L106) for the test-case implementation.
 		
 <h4 id="Test_Case:_a_variable_defined_nowhere_is_still_flagged">Test Case: a variable defined nowhere is still flagged</h4>
 
@@ -666,7 +666,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L108) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L110) for the test-case implementation.
 		
 <h4 id="Test_Case:_a_binding_from_a_sibling_scope_does_not_suppress_the_use">Test Case: a binding from a sibling scope does not suppress the use</h4>
 
@@ -688,7 +688,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L113) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L115) for the test-case implementation.
 		
 <h4 id="Test_Case:_formula_operands">Test Case: formula operands</h4>
 
@@ -713,7 +713,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L123) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L125) for the test-case implementation.
 		
 <h4 id="Test_Case:_subset_data-masked_columns">Test Case: subset data-masked columns</h4>
 
@@ -739,7 +739,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L126) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L128) for the test-case implementation.
 		
 <h4 id="Test_Case:_with_data-masked_columns">Test Case: with data-masked columns</h4>
 
@@ -765,7 +765,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L129) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L131) for the test-case implementation.
 		
 <h4 id="Test_Case:_quoted_symbols">Test Case: quoted symbols</h4>
 
@@ -791,7 +791,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L132) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L134) for the test-case implementation.
 		
 <h4 id="Test_Case:_dplyr_/_tidyr_data-masked_columns">Test Case: dplyr / tidyr data-masked columns</h4>
 
@@ -818,7 +818,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L135) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L137) for the test-case implementation.
 		
 <h4 id="Test_Case:_ggplot_aes_columns">Test Case: ggplot aes columns</h4>
 
@@ -844,7 +844,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L138) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L140) for the test-case implementation.
 		
 <h4 id="Test_Case:_piped_dplyr_columns">Test Case: piped dplyr columns</h4>
 
@@ -871,7 +871,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L142) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L144) for the test-case implementation.
 		
 <h4 id="Test_Case:_data.table_subscript_columns_are_muted">Test Case: data.table subscript columns are muted</h4>
 
@@ -893,7 +893,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L146) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L148) for the test-case implementation.
 		
 <h4 id="Test_Case:_the_accessed_object_is_still_flagged">Test Case: the accessed object is still flagged</h4>
 
@@ -914,7 +914,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L150) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L152) for the test-case implementation.
 		
 <h4 id="Test_Case:_subscript_checking_can_be_enabled">Test Case: subscript checking can be enabled</h4>
 
@@ -940,7 +940,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L153) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L155) for the test-case implementation.
 		
 <h4 id="Test_Case:_undefined_call_in_an_inst/_file_is_not_flagged">Test Case: undefined call in an inst/ file is not flagged</h4>
 
@@ -965,7 +965,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L159) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L161) for the test-case implementation.
 		
 <h4 id="Test_Case:_the_same_call_in_an_R/_file_is_flagged">Test Case: the same call in an R/ file is flagged</h4>
 
@@ -990,4 +990,4 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L162) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-undefined-symbol.test.ts#L164) for the test-case implementation.

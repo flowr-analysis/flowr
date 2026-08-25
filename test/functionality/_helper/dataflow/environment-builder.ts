@@ -1,5 +1,5 @@
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type IdentifierDefinition, ReferenceType } from '../../../../src/dataflow/environments/identifier';
+import { type IdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import type { FunctionArgument } from '../../../../src/dataflow/graph/graph';
 import type {
 	Environment,
@@ -69,6 +69,24 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	}
 
 	/**
+	 * Defines a new identifier of the given `type` in the current environment.
+	 * @param type - Reference type to define the identifier as
+	 * @param name - Identifier name
+	 * @param nodeId - AST Node ID of usage
+	 * @param definedAt - AST Node ID of definition
+	 * @param cds - Control dependencies
+	 */
+	private defineAs(type: InGraphReferenceType, name: string, nodeId: NodeId, definedAt: NodeId, cds: ControlDependency[] | undefined = undefined) {
+		return this.defineInEnv({
+			type,
+			name,
+			definedAt,
+			nodeId,
+			cds
+		});
+	}
+
+	/**
 	 * Defines a new argument in the current environment.
 	 * @param name - Argument name
 	 * @param nodeId - AST Node ID of usage
@@ -76,12 +94,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param cds - Control dependencies
 	 */
 	defineArgument(name: string, nodeId: NodeId, definedAt: NodeId, cds: ControlDependency[] | undefined = undefined) {
-		return this.defineInEnv({
-			type: ReferenceType.Argument,
-			name,
-			definedAt,
-			nodeId,
-			cds });
+		return this.defineAs(ReferenceType.Argument, name, nodeId, definedAt, cds);
 	}
 
 	/**
@@ -92,13 +105,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param cds - Control dependencies
 	 */
 	defineFunction(name: string, nodeId: NodeId, definedAt: NodeId, cds: ControlDependency[] | undefined = undefined) {
-		return this.defineInEnv({
-			type: ReferenceType.Function,
-			name,
-			definedAt,
-			nodeId,
-			cds
-		});
+		return this.defineAs(ReferenceType.Function, name, nodeId, definedAt, cds);
 	}
 
 	/**
@@ -109,13 +116,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param cds - Control dependencies
 	 */
 	defineParameter(name: string, nodeId: NodeId, definedAt: NodeId, cds: ControlDependency[] | undefined = undefined) {
-		return this.defineInEnv({
-			type: ReferenceType.Parameter,
-			name,
-			definedAt,
-			nodeId,
-			cds
-		});
+		return this.defineAs(ReferenceType.Parameter, name, nodeId, definedAt, cds);
 	}
 
 	/**
@@ -126,13 +127,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	 * @param cds - Control dependencies
 	 */
 	defineVariable(name: string, nodeId: NodeId, definedAt: NodeId = nodeId, cds: ControlDependency[] | undefined = undefined) {
-		return this.defineInEnv({
-			type: ReferenceType.Variable,
-			name,
-			definedAt,
-			nodeId,
-			cds
-		});
+		return this.defineAs(ReferenceType.Variable, name, nodeId, definedAt, cds);
 	}
 
 	/**

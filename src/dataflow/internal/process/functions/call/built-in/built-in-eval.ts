@@ -1,4 +1,5 @@
 import { MatchArgs } from '../../../../../graph/match-args';
+import { FnSig } from '../../../../../environments/built-in-props';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -27,7 +28,6 @@ import { Identifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-
 
 /** the formals of `eval(expr, envir, enclos)` */
 const EvalParameterNames = ['expr', 'envir', 'enclos'] as const;
@@ -60,7 +60,7 @@ export function processEvalCall<OtherInfo>(
 	}
 
 	const information = config.includeFunctionCall ?
-		processKnownFunctionCall({ name, args, rootId, data, forceArgs: [true], origin: BuiltInProcName.Eval }).information
+		processKnownFunctionCall({ name, args, rootId, data, sig: FnSig.only(0, 'expr'), origin: BuiltInProcName.Eval }).information
 		: DataflowInformation.initialize(rootId, data);
 
 	if(config.includeFunctionCall) {
@@ -138,7 +138,6 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 		}
 	}
 }
-
 
 function getAsString<OtherInfo>(val: RNode<ParentInformation> | undefined, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
 	if(!val) {

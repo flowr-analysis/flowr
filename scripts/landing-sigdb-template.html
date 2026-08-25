@@ -50,7 +50,14 @@ body {
 	background: radial-gradient(64rem 24rem at 50% -10rem, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%) var(--bg) no-repeat;
 }
 main { max-width: 62rem; margin: 0 auto; }
-a { color: var(--accent); }
+a {
+	color: var(--accent); text-decoration: underline;
+	text-decoration-thickness: from-font; text-underline-offset: .16em;
+	text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);
+	transition: color .12s, text-decoration-color .12s, opacity .12s;
+}
+a:hover { color: color-mix(in srgb, var(--accent) 82%, var(--fg)); text-decoration-color: currentColor; }
+@media (prefers-reduced-motion: reduce) { a { transition: none; } }
 h1 { font-size: clamp(1.5rem, 5vw, 2.1rem); line-height: 1.2; letter-spacing: -.02em; margin: 1.4rem 0 .4rem; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 
@@ -83,8 +90,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 }
 /* the four names no longer fit on one line: two by two reads better than three and a stray */
 @media (max-width: 21rem) { .bar nav { display: grid; grid-template-columns: 1fr 1fr; justify-items: start; } }
-/* GitHub asks that its mark stay solid black or white and unmodified, so it does not take the
-   page colours; only the backdrop reacts to the pointer */
+/* GitHub asks that its mark stay solid black or white and unmodified, so only the backdrop reacts to the pointer */
 .bar .controls .gh, .bar .controls .gh:hover { color: #181717; }
 .bar .controls .gh { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: .5rem; }
 .bar .controls .gh:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
@@ -137,17 +143,19 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 #scope:hover { filter: brightness(1.08); }
 #scope[hidden] { display: none; }
 .mix .track { display: inline-flex; gap: .1rem; padding: .16rem; border-radius: 999px; border: 1px solid var(--border); background: var(--sunk); }
-.mix .pick { font: inherit; font-size: .74rem; line-height: 1.5; cursor: pointer; color: var(--muted); border-radius: 999px; padding: .1rem .55rem; }
-.mix .pick { border: 0; background: none; padding: .16rem .6rem; }
+.mix .pick { font: inherit; font-size: .74rem; line-height: 1.5; cursor: pointer; color: var(--muted); border-radius: 999px; border: 0; background: none; padding: .16rem .6rem; }
 .mix .pick[aria-pressed="true"] { color: var(--accent); background: var(--panel); border-color: transparent; }
 .filters button[aria-pressed="true"] { color: var(--accent-fg); background: var(--accent); border-color: transparent; }
 
-#hits { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .4rem; }
+/* minmax(0, 1fr), not the implicit auto: a track sized to its content would let a long signature push the row past the page */
+#hits { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: .4rem; }
 #hits li {
 	padding: .55rem .8rem; border: 1px solid var(--border); border-radius: .6rem; background: var(--panel);
-	transition: border-color .12s; cursor: pointer;
+	transition: border-color .12s; cursor: pointer; min-width: 0;
 }
-#hits .head { display: flex; flex-wrap: wrap; gap: .3rem .8rem; align-items: baseline; }
+/* one line per hit: the signature is the part that gives way, so nothing else is pushed onto a line of its own */
+#hits .head { display: flex; flex-wrap: nowrap; gap: .3rem .8rem; align-items: baseline; min-width: 0; }
+#hits .head > :not(.stated) { flex: none; }
 #hits .detail { margin-top: .55rem; border-top: 1px solid var(--border); padding-top: .55rem; }
 #hits .detail p { margin: .1rem 0; font-size: .85rem; }
 #hits .pkghit .detail p {
@@ -186,7 +194,7 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 	letter-spacing: .03em; color: var(--muted); border: 1px solid var(--border);
 }
 #hits .own:hover .go { color: var(--accent); }
-#hits .flags { display: flex; flex-wrap: wrap; gap: .3rem; }
+#hits .flags { display: flex; flex-wrap: wrap; gap: .3rem; min-width: 0; }
 #hits .pkghit { border-style: dashed; }
 #hits .pkghit .owners { color: var(--muted); font-size: .78rem; }
 /* every badge is the same pill whatever it says, so only its colour carries the difference */
@@ -208,12 +216,9 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 }
 #hits .ask {
 	display: flex; flex-wrap: wrap; gap: .5rem; align-items: baseline; margin: .5rem 0 0;
-	color: var(--muted); font-size: .78rem;
+	color: var(--muted); font-size: .78rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
-#hits .ask::after {
-	content: ""; /* the command itself is the text node after the label */
-}
-#hits .ask { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+#hits .ask::after { content: ""; } /* the command itself is the text node after the label */
 #hits .ask span { font-family: system-ui, sans-serif; }
 #hits li:hover { border-color: var(--accent); }
 #hits .name { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 600; }
@@ -224,13 +229,21 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 /* what flowR states about the name, next to what the database says about it */
 #hits .kindtag.props { border-style: dashed; opacity: .8; }
 #hits .flag.stated { border-style: dashed; color: var(--accent); }
-#hits .own .stated { max-width: 26rem; }
+/* stated: as wide as what it says and no wider, an ellipsis only once the line runs out; inline-flex so its own parts (kind/args/ret) lay out beside it */
 #hits .stated {
 	font-size: .78rem; color: var(--muted); background: var(--sunk);
 	padding: .05rem .35rem; border-radius: .3rem; white-space: nowrap;
-	overflow: hidden; text-overflow: ellipsis; max-width: 22rem;
+	overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; min-width: 0;
+	display: inline-flex; align-items: baseline; vertical-align: bottom;
 }
-#hits .owners { margin-left: auto; display: flex; flex-wrap: wrap; gap: .3rem; }
+/* the formals are what may be cut: without min-width a flex item never shrinks below what it says, and the row would grow past the panel */
+#hits .stated .args { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 0 1 auto; min-width: 0; }
+/* what the call does is the part worth keeping when the formals no longer fit */
+#hits .stated .ret, #hits .stated .kind { flex: none; }
+#hits .stated .role { font-style: normal; color: color-mix(in srgb, var(--accent) 75%, var(--muted)); }
+#hits .stated .ret { font-style: normal; color: color-mix(in srgb, var(--fg) 45%, var(--muted)); }
+#hits .stated .kind { font-style: normal; color: color-mix(in srgb, var(--muted) 80%, transparent); }
+#hits .owners { margin-left: auto; display: flex; flex-wrap: wrap; gap: .3rem; flex: none; }
 #hits .owners a {
 	font-size: .78rem; text-decoration: none; padding: .1rem .45rem; border-radius: .8rem;
 	border: 1px solid var(--border); color: var(--muted); background: var(--sunk);
@@ -310,6 +323,7 @@ p.lead { color: var(--muted); margin: 0 0 1.2rem; }
 <script type="application/json" id="topics">"<!--TOPICS-->"</script>
 <script type="application/json" id="formals">"<!--FORMALS-->"</script>
 <script type="application/json" id="groups">"<!--GROUPS-->"</script>
+<script type="application/json" id="generics">"<!--GENERICS-->"</script>
 <script>
 /* the ranker the playground shares, written in from `src/util/text/name-rank.ts` by the build */
 <!--RANKER-->
@@ -343,19 +357,19 @@ const sort = document.getElementById('sort');
 /** each filter, with what it says when the pointer rests on it */
 const Filters = [
 	['only', 'package', 'packages', 'list packages rather than the names they export'],
-	['pkg', 'archived', 'archived', 'names from a package CRAN no longer carries'],
-	['flag', 't', 'throws', 'may raise an error, so a caller cannot count on getting a value back'],
-	['flag', 'n', 'non-determ.', 'non-deterministic: may answer differently for the same arguments, like random draws or the clock'],
+	['pkg', 'archive', 'archived', 'names from a package CRAN no longer carries'],
+	['flag', 't', 'throw', 'may raise an error, so a caller cannot count on getting a value back'],
+	['flag', 'n', 'non-det.', 'non-deterministic: may answer differently for the same arguments, like random draws or the clock'],
 	['flag', '3', 'S3', 'S3 method: an implementation of a generic for one class, like print.data.frame'],
-	['flag', 'x', 'deprecated', 'marked as deprecated by the package itself'],
+	['flag', 'x', 'depr.', 'marked as deprecated by the package itself'],
 	['flag', 'd', 'calls depr.', 'calls deprecated: calls something deprecated, so it may stop working when that goes'],
 	['flag', 'c', 'value', 'a value rather than a function, like pi or LETTERS'],
 	['flag', 'v', 'no loc', 'no location: the database records no file and line for it. Usually a constant, a dataset or a class object, sometimes a function nothing wrote down, like an S4 generic setGeneric builds'],
 	['name', 'group', 'S4', 'S4 group member: a member of an S4 group generic (Math, Arith, Summary, ...), which a package usually exports because it answered the group for one of its classes'],
-	['kind', 'read', 'reads', 'reads data from somewhere outside the program, like read.csv'],
-	['kind', 'write', 'writes', 'writes data out of the program, like write.csv'],
-	['kind', 'visualize', 'plots', 'draws something, like plot or ggsave'],
-	['kind', 'library', 'loads', 'attaches a package, like library or require']
+	['kind', 'read', 'read', 'reads data from somewhere outside the program, like read.csv'],
+	['kind', 'write', 'write', 'writes data out of the program, like write.csv'],
+	['kind', 'visualize', 'plot', 'draws something, like plot or ggsave'],
+	['kind', 'library', 'load', 'attaches a package, like library or require']
 ];
 const active = new Set();
 const filters = document.getElementById('filters');
@@ -482,11 +496,7 @@ function knownNames() {
 	return known;
 }
 
-/** a name with the matched part marked, built as nodes so a function name can never inject markup */
-/**
- * Whether a manual page can be named for this one. `%o%` and friends have no `man/<name>.html`, and a name the
- * database says nothing about (`?`) is only safe to guess at where an alias table settles it.
- */
+/** whether a manual page can be named for this one; `%o%` and friends have none, and a name the database says nothing about (`?`) is only safe to guess at where an alias table settles it */
 function documented(name, flags, index) {
 	if(flags.includes('u')) {
 		return false;
@@ -497,33 +507,20 @@ function documented(name, flags, index) {
 	if(!/^[A-Za-z.][A-Za-z0-9._-]*$/.test(page)) {
 		return false;
 	}
-	/*
-	 * Base R ships an alias table naming every page it has, so nothing has to be guessed: a name it does not
-	 * carry has none. That is most of what a base package exports without documenting, the locals and internals
-	 * (`tmp`, `shell.exec`) as much as the `sinkplot` flowR states and R has never had.
-	 */
+	/* base R ships an alias table naming every page it has, so a name it does not carry has none: most of what base exports without documenting, locals and internals alike */
 	if(packages[index]?.[2] === '1') {
 		return !topicsKnown || topics.has(pkg + '::' + name);
 	}
-	/* `?` says the database holds nothing about it: a name flowR states rather than one a package is known to
-	   export, and outside base R there is no table to settle it, so guessing only produces a dead link */
+	/* `?` says the database holds nothing about it, and outside base R there is no table to settle it, so guessing only produces a dead link */
 	return !flags.includes('?');
 }
 
-/**
- * Where the code of a package lives. Base R sits in the read-only mirror of R's own sources, which carries a
- * branch per release series rather than a tag; everything else is on the read-only CRAN mirror, at its version.
- */
-/** the file of a package an export lives in, `undefined` where the database records none */
+/** the file of a package an export lives in, `undefined` where the database records none; see sourceUrl below for where that file lives */
 function sourceFile(index, file) {
 	return file === undefined ? undefined : (packages[index][8] ?? '').split('|')[file] || undefined;
 }
 
-/**
- * Where the code of an export lives. Base R sits in the read-only mirror of R's own sources, which carries a
- * branch per release series rather than a tag; everything else is on the read-only CRAN mirror, at its version.
- * Without a file of its own, the package's sources are as close as this gets.
- */
+/** where the code of an export lives: base R in the read-only mirror of R's sources (a branch per release series, not a tag), everything else on the CRAN mirror at its version; without a file of its own, the package's sources are as close as this gets */
 function sourceUrl(pkg, version, base, file, line) {
 	const at = line === undefined ? '' : '#L' + line;
 	if(base) {
@@ -546,11 +543,7 @@ function packageDocUrl(index) {
 		: 'https://rdrr.io/cran/' + encodeURIComponent(pkg) + '/';
 }
 
-/*
- * Base R goes to R's own manual rather than to rdrr.io, which serves an older release: `array2DF`, `sort_by`
- * and the rest of what R has gained since have no page there. It is also where the alias table above comes
- * from, so the two can never disagree about which pages exist.
- */
+/* base R goes to R's own manual, not rdrr.io (which serves an older release and lacks recent additions like array2DF); it is also where the alias table above comes from, so the two never disagree */
 function docUrl(name, entry) {
 	const { index, topic } = typeof entry === 'object' ? entry : { index: entry };
 	const [pkg, , base] = packages[index];
@@ -559,13 +552,13 @@ function docUrl(name, entry) {
 		: 'https://rdrr.io/cran/' + encodeURIComponent(pkg) + '/man/' + page + '.html';
 }
 
+/** a name with the matched part marked, built as nodes so a function name can never inject markup */
 function marked(name, needle, at) {
 	const span = document.createElement('span');
 	span.className = 'name';
 	span.title = 'click for every package that exports ' + name;
 	if(at < 0) {
-		/* a fuzzy hit matches scattered characters; neighbours join into one mark so `filter` reads as
-		   one highlight rather than six boxes in a row */
+		/* a fuzzy hit matches scattered characters; neighbours join into one mark so `filter` reads as one highlight, not six boxes in a row */
 		const wanted = needle.toLowerCase();
 		let next = 0, run = '', plain = '';
 		const flush = () => {
@@ -598,11 +591,7 @@ function marked(name, needle, at) {
 	return span;
 }
 
-/**
- * What a reader most likely meant, ordered by the ranker the playground's completion uses as well
- * (`src/util/text/name-rank.ts`, written in here by the build): this only says what the page knows
- * about a name, the weighing itself lives there.
- */
+/** what a reader most likely meant, ordered by the ranker the playground's completion also uses (src/util/text/name-rank.ts, written in here by the build); this only states what the page knows about a name */
 function score(name, owners, rank, needle) {
 	const first = owner(owners.split(',')[0]);
 	const pkg = packages[first.index];
@@ -637,6 +626,9 @@ const FlagNames = {
 	m: 'S4 method', h: 'higher order', x: 'deprecated', c: 'value', v: 'no loc', u: 'no docs'
 };
 
+/** the flags recording something about the entry rather than about the call, which no signature states */
+const MetaFlags = ['c', 'v', 'u'];
+
 /** the few flags whose short form does not speak for itself */
 const FlagAbout = {
 	c: 'the database records it as a value rather than a function',
@@ -660,11 +652,12 @@ function owner(entry) {
 
 /* a Map, not the parsed object: R exports names like `toString`, and those would hit Object's prototype */
 const kinds = new Map(Object.entries(JSON.parse(document.getElementById('kinds').textContent)));
-/* `name -> [call, props]`: what flowR states about the functions it carries a definition for */
+/* `name -> [package, properties, formals with their roles][]`: what flowR states about the names it defines */
 const stated = new Map(Object.entries(JSON.parse(document.getElementById('stated').textContent)));
-/* `package::alias -> topic` for every documented base R name, empty where the topic is the name itself, so the
-   keys are also the set of base R names that have a manual page at all */
+/* `package::alias -> topic` for every documented base R name, empty where the topic is the name itself; the keys are also the set of base R names with a manual page at all */
 const topics = new Map(Object.entries(JSON.parse(document.getElementById('topics').textContent)));
+/* the names something dispatches on, which is what makes `format.Date` a method and `is.datacggm` a function */
+const generics = new Set(JSON.parse(document.getElementById('generics').textContent).split('\n').filter(Boolean));
 /* whether that set is the real one: without an R to read the alias tables from, it holds the primitives alone */
 const topicsKnown = '<!--TOPICS-COMPLETE-->' === 'true';
 /* `name -> [package, parameters][]`: what base R itself declares, which flowR states nothing about */
@@ -697,7 +690,7 @@ function ownerLink(index) {
 	return link;
 }
 
-const Shown = 6;
+const Shown = 3;
 
 /** one aligned row per owning package, each one a link to that package's manual page for this name */
 function detail(name, owners) {
@@ -724,8 +717,7 @@ function detail(name, owners) {
 			/* no page of its own, so the package's documentation is the next best thing */
 			row.href = packageDocUrl(index);
 			row.classList.add('undocumented');
-			/* a group member is usually documented under its S4 alias (`sin,float32-method` on float's `trig`
-			   page), which is a name the database does not carry, so say so rather than claim there is nothing */
+			/* a group member is usually documented under its S4 alias (`sin,float32-method` on float's `trig` page), a name the database does not carry, so say so rather than claim there is nothing */
 			row.title = groups.has(name) && base !== '1'
 				? name + ' has no manual page of its own in ' + pkg + ': an S4 method is documented under its '
 					+ name + ',<class>-method alias, so this links to the package documentation'
@@ -740,8 +732,17 @@ function detail(name, owners) {
 		row.append(who);
 		const marks = document.createElement('span');
 		marks.className = 'flags';
+		/* one signature for this package's version: flowR's formals where it declares them (`filter` is `stats`'s
+		   to a reader, dplyr's to flowR), and the labels of both statements merged into it */
+		const own = statedFor.get(pkg);
+		const here = {
+			args:  own?.[2] || declaredIn(name, pkg) || '',
+			props: mergedWords(own?.[1], flagWords(flags))
+		};
+		/* the signature spells these out a moment later, and a badge saying it once more only costs the line */
+		const said = new Set(wordsOf(here.props));
 		for(const flag of flags) {
-			if(FlagNames[flag]) {
+			if(FlagNames[flag] && !said.has(FlagNames[flag])) {
 				const one = document.createElement('span');
 				one.className = 'flag';
 				one.textContent = FlagNames[flag];
@@ -760,21 +761,8 @@ function detail(name, owners) {
 		const tag = document.createElement('span');
 		tag.className = 'tag';
 		tag.textContent = base === '1' ? 'base R' : 'CRAN';
-		const own = statedFor.get(pkg);
-		/* the signature flowR carries for this package's version of the name, which the head can only show
-		   for one of them: `filter` is `stats`'s to a reader and dplyr's to flowR */
-		const mineHere = own?.[1] ?? declaredIn(name, pkg);
-		if(mineHere) {
-			marks.append(signature(name, mineHere, own?.[1]
-				? 'what flowR models of ' + pkg + '::' + name
-				: 'what ' + pkg + ' declares for ' + name));
-		}
-		for(const word of (own?.[2] ?? '').split(' ').filter(Boolean)) {
-			const one = document.createElement('span');
-			one.className = 'flag stated';
-			one.textContent = word;
-			one.title = 'flowR states this about ' + pkg + '::' + name;
-			marks.append(one);
+		if(here.args !== '' || here.props !== '') {
+			marks.append(signature(name, here.args, here.props));
 		}
 		const go = document.createElement('a');
 		go.className = 'go';
@@ -839,12 +827,23 @@ function genericOf(name, owners) {
 	if(!owners.some(entry => owner(entry).flags.includes('3'))) {
 		return undefined;
 	}
+	/* the longest prefix something dispatches on: `is` is a name, but `is.datacggm` is not a method of it */
+	let found;
 	for(let at = name.indexOf('.'); at > 0; at = name.indexOf('.', at + 1)) {
-		if(knownNames().has(name.slice(0, at))) {
-			return name.slice(0, at);
+		if(generics.has(name.slice(0, at))) {
+			found = name.slice(0, at);
 		}
 	}
-	return undefined;
+	return found;
+}
+
+/** the generic an S4 method answers (from `generic,signature-method`), `undefined` when the name is no S4 method */
+function s4GenericOf(name, owners) {
+	if(!owners.some(entry => owner(entry).flags.includes('m'))) {
+		return undefined;
+	}
+	const at = name.indexOf(',');
+	return at > 0 ? name.slice(0, at) : undefined;
 }
 
 /** a package is a thing to find too: searching `dplyr` should offer the package, not only its names */
@@ -938,15 +937,7 @@ function aboutPackage(index) {
 	return box;
 }
 
-/**
- * The package flowR states a name for, put first among its owners when the database does not list it: `+` is
- * base R's, but a primitive is in no NAMESPACE, so nothing exports it and the reader would see `lubridate`
- * where they expect `base`.
- *
- * A statement that names no package adds no owner: flowR recognizes `sinkplot` as a plot call without knowing
- * whose it is, and the packages the database does list are then the whole answer. What flowR says about the
- * call still shows, and a name nothing at all exports keeps its row with the flowR badge and no package.
- */
+/** the package flowR states a name for, put first among owners when the database omits it (a primitive exports from no NAMESPACE, so `+` would otherwise show as `lubridate`'s); a statement naming no package adds none, so `sinkplot` keeps its flowR badge with no package rather than a wrong one */
 function withStatedOwner(name, owners) {
 	/* a name no package exports has one empty entry, which is a row rather than an owner */
 	const known = owners.filter(entry => entry !== '');
@@ -961,13 +952,118 @@ function withStatedOwner(name, owners) {
 	return found.length === 0 ? known : [...found.map(at => at + ':?'), ...known];
 }
 
-/** `name(params)`, the one shape a signature is drawn in wherever it comes from */
-function signature(name, params, why) {
+/** short forms of what a call is/does/hands back and what an argument is used for; missing entries are short enough already, the full words sit on every signature as a tooltip */
+const Words = {
+	/* what a call is and does, flowR's words and the database's for the same thing alike */
+	'can throw': 'throws', 'invisible': 'invis', 's3 method': 's3', 'S3 method': 's3', 'S4 method': 's4',
+	'changes scope': 'scope', 'non deterministic': 'nondet', 'non-deterministic': 'nondet',
+	'ambient state': 'ambient', 'file system': 'file', 'network': 'net', 'concurrent': 'async',
+	'calls something deprecated': 'calls depr', 'calls internals': 'internal', 'recursive': 'rec',
+	'owns an S3 class': 's3 class', 'owns an S4 class': 's4 class', 'higher order': 'hof', 'deprecated': 'depr',
+	'maybe pure': 'maypure', 'sets ambient state': 'configures', 'calls native code': 'ffi',
+	'produces language object': 'lang',
+	/* the semantic labels, which flowR states as the words its configuration spells them with */
+	'temp-file': 'tmpfile', 'asks-user': 'user', 'command-line': 'argv', 'draws-graphics': 'plot',
+	'opens-handle': 'opens', 'closes-handle': 'closes', 'narrows-args': 'narrows', 'statistics': 'stats',
+	'javascript': 'js',
+	/* when an argument is evaluated is a letter (`F+val`), what it is used for stays a word */
+	'forced': 'F', 'no default': 'R', 'lazy': 'L',
+	'value': 'val', 'resource': 'res', 'written': 'out', 'callee': 'fn', 'presence': 'seen'
+};
+
+/** what a call hands back, which belongs behind the formals like a return type */
+const Returns = ['invisible'];
+
+/** the `|`-joined words of the page's own encoding, as a list */
+function wordsOf(joined) {
+	return joined.split('|').filter(Boolean);
+}
+
+/** the words as a reader sees them, shortened where {@link Words} has something shorter */
+function short(words) {
+	return words.map(word => Words[word] ?? word);
+}
+
+/**
+ * What several statements about one name say, as one list of words: flowR's labels (its semantic ones
+ * included) and the database's, in that order, with nothing said twice. Two spellings of the same thing are
+ * one word once shortened (`file system` is the database's `file`), so the shortened form decides.
+ */
+function mergedWords(...statements) {
+	const seen = new Set();
+	const kept = [];
+	for(const word of statements.flatMap(statement => wordsOf(statement ?? ''))) {
+		const shortened = Words[word] ?? word;
+		if(!seen.has(shortened)) {
+			seen.add(shortened);
+			kept.push(word);
+		}
+	}
+	return kept.join('|');
+}
+
+/** the words of `props` split into what the call is and does, and what it hands back */
+function parts(props) {
+	const words = wordsOf(props);
+	return { kind: words.filter(word => !Returns.includes(word)), returns: words.filter(word => Returns.includes(word)) };
+}
+
+/** the formals of `args` as `[name, roles]`, the roles empty for a declaration that states none */
+function argsOf(args) {
+	return args.split(',').filter(Boolean).map(arg => {
+		const at = arg.indexOf(':');
+		return at < 0 ? [arg.trim(), []] : [arg.slice(0, at).trim(), wordsOf(arg.slice(at + 1))];
+	});
+}
+
+/** one `name: roles` part of a signature, the roles set apart from the formal they belong to */
+function formal([name, roles]) {
+	const part = document.createElement('span');
+	part.className = 'formal';
+	part.append(name);
+	if(roles.length > 0) {
+		part.append(Object.assign(document.createElement('i'), { className: 'role', textContent: ': ' + short(roles).join('+') }));
+	}
+	return part;
+}
+
+/** the same signature spelled out, which is what a reader gets on hovering the short one */
+function readable(name, args, props) {
+	const spelled = argsOf(args).map(([formal, roles]) => roles.length === 0 ? formal : formal + ': ' + roles.join(' + ')).join(', ');
+	const { kind, returns } = parts(props);
+	return name + (kind.length > 0 ? '[' + kind.join(',') + ']' : '') + (args === '' ? '' : '(' + spelled + ')')
+		+ (returns.length > 0 ? ': ' + returns.join(',') : '');
+}
+
+/** a signature as `name<kind>(formal: role, ...): returns`; R has no types, so roles stand in, and the parens are left out where no formals are known at all (not the same as a call taking none) */
+function signature(name, args, props) {
 	const said = document.createElement('code');
 	said.className = 'stated';
-	said.append(Object.assign(document.createElement('b'), { textContent: name }), '(' + params + ')');
-	said.title = why;
+	const { kind, returns } = parts(props);
+	said.append(Object.assign(document.createElement('b'), { textContent: name }));
+	if(kind.length > 0) {
+		said.append(Object.assign(document.createElement('i'), { className: 'kind', textContent: '[' + short(kind).join(',') + ']' }));
+	}
+	if(args !== '') {
+		/* the formals are what gets cut when the line is too long; what the call is and does stays */
+		const list = document.createElement('span');
+		list.className = 'args';
+		list.append('(');
+		argsOf(args).forEach((arg, at) => list.append(at > 0 ? ', ' : '', formal(arg)));
+		list.append(')');
+		said.append(list);
+	}
+	if(returns.length > 0) {
+		said.append(Object.assign(document.createElement('i'), { className: 'ret', textContent: ': ' + short(returns).join(',') }));
+	}
+	/* the short form is for the glance, the words for the reader who stops on it */
+	said.title = readable(name, args, props);
 	return said;
+}
+
+/** the flags the database records about the call itself, as the `|`-joined words a signature states */
+function flagWords(flags) {
+	return flags.filter(flag => !MetaFlags.includes(flag)).map(flag => FlagNames[flag]).filter(Boolean).join('|');
 }
 
 /** what base R declares for `name` in `pkg`, which the page carries for base R alone */
@@ -982,9 +1078,7 @@ function show(name, needle, at, owners) {
 	const row = document.createElement('li');
 	const head = document.createElement('div');
 	head.className = 'head';
-	/* the package a reader most likely means decides: `pi` is a constant even though something exports a `pi()`.
-	   Only what the database states, `c`: that it records no location (`v`) says too little to head a row,
-	   and it is on the package rows below, where a reader can see which package it is missing for */
+	/* the package a reader most likely means decides: `pi` is a constant even though something exports a `pi()`. Only `c`, what the database states, heads a row -- `v` shows on the package rows below instead */
 	const value = owner(owners[0]).flags.includes('c');
 	head.append(marked(name, needle, at));
 	if(value) {
@@ -995,13 +1089,13 @@ function show(name, needle, at, owners) {
 		badge.title = 'the database records it as a value rather than a function';
 		head.append(badge);
 	}
-	/* flowR's own statement about the name, which is the one thing the database cannot tell a reader.
-	   A name several packages define is stated per package, so the one the reader means is the one shown */
+	/* flowR's own statement about the name, the one thing the database cannot tell a reader; stated per package, so the one the reader means is the one shown */
 	const mine = stated.get(name) ?? [];
 	/* the package the search named, else the one a reader most likely means */
-	const first = packages[owner(owners.find(entry => packages[owner(entry).index]?.[0] === scoped) ?? owners[0]).index];
+	const chosen = owners.find(entry => packages[owner(entry).index]?.[0] === scoped) ?? owners[0];
+	const first = packages[owner(chosen).index];
 	const own = mine.find(entry => entry[0] === first?.[0]) ?? mine.find(entry => entry[0] === 'base') ?? mine[0];
-	const words = (own?.[2] ?? '').split(' ').filter(Boolean);
+	const words = short(wordsOf(own?.[1] ?? ''));
 	/* what the name does comes first, that flowR knows it at all comes after */
 	const known = kinds.get(name) ?? [];
 	for(const kind of [...known.filter(k => k !== 'builtin'), ...known.filter(k => k === 'builtin')]) {
@@ -1009,7 +1103,8 @@ function show(name, needle, at, owners) {
 		badge.className = kind === 'builtin' ? 'kindtag flowr' : 'kindtag';
 		badge.textContent = KindNames[kind] ?? kind;
 		head.append(badge);
-		if(kind === 'builtin' && words.length > 0) {
+		/* the signature below states them where flowR carries one, and repeating them as a count says nothing */
+		if(kind === 'builtin' && words.length > 0 && !own) {
 			const more = document.createElement('span');
 			more.className = 'kindtag props';
 			more.textContent = '+' + words.length;
@@ -1017,25 +1112,30 @@ function show(name, needle, at, owners) {
 			head.append(more);
 		}
 	}
-	/* flowR's own formals where it names any, else what base R declares: an empty list would read as
-	   `takes nothing`, which is not what a definition without a declared signature means */
-	const declared = own?.[1] ? undefined : declaredIn(name, first?.[0]);
-	if(own?.[1]) {
-		head.append(signature(name, own[1], 'what flowR models of this call: the arguments it has something to say about, not every formal R declares'));
-	} else if(declared) {
-		head.append(signature(name, declared, 'what ' + first[0] + ' declares for this function'));
+	/* the generics this name answers, which the row states in words rather than the signature in short */
+	const dispatches = [['S3', genericOf(name, owners)], ['S4', s4GenericOf(name, owners)]]
+		.filter(([, generic]) => generic !== undefined);
+	/* where the row states `S3 method for format` next to it, the signature saying `s3` once more says nothing */
+	const said = dispatches.map(([kind]) => kind.toLowerCase() + ' method');
+	/* one signature for the package a reader means, flowR's formals leading and both statements' labels in it;
+	   one line, ellipsis on overflow, the words spelled out as a tooltip */
+	const shown = {
+		args:  own?.[2] || declaredIn(name, first?.[0]) || '',
+		props: wordsOf(mergedWords(own?.[1], flagWords(owner(chosen).flags)))
+			.filter(word => !said.includes(word.toLowerCase())).join('|')
+	};
+	if(shown.args !== '' || shown.props !== '') {
+		head.append(signature(name, shown.args, shown.props));
 	}
-	const generic = genericOf(name, owners);
-	if(generic) {
+	for(const [kind, generic] of dispatches) {
 		const link = document.createElement('a');
 		link.className = 'generic';
 		link.href = '?q=' + encodeURIComponent(generic);
-		link.textContent = 'S3 method for ' + generic;
+		link.textContent = kind + ' method for ' + generic;
 		link.title = 'search for the generic this method dispatches for';
 		head.append(link);
 	}
-	/* a member of an S4 group: a package exports it because it answered the whole group for one of its
-	   classes, so the name says far less about that package than an ordinary export would */
+	/* a member of an S4 group: a package exports it by answering the whole group for one of its classes, so the name says far less about that package than an ordinary export would */
 	const group = groups.get(name);
 	if(group) {
 		const link = document.createElement('a');
@@ -1075,8 +1175,7 @@ function show(name, needle, at, owners) {
 	hits.append(row);
 }
 
-/* how many names the scan walks before it lets the page breathe again, and how many hits are still
-   worth counting the packages of */
+/* how many names the scan walks before it lets the page breathe again, and how many hits are still worth counting the packages of */
 const Chunk = 40000;
 const Countable = 50000;
 
@@ -1100,8 +1199,7 @@ async function search() {
 	}
 	const lower = needle.toLowerCase();
 	const matches = [];
-	/* 577k names are more than one frame can hold, so the scan hands the thread back every so often
-	   and gives up as soon as a newer keystroke has started its own */
+	/* 577k names are more than one frame can hold, so the scan hands the thread back every so often and gives up once a newer keystroke has started its own */
 	let breathe = Chunk;
 	for(let start = 0; start < names.length;) {
 		if(--breathe === 0) {
@@ -1132,13 +1230,10 @@ async function search() {
 		}
 	}
 	if(sort.value === 'auto') {
-		/* scoring parses an owner entry per hit, so a query matching six figures of names is first cut
-		   down by the cheap key and only its head is scored properly */
-		/* the cut has to know about the badge too, or `ggplot` never survives long enough to be scored:
-		   `kinds` is a Map lookup, so this stays cheap */
+		/* scoring parses an owner entry per hit, so a query matching six figures of names is first cut down by the cheap key and only its head is scored properly */
+		/* the cut has to know about the badge too, or `ggplot` never survives long enough to be scored; `kinds` is a Map lookup, so this stays cheap */
 		const key = (name, rank) => (kinds.has(name) ? 0 : 1000) + rank;
-		/* comparison-sorting six figures of matches costs a visible pause, and the key only takes a
-		   handful of values: counting them out keeps the good ones in front for a fraction of that */
+		/* comparison-sorting six figures of matches costs a visible pause; the key takes a handful of values, so counting them out keeps the good ones in front for a fraction of that */
 		const buckets = new Map();
 		for(const match of matches) {
 			const at = key(match[0], match[3]);
@@ -1176,8 +1271,7 @@ async function search() {
 	const onlyPackages = active.has('only:package') || (needle.length === 0 && active.size === 0 && inPackage === undefined);
 	const allPackages = inPackage !== undefined || (active.size > 0 && !onlyPackages) ? [] : packages
 		.map(([name], index) => [name, index, name.toLowerCase().indexOf(lower)])
-		/* only the package that was typed outright: three near-misses would bury the function `plot`
-		   under `plotly` and `plotrix`. Browsing by name is what the `package` filter is for. */
+		/* only the package that was typed outright: three near-misses would bury `plot` under `plotly` and `plotrix`; browsing by name is what the `package` filter is for */
 		.filter(([name, , at]) => onlyPackages ? at >= 0 : name.toLowerCase() === lower)
 		.sort(sort.value === 'auto'
 			? ([, a], [, b]) => Number(packages[b][3]) - Number(packages[a][3])
@@ -1189,8 +1283,7 @@ async function search() {
 	offerFilters(inScope);
 	const kept = onlyPackages ? [] : inScope.filter(([name, , owners]) => passes(name, owners.split(',')));
 	const found = kept.length;
-	/* how many packages those names come from; a query that matches half the database is not worth
-	   counting, and its answer would be `all of them` anyway */
+	/* how many packages those names come from; a query matching half the database is not worth counting, and its answer would be `all of them` anyway */
 	let inPackages;
 	if(found > 0 && found <= Countable) {
 		const seen = new Set();

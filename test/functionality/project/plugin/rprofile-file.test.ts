@@ -4,24 +4,14 @@ import os from 'os';
 import path from 'path';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
-import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
-import { FlowrConfig } from '../../../../src/config';
+import { FileRole } from '../../../../src/project/context/flowr-file';
 import {
 	FlowrAnalyzerRprofileFilePlugin
 } from '../../../../src/project/plugins/file-plugins/flowr-analyzer-rprofile-file-plugin';
+import { ctxWithFiles } from './plugin-test-helper';
 
 describe('Rprofile-file', function() {
-	function ctxWith(...files: string[]): FlowrAnalyzerContext {
-		const ctx = new FlowrAnalyzerContext(
-			FlowrConfig.default(),
-			[new FlowrAnalyzerRprofileFilePlugin()]
-		);
-		for(const f of files) {
-			ctx.addFile(new FlowrInlineTextFile(f, ''));
-		}
-		return ctx;
-	}
+	const ctxWith = (...files: string[]) => ctxWithFiles(new FlowrAnalyzerRprofileFilePlugin(), ...files);
 
 	test('.Rprofile and Rprofile.site are tagged Startup and Source', () => {
 		const ctx = ctxWith('.Rprofile', 'Rprofile.site');

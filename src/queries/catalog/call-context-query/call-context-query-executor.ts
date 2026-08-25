@@ -9,7 +9,7 @@ import type {
 	LinkTo,
 	SubCallContextQueryFormat
 } from './call-context-query-format';
-import { type NodeId, recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { FunctionCallVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
@@ -143,7 +143,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 
 	const visited = new Set<NodeId>();
 	/* we store the current call name alongside each id */
-	const queue = new ArrayQueue<readonly [string, NodeId]>([[recoverContent(nodeId, graph) ?? '', nodeId]]);
+	const queue = new ArrayQueue<readonly [string, NodeId]>([[NodeId.recoverContent(nodeId, graph) ?? '', nodeId]]);
 
 	while(!queue.isEmpty()) {
 		const [str, id] = queue.dequeue() as readonly [string, NodeId];
@@ -170,7 +170,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 			const wantedTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 			const x = outgoing.entries()
 				.filter(([,e]) => DfEdge.includesType(e, wantedTypes))
-				.map(([t]) => [recoverContent(t, graph) ?? '', t] as const)
+				.map(([t]) => [NodeId.recoverContent(t, graph) ?? '', t] as const)
 				.toArray();
 			/** only follow defined-by and reads */
 			for(const e of x) {
@@ -189,7 +189,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 		;
 
 		for(const call of out) {
-			queue.enqueue([recoverContent(call, graph) ?? recoverContent(id, graph) ?? '', call]);
+			queue.enqueue([NodeId.recoverContent(call, graph) ?? NodeId.recoverContent(id, graph) ?? '', call]);
 		}
 	}
 

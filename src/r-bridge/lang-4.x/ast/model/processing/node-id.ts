@@ -40,6 +40,14 @@ export const NodeId = {
 		return id;
 	},
 	/**
+	 * Whether the id belongs to a node the analyzed code writes. flowR wraps a deferred expression
+	 * (`on.exit` and its relatives) in a definition of its own, and that definition carries an id no node
+	 * of the ast does.
+	 */
+	isWritten(this: void, id: NodeId): boolean {
+		return typeof NodeId.normalize(id) === 'number';
+	},
+	/**
 	 * The prefix used for built-in function or operator ids.
 	 */
 	builtInPrefix: 'built-in:',
@@ -103,35 +111,35 @@ export const NodeId = {
 	 */
 	fromBuiltIn<T extends string>(this: void, id: BuiltIn<T>): T {
 		return id.slice(builtInPrefixLength) as T;
+	},
+	/**
+	 * The lexeme of the {@link RNode|node} the id belongs to, as the analyzed code writes it.
+	 * @see {@link NodeId.recoverContent} - for what a call or a use stands for rather than how it is written
+	 */
+	recoverName(this: void, id: NodeId, idMap?: AstIdMap): string | undefined {
+		return idMap?.get(id)?.lexeme;
+	},
+	/**
+	 * What the node the id belongs to stands for: the name a call resolved to, the unquoted name of a use, and
+	 * the lexeme of anything else.
+	 * @see {@link NodeId.recoverName} - for the lexeme alone, which needs no graph
+	 */
+	recoverContent(this: void, id: NodeId, graph: DataflowGraph): string | undefined {
+		const vertex = graph.getVertex(id);
+		if(vertex && FunctionCallVertex.is(vertex) && vertex.name) {
+			return Identifier.toString(vertex.name);
+		}
+		const node = graph.idMap?.get(id);
+		if(node === undefined) {
+			return undefined;
+		}
+		const lexeme = node.lexeme ?? node.info.fullLexeme ?? '';
+		if(UseVertex.is(vertex)) {
+			return removeRQuotes(lexeme);
+		}
+		return lexeme;
 	}
 } as const;
 
 const builtInPrefixLength = NodeId.builtInPrefix.length;
 
-
-/**
- * Recovers the lexeme of a {@link RNode|node} from its id in the {@link AstIdMap|id map}.
- * @see {@link recoverContent} - to recover the content of a node
- */
-export function recoverName(id: NodeId, idMap?: AstIdMap): string | undefined {
-	return idMap?.get(id)?.lexeme;
-}
-
-/**
- * Recovers the content of a {@link RNode|node} from its id in the {@link DataflowGraph|dataflow graph}.
- */
-export function recoverContent(id: NodeId, graph: DataflowGraph): string | undefined {
-	const vertex = graph.getVertex(id);
-	if(vertex && FunctionCallVertex.is(vertex) && vertex.name) {
-		return Identifier.toString(vertex.name);
-	}
-	const node = graph.idMap?.get(id);
-	if(node === undefined) {
-		return undefined;
-	}
-	const lexeme = node.lexeme ?? node.info.fullLexeme ?? '';
-	if(UseVertex.is(vertex)) {
-		return removeRQuotes(lexeme);
-	}
-	return lexeme;
-}

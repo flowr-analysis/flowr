@@ -259,6 +259,8 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 		for(const op of AssignmentOperators) {
 			describe(`${op}`, () => {
 				const swapSourceAndTarget = op === '->' || op === '->>';
+				/* `:=` is data.table's, so it is only in scope once that package is attached */
+				const opConfig = op === ':=' ? { assumeLoaded: ['data.table'] } : undefined;
 				const [variableId, constantId] = swapSourceAndTarget ? [1, 0] : [0, 1];
 
 				const args: FunctionArgument[] = [argumentInCall(0), argumentInCall(1)];
@@ -271,7 +273,8 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 						.calls(2, NodeId.toBuiltIn(op))
 						.defineVariable(variableId, 'x', { definedBy: [constantId, 2] })
 						.reads(2, constantId)
-						.constant(constantId)
+						.constant(constantId),
+					opConfig
 				);
 
 				const variableAssignment = `x ${op} y`;
@@ -293,7 +296,8 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 				assertDataflow(label(`${variableAssignment} (variable assignment)`, ['name-normal', ...OperatorDatabase[op].capabilities]),
 					shell,
 					variableAssignment,
-					dataflowGraph
+					dataflowGraph,
+					opConfig
 				);
 
 				const circularAssignment = `x ${op} x`;
@@ -316,7 +320,8 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 
 				assertDataflow(label(`${circularAssignment} (circular assignment)`, ['name-normal', ...OperatorDatabase[op].capabilities, 'return-value-of-assignments']),
 					shell, circularAssignment,
-					circularGraph
+					circularGraph,
+					opConfig
 				);
 			});
 		}
@@ -595,7 +600,6 @@ describe('Atomic (dataflow information)', { concurrent: false }, withShell(shell
 			);
 		});
 	});
-
 
 	describe('if-then-else', () => {
 		// spacing issues etc. are dealt with within the parser; however, braces are not allowed to introduce scoping artifacts

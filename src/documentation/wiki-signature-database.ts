@@ -7,6 +7,7 @@ import { SigDatabase, SigDatabaseSet, type PackageSignatureSource } from '../pro
 // FnProp is a const enum referenced only via `typeof` (for linkE's member typing); a type-only import would break `typeof`
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { FnProp, SigDbSchema } from '../project/sigdb/schema';
+import type { ArgProp } from '../dataflow/environments/built-in-props';
 import { defaultSigDbPath, defaultSigDbPaths, readManifestFile, type SigDbShardRef } from '../project/sigdb/manifest';
 import { CompressedExtPattern, decompressSyncFor } from '../project/sigdb/codec';
 import { DefaultAssumedRVersion } from '../config';
@@ -249,17 +250,29 @@ Every function is a ${ctx.link('DecodedFunction')}:
 | field | holds |
 |-------|-------|
 | ${ctx.link('DecodedFunction::exported')} | whether the name is a package export |
-| ${ctx.link('DecodedFunction::signature')} | the parameters, with defaults and forced or optional flags |
+| ${ctx.link('DecodedFunction::signature')} | the parameters, with their defaults and their ${ctx.link('ArgProp')} mask |
 | ${ctx.link('DecodedFunction::callees')} | the function's own local calls |
 | ${ctx.link('DecodedFunction::topic')} | the Rd help topic when it differs from the name |
 | ${ctx.link('DecodedFunction::file')}, ${ctx.link('DecodedFunction::line')} | source location |
 | ${ctx.link('DecodedFunction::props')} | flags like higher-order, recursive, deprecated |
 
-Per version the source also answers declared dependencies (${ctx.link('ResolvedDependency')}), release dates, the plain export view (${ctx.link('LibraryExports')}), and the versions it carries (${ctx.link('AvailableVersion')}).
+The parameter mask is the one flowR states its own built-ins with, so a parameter carries
+${ctx.linkE<typeof ArgProp>('ArgProp', 'NoDefault')} when it has no default, ${ctx.linkE<typeof ArgProp>('ArgProp', 'Forced')}
+when the function always evaluates it, and whichever roles the extractor could infer
+(${ctx.linkE<typeof ArgProp>('ArgProp', 'Alias')}, ${ctx.linkE<typeof ArgProp>('ArgProp', 'Presence')},
+${ctx.linkE<typeof ArgProp>('ArgProp', 'Callee')}, ...). Every bit it cannot see stays unset, so an unset bit
+reads as "unknown" rather than "no"; ${ctx.link('fnInfoFromSignature')} hands the mask on unchanged, which is
+what lets a package function answer the same questions a built-in does.
+
+Per version the source also answers declared dependencies (${ctx.link('ResolvedDependency')}), release dates, the plain export view (${ctx.link('LibraryExports')}), the versions it carries (${ctx.link('AvailableVersion')}), and its class relations (${ctx.link('SigClassInfo')}, via ${ctx.linkM(SigDatabase, 'classes')}).
+
+A class record states what a declaration does: its direct superclasses, its slots with the types they were declared with, whether it is virtual, and whether it is a \`setClassUnion\` (whose supers are the members it unites). ${ctx.link('SigClassInfo::package')} names the package *defining* a class the record only relates to, which is what tells a class the package owns from one it inherits -- something the flat name list of ${ctx.link('LibraryExports::s4Classes')} has nowhere to hang. The same shape carries Reference classes, S7 and R6, since all four declare a name, a parent and a set of members. On the analysis side ${ctx.link('declaredClasses')} reads these off \`setClass\`/\`setClassUnion\`/\`setIs\`/\`setRefClass\`/\`new_class\`/\`R6Class\` calls and ${ctx.link('toSigClasses')} hands them over in this form.
 
 Beyond the flags above, ${ctx.link('DecodedFunction::props')} also carry ${ctx.linkE<typeof FnProp>('FnProp', 'NoDoc')} (a documented package has no help page for this name), ${ctx.linkE<typeof FnProp>('FnProp', 'S3Method')} (a registered S3 method, from the package NAMESPACE or base R's method table), and ${ctx.linkE<typeof FnProp>('FnProp', 'S3Owner')} (an exported constructor for an S3 class this package OWNS: it also registers at least one S3 method for that class). The owned classes of a version are ${ctx.link('LibraryExports::s3Classes')}, and ${ctx.linkM(SigDatabase, 'classOwner')} answers, for a class name, which package owns it (backed by a reverse index built once). This lets ${ctx.linkPage('wiki/Query API', 'version guessing')} mark a package used when the analyzed project's own NAMESPACE registers an S3 method for a class it owns, even with no direct call, e.g. tseries's \`S3method("as.irts","zoo")\` marks \`zoo\` used.
 
 The S4 side has ${ctx.linkE<typeof FnProp>('FnProp', 'S4Owner')} for an exported class and ${ctx.linkE<typeof FnProp>('FnProp', 'S4Method')} for a name a package exports because it answered a generic for one of its classes (\`setMethod("sin", "float32", ...)\` plus \`exportMethods(sin)\`), rather than because it defines a function of its own. Such a name is often documented only under its \`sin,float32-method\` Rd alias, so it also carries ${ctx.linkE<typeof FnProp>('FnProp', 'NoDoc')}. Because \`setMethod("Math", ...)\` answers every member of a group at once, ${ctx.link('SignatureDb::functionOf')} falls back to the group entry for a member it finds nothing for: \`pkg::sin\` is served by \`pkg\`'s \`Math\`, which is what the call would dispatch to. ${ctx.link('groupGenericOf')} maps a member to its group.
+
+${ctx.linkE<typeof FnProp>('FnProp', 'Generic')} says the definition is one others dispatch on: an S3 generic whose body calls \`UseMethod\`, an S4 one from \`setGeneric\`, or an S7 \`new_generic\`. The call graph shows the same for the S3 case, but only while a bundle carries one, and never for a generic built without an R body -- which is why the bit exists next to it. ${ctx.link('fnInfoFromSignature')} reads it, falling back to the dispatching callee for a bundle written before it.
 
 ${ctx.linkE<typeof FnProp>('FnProp', 'Value')} says the export binds a value rather than a function (\`pi\`, \`LETTERS\`, ggplot2's \`class_gg\`). Only the extractor can tell: an entry without a definition location is as likely to be a function nothing wrote down, an S4 generic \`setGeneric\` builds or a \`Vectorize\` result, so a reader that has only the location to go on can say no more than that there is none.
 
@@ -349,15 +362,15 @@ Every shard, dictionary, and manifest is published in both brotli (\`.br\`) and 
 ## Format
 
 The on-disk format is \`flowr-sigdb\` (schema ${SigDbSchema}). Beyond each version's exports it records, per
-version, every function's signature (parameters, whether each is forced or optional, and its default) and
-call graph, together with that version's declared dependencies (\`Depends\`, \`Imports\`, ... with their
+version, every function's signature (the parameters, each with its default and its ${ctx.link('ArgProp')} mask)
+and call graph, together with that version's declared dependencies (\`Depends\`, \`Imports\`, ... with their
 version qualifiers). The layout is NDJSON: a header, then a shared string dictionary, then one
 self-contained blob per package, next to a sidecar \`.idx\`. A reader (${ctx.link(SigDatabase)}) therefore
 loads the dictionary once and then **seeks straight to the packages it needs**, never reading the rest.
 The bundle is written by ${ctx.link('SigDbBuilder')} and can be split into several small shards (current-only
 versus full history, top-N versus the rest) that a \`flowr-sigdb-manifest\` routes transparently
 (${ctx.link(SigDatabaseSet)}), and which information gets stored is selectable (${ctx.link('SigDbFeatures')}).
-crawlr produces the bundle from its analysis of CRAN.
+The extractor produces the bundle from its analysis of CRAN.
 
 ## Performance
 

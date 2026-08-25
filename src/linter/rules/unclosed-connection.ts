@@ -1,5 +1,4 @@
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
@@ -99,7 +98,7 @@ function enclosingStatement(idMap: AstIdMap, id: NodeId): RNode<ParentInformatio
 function closeFix(graph: DataflowGraph, open: NodeId): LintQuickFix[] | undefined {
 	const idMap = graph.idMap;
 	const definition = bindingOf(graph, open);
-	const name = idMap && definition !== undefined ? recoverName(definition, idMap) : undefined;
+	const name = idMap && definition !== undefined ? NodeId.recoverName(definition, idMap) : undefined;
 	if(idMap === undefined || definition === undefined || name === undefined) {
 		return undefined;
 	}

@@ -6,6 +6,12 @@ import { ControlDependency, ExitPointType } from '../info';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 
+/** Where `from` completes: its single CFG exit when it has one, else each of its default exit points. */
+function completionsOf(from: DataflowCfgInformation): readonly NodeId[] {
+	return from.cfgExit !== undefined ? [from.cfgExit]
+		: from.exitPoints.filter(e => e.type === ExitPointType.Default).map(e => e.nodeId);
+}
+
 /**
  * Records the control flow of a program in the {@link DataflowGraph} while the dataflow analysis walks it.
  * The {@link ControlFlowGraph} is a view on what is recorded here.
@@ -104,14 +110,8 @@ export const ControlFlow = {
 	 * @see {@link ControlFlow#branchesTo|branchesTo()} - if it only continues under a condition
 	 */
 	continuesWith(this: void, graph: DataflowGraph, from: DataflowCfgInformation, next: NodeId): void {
-		if(from.cfgExit !== undefined) {
-			graph.addEdge(from.cfgExit, next, EdgeType.FlowEdge);
-			return;
-		}
-		for(const exit of from.exitPoints) {
-			if(exit.type === ExitPointType.Default) {
-				graph.addEdge(exit.nodeId, next, EdgeType.FlowEdge);
-			}
+		for(const exit of completionsOf(from)) {
+			graph.addEdge(exit, next, EdgeType.FlowEdge);
 		}
 	},
 	/**
@@ -124,14 +124,8 @@ export const ControlFlow = {
 	 * @see {@link ControlFlow#continuesWith|continuesWith()} - if it always continues
 	 */
 	branchesTo(this: void, graph: DataflowGraph, from: DataflowCfgInformation, target: NodeId, cd: ControlDependency): void {
-		if(from.cfgExit !== undefined) {
-			graph.addEdge(from.cfgExit, target, EdgeType.ControlEdge, { cd });
-			return;
-		}
-		for(const exit of from.exitPoints) {
-			if(exit.type === ExitPointType.Default) {
-				graph.addEdge(exit.nodeId, target, EdgeType.ControlEdge, { cd });
-			}
+		for(const exit of completionsOf(from)) {
+			graph.addEdge(exit, target, EdgeType.ControlEdge, { cd });
 		}
 	},
 	/**
@@ -167,7 +161,17 @@ export const ControlFlow = {
 			if(previous === undefined) {
 				entry = ControlFlow.entryOf(part);
 			} else {
-				ControlFlow.continuesWith(graph, previous, ControlFlow.entryOf(part));
+				const next = ControlFlow.entryOf(part);
+				ControlFlow.continuesWith(graph, previous, next);
+				/*
+				 * R promises the parts are evaluated in this order, not that one jumping away keeps the next
+				 * from running at all, so a part that cannot complete still leads into the one after it.
+				 */
+				if(!ControlFlow.canComplete(previous)) {
+					for(const exit of previous.exitPoints) {
+						graph.addEdge(exit.nodeId, next, EdgeType.FlowEdge);
+					}
+				}
 			}
 			previous = part;
 		}

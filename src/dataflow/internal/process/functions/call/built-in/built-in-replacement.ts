@@ -2,7 +2,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { expensiveTrace } from '../../../../../../util/log';
-import { type ForceArguments, patchFunctionCall, processAllArguments } from '../common';
+import { patchFunctionCall, processAllArguments } from '../common';
 import { ControlFlow } from '../../../../control-flow';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -28,7 +28,6 @@ import { VariableDefinitionVertex, FunctionCallVertex } from '../../../../../gra
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
-
 /**
  * Process a replacement function call like `<-`, `[[<-`, `$<-`, etc.
  * These are automatically created when doing assignments like `x[y] <- value` or in general `fun(x) <- value` will call `fun<- (x, value)`.
@@ -39,7 +38,7 @@ export function processReplacementFunction<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { makeMaybe?: boolean, constructName?: 's7', assignmentOperator?: '<-' | '<<-', readIndices?: boolean, assignRootId?: NodeId } & ForceArguments
+	config: { makeMaybe?: boolean, constructName?: 's7', assignmentOperator?: '<-' | '<<-', readIndices?: boolean, assignRootId?: NodeId }
 ): DataflowInformation {
 	if(args.length < 2) {
 		dataflowLogger.warn(`Replacement ${Identifier.getName(name.content)} has less than 2 arguments, skipping`);
@@ -96,7 +95,6 @@ export function processReplacementFunction<OtherInfo>(
 		data,
 		functionRootId: rootId,
 		finalGraph:     res.graph,
-		forceArgs:      config.forceArgs,
 	});
 
 	const cfgEntry = ControlFlow.inSequence(res.graph, indexArguments, ControlFlow.entryOf(res));

@@ -438,7 +438,7 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 <body>
 <main>
 <div class="bar">
-<h2><a class="brand" href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><a class="version" id="version" data-release="v2.14.4" href="https://github.com/flowr-analysis/flowr/commit/9b3b4f6e664db48aeaeb98a2f5d275b1d1511943" target="_blank" rel="noopener" title="a development build of flowR, 10 commits after v2.14.4 (9b3b4f6)">v2.14.4*</a></h2>
+<h2><a class="brand" href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><a class="version" id="version" data-release="v2.15.0" href="https://github.com/flowr-analysis/flowr/releases/tag/v2.15.0" target="_blank" rel="noopener" title="the release notes of flowR v2.15.0">v2.15.0</a></h2>
 <nav>
 <a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
 <a href="wiki/sigdb/" target="_blank" rel="noopener">Signature DB</a>
@@ -457,7 +457,7 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 <h1>Program Analysis for R</h1>
 <p class="lead">flowR is an open source static program analyzer for your R code. It helps you understand existing scripts,
 find quality issues, improve reproducibility, and check the validity of your analyses.</p>
-<p id="meta"><b>v2.14.4*</b> &middot; <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a></p>
+<p id="meta"><b>v2.15.0</b> &middot; <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a></p>
 <p class="cta">
 <a class="primary" href="https://github.com/flowr-analysis/flowr/wiki/Setup" target="_blank" rel="noopener">Get started</a>
 <a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
@@ -588,12 +588,12 @@ placeholder="dplyr::filter" aria-label="Search the signature database">
 </div>
 </div>
 <p class="prose">
-On real-world R scripts, flowR (measured for v2.14.4) needs on average:
+On real-world R scripts, flowR (measured for v2.15.0) needs on average:
 </p>
 <div class="timings">
-<span class="timing">analyzing a script<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline points="0.0,3.8 1.7,3.2 3.4,2.0 5.1,4.2 6.8,5.9 8.5,4.6 10.2,9.8 11.9,4.3 13.6,3.8 15.3,3.9 17.0,5.0 18.7,4.0 20.4,4.3 22.1,5.3 23.9,4.3 25.6,3.8 27.3,4.4 29.0,3.7 30.7,3.2 32.4,9.7 34.1,11.0 35.8,10.5 37.5,4.2 39.2,3.4 40.9,4.0 42.6,3.3 44.3,5.1 46.0,3.2" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg><b>110 ms</b></span>
-<span class="timing">linting it<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline points="0.0,8.8 6.6,11.0 13.1,2.8 19.7,2.3 26.3,2.0 32.9,8.7 39.4,8.3 46.0,5.8" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg><b>76 ms</b></span>
-<span class="timing">slicing for one name<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline points="0.0,4.5 1.7,4.1 3.4,3.8 5.1,2.1 6.8,2.8 8.5,2.0 10.2,4.2 11.9,6.4 13.6,6.3 15.3,6.3 17.0,6.3 18.7,5.6 20.4,7.6 22.1,7.7 23.9,7.6 25.6,7.6 27.3,10.7 29.0,10.4 30.7,10.4 32.4,11.0 34.1,11.0 35.8,11.0 37.5,10.5 39.2,10.2 40.9,10.2 42.6,10.2 44.3,10.4 46.0,10.2" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg><b>0.6 ms</b></span>
+<span class="timing">analyzing a script<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline points="0.0,3.8 1.6,3.2 3.3,2.0 4.9,4.2 6.6,5.9 8.2,4.6 9.9,9.8 11.5,4.3 13.1,3.8 14.8,3.9 16.4,5.0 18.1,4.0 19.7,4.3 21.4,5.3 23.0,4.3 24.6,3.8 26.3,4.4 27.9,3.7 29.6,3.2 31.2,9.7 32.9,11.0 34.5,10.5 36.1,4.2 37.8,3.4 39.4,4.0 41.1,3.3 42.7,5.1 44.4,3.2 46.0,3.4" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg><b>109 ms</b></span>
+<span class="timing">linting it<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline points="0.0,10.1 5.8,11.0 11.5,7.5 17.3,7.3 23.0,7.2 28.8,10.0 34.5,9.9 40.3,8.8 46.0,2.0" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg><b>113 ms</b></span>
+<span class="timing">slicing for one name<svg class="spark" viewBox="0 0 46 12" width="46" height="12" aria-hidden="true"><polyline points="0.0,4.5 1.6,4.1 3.3,3.8 4.9,2.1 6.6,2.8 8.2,2.0 9.9,4.2 11.5,6.4 13.1,6.3 14.8,6.3 16.4,6.3 18.1,5.6 19.7,7.6 21.4,7.7 23.0,7.6 24.6,7.6 26.3,10.7 27.9,10.4 29.6,10.4 31.2,11.0 32.9,11.0 34.5,11.0 36.1,10.5 37.8,10.2 39.4,10.2 41.1,10.2 42.7,10.4 44.4,10.2 46.0,9.0" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round" stroke-linecap="round"/></svg><b>1.0 ms</b></span>
 </div>
 <p class="prose">
 <a href="wiki/stats/benchmark/" target="_blank" rel="noopener">View the full stats on the benchmark page</a>.
@@ -772,7 +772,7 @@ Funded by the German Research Foundation (DFG), grant
 <a href="https://gepris.dfg.de/gepris/projekt/504226141" target="_blank" rel="noopener">504226141</a>, with a gift from
 <a href="https://posit.co/" target="_blank" rel="noopener">Posit</a>.
 </p>
-<p class="updated">Last updated 2026-08-25, 17:32</p>
+<p class="updated">Last updated 2026-08-25, 16:13</p>
 </main>
 <div id="tip" role="tooltip" aria-hidden="true"></div>
 <script>

@@ -63,14 +63,6 @@ export class FiniteDomain<Top extends symbol, Bot extends symbol, Elements exten
 	}
 
 	protected joinValue(this: this & FiniteDomain<Top, Bot, Elements>, other: FiniteDomain<Top, Bot, Elements>): this {
-		return this.findLeastUpperBound(other);
-	}
-
-	protected meetValue(this: this & FiniteDomain<Top, Bot, Elements>, other: FiniteDomain<Top, Bot, Elements>): this {
-		return this.findGreatestLowerBound(other);
-	}
-
-	private findLeastUpperBound(other: FiniteDomain<Top, Bot, Elements>): this {
 		const thisUpper = this.upperClosure(this.value);
 		const otherUpper = this.upperClosure(other.value);
 
@@ -91,7 +83,7 @@ export class FiniteDomain<Top extends symbol, Bot extends symbol, Elements exten
 		return minimal !== undefined ? this.create(minimal) : this.top();
 	}
 
-	private findGreatestLowerBound(other: FiniteDomain<Top, Bot, Elements>): this {
+	protected meetValue(this: this & FiniteDomain<Top, Bot, Elements>, other: FiniteDomain<Top, Bot, Elements>): this {
 		const commonLower = new Set<Elements[number]>();
 		for(const candidate of this._config.elements) {
 			const upper = this.upperClosure(candidate);

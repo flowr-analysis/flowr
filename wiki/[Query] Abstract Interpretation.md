@@ -1,9 +1,9 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-20, 22:53:36 UTC (v2.14.1), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-25, 11:00:21 UTC (v2.14.4), please do not edit directly._
 <h2 id="Abstract Interpretation Query">Abstract Interpretation Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns the abstract values inferred for every expression or at specific locations.\
 _This query is requested with the type `absint`._\
-Run in the REPL: `:query @absint <inference-type> [(<criteria>)] <code | file://path>`
+Run in the REPL: `:query @absint <inference> [(<crit>;...)] <code | file://path>`
 
 
 This query infers all shapes of dataframes within the code using abstract interpretaion. For example, you can use:
@@ -21,15 +21,15 @@ This query infers all shapes of dataframes within the code using abstract interp
 
 _Results (prettified and summarized):_
 
-Query: **absint** (2 ms)\
+Query: **absint** (8 ms)\
 &nbsp;&nbsp;&nbsp;╰ $7: (colnames: [{"id"}, {}], cols: [1, 1], rows: [3, 3])\
 &nbsp;&nbsp;&nbsp;╰ $14: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])\
 &nbsp;&nbsp;&nbsp;╰ $0: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])\
-_All queries together required ≈5 ms (1ms accuracy, total 5 ms)_
+_All queries together required ≈13 ms (1ms accuracy, total 13 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _4.6 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _13.4 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -41,61 +41,27 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "absint": {
     ".meta": {
-      "timing": 2
+      "timing": 8
     },
     "result": {
-      "0": {
+      "domain": {
         "colnames": {
-          "must": [
-            "id"
-          ],
-          "may": []
+          "must": [],
+          "may": "top"
         },
         "cols": [
-          1,
-          1
+          0,
+          null
         ],
         "rows": [
           0,
-          3
-        ]
-      },
-      "7": {
-        "colnames": {
-          "must": [
-            "id"
-          ],
-          "may": []
-        },
-        "cols": [
-          1,
-          1
-        ],
-        "rows": [
-          3,
-          3
-        ]
-      },
-      "14": {
-        "colnames": {
-          "must": [
-            "id"
-          ],
-          "may": []
-        },
-        "cols": [
-          1,
-          1
-        ],
-        "rows": [
-          0,
-          3
+          null
         ]
       }
     }
   },
   ".meta": {
-    "timing": 5
+    "timing": 13
   }
 }
 ```
@@ -119,7 +85,7 @@ df <- data.frame(id = 1:3) |>
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _2.0 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _3.8 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -241,14 +207,14 @@ The query optionally also accepts slice criteria to narrow the results to specif
 
 _Results (prettified and summarized):_
 
-Query: **absint** (1 ms)\
+Query: **absint** (2 ms)\
 &nbsp;&nbsp;&nbsp;╰ 1@df: (colnames: [{"id"}, {}], cols: [1, 1], rows: [0, 3])\
 &nbsp;&nbsp;&nbsp;╰ 1@data.frame: (colnames: [{"id"}, {}], cols: [1, 1], rows: [3, 3])\
-_All queries together required ≈4 ms (1ms accuracy, total 4 ms)_
+_All queries together required ≈5 ms (1ms accuracy, total 5 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _4.3 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _5.4 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -260,7 +226,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "absint": {
     ".meta": {
-      "timing": 1
+      "timing": 2
     },
     "result": [
       [
@@ -304,7 +270,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     ]
   },
   ".meta": {
-    "timing": 4
+    "timing": 5
   }
 }
 ```
@@ -328,7 +294,7 @@ df <- data.frame(id = 1:3) |>
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _2.1 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _3.2 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 

@@ -11,7 +11,9 @@ import type { RLogicalValue } from '../r-bridge/lang-4.x/ast/model/nodes/r-logic
 import { RFalse, RTrue, type RNumberValue, type RStringValue } from '../r-bridge/lang-4.x/convert-values';
 import { assertUnreachable, isNotUndefined } from './assert';
 
-function isRValue(value: unknown): value is RStringValue | RNumberValue | RLogicalValue | string | number {
+export type RValue = RStringValue | RNumberValue | RLogicalValue;
+
+function isRValue(value: unknown): value is RValue | string | number {
 	return isRStringValue(value) || isRNumberValue(value) || isRLogicalValue(value) || typeof value === 'string' || typeof value === 'number';
 }
 
@@ -39,12 +41,12 @@ export function isRLogicalValue(value: unknown): value is RLogicalValue {
 export function unwrapRValue(value: RStringValue | string): string;
 export function unwrapRValue(value: RNumberValue | number): number;
 export function unwrapRValue(value: RLogicalValue): boolean;
-export function unwrapRValue(value: RStringValue | RNumberValue | RLogicalValue | string | number): string | number | boolean;
+export function unwrapRValue(value: RValue | string | number): string | number | boolean;
 export function unwrapRValue(value: unknown): string | number | boolean | undefined;
 /**
  * Unwraps an R value to a (TS) native value.
  */
-export function unwrapRValue(value: RStringValue | RNumberValue | RLogicalValue | string | number | unknown): string | number | boolean | undefined {
+export function unwrapRValue(value: RValue | string | number | unknown): string | number | boolean | undefined {
 	if(typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
 		return value;
 	} else if(isRStringValue(value)) {
@@ -80,12 +82,12 @@ export function unwrapRVector(value: RStringValue[] | RNumberValue[] | RLogicalV
 	}
 }
 
-export function unwrapRValueToString(value: RStringValue | RNumberValue | RLogicalValue | string | number): string;
+export function unwrapRValueToString(value: RValue | string | number): string;
 export function unwrapRValueToString(value: unknown): string | undefined;
 /**
  * Unwraps an R value to a string representation.
  */
-export function unwrapRValueToString(value: RStringValue | RNumberValue | RLogicalValue | string | number | unknown): string | undefined {
+export function unwrapRValueToString(value: RValue | string | number | unknown): string | undefined {
 	if(typeof value === 'string') {
 		return value;
 	} else if(typeof value === 'number') {
@@ -105,12 +107,12 @@ export function unliftRValue(value: ValueNull): null;
 export function unliftRValue(value: ValueString): RStringValue | undefined;
 export function unliftRValue(value: ValueNumber | ValueInterval): RNumberValue | undefined;
 export function unliftRValue(value: ValueLogical): RLogicalValue | undefined;
-export function unliftRValue(value: ValueVector): (RStringValue | RNumberValue | RLogicalValue)[] | undefined;
-export function unliftRValue(value: Value): RStringValue | RNumberValue | 'fn-def' | boolean | ('fn-def' | RStringValue | RNumberValue | RLogicalValue | null)[] | null | undefined;
+export function unliftRValue(value: ValueVector): RValue[] | undefined;
+export function unliftRValue(value: Value): RValue | 'fn-def' | (RValue | 'fn-def' | null)[] | null | undefined;
 /**
  * Unlifts an R value to its core representation.
  */
-export function unliftRValue(value: Value): RStringValue | RNumberValue | 'fn-def' | boolean | ('fn-def' | RStringValue | RNumberValue | RLogicalValue | null)[] | null | undefined {
+export function unliftRValue(value: Value): RValue | 'fn-def' | (RValue | 'fn-def' | null)[] | null | undefined {
 	if(!isValue(value)) {
 		return undefined;
 	}

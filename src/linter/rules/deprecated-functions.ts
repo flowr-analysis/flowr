@@ -24,7 +24,7 @@ import { hasArgumentValue } from './function-finder-util';
 import { Ternary } from '../../util/logic';
 import type  { KnownParser } from '../../r-bridge/parser';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
-import { CallProp } from '../../dataflow/environments/built-in-props';
+import { CallProps, SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 
 /**
@@ -221,8 +221,7 @@ function certaintyOf(target: Identifier, owners: readonly (BrandedNamespace | un
 
 function functionListFromBuiltinConfig(): Identifier[] {
 	return DefaultBuiltinConfig.filter(def => def.type === 'function'
-			&& def.config?.props !== undefined
-			&& (def.config.props & CallProp.Deprecated) !== 0)
+			&& CallProps.hasAny(def.config, SemanticCallTag.Deprecated))
 		.flatMap(def => def.names);
 }
 

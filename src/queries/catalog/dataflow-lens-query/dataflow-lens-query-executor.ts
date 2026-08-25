@@ -3,7 +3,7 @@ import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import { reduceDfg } from '../../../util/simple-df/dfg-view';
 import { VertexType } from '../../../dataflow/graph/vertex';
-import { escapeRegExp } from '../../../abstract-interpretation/data-frame/mappers/arguments';
+import { escapeRegExp } from '../../../abstract-interpretation/data-frame/arguments';
 import { OperatorDatabase } from '../../../r-bridge/lang-4.x/ast/model/operators';
 
 /**

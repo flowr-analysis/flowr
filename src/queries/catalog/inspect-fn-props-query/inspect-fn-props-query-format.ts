@@ -8,7 +8,8 @@ import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { SourceLocation } from '../../../util/range';
 import type { FunctionArgumentRoles } from '../../../dataflow/fn/argument-roles';
 import { ArgumentRoles } from '../../../dataflow/fn/argument-roles';
-import { ArgProp, ArgProps, CallProp, CallProps } from '../../../dataflow/environments/built-in-props';
+import type { StatedProps } from '../../../dataflow/environments/built-in-props';
+import { ArgProp, ArgProps, CallProp, CallProps, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
 import { enumMembers } from '../../../util/objects';
 
 /** refuses a query that can only answer with nothing: `formals` narrowing an answer that carries none, or `props` naming only properties the single half it asks for cannot state */
@@ -17,9 +18,11 @@ function rejectEmptyAnswer(query: InspectFnPropsQuery, helpers: Joi.CustomHelper
 	if(only === 'function' && formals !== undefined) {
 		return helpers.message({ custom: '`formals` narrows the formals, which `only: function` does not answer' }) as unknown as InspectFnPropsQuery;
 	}
-	const half = only === 'arguments' ? ArgProps : only === 'function' ? CallProps : undefined;
-	if(props !== undefined && half !== undefined && half.mask(props) === 0) {
-		return helpers.message({ custom: `\`props\` names no ${half.name}, so nothing about ${only === 'arguments' ? 'a formal' : 'a function'} could come back` }) as unknown as InspectFnPropsQuery;
+	const namesNone = props === undefined ? false :
+		only === 'arguments' ? ArgProps.mask(props) === 0 :
+			only === 'function' ? CallProps.isEmptyMask(CallProps.mask(props)) : false;
+	if(namesNone) {
+		return helpers.message({ custom: `\`props\` names no ${only === 'arguments' ? ArgProps.name : CallProps.name}, so nothing about ${only === 'arguments' ? 'a formal' : 'a function'} could come back` }) as unknown as InspectFnPropsQuery;
 	}
 	return query;
 }
@@ -41,8 +44,8 @@ export interface InspectFnPropsQuery extends BaseQueryFormat {
 export interface InspectFnPropsQueryResult extends BaseQueryResult {
 	/** per function definition, the {@link ArgProp} mask of the formals that carry one, strictness included */
 	readonly roles: Record<NodeId, FunctionArgumentRoles>;
-	/** per function definition, the {@link CallProp} mask its body states about the function itself */
-	readonly props: Record<NodeId, CallProps>;
+	/** per function definition, what its body states about the function itself */
+	readonly props: Record<NodeId, StatedProps>;
 }
 
 export const InspectFnPropsQueryDefinition = {
@@ -58,7 +61,7 @@ export const InspectFnPropsQueryDefinition = {
 			const formals = Object.entries(out.roles[id] ?? {})
 				.map(([formal, props]) => `${idMap.get(NodeId.normalize(formal))?.lexeme ?? formal}: ${ArgProps.words(props).join(', ')}`)
 				.join(', ');
-			const states = CallProps.words(out.props[id]).join(', ');
+			const states = CallProps.labels(out.props[id]).join(', ');
 			result.push(`  - Function ${bold(id, formatter)} (${SourceLocation.format(loc)}) ${formals}${states.length > 0 ? ` [${states}]` : ''}`);
 		}
 		return true;
@@ -71,7 +74,7 @@ export const InspectFnPropsQueryDefinition = {
 		maxDepth: Joi.number().integer().min(1).optional().description(`How far a value is followed back through names and calls when deciding what a formal stands for (default ${ArgumentRoles.maxDepth}).`),
 		only:     Joi.string().valid('arguments', 'function').optional().description('Infer only what the formals do, or only what the function itself does; both are inferred when this is left out.'),
 		formals:  Joi.array().items(Joi.string()).min(1).optional().description('Keep only the formals written as one of these names.'),
-		props:    Joi.array().items(Joi.string().valid(...[...enumMembers(ArgProp), ...enumMembers(CallProp)].map(([name]) => name))).min(1).optional().description('Keep only these properties, named as the ArgProp/CallProp members they are.')
+		props:    Joi.array().items(Joi.string().valid(...[...enumMembers(ArgProp), ...enumMembers(CallProp)].map(([name]) => name), ...Object.keys(SemanticCallTag))).min(1).optional().description('Keep only these properties, named as the ArgProp/CallProp/SemanticCallTag members they are.')
 	}).custom(rejectEmptyAnswer).description('Either returns all function definitions alongside what they and their formals do, or just those matching the filters.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
 		const out = queryResults as QueryResults<'inspect-fn-props'>['inspect-fn-props'];

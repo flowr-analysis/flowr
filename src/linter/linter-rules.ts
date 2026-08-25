@@ -19,6 +19,7 @@ import { UNDEFINED_SYMBOL } from './rules/undefined-symbol';
 import { UNUSED_IMPORT } from './rules/unused-import';
 import { SYNTACTICALLY_VALID } from './rules/syntactically-valid';
 import { UNCLOSED_CONNECTION } from './rules/unclosed-connection';
+import { UNESCAPED_ARGUMENTS } from './rules/unescaped-arguments';
 
 /**
  * The registry of currently supported linting rules.
@@ -44,7 +45,8 @@ export const LintingRules = {
 	'undefined-symbol':            UNDEFINED_SYMBOL,
 	'unused-import':               UNUSED_IMPORT,
 	'syntactically-valid':         SYNTACTICALLY_VALID,
-	'unclosed-connection':         UNCLOSED_CONNECTION
+	'unclosed-connection':         UNCLOSED_CONNECTION,
+	'unescaped-arguments':         UNESCAPED_ARGUMENTS
 } as const;
 
 export type LintingRuleNames = keyof typeof LintingRules;

@@ -4,7 +4,7 @@ import type { AnyAbstractDomain } from './abstract-domain';
 /**
  * An interface for state-like domains that store abstract values for AST nodes.
  */
-export interface StateDomain<Domain extends AnyAbstractDomain> {
+export interface StateDomain<Domain extends AnyAbstractDomain = AnyAbstractDomain> {
 	/**
 	 * The underlying value domain of the state domain.
 	 */
@@ -29,16 +29,21 @@ export interface StateDomain<Domain extends AnyAbstractDomain> {
 	 * Sets the inferred value for an AST node ID from the state domain.
 	 */
 	set(node: NodeId, value: Domain): void;
-}
 
-/**
- * A type representing any state abstract domain that stores abstract values for AST nodes.
- */
-export type AnyStateDomain<Domain extends AnyAbstractDomain = AnyAbstractDomain> = AnyAbstractDomain & StateDomain<Domain>;
+	/**
+	 * Returns all node-value pairs of the state domain.
+	 */
+	entries(): readonly [NodeId, Domain][];
+
+	/**
+	 * Whether the state is Bottom.
+	 */
+	isBottom(): boolean;
+}
 
 /**
  * The type of the value abstract domain of a state abstract domain.
  * @template StateDomain - The state abstract domain to get the value abstract domain type for
  */
-export type ValueDomain<StateDomain extends AnyStateDomain> =
-	StateDomain extends AnyStateDomain<infer Domain> ? Domain : never;
+export type ValueDomain<Domain extends StateDomain> =
+	Domain extends StateDomain<infer ValueDomain> ? ValueDomain : never;

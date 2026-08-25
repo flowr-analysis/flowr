@@ -1,38 +1,66 @@
 import { assert, describe, test } from 'vitest';
-import type { AbsintPredecessor, AbsintVisitorConfiguration } from '../../../src/abstract-interpretation/absint-visitor';
-import { AbstractInterpretationVisitor } from '../../../src/abstract-interpretation/absint-visitor';
+import type { AbsintAnalysis, AbsintPredecessor, AbsintVisitorConfiguration } from '../../../src/abstract-interpretation/absint-inference';
+import { AbstractInterpreter } from '../../../src/abstract-interpretation/absint-inference';
 import { IntervalDomain } from '../../../src/abstract-interpretation/domains/interval-domain';
-import { StateAbstractDomain } from '../../../src/abstract-interpretation/domains/state-abstract-domain';
-import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexValue } from '../../../src/dataflow/graph/vertex';
-import type { RNumber } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number';
-import type { ParentInformation } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { MultiValueStateDomain } from '../../../src/abstract-interpretation/domains/multi-value-state-domain';
+import type { StateDomain } from '../../../src/abstract-interpretation/domains/state-domain';
+import { ValueSemantics } from '../../../src/abstract-interpretation/value-semantics';
+import type { DataflowGraphVertexFunctionCall } from '../../../src/dataflow/graph/vertex';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { guard } from '../../../src/util/assert';
-import { runInference } from './inference';
+import { runInterpreter } from './inference';
 import { FlowrConfig } from '../../../src/config';
-import { Identifier } from '../../../src/dataflow/environments/identifier';
 import { FunctionArgument } from '../../../src/dataflow/graph/graph';
 import type { OnCall } from '../../../src/control-flow/semantic-cfg-guided-visitor';
+import { Identifier } from '../../../src/dataflow/environments/identifier';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
 
-/** Records every branch the visitor is handed and, if asked to, refines the condition with what the branch says. */
-class BranchAwareVisitor extends AbstractInterpretationVisitor<StateAbstractDomain<IntervalDomain>> {
+/** The single abstract domain of the analyses below, i.e. an interval per AST node */
+type IntervalDomains = { interval: IntervalDomain };
+
+/** Number constants are worth themselves, and `+` is worth the sum of what its operands are worth */
+const IntervalSemantics = new ValueSemantics<StateDomain<IntervalDomain>>({
+	constants: {
+		number: (state, vertex, _ctx, value) => state.set(vertex.id, IntervalDomain.from(value.num))
+	},
+	functionCalls: {
+		'base::+': (state, vertex, ctx) => {
+			if(vertex.args.length !== 2 || !vertex.args.every(FunctionArgument.isNotEmpty)) {
+				return;
+			}
+			const left = ctx.getAbstractValue(vertex.args[0].nodeId, state);
+			const right = ctx.getAbstractValue(vertex.args[1].nodeId, state);
+
+			if(left !== undefined && right !== undefined) {
+				state.set(vertex.id, left.add(right));
+			}
+		}
+	}
+});
+
+const IntervalAnalysis: AbsintAnalysis<IntervalDomains> = {
+	domains:   { interval: IntervalDomain.top() },
+	semantics: { interval: IntervalSemantics }
+};
+
+/** Records every branch the interpreter is handed and, if asked to, refines the condition with what the branch says. */
+class BranchAwareVisitor extends AbstractInterpreter<IntervalDomains> {
 	public readonly branches = new Set<string>();
 
 	constructor(config: AbsintVisitorConfiguration, private readonly refineCondition = false) {
-		super(config, StateAbstractDomain.top(IntervalDomain.top()));
+		super(config, IntervalAnalysis);
 	}
 
 	public decidedBy(id: NodeId): readonly NodeId[] {
 		return this.getDecidedConstructs(id);
 	}
 
-	public stateAt(id: NodeId): StateAbstractDomain<IntervalDomain> | undefined {
-		return this.getAbstractState(id);
+	public stateAt(id: NodeId): StateDomain<IntervalDomain> | undefined {
+		return this.getAbstractState(id, 'interval');
 	}
 
-	protected override getPredecessorState(pred: AbsintPredecessor): StateAbstractDomain<IntervalDomain> | undefined {
+	protected override getPredecessorState(pred: AbsintPredecessor): MultiValueStateDomain<Partial<IntervalDomains>> | undefined {
 		const state = super.getPredecessorState(pred);
 		if(pred.branch === undefined) {
 			return state;
@@ -44,13 +72,8 @@ class BranchAwareVisitor extends AbstractInterpretationVisitor<StateAbstractDoma
 		}
 		/* the predecessor is the condition and the branch says how it came out, so we can pin it down here */
 		const refined = state.create(state.value);
-		refined.set(pred.id, new IntervalDomain(pred.branch.when ? [1, 1] : [0, 0]));
+		refined.setValue(pred.id, 'interval', new IntervalDomain(pred.branch.when ? [1, 1] : [0, 0]));
 		return refined;
-	}
-
-	protected override onNumberConstant({ vertex, node }: { vertex: DataflowGraphVertexValue, node: RNumber<ParentInformation> }): void {
-		super.onNumberConstant({ vertex, node });
-		this.currentState.set(node.info.id, new IntervalDomain([node.content.num, node.content.num]));
 	}
 }
 
@@ -60,43 +83,26 @@ const Intraprocedural = FlowrConfig.amend(FlowrConfig.default(), c => {
 });
 
 /** Steps into every call with a definition, which is what the configuration asks for by default. */
-class CallFollowingVisitor extends AbstractInterpretationVisitor<StateAbstractDomain<IntervalDomain>> {
+class CallFollowingVisitor extends AbstractInterpreter<IntervalDomains> {
 	constructor(config: AbsintVisitorConfiguration, private readonly alwaysEnter = false) {
-		super(config, StateAbstractDomain.top(IntervalDomain.top()));
+		super(config, IntervalAnalysis);
 	}
 
 	protected override shouldEnterCall(call: DataflowGraphVertexFunctionCall): boolean {
 		return this.alwaysEnter || super.shouldEnterCall(call);
 	}
 
-	public stateAt(id: NodeId): StateAbstractDomain<IntervalDomain> | undefined {
-		return this.getAbstractState(id);
-	}
-
-	protected override onNumberConstant({ vertex, node }: { vertex: DataflowGraphVertexValue, node: RNumber<ParentInformation> }): void {
-		super.onNumberConstant({ vertex, node });
-		this.currentState.set(node.info.id, new IntervalDomain([node.content.num, node.content.num]));
-	}
-
-	protected override onFunctionCall({ call }: OnCall): void {
-		super.onFunctionCall({ call });
-
-		if(call.args.length === 2 && call.args.every(FunctionArgument.isNotEmpty) && Identifier.getName(call.name) === '+') {
-			const left = this.getAbstractValue(call.args[0].nodeId, this.currentState);
-			const right = this.getAbstractValue(call.args[1].nodeId, this.currentState);
-			if(left !== undefined && right !== undefined) {
-				this.currentState.set(call.id, left.add(right));
-			}
-		}
+	public stateAt(id: NodeId): StateDomain<IntervalDomain> | undefined {
+		return this.getAbstractState(id, 'interval');
 	}
 }
 
 /** Records every call the analysis is handed, whether or not the traversal steps into it. */
-class CallCountingVisitor extends AbstractInterpretationVisitor<StateAbstractDomain<IntervalDomain>> {
+class CallCountingVisitor extends AbstractInterpreter<IntervalDomains> {
 	public readonly calls: string[] = [];
 
 	constructor(config: AbsintVisitorConfiguration) {
-		super(config, StateAbstractDomain.top(IntervalDomain.top()));
+		super(config, IntervalAnalysis);
 	}
 
 	protected override onFunctionCall({ call }: OnCall): void {
@@ -118,7 +124,7 @@ describe('Abstract Interpretation Visitor', () => {
 	}
 
 	test('the condition names the if it decides', async() => {
-		const visitor = await runInference(code, config => new BranchAwareVisitor(config));
+		const visitor = await runInterpreter(code, config => new BranchAwareVisitor(config));
 		const ifNode = idOf(visitor, (_, type) => type === RType.IfThenElse);
 		const condition = idOf(visitor, lexeme => lexeme === 'u');
 
@@ -131,7 +137,7 @@ describe('Abstract Interpretation Visitor', () => {
 	});
 
 	test('a branch may refine the condition it came from', async() => {
-		const visitor = await runInference(code, config => new BranchAwareVisitor(config, true));
+		const visitor = await runInterpreter(code, config => new BranchAwareVisitor(config, true));
 		const condition = idOf(visitor, lexeme => lexeme === 'u');
 		const then = idOf(visitor, lexeme => lexeme === '3');
 		const otherwise = idOf(visitor, lexeme => lexeme === '2');
@@ -144,14 +150,14 @@ describe('Abstract Interpretation Visitor', () => {
 describe('Abstract Interpretation Visitor (interprocedural)', () => {
 	/** The value inferred for each variable at the end of the program */
 	async function valuesOf(code: string, config?: FlowrConfig): Promise<Map<string, string | undefined>> {
-		const visitor = await runInference(code, c => new CallFollowingVisitor(c), { config });
+		const visitor = await runInterpreter(code, c => new CallFollowingVisitor(c), { config });
 		const end = visitor.getEndState();
 		const values = new Map<string, string | undefined>();
 
 		for(const [id] of visitor.config.dfg.verticesOfType(VertexType.VariableDefinition)) {
 			const name = visitor.config.normalizedAst.idMap.get(id)?.lexeme;
 			if(name !== undefined) {
-				values.set(name, end.isValue() ? end.value.get(id)?.toString() : undefined);
+				values.set(name, end.isValue() ? end.getValue(id, 'interval')?.toString() : undefined);
 			}
 		}
 		return values;
@@ -171,7 +177,7 @@ describe('Abstract Interpretation Visitor (interprocedural)', () => {
 	test('a loop in a called function still widens', async() => {
 		const values = await valuesOf('f <- function(n) { s <- 0\nwhile(n) { s <- s + 1 }\ns }\nx <- f(3)');
 		/* the loop runs any number of times, so the result is bounded from below only */
-		assert.strictEqual(values.get('x'), '[0, +\u221e]');
+		assert.strictEqual(values.get('x'), '[0, +∞]');
 	});
 
 	test('a recursive call is not followed a second time', async() => {
@@ -202,19 +208,19 @@ describe('Abstract Interpretation Visitor (interprocedural)', () => {
 	});
 
 	test('an analysis may still follow calls the configuration does not', async() => {
-		const visitor = await runInference('f <- function() 3\nx <- f()',
+		const visitor = await runInterpreter('f <- function() 3\nx <- f()',
 			config => new CallFollowingVisitor(config, true), { config: Intraprocedural });
 		const end = visitor.getEndState();
 		const definition = [...visitor.config.dfg.verticesOfType(VertexType.VariableDefinition)]
 			.find(([id]) => visitor.config.normalizedAst.idMap.get(id)?.lexeme === 'x');
 
 		assert.isDefined(definition);
-		assert.strictEqual(end.isValue() ? end.value.get(definition[0])?.toString() : undefined, '[3, 3]',
+		assert.strictEqual(end.isValue() ? end.getValue(definition[0], 'interval')?.toString() : undefined, '[3, 3]',
 			'what the analysis decides wins over what the configuration defaults to');
 	});
 
 	test('an analysis is handed the calls it does not step into', async() => {
-		const visitor = await runInference('f <- function() 3\nx <- f()',
+		const visitor = await runInterpreter('f <- function() 3\nx <- f()',
 			config => new CallCountingVisitor(config), { config: Intraprocedural });
 
 		assert.deepStrictEqual(visitor.calls, ['f'], 'a call that is not entered is still described by the analysis');
@@ -242,7 +248,7 @@ describe('Abstract Interpretation Visitor (join vertices)', () => {
 		['for',    'for(i in 1:3) { x <- 5 }'],
 		['repeat', 'repeat { x <- 5\nif(u) break }']
 	])('a loop head still says what it says (%s)', async(_name, code) => {
-		const visitor = await runInference(code, config => new BranchAwareVisitor(config));
+		const visitor = await runInterpreter(code, config => new BranchAwareVisitor(config));
 		const state = visitor.stateAt(visitor.config.controlFlow.exitPoints[0]);
 
 		assert.isTrue(state?.get(idWithLexeme(visitor, '5'))?.equals(new IntervalDomain([5, 5])),
@@ -250,7 +256,7 @@ describe('Abstract Interpretation Visitor (join vertices)', () => {
 	});
 
 	test.each([1, 2, 3, 4])('a chain of %i arms within a loop keeps what its arms inferred', async(arms) => {
-		const visitor = await runInference(loopWithArms(arms), config => new BranchAwareVisitor(config));
+		const visitor = await runInterpreter(loopWithArms(arms), config => new BranchAwareVisitor(config));
 		const state = visitor.stateAt(visitor.config.controlFlow.exitPoints[0]);
 		assert.isDefined(state, 'the code after the loop is reached');
 

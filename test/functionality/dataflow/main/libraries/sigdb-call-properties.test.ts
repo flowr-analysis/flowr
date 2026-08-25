@@ -52,7 +52,7 @@ describe('The concurrent call property', () => {
 	});
 
 	test('it carries over, so a function reaching one is concurrent too', () => {
-		expect(PropagatedProps & CallProp.Concurrent).toBeTruthy();
+		expect(PropagatedProps.props & CallProp.Concurrent).toBeTruthy();
 	});
 
 	test('what each argument is for is stated with it', () => {

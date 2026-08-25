@@ -28,7 +28,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import type { ControlDependency } from '../../dataflow/info';
 import { happensInEveryBranchSet } from '../../dataflow/info';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
-import { CallProp } from '../../dataflow/environments/built-in-props';
+import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 
 export interface SeededRandomnessResult extends LintingResult {
@@ -178,7 +178,7 @@ export const SEEDED_RANDOMNESS = {
 		defaultConfig: {
 			randomnessProducers: RandomnessProducers,
 			randomnessConsumers: [
-				...BuiltInIndex.default().with(CallProp.Random).map(Identifier.getName)
+				...BuiltInIndex.default().with(SemanticCallTag.Random).map(Identifier.getName)
 					.filter(n => !RandomnessProducers.some(p => p.name === n)),
 				'princomp', 'pointLabel', 'some', 'rbernoulli', 'rdunif', 'generateSeedVectors', 'rvonmises',
 				'rxor', 'rmvnorm', 'randomForest',

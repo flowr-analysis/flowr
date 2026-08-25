@@ -2,6 +2,7 @@ import type { InspectFnPropsQuery, InspectFnPropsQueryResult } from './inspect-f
 import type { BasicQueryData } from '../../base-query-format';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { FunctionArgumentRoles } from '../../../dataflow/fn/argument-roles';
+import type { PropMask, StatedProps } from '../../../dataflow/environments/built-in-props';
 import { ArgProps, CallProps } from '../../../dataflow/environments/built-in-props';
 import { FunctionProps } from '../../../dataflow/fn/function-props';
 import { QueryFunctionFilter } from '../../query-function-filter';
@@ -31,12 +32,19 @@ function keepRoles(all: Record<NodeId, FunctionArgumentRoles>, graph: DataflowGr
 	return kept;
 }
 
-/** The function properties a query asks about, dropping the bits it does not want. */
-function keepProps(all: Record<NodeId, CallProps>, mask: CallProps): Record<NodeId, CallProps> {
-	if(mask === AllProps) {
+/** The function properties a query asks about, dropping the ones it does not want. */
+function keepProps(all: Record<NodeId, StatedProps>, mask: PropMask | undefined): Record<NodeId, StatedProps> {
+	if(mask === undefined) {
 		return all;
 	}
-	return Object.fromEntries(Object.entries(all).map(([id, props]) => [id, props & mask]).filter(([, props]) => props !== 0)) as Record<NodeId, CallProps>;
+	const kept: Record<NodeId, StatedProps> = {};
+	for(const [id, stated] of Object.entries(all)) {
+		const some = CallProps.filter(stated, mask);
+		if(CallProps.hasAny(some)) {
+			kept[id] = some;
+		}
+	}
+	return kept;
 }
 
 /** Execute function-property inspection queries on the given analyzer. */
@@ -54,6 +62,6 @@ export async function executeFnPropsQuery({ analyzer }: BasicQueryData, queries:
 			timing: Date.now() - start
 		},
 		roles: keepRoles(inferred.roles, graph, formals && new Set(formals), props ? ArgProps.mask(props) : AllProps),
-		props: keepProps(inferred.props, props ? CallProps.mask(props) : AllProps)
+		props: keepProps(inferred.props, props ? CallProps.mask(props) : undefined)
 	};
 }

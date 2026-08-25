@@ -429,7 +429,7 @@ class InputClassifier {
 		if(!this.matches(call, this.config.pure)) {
 			const types: InputType[] = [];
 
-			for(const type of Record.values<InputType>(InputType)) {
+			for(const type of Record.values(InputType)) {
 				if(this.matches(call, this.config[type])) {
 					types.push(type);
 				}

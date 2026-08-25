@@ -2,8 +2,8 @@ import type { DataflowGraph } from '../graph/graph';
 import { EdgeType } from '../graph/edge';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
 import { FunctionCallVertex, FunctionDefinitionVertex } from '../graph/vertex';
-import type { BuiltInFnInfo, CallProps } from '../environments/built-in-props';
-import { ArgProp, CallProp, DispatchCallees, FnSig as Sig, PropagatedProps } from '../environments/built-in-props';
+import type { BuiltInFnInfo, StatedProps } from '../environments/built-in-props';
+import { ArgProp, CallProp, CallProps, DispatchCallees, FnSig as Sig, PropagatedProps } from '../environments/built-in-props';
 import { builtInLookup } from '../environments/query-fn-props';
 import { Identifier } from '../environments/identifier';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -20,8 +20,8 @@ export { propagateToFixpoint };
 
 /** What flowR infers about a set of definitions, see {@link FunctionProps.of}. */
 export interface InferredFunctions {
-	/** per definition, the {@link CallProp} mask its body states about the function itself */
-	readonly props: Record<NodeId, CallProps>
+	/** per definition, what its body states about the function itself */
+	readonly props: Record<NodeId, StatedProps>
 	/** per definition, the {@link ArgProp} mask of each formal that carries one */
 	readonly roles: Record<NodeId, FunctionArgumentRoles>
 }
@@ -48,9 +48,9 @@ function inferFunctions(this: void, definitions: readonly NodeId[], graph: Dataf
 }
 
 /** The {@link CallProp} mask of each definition, `Strict` included and what its callees carry mixed in. */
-function callProps(definitions: readonly NodeId[], graph: DataflowGraph, strict: Record<NodeId, FunctionStrictness>, ctx: ReadOnlyFlowrAnalyzerContext | undefined): Record<NodeId, CallProps> {
+function callProps(definitions: readonly NodeId[], graph: DataflowGraph, strict: Record<NodeId, FunctionStrictness>, ctx: ReadOnlyFlowrAnalyzerContext | undefined): Record<NodeId, StatedProps> {
 	const state = makeState(graph, ctx);
-	const props = new Map<NodeId, CallProps>();
+	const props = new Map<NodeId, StatedProps>();
 	const callees = new Map<NodeId, readonly NodeId[]>();
 	/* a callee is asked about as well, whether or not it is one of the definitions to answer for */
 	const toVisit = [...definitions];
@@ -60,30 +60,31 @@ function callProps(definitions: readonly NodeId[], graph: DataflowGraph, strict:
 			continue;
 		}
 		const own = propsOf(id, state);
-		props.set(id, own.props | (strict[id]?.strict === Ternary.Always ? CallProp.Strict : 0));
+		props.set(id, strict[id]?.strict === Ternary.Always ? CallProps.join(own.stated, { props: CallProp.Strict }) : own.stated);
 		callees.set(id, own.callees);
 		toVisit.push(...own.callees);
 	}
 	propagateOverCalls(props, callees);
-	const all: Record<NodeId, CallProps> = {};
+	const all: Record<NodeId, StatedProps> = {};
 	for(const id of definitions) {
-		const found = props.get(id) ?? 0;
-		if(found !== 0) {
-			all[id] = found;
+		const found = props.get(id);
+		if(CallProps.hasAny(found)) {
+			all[id] = found as StatedProps;
 		}
 	}
 	return all;
 }
 
 /** Hands {@link PropagatedProps} on to callers until nothing changes, so a chain of calls carries them however long it is. */
-function propagateOverCalls(props: Map<NodeId, CallProps>, callees: ReadonlyMap<NodeId, readonly NodeId[]>): void {
+function propagateOverCalls(props: Map<NodeId, StatedProps>, callees: ReadonlyMap<NodeId, readonly NodeId[]>): void {
 	propagateToFixpoint(callees.keys(), callees, id => {
-		const before = props.get(id) ?? 0;
-		let grown = before;
+		const before = props.get(id);
+		let grown = before ?? {};
 		for(const callee of callees.get(id) ?? []) {
-			grown |= (props.get(callee) ?? 0) & PropagatedProps;
+			grown = CallProps.join(grown, CallProps.filter(props.get(callee), PropagatedProps));
 		}
-		if(grown === before) {
+		/* joining only ever adds, so nothing new means the same bits and the same number of tags */
+		if((grown.props ?? 0) === (before?.props ?? 0) && (grown.tags?.length ?? 0) === (before?.tags?.length ?? 0)) {
 			return false;
 		}
 		props.set(id, grown);
@@ -122,7 +123,7 @@ function makeState(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | und
 
 /** What one definition states about itself, together with the definitions its body calls. */
 interface OwnProps {
-	readonly props:   CallProps
+	readonly stated:  StatedProps
 	/** the definitions of the program its body calls, whose props it carries as well */
 	readonly callees: readonly NodeId[]
 }
@@ -130,19 +131,26 @@ interface OwnProps {
 function propsOf(id: NodeId, state: LookupState): OwnProps {
 	const definition = state.graph.getVertex(id);
 	if(!FunctionDefinitionVertex.is(definition)) {
-		return { props: 0, callees: [] };
+		return { stated: {}, callees: [] };
 	}
-	let props = 0;
+	let stated: StatedProps = {};
 	const callees: NodeId[] = [];
 	for(const [node, vertex] of callsIn(definition, state.graph)) {
 		const info = state.info(vertex.name);
-		props |= (info?.props ?? 0) & PropagatedProps & (bindsOutside(vertex, info) ? ~0 : ~CallProp.Scope);
+		const carried = CallProps.filter(info, PropagatedProps);
+		stated = CallProps.join(stated, {
+			props: (carried.props ?? 0) & (bindsOutside(vertex, info) ? ~0 : ~CallProp.Scope),
+			tags:  carried.tags
+		});
 		if(DispatchCallees.has(Identifier.getName(vertex.name))) {
-			props |= CallProp.Generic;
+			stated = CallProps.join(stated, { props: CallProp.Generic });
 		}
 		callees.push(...calledDefinitions(node, state));
 	}
-	return { props: props | (returnsInvisibly(definition, state) ? CallProp.Invisible : 0), callees };
+	if(returnsInvisibly(definition, state)) {
+		stated = CallProps.join(stated, { props: CallProp.Invisible });
+	}
+	return { stated, callees };
 }
 
 /** The definitions of the program the call resolved to, which are the ones stating what the call does. */

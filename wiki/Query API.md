@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-24, 09:07:20 UTC (v2.14.3, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-25, 12:15:37 UTC (v2.14.4, R v4.6.1), please do not edit directly._
 
 
 This page briefly summarizes flowR's query API, represented by the executeQueries function in [`./src/queries/query.ts`](https://github.com/flowr-analysis/flowr/tree/main/src/queries/query.ts).
@@ -421,10 +421,10 @@ Valid item types:
                 - **formals** [optional] _Keep only the formals written as one of these names._ (array)
                 Valid item types:
                     - (string)
-                - **props** [optional] _Keep only these properties, named as the ArgProp/CallProp members they are._ (array)
+                - **props** [optional] _Keep only these properties, named as the ArgProp/CallProp/SemanticCallTag members they are._ (array)
                 Valid item types:
                     - (string)
-                        Only allows: 'Forced', 'NoDefault', 'Alias', 'Value', 'Shape', 'Flag', 'Resource', 'Written', 'Nse', 'Callee', 'Presence', 'Bounds', 'Atomic', 'Handle', 'Lazy', 'Pure', 'MayPure', 'Throws', 'Invisible', 'Generic', 'Method', 'Scope', 'NonDet', 'Random', 'Ambient', 'File', 'TempFile', 'Network', 'Process', 'Ffi', 'Lang', 'User', 'Graphics', 'Database', 'Reads', 'Writes', 'Prints', 'Narrows', 'Configures', 'Closes', 'Glob', 'CommandLine', 'Opens', 'Statistics', 'Deprecated', 'Strict', 'Concurrent'
+                        Only allows: 'Forced', 'NoDefault', 'Alias', 'Value', 'Shape', 'Flag', 'Resource', 'Written', 'Nse', 'Callee', 'Presence', 'Bounds', 'Atomic', 'Handle', 'Lazy', 'Injectable', 'Pure', 'MayPure', 'Throws', 'Invisible', 'Generic', 'Method', 'Scope', 'NonDet', 'Ambient', 'Configures', 'Ffi', 'Lang', 'Strict', 'Concurrent', 'Random', 'File', 'TempFile', 'Network', 'Process', 'User', 'CommandLine', 'Glob', 'Graphics', 'Database', 'Opens', 'Closes', 'Reads', 'Writes', 'Prints', 'Narrows', 'Statistics', 'Deprecated', 'Eval', 'Html', 'JavaScript'
             - _The resolve value query used to get definitions of an identifier_ (object)
                 - **type** [required] _The type of the query._ (string)
                     Only allows: 'resolve-value'
@@ -459,10 +459,10 @@ Valid item types:
                 - **rules** _The rules to lint for. If unset, all rules will be included._ (array)
                 Valid item types:
                     - (string)
-                        Only allows: 'deprecated-functions', 'file-path-validity', 'seeded-randomness', 'absolute-file-paths', 'unused-definitions', 'naming-convention', 'network-functions', 'dataframe-access-validation', 'dead-code', 'useless-loop', 'problematic-inputs', 'stop-call', 'roxygen-arguments', 'software-has-license', 'software-has-tests', 'no-leaked-credentials', 'undefined-symbol', 'unused-import', 'syntactically-valid', 'unclosed-connection'
+                        Only allows: 'deprecated-functions', 'file-path-validity', 'seeded-randomness', 'absolute-file-paths', 'unused-definitions', 'naming-convention', 'network-functions', 'dataframe-access-validation', 'dead-code', 'useless-loop', 'problematic-inputs', 'stop-call', 'roxygen-arguments', 'software-has-license', 'software-has-tests', 'no-leaked-credentials', 'undefined-symbol', 'unused-import', 'syntactically-valid', 'unclosed-connection', 'unescaped-arguments'
                     - (object)
                         - **name** [required] (string)
-                            Only allows: 'deprecated-functions', 'file-path-validity', 'seeded-randomness', 'absolute-file-paths', 'unused-definitions', 'naming-convention', 'network-functions', 'dataframe-access-validation', 'dead-code', 'useless-loop', 'problematic-inputs', 'stop-call', 'roxygen-arguments', 'software-has-license', 'software-has-tests', 'no-leaked-credentials', 'undefined-symbol', 'unused-import', 'syntactically-valid', 'unclosed-connection'
+                            Only allows: 'deprecated-functions', 'file-path-validity', 'seeded-randomness', 'absolute-file-paths', 'unused-definitions', 'naming-convention', 'network-functions', 'dataframe-access-validation', 'dead-code', 'useless-loop', 'problematic-inputs', 'stop-call', 'roxygen-arguments', 'software-has-license', 'software-has-tests', 'no-leaked-credentials', 'undefined-symbol', 'unused-import', 'syntactically-valid', 'unclosed-connection', 'unescaped-arguments'
                         - **config** (object)
             - _Dice query: selects only paths from the given start nodes that reach the given end nodes._ (object)
                 - **type** [required] _The type of the query._ (string)
@@ -572,6 +572,9 @@ library`"]
     16[["`*#91;RFunctionCall#93;* **read#95;csv**
       *6.9-28* (**id: 16**)
     arg: (14)`"]]
+    built-in:read_csv["`Built-In:
+read#95;csv`"]
+    style built-in:read_csv stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     12["`*#91;RSymbol#93;* **data**
       *6.1-4* (**id: 12**, v: 16)`"]
     17[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -617,6 +620,7 @@ library`"]
     %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
     %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
     %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
+    %%   copy_to:            {**dplyr::copy_to** (id: built-in:copy_to, type: BuiltInFunction, def. @built-in:copy_to)}
     %%   if_else:            {**dplyr::if_else** (id: built-in:if_else, type: BuiltInFunction, def. @built-in:if_else)}
     %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   across:             {**dplyr::across** (id: built-in:across, type: BuiltInFunction, def. @built-in:across)}
@@ -634,6 +638,7 @@ library`"]
     %%   syms:               {**dplyr::syms** (id: built-in:syms, type: BuiltInFunction, def. @built-in:syms)}
     %%   quo_name:           {**dplyr::quo_name** (id: built-in:quo_name, type: BuiltInFunction, def. @built-in:quo_name)}
     %%   as_label:           {**dplyr::as_label** (id: built-in:as_label, type: BuiltInFunction, def. @built-in:as_label)}
+    %%   sql:                {**dplyr::sql** (id: built-in:sql, type: BuiltInFunction, def. @built-in:sql)}
     %%   id:                 {**dplyr::id** (id: built-in:id, type: BuiltInFunction, def. @built-in:id)}
     %%   top_n:              {**dplyr::top_n** (id: built-in:top_n, type: BuiltInFunction, def. @built-in:top_n)}
     %%   sample_n:           {**dplyr::sample_n** (id: built-in:sample_n, type: BuiltInFunction, def. @built-in:sample_n)}
@@ -691,12 +696,32 @@ library`"]
     %%   distinct_all:       {**dplyr::distinct_all** (id: built-in:distinct_all, type: BuiltInFunction, def. @built-in:distinct_all)}
     %%    library-load:      {**dplyr:: library-load** (id: 7, type: Function, def. @7)}
     %% 3----------------------------------------
-    %%   %>%:           {**readr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
-    %%   read_table2:   {**readr::read_table2** (id: built-in:read_table2, type: BuiltInFunction, def. @built-in:read_table2)}
-    %%   melt_table:    {**readr::melt_table** (id: built-in:melt_table, type: BuiltInFunction, def. @built-in:melt_table)}
-    %%   melt_fwf:      {**readr::melt_fwf** (id: built-in:melt_fwf, type: BuiltInFunction, def. @built-in:melt_fwf)}
-    %%   melt_delim:    {**readr::melt_delim** (id: built-in:melt_delim, type: BuiltInFunction, def. @built-in:melt_delim)}
-    %%    library-load: {**readr:: library-load** (id: 11, type: Function, def. @11)}
+    %%   read_csv:           {**readr::read_csv** (id: built-in:read_csv, type: BuiltInFunction, def. @built-in:read_csv)}
+    %%   read_csv2:          {**readr::read_csv2** (id: built-in:read_csv2, type: BuiltInFunction, def. @built-in:read_csv2)}
+    %%   read_lines:         {**readr::read_lines** (id: built-in:read_lines, type: BuiltInFunction, def. @built-in:read_lines)}
+    %%   read_delim:         {**readr::read_delim** (id: built-in:read_delim, type: BuiltInFunction, def. @built-in:read_delim)}
+    %%   read_fwf:           {**readr::read_fwf** (id: built-in:read_fwf, type: BuiltInFunction, def. @built-in:read_fwf)}
+    %%   read_tsv:           {**readr::read_tsv** (id: built-in:read_tsv, type: BuiltInFunction, def. @built-in:read_tsv)}
+    %%   read_table:         {**readr::read_table** (id: built-in:read_table, type: BuiltInFunction, def. @built-in:read_table)}
+    %%   read_log:           {**readr::read_log** (id: built-in:read_log, type: BuiltInFunction, def. @built-in:read_log)}
+    %%   read_lines_raw:     {**readr::read_lines_raw** (id: built-in:read_lines_raw, type: BuiltInFunction, def. @built-in:read_lines_raw)}
+    %%   read_lines_chunked: {**readr::read_lines_chunked** (id: built-in:read_lines_chunked, type: BuiltInFunction, def. @built-in:read_lines_chunked)}
+    %%   read_rds:           {**readr::read_rds** (id: built-in:read_rds, type: BuiltInFunction, def. @built-in:read_rds)}
+    %%   write_csv:          {**readr::write_csv** (id: built-in:write_csv, type: BuiltInFunction, def. @built-in:write_csv)}
+    %%   write_csv2:         {**readr::write_csv2** (id: built-in:write_csv2, type: BuiltInFunction, def. @built-in:write_csv2)}
+    %%   write_delim:        {**readr::write_delim** (id: built-in:write_delim, type: BuiltInFunction, def. @built-in:write_delim)}
+    %%   write_excel_csv:    {**readr::write_excel_csv** (id: built-in:write_excel_csv, type: BuiltInFunction, def. @built-in:write_excel_csv)}
+    %%   write_excel_csv2:   {**readr::write_excel_csv2** (id: built-in:write_excel_csv2, type: BuiltInFunction, def. @built-in:write_excel_csv2)}
+    %%   write_file:         {**readr::write_file** (id: built-in:write_file, type: BuiltInFunction, def. @built-in:write_file)}
+    %%   write_tsv:          {**readr::write_tsv** (id: built-in:write_tsv, type: BuiltInFunction, def. @built-in:write_tsv)}
+    %%   write_lines:        {**readr::write_lines** (id: built-in:write_lines, type: BuiltInFunction, def. @built-in:write_lines)}
+    %%   write_rds:          {**readr::write_rds** (id: built-in:write_rds, type: BuiltInFunction, def. @built-in:write_rds)}
+    %%   %>%:                {**readr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
+    %%   read_table2:        {**readr::read_table2** (id: built-in:read_table2, type: BuiltInFunction, def. @built-in:read_table2)}
+    %%   melt_table:         {**readr::melt_table** (id: built-in:melt_table, type: BuiltInFunction, def. @built-in:melt_table)}
+    %%   melt_fwf:           {**readr::melt_fwf** (id: built-in:melt_fwf, type: BuiltInFunction, def. @built-in:melt_fwf)}
+    %%   melt_delim:         {**readr::melt_delim** (id: built-in:melt_delim, type: BuiltInFunction, def. @built-in:melt_delim)}
+    %%    library-load:      {**readr:: library-load** (id: 11, type: Function, def. @11)}
     %% 4----------------------------------------
     %%   data: {**data** (id: 12, type: Unknown, def. @17)}
     22[["`*#91;RFunctionCall#93;* **read#95;csv**
@@ -781,6 +806,7 @@ print`"]
     %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
     %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
     %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
+    %%   copy_to:            {**dplyr::copy_to** (id: built-in:copy_to, type: BuiltInFunction, def. @built-in:copy_to)}
     %%   if_else:            {**dplyr::if_else** (id: built-in:if_else, type: BuiltInFunction, def. @built-in:if_else)}
     %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   across:             {**dplyr::across** (id: built-in:across, type: BuiltInFunction, def. @built-in:across)}
@@ -798,6 +824,7 @@ print`"]
     %%   syms:               {**dplyr::syms** (id: built-in:syms, type: BuiltInFunction, def. @built-in:syms)}
     %%   quo_name:           {**dplyr::quo_name** (id: built-in:quo_name, type: BuiltInFunction, def. @built-in:quo_name)}
     %%   as_label:           {**dplyr::as_label** (id: built-in:as_label, type: BuiltInFunction, def. @built-in:as_label)}
+    %%   sql:                {**dplyr::sql** (id: built-in:sql, type: BuiltInFunction, def. @built-in:sql)}
     %%   id:                 {**dplyr::id** (id: built-in:id, type: BuiltInFunction, def. @built-in:id)}
     %%   top_n:              {**dplyr::top_n** (id: built-in:top_n, type: BuiltInFunction, def. @built-in:top_n)}
     %%   sample_n:           {**dplyr::sample_n** (id: built-in:sample_n, type: BuiltInFunction, def. @built-in:sample_n)}
@@ -855,12 +882,32 @@ print`"]
     %%   distinct_all:       {**dplyr::distinct_all** (id: built-in:distinct_all, type: BuiltInFunction, def. @built-in:distinct_all)}
     %%    library-load:      {**dplyr:: library-load** (id: 7, type: Function, def. @7)}
     %% 3----------------------------------------
-    %%   %>%:           {**readr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
-    %%   read_table2:   {**readr::read_table2** (id: built-in:read_table2, type: BuiltInFunction, def. @built-in:read_table2)}
-    %%   melt_table:    {**readr::melt_table** (id: built-in:melt_table, type: BuiltInFunction, def. @built-in:melt_table)}
-    %%   melt_fwf:      {**readr::melt_fwf** (id: built-in:melt_fwf, type: BuiltInFunction, def. @built-in:melt_fwf)}
-    %%   melt_delim:    {**readr::melt_delim** (id: built-in:melt_delim, type: BuiltInFunction, def. @built-in:melt_delim)}
-    %%    library-load: {**readr:: library-load** (id: 11, type: Function, def. @11)}
+    %%   read_csv:           {**readr::read_csv** (id: built-in:read_csv, type: BuiltInFunction, def. @built-in:read_csv)}
+    %%   read_csv2:          {**readr::read_csv2** (id: built-in:read_csv2, type: BuiltInFunction, def. @built-in:read_csv2)}
+    %%   read_lines:         {**readr::read_lines** (id: built-in:read_lines, type: BuiltInFunction, def. @built-in:read_lines)}
+    %%   read_delim:         {**readr::read_delim** (id: built-in:read_delim, type: BuiltInFunction, def. @built-in:read_delim)}
+    %%   read_fwf:           {**readr::read_fwf** (id: built-in:read_fwf, type: BuiltInFunction, def. @built-in:read_fwf)}
+    %%   read_tsv:           {**readr::read_tsv** (id: built-in:read_tsv, type: BuiltInFunction, def. @built-in:read_tsv)}
+    %%   read_table:         {**readr::read_table** (id: built-in:read_table, type: BuiltInFunction, def. @built-in:read_table)}
+    %%   read_log:           {**readr::read_log** (id: built-in:read_log, type: BuiltInFunction, def. @built-in:read_log)}
+    %%   read_lines_raw:     {**readr::read_lines_raw** (id: built-in:read_lines_raw, type: BuiltInFunction, def. @built-in:read_lines_raw)}
+    %%   read_lines_chunked: {**readr::read_lines_chunked** (id: built-in:read_lines_chunked, type: BuiltInFunction, def. @built-in:read_lines_chunked)}
+    %%   read_rds:           {**readr::read_rds** (id: built-in:read_rds, type: BuiltInFunction, def. @built-in:read_rds)}
+    %%   write_csv:          {**readr::write_csv** (id: built-in:write_csv, type: BuiltInFunction, def. @built-in:write_csv)}
+    %%   write_csv2:         {**readr::write_csv2** (id: built-in:write_csv2, type: BuiltInFunction, def. @built-in:write_csv2)}
+    %%   write_delim:        {**readr::write_delim** (id: built-in:write_delim, type: BuiltInFunction, def. @built-in:write_delim)}
+    %%   write_excel_csv:    {**readr::write_excel_csv** (id: built-in:write_excel_csv, type: BuiltInFunction, def. @built-in:write_excel_csv)}
+    %%   write_excel_csv2:   {**readr::write_excel_csv2** (id: built-in:write_excel_csv2, type: BuiltInFunction, def. @built-in:write_excel_csv2)}
+    %%   write_file:         {**readr::write_file** (id: built-in:write_file, type: BuiltInFunction, def. @built-in:write_file)}
+    %%   write_tsv:          {**readr::write_tsv** (id: built-in:write_tsv, type: BuiltInFunction, def. @built-in:write_tsv)}
+    %%   write_lines:        {**readr::write_lines** (id: built-in:write_lines, type: BuiltInFunction, def. @built-in:write_lines)}
+    %%   write_rds:          {**readr::write_rds** (id: built-in:write_rds, type: BuiltInFunction, def. @built-in:write_rds)}
+    %%   %>%:                {**readr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
+    %%   read_table2:        {**readr::read_table2** (id: built-in:read_table2, type: BuiltInFunction, def. @built-in:read_table2)}
+    %%   melt_table:         {**readr::melt_table** (id: built-in:melt_table, type: BuiltInFunction, def. @built-in:melt_table)}
+    %%   melt_fwf:           {**readr::melt_fwf** (id: built-in:melt_fwf, type: BuiltInFunction, def. @built-in:melt_fwf)}
+    %%   melt_delim:         {**readr::melt_delim** (id: built-in:melt_delim, type: BuiltInFunction, def. @built-in:melt_delim)}
+    %%    library-load:      {**readr:: library-load** (id: 11, type: Function, def. @11)}
     %% 4----------------------------------------
     %%   data:  {**data** (id: 12, type: Unknown, def. @17)}
     %%   data2: {**data2** (id: 18, type: Unknown, def. @23)}
@@ -903,6 +950,7 @@ print`"]
     %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
     %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
     %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
+    %%   copy_to:            {**dplyr::copy_to** (id: built-in:copy_to, type: BuiltInFunction, def. @built-in:copy_to)}
     %%   if_else:            {**dplyr::if_else** (id: built-in:if_else, type: BuiltInFunction, def. @built-in:if_else)}
     %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   across:             {**dplyr::across** (id: built-in:across, type: BuiltInFunction, def. @built-in:across)}
@@ -920,6 +968,7 @@ print`"]
     %%   syms:               {**dplyr::syms** (id: built-in:syms, type: BuiltInFunction, def. @built-in:syms)}
     %%   quo_name:           {**dplyr::quo_name** (id: built-in:quo_name, type: BuiltInFunction, def. @built-in:quo_name)}
     %%   as_label:           {**dplyr::as_label** (id: built-in:as_label, type: BuiltInFunction, def. @built-in:as_label)}
+    %%   sql:                {**dplyr::sql** (id: built-in:sql, type: BuiltInFunction, def. @built-in:sql)}
     %%   id:                 {**dplyr::id** (id: built-in:id, type: BuiltInFunction, def. @built-in:id)}
     %%   top_n:              {**dplyr::top_n** (id: built-in:top_n, type: BuiltInFunction, def. @built-in:top_n)}
     %%   sample_n:           {**dplyr::sample_n** (id: built-in:sample_n, type: BuiltInFunction, def. @built-in:sample_n)}
@@ -977,12 +1026,32 @@ print`"]
     %%   distinct_all:       {**dplyr::distinct_all** (id: built-in:distinct_all, type: BuiltInFunction, def. @built-in:distinct_all)}
     %%    library-load:      {**dplyr:: library-load** (id: 7, type: Function, def. @7)}
     %% 3----------------------------------------
-    %%   %>%:           {**readr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
-    %%   read_table2:   {**readr::read_table2** (id: built-in:read_table2, type: BuiltInFunction, def. @built-in:read_table2)}
-    %%   melt_table:    {**readr::melt_table** (id: built-in:melt_table, type: BuiltInFunction, def. @built-in:melt_table)}
-    %%   melt_fwf:      {**readr::melt_fwf** (id: built-in:melt_fwf, type: BuiltInFunction, def. @built-in:melt_fwf)}
-    %%   melt_delim:    {**readr::melt_delim** (id: built-in:melt_delim, type: BuiltInFunction, def. @built-in:melt_delim)}
-    %%    library-load: {**readr:: library-load** (id: 11, type: Function, def. @11)}
+    %%   read_csv:           {**readr::read_csv** (id: built-in:read_csv, type: BuiltInFunction, def. @built-in:read_csv)}
+    %%   read_csv2:          {**readr::read_csv2** (id: built-in:read_csv2, type: BuiltInFunction, def. @built-in:read_csv2)}
+    %%   read_lines:         {**readr::read_lines** (id: built-in:read_lines, type: BuiltInFunction, def. @built-in:read_lines)}
+    %%   read_delim:         {**readr::read_delim** (id: built-in:read_delim, type: BuiltInFunction, def. @built-in:read_delim)}
+    %%   read_fwf:           {**readr::read_fwf** (id: built-in:read_fwf, type: BuiltInFunction, def. @built-in:read_fwf)}
+    %%   read_tsv:           {**readr::read_tsv** (id: built-in:read_tsv, type: BuiltInFunction, def. @built-in:read_tsv)}
+    %%   read_table:         {**readr::read_table** (id: built-in:read_table, type: BuiltInFunction, def. @built-in:read_table)}
+    %%   read_log:           {**readr::read_log** (id: built-in:read_log, type: BuiltInFunction, def. @built-in:read_log)}
+    %%   read_lines_raw:     {**readr::read_lines_raw** (id: built-in:read_lines_raw, type: BuiltInFunction, def. @built-in:read_lines_raw)}
+    %%   read_lines_chunked: {**readr::read_lines_chunked** (id: built-in:read_lines_chunked, type: BuiltInFunction, def. @built-in:read_lines_chunked)}
+    %%   read_rds:           {**readr::read_rds** (id: built-in:read_rds, type: BuiltInFunction, def. @built-in:read_rds)}
+    %%   write_csv:          {**readr::write_csv** (id: built-in:write_csv, type: BuiltInFunction, def. @built-in:write_csv)}
+    %%   write_csv2:         {**readr::write_csv2** (id: built-in:write_csv2, type: BuiltInFunction, def. @built-in:write_csv2)}
+    %%   write_delim:        {**readr::write_delim** (id: built-in:write_delim, type: BuiltInFunction, def. @built-in:write_delim)}
+    %%   write_excel_csv:    {**readr::write_excel_csv** (id: built-in:write_excel_csv, type: BuiltInFunction, def. @built-in:write_excel_csv)}
+    %%   write_excel_csv2:   {**readr::write_excel_csv2** (id: built-in:write_excel_csv2, type: BuiltInFunction, def. @built-in:write_excel_csv2)}
+    %%   write_file:         {**readr::write_file** (id: built-in:write_file, type: BuiltInFunction, def. @built-in:write_file)}
+    %%   write_tsv:          {**readr::write_tsv** (id: built-in:write_tsv, type: BuiltInFunction, def. @built-in:write_tsv)}
+    %%   write_lines:        {**readr::write_lines** (id: built-in:write_lines, type: BuiltInFunction, def. @built-in:write_lines)}
+    %%   write_rds:          {**readr::write_rds** (id: built-in:write_rds, type: BuiltInFunction, def. @built-in:write_rds)}
+    %%   %>%:                {**readr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
+    %%   read_table2:        {**readr::read_table2** (id: built-in:read_table2, type: BuiltInFunction, def. @built-in:read_table2)}
+    %%   melt_table:         {**readr::melt_table** (id: built-in:melt_table, type: BuiltInFunction, def. @built-in:melt_table)}
+    %%   melt_fwf:           {**readr::melt_fwf** (id: built-in:melt_fwf, type: BuiltInFunction, def. @built-in:melt_fwf)}
+    %%   melt_delim:         {**readr::melt_delim** (id: built-in:melt_delim, type: BuiltInFunction, def. @built-in:melt_delim)}
+    %%    library-load:      {**readr:: library-load** (id: 11, type: Function, def. @11)}
     %% 4----------------------------------------
     %%   data:  {**data** (id: 12, type: Unknown, def. @17)}
     %%   data2: {**data2** (id: 18, type: Unknown, def. @23)}
@@ -1032,6 +1101,7 @@ print`"]
     %%   join_by:            {**dplyr::join_by** (id: built-in:join_by, type: BuiltInFunction, def. @built-in:join_by)}
     %%   tibble:             {**dplyr::tibble** (id: built-in:tibble, type: BuiltInFunction, def. @built-in:tibble)}
     %%   tribble:            {**dplyr::tribble** (id: built-in:tribble, type: BuiltInFunction, def. @built-in:tribble)}
+    %%   copy_to:            {**dplyr::copy_to** (id: built-in:copy_to, type: BuiltInFunction, def. @built-in:copy_to)}
     %%   if_else:            {**dplyr::if_else** (id: built-in:if_else, type: BuiltInFunction, def. @built-in:if_else)}
     %%   %>%:                {**dplyr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
     %%   across:             {**dplyr::across** (id: built-in:across, type: BuiltInFunction, def. @built-in:across)}
@@ -1049,6 +1119,7 @@ print`"]
     %%   syms:               {**dplyr::syms** (id: built-in:syms, type: BuiltInFunction, def. @built-in:syms)}
     %%   quo_name:           {**dplyr::quo_name** (id: built-in:quo_name, type: BuiltInFunction, def. @built-in:quo_name)}
     %%   as_label:           {**dplyr::as_label** (id: built-in:as_label, type: BuiltInFunction, def. @built-in:as_label)}
+    %%   sql:                {**dplyr::sql** (id: built-in:sql, type: BuiltInFunction, def. @built-in:sql)}
     %%   id:                 {**dplyr::id** (id: built-in:id, type: BuiltInFunction, def. @built-in:id)}
     %%   top_n:              {**dplyr::top_n** (id: built-in:top_n, type: BuiltInFunction, def. @built-in:top_n)}
     %%   sample_n:           {**dplyr::sample_n** (id: built-in:sample_n, type: BuiltInFunction, def. @built-in:sample_n)}
@@ -1106,12 +1177,32 @@ print`"]
     %%   distinct_all:       {**dplyr::distinct_all** (id: built-in:distinct_all, type: BuiltInFunction, def. @built-in:distinct_all)}
     %%    library-load:      {**dplyr:: library-load** (id: 7, type: Function, def. @7)}
     %% 3----------------------------------------
-    %%   %>%:           {**readr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
-    %%   read_table2:   {**readr::read_table2** (id: built-in:read_table2, type: BuiltInFunction, def. @built-in:read_table2)}
-    %%   melt_table:    {**readr::melt_table** (id: built-in:melt_table, type: BuiltInFunction, def. @built-in:melt_table)}
-    %%   melt_fwf:      {**readr::melt_fwf** (id: built-in:melt_fwf, type: BuiltInFunction, def. @built-in:melt_fwf)}
-    %%   melt_delim:    {**readr::melt_delim** (id: built-in:melt_delim, type: BuiltInFunction, def. @built-in:melt_delim)}
-    %%    library-load: {**readr:: library-load** (id: 11, type: Function, def. @11)}
+    %%   read_csv:           {**readr::read_csv** (id: built-in:read_csv, type: BuiltInFunction, def. @built-in:read_csv)}
+    %%   read_csv2:          {**readr::read_csv2** (id: built-in:read_csv2, type: BuiltInFunction, def. @built-in:read_csv2)}
+    %%   read_lines:         {**readr::read_lines** (id: built-in:read_lines, type: BuiltInFunction, def. @built-in:read_lines)}
+    %%   read_delim:         {**readr::read_delim** (id: built-in:read_delim, type: BuiltInFunction, def. @built-in:read_delim)}
+    %%   read_fwf:           {**readr::read_fwf** (id: built-in:read_fwf, type: BuiltInFunction, def. @built-in:read_fwf)}
+    %%   read_tsv:           {**readr::read_tsv** (id: built-in:read_tsv, type: BuiltInFunction, def. @built-in:read_tsv)}
+    %%   read_table:         {**readr::read_table** (id: built-in:read_table, type: BuiltInFunction, def. @built-in:read_table)}
+    %%   read_log:           {**readr::read_log** (id: built-in:read_log, type: BuiltInFunction, def. @built-in:read_log)}
+    %%   read_lines_raw:     {**readr::read_lines_raw** (id: built-in:read_lines_raw, type: BuiltInFunction, def. @built-in:read_lines_raw)}
+    %%   read_lines_chunked: {**readr::read_lines_chunked** (id: built-in:read_lines_chunked, type: BuiltInFunction, def. @built-in:read_lines_chunked)}
+    %%   read_rds:           {**readr::read_rds** (id: built-in:read_rds, type: BuiltInFunction, def. @built-in:read_rds)}
+    %%   write_csv:          {**readr::write_csv** (id: built-in:write_csv, type: BuiltInFunction, def. @built-in:write_csv)}
+    %%   write_csv2:         {**readr::write_csv2** (id: built-in:write_csv2, type: BuiltInFunction, def. @built-in:write_csv2)}
+    %%   write_delim:        {**readr::write_delim** (id: built-in:write_delim, type: BuiltInFunction, def. @built-in:write_delim)}
+    %%   write_excel_csv:    {**readr::write_excel_csv** (id: built-in:write_excel_csv, type: BuiltInFunction, def. @built-in:write_excel_csv)}
+    %%   write_excel_csv2:   {**readr::write_excel_csv2** (id: built-in:write_excel_csv2, type: BuiltInFunction, def. @built-in:write_excel_csv2)}
+    %%   write_file:         {**readr::write_file** (id: built-in:write_file, type: BuiltInFunction, def. @built-in:write_file)}
+    %%   write_tsv:          {**readr::write_tsv** (id: built-in:write_tsv, type: BuiltInFunction, def. @built-in:write_tsv)}
+    %%   write_lines:        {**readr::write_lines** (id: built-in:write_lines, type: BuiltInFunction, def. @built-in:write_lines)}
+    %%   write_rds:          {**readr::write_rds** (id: built-in:write_rds, type: BuiltInFunction, def. @built-in:write_rds)}
+    %%   %>%:                {**readr::%>%** (id: built-in:%>%, type: BuiltInFunction, def. @built-in:%>%)}
+    %%   read_table2:        {**readr::read_table2** (id: built-in:read_table2, type: BuiltInFunction, def. @built-in:read_table2)}
+    %%   melt_table:         {**readr::melt_table** (id: built-in:melt_table, type: BuiltInFunction, def. @built-in:melt_table)}
+    %%   melt_fwf:           {**readr::melt_fwf** (id: built-in:melt_fwf, type: BuiltInFunction, def. @built-in:melt_fwf)}
+    %%   melt_delim:         {**readr::melt_delim** (id: built-in:melt_delim, type: BuiltInFunction, def. @built-in:melt_delim)}
+    %%    library-load:      {**readr:: library-load** (id: 11, type: Function, def. @11)}
     %% 4----------------------------------------
     %%   data:  {**data** (id: 12, type: Unknown, def. @17)}
     %%   data2: {**data2** (id: 18, type: Unknown, def. @23)}
@@ -1197,180 +1288,186 @@ points`"]
     linkStyle 11 stroke:gray,color:gray;
     14 -.->|"flow"| 16
     linkStyle 12 stroke:gray,color:gray;
-    16 -->|"arg"| 14
+    16 -->|"reads, arg"| 14
+    16 -->|"reads"| 11
     16 -.->|"flow"| 12
-    linkStyle 14 stroke:gray,color:gray;
+    linkStyle 15 stroke:gray,color:gray;
+    16 -.->|"reads, calls"| built-in:read_csv
+    linkStyle 16 stroke:gray;
     12 -->|"defined-by, flow"| 17
     12 -->|"defined-by"| 16
     17 -->|"reads, arg"| 16
     17 -->|"returns, arg"| 12
     17 -.->|"reads, calls"| built-in:_-
-    linkStyle 19 stroke:gray;
+    linkStyle 21 stroke:gray;
     17 -.->|"flow"| 20
-    linkStyle 20 stroke:gray,color:gray;
+    linkStyle 22 stroke:gray,color:gray;
     20 -.->|"flow"| 22
-    linkStyle 21 stroke:gray,color:gray;
-    22 -->|"arg"| 20
-    22 -.->|"flow"| 18
     linkStyle 23 stroke:gray,color:gray;
+    22 -->|"reads, arg"| 20
+    22 -->|"reads"| 11
+    22 -.->|"flow"| 18
+    linkStyle 26 stroke:gray,color:gray;
+    22 -.->|"reads, calls"| built-in:read_csv
+    linkStyle 27 stroke:gray;
     18 -->|"defined-by, flow"| 23
     18 -->|"defined-by"| 22
     23 -->|"reads, arg"| 22
     23 -->|"returns, arg"| 18
     23 -.->|"reads, calls"| built-in:_-
-    linkStyle 28 stroke:gray;
+    linkStyle 32 stroke:gray;
     23 -.->|"flow"| 26
-    linkStyle 29 stroke:gray,color:gray;
+    linkStyle 33 stroke:gray,color:gray;
     26 -->|"reads"| 12
     26 -.->|"flow"| 27
-    linkStyle 31 stroke:gray,color:gray;
+    linkStyle 35 stroke:gray,color:gray;
     27 -.->|"flow"| 29
-    linkStyle 32 stroke:gray,color:gray;
+    linkStyle 36 stroke:gray,color:gray;
     29 -->|"reads, returns, arg"| 26
     29 -->|"reads, arg"| 27
     29 -.->|"reads, calls"| built-in:_
-    linkStyle 35 stroke:gray;
+    linkStyle 39 stroke:gray;
     29 -.->|"flow"| 31
-    linkStyle 36 stroke:gray,color:gray;
+    linkStyle 40 stroke:gray,color:gray;
     31 -->|"reads, arg"| 29
     31 -.->|"flow"| 24
-    linkStyle 38 stroke:gray,color:gray;
+    linkStyle 42 stroke:gray,color:gray;
     31 -.->|"reads, calls"| built-in:mean
-    linkStyle 39 stroke:gray;
+    linkStyle 43 stroke:gray;
     24 -->|"defined-by, flow"| 32
     24 -->|"defined-by"| 31
     32 -->|"reads, arg"| 31
     32 -->|"returns, arg"| 24
     32 -.->|"reads, calls"| built-in:_-
-    linkStyle 44 stroke:gray;
+    linkStyle 48 stroke:gray;
     32 -.->|"flow"| 34
-    linkStyle 45 stroke:gray,color:gray;
+    linkStyle 49 stroke:gray,color:gray;
     34 -->|"reads"| 24
     34 -.->|"flow"| 36
-    linkStyle 47 stroke:gray,color:gray;
+    linkStyle 51 stroke:gray,color:gray;
     36 -->|"reads, returns, arg"| 34
     36 -.->|"reads, calls"| built-in:print
-    linkStyle 49 stroke:gray;
+    linkStyle 53 stroke:gray;
     36 -.->|"flow"| 38
-    linkStyle 50 stroke:gray,color:gray;
+    linkStyle 54 stroke:gray,color:gray;
     38 -->|"reads"| 12
     38 -.->|"flow"| 43
-    linkStyle 52 stroke:gray,color:gray;
+    linkStyle 56 stroke:gray,color:gray;
     43 -.->|"flow"| 44
-    linkStyle 53 stroke:gray,color:gray;
+    linkStyle 57 stroke:gray,color:gray;
     44 -->|"reads"| 43
     44 -.->|"flow"| 46
-    linkStyle 55 stroke:gray,color:gray;
+    linkStyle 59 stroke:gray,color:gray;
     46 -.->|"flow"| 47
-    linkStyle 56 stroke:gray,color:gray;
+    linkStyle 60 stroke:gray,color:gray;
     47 -->|"reads"| 46
     47 -.->|"flow"| 48
-    linkStyle 58 stroke:gray,color:gray;
+    linkStyle 62 stroke:gray,color:gray;
     48 -->|"reads"| 43
     48 -->|"arg"| 44
     48 -->|"reads"| 46
     48 -->|"arg"| 47
     48 -.->|"flow"| 50
-    linkStyle 63 stroke:gray,color:gray;
+    linkStyle 67 stroke:gray,color:gray;
     50 -->|"reads, arg"| 48
     50 -.->|"flow"| 52
-    linkStyle 65 stroke:gray,color:gray;
+    linkStyle 69 stroke:gray,color:gray;
     50 -->|"reads, arg"| 38
     52 -->|"arg"| 38
     52 -->|"returns, arg"| 50
     52 -->|"reads"| 11
     52 -.->|"reads, calls"| built-in:___
-    linkStyle 70 stroke:gray;
+    linkStyle 74 stroke:gray;
     52 -.->|"flow"| 54
-    linkStyle 71 stroke:gray,color:gray;
+    linkStyle 75 stroke:gray,color:gray;
     54 -.->|"flow"| 55
-    linkStyle 72 stroke:gray,color:gray;
+    linkStyle 76 stroke:gray,color:gray;
     55 -->|"reads, arg"| 52
     55 -->|"reads, arg"| 54
     55 -.->|"reads, calls"| built-in:_
-    linkStyle 75 stroke:gray;
+    linkStyle 79 stroke:gray;
     55 -.->|"flow"| 57
-    linkStyle 76 stroke:gray,color:gray;
+    linkStyle 80 stroke:gray,color:gray;
     57 -->|"reads"| 18
     57 -.->|"flow"| 58
-    linkStyle 78 stroke:gray,color:gray;
+    linkStyle 82 stroke:gray,color:gray;
     58 -.->|"flow"| 60
-    linkStyle 79 stroke:gray,color:gray;
+    linkStyle 83 stroke:gray,color:gray;
     60 -->|"reads, returns, arg"| 57
     60 -->|"reads, arg"| 58
     60 -.->|"reads, calls"| built-in:_
-    linkStyle 82 stroke:gray;
+    linkStyle 86 stroke:gray;
     60 -.->|"flow"| 62
-    linkStyle 83 stroke:gray,color:gray;
+    linkStyle 87 stroke:gray,color:gray;
     62 -->|"reads"| 18
     62 -.->|"flow"| 63
-    linkStyle 85 stroke:gray,color:gray;
+    linkStyle 89 stroke:gray,color:gray;
     63 -.->|"flow"| 65
-    linkStyle 86 stroke:gray,color:gray;
+    linkStyle 90 stroke:gray,color:gray;
     65 -->|"reads, returns, arg"| 62
     65 -->|"reads, arg"| 63
     65 -.->|"reads, calls"| built-in:_
-    linkStyle 89 stroke:gray;
+    linkStyle 93 stroke:gray;
     65 -.->|"flow"| 67
-    linkStyle 90 stroke:gray,color:gray;
+    linkStyle 94 stroke:gray,color:gray;
     67 -->|"reads, arg"| 60
     67 -->|"reads, arg"| 65
     67 -.->|"reads, calls"| built-in:plot
-    linkStyle 93 stroke:gray;
+    linkStyle 97 stroke:gray;
     67 -.->|"flow"| 69
-    linkStyle 94 stroke:gray,color:gray;
+    linkStyle 98 stroke:gray,color:gray;
     69 -->|"reads"| 18
     69 -.->|"flow"| 70
-    linkStyle 96 stroke:gray,color:gray;
+    linkStyle 100 stroke:gray,color:gray;
     70 -.->|"flow"| 72
-    linkStyle 97 stroke:gray,color:gray;
+    linkStyle 101 stroke:gray,color:gray;
     72 -->|"reads, returns, arg"| 69
     72 -->|"reads, arg"| 70
     72 -.->|"reads, calls"| built-in:_
-    linkStyle 100 stroke:gray;
+    linkStyle 104 stroke:gray;
     72 -.->|"flow"| 74
-    linkStyle 101 stroke:gray,color:gray;
+    linkStyle 105 stroke:gray,color:gray;
     74 -->|"reads"| 18
     74 -.->|"flow"| 75
-    linkStyle 103 stroke:gray,color:gray;
+    linkStyle 107 stroke:gray,color:gray;
     75 -.->|"flow"| 77
-    linkStyle 104 stroke:gray,color:gray;
+    linkStyle 108 stroke:gray,color:gray;
     77 -->|"reads, returns, arg"| 74
     77 -->|"reads, arg"| 75
     77 -.->|"reads, calls"| built-in:_
-    linkStyle 107 stroke:gray;
+    linkStyle 111 stroke:gray;
     77 -.->|"flow"| 79
-    linkStyle 108 stroke:gray,color:gray;
+    linkStyle 112 stroke:gray,color:gray;
     79 -->|"reads, arg"| 72
     79 -->|"reads, arg"| 77
     79 -.->|"reads, calls"| built-in:points
-    linkStyle 111 stroke:gray;
+    linkStyle 115 stroke:gray;
     79 -.->|"flow"| 82
-    linkStyle 112 stroke:gray,color:gray;
+    linkStyle 116 stroke:gray,color:gray;
     79 -->|"reads"| 67
     82 -->|"reads"| 18
     82 -.->|"flow"| 83
-    linkStyle 115 stroke:gray,color:gray;
+    linkStyle 119 stroke:gray,color:gray;
     83 -.->|"flow"| 85
-    linkStyle 116 stroke:gray,color:gray;
+    linkStyle 120 stroke:gray,color:gray;
     85 -->|"reads, returns, arg"| 82
     85 -->|"reads, arg"| 83
     85 -.->|"reads, calls"| built-in:_
-    linkStyle 119 stroke:gray;
+    linkStyle 123 stroke:gray;
     85 -.->|"flow"| 87
-    linkStyle 120 stroke:gray,color:gray;
+    linkStyle 124 stroke:gray,color:gray;
     87 -->|"reads, arg"| 85
     87 -.->|"reads, calls"| built-in:mean
-    linkStyle 122 stroke:gray;
+    linkStyle 126 stroke:gray;
     87 -.->|"flow"| 89
-    linkStyle 123 stroke:gray,color:gray;
+    linkStyle 127 stroke:gray,color:gray;
     89 -->|"reads, returns, arg"| 87
     89 -.->|"reads, calls"| built-in:print
-    linkStyle 125 stroke:gray;
+    linkStyle 129 stroke:gray;
 ```
 
 	
-(The analysis required _7.8 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _4.7 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
@@ -1416,11 +1513,11 @@ _Results (prettified and summarized):_
 Query: **call-context** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ **input** (2 hits):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ **csv-file** (2 hits): _`read_csv('data.csv')`_ (L.6) with 1 call (UNKNOWN: built-in (info: undefined)), _`read_csv('data2.csv')`_ (L.7) with 1 call (UNKNOWN: built-in (info: undefined))\
-_All queries together required ≈10 ms (1ms accuracy, total 10 ms)_
+_All queries together required ≈5 ms (1ms accuracy, total 5 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _10.2 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _5.0 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -1458,7 +1555,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 10
+    "timing": 5
   }
 }
 ```

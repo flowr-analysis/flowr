@@ -1,7 +1,7 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { AbstractDomain, type AnyAbstractDomain } from './abstract-domain';
 import { Bottom } from './lattice';
-import type { StateDomain } from './state-domain-like';
+import type { StateDomain } from './state-domain';
 
 /** The type of the actual values of the state abstract domain as map of keys to domain values */
 export type StateDomainValue<Domain extends AnyAbstractDomain> = ReadonlyMap<NodeId, Domain>;
@@ -63,6 +63,10 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		if(this.value !== Bottom) {
 			(this._value as Map<NodeId, Domain>).delete(node);
 		}
+	}
+
+	public entries(): readonly [NodeId, Domain][] {
+		return this.isValue() ? this.value.entries().toArray() : [];
 	}
 
 	public top(): this & StateAbstractDomain<Domain, StateDomainTop> {

@@ -22,7 +22,7 @@ import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { DefaultBuiltinConfig } from '../../../../src/dataflow/environments/default-builtin-config';
 import { builtInNames, BuiltInIndex } from '../../../../src/dataflow/environments/query-fn-props';
 import type { BuiltInFnInfo, FnSig } from '../../../../src/dataflow/environments/built-in-props';
-import { ArgProp, CallProp } from '../../../../src/dataflow/environments/built-in-props';
+import { ArgProp, SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
 import { ReadFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/read-functions';
 import { WriteFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/write-functions';
 import { OtherPathFunctions } from '../../../../src/queries/catalog/dependencies-query/function-info/other-path-functions';
@@ -735,7 +735,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('a wrong namespace drops the call', 'utils::t.test(x)', { library: [{ nodeId: '1@t.test', functionName: '::', value: 'utils' }], write: [{ nodeId: '1@utils::t.test', functionName: Identifier.make('t.test', 'utils'), value: 'stdout', implicit: true }] });
 		testQuery('a nested test is still a test', 'f <- function() t.test(x)', { statistics: [{ nodeId: '1@t.test', functionName: 't.test' }] });
 		test('the category is what the built-ins state, with a package for every entry', () => {
-			const stated = BuiltInIndex.default().with(CallProp.Statistics);
+			const stated = BuiltInIndex.default().with(SemanticCallTag.Statistics);
 			assert.isNotEmpty(stated);
 			assert.deepStrictEqual(
 				DefaultDependencyCategories.statistics.functions.map(f => `${f.package as string}::${f.name}`).sort(),
@@ -893,14 +893,15 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			const idx = info?.sig?.findIndex(([, p]) => (p & ArgProp.Resource) !== 0) ?? -1;
 			if(idx >= 0) {
 				for(const n of builtInNames(d)) {
-					resources.set(Identifier.getName(n), { idx, name: (info?.sig as FnSig)[idx][0] });
+					/* keyed by the package that declares it: `readr::read_lines` and `sourcetools::read_lines` are two entries */
+					resources.set(Identifier.toString(n), { idx, name: (info?.sig as FnSig)[idx][0] });
 				}
 			}
 		}
 		test.each([['read', ReadFunctions], ['write', WriteFunctions], ['other paths', OtherPathFunctions]] as const)(
 			'%s', (_name, list) => {
 				for(const f of list) {
-					const declared = resources.get(f.name);
+					const declared = resources.get(f.package === undefined ? f.name : Identifier.toString(Identifier.make(f.name, f.package)));
 					if(declared === undefined) {
 						continue;
 					}

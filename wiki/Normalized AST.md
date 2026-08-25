@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-08-24, 16:09:39 UTC (v2.14.3, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-08-25, 11:40:17 UTC (v2.14.4, R v4.6.1), please do not edit directly._
 
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST),
@@ -54,7 +54,7 @@ x"])
 
 ```
 	
-(The analysis required _0.7 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+(The analysis required _0.6 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 
 
 
@@ -125,11 +125,16 @@ click Record href "https://github.com/flowr-analysis/flowr/tree/main/src/util/re
 class string{
     <<variable>>
 }
-click string href "https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts#L92" ""
-class domain{
-    <<variable>>
+click string href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/value-semantics.ts#L19" "The abstract semantics of string constants, such as #96;#34;id#34;#96;"
+class ConstantSemantics~Domain extends StateDomain~{
+    <<interface>>
+    string(state#58; Domain, vertex#58; DataflowGraphVertexValue, ctx#58; AbsintContext#60;Domain#62;, value#58; RStringValue) void
+    number(state#58; Domain, vertex#58; DataflowGraphVertexValue, ctx#58; AbsintContext#60;Domain#62;, value#58; RNumberValue) void
+    logical(state#58; Domain, vertex#58; DataflowGraphVertexValue, ctx#58; AbsintContext#60;Domain#62;, value#58; boolean) void
+    null(state#58; Domain, vertex#58; DataflowGraphVertexValue, ctx#58; AbsintContext#60;Domain#62;, value#58; #34;NULL#34;) void
+    symbol(state#58; Domain, vertex#58; DataflowGraphVertexValue, ctx#58; AbsintContext#60;Domain#62;, value#58; Identifier) void
 }
-click domain href "https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts#L90" ""
+click ConstantSemantics href "https://github.com/flowr-analysis/flowr/tree/main/src/abstract-interpretation/value-semantics.ts#L17" "The abstract semantics of the different types of R constants."
 class unknown{
     <<variable>>
 }
@@ -217,22 +222,22 @@ class Leaf{
     <<type>>
 }
 style Leaf opacity:.35,fill:#FAFAFA
-click Leaf href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L143" ""
+click Leaf href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L145" ""
 class LeafRType{
     <<type>>
 }
 style LeafRType opacity:.35,fill:#FAFAFA
-click LeafRType href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L139" ""
+click LeafRType href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L141" ""
 class LeafVertexType{
     <<type>>
 }
 style LeafVertexType opacity:.35,fill:#FAFAFA
-click LeafVertexType href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L140" ""
+click LeafVertexType href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L142" ""
 class LeafSpecial~F extends FlowrFilter = FlowrFilter~{
     <<type>>
 }
 style LeafSpecial opacity:.35,fill:#FAFAFA
-click LeafSpecial href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L141" ""
+click LeafSpecial href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L143" ""
 class RLineDirective~Info = NoInfo~{
     <<interface>>
     type#58; RType.LineDirective
@@ -370,7 +375,7 @@ RAstNodeBase <|-- RExpressionList
 MergeableRecord .. RAstNodeBase
 Record .. MergeableRecord
 string .. MergeableRecord
-domain <|-- string
+ConstantSemantics <|-- string
 unknown .. MergeableRecord
 Info .. RNode
 LogLevel <|-- Info
@@ -1659,7 +1664,7 @@ The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang
 
 
 > [!TIP]
-> When working with names and identifiers, consider using the utilities provided with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L43"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> object.
+> When working with names and identifiers, consider using the utilities provided with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L48"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> object.
 
 
 ### Visitors

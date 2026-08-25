@@ -18,7 +18,7 @@ import { Identifier } from '../../dataflow/environments/identifier';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { removeRQuotes } from '../../r-bridge/retriever';
 import { BuiltInIndex, callFnProps  } from '../../dataflow/environments/query-fn-props';
-import { CallProp, ImpureProps } from '../../dataflow/environments/built-in-props';
+import { CallProp, CallProps, ImpureProps } from '../../dataflow/environments/built-in-props';
 import { RGroupGenerics, s3GroupGenericMembers } from '../../dataflow/environments/group-generics';
 import { EmptyArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { DataflowInformation } from '../../dataflow/info';
@@ -237,8 +237,9 @@ function doesMoreThanCompute(id: NodeId, df: Pick<DataflowInformation, 'graph' |
 	if(!FunctionCallVertex.is(df.graph.getVertex(id))) {
 		return false;
 	}
-	const worthKeeping = id === binds ? ImpureProps & ~CallProp.Scope : ImpureProps;
-	return ((callFnProps(id, df)?.props ?? 0) & worthKeeping) !== 0;
+	/* what a call that binds the very name in question does to that name is not what keeps it alive */
+	const worthKeeping = id === binds ? { props: ImpureProps.props & ~CallProp.Scope, tags: ImpureProps.tags } : ImpureProps;
+	return CallProps.hasAny(callFnProps(id, df), worthKeeping);
 }
 
 function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInformation, 'graph' | 'environment'>, ast: NormalizedAst): LintQuickFixRemove[] | undefined {

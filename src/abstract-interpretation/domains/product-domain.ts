@@ -7,7 +7,7 @@ import { type AbstractProduct, PartialProductDomain } from './partial-product-do
  * The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as mapping every sub abstract domain to Top.
  * @template Product - Type of the abstract product of the product domain mapping property names to abstract domains
  */
-export abstract class ProductDomain<Product extends Required<AbstractProduct>>
+export abstract class ProductDomain<Product extends AbstractProduct>
 	extends PartialProductDomain<Product> {
 
 	constructor(value: Product) {
@@ -20,7 +20,7 @@ export abstract class ProductDomain<Product extends Required<AbstractProduct>>
 		const result = {} as Product;
 
 		for(const key in this.domain) {
-			result[key] = this.domain[key]?.top() as typeof result[typeof key];
+			result[key] = this.domain[key]?.top();
 		}
 		return this.create(result);
 	}

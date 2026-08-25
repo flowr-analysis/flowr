@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-08-22, 10:54:41 UTC (v2.14.2, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-08-25, 08:02:48 UTC (v2.14.4, R v4.5.0), please do not edit directly._
 
 
 This wiki page provides an overview of the inner workings of _flowR_.
@@ -19,7 +19,7 @@ and the [Contributing Guidelines](https://github.com/flowr-analysis/flowr/tree/m
 > 
 > ```shell
 > $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-> flowR repl v2.14.2, R v4.6.1 (r-shell engine)
+> flowR repl v2.14.4, R v4.5.0 (r-shell engine)
 > R> :parse "x <- 1; print(x)"
 > ```
 > 
@@ -280,7 +280,7 @@ To explore these steps, let's use the REPL with the (very simple and contrived) 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.14.2, R v4.6.1 (r-shell engine)
+flowR repl v2.14.4, R v4.5.0 (r-shell engine)
 R> :parse "x <- 1; print(x)"
 ```
 
@@ -358,7 +358,7 @@ x"])
 
 ```
 	
-(The analysis required _2.6 ms_ (including parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+(The analysis required _2.4 ms_ (including parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 
 
 
@@ -423,7 +423,7 @@ print`"]
 ```
 
 	
-(The analysis required _2.8 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _2.3 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
@@ -456,7 +456,7 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 > 
 > ```shell
 > $ docker run -it --rm eagleoutice/flowr --default-engine tree-sitter # or npm run flowr -- --default-engine tree-sitter
-> flowR repl v2.14.2, R grammar v14 (tree-sitter engine)
+> flowR repl v2.14.4, R grammar v14 (tree-sitter engine)
 > R> :parse "x <- 1; print(x)"
 > ```
 > 
@@ -531,7 +531,7 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 > 
 > ```
 > 	
-> (The analysis required _0.5 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+> (The analysis required _0.6 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 > 
 > 
 > 
@@ -596,7 +596,7 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 > ```
 > 
 > 	
-> (The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+> (The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 > 
 > 
 > 
@@ -1283,21 +1283,23 @@ by mapping function names to <a href="https://github.com/flowr-analysis/flowr/tr
 There you can find functions like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-access.ts#L52"><code><span title="Processes different types of access operations.  Example:   a[i] a$foo a[[i]] a@foo  ">processAccess</span></code></a> which handles the (subset) access to a variable,
 or <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-for-loop.ts#L38"><code><span title="Processes a for-loop call: for(<variable> in <vector>) <body> desugared as:   for(<variable>, <vector>, <body>)  ">processForLoop</span></code></a> which handles the primitive for loop construct (whenever it is not overwritten).
 
-Besides the processor, an entry states what the function does with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L217"><code><span title="Semantics of a built-in that hold no matter which processor handles the call. The remaining facts already have a home: the exit behavior in cfg, whether flowR can fold the call in the evalHandler of the definition, and the fallback for everything unmodelled in hasUnknownSideEffects.">BuiltInFnInfo</span></code></a> -- see
+Besides the processor, an entry states what the function does with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L361"><code><span title="Semantics of a built-in that hold no matter which processor handles the call. The remaining facts already have a home: the exit behavior in cfg, whether flowR can fold the call in the evalHandler of the definition, and the fallback for everything unmodelled in hasUnknownSideEffects.">BuiltInFnInfo</span></code></a> -- see
 [Labeling the Built-Ins](#labeling-the-built-ins) below for the labels it may carry.
 
 #### Labeling the Built-Ins
 
-Besides the processor, an entry says what the function *is*, in two label vocabularies:
+Besides the processor, an entry says what the function *is*, in three label vocabularies:
 
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L47"><code><span title="What the call as a whole does, as a bitmask. The resource bits ( CallProp.File and its neighbors) say where the call gets its data from, which is what InputProps collects.">CallProp</span></code></a> labels the call as a whole (`props`): whether it is pure, whether it throws, whether it
-  touches the file system, whether it dispatches, and so on. `print` is `Invisible | Generic | Prints`; R's
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L47"><code><span title="The properties of the behavior of a call, as a bitmask.">CallProp</span></code></a> labels how the called code behaves (`props`, a bitfield): whether it is pure, whether it
+  throws, whether it returns invisibly, whether it dispatches, what it does to the frames around it. R's
   primitive generics (`+`, `sin`, `length`, ...) are `Pure | Generic`, and as they have no R body, the store is
   the only place that can say they dispatch.
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L7"><code><span title="What a single argument of a call is used for, as a bitmask.">ArgProp</span></code></a> labels each parameter (`sig`), in the order R declares them: which one carries the data,
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L84"><code><span title="The semantic properties of the behavior of a call.">SemanticCallTag</span></code></a> labels what semantic a call has (`tags`, an array): which resource it accesses,
+  what it produces, what it is used for. `print` is `Invisible | Generic` with `[Prints]`.
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L8"><code><span title="What a single argument of a call is used for, as a bitmask.">ArgProp</span></code></a> labels each parameter (`sig`), in the order R declares them: which one carries the data,
   which one only selects a behavior, which one names a file, which one is called as a function.
 
-For several analyses the labels are all they know about a call: <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/query-fn-props.ts#L209"><code><span title="The one place to ask what flowR's built-ins are: _every pure function_, _every call that reads a file_, _every parameter that names a resource_, _everything the value solver can fold_. Each answer is derived from the BuiltInFnInfo the definitions carry, so a built-in that states its CallProp bits and its FnSig is found here without anything else being registered. Build one over the DefaultBuiltinC...">BuiltInIndex</span></code></a> turns them into the
+For several analyses the labels are all they know about a call: <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/query-fn-props.ts#L211"><code><span title="The one place to ask what flowR's built-ins are: _every pure function_, _every call that reads a file_, _every parameter that names a resource_, _everything the value solver can fold_. Each answer is derived from the BuiltInFnInfo the definitions carry, so a built-in that states its CallProp bits and its FnSig is found here without anything else being registered. Build one over the DefaultBuiltinC...">BuiltInIndex</span></code></a> turns them into the
 questions callers ask over and over (`with`, `without`, `params`), which is how the
 [input-sources query](https://github.com/flowr-analysis/flowr/wiki/Query-API) knows which functions bring in data of their own, and how
 [linting rules](https://github.com/flowr-analysis/flowr/wiki/Linter) like *seeded randomness* find every call drawing from the RNG without
@@ -1310,11 +1312,21 @@ So `lapply` is pure on its own but runs what it is handed, and says which argume
 { type: 'function', names: Identifier.fromAll(PkgName.Base, ['lapply', 'sapply', 'vapply']),
   processor: BuiltInProcName.Apply,
   config:    { indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true,
-               props: CallProp.MayPure, sig: [['X', ArgProp.Value], ['FUN', ArgProp.Callee]] } }
+               props: CallProp.MayPure, sig: [['X', ArgProp.Value], ['FUN', ArgProp.Callee], ['...', ArgProp.Value]] } }
 ```
 
 
-The two tables below are generated from the configuration itself, so they always list every label that exists,
+while `read.csv` states what it does instead:
+
+
+```ts
+{ type: 'function', names: [Identifier.from(['read.csv', PkgName.Utils])],
+  processor: BuiltInProcName.DefaultReadAllArgs,
+  config:    { tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: [['file', ArgProp.Resource], ['header', ArgProp.Flag], ...] } }
+```
+
+
+The three tables below are generated from the configuration itself, so they always list every label that exists,
 what it means, and how many built-ins carry it.
 
 
@@ -1332,46 +1344,56 @@ function calls over to the function calling it).
 | `Invisible` | 92 | returns invisibly, so the result is not auto-printed |
 | `Generic`<sup>db</sup> | 131 | dispatches on the class of an argument (S3, S4, or S7), a group generic like `+` on either operand |
 | `Scope` | 59 | binds, rebinds, or removes names outside of its own frame, like `assign` or `library` |
-| `Random` | 28 | draws from the random number generator, or sets its state (stated instead of `NonDet`) |
 | `Ambient` | 16 | depends on ambient state like the clock, the locale, environment variables, or global options (stated instead of `NonDet`) |
-| `File` | 89 | touches the file system |
-| `TempFile` | 8 | produces a temporary path; on its own this touches no file system, so a call that also does states `File` too |
-| `Network` | 23 | always reaches the network, like `curl::curl_download`. Calls that only do so for some arguments, like `read.csv` of a URL, are left to the `network-functions` rule, which decides that per call site. |
-| `Process` | 6 | runs a system command |
+| `Configures` | 8 | sets ambient state later calls read back: the working directory, environment variables, options, the locale, the RNG seed. The counterpart of CallProp.Ambient; a call doing both states both. |
 | `Ffi` | 7 | calls native code through the foreign function interface, like `.Call` |
 | `Lang` | 47 | produces a language object, like `quote` or `deparse` |
-| `User` | 44 | asks the user, like `readline` or a file chooser |
-| `Graphics` | 519 | draws on a graphics device |
-| `Database` | 2 | talks to a database |
-| `Reads` | 26 | reads the resource its `Resource` arguments name |
-| `Writes` | 72 | writes the resource its `Resource` arguments name |
-| `Prints` | 10 | may emit to standard output, like `print` or a `cat` without a `file`, and follows a `sink` when one is active |
-| `Narrows` | 38 | the result is bounded no matter what flows in: a count, an index, a logical, or one of the values of the argument marked ArgProp.Bounds. So nothing an argument carries reaches the result, which is what lets the input-sources query stop tracing at `length(x)` or `match.arg(arg, choices)`. |
-| `Configures` | 8 | sets ambient state later calls read back: the working directory, environment variables, options, the locale, the RNG seed. The counterpart of CallProp.Ambient; a call doing both states both. |
-| `Closes` | 7 | ends what an opener started: a graphics device, a connection, a sink. Narrower than CallProp.Graphics. |
-| `Glob` | 4 | yields the paths it matches at run time rather than one it was handed (`list.files`, `Sys.glob`); empty is an answer |
-| `CommandLine` | 1 | hands back what the program was invoked with, as `commandArgs` and the option parsers built on it do |
-| `Opens` | 13 | hands back a handle the program is expected to close again, like `file` or `DBI::dbConnect` |
-| `Statistics` | 66 | performs a statistical test, so its result is the test statistic a reader is meant to see (`t.test`, `anova`) |
-| `Deprecated` | 135 | marked for removal, with a better alternative available, like `dplyr::funs` |
-
-Most of these combine freely. The exceptions are <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L137"><code><span title="Which CallProp bits rule each other out, as [bit, everything stating it forbids]. A definition that carries the left bit must carry none of the right ones; a test checks the DefaultBuiltinConfig (and any configured built-ins) against this. Every other pair of bits combines freely.">ExclusiveCallProps</span></code></a>, which a test checks the whole
-configuration against:
-
-* `Pure` rules out `MayPure`, `Scope`, `NonDet`, `Random`, `Ambient`, `File`, `TempFile`, `Network`, `Process`, `Ffi`, `Lang`, `User`, `Graphics`, `Database`, `Reads`, `Writes`, `Prints`, `Configures`, `Closes`, `CommandLine`, `Opens`
-* `NonDet` rules out `Random`, `Ambient`
-* `Random` rules out `Ambient`
-
-Two pairs read like refinements but are not: `TempFile` does not imply `File` (making up a path touches no file
-system, so a call doing both states both), and `Reads`/`Writes` say what happens to the resource an
-`ArgProp.Resource` argument names, so they only ever appear next to a resource bit.
 
 </details>
 
 
+<details><summary>What each semantic property means</summary>
+
+
+
+| Semantic property | Built-ins | Meaning |
+| :-- | --: | :-- |
+| `Random` | 28 | draws from the random number generator, or sets its state (stated instead of `NonDet`) |
+| `File` | 89 | touches the file system |
+| `TempFile` | 8 | produces a temporary path; on its own this touches no file system, so a call that also does states `File` too |
+| `Network` | 23 | always reaches the network, like `curl::curl_download`. Calls that only do so for some arguments, like `read.csv` of a URL, are left to the `network-functions` rule, which decides that per call site. |
+| `Process` | 6 | runs a system command |
+| `User` | 44 | asks the user, like `readline` or a file chooser |
+| `CommandLine` | 1 | hands back what the program was invoked with, as `commandArgs` and the option parsers built on it do |
+| `Glob` | 4 | yields the paths it matches at run time rather than one it was handed (`list.files`, `Sys.glob`); empty is an answer |
+| `Graphics` | 519 | draws on a graphics device |
+| `Database` | 2 | talks to a database |
+| `Opens` | 13 | hands back a handle the program is expected to close again, like `file` or `DBI::dbConnect` |
+| `Closes` | 7 | ends what an opener started: a graphics device, a connection, a sink. Narrower than SemanticCallTag.Graphics. |
+| `Reads` | 26 | reads the resource its `Resource` arguments name |
+| `Writes` | 72 | writes the resource its `Resource` arguments name |
+| `Prints` | 10 | may emit to standard output, like `print` or a `cat` without a `file`, and follows a `sink` when one is active |
+| `Narrows` | 38 | the result is bounded no matter what flows in: a count, an index, a logical, or one of the values of the argument marked ArgProp.Bounds. So nothing an argument carries reaches the result, which is what lets the input-sources query stop tracing at `length(x)` or `match.arg(arg, choices)`. |
+| `Statistics` | 66 | performs a statistical test, so its result is the test statistic a reader is meant to see (`t.test`, `anova`) |
+| `Deprecated` | 135 | marked for removal, with a better alternative available, like `dplyr::funs` |
+
+Two pairs read like refinements but are not: `TempFile` does not imply `File` (making up a path touches no file
+system, so a call doing both states both), and `Reads`/`Writes` say what happens to the resource an
+`ArgProp.Resource` argument names, so they only ever appear next to a resource property.
+
+</details>
+
+Most of these properties combine freely. The exceptions are <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L175"><code><span title="Which properties rule each other out, as [property, everything stating it forbids]. A definition that carries the left one must carry none of the right ones; a test checks the DefaultBuiltinConfig (and any configured built-ins) against this. Every other pair combines freely.">ExclusiveCallProps</span></code></a>, which a
+test checks the whole configuration against:
+
+* `Pure` rules out `MayPure`, `Scope`, `NonDet`, `Ambient`, `Configures`, `Ffi`, `Lang`, `Random`, `File`, `TempFile`, `Network`, `Process`, `User`, `CommandLine`, `Graphics`, `Database`, `Opens`, `Closes`, `Reads`, `Writes`, `Prints`
+* `NonDet` rules out `Ambient`, `Random`
+* `Random` rules out `Ambient`
+
+
 <details><summary>What each argument role means</summary>
 
-A role is stated per parameter in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L183"><code><span title="The formals of a built-in, in the order they are declared in, each with what its argument is used for. A ... entry stands for every argument from the position it appears at, and the entries behind it are matched by their full name only.">FnSig</span></code></a> of a built-in, in the order R declares
+A role is stated per parameter in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L325"><code><span title="The formals of a built-in, in the order they are declared in, each with what its argument is used for. A ... entry stands for every argument from the position it appears at, and the entries behind it are matched by their full name only.">FnSig</span></code></a> of a built-in, in the order R declares
 them, with `...` covering every position from where it appears. The count is how many built-ins have at least one
 parameter in that role.
 
@@ -1387,7 +1409,7 @@ parameter in that role.
 | `Nse` | 6 | quoted or evaluated in another frame, like `expr` in `quote(expr)` |
 | `Callee` | 17 | called as a function, like `FUN` in `lapply(x, FUN)` |
 | `Presence` | 1 | only whether it was supplied matters, as with `missing()` |
-| `Bounds` | 1 | the result is one of this argument's values, like `choices` in `match.arg(arg, choices)`. The bounding argument of a CallProp.Narrows call; without one such a call yields a value of its own making. |
+| `Bounds` | 1 | the result is one of this argument's values, like `choices` in `match.arg(arg, choices)`. The bounding argument of a SemanticCallTag.Narrows call; without one such a call yields a value of its own making. |
 | `Atomic` | 16 | only atomic data works here, never a closure, as with `e1` in `e1 > e2`. A bare symbol in such an argument therefore names a variable even when a function of that name is in scope. |
 | `Handle` | 4 | the open handle the call acts on, like `con` in `close(con)` |
 
@@ -1515,7 +1537,7 @@ You can explore the slicing using the REPL with the <span title="Description (Re
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.14.2, R grammar v14 (tree-sitter engine)
+flowR repl v2.14.4, R grammar v14 (tree-sitter engine)
 R> :query @static-slice (12@product) file://test/testfiles/example.R
 ```
 
@@ -1528,7 +1550,7 @@ product <- 1
 N <- 10
 for(i in 1:(N-1)) product <- product  i
 product
-All queries together required ≈4 ms (1ms accuracy, total 5 ms)
+All queries together required ≈3 ms (1ms accuracy, total 3 ms)
 ```
 
 

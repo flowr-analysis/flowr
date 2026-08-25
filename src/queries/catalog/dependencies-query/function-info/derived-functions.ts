@@ -1,6 +1,6 @@
 import type { FunctionInfo } from './function-info';
-import type { BuiltInFnInfo, CallProps } from '../../../../dataflow/environments/built-in-props';
-import { ArgProp } from '../../../../dataflow/environments/built-in-props';
+import type { BuiltInFnInfo, PropSelector } from '../../../../dataflow/environments/built-in-props';
+import { ArgProp, CallProps } from '../../../../dataflow/environments/built-in-props';
 import { DefaultBuiltinConfig } from '../../../../dataflow/environments/default-builtin-config';
 import { builtInNames } from '../../../../dataflow/environments/query-fn-props';
 import { Identifier } from '../../../../dataflow/environments/identifier';
@@ -18,12 +18,12 @@ function linkTargets(f: FunctionInfo): string[] {
  * a default, ...) have to be written down in the category itself. Names in `except` stay with whoever
  * wrote them down.
  */
-export function functionInfosFromProps(props: CallProps, except: readonly FunctionInfo[]): FunctionInfo[] {
+export function functionInfosFromProps(props: PropSelector, except: readonly FunctionInfo[]): FunctionInfo[] {
 	const taken = new Set(except.flatMap(f => [f.name, ...linkTargets(f)]));
 	const found: FunctionInfo[] = [];
 	for(const d of DefaultBuiltinConfig) {
 		const info = d.type !== 'constant' ? (d as { config?: BuiltInFnInfo }).config : undefined;
-		if(info?.props === undefined || (info.props & props) !== props || info.sig === undefined) {
+		if(info?.sig === undefined || !CallProps.hasAny(info) || !CallProps.hasAll(info, props)) {
 			continue;
 		}
 		const argIdx = info.sig.findIndex(([, p]) => (p & ArgProp.Resource) !== 0);

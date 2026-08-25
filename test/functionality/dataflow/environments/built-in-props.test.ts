@@ -3,15 +3,7 @@ import type { DecodedFunction } from '../../../../src/project/sigdb/decode';
 import type { PackageSignatureSource } from '../../../../src/project/sigdb/reader';
 import type { BuiltInDefinitions, BuiltInFunctionDefinition } from '../../../../src/dataflow/environments/built-in-config';
 import { getDefaultBuiltInDefinitions } from '../../../../src/dataflow/environments/built-in-config';
-import type { BuiltInFnInfo, CallProps } from '../../../../src/dataflow/environments/built-in-props';
-import {
-	ArgProp,
-	CallProp,
-	ExclusiveCallProps,
-	FnSig,
-	fnInfoFromSignature,
-	InputProps
-} from '../../../../src/dataflow/environments/built-in-props';
+import { ArgProp, CallProp, CallProps, ExclusiveCallProps, fnInfoFromSignature, FnSig, InputProps, SemanticCallTag, type BuiltInFnInfo, type StatedProps } from '../../../../src/dataflow/environments/built-in-props';
 import { builtInNames, BuiltInIndex, inferFnProps, queryFnProps } from '../../../../src/dataflow/environments/query-fn-props';
 import { DefaultBuiltinConfig, WrittenBuiltinDefinitions } from '../../../../src/dataflow/environments/default-builtin-config';
 import { Identifier, PkgName } from '../../../../src/dataflow/environments/identifier';
@@ -25,7 +17,7 @@ const TestDefinitions = [
 	{ type:      'function', names:     [Identifier.from(['tally', PkgName.Base])], processor: BuiltInProcName.Default,
 		config:    { props: CallProp.Pure, sig: [['x', ArgProp.Value], ['...', ArgProp.Value | ArgProp.Forced], ['na.rm', ArgProp.Flag]] } },
 	{ type:      'function', names:     [Identifier.from(['fetch', PkgName.Base])], processor: BuiltInProcName.Default,
-		config:    { props: CallProp.Network | CallProp.Writes, sig: [['url', ArgProp.Resource]] } },
+		config:    { tags: [SemanticCallTag.Network, SemanticCallTag.Writes], sig: [['url', ArgProp.Resource]] } },
 	{ type: 'function', names: [Identifier.from(['plain', PkgName.Base])], processor: BuiltInProcName.Default, config: {} },
 	{ type: 'replacement', names: [Identifier.from(['dim', PkgName.Base])], suffixes: ['<-'], config: { readIndices: true, props: CallProp.Scope } }
 ] as const satisfies BuiltInDefinitions;
@@ -46,15 +38,16 @@ const TestSignatures = {
 } as unknown as PackageSignatureSource;
 
 /** one instance of each kind of claim the configuration makes, so a name that loses its props shows up */
-const ExpectedLabels: readonly (readonly [Identifier, CallProps])[] = [
-	[Identifier.from(['sum', PkgName.Base]), CallProp.Pure | CallProp.Generic],
-	[Identifier.from(['nchar', PkgName.Base]), CallProp.Pure | CallProp.Narrows],
-	[Identifier.from(['lapply', PkgName.Base]), CallProp.MayPure],
-	[Identifier.from(['print', PkgName.Base]), CallProp.Invisible | CallProp.Generic | CallProp.Prints],
-	[Identifier.from(['stop', PkgName.Base]), CallProp.Throws],
-	[Identifier.from(['rm', PkgName.Base]), CallProp.Invisible | CallProp.Scope],
-	[Identifier.from(['set.seed', PkgName.Base]), CallProp.Invisible | CallProp.Random | CallProp.Configures],
-	[Identifier.from(['png', PkgName.GrDevices]), CallProp.Invisible | CallProp.Graphics | CallProp.File | CallProp.Writes]
+const ExpectedLabels: readonly (readonly [Identifier, StatedProps])[] = [
+	[Identifier.from(['sum', PkgName.Base]), { props: CallProp.Pure | CallProp.Generic }],
+	[Identifier.from(['nchar', PkgName.Base]), { props: CallProp.Pure, tags: [SemanticCallTag.Narrows] }],
+	[Identifier.from(['lapply', PkgName.Base]), { props: CallProp.MayPure }],
+	[Identifier.from(['print', PkgName.Base]), { props: CallProp.Invisible | CallProp.Generic, tags: [SemanticCallTag.Prints] }],
+	[Identifier.from(['stop', PkgName.Base]), { props: CallProp.Throws }],
+	[Identifier.from(['rm', PkgName.Base]), { props: CallProp.Invisible | CallProp.Scope }],
+	[Identifier.from(['set.seed', PkgName.Base]), { props: CallProp.Invisible | CallProp.Configures, tags: [SemanticCallTag.Random] }],
+	[Identifier.from(['png', PkgName.GrDevices]), { props: CallProp.Invisible,
+		tags:  [SemanticCallTag.Graphics, SemanticCallTag.File, SemanticCallTag.Writes] }]
 ];
 
 /** and the shapes a signature comes in */
@@ -98,11 +91,11 @@ describe('Built-in properties', () => {
 	describe('Querying the definitions', () => {
 		const custom = BuiltInIndex.of(TestDefinitions);
 		test(label('by the props they carry', ['name-normal'], ['other']), () => {
-			assert.deepStrictEqual(custom.with(CallProp.Network).map(Identifier.toString), ['base::fetch']);
+			assert.deepStrictEqual(custom.with(SemanticCallTag.Network).map(Identifier.toString), ['base::fetch']);
 			assert.deepStrictEqual(custom.with(CallProp.Pure | CallProp.Scope).map(Identifier.toString),
 				['base::tally', 'base::dim<-']);
-			assert.deepStrictEqual(custom.withAll(CallProp.Network | CallProp.Writes).map(Identifier.toString), ['base::fetch']);
-			assert.deepStrictEqual(custom.withAll(CallProp.Network | CallProp.Pure).map(Identifier.toString), []);
+			assert.deepStrictEqual(custom.withAll([SemanticCallTag.Network, SemanticCallTag.Writes]).map(Identifier.toString), ['base::fetch']);
+			assert.deepStrictEqual(custom.withAll([SemanticCallTag.Network, CallProp.Pure]).map(Identifier.toString), []);
 		});
 		test(label('by the props they do not carry', ['name-normal'], ['other']), () => {
 			/* `plain` states no props at all, so it is in neither answer */
@@ -122,8 +115,9 @@ describe('Built-in properties', () => {
 			const pure = new Set(index.pure.map(Identifier.toString));
 			assert.isTrue(pure.has('base::sum'), 'sum is pure');
 			assert.isFalse(pure.has('base::tempfile'), 'tempfile is not');
-			assert.isTrue(index.with(CallProp.TempFile).some(i => Identifier.getName(i) === 'tempfile'));
-			assert.strictEqual(index.propsOf('nchar'), CallProp.Pure | CallProp.Narrows);
+			assert.isTrue(index.with(SemanticCallTag.TempFile).some(i => Identifier.getName(i) === 'tempfile'));
+			assert.strictEqual(index.propsOf('nchar'), CallProp.Pure);
+			assert.deepStrictEqual(index.get('nchar')?.tags, [SemanticCallTag.Narrows]);
 		});
 		test(label('the value solver folds what the definitions hand it', ['name-normal'], ['other']), () => {
 			const folding = new Set(BuiltInIndex.default().folding.map(Identifier.getName));
@@ -133,8 +127,9 @@ describe('Built-in properties', () => {
 		});
 		test(label('the registered built-ins answer just as their definitions do', ['name-normal'], ['other']), () => {
 			const registered = BuiltInIndex.ofEnvironment(getDefaultBuiltInDefinitions());
-			assert.strictEqual(registered.propsOf('nchar'), CallProp.Pure | CallProp.Narrows);
-			assert.isTrue(registered.with(CallProp.Process).some(i => Identifier.getName(i) === 'system'));
+			assert.strictEqual(registered.propsOf('nchar'), CallProp.Pure);
+			assert.deepStrictEqual(registered.get('nchar')?.tags, [SemanticCallTag.Narrows]);
+			assert.isTrue(registered.with(SemanticCallTag.Process).some(i => Identifier.getName(i) === 'system'));
 		});
 	});
 
@@ -162,8 +157,8 @@ describe('Built-in properties', () => {
 		test(label('it fills in the parameters and the properties it knows', ['name-normal'], ['other']), () => {
 			const info = queryFnProps(Identifier.from(['known', PkgName.Base]), { signatures: TestSignatures });
 			assert.deepStrictEqual(info?.sig, [['x', ArgProp.Forced], ['...', 0]]);
-			assert.strictEqual(info?.props, CallProp.Throws | CallProp.Process,
-				'can-throw is read off, `system` carries over, exported and higher-order have no counterpart');
+			assert.strictEqual(info?.props, CallProp.Throws, 'can-throw is read off, exported and higher-order have no counterpart');
+			assert.deepStrictEqual(info?.tags, [SemanticCallTag.Process], '`system` carries over');
 		});
 		test(label('what the built-ins state wins, the rest is filled up', ['name-normal'], ['other']), () => {
 			const info = queryFnProps(Identifier.from(['known', PkgName.Base]), {
@@ -171,8 +166,8 @@ describe('Built-in properties', () => {
 				signatures: TestSignatures
 			});
 			assert.deepStrictEqual(info?.sig, [['y', ArgProp.Value]], 'the declared signature is kept');
-			assert.strictEqual(info?.props, CallProp.Pure | CallProp.Throws | CallProp.Process,
-				'the properties are joined');
+			assert.strictEqual(info?.props, CallProp.Pure | CallProp.Throws, 'the properties are joined');
+			assert.deepStrictEqual(info?.tags, [SemanticCallTag.Process], 'the properties are joined');
 		});
 		test(label('a name the database does not have is left alone', ['name-normal'], ['other']), () => {
 			assert.isUndefined(queryFnProps(Identifier.from(['unknown', PkgName.Base]), { signatures: TestSignatures }));
@@ -184,9 +179,11 @@ describe('Built-in properties', () => {
 
 	describe('What the configuration states', () => {
 		const builtIns = getDefaultBuiltInDefinitions();
-		test.each(ExpectedLabels.map(([id, props]) => [Identifier.toString(id), id, props] as const))(
-			'%s', (_name, id, props) => {
-				assert.strictEqual(queryFnProps(id, { builtIns })?.props, props);
+		test.each(ExpectedLabels.map(([id, stated]) => [Identifier.toString(id), id, stated] as const))(
+			'%s', (_name, id, stated) => {
+				const info = queryFnProps(id, { builtIns });
+				assert.strictEqual(info?.props, stated.props ?? 0);
+				assert.deepStrictEqual(info?.tags, stated.tags);
 			});
 		test.each(ExpectedSigs.map(([id, sig]) => [Identifier.toString(id), id, sig] as const))(
 			'signature of %s', (_name, id, sig) => {
@@ -198,29 +195,30 @@ describe('Built-in properties', () => {
 		const withInfo = DefaultBuiltinConfig
 			.flatMap(d => {
 				const info = d.type !== 'constant' ? (d as { config?: BuiltInFnInfo }).config : undefined;
-				return info?.props === undefined && info?.sig === undefined ? [] : [[builtInNames(d), info] as const];
+				return info === undefined || (!CallProps.hasAny(info) && info.sig === undefined) ? [] : [[builtInNames(d), info] as const];
 			});
 		test(label('nothing is pure and an input at the same time', ['name-normal'], ['other']), () => {
-			for(const [names, { props = 0 }] of withInfo) {
-				assert.strictEqual(props & (CallProp.Pure | CallProp.MayPure) && props & InputProps, 0,
+			for(const [names, info] of withInfo) {
+				assert.isFalse(CallProps.hasAny(info, [CallProp.Pure, CallProp.MayPure]) && CallProps.hasAny(info, InputProps),
 					`${names.map(Identifier.toString).join(', ')} claims both`);
 			}
 		});
 		test(label('no entry states two props that rule each other out', ['name-normal'], ['other']), () => {
-			for(const [names, { props = 0 }] of withInfo) {
-				for(const [bit, forbidden] of ExclusiveCallProps) {
-					if((props & bit) !== 0) {
-						assert.strictEqual(props & forbidden, 0,
-							`${names.map(Identifier.toString).join(', ')} states ${CallProp[bit]} together with what it rules out`);
+			for(const [names, info] of withInfo) {
+				for(const [prop, forbidden] of ExclusiveCallProps) {
+					if(CallProps.hasAny(info, prop)) {
+						assert.isTrue(!CallProps.hasAny(info, forbidden),
+							`${names.map(Identifier.toString).join(', ')} states ${CallProps.names(prop).join(', ')} together with what it rules out`);
 					}
 				}
 			}
 		});
 		test(label('a named resource comes with an effect that uses it', ['name-normal'], ['other']), () => {
-			const uses = CallProp.File | CallProp.TempFile | CallProp.Network | CallProp.Process | CallProp.Reads | CallProp.Writes;
-			for(const [names, { props = 0, sig = [] }] of withInfo) {
-				if(sig.some(([, p]) => (p & ArgProp.Resource) !== 0)) {
-					assert.notStrictEqual(props & uses, 0, `${names.map(Identifier.toString).join(', ')} names a resource but does nothing with it`);
+			const uses = [SemanticCallTag.File, SemanticCallTag.TempFile, SemanticCallTag.Network, SemanticCallTag.Process,
+				SemanticCallTag.Reads, SemanticCallTag.Writes];
+			for(const [names, info] of withInfo) {
+				if((info.sig ?? []).some(([, p]) => (p & ArgProp.Resource) !== 0)) {
+					assert.isTrue(CallProps.hasAny(info, uses), `${names.map(Identifier.toString).join(', ')} names a resource but does nothing with it`);
 				}
 			}
 		});
@@ -232,9 +230,9 @@ describe('Built-in properties', () => {
 			}
 		});
 		test(label('touching a file says in which direction', ['name-normal'], ['other']), () => {
-			for(const [names, { props = 0 }] of withInfo) {
-				if((props & CallProp.File) !== 0) {
-					assert.notStrictEqual(props & (CallProp.Reads | CallProp.Writes), 0,
+			for(const [names, info] of withInfo) {
+				if(CallProps.hasAny(info, SemanticCallTag.File)) {
+					assert.isTrue(CallProps.hasAny(info, [SemanticCallTag.Reads, SemanticCallTag.Writes]),
 						`${names.map(Identifier.toString).join(', ')} touches a file but states neither Reads nor Writes`);
 				}
 			}
@@ -269,6 +267,7 @@ describe('Built-in properties', () => {
 				const before = written.get(name) as typeof def;
 				const info = (d: typeof def) => (d as { config?: BuiltInFnInfo }).config;
 				assert.deepStrictEqual({ ...info(def), props: undefined }, { ...info(before), props: undefined }, name);
+				assert.deepStrictEqual(info(def)?.tags, info(before)?.tags);
 				assert.deepStrictEqual((def as { processor?: string }).processor, (before as { processor?: string }).processor, name);
 				assert.deepStrictEqual((def as { evalHandler?: string }).evalHandler, (before as { evalHandler?: string }).evalHandler, name);
 				const gained = (info(def)?.props ?? 0) & ~(info(before)?.props ?? 0);
@@ -282,7 +281,8 @@ describe('Built-in properties', () => {
 		test(label('what a package function calls carries over to it', ['name-normal'], ['other']), () => {
 			const info = inferFnProps(TestSignatures, 'base', 'known');
 			/* `system` runs a command, `paste` is pure and hands nothing on */
-			assert.strictEqual(info?.props, CallProp.Throws | CallProp.Process);
+			assert.strictEqual(info?.props, CallProp.Throws);
+			assert.deepStrictEqual(info?.tags, [SemanticCallTag.Process]);
 		});
 		test(label('forced parameters keep their order', ['name-normal'], ['other']), () => {
 			const fn = (TestSignatures.functionByName('base', 'known') as DecodedFunction);
@@ -295,7 +295,7 @@ describe('Built-in properties', () => {
 });
 
 /** built-ins that define the given names with the given props and a `y` parameter */
-function getBuiltIns(names: readonly (readonly [string, CallProp])[]) {
+function getBuiltIns(names: readonly (readonly [string, CallProps])[]) {
 	const builtIns = getDefaultBuiltInDefinitions();
 	for(const [name, props] of names) {
 		builtIns.registerBuiltInFunctions({

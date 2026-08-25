@@ -10,7 +10,7 @@ import { DefaultInputClassifierConfig } from '../../../../src/queries/catalog/in
 import { InputTraceType, InputType } from '../../../../src/queries/catalog/input-sources-query/simple-input-classifier';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { BuiltInIndex } from '../../../../src/dataflow/environments/query-fn-props';
-import { ArgProp, CallProp } from '../../../../src/dataflow/environments/built-in-props';
+import { ArgProp, SemanticCallTag } from '../../../../src/dataflow/environments/built-in-props';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
 
 describe('The default classifier configuration follows the built-in labels', () => {
@@ -24,7 +24,7 @@ describe('The default classifier configuration follows the built-in labels', () 
 	test(label('the narrowing functions are the ones labelled `Narrows`', ['name-normal'], ['other']), () => {
 		const narrowing = DefaultInputClassifierConfig.narrowing ?? [];
 		assert.deepStrictEqual(narrowing.map(n => Identifier.toString(n.call)).sort(),
-			builtIns.with(CallProp.Narrows).map(Identifier.toString).sort());
+			builtIns.with(SemanticCallTag.Narrows).map(Identifier.toString).sort());
 		const matchArg = narrowing.find(n => Identifier.getName(n.call) === 'match.arg');
 		assert.deepStrictEqual(matchArg, { call: Identifier.from(['match.arg', 'base']), argName: 'choices', argIdx: 1 },
 			'the `Bounds` parameter is what bounds the result');

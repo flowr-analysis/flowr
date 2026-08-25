@@ -176,8 +176,23 @@ const DataFrameSemantics = {
 			critical:  []
 		}, DataFrameType.DataFrame, true),
 		'utils::read.table': applyFunctionCall(mapDataFrameRead, {
-			...ReadTableVariantParams,
-			separator: { pos: 2, name: 'sep', default: '\\s' }
+			fileName:   { pos: 0, name: 'file' },
+			header:     { pos: 1, name: 'header', default: false },
+			separator:  { pos: 2, name: 'sep', default: '\\s' },
+			quote:      { pos: 3, name: 'quote', default: '"\'' },
+			skipLines:  { pos: 12, name: 'skip', default: 0 },
+			checkNames: { pos: 13, name: 'check.names', default: true },
+			noDupNames: { pos: 13, name: 'check.names', default: true },
+			comment:    { pos: 17, name: 'comment.char', default: '#' },
+			text:       { pos: 23, name: 'text' },
+			critical:   [
+				{ pos: 6, name: 'row.names' },
+				{ pos: 7, name: 'col.names' },
+				{ pos: 11, name: 'nrows', default: -1 },
+				{ pos: 15, name: 'strip.white', default: false },
+				{ pos: 16, name: 'blank.lines.skip', default: true },
+				{ pos: 18, name: 'allow.escapes', default: false },
+			]
 		}, DataFrameType.DataFrame, true),
 		'utils::read.csv': applyFunctionCall(mapDataFrameRead, {
 			...ReadTableVariantParams,

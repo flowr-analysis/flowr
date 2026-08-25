@@ -20,13 +20,15 @@ export function jsonReplacer(key: unknown, value: unknown): unknown {
 	}
 }
 
+const BigIntPattern = /^-?\d+n$/;
+
 /**
  * This is flowR's custom JSON retriever, used to parse flowR-internal structures.
  * @see {@link jsonReplacer}
  * @see {@link superBigJsonStringify}
  */
-export function jsonBigIntRetriever(key: string, value: unknown): unknown {
-	if(typeof value === 'string' && value.endsWith('n')) {
+export function jsonBigIntRetriever(_key: string, value: unknown): unknown {
+	if(typeof value === 'string' && BigIntPattern.test(value)) {
 		return BigInt(value.slice(0, -1));
 	} else {
 		return value;
@@ -118,5 +120,3 @@ function bigStringify(obj: unknown, current: string, send: (s: string) => void):
 		return current + JSON.stringify(obj, builtInEnvJsonReplacer);
 	}
 }
-
-

@@ -428,6 +428,9 @@ export interface FlowrConfig {
 				readonly minFiles:        number
 			}
 		}
+		readonly dataflow: {
+			readonly activated: boolean;
+		}
 	}
 
 	/**
@@ -733,6 +736,9 @@ export const FlowrConfig = {
 						alwaysWithEdits: false,
 						minFiles:        1,
 					}
+				},
+				dataflow: {
+					activated: false
 				}
 			},
 			gas: {
@@ -889,6 +895,9 @@ export const FlowrConfig = {
 					alwaysWithEdits: Joi.boolean().optional().description('Always take the incremental path whenever there is a computed edit region, regardless of the other thresholds.'),
 					minFiles:        Joi.number().min(1).optional().description('Only apply these heuristics once the project has at least this many files loaded.'),
 				}),
+			}),
+			dataflow: Joi.object({
+				activated: Joi.boolean().description('If set, incremental dataflow graph persistence/reuse will be used.'),
 			}),
 		}),
 		gas: Joi.object({

@@ -6,7 +6,13 @@ import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 import type { FilePath } from './flowr-file';
 import type { ParseStepOutput } from '../../r-bridge/parser';
 import fs from 'fs';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
+
+interface PersistedDataflowGraphEntry {
+	readonly graph:       Buffer;
+	readonly environment: Buffer;
+}
 
 export interface ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
 	/**
@@ -16,6 +22,7 @@ export interface ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
 
 	getOldParseResultOf(filePath: FilePath): Parser.Tree | undefined;
 	getOldContentOf(filePath: FilePath): string | undefined;
+	getPersistedDataflowGraphOf(nodeId: NodeId, hash: string): PersistedDataflowGraphEntry | undefined;
 }
 
 /**
@@ -41,6 +48,7 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 	 */
 	private changedFilesWithOldContent: Map<FilePath, string | undefined> = new Map();
 	private oldParseResults:            Map<FilePath, Parser.Tree> = new Map();
+	private persistedDataflowGraphs:    Map<string, PersistedDataflowGraphEntry> = new Map();
 	private readonly lastKnownMtime:    Map<FilePath, number> = new Map();
 
 
@@ -51,6 +59,7 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 	public reset(): void {
 		this.changedFilesWithOldContent = new Map();
 		this.oldParseResults = new Map();
+		this.persistedDataflowGraphs = new Map();
 	}
 
 	handleFileInvalidate(filePath: FilePath, oldContent: string | undefined): void {
@@ -128,6 +137,10 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 			: checks.every(check => check(filePath, ctx));
 	}
 
+	handleShouldReparseDataflow(ctx: FlowrAnalyzerContext): boolean {
+		return ctx.config.incremental.dataflow.activated;
+	}
+
 	receive(event: InvalidationEvent): void {
 		const type = event.type;
 		switch(type) {
@@ -171,5 +184,13 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 
 	public setLastKnownMtime(filePath: FilePath, mtimeMs: number): void {
 		this.lastKnownMtime.set(filePath, mtimeMs);
+	}
+
+	public storePersistedDataflowGraph(nodeId: NodeId, hash: string, entry: PersistedDataflowGraphEntry): void {
+		this.persistedDataflowGraphs.set(`${nodeId}:${hash}`, entry);
+	}
+
+	public getPersistedDataflowGraphOf(nodeId: NodeId, hash: string): PersistedDataflowGraphEntry | undefined {
+		return this.persistedDataflowGraphs.get(`${nodeId}:${hash}`);
 	}
 }

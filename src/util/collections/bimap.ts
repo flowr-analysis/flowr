@@ -1,3 +1,5 @@
+import { addExtension } from 'msgpackr';
+
 /**
  * When to fill the value -&gt; key direction of a {@link BiMap}.
  *
@@ -126,3 +128,10 @@ export class BiMap<K, V extends object> implements Map<K, V> {
 		return this.v2k;
 	}
 }
+
+addExtension({
+	Class: BiMap,
+	type:  3,
+	write: (instance: BiMap<unknown, object>) => Array.from(instance.entries()),
+	read:  (data: [unknown, object][]) => new BiMap(data)
+});

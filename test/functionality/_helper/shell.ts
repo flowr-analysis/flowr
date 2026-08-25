@@ -24,7 +24,7 @@ import {
 } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DataflowGraph } from '../../../src/dataflow/graph/graph';
+import { DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import {
 	SlicingCriterion,
@@ -51,6 +51,12 @@ import type { FlowrFileProvider } from '../../../src/project/context/flowr-file'
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { SliceDirection } from '../../../src/util/slice-direction';
 import { CallGraph } from '../../../src/dataflow/graph/call-graph';
+import type { DataflowInformation } from '../../../src/dataflow/info';
+import {
+	FunctionCallVertex,
+	FunctionDefinitionVertex
+} from '../../../src/dataflow/graph/vertex';
+import type { Environment, IEnvironment } from '../../../src/dataflow/environments/environment';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>, timeout?: number) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -374,6 +380,60 @@ function cropIfTooLong(str: string): string {
 }
 
 /**
+ * Asserts that persisting the given dataflow information and reviving it again produces a graph equal to the freshly computed one.
+ */
+function assertPersistedDataflowGraphMatches(
+	analyzer: ReadonlyFlowrAnalysisProvider<KnownParser>,
+	df: DataflowInformation
+): void {
+
+	function stripFields(graph: DataflowGraph): void {
+		(graph as unknown as { incomingIndex?: unknown }).incomingIndex = undefined;
+
+		function stripEnv(env: Environment | undefined): void {
+			for(let e = env; e !== undefined; e = e.parent) {
+				delete (e as unknown as { sharedMemory?: true }).sharedMemory;
+				delete (e as unknown as { cache?: unknown }).cache;
+
+				if(e.builtInEnv) {
+					continue;
+				}
+
+				for(const defs of e.memory.values()) {
+					for(const def of defs) {
+						delete (def as unknown as { processor?: unknown }).processor;
+						delete (def as unknown as { evalHandler?: unknown }).evalHandler;
+						const rec = def as unknown as { envState?: { current?: Environment }, returnsEnvState?: { current?: Environment } };
+						stripEnv(rec.envState?.current);
+						stripEnv(rec.returnsEnvState?.current);
+					}
+				}
+			}
+		}
+
+		for(const [, vertex] of graph.vertices(true)) {
+			stripEnv(vertex.environment?.current);
+			if(FunctionCallVertex.is(vertex)) {
+				stripEnv(vertex.newEnvParent?.current);
+			}
+			if(FunctionDefinitionVertex.is(vertex)) {
+				stripEnv(vertex.subflow?.environment?.current);
+				stripEnv(vertex.returnEnvState?.current);
+			}
+		}
+	}
+
+	const envContext = analyzer.inspectContext().env;
+	const persisted = df.graph.persist(envContext.builtInEnvironment as IEnvironment, envContext.emptyBuiltInEnvironment as IEnvironment);
+	const revived = DataflowGraph.fromPersisted(persisted, envContext.builtInEnvironment as IEnvironment, envContext.emptyBuiltInEnvironment as IEnvironment);
+
+	stripFields(revived);
+	stripFields(df.graph);
+
+	assert.deepStrictEqual(revived, df.graph, 'persisted/revived dataflow graph differs from the freshly computed one');
+}
+
+/**
  * Your best friend whenever you want to test whether the dataflow graph produced by flowR is as expected.
  *
  * You may want to have a look at the {@link DataflowTestConfiguration} to see what you can configure.
@@ -413,7 +473,10 @@ export function assertDataflow(
 		}
 
 		const normalize = await analyzer.normalize();
-		const graph = userConfig?.context === 'call-graph' ? CallGraph.dropTransitiveEdges(await analyzer.callGraph()) : (await analyzer.dataflow()).graph;
+		const df = await analyzer.dataflow();
+		const graph = userConfig?.context === 'call-graph' ? CallGraph.dropTransitiveEdges(await analyzer.callGraph()) : df.graph;
+
+		assertPersistedDataflowGraphMatches(analyzer, df);
 
 		// assign the same id map to the expected graph, so that resolves work as expected
 		expected.setIdMap(normalize.idMap);

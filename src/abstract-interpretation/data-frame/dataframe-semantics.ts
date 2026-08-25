@@ -1099,21 +1099,21 @@ function mapDataFrameSubset(
 	const { selectedCols, unselectedCols } = getSelectedColumns([selectArg], info);
 	const accessedCols = [...filterNames, ...selectedCols ?? [], ...unselectedCols ?? []];
 
-	const mixedAccess = accessedCols.some(col => typeof col === 'string') && accessedCols.some(col => typeof col === 'number');
+	const mixedAccess = accessedCols.some(isColName) && accessedCols.some(isIndex);
 	const duplicateCols = accessedCols.some((col, index, list) => col !== undefined && list.indexOf(col) !== index);
 
-	if(accessedCols.some(col => typeof col === 'string')) {
+	if(accessedCols.some(isColName)) {
 		result.push({
 			operation: 'accessCols',
 			operand:   operand?.info.id,
-			columns:   accessedCols.filter(col => typeof col === 'string')
+			columns:   accessedCols.filter(isColName)
 		});
 	}
-	if(accessedCols.some(col => typeof col === 'number')) {
+	if(accessedCols.some(isIndex)) {
 		result.push({
 			operation: 'accessCols',
 			operand:   operand?.info.id,
-			columns:   accessedCols.filter(col => typeof col === 'number').map(Math.abs)
+			columns:   accessedCols.filter(isIndex).map(Math.abs)
 		});
 	}
 
@@ -1131,7 +1131,7 @@ function mapDataFrameSubset(
 			result.push({
 				operation: 'removeCols',
 				operand:   operand?.info.id,
-				colnames:  unselectedCols?.map(col => typeof col === 'string' ? col : undefined)
+				colnames:  unselectedCols?.map(toColName)
 			});
 			operand = undefined;
 		}
@@ -1139,7 +1139,7 @@ function mapDataFrameSubset(
 			result.push({
 				operation: 'subsetCols',
 				operand:   operand?.info.id,
-				colnames:  selectedCols?.map(col => typeof col === 'string' ? col : undefined),
+				colnames:  selectedCols?.map(toColName),
 				...(duplicateCols || mixedAccess ? { options: { duplicateCols: true } } : {})
 			});
 			// eslint-disable-next-line no-useless-assignment -- ends the chain
@@ -1171,7 +1171,7 @@ function mapDataFrameFilter(
 	const filterArgs = args.filter(arg => arg !== dataFrame);
 	const filterValues = filterArgs.map(arg => Resolve.argument.value(arg, info));
 
-	const accessedNames = filterArgs.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph).map(Identifier.getName));
+	const accessedNames = filterArgs.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph));
 	const condition = filterValues.every(value => typeof value === 'boolean') ? filterValues.every(Boolean) : undefined;
 
 	if(accessedNames.length > 0) {
@@ -1213,7 +1213,7 @@ function mapDataFrameSelect(
 	let { selectedCols, unselectedCols } = getSelectedColumns(selectArgs, info);
 	const accessedCols = [...selectedCols ?? [], ...unselectedCols ?? []];
 
-	const mixedAccess = accessedCols.some(col => typeof col === 'string') && accessedCols.some(col => typeof col === 'number');
+	const mixedAccess = accessedCols.some(isColName) && accessedCols.some(isIndex);
 	const duplicateAccess = accessedCols.some((col, _, list) => col !== undefined && list.filter(other => other === col).length > 1);
 	const renamedCols = selectArgs.some(RArgument.isNamed);
 
@@ -1223,18 +1223,18 @@ function mapDataFrameSelect(
 		unselectedCols = [];
 	}
 
-	if(accessedCols.some(col => typeof col === 'string')) {
+	if(accessedCols.some(isColName)) {
 		result.push({
 			operation: 'accessCols',
 			operand:   operand?.info.id,
-			columns:   accessedCols.filter(col => typeof col === 'string')
+			columns:   accessedCols.filter(isColName)
 		});
 	}
-	if(accessedCols.some(col => typeof col === 'number')) {
+	if(accessedCols.some(isIndex)) {
 		result.push({
 			operation: 'accessCols',
 			operand:   operand?.info.id,
-			columns:   accessedCols.filter(col => typeof col === 'number').map(Math.abs)
+			columns:   accessedCols.filter(isIndex).map(Math.abs)
 		});
 	}
 
@@ -1242,7 +1242,7 @@ function mapDataFrameSelect(
 		result.push({
 			operation: 'removeCols',
 			operand:   operand?.info.id,
-			colnames:  unselectedCols?.map(col => typeof col === 'string' ? col : undefined)
+			colnames:  unselectedCols?.map(toColName)
 		});
 		operand = undefined;
 	}
@@ -1250,7 +1250,7 @@ function mapDataFrameSelect(
 		result.push({
 			operation: 'subsetCols',
 			operand:   operand?.info.id,
-			colnames:  selectedCols?.map(col => typeof col === 'string' ? col : undefined),
+			colnames:  selectedCols?.map(toColName),
 			...(renamedCols ? { options: { renamedCols: true } } : {})
 		});
 		// eslint-disable-next-line no-useless-assignment -- ends the chain
@@ -1295,7 +1295,7 @@ function mapDataFrameMutate(
 
 	// only column names that are not created by mutation are preconditions on the operand
 	const accessedNames = mutateArgs
-		.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph).map(Identifier.toString))
+		.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph))
 		.filter(arg => !mutatedCols?.includes(arg));
 
 	deletedCols = filterValidNames(deletedCols, params.checkNames, params.noDupNames, undefined, true);
@@ -1354,7 +1354,7 @@ function mapDataFrameGroupBy(
 	const result: DataFrameOperations = [];
 	const byArgs = args.filter(arg => arg !== dataFrame);
 
-	const accessedNames = byArgs.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph)).map(Identifier.toString);
+	const accessedNames = byArgs.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph));
 	const byNames = byArgs.map(arg => RArgument.isNamed(arg) ? Resolve.argument.toName(arg, info) : Resolve.argument.symbolName(arg, info));
 
 	const mutatedCols = byArgs.some(RArgument.isNamed) || byNames.some(isUndefined);
@@ -1398,7 +1398,7 @@ function mapDataFrameSummarize(
 
 	// only column names that are not created by summarize are preconditions on the operand
 	const accessedNames = summarizeArgs
-		.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph).map(Identifier.toString))
+		.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph))
 		.filter(arg => !summarizedCols.includes(arg));
 
 	if(accessedNames.length > 0) {
@@ -1458,25 +1458,25 @@ function mapDataFrameJoin(
 	if(byArg !== undefined) {
 		const byValue = Resolve.argument.value(byArg, info);
 
-		if(typeof byValue === 'string' || typeof byValue === 'number') {
+		if(isColName(byValue) || isIndex(byValue)) {
 			byCols = [byValue];
-		} else if(Array.isArray(byValue) && (byValue.every(by => typeof by === 'string') || byValue.every(by => typeof by === 'number'))) {
+		} else if(Array.isArray(byValue) && (byValue.every(isColName) || byValue.every(isIndex))) {
 			byCols = byValue;
 		}
 	}
 
-	if(byCols?.some(by => typeof by === 'string')) {
+	if(byCols?.some(isColName)) {
 		result.push({
 			operation: 'accessCols',
 			operand:   dataFrame.value.info.id,
-			columns:   byCols.filter(by => typeof by === 'string')
+			columns:   byCols.filter(isColName)
 		});
 	}
-	if(byCols?.some(by => typeof by === 'number')) {
+	if(byCols?.some(isIndex)) {
 		result.push({
 			operation: 'accessCols',
 			operand:   dataFrame.value.info.id,
-			columns:   byCols.filter(by => typeof by === 'number')
+			columns:   byCols.filter(isIndex)
 		});
 	}
 
@@ -1484,7 +1484,7 @@ function mapDataFrameJoin(
 		operation: 'join',
 		operand:   dataFrame.value.info.id,
 		other:     otherDataFrame,
-		by:        byCols?.map(by => typeof by === 'string' ? by : undefined),
+		by:        byCols?.map(toColName),
 		options:   { join: joinType, natural: byArg === undefined }
 	});
 	return result;
@@ -1612,9 +1612,9 @@ function mapDataFrameIndexColRowAccess(
 	if(rowArg !== undefined && RArgument.isNotEmpty(rowArg)) {
 		const rowValue = Resolve.argument.value(rowArg, info);
 
-		if(typeof rowValue === 'number') {
+		if(isIndex(rowValue)) {
 			rows = [rowValue];
-		} else if(Array.isArray(rowValue) && rowValue.every(row => typeof row === 'number')) {
+		} else if(Array.isArray(rowValue) && rowValue.every(isIndex)) {
 			rows = rowValue;
 		}
 		result.push({
@@ -1626,29 +1626,29 @@ function mapDataFrameIndexColRowAccess(
 	if(colArg !== undefined && RArgument.isNotEmpty(colArg)) {
 		const colValue = Resolve.argument.value(colArg, info);
 
-		if(typeof colValue === 'number') {
+		if(isIndex(colValue)) {
 			columns = [colValue];
-		} else if(typeof colValue === 'string' && exact !== false) {
+		} else if(isColName(colValue) && exact !== false) {
 			columns = [colValue];
-		} else if(Array.isArray(colValue) && colValue.every(col => typeof col === 'number')) {
+		} else if(Array.isArray(colValue) && colValue.every(isIndex)) {
 			columns = colValue;
-		} else if(Array.isArray(colValue) && colValue.every(col => typeof col === 'string') && exact !== false) {
+		} else if(Array.isArray(colValue) && colValue.every(isColName) && exact !== false) {
 			columns = colValue;
 		}
 		result.push({
 			operation: 'accessCols',
 			operand:   dataFrame.info.id,
-			columns:   columns?.every(col => typeof col === 'number') ? columns.map(Math.abs) : columns
+			columns:   columns?.every(isIndex) ? columns.map(Math.abs) : columns
 		});
 	}
 	// The data frame extent is dropped if the operator `[[` is used, the argument `drop` is true, or only one column is accessed
 	const dropExtent = access.operator === '[[' ? true :
 		args.length === 2 && typeof drop === 'boolean' ? drop :
-			rowArg !== undefined && columns?.length === 1 && (typeof columns[0] === 'string' || columns[0] > 0);
+			rowArg !== undefined && columns?.length === 1 && (isColName(columns[0]) || columns[0] > 0);
 
 	if(!dropExtent) {
 		const rowSubset = rows === undefined || rows.every(row => row >= 0);
-		const colSubset = columns === undefined || columns.every(col => typeof col === 'string' || col >= 0);
+		const colSubset = columns === undefined || columns.every(col => isColName(col) || col >= 0);
 		const rowZero = rows?.length === 1 && rows[0] === 0;
 		const colZero = columns?.length === 1 && columns[0] === 0;
 		const duplicateRows = rows?.some((row, index, list) => list.indexOf(row) !== index);
@@ -1678,14 +1678,14 @@ function mapDataFrameIndexColRowAccess(
 				result.push({
 					operation: 'subsetCols',
 					operand:   operand?.info.id,
-					colnames:  colZero ? [] : columns?.map(col => typeof col === 'string' ? col : undefined),
+					colnames:  colZero ? [] : columns?.map(toColName),
 					...(duplicateCols ? { options: { duplicateCols: true } } : {})
 				});
 			} else {
 				result.push({
 					operation: 'removeCols',
 					operand:   operand?.info.id,
-					colnames:  columns?.map(col => typeof col === 'string' ? col : undefined)
+					colnames:  columns?.map(toColName)
 				});
 			}
 			// eslint-disable-next-line no-useless-assignment -- ends the chain
@@ -1800,9 +1800,9 @@ function mapDataFrameIndexColRowAssignment(
 		const rowValue = Resolve.argument.value(rowArg, info);
 		let rows: number[] | undefined = undefined;
 
-		if(typeof rowValue === 'number') {
+		if(isIndex(rowValue)) {
 			rows = [rowValue];
-		} else if(Array.isArray(rowValue) && rowValue.every(row => typeof row === 'number')) {
+		} else if(Array.isArray(rowValue) && rowValue.every(isIndex)) {
 			rows = rowValue;
 		}
 		result.push({
@@ -1815,18 +1815,18 @@ function mapDataFrameIndexColRowAssignment(
 		const colValue = Resolve.argument.value(colArg, info);
 		let columns: string[] | number[] | undefined = undefined;
 
-		if(typeof colValue === 'string') {
+		if(isColName(colValue)) {
 			columns = [colValue];
-		} else if(typeof colValue === 'number') {
+		} else if(isIndex(colValue)) {
 			columns = [colValue];
-		} else if(Array.isArray(colValue) && (colValue.every(col => typeof col === 'string') || colValue.every(col => typeof col === 'number'))) {
+		} else if(Array.isArray(colValue) && (colValue.every(isColName) || colValue.every(isIndex))) {
 			columns = colValue;
 		}
 		if(isRNull(expression)) {
 			result.push({
 				operation: 'removeCols',
 				operand:   dataFrame.info.id,
-				colnames:  columns?.map(col => typeof col === 'string' ? col : undefined),
+				colnames:  columns?.map(toColName),
 				type:      ConstraintType.OperandModification,
 				options:   { maybe: true }
 			});
@@ -2028,7 +2028,7 @@ function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInfo
 			} else if(RBinaryOp.is(arg.value) && arg.value.operator === ':' && info.idMap !== undefined) {
 				const values = Resolve.argument.value(toUnnamedArgument(arg.value, info.idMap), { ...info, resolve: VariableResolve.Disabled });
 
-				if(Array.isArray(values) && values.every(value => typeof value === 'number')) {
+				if(Array.isArray(values) && values.every(isIndex)) {
 					selectedCols = joinColumns(selectedCols, values.filter(value => value >= 0));
 					unselectedCols = joinColumns(unselectedCols, values.filter(value => value < 0).map(Math.abs));
 				} else {
@@ -2059,4 +2059,16 @@ function getJoinType(joinAll: boolean, joinLeft: boolean, joinRight: boolean): '
 	} else {
 		return 'inner';
 	}
+}
+
+function isColName(this: void, value: unknown): value is string {
+	return typeof value === 'string';
+}
+
+function isIndex(this: void, value: unknown): value is number {
+	return typeof value === 'number';
+}
+
+function toColName(this: void, value: unknown): string | undefined {
+	return isColName(value) ? value : undefined;
 }

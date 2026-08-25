@@ -1,4 +1,4 @@
-import { Identifier } from '../../dataflow/environments/identifier';
+import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
 import { FunctionArgument, type DataflowGraph } from '../../dataflow/graph/graph';
@@ -177,17 +177,17 @@ export function getFunctionArguments(
 export function getUnresolvedSymbolsInExpression(
 	expression: PotentiallyEmptyRArgument<ParentInformation> | undefined,
 	dfg?: DataflowGraph
-): Identifier[] {
+): BrandedIdentifier[] {
 	if(expression === undefined || RArgument.isEmpty(expression) || dfg === undefined) {
 		return [];
 	}
-	const unresolvedSymbols: Identifier[] = [];
+	const unresolvedSymbols: BrandedIdentifier[] = [];
 
 	RNode.visitAst(expression, node => {
 		if(RSymbol.is(node)) {
 			const [vertex, edges] = dfg.get(node.info.id) ?? [];
 			const symbolNamespace = Identifier.getNamespace(node.content);
-			const symbolName = Identifier.mapName(node.content, unquoteArgument);
+			const symbolName = unquoteArgument(Identifier.getName(node.content));
 
 			// ignore symbols named ".", as they are used as argument placeholder in magrittr pipe operations
 			if(UseVertex.is(vertex) && (edges?.size === 0 || Nse.maskedName(dfg, node.info.id)) && symbolNamespace === undefined && symbolName !== '.') {

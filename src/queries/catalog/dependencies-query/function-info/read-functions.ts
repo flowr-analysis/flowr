@@ -20,7 +20,6 @@ const ReadFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'base', name: 'fifo',                argIdx: 0, argName: 'description', resolveValue: true, ignoreIf: 'mode-only-write', additionalArgs: { mode: { argIdx: 1, argName: 'open', resolveValue: true } } },
 	{ package: 'base', name: 'unz',                 argIdx: 0, argName: 'description', resolveValue: true, ignoreIf: 'mode-only-write', additionalArgs: { mode: { argIdx: 1, argName: 'open', resolveValue: true } } },
 	{ package: 'base', name: 'matrix',              argIdx: 0, argName: 'data', resolveValue: true },
-	/* `data(mtcars)` names the dataset as a symbol (or as a string with `character.only`), just like `library` */
 	{ package: 'utils', name: 'data',               argIdx: 0, resolveValue: 'library', ignoreIf: 'arg-missing' },
 	{ package: 'readr', name: 'clipboard'                                                          },
 	{ package: 'sourcetools', name: 'tokenize',                    argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
@@ -40,13 +39,7 @@ const ReadFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'rpolars', name: 'pl_scan_parquet', argIdx: 0, argName: 'source', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'compiler', name: 'loadcmp', argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'compiler', name: 'cmpfile', argIdx: 0, argName: 'infile', resolveValue: true },
-	/* image / raster */
-	/* audio / video */
-	/* geospatial (no `raster::stack`: only the name is matched on and `utils::stack` shares it) */
-	/* array / binary science formats */
 	{ package: 'yaml',     name: 'read_yaml', argIdx: 0, argName: 'file',     resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
-	/* phylogeny / sequence */
-	/* shinyjs - loads an external JavaScript file */
 	{ package: 'shinyjs', name: 'extendShinyjs', argIdx: 0, argName: 'script', resolveValue: true, ignoreIf: 'arg-missing' }
 ] as const;
 

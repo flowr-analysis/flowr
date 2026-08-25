@@ -8,9 +8,9 @@ import { sigDbRemoteRelease } from '../project/sigdb/sigdb-download';
 import { FlowrWikiBaseRef } from '../documentation/doc-util/doc-files';
 
 // this is automatically replaced with the current version by release-it
-const version = '2.15.0';
+const version = '2.15.1';
 // this is automatically replaced with the release date by release-it (regex-bumper, see package.json)
-const versionDate = '2026-08-25T16:11:35Z';
+const versionDate = '2026-08-25T18:47:31Z';
 
 /**
  * Retrieves the current flowR version as a new {@link SemVer} object.

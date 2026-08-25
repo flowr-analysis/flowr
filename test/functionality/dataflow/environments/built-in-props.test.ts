@@ -47,7 +47,8 @@ const ExpectedLabels: readonly (readonly [Identifier, StatedProps])[] = [
 	[Identifier.from(['rm', PkgName.Base]), { props: CallProp.Invisible | CallProp.Scope }],
 	[Identifier.from(['set.seed', PkgName.Base]), { props: CallProp.Invisible | CallProp.Configures, tags: [SemanticCallTag.Random] }],
 	[Identifier.from(['png', PkgName.GrDevices]), { props: CallProp.Invisible,
-		tags:  [SemanticCallTag.Graphics, SemanticCallTag.File, SemanticCallTag.Writes] }]
+		tags:  [SemanticCallTag.Graphics, SemanticCallTag.File, SemanticCallTag.Writes] }],
+	[Identifier.from(['dbGetQuery', PkgName.Dbi]), { tags: [SemanticCallTag.Database] }]
 ];
 
 /** and the shapes a signature comes in */
@@ -59,7 +60,8 @@ const ExpectedSigs: readonly (readonly [Identifier, FnSig])[] = [
 	[Identifier.from(['identity', PkgName.Base]), [['x', ArgProp.Alias | ArgProp.Forced]]],
 	[Identifier.from(['match.arg', PkgName.Base]), [['arg', ArgProp.Value], ['choices', ArgProp.Bounds]]],
 	[Identifier.from(['read.csv', PkgName.Utils]), [['file', ArgProp.Resource], ['header', ArgProp.Flag], ['sep', ArgProp.Value],
-		['quote', ArgProp.Value], ['dec', ArgProp.Value], ['fill', ArgProp.Flag], ['comment.char', ArgProp.Value], ['...', ArgProp.Value]]]
+		['quote', ArgProp.Value], ['dec', ArgProp.Value], ['fill', ArgProp.Flag], ['comment.char', ArgProp.Value], ['...', ArgProp.Value]]],
+	[Identifier.from(['dbGetQuery', PkgName.Dbi]), [['conn', ArgProp.Handle | ArgProp.Forced], ['statement', ArgProp.Value | ArgProp.Injectable | ArgProp.Forced], ['...', ArgProp.Value]]]
 ];
 
 describe('Built-in properties', () => {
@@ -182,7 +184,7 @@ describe('Built-in properties', () => {
 		test.each(ExpectedLabels.map(([id, stated]) => [Identifier.toString(id), id, stated] as const))(
 			'%s', (_name, id, stated) => {
 				const info = queryFnProps(id, { builtIns });
-				assert.strictEqual(info?.props, stated.props ?? 0);
+				assert.strictEqual(info?.props ?? 0, stated.props ?? 0);
 				assert.deepStrictEqual(info?.tags, stated.tags);
 			});
 		test.each(ExpectedSigs.map(([id, sig]) => [Identifier.toString(id), id, sig] as const))(

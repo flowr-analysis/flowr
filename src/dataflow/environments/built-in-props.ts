@@ -37,7 +37,11 @@ export enum ArgProp {
 	 */
 	Atomic   = 1 << 11,
 	/** the open handle the call acts on, like `con` in `close(con)` */
-	Handle   = 1 << 12
+	Handle   = 1 << 12,
+	/**
+	 * the argument is vulnerable to injection attacks and should be escaped, such as system commands, R expressions, database queries, or HTML/JS code.
+	 */
+	Injectable = 1 << 13
 }
 
 /**
@@ -124,7 +128,13 @@ export enum SemanticCallTag {
 	/** performs a statistical test, so its result is the test statistic a reader is meant to see (`t.test`, `anova`) */
 	Statistics  = 'statistics',
 	/** marked for removal, with a better alternative available, like `dplyr::funs` */
-	Deprecated  = 'deprecated'
+	Deprecated  = 'deprecated',
+	/** dynamically executes R code or returns the value of dynamically computed identifiers, like `eval`, `do.call`, or `get` */
+	Eval        = 'eval',
+	/** produces raw HTML or JavaScript, such as `shiny::HTML` */
+	Html        = 'html',
+	/** produces raw JavaScript code, such as `shinyjs::runjs` */
+	JavaScript  = 'javascript'
 }
 
 /** a bitfield of {@link ArgProp} */
@@ -206,9 +216,10 @@ export const FileInputProps: PropMask = getPropMask([SemanticCallTag.File, Seman
  */
 export const PropagatedProps: PropMask = getPropMask([
 	CallProp.Throws | CallProp.Scope | CallProp.NonDet | CallProp.Ambient | CallProp.Configures | CallProp.Ffi | CallProp.Lang,
-	SemanticCallTag.Prints, SemanticCallTag.Random, SemanticCallTag.File, SemanticCallTag.TempFile, SemanticCallTag.Network,
+	SemanticCallTag.Random, SemanticCallTag.File, SemanticCallTag.TempFile, SemanticCallTag.Network,
 	SemanticCallTag.Process, SemanticCallTag.User, SemanticCallTag.CommandLine, SemanticCallTag.Graphics,
-	SemanticCallTag.Database, SemanticCallTag.Reads, SemanticCallTag.Writes
+	SemanticCallTag.Database, SemanticCallTag.Reads, SemanticCallTag.Writes, SemanticCallTag.Prints,
+	SemanticCallTag.Eval, SemanticCallTag.Html, SemanticCallTag.JavaScript
 ]);
 
 /** Checks whether a {@link PropSelector} is a bitfield of {@link CallProp}s */

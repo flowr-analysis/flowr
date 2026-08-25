@@ -2,6 +2,7 @@ import type { FunctionInfo } from './function-info';
 import { SemanticCallTag } from '../../../../dataflow/environments/built-in-props';
 import { functionInfosFromProps } from './derived-functions';
 import { OtherPathFunctions } from './other-path-functions';
+import { PkgName } from '../../../../dataflow/environments/identifier';
 
 const ReadFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'base', name: 'parse',                          argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
@@ -96,7 +97,7 @@ const ReadFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'stats', name: 'read.ftable',    argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'DBI', name: 'dbReadTable',      argIdx: 1, argName: 'name', resolveValue: true },
 	{ package: 'DBI', name: 'dbReadTableArrow', argIdx: 1, argName: 'name', resolveValue: true },
-	{ package: 'jsonlite', name: 'read_json', argIdx: 0, argName: 'path', resolveValue: true },
+	{ package: PkgName.Jsonlite, name: 'read_json', argIdx: 0, argName: 'path', resolveValue: true },
 	{ package: 'rpolars', name: 'pl_read_ipc', argIdx: 0, argName: 'source', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'rpolars', name: 'pl_read_csv', argIdx: 0, argName: 'source', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'rpolars', name: 'pl_read_ndjson', argIdx: 0, argName: 'source', resolveValue: true, ignoreIf: 'arg-missing' },

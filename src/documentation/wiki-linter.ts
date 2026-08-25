@@ -205,6 +205,10 @@ function(x) {
 		'unused-import', 'UnusedImportConfig', 'UNUSED_IMPORT', 'lint-unused-import',
 		'library(stats)\nprint("no stats function is used")', tagTypes);
 
+	rule(knownParser,
+		'unescaped-arguments', 'UnescapedArgumentsConfig', 'UNESCAPED_ARGUMENTS', 'lint-unescaped-arguments',
+		'function(dir) {\n\tsystem(paste0("ls ", dir))\n}', tagTypes);
+
 	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 

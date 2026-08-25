@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's creating linting rules">Generated</span> from '[wiki-create-linting-rules.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-create-linting-rules.ts "src/documentation/wiki-create-linting-rules.ts")' on 2026-08-25, 08:02:48 UTC (v2.14.4, R v4.5.0), please do not edit directly._
+_<span title="an overview of flowR's creating linting rules">Generated</span> from '[wiki-create-linting-rules.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-create-linting-rules.ts "src/documentation/wiki-create-linting-rules.ts")' on 2026-08-25, 08:35:41 UTC (v2.14.4, R v4.5.0), please do not edit directly._
 
 
 # Create Linting Rules
@@ -80,12 +80,12 @@ const MY_NEW_RULE = {
 
 ## Step 4: Register the rule
 
-After implementing the rule, register it by adding it to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-rules.ts#L27"><code><span title="The registry of currently supported linting rules. A linting rule can be executed on a dataflow pipeline result using executeLintingRule .">LintingRules</span></code></a>.
+After implementing the rule, register it by adding it to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/linter-rules.ts#L28"><code><span title="The registry of currently supported linting rules. A linting rule can be executed on a dataflow pipeline result using executeLintingRule .">LintingRules</span></code></a>.
 
 
 ## Step 5: Add the rule to the linter wiki generation
 
-After registering the rule, add a corresponding `rule` entry to the linter wiki generation in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts#L408"><code><span title="https://github.com/flowr-analysis/flowr/wiki/Linter">WikiLinter</span></code></a>. These entries are used to generate the linter overview and the individual wiki pages for linting rules, which can then be inspected through [Linter](https://github.com/flowr-analysis/flowr/wiki/Linter).
+After registering the rule, add a corresponding `rule` entry to the linter wiki generation in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts#L412"><code><span title="https://github.com/flowr-analysis/flowr/wiki/Linter">WikiLinter</span></code></a>. These entries are used to generate the linter overview and the individual wiki pages for linting rules, which can then be inspected through [Linter](https://github.com/flowr-analysis/flowr/wiki/Linter).
 
 ## Step 6: Add tests for the rule
 

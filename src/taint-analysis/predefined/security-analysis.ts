@@ -27,6 +27,7 @@ const protocolTaint = (path: unknown) =>
 	typeof path === 'string' && NetworkProtocolRegex.test(path) ? NetworkInput : FileInput;
 
 export const securityAnalysis = new TaintAnalysisDefinition('security', securityDomain)
+	.withDefaultPropagators()
 	.from([
 		{
 			identifier: [...BuiltInIndex.default().with(CallProp.User)],

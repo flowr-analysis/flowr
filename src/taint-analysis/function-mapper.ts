@@ -121,13 +121,14 @@ export type TaintMapper<Domain extends AnyAbstractDomain> = TaintMapping<Domain>
 /** Whether a mapped call acts as a source (`from`), propagator/sanitizer (`through`), or sink (`to`). */
 export type TaintRole = 'from' | 'through' | 'to';
 
+export type TaintHandler<Domain extends AnyAbstractDomain> =
+	{ taint: AbstractValue<Domain>; condition?: TaintCondition<Domain> }
+	| { taint?: AbstractValue<Domain>; condition: TaintCondition<Domain> };
+
 export type TaintMapping<Domain extends AnyAbstractDomain> = {
 	readonly role?:      TaintRole;
-	readonly identifier: Identifier | Identifier[];
-} & (
-	| { taint: AbstractValue<Domain>; condition?: TaintCondition<Domain> }
-	| { taint?: AbstractValue<Domain>; condition: TaintCondition<Domain> }
-);
+	readonly identifier: Identifier | readonly Identifier[];
+} & TaintHandler<Domain>;
 
 export type TaintCondition<Domain extends AnyAbstractDomain = AnyAbstractDomain> = {
 	argValues?: FunctionParameterLocation<unknown>[],

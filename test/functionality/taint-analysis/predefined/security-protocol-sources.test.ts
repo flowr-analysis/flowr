@@ -40,4 +40,10 @@ describe('Security Taint Analysis: protocol-aware read sources', () => {
 			'1@x': NetworkInput
 		});
 	});
+
+	test('default propagators', async() => {
+		await testTaintAnalysis('x <- download.file("data.csv", "out.csv")\ny <- identity(x)', securityAnalysis, {
+			'2@y': NetworkInput
+		});
+	});
 });

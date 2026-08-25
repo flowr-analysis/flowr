@@ -1,6 +1,6 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { createRequire } from 'node:module';
+import fs from 'fs';
+import path from 'path';
+import { createRequire } from 'module';
 import { assert, describe, test } from 'vitest';
 import { infoGraphPath, isInfoEntry } from '../../../src/benchmark/summarizer/second-phase/graph';
 
@@ -12,6 +12,7 @@ interface BenchStats {
 	baselineOf(values: readonly (number | null)[], n: number): number;
 	toPercentDelta(values: readonly (number | null)[], baseline: number): (number | null)[];
 	calibrationFactors(values: readonly (number | null)[]): number[];
+	calibrationScales(values: readonly (number | null)[]): (number | null)[][];
 	applyFactors(values: readonly (number | null)[], factors: readonly number[] | null): (number | null)[];
 	parseVersion(message: string): { major: number, minor: number, patch: number, text: string } | null;
 	releaseBumps(runs: readonly { commit: { message: string } }[]): { index: number, version: string, kind: string }[];
@@ -76,10 +77,29 @@ describe('Benchmark page helpers', () => {
 	});
 
 	test('cancel out the machine with a calibration series', () => {
-		const factors = S.calibrationFactors([100, 125, 100]);
-		assert.deepStrictEqual(factors, [1, 1.25, 1], 'the median run is the reference');
-		assert.deepStrictEqual(S.applyFactors([200, 250, 200], factors), [200, 200, 200]);
+		const factors = S.calibrationFactors([100, 125, 100, 100]);
+		assert.deepStrictEqual(factors, [1, 1.25, 1, 1], 'the fastest run saw the machine, the others carry interference');
+		assert.deepStrictEqual(S.applyFactors([200, 250, 200, 200], factors), [200, 200, 200, 200]);
 		assert.deepStrictEqual(S.applyFactors([200], null), [200], 'without a calibration nothing changes');
+		assert.deepStrictEqual(S.calibrationFactors([100, 125, 100]), [1, 1, 1],
+			'too few runs to tell a machine from a noisy one, so nothing is scaled');
+	});
+
+	test('keep a redefined calibration workload to itself', () => {
+		assert.deepStrictEqual(S.calibrationScales([15, 16, 1.5, 1.6]), [[15, 16], [1.5, 1.6]],
+			'an order of magnitude is a new workload, not a slower machine');
+		assert.deepStrictEqual(S.calibrationScales([15, null, 16]), [[15, null, 16]],
+			'a run without a calibration stays with the scale around it');
+		assert.deepStrictEqual(S.calibrationFactors([100, 125, 100, 100, 10, 12.5, 10, 10]),
+			[1, 1.25, 1, 1, 1, 1.25, 1, 1], 'every scale is its own yardstick');
+		assert.deepStrictEqual(S.calibrationFactors([100, 125, 100, 100, 10]), [1, 1.25, 1, 1, 1],
+			'a scale too short to have a yardstick keeps its numbers');
+		assert.deepStrictEqual(S.calibrationFactors([100, null, 100]), [1, 1, 1]);
+		assert.deepStrictEqual(S.calibrationFactors([]), []);
+		const clamped = S.calibrationFactors([100, 100, 299, 100, 100]);
+		assert.strictEqual(clamped[2], 1.5, 'a lone slow run counts, but it cannot redraw the chart around it');
+		assert.ok(S.calibrationFactors([500, 400, 450, 380, 370]).every(f => f >= 1),
+			'no run is ever scaled up, a calibration can only reveal added time');
 	});
 
 	test('read the version of a run', () => {
@@ -117,11 +137,13 @@ describe('Benchmark page helpers', () => {
 		assert.strictEqual(S.groupOf('built-in definitions (own handler)', '#'), 'builtins');
 		assert.strictEqual(S.groupOf('linting rules (smell)', '#'), 'features');
 		assert.strictEqual(S.groupOf('dataflow edges', '#'), 'graphs');
+		assert.strictEqual(S.groupOf('dataflow control flow edges', '#'), 'graphs', 'the control flow the graph carries is part of its size');
+		assert.strictEqual(S.shortName('dataflow control flow edges'), 'DF (control) edges');
 		assert.strictEqual(S.groupOf('data frame constraints', '#'), 'dataframes');
 		assert.strictEqual(S.groupOf('Infer data frame shapes', 'ms'), 'per-file', 'the phase stays with the phases');
 		assert.strictEqual(S.groupOf('memory (df-shapes)', 'KiB'), 'memory-detail', 'the memory chart is about the graphs');
-		assert.strictEqual(S.groupOf('something new', 'weird'), 'other', 'unknown metrics still get a home');
 		assert.ok(!S.GROUPS.some(g => g.id === 'totals'), 'the totals get no chart of their own');
+		assert.ok(!S.GROUPS.some(g => g.id === 'other'), 'a metric no rule claims stays off the page');
 		assert.deepStrictEqual(S.GROUPS.filter(g => g.perVersion).map(g => g.id), ['features', 'builtins', 'sigdb', 'tests'],
 			'only what the flowR version itself carries is independent of the suite');
 		assert.strictEqual(S.betterOf('data frame shapes (exact)', '#'), 'up');
@@ -160,7 +182,8 @@ describe('Benchmark page helpers', () => {
 		for(const [name, unit] of [
 			['Retrieve AST per 100 lines', 'ms'], ['Total common per 100 lines', 'ms'],
 			['reduction (lines)', '#'], ['reduction no fluff (characters)', '#'],
-			['memory (df-shapes)', 'KiB'], ['dataflow calls', '#'], ['control flow function definitions', '#']
+			['memory (df-shapes)', 'KiB'], ['dataflow calls', '#'], ['control flow function definitions', '#'],
+			['something new', 'weird']
 		] as const) {
 			assert.ok(!drawn.has(S.groupOf(name, unit)), `${name} is recorded, but it gets no chart`);
 		}
@@ -168,6 +191,7 @@ describe('Benchmark page helpers', () => {
 			['reduction (characters)', '#'], ['reduction (normalized tokens)', '#'], ['reduction (dataflow vertices)', '#'],
 			['memory (df-graph)', 'KiB'], ['memory (cfg-graph)', 'KiB'],
 			['dataflow vertices', '#'], ['dataflow edges', '#'], ['control flow vertices', '#'], ['control flow edges', '#'],
+			['dataflow control flow edges', '#'],
 			['Produce dataflow information', 'ms'], ['data frame constraints', '#'], ['number of files', '#']
 		] as const) {
 			assert.ok(drawn.has(S.groupOf(name, unit)), `${name} belongs on the page`);

@@ -6,9 +6,9 @@ import { executeExceptionQuery } from './inspect-exception-query-executor';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import { criteriaQueryCompleter, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter, queryLineCode, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { SourceLocation } from '../../../util/range';
-import type { ExceptionPoint } from '../../../dataflow/fn/exceptions-of-function';
+import type { ExceptionsByFunction } from '../../../dataflow/fn/exceptions-of-function';
 import { happensInEveryBranch } from '../../../dataflow/info';
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 
@@ -27,7 +27,7 @@ export interface InspectExceptionQueryResult extends BaseQueryResult {
 	 * If a function throws exceptions, the Ids of the throwing functions (at least the functions flowr knows about).
 	 * An empty array means the function does not throw any exceptions.
 	 */
-	readonly exceptions: Record<NodeId, ExceptionPoint[]>;
+	readonly exceptions: ExceptionsByFunction;
 }
 
 function inspectExceptionLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'inspect-exception'> {
@@ -37,7 +37,7 @@ function inspectExceptionLineParser(_output: ReplOutput, line: readonly string[]
 			type:   'inspect-exception',
 			filter: criteria
 		},
-		rCode: criteria ? line[1] : line[0]
+		rCode: queryLineCode(line, criteria ? 1 : 0)
 	};
 }
 

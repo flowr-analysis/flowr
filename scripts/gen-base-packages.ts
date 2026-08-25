@@ -10,6 +10,8 @@ import { SigDatabase, SigDatabaseSet, type PackageSignatureSource } from '../src
 import { defaultSigDbPath } from '../src/project/sigdb/manifest';
 import { stripCompressedExt } from '../src/project/sigdb/codec';
 import { RVersion } from '../src/util/r-version';
+import { AttachedBasePackages } from '../src/util/r-base-packages';
+import { DispatchCallees } from '../src/dataflow/environments/built-in-props';
 import { info } from './script-log';
 
 const compareRVersion = (a: string, b: string): number => RVersion.compare(a, b);
@@ -27,7 +29,7 @@ async function openDefault(): Promise<PackageSignatureSource | undefined> {
 }
 
 /** bump when the emitted store *format* changes, so a regeneration is forced even if the bundle is unchanged */
-const formatVersion = 5;
+const formatVersion = 7;
 
 /** a cheap identity of the bundle (read from the manifest/header, no shard decompression) to detect changes */
 function bundleFingerprint(db: PackageSignatureSource): string {
@@ -76,6 +78,8 @@ async function main(): Promise<void> {
 	// used to answer base-R qualification (`sd` -> `stats`); grouped by package so a package name is written once
 	const claimed = new Set<string>();
 	const exportsByPackage: Record<string, string[]> = {};
+	// the exports that dispatch, so a built-in hiding one can still be labeled as the generic it shadows
+	const generics = new Set<string>();
 	let exportCount = 0;
 	for(const pkg of current) {   // `current` is sorted, so `base` claims shared names first (first-owner-wins)
 		const names: string[] = [];
@@ -87,6 +91,13 @@ async function main(): Promise<void> {
 		}
 		exportsByPackage[pkg] = names.sort();
 		exportCount += names.length;
+		if(AttachedBasePackages.includes(pkg)) {
+			for(const name of db.lookup(pkg)?.exported ?? []) {
+				if(db.functionByName(pkg, name)?.callees?.some(c => DispatchCallees.has(c))) {
+					generics.add(name);
+				}
+			}
+		}
 	}
 	db.close();
 
@@ -106,6 +117,7 @@ async function main(): Promise<void> {
 		+ ' * newestRVersion: newest R release in the database. current: its base packages. packages: [first, last]\n'
 		+ ' * core R-version per package. exportsByPackage: each current base package to its exported names\n'
 		+ ' * (inverted to an export -> owning-package lookup on first use, so a package name is not repeated).\n'
+		+ ' * generics: the exports of the attached base packages whose body dispatches (UseMethod and friends).\n'
 		+ ' */\n'
 		+ 'export const RBasePackageStore = {\n'
 		+ `\tnewestRVersion: ${JSON.stringify(newest)},\n`
@@ -113,15 +125,17 @@ async function main(): Promise<void> {
 		+ `\tpackages: {${packagesInline}},\n`
 		+ '\texportsByPackage: {\n'
 		+ exportLines + '\n'
-		+ '\t}\n'
+		+ '\t},\n'
+		+ `\tgenerics: [${[...generics].sort().map(n => JSON.stringify(n)).join(',')}]\n`
 		+ '} as const satisfies {\n'
 		+ '\treadonly newestRVersion:   string;\n'
 		+ '\treadonly current:          readonly string[];\n'
 		+ '\treadonly packages:         Readonly<Record<string, readonly [first: string, last: string]>>;\n'
 		+ '\treadonly exportsByPackage: Readonly<Record<string, readonly string[]>>;\n'
+		+ '\treadonly generics:         readonly string[];\n'
 		+ '};\n';
 	fs.writeFileSync(out, body);
-	info(`gen-base-packages: wrote ${Object.keys(packages).length} base packages (${current.length} current, ${exportCount} exports) to ${path.relative(process.cwd(), out)}`);
+	info(`gen-base-packages: wrote ${Object.keys(packages).length} base packages (${current.length} current, ${exportCount} exports, ${generics.size} generics) to ${path.relative(process.cwd(), out)}`);
 }
 
 main().catch(e => {

@@ -156,9 +156,9 @@ ${
 <a id="analysis-include-cfg"></a>
 **Including the Control Flow Graph**
 
-While _flowR_ does (for the time being) not use an explicit control flow graph but instead relies on control-dependency edges within the dataflow graph, 
-the respective structure can still be exposed using the server (note that, as this feature is not needed within _flowR_, it is tested significantly less - 
-so please create a [new issue](${NewIssueUrl}) for any bug you may encounter).
+The control flow graph is a view on the dataflow graph: the dataflow analysis records the control flow while it walks
+the program, and the graph projects those edges on demand. The server can expose that structure as well (please create
+a [new issue](${NewIssueUrl}) for any bug you may encounter).
 For this, the analysis request may add \`cfg: true\` to its list of options.
 
 ${
@@ -332,7 +332,7 @@ The \`results\` field of the response contains two keys of importance:
 
 - \`slice\`: which contains the result of the slicing (e.g., the ids included in the slice in \`result\`).
 - \`reconstruct\`: contains the reconstructed code, as well as additional meta information. 
-                   The automatically selected lines correspond to additional filters (e.g., magic comments) which force the unconditiojnal inclusion of certain elements.
+                   The automatically selected lines correspond to additional filters (e.g., magic comments) which force the unconditional inclusion of certain elements.
 `
 		}]
 	})

@@ -1,6 +1,8 @@
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RBinaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RUnaryOp } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 
 /** what one declared parameter was given: nothing, one argument, or -- for `...` -- every argument it collected */
 export type MatchedArgument = RNodeWithParent | readonly RNodeWithParent[] | undefined;
@@ -17,11 +19,11 @@ export type MatchedArgument = RNodeWithParent | readonly RNodeWithParent[] | und
  * solver relies on that, since a call it cannot match is one whose result it must not guess at.
  */
 export function matchCallArguments(node: RNodeWithParent, params: readonly string[], ignored: readonly string[] = []): MatchedArgument[] | undefined {
-	if(node.type === RType.UnaryOp) {
+	if(RUnaryOp.is(node)) {
 		return [node.operand];
-	} else if(node.type === RType.BinaryOp) {
+	} else if(RBinaryOp.is(node)) {
 		return [node.lhs, node.rhs];
-	} else if(node.type !== RType.FunctionCall || !node.named) {
+	} else if(!RFunctionCall.is(node) || !node.named) {
 		return undefined;
 	}
 	const rest = params.indexOf('...');
@@ -31,7 +33,7 @@ export function matchCallArguments(node: RNodeWithParent, params: readonly strin
 	const positional: { at: number, value: RNodeWithParent }[] = [];
 	// R matches every named argument before it gives a slot to a positional one, so this takes two passes
 	for(const [at, arg] of node.arguments.entries()) {
-		if(arg === EmptyArgument || arg.value === undefined) {
+		if(RArgument.isEmpty(arg) || arg.value === undefined) {
 			continue;
 		} else if(arg.name === undefined) {
 			positional.push({ at, value: arg.value });

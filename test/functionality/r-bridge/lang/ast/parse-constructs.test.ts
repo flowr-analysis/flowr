@@ -188,7 +188,7 @@ const ElseGroupingVariants: ElseSpacing[] = [{
 	capabilities: ['if', 'numbers', 'grouping']
 }];
 
-describe.sequential('Parse simple constructs', withShell(shell => {
+describe('Parse simple constructs', { concurrent: false }, withShell(shell => {
 	describe('if', () => {
 		describe('if-then', () => {
 			for(const pool of [{ name: 'grouping', variants: IfThenBraceVariants }, {

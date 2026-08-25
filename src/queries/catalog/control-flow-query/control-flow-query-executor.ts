@@ -1,7 +1,6 @@
 import { log } from '../../../util/log';
 import type { ControlFlowQuery, ControlFlowQueryResult } from './control-flow-query-format';
 import type { BasicQueryData } from '../../base-query-format';
-import { CfgKind } from '../../../project/cfg-kind';
 
 /**
  * Executes the control flow query with the given simplification passes.
@@ -14,7 +13,7 @@ export async function executeControlFlowQuery({ analyzer }: BasicQueryData, quer
 	const query = queries[0];
 
 	const start = Date.now();
-	const controlFlow = await analyzer.controlflow(query.config?.simplificationPasses, CfgKind.WithDataflow);
+	const controlFlow = await analyzer.controlflow(query.config?.simplificationPasses);
 	return {
 		'.meta': {
 			timing: Date.now() - start

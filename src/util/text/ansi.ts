@@ -138,6 +138,15 @@ export function ansiInfo(s: string, f: OutputFormatter = formatter): string {
 }
 
 export const escape = '\x1b[';
+
+/** every {@link escape} sequence, so a place that cannot colour (a browser, a log file) can drop them */
+// eslint-disable-next-line no-control-regex -- the escape character is what an escape sequence starts with
+const AnsiSequence = /\x1b\[[\d;]*m/g;
+
+/** The text without any colouring, for wherever an escape sequence would only show up as `[0m`. */
+export function stripAnsi(text: string): string {
+	return text.replaceAll(AnsiSequence, '');
+}
 const colorSuffix = 'm';
 let hyperlinkSupport: boolean | undefined;
 /** best-effort, env-based OSC 8 hyperlink support (`FORCE_HYPERLINK`/`NO_HYPERLINK` override; unknown terminals are treated as unsupported) */

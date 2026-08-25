@@ -1,7 +1,11 @@
-import { type MergeableRecord,
+import { type AutocompletablePaths,
+	type ValueAtPath,
+	type MergeableRecord,
 	deepMergeObject,
 	deepClonePreserveUnclonable,
-	isPlainObject
+	isPlainObject,
+	getOnPath,
+	setOnPath
 } from './util/objects';
 import path from 'path';
 import fs from 'fs';
@@ -11,16 +15,16 @@ import { getParentDirectory } from './util/files';
 import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
 import type { KnownParser } from './r-bridge/parser';
-import type { DeepPartial, DeepWritable, Paths, PathValue } from 'ts-essentials';
+import type { DeepPartial, DeepWritable } from 'ts-essentials';
 import type { DataflowProcessors } from './dataflow/processor';
 import type { ParentInformation } from './r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrAnalyzerContext } from './project/context/flowr-analyzer-context';
 import { ProjectKind } from './project/context/project-kind';
-import objectPath from 'object-path';
 import type { BuiltInFlowrPluginArgs, BuiltInFlowrPluginName } from './project/plugins/plugin-registry';
 import { type FlowrGasConfig, GasWikiRef } from './gas';
 import type { InputClassifierConfig } from './queries/catalog/input-sources-query/simple-input-classifier';
 import { InputType } from './queries/catalog/input-sources-query/input-types';
+import { uniqueArray } from './util/collections/arrays';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -129,7 +133,11 @@ export type SpecializeConfigEntry = DeepPartial<FlowrConfig> & { readonly inheri
  * @see {@link FlowrConfig.default} for the default configuration.
  * @see {@link FlowrConfig.Schema} for the Joi schema for validation.
  */
-export interface FlowrConfig extends MergeableRecord {
+/*
+ * Deliberately not a `MergeableRecord`: an index signature turns `keyof` into `string`, which swallows the
+ * literal keys `AutocompletablePaths` needs for `FlowrConfig::configure` and `linkConfig` to complete.
+ */
+export interface FlowrConfig {
 	readonly logLevel?:         LogLevelName
 	/**
 	 * Whether source calls should be ignored, causing {@link processSourceCall}'s behavior to be skipped
@@ -178,6 +186,12 @@ export interface FlowrConfig extends MergeableRecord {
 		failOnInaccessiblePath?:   boolean
 		/** Overwrite the {@link ProjectKind} flowR would otherwise infer from the analyzed files, e.g. when auto-detection guesses wrong. */
 		useProjectType?:           ProjectKind
+		/**
+		 * Whether the top level of the analyzed code is echoed, so that every visible result printed there counts as an
+		 * output (the `print` category of the dependencies query). Defaults to `true` and is set to `false` for a
+		 * {@link ProjectKind.Package}, whose top-level code runs at install time.
+		 */
+		assumeImplicitEcho?:       boolean
 		/**
 		 * The packages considered part of R itself, used e.g. by the project query to classify dependencies. If
 		 * unset, flowR derives them (for the assumed R version) from the signature database via `baseRPackages`.
@@ -353,6 +367,11 @@ export interface FlowrConfig extends MergeableRecord {
 		 */
 		readonly wideningThreshold: number;
 		/**
+		 * Whether the abstract interpretation is interprocedural, i.e. whether it steps into the functions a call
+		 * may dispatch to instead of describing the call by its result alone
+		 */
+		readonly followCalls:       boolean;
+		/**
 		 * The configuration of the shape inference for data frames
 		 */
 		readonly dataFrame: {
@@ -421,7 +440,11 @@ export interface FlowrConfig extends MergeableRecord {
 	readonly gas: FlowrGasConfig;
 }
 
-export type ValidFlowrConfigPaths = Paths<FlowrConfig, { depth: 9 }>;
+/**
+ * Every path into the configuration, which is what {@link FlowrConfig.setInConfig} and
+ * {@link FlowrAnalyzerBuilder#configure|configure()} take and what an editor completes.
+ */
+export type ValidFlowrConfigPaths = AutocompletablePaths<FlowrConfig>;
 
 /** Whether library exports should be resolved from a signature database (`solver.sigdb.enabled`). */
 export function isSigDbEnabled(config: FlowrConfig | undefined): boolean {
@@ -523,7 +546,8 @@ function mergeOverwrite(parent: DeepPartial<FlowrConfig>, own: DeepPartial<Flowr
 	const result: Record<string, unknown> = { ...parent };
 	for(const [key, value] of Object.entries(own)) {
 		const prev = (parent as Record<string, unknown>)[key];
-		result[key] = isPlainObject(prev) && isPlainObject(value) ? mergeOverwrite(prev, value) : value;
+		result[key] = isPlainObject(prev) && isPlainObject(value)
+			? mergeOverwrite(prev, value as DeepPartial<FlowrConfig>) : value;
 	}
 	return result;
 }
@@ -579,6 +603,40 @@ function mergeConfigOntoDefaults(base: FlowrConfig, addon: DeepPartial<FlowrConf
 	return merge(base, addon) as FlowrConfig;
 }
 
+/** The shortest start of `key` that none of its `siblings` share, which is how a path stays short and readable. */
+function shortestPrefix(key: string, siblings: readonly string[] = []): string {
+	for(let length = 1; length < key.length; length++) {
+		const prefix = key.slice(0, length);
+		if(!siblings.some(other => other !== key && other.startsWith(prefix))) {
+			return prefix;
+		}
+	}
+	return key;
+}
+
+/**
+ * The full path a possibly shortened one names, walking `within` a segment at a time: a segment that names a
+ * key outright is that key, otherwise it has to start exactly one of them.
+ */
+function expandPath(path: string, within: unknown): string | undefined {
+	const full: string[] = [];
+	let at: unknown = within;
+	for(const segment of path.split('.')) {
+		if(at === null || typeof at !== 'object') {
+			return undefined;
+		}
+		const keys = Object.keys(at);
+		const key = keys.includes(segment) ? segment : keys.filter(other => other.startsWith(segment));
+		if(typeof key !== 'string' && key.length !== 1) {
+			return undefined;
+		}
+		const found = typeof key === 'string' ? key : key[0];
+		full.push(found);
+		at = (at as Record<string, unknown>)[found];
+	}
+	return full.length > 0 ? full.join('.') : undefined;
+}
+
 export const FlowrConfig = {
 	name: 'FlowrConfig',
 	/**
@@ -609,13 +667,15 @@ export const FlowrConfig = {
 			},
 			project: {
 				resolveUnknownPathsOnDisk: true,
-				failOnInaccessiblePath:    false
+				failOnInaccessiblePath:    false,
+				assumeImplicitEcho:        true
 			},
 			linter: {
 				disabledRules: []
 			},
 			specializeConfig: {
-				[ProjectKind.Package]:  { solver: { resolveSource: { assumeFilesExist: true } } },
+				/* a package's top-level code runs at install time, its results are not echoed to anyone */
+				[ProjectKind.Package]:  { project: { assumeImplicitEcho: false }, solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.Project]:  { solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.ShinyApp]: {
 					/* shiny evaluates global.R before the supporting files in R/, and the app itself last */
@@ -652,6 +712,7 @@ export const FlowrConfig = {
 			},
 			abstractInterpretation: {
 				wideningThreshold: 4,
+				followCalls:       true,
 				dataFrame:         {
 					maxColNames:    50,
 					readLoadedData: {
@@ -714,6 +775,7 @@ export const FlowrConfig = {
 			basePackages:              Joi.array().items(Joi.string()).optional().description('The packages considered part of R itself (base and recommended); if unset, flowR uses its built-in list.'),
 			implicitSources:           Joi.array().items(Joi.string()).optional().description('Files a framework loads on its own, without any source() call (e.g. global.R in a shiny app), in the order they are loaded; flowR orders the matching project files accordingly and analyzes them as one program. Entries are case-insensitive globs matched against the file path, a plain name matches any file with that name, and entries matching no project file are warned about. Usually set per project kind via specializeConfig.'),
 			useProjectType:            Joi.string().valid(...Object.values(ProjectKind)).optional().description('Overwrite the project kind flowR would otherwise infer from the analyzed files, e.g. when auto-detection guesses wrong.'),
+			assumeImplicitEcho:        Joi.boolean().optional().description('Whether the top level of the analyzed code is echoed, so that every visible result printed there is collected as an output by the dependencies query (default true, false for a package).'),
 			discovery:                 Joi.object({
 				full:    Joi.boolean().optional().description('Collect every file below the project root (greedy) instead of only the files the detected project kind needs (default false).'),
 				perKind: Joi.object().pattern(Joi.string().valid(...Object.values(ProjectKind)), Joi.object({
@@ -806,6 +868,7 @@ export const FlowrConfig = {
 		}).description('How to resolve constants, constraints, cells, ...'),
 		abstractInterpretation: Joi.object({
 			wideningThreshold: Joi.number().min(1).description('The threshold for the number of visitations of a node at which widening should be performed to ensure the termination of the fixpoint iteration.'),
+			followCalls:       Joi.boolean().description('Whether the abstract interpretation is interprocedural, i.e. whether it steps into the functions a call may dispatch to.'),
 			dataFrame:         Joi.object({
 				maxColNames:    Joi.number().min(0).description('The maximum number of columns names to infer for data frames before over-approximating the column names to top.'),
 				readLoadedData: Joi.object({
@@ -927,6 +990,54 @@ export const FlowrConfig = {
 		}
 	},
 	/**
+	 * Every key `config` changed against the {@link FlowrConfig.default|default}, as `a.b.c=<json>` lines.
+	 * A whole configuration is a long document while an edit to it is usually one line, which is what makes
+	 * this the form to hand around: a link, a command line, a bug report.
+	 * @see {@link FlowrConfig.applyPaths} - to read them back
+	 * @example
+	 * ```ts
+	 * FlowrConfig.changedPaths(config); // ['solver.sigdb.enabled=false']
+	 * ```
+	 */
+	changedPaths(this: void, config: FlowrConfig): string[] {
+		const found: string[] = [];
+		const walk = (current: unknown, base: unknown, path: string[], siblings: readonly string[][]): void => {
+			if(current !== null && base !== null && typeof current === 'object' && typeof base === 'object'
+				&& !Array.isArray(current) && !Array.isArray(base)) {
+				const keys = uniqueArray([...Object.keys(current), ...Object.keys(base)]);
+				for(const key of keys) {
+					walk((current as Record<string, unknown>)[key], (base as Record<string, unknown>)[key],
+						[...path, key], [...siblings, keys]);
+				}
+			} else if(JSON.stringify(current) !== JSON.stringify(base)) {
+				const short = path.map((key, at) => shortestPrefix(key, siblings[at]));
+				found.push(`${short.join('.')}=${JSON.stringify(current)}`);
+			}
+		};
+		walk(config, FlowrConfig.default(), [], []);
+		return found;
+	},
+
+	/**
+	 * The inverse of {@link FlowrConfig.changedPaths}: the default configuration with those keys set again.
+	 * A line that names no known key, or whose value is not readable, is skipped rather than guessed at.
+	 */
+	applyPaths(this: void, paths: Iterable<string>, base: FlowrConfig = FlowrConfig.default()): FlowrConfig {
+		const config = structuredClone(base);
+		for(const line of paths) {
+			const at = line.indexOf('=');
+			const key = at < 0 ? undefined : expandPath(line.slice(0, at), config);
+			if(key === undefined) {
+				continue;
+			}
+			try {
+				setOnPath(config, key, JSON.parse(line.slice(at + 1)));
+			} catch{ /* a value nobody can read is one to leave alone */ }
+		}
+		return config;
+	},
+
+	/**
 	 * Returns a new config object with the given value set at the given key, where the key is a dot-separated path to the value in the config object.
 	 * @see {@link setInConfigInPlace} for a version that modifies the config object in place instead of returning a new one.
 	 * @example
@@ -937,17 +1048,17 @@ export const FlowrConfig = {
 	 * console.log(newConfig.solver.variables); // Output: "builtin"
 	 * ```
 	 */
-	setInConfig<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: PathValue<FlowrConfig, Path>): FlowrConfig {
+	setInConfig<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: ValueAtPath<FlowrConfig, Path>): FlowrConfig {
 		const clone = FlowrConfig.clone(config);
-		objectPath.set(clone, key, value);
+		setOnPath(clone, key, value);
 		return clone;
 	},
 	/**
 	 * Modifies the given config object in place by setting the given value at the given key, where the key is a dot-separated path to the value in the config object.
 	 * @see {@link setInConfig} for a version that returns a new config object instead of modifying the given one in place.
 	 */
-	setInConfigInPlace<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: PathValue<FlowrConfig, Path>): void {
-		objectPath.set(config, key, value);
+	setInConfigInPlace<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: ValueAtPath<FlowrConfig, Path>): void {
+		setOnPath(config, key, value);
 	},
 } as const;
 
@@ -969,9 +1080,9 @@ export function persistSigDbPathToGlobalConfig(dbPath: string): string {
 	} catch(e) {
 		log.warn(`Could not read global config ${file}, recreating it: ${(e as Error).message}`);
 	}
-	const current: unknown = objectPath.get(raw, 'solver.sigdb.additionalPaths');
+	const current: unknown = getOnPath(raw, 'solver.sigdb.additionalPaths');
 	const paths = Array.isArray(current) ? current as string[] : [];
-	objectPath.set(raw, 'solver.sigdb.additionalPaths', [...new Set([...paths, dbPath])]);
+	setOnPath(raw, 'solver.sigdb.additionalPaths', uniqueArray([...paths, dbPath]));
 	fs.mkdirSync(path.dirname(file), { recursive: true });
 	fs.writeFileSync(file, JSON.stringify(raw, null, '\t') + '\n');
 	return file;

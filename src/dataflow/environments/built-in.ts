@@ -1,7 +1,7 @@
 import type { DataflowProcessorInformation } from '../processor';
-import type { DataflowInformation, ExitPoint, ExitPointType } from '../info';
-import type { NseArguments } from '../internal/process/functions/call/known-call-handling';
-import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, NseKind } from '../internal/process/functions/call/known-call-handling';
+import type { DataflowInformation, ExitPoint } from '../info';
+import { ExitPointType } from '../info';
+import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, NseArguments, NseKind } from '../internal/process/functions/call/known-call-handling';
 import { processAccess } from '../internal/process/functions/call/built-in/built-in-access';
 import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else';
 import {
@@ -28,8 +28,9 @@ import { processFunctionDefinition } from '../internal/process/functions/call/bu
 import { processExpressionList } from '../internal/process/functions/call/built-in/built-in-expression-list';
 import { processGet } from '../internal/process/functions/call/built-in/built-in-get';
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { type BuiltIn, NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EdgeType } from '../graph/edge';
 import { processLibrary } from '../internal/process/functions/call/built-in/built-in-library';
@@ -76,7 +77,9 @@ import { processAttach } from '../internal/process/functions/call/built-in/built
 import { processWithEnv } from '../internal/process/functions/call/built-in/built-in-with';
 import { processNamespaceAccess } from '../internal/process/functions/call/built-in/built-in-namespace-access';
 import { processLoadCall } from '../internal/process/functions/call/built-in/built-in-load';
+import { processStringTemplate } from '../internal/process/functions/call/built-in/built-in-string-template';
 import { ArgProp, FnSig, type BuiltInFnInfo } from './built-in-props';
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 export type BuiltInIdentifierProcessor = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -97,9 +100,19 @@ export interface BuiltInIdentifierDefinition extends IdentifierReference {
 	type:         ReferenceType.BuiltInFunction
 	definedAt:    BuiltIn
 	processor:    BuiltInIdentifierProcessor
-	config?:      ConfigOfBuiltInMappingName<keyof typeof BuiltInProcessorMapper> & { libFn?: boolean }
+	config?:      ConfigOfBuiltInMappingName<keyof typeof BuiltInProcessorMapper> & BuiltInFnInfo & { libFn?: boolean }
 	/** folds a call to this function to a constant, see {@link BuiltInEvalHandlerMapper} */
 	evalHandler?: BuiltInEvalHandler
+}
+
+/**
+ * Whether the definition states that the call does not evaluate some of its arguments the standard way, either
+ * by quoting them or by handing them a data mask. Only such a definition changes what the arguments read, so
+ * only it has to run in place of the default processor.
+ */
+export function statesNonStandardEvaluation(definition: BuiltInIdentifierDefinition | undefined): boolean {
+	const config = definition?.config as Pick<DefaultBuiltInProcessorConfiguration, 'markArgsAsNSE' | 'markArgsAsMasked'> | undefined;
+	return config?.markArgsAsNSE !== undefined || config?.markArgsAsMasked !== undefined;
 }
 
 export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierReference {
@@ -110,6 +123,8 @@ export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierRefere
 
 export interface DefaultBuiltInProcessorConfiguration extends ForceArguments, BuiltInFnInfo {
 	readonly cfg?:                   ExitPointType,
+	/** see {@link ProcessKnownFunctionCallInput#alternativeArgsFrom} */
+	readonly alternativeArgsFrom?:   number,
 	readonly readAllArguments?:      boolean,
 	/**
 	 * Propagate the `out` references produced by the arguments instead of dropping them.
@@ -139,12 +154,40 @@ export interface BuiltInEvalHandlerArgs extends ResolveInfo {
 }
 export type BuiltInEvalHandler = (args: BuiltInEvalHandlerArgs) => Value;
 
+/**
+ * The symbols handed to an {@link ArgProp.Atomic} argument directly: only data works there, so `id` in `id > 2`
+ * names a variable and not a function `id` that happens to be in scope, even though `>` may dispatch on the
+ * operand's class. Anything bubbling up from a nested call is left alone, that call decided it already.
+ */
+function dataArgumentSymbols<OtherInfo>(
+	args: readonly (RNodeWithParent | PotentiallyEmptyRArgument<OtherInfo & ParentInformation>)[],
+	sig: FnSig | undefined
+): ReadonlySet<NodeId> | undefined {
+	const layout = sig === undefined ? undefined : FnSig.layout(sig);
+	if(layout === undefined || (layout.any & ArgProp.Atomic) === 0) {
+		return undefined;
+	}
+	let symbols: Set<NodeId> | undefined;
+	for(let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		const prop = FnSig.propAt(layout, i);
+		if(RArgument.isEmpty(arg) || (prop & ArgProp.Atomic) === 0 || (prop & (ArgProp.Callee | ArgProp.Nse)) !== 0) {
+			continue;
+		}
+		const value: RNodeWithParent | undefined = RArgument.is(arg) ? arg.value : arg;
+		if(value !== undefined && RSymbol.is(value)) {
+			(symbols ??= new Set()).add(value.info.id);
+		}
+	}
+	return symbols;
+}
+
 function defaultBuiltInProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
+	{ useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, alternativeArgsFrom, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	/* a signature states per argument what the individual options state for all of them at once */
 	const layout = sig !== undefined ? FnSig.layout(sig) : undefined;
@@ -152,9 +195,26 @@ function defaultBuiltInProcessor<OtherInfo>(
 		forceArgs ??= (layout.any & ArgProp.Forced) !== 0 ? args.map((_, i) => (FnSig.propAt(layout, i) & ArgProp.Forced) !== 0) : undefined;
 		nse ??= (layout.any & ArgProp.Nse) !== 0 ? FnSig.posWith(layout, args.length, ArgProp.Nse) : undefined;
 	}
-	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: useAsProcessor });
+	const nsePositions = nsePositionsOf(nse, args.length);
+	let lastEnv = data.environment;
+	const { information: res, processedArguments } = processKnownFunctionCall({
+		name, args, rootId, data, forceArgs, alternativeArgsFrom,
+		origin:      useAsProcessor,
+		nonFunction: dataArgumentSymbols(args, sig),
+		/* an unevaluated argument must not read the current frame, so it is analyzed in a clean env like `quote` */
+		patchData:   nsePositions === undefined ? undefined : (d, index) => {
+			if(nsePositions.has(index)) {
+				lastEnv = d.environment;
+				return { ...d, environment: d.ctx.env.makeCleanEnv() };
+			}
+			return { ...d, environment: lastEnv };
+		}
+	});
+	if(nsePositions !== undefined) {
+		dropQuotedReferences(res, processedArguments, nsePositions, lastEnv);
+	}
 	markArgumentsAsNonStandardEvaluation(res.graph, rootId, processedArguments, nse);
-	markArgumentsAsNonStandardEvaluation(res.graph, rootId, processedArguments, masked, NseKind.DataMasked);
+	markArgumentsAsNonStandardEvaluation(res.graph, rootId, processedArguments, masked, { kind: NseKind.DataMasked });
 	if(keepArgumentOut) {
 		res.out = [...res.out, ...processedArguments.flatMap(arg => arg?.out ?? [])];
 	}
@@ -217,10 +277,52 @@ function defaultBuiltInProcessor<OtherInfo>(
 	}
 
 	if(cfg !== undefined) {
-		(res.exitPoints as ExitPoint[]).push({ type: cfg, nodeId: rootId, cds: data.cds });
+		/* the call jumps, so it never falls through to whatever follows it */
+		const exitPoints = (res.exitPoints as ExitPoint[]).filter(e => e.type !== ExitPointType.Default || e.nodeId !== rootId);
+		exitPoints.push({ type: cfg, nodeId: rootId, cds: data.cds });
+		(res as unknown as { exitPoints: ExitPoint[] }).exitPoints = exitPoints;
 	}
 
 	return res;
+}
+
+/** The argument positions {@link markArgumentsAsNonStandardEvaluation} would mark as quoted. */
+function nsePositionsOf(which: NseArguments | readonly number[] | undefined, count: number): ReadonlySet<number> | undefined {
+	if(which === undefined) {
+		return undefined;
+	} else if(typeof which !== 'string') {
+		return new Set(which);
+	}
+	const positions = new Set<number>();
+	const end = which === NseArguments.First ? Math.min(1, count) : count;
+	for(let i = which === NseArguments.AllButFirst ? 1 : 0; i < end; i++) {
+		positions.add(i);
+	}
+	return positions;
+}
+
+/** Whatever a quoted argument saw in its clean env must not be resolved in the caller's frame afterwards. */
+function dropQuotedReferences(
+	res: DataflowInformation,
+	processedArguments: readonly (DataflowInformation | undefined)[],
+	nsePositions: ReadonlySet<number>,
+	lastEnv: REnvironmentInformation
+): void {
+	const quoted = new Set<NodeId>();
+	for(const i of nsePositions) {
+		const arg = processedArguments[i];
+		for(const ref of [...arg?.in ?? [], ...arg?.unknownReferences ?? []]) {
+			quoted.add(ref.nodeId);
+		}
+	}
+	if(quoted.size > 0) {
+		res.in = res.in.filter(ref => !quoted.has(ref.nodeId));
+		res.unknownReferences = res.unknownReferences.filter(ref => !quoted.has(ref.nodeId));
+	}
+	if(nsePositions.has(processedArguments.length - 1)) {
+		/* the clean env of the last argument must not become the env the call leaves behind */
+		res.environment = lastEnv;
+	}
 }
 
 function defaultBuiltInProcessorReadallArgs<OtherInfo>(
@@ -228,9 +330,10 @@ function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ useAsProcessor = BuiltInProcName.Default, forceArgs, markArgsAsNSE: nse, markArgsAsMasked: masked }: Pick<DefaultBuiltInProcessorConfiguration, 'useAsProcessor' | 'forceArgs' | 'markArgsAsNSE' | 'markArgsAsMasked'>
+	{ useAsProcessor = BuiltInProcName.Default, forceArgs, markArgsAsNSE: nse, markArgsAsMasked: masked, sig }: Pick<DefaultBuiltInProcessorConfiguration, 'useAsProcessor' | 'forceArgs' | 'markArgsAsNSE' | 'markArgsAsMasked' | 'sig'>
 ): DataflowInformation {
-	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: useAsProcessor });
+	const { information, processedArguments } = processKnownFunctionCall({
+		name, args, rootId, data, forceArgs, origin: useAsProcessor, nonFunction: dataArgumentSymbols(args, sig) });
 	const g = information.graph;
 	for(const arg of processedArguments) {
 		if(arg) {
@@ -238,7 +341,7 @@ function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 		}
 	}
 	markArgumentsAsNonStandardEvaluation(g, rootId, processedArguments, nse);
-	markArgumentsAsNonStandardEvaluation(g, rootId, processedArguments, masked, NseKind.DataMasked);
+	markArgumentsAsNonStandardEvaluation(g, rootId, processedArguments, masked, { kind: NseKind.DataMasked });
 	return information;
 }
 
@@ -250,6 +353,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.DefineArgument]:     processDefineArgument,
 	[BuiltInProcName.Default]:            defaultBuiltInProcessor,
 	[BuiltInProcName.DefaultReadAllArgs]: defaultBuiltInProcessorReadallArgs,
+	[BuiltInProcName.StringTemplate]:     processStringTemplate,
 	[BuiltInProcName.Eval]:               processEvalCall,
 	[BuiltInProcName.ExpressionList]:     processExpressionList,
 	[BuiltInProcName.ForLoop]:            processForLoop,

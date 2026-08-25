@@ -2,6 +2,7 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
 	test: {
+		globalSetup: ['test/system-tests/utility/global-setup.ts'],
 		/* a test may have to wait for a full build and bundle, see `DefaultTimeout` of the utilities */
 		testTimeout: 6 * 60 * 1000,
 		hookTimeout: 6 * 60 * 1000,

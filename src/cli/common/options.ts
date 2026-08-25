@@ -57,15 +57,8 @@ export const benchmarkHelperOptions = [
 	{ name: 'threshold',     alias: 't', type: Number,  description: 'How many re-visits of the same node are ok?', defaultValue: undefined, typeLabel: '{underline number}' },
 	{ name: 'sampling-strategy',         type: String,  description: 'Which strategy to use, when sampling is enabled', defaultValue: 'random', typeLabel: '{underline random/equidistant}' },
 	{ name: 'no-extra-phases',           type: Boolean, description: 'Skip the dependencies query, the linter run and the calibration, which cost suite runtime', defaultValue: false },
+	{ name: 'calibrate',                 type: Boolean, description: 'Run the machine calibration workload, which describes the machine and not the file, so only a few files of a suite carry it', defaultValue: false },
 	{ name: 'seed',                      type: String,  description: 'The random seed for sampling the slicing criteria if a maximum is set' },
-] as const satisfies OptionDefinition[];
-
-export const exportQuadsOptions = [
-	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
-	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
-	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
-	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process' },
-	{ name: 'output',       alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to {italic out.quads})', typeLabel: '{underline file}' },
 ] as const satisfies OptionDefinition[];
 
 export const slicerOptions = [

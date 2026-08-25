@@ -4,10 +4,10 @@
 //   npm run publish:sigdb -- --confirm             # publish both (--target=release|ghcr for one)
 // Env: FLOWR_SIGDB_IMAGE (default ghcr.io/flowr-analysis/flowr-sigdb), GH_REPO.
 
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { execFileSync } from 'node:child_process';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { execFileSync } from 'child_process';
 import { writeRemotePointer } from './sigdb-remote';
 
 const root = path.resolve(__dirname, '..');

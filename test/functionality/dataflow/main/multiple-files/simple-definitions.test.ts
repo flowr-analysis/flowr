@@ -6,7 +6,7 @@ import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
-describe.sequential('Simple Defs in Multiple Files', withShell(shell => {
+describe('Simple Defs in Multiple Files', { concurrent: false }, withShell(shell => {
 
 	assertDataflow(label('two files', ['name-normal', 'numbers']), shell,
 		[

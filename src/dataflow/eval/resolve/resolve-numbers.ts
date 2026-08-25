@@ -6,8 +6,8 @@ import type { BuiltInEvalHandlerArgs } from '../../environments/built-in';
 import { Top, type Value } from '../values/r-value';
 import { intervalFrom } from '../values/intervals/interval-constants';
 import { vectorFrom } from '../values/vectors/vector-constants';
-import { resolveIdToValue } from './alias-tracking';
 import { matchCallArguments } from './match-arguments';
+import { Resolve } from '../../environments/resolve-helper';
 
 /** R breaks a tie to the even neighbor, unlike `Math.round`, which always goes up */
 function roundHalfEven(x: number, digits = 0): number {
@@ -100,7 +100,7 @@ type Operand = number | readonly number[];
 
 /** the number an operand folds to, with a logical counting as its `0`/`1` just like R would coerce it */
 function numeric(node: RNodeWithParent, args: BuiltInEvalHandlerArgs): Operand | undefined {
-	const value = unliftRValue(resolveIdToValue(node, args));
+	const value = unliftRValue(Resolve.toValue(node, args));
 	if(typeof value === 'boolean') {
 		return Number(value);
 	} else if(isRNumberValue(value)) {

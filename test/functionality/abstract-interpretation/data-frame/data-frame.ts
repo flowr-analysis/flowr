@@ -1,8 +1,9 @@
 import { assert, test } from 'vitest';
-import type { AbsintVisitorConfiguration } from '../../../../src/abstract-interpretation/absint-visitor';
+import type { AbstractInterpreter } from '../../../../src/abstract-interpretation/absint-inference';
 import { type AbstractDataFrameShape, DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
+import type { DataFrameShapeSemantics } from '../../../../src/abstract-interpretation/data-frame/dataframe-semantics';
 import type { DataFrameOperationArgs, DataFrameOperationName } from '../../../../src/abstract-interpretation/data-frame/semantics';
-import { type DataFrameOperations, DataFrameShapeInferenceVisitor } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
+import { type DataFrameOperations, DataFrameShapeAnalysis, type DataFrameShapeDomains } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
 import type { AbstractValue } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Bottom, type Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import { PosIntervalDomain } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
@@ -61,9 +62,9 @@ export function testInferredDataFrameShape(
 	expected: InferenceTestCase<ExpectedDataFrameShape> | SlicingCriteria,
 	options?: DataFrameTestOptions
 ) {
-	const test = Array.isArray(expected) ? expected : Record.mapProperties(expected, expectedShape => toDataFrameDomain(expectedShape, options?.config));
-	const inference = (config: AbsintVisitorConfiguration) => new DataFrameShapeInferenceVisitor({ ...config, trackOperations: false });
-	testInferredValues(options?.name ?? code.trim(), shell, code, test, inference, createOutputCode, parseOutput, options);
+	const test = Array.isArray(expected) ? expected : Record.mapProps(expected, expectedShape => toDataFrameDomain(expectedShape, options?.config));
+	const createAnalysis = () => new DataFrameShapeAnalysis({ trackOperations: false });
+	testInferredValues(options?.name ?? code.trim(), shell, code, test, createAnalysis, 'dataFrame', createOutputCode, parseOutput, options);
 }
 
 /**
@@ -104,10 +105,11 @@ export function testMappedDataFrameOperations(
 	options?: DataFrameTestOptions
 ) {
 	test.skipIf(skipTestBecauseConfigNotMet(options))(decorateLabelContext(options?.name ?? code.trim(), ['absint']), async() => {
-		const result = await runInference(code.trim(), config => new DataFrameShapeInferenceVisitor(config), options);
+		const analysis = new DataFrameShapeAnalysis();
+		const result = await runInference(code.trim(), () => analysis, options);
 
 		for(const [criterion, expectedOperations] of Record.entries(expected)) {
-			const operations = getInferredOperationsForCriterion(result, criterion) ?? [];
+			const operations = getInferredOperationsForCriterion(result, analysis.semantics.dataFrame, criterion) ?? [];
 			assert.containsSubset(operations, expectedOperations, `Expected abstract operations for criterion "${criterion}" to include ${JSON.stringify(expectedOperations)}, but got ${JSON.stringify(operations)}`);
 		}
 	});
@@ -134,11 +136,16 @@ function toDataFrameDomain(shape: ExpectedDataFrameShape | undefined, config?: F
 
 /**
  * Retrieves the mapped abstract data frame operations for a given slicing criterion from the results of the inference.
- * @param inference - The data frame shape inference visitor after performing the inference, which contains the mapped abstract operations.
+ * @param inference - The abstract interpretation visitor after performing the inference.
+ * @param semantics - The data frame shape semantics containing the mapped abstract operations.
  * @param criterion - The slicing criterion for which to retrieve the abstract operations.
  * @returns The mapped abstract operations for the given slicing criterion, or `undefined` if no operations were mapped for it.
  */
-function getInferredOperationsForCriterion(inference: DataFrameShapeInferenceVisitor, criterion: SlicingCriterion): Readonly<DataFrameOperations> {
+function getInferredOperationsForCriterion(
+	inference: AbstractInterpreter<DataFrameShapeDomains>,
+	semantics: DataFrameShapeSemantics,
+	criterion: SlicingCriterion
+): Readonly<DataFrameOperations> {
 	const idMap = inference.config.normalizedAst.idMap;
 	let nodeId = SlicingCriterion.parse(criterion, idMap);
 	const node = idMap.get(nodeId);
@@ -148,7 +155,7 @@ function getInferredOperationsForCriterion(inference: DataFrameShapeInferenceVis
 	}
 	guard(isNotUndefined(nodeId), `Slicing criterion ${criterion} does not refer to an AST node`);
 
-	return inference.getAbstractOperations(nodeId);
+	return semantics.getAbstractOperations(nodeId);
 }
 
 /**

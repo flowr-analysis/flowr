@@ -1,0 +1,40 @@
+/**
+ * R's group generics, kept apart from the builtin configuration so anything may ask about them without pulling
+ * the whole dataflow setup in (the signature database does, and that would be a cycle).
+ */
+
+const Arith = ['+', '-', '*', '/', '^', '**', '%%', '%/%'] as const;
+const Compare = ['==', '!=', '<', '<=', '>', '>='] as const;
+const Logic = ['&', '|'] as const;
+
+/**
+ * R's group generics: a class claims every member of a group at once, with an `Ops.cls` (S3) or a
+ * `setMethod('Arith', ...)` (S4), so a call to any member may dispatch to a method named after the group.
+ * `Ops` is what S3 calls the union of the three S4 groups it splits into.
+ */
+export const RGroupGenerics = {
+	Arith, Compare, Logic,
+	Ops:  [...Arith, ...Compare, ...Logic, '!'],
+	Math: ['abs', 'sign', 'sqrt', 'floor', 'ceiling', 'trunc', 'exp', 'expm1', 'log', 'log2', 'log10', 'log1p',
+		'cos', 'sin', 'tan', 'cosh', 'sinh', 'tanh', 'acos', 'asin', 'atan', 'acosh', 'asinh', 'atanh',
+		'cumsum', 'cumprod', 'cummax', 'cummin'],
+	Math2:   ['round', 'signif'],
+	Summary: ['any', 'sum', 'prod', 'min', 'max', 'range'],
+	Complex: ['Re', 'Im', 'Mod', 'Arg', 'Conj']
+} as const satisfies Record<string, readonly string[]>;
+
+/** the S4 groups, i.e. {@link RGroupGenerics} without `Ops`, which only S3 knows */
+const S4Groups = ['Arith', 'Compare', 'Logic', 'Math', 'Math2', 'Summary', 'Complex'] as const;
+
+/**
+ * Member name to its S4 group (`sin` to `Math`, `+` to `Arith`). `Ops` is left out so `+` answers `Arith`
+ * rather than both. A package exporting such a name usually does so because it registered a method for one of
+ * its classes, so the name says far less about the package than an ordinary export would.
+ */
+export const S4GroupOfMember: ReadonlyMap<string, string> = new Map(
+	S4Groups.flatMap(group => RGroupGenerics[group].map(member => [member as string, group as string])));
+
+/** The S4 group generic `name` is a member of, `undefined` for a name that is in none. */
+export function groupGenericOf(name: string): string | undefined {
+	return S4GroupOfMember.get(name);
+}

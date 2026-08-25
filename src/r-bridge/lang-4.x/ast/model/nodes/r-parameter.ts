@@ -25,6 +25,7 @@ export const RParameter = {
 	/**
 	 * Type guard for {@link RParameter} nodes.
 	 * @see {@link RParameter.isDotDotDotDot} - to check whether a parameter is the special `...` parameter
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RParameter<Info> {
 		return node?.type === RType.Parameter;
@@ -35,5 +36,12 @@ export const RParameter = {
 	 */
 	isDotDotDotDot<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RParameter<Info> {
 		return RParameter.is(node) && node.special;
+	},
+	/**
+	 * Type guard for a parameter that names what it is worth when a call passes nothing for it.
+	 * @see {@link RParameter.is} - to check whether a node is a parameter at all
+	 */
+	isWithDefault<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RParameter<Info> & { defaultValue: RNode<Info> } {
+		return RParameter.is(node) && node.defaultValue !== undefined;
 	}
 } as const;

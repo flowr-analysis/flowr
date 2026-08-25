@@ -96,6 +96,9 @@ describe('REPL ghost hint', () => {
 		expect(replCompleter('', cfg)[0].length).toBeGreaterThan(1);
 		// a unique prefix still resolves to a single completion
 		expect(replCompleter(':bench', cfg)).toEqual([[':benchmark '], ':bench']);
+		// `?<type>` documents a query and is completed just like `@<type>` runs it
+		expect(replCompleter(':query ?', cfg)[0].length).toBeGreaterThan(1);
+		expect(replCompleter(':query ?guess-dep-version', cfg)).toEqual([['?guess-dep-versions '], '?guess-dep-version']);
 	});
 
 	test(label('the file path protocol is offered by Tab completion but never ghosted', [], ['other']), () => {

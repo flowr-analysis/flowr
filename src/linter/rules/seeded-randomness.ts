@@ -18,8 +18,7 @@ import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { LintingRuleTag } from '../linter-tags';
 import type { BuiltInFunctionDefinition } from '../../dataflow/environments/built-in-config';
-import { resolveIdToValue } from '../../dataflow/eval/resolve/alias-tracking';
-import { valueSetGuard } from '../../dataflow/eval/values/general';
+import { NodeValue } from '../../dataflow/eval/resolve/node-value';
 import { VariableResolve } from '../../config';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { VertexType } from '../../dataflow/graph/vertex';
@@ -29,7 +28,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import type { ControlDependency } from '../../dataflow/info';
 import { happensInEveryBranchSet } from '../../dataflow/info';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
-import { CallProp } from '../../dataflow/environments/built-in-props';
+import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 
 export interface SeededRandomnessResult extends LintingResult {
@@ -175,7 +174,7 @@ export const SEEDED_RANDOMNESS = {
 		defaultConfig: {
 			randomnessProducers: RandomnessProducers,
 			randomnessConsumers: [
-				...BuiltInIndex.default().with(CallProp.Random).map(Identifier.getName)
+				...BuiltInIndex.default().with(SemanticCallTag.Random).map(Identifier.getName)
 					.filter(n => !RandomnessProducers.some(p => p.name === n)),
 				'princomp', 'pointLabel', 'some', 'rbernoulli', 'rdunif', 'generateSeedVectors', 'rvonmises',
 				'rxor', 'rmvnorm', 'randomForest',
@@ -201,7 +200,7 @@ function getDefaultAssignments(): BuiltInFunctionDefinition<BuiltInProcName.Assi
 
 function isConstantArgument(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, argIndex: number, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	const args = call.args.filter(arg => arg !== EmptyArgument && !arg.name).map(FunctionArgument.getReference);
-	const values = valueSetGuard(resolveIdToValue(args[argIndex], { graph: graph, resolve: VariableResolve.Alias, ctx }));
+	const values = NodeValue.inGraph.setOf(args[argIndex], graph, ctx, { resolve: VariableResolve.Alias });
 	return values?.elements.every(v =>
 		v.type === 'number' ||
 		v.type === 'logical' ||

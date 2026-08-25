@@ -154,6 +154,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 			numberOfFunctionDefinitions: summarizeMeasurement(dataflows.map(d => d.numberOfFunctionDefinitions)),
 			numberOfCalls:               summarizeMeasurement(dataflows.map(d => d.numberOfCalls)),
 			numberOfEdges:               summarizeMeasurement(dataflows.map(d => d.numberOfEdges)),
+			numberOfControlFlowEdges:    summarizeMeasurement(dataflows.map(d => d.numberOfControlFlowEdges ?? 0)),
 			sizeOfObject:                summarizeMeasurement(dataflows.map(d => d.sizeOfObject)),
 		},
 		controlFlow: stats.some(s => s.controlFlow !== undefined) ? {
@@ -255,6 +256,7 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 			numberOfFunctionDefinitions: summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfFunctionDefinitions)),
 			numberOfCalls:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfCalls)),
 			numberOfEdges:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfEdges)),
+			numberOfControlFlowEdges:    summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfControlFlowEdges)),
 			sizeOfObject:                summarizeSummarizedMeasurement(stats.map(s => s.dataflow.sizeOfObject)),
 		},
 		controlFlow: stats.some(s => s.controlFlow !== undefined) ? {

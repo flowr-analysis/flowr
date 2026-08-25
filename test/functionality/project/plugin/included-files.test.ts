@@ -5,7 +5,7 @@ import path from 'path';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { withTreeSitter } from '../../_helper/shell';
 
-describe.sequential('Included files', withTreeSitter(parser => {
+describe('Included files', { concurrent: false }, withTreeSitter(parser => {
 	let tmp: string;
 	beforeAll(() => {
 		tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-included-'));

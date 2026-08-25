@@ -10,7 +10,7 @@ import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexVariableDefinition, DataflowGraphVertexArgument
 } from '../../../dataflow/graph/vertex';
-import { VertexType } from '../../../dataflow/graph/vertex';
+import { FunctionDefinitionVertex, VariableDefinitionVertex, FunctionCallVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
@@ -193,9 +193,9 @@ class InputClassifier {
 		const vtx = id === undefined || depth > MaxFunctionResolveDepth ? undefined : graph.getVertex(id);
 		if(vtx === undefined) {
 			return;
-		} else if(vtx.tag === VertexType.FunctionDefinition) {
+		} else if(FunctionDefinitionVertex.is(vtx)) {
 			yield vtx.id;
-		} else if(vtx.tag === VertexType.VariableDefinition) {
+		} else if(VariableDefinitionVertex.is(vtx)) {
 			for(const source of vtx.source ?? []) {
 				yield* this.functionDefinitionsAt(source, depth + 1);
 			}
@@ -429,7 +429,7 @@ class InputClassifier {
 		if(!this.matches(call, this.config.pure)) {
 			const types: InputType[] = [];
 
-			for(const type of Record.values<InputType>(InputType)) {
+			for(const type of Record.values(InputType)) {
 				if(this.matches(call, this.config[type])) {
 					types.push(type);
 				}
@@ -574,7 +574,7 @@ class InputClassifier {
 			acc.allPure = false;
 		}
 		// if this is a variable definition that is a parameter, classify as Parameter
-		if(v.tag === VertexType.VariableDefinition && this.dfg.idMap?.get(v.id)?.info.role === RoleInParent.ParameterName) {
+		if(VariableDefinitionVertex.is(v) && this.dfg.idMap?.get(v.id)?.info.role === RoleInParent.ParameterName) {
 			acc.types.push(this.matchWholeLinkedObject(v.id)?.type ?? InputType.Parameter);
 			acc.values.push(undefined);
 			return;
@@ -826,7 +826,7 @@ export function classifyInput(id: NodeId, dfg: DataflowGraph, config: InputClass
 	}
 	const c = new InputClassifier(dfg, config, fullDfg, packages);
 
-	if(vtx.tag === VertexType.FunctionCall) {
+	if(FunctionCallVertex.is(vtx)) {
 		const ret: InputSources = [];
 		const args = vtx.args;
 		for(const arg of args) {

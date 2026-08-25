@@ -1,5 +1,5 @@
-import { type EngineConfig, FlowrConfig } from '../config';
-import type { DeepWritable, Paths, PathValue } from 'ts-essentials';
+import { type EngineConfig, FlowrConfig, type ValidFlowrConfigPaths } from '../config';
+import type { DeepWritable } from 'ts-essentials';
 import { FlowrAnalyzer } from './flowr-analyzer';
 import { retrieveEngineInstances } from '../engines';
 import type { KnownParser } from '../r-bridge/parser';
@@ -10,7 +10,7 @@ import { FlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
 import type { BuiltInFlowrPluginName, PluginToRegister } from './plugins/plugin-registry';
 import { makePlugin } from './plugins/plugin-registry';
-import type { AutocompletablePaths } from '../util/objects';
+import type { ValueAtPath } from '../util/objects';
 
 /**
  * Builder for the {@link FlowrAnalyzer}, use it to configure all analysis aspects before creating the analyzer instance
@@ -90,14 +90,14 @@ export class FlowrAnalyzerBuilder {
 	/**
 	 * Set a specific value in the configuration used by the resulting analyzer.
 	 */
-	public configure<K extends AutocompletablePaths<FlowrConfig>>(
+	public configure<K extends ValidFlowrConfigPaths>(
 		key: K,
-		value: PathValue<FlowrConfig, K>
+		value: ValueAtPath<FlowrConfig, K>
 	): this;
 	/**
 	 * Set a specific value in the configuration used by the resulting analyzer.
 	 */
-	public configure(key: Paths<FlowrConfig, { depth: 9 }>, value: unknown): this {
+	public configure(key: ValidFlowrConfigPaths, value: unknown): this {
 		FlowrConfig.setInConfigInPlace(this.flowrConfig, key, value as never);
 		return this;
 	}

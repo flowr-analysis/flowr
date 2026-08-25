@@ -1,7 +1,6 @@
 import { guard } from '../../../../src/util/assert';
 import { asFunction, defaultEnv, variable } from '../../_helper/dataflow/environment-builder';
 import { decorateLabelContext, label } from '../../_helper/label';
-import { resolveByName, resolvesToBuiltInConstant } from '../../../../src/dataflow/environments/resolve-by-name';
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import { Ternary } from '../../../../src/util/logic';
 import { assert, describe, expect, test } from 'vitest';
@@ -15,9 +14,9 @@ import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { intervalFromValues } from '../../../../src/dataflow/eval/values/intervals/interval-constants';
 import { getScalarFromInteger } from '../../../../src/dataflow/eval/values/scalar/scalar-constants';
 import { vectorFrom } from '../../../../src/dataflow/eval/values/vectors/vector-constants';
-import { resolveIdToValue, resolveToConstants } from '../../../../src/dataflow/eval/resolve/alias-tracking';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 import { FlowrConfig } from '../../../../src/config';
+import { Resolve } from '../../../../src/dataflow/environments/resolve-helper';
 
 /** Controls which extra results are accepted in addition to an exact match */
 enum Allow {
@@ -29,7 +28,7 @@ enum Allow {
 	Bottom    = 2
 }
 
-/** Controls how {@link resolveIdToValue} is invoked during tests */
+/** Controls how {@link Resolve.toValue} is invoked during tests */
 enum With {
 	/** Pass only the dataflow graph, no environment is given to the resolver */
 	GraphOnly,
@@ -37,7 +36,7 @@ enum With {
 	Environment
 }
 
-describe.sequential('Resolve', withShell(shell => {
+describe('Resolve', { concurrent: false }, withShell(shell => {
 	function set(values: unknown[]) {
 		return setFrom(...values.map(v => valueFromTsValue(v)));
 	}
@@ -82,7 +81,7 @@ describe.sequential('Resolve', withShell(shell => {
 				context
 			}).allRemainingSteps();
 
-			const resolved = resolveIdToValue(SlicingCriterion.parse(identifier, dataflow.normalize.idMap), {
+			const resolved = Resolve.toValue(SlicingCriterion.parse(identifier, dataflow.normalize.idMap), {
 				environment: withEnv === With.GraphOnly ? undefined : dataflow.dataflow.environment,
 				graph:       dataflow.dataflow.graph,
 				idMap:       dataflow.normalize.idMap,
@@ -355,7 +354,7 @@ describe.sequential('Resolve', withShell(shell => {
 		test(label('Locally without distracting elements', ['global-scope', 'lexicographic-scope'], ['other']), () => {
 			const xVar = variable('x', '_1');
 			const env = defaultEnv().defineInEnv(xVar);
-			const result = resolveByName('x', env, ReferenceType.Unknown);
+			const result = Resolve.byNameAndType('x', env, ReferenceType.Unknown);
 			guard(result !== undefined, 'there should be a result');
 			expect(result, 'there should be exactly one definition for x').to.have.length(1);
 			expect(result[0], 'it should be x').to.deep.equal(xVar);
@@ -365,7 +364,7 @@ describe.sequential('Resolve', withShell(shell => {
 				.defineVariable('x', '_2', '_1');
 			const xVar = variable('x', '_1');
 			env = env.defineInEnv(xVar);
-			const result = resolveByName('x', env, ReferenceType.Unknown);
+			const result = Resolve.byNameAndType('x', env, ReferenceType.Unknown);
 			guard(result !== undefined, 'there should be a result');
 			expect(result, 'there should be exactly one definition for x').to.have.length(1);
 			expect(result[0], 'it should be x').to.be.deep.equal(xVar);
@@ -374,7 +373,7 @@ describe.sequential('Resolve', withShell(shell => {
 			test(label('Locally without distracting elements', ['global-scope', 'lexicographic-scope', 'search-type'], ['other']), () => {
 				const xVar = variable('foo', '_1');
 				const env = defaultEnv().defineInEnv(xVar);
-				const result = resolveByName('foo', env, ReferenceType.Function);
+				const result = Resolve.byNameAndType('foo', env, ReferenceType.Function);
 				assert.isUndefined(result, 'there should be no result');
 			});
 		});
@@ -382,7 +381,7 @@ describe.sequential('Resolve', withShell(shell => {
 			test(label('Locally without distracting elements', ['global-scope', 'lexicographic-scope', 'search-type'], ['other']), () => {
 				const xVar = asFunction('foo', '_1');
 				const env = defaultEnv().defineInEnv(xVar);
-				const result = resolveByName('foo', env, ReferenceType.Variable);
+				const result = Resolve.byNameAndType('foo', env, ReferenceType.Variable);
 				assert.isUndefined(result, 'there should be no result');
 			});
 		});
@@ -411,7 +410,7 @@ describe.sequential('Resolve', withShell(shell => {
 			['NULL',  null],
 			['NA',    null],
 		])("Identifier '%s' should always resolve to %s", (identifier, wantedValue) => {
-			const result = resolvesToBuiltInConstant(identifier, defaultEnv(), wantedValue);
+			const result = Resolve.toBuiltIn(identifier, defaultEnv(), wantedValue);
 			assert.strictEqual(result, Ternary.Always, 'should be Ternary.Always');
 		});
 
@@ -421,7 +420,7 @@ describe.sequential('Resolve', withShell(shell => {
 			['TRUE',  true,  defaultEnv().defineInEnv({ name: 'TRUE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, cds: [{ id: 42, when: true }] })],
 			['FALSE', false, defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, cds: [{ id: 42, when: true }] })]
 		])("Identifier '%s' should maybe resolve to %s", (identifier, wantedValue, environment) => {
-			const result = resolvesToBuiltInConstant(identifier, environment, wantedValue);
+			const result = Resolve.toBuiltIn(identifier, environment, wantedValue);
 			assert.strictEqual(result, Ternary.Maybe, 'should be Ternary.Maybe');
 		});
 
@@ -433,7 +432,7 @@ describe.sequential('Resolve', withShell(shell => {
 			['42',      true,      defaultEnv()],
 			['FALSE',   false,     defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, cds: [{ id: 42, when: true }, { id: 42, when: false }] })]
 		])("Identifier '%s' should never resolve to %s", (identifier, wantedValue, environment) => {
-			const result = resolvesToBuiltInConstant(identifier, environment, wantedValue);
+			const result = Resolve.toBuiltIn(identifier, environment, wantedValue);
 			assert.strictEqual(result, Ternary.Never, 'should be Ternary.Never');
 		});
 
@@ -449,7 +448,7 @@ describe.sequential('Resolve', withShell(shell => {
 				['NULL',  null],
 				['NA',    null],
 			])("Identifier '%s' should always resolve to %s", (identifier, wantedValue) => {
-				const defs = resolveToConstants(identifier, defaultEnv());
+				const defs = Resolve.toConstants(identifier, defaultEnv());
 				assert.deepEqual(defs, setFrom(valueFromTsValue(wantedValue)));
 			});
 
@@ -459,7 +458,7 @@ describe.sequential('Resolve', withShell(shell => {
 				['TRUE',  setFrom(Top, valueFromTsValue(true)),  defaultEnv().defineInEnv({ name: 'TRUE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, cds: [{ id: 42, when: true }] })],
 				['FALSE', setFrom(Top, valueFromTsValue(false)), defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, cds: [{ id: 42, when: true }] })]
 			])("Identifier '%s' should maybe resolve to %s", (identifier, wantedValue, environment) => {
-				const defs = resolveToConstants(identifier, environment);
+				const defs = Resolve.toConstants(identifier, environment);
 				assert.deepEqual(defs, wantedValue);
 			});
 
@@ -471,7 +470,7 @@ describe.sequential('Resolve', withShell(shell => {
 				['42',        Top,              defaultEnv()],
 				['FALSE',     setFrom(Top),     defaultEnv().defineInEnv({ name: 'FALSE', nodeId: 0, definedAt: 1, type: ReferenceType.Constant, cds: [{ id: 42, when: true }, { id: 42, when: false }] })]
 			])("Identifier '%s' should never resolve to %s", (identifier, wantedValue, environment) => {
-				const defs = resolveToConstants(identifier, environment);
+				const defs = Resolve.toConstants(identifier, environment);
 				assert.deepEqual(defs, wantedValue);
 			});
 		});

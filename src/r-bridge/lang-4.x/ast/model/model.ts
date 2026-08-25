@@ -134,7 +134,7 @@ export const RConstant = {
 		return t === RType.Number || t === RType.String || t === RType.Logical;
 	},
 	/**
-	 * A set of all types of constants in the normalized AST, i.e. number, string and logical constants.
+	 * A set of all types of constants in the normalized AST, i.e. number, string, and logical constants.
 	 */
 	constantTypes: new Set([RType.Number, RType.String, RType.Logical]) as ReadonlySet<RType>
 } as const;
@@ -144,7 +144,7 @@ export const RConstant = {
  */
 export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info> | RBreak<Info> | RNext<Info> | RLineDirective<Info>;
 /**
- * Represents a leaf node in the normalized AST, i.e. a node that does not have any children. This includes comment, symbol, constant, break, next and line directive nodes.
+ * Represents a leaf node in the normalized AST, i.e. a node that does not have any children. This includes comment, symbol, constant, break, next, and line directive nodes.
  */
 export const RSingleNode = {
 	name: 'RSingleNode',
@@ -160,7 +160,7 @@ export const RSingleNode = {
 		return t === RType.Comment || t === RType.Symbol || RConstant.constantTypes.has(t) || t === RType.Break || t === RType.Next || t === RType.LineDirective;
 	},
 	/**
-	 * A set of all types of single nodes in the normalized AST, i.e. comment, symbol, constant, break, next and line directive nodes.
+	 * A set of all types of single nodes in the normalized AST, i.e. comment, symbol, constant, break, next, and line directive nodes.
 	 */
 	singleNodeTypes: new Set([RType.Comment, RType.Symbol, RType.Break, RType.Next, RType.LineDirective, ...RConstant.constantTypes]) as ReadonlySet<RType>
 } as const;
@@ -228,7 +228,7 @@ export const RFunctions = {
 		return t === RType.FunctionDefinition || t === RType.FunctionCall || t === RType.Parameter || t === RType.Argument;
 	},
 	/**
-	 * A set of all types of function-related nodes in the normalized AST, i.e. function definitions, function calls, parameters and arguments.
+	 * A set of all types of function-related nodes in the normalized AST, i.e. function definitions, function calls, parameters, and arguments.
 	 */
 	functionTypes: new Set([RType.FunctionDefinition, RType.FunctionCall, RType.Parameter, RType.Argument]) as ReadonlySet<RType>
 } as const;

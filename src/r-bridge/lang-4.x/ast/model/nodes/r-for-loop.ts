@@ -27,6 +27,7 @@ export const RForLoop = {
 	name: 'RForLoop',
 	/**
 	 * Type guard for RForLoop nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RForLoop<Info> {
 		return node?.type === RType.ForLoop;

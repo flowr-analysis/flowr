@@ -1,56 +1,61 @@
-import { type AbsintVisitorConfiguration, AbstractInterpretationVisitor } from '../abstract-interpretation/absint-visitor';
+import { AbstractInterpreter, type AbsintAnalysis } from '../abstract-interpretation/absint-inference';
+import type { AbstractSemantics } from '../abstract-interpretation/abstract-semantics';
 import { AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import { BoundedSetDomain } from '../abstract-interpretation/domains/bounded-set-domain';
 import { IntervalDomain, IntervalTop } from '../abstract-interpretation/domains/interval-domain';
-import { BottomSymbol, Top } from '../abstract-interpretation/domains/lattice';
+import { Top } from '../abstract-interpretation/domains/lattice';
 import { MultiValueDomain, MultiValueStateDomain } from '../abstract-interpretation/domains/multi-value-state-domain';
-import { StateAbstractDomain } from '../abstract-interpretation/domains/state-abstract-domain';
-import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
-import { Identifier } from '../dataflow/environments/identifier';
+import { DataFrameShapeAnalysis } from '../abstract-interpretation/data-frame/shape-inference';
+import type { StateDomain } from '../abstract-interpretation/domains/state-domain';
+import { ValueSemantics } from '../abstract-interpretation/value-semantics';
+import { BasicCfgGuidedVisitor } from '../control-flow/basic-cfg-guided-visitor';
 import { FunctionArgument } from '../dataflow/graph/graph';
-import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexValue } from '../dataflow/graph/vertex';
-import { CfgKind } from '../project/cfg-kind';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
-import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
-import type { AstIdMap, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { codeBlock } from './doc-util/doc-code';
 import { linkFlowRSourceFile } from './doc-util/doc-files';
 import { details, section } from './doc-util/doc-structure';
 import { DocMaker, type DocMakerArgs } from './wiki-mk/doc-maker';
 
-export class IntervalInferenceVisitor extends AbstractInterpretationVisitor<StateAbstractDomain<IntervalDomain>> {
-	constructor(config: AbsintVisitorConfiguration) {
-		super(config, StateAbstractDomain.top(IntervalDomain.top()));
+/** The abstract domains of the interval analysis, i.e. a single interval domain named `interval` */
+export type IntervalDomains = { interval: IntervalDomain };
+
+/** The abstract semantics of the interval analysis for numeric constants, additions, and subtractions */
+export const IntervalSemantics = new ValueSemantics<StateDomain<IntervalDomain>>({
+	constants: {
+		// For numeric constants, the resulting interval consists just of the value of the constant
+		number: (state, vertex, ctx, value) => state.set(vertex.id, IntervalDomain.from(value.num))
+	},
+	// We map the numerical operations to the resulting interval after applying the abstract semantics of the operation
+	functionCalls: {
+		'base::+': applyBinaryOp((left, right) => left.add(right)),
+		'base::-': applyBinaryOp((left, right) => left.subtract(right))
 	}
+});
 
-	protected override onNumberConstant({ vertex, node }: { vertex: DataflowGraphVertexValue, node: RNumber<ParentInformation> }): void {
-		super.onNumberConstant({ vertex, node });
+/** The interval analysis inferring the possible numeric values of the expressions of a program */
+export const IntervalAnalysis: AbsintAnalysis<IntervalDomains> = {
+	domains:   { interval: IntervalDomain.top() },
+	semantics: { interval: IntervalSemantics }
+};
 
-		const interval = new IntervalDomain([node.content.num, node.content.num]);
-		this.currentState.set(node.info.id, interval);
-	}
-
-	protected override onFunctionCall({ call }: { call: DataflowGraphVertexFunctionCall }): void {
-		super.onFunctionCall({ call });
-
-		if(call.args.length === 2 && call.args.every(FunctionArgument.isNotEmpty)) {
-			const left = this.getAbstractValue(call.args[0].nodeId, this.currentState);
-			const right = this.getAbstractValue(call.args[1].nodeId, this.currentState);
-
-			if(left === undefined || right === undefined) {
-				// If an operand does not have an inferred interval, this might not be a numerical operation
-				return;
-			}
-			// We map the numerical operation to the resulting interval after applying the abstract semantics of the operation
-			switch(Identifier.getName(call.name)) {
-				case '+':
-					return this.currentState.set(call.id, left.add(right));
-				case '-':
-					return this.currentState.set(call.id, left.subtract(right));
-			}
+/** Creates the abstract semantics of a binary numeric operation, such as `+` or `-` */
+function applyBinaryOp(
+	operation: (left: IntervalDomain, right: IntervalDomain) => IntervalDomain
+): AbstractSemantics<StateDomain<IntervalDomain>>['handleFunctionCall'] {
+	return (state, vertex, ctx) => {
+		if(vertex.args.length !== 2 || !vertex.args.every(FunctionArgument.isNotEmpty)) {
+			return;
 		}
-	}
+		const left = ctx.getAbstractValue(vertex.args[0].nodeId, state);
+		const right = ctx.getAbstractValue(vertex.args[1].nodeId, state);
+
+		// If an operand does not have an inferred interval, this might not be a numerical operation
+		if(left !== undefined && right !== undefined) {
+			state.set(vertex.id, operation(left, right));
+		}
+	};
 }
 
 async function inferIntervals(): Promise<string> {
@@ -66,17 +71,17 @@ async function inferIntervals(): Promise<string> {
 
 	const ast = await analyzer.normalize();
 	const dfg = (await analyzer.dataflow()).graph;
-	const cfg = await analyzer.controlflow(undefined, CfgKind.NoFunctionDefs);
+	const cfg = await analyzer.controlflow();
 	const ctx = analyzer.inspectContext();
 
-	const inference = new IntervalInferenceVisitor({ controlFlow: cfg, dfg: dfg, normalizedAst: ast, ctx: ctx });
+	const inference = new AbstractInterpreter({ controlFlow: cfg, dfg: dfg, normalizedAst: ast, ctx: ctx }, IntervalAnalysis);
 	inference.start();
 
-	const result = inference.getEndState();
+	const result = inference.getEndState('interval');
 
-	return result.isValue() ? result.value.entries().toArray()
+	return result.entries()
 		.map(([id, value]) => `${nodeIdToSlicingCriterion(id, ast.idMap)} -> ${value.toString()}`)
-		.join('\n') : BottomSymbol;
+		.join('\n');
 }
 
 function nodeIdToSlicingCriterion(id: NodeId, idMap: AstIdMap): string {
@@ -133,12 +138,7 @@ In _flowR_, an abstract domain is represented by the class ${ctx.link(AbstractDo
  * ${ctx.linkM(AbstractDomain, 'widen')} to perform widening with another abstract value to ensure termination of the fixpoint iteration
  * ${ctx.linkM(AbstractDomain, 'narrow')} to perform narrowing with another abstract value to refine the abstract value after widening
 
-${details('Class Diagram', `
-All boxes link to their respective implementation in the source code.
-${codeBlock('mermaid', ctx.mermaid(AbstractDomain))}
-`.trim())}
-
-The ${ctx.link('Top')} and ${ctx.link('Bottom')} symbols can be used to explicitly represent the top or bottom elment of an abstract domain. Additionally, for value abstract domains, there is the ${ctx.link('SatisfiableDomain')} interface that provides the function ${ctx.link('SatisfiableDomain:::satisfies')} to check whether the current abstract value of the abstract domain satisfies a concrete value (see also ${ctx.link('NumericalComparator')} and ${ctx.link('SetComparator')}).
+The ${ctx.link('Top')} and ${ctx.link('Bottom')} symbols can be used to explicitly represent the top or bottom elment of an abstract domain. Additionally, for value abstract domains, there is the ${ctx.link('ValueDomain')} interface that provides the function ${ctx.link('ValueDomain:::satisfies')} to check whether the current abstract value of the abstract domain satisfies a concrete value (see also ${ctx.link('NumericalComparator')} and ${ctx.link('SetComparator')}).
 
 _flowR_ already provides different abstract domains for abstract interpretation in ${linkFlowRSourceFile('src/abstract-interpretation/domains')}. Many of the abstract domains are generic and can be used for differend kinds of analyses. The existing abstract domains are presented in the following. Some of the listed abstract domains can be expanded to show the inherited abstract domains.
 
@@ -155,28 +155,57 @@ ${ctx.code(multiValueExample, { dropLinesStart: 1, dropLinesEnd: 1, hideDefinedA
 
 ${section('Abstract Interpretation', 2, 'abstract-interpretation')}
 
-We perform abstract interpretation by forward-traversing the ${ctx.linkPage('wiki/Control Flow Graph', 'control flow graph')} of _flowR_ using an ${ctx.link(AbstractInterpretationVisitor)}. For each visited control flow vertex, the visitor retrieves the current abstract state by joining the abstract states of the predecessors, applies the abstract semantics of the visited control flow vertex to the current state, and updates the abstract state of the currently visited vertex to the current state. The visitor already handles assignments and (delayed) widening at widening points. However, the visitor does not yet support interprocedural abstract interpretation.
+We perform abstract interpretation by forward-traversing the ${ctx.linkPage('wiki/Control Flow Graph', 'control flow graph')} of _flowR_ using an ${ctx.link(AbstractInterpreter)}. For each visited control flow vertex, the abstract interpreter retrieves the current abstract state by joining the abstract states of the predecessors, applies the abstract semantics of the visited control flow vertex to the current state, and updates the abstract state of the currently visited vertex to the current state. The abstract interpreter already handles (delayed) widening at widening points.
 
-To implement a custom abstract interpretation analysis, we can just create a new class and extend the ${ctx.link(AbstractInterpretationVisitor)}. The abstract interpretation visitor uses a \`StateDomain\` (e.g., a ${ctx.link(StateAbstractDomain)}) to capture the current abstract state at each vertex in the control flow graph. We can then extend the callback functions of the ${ctx.link(AbstractInterpretationVisitor)} to implement the abstract semantics of expressions, such as ${ctx.link(`${SemanticCfgGuidedVisitor.name}:::onNumberConstant`)}, ${ctx.link(`${AbstractInterpretationVisitor.name}:::onFunctionCall`)} and ${ctx.link(`${SemanticCfgGuidedVisitor.name}:::onReplacementCall`)} (make sure to still call the respective super function). The abstract interpretation visitor provides the following functions to retrieve the currently inferred values:
+Joining the predecessors goes through ${ctx.link(`${AbstractInterpreter.name}::getPredecessorState`)}, which is handed the branch that was taken to get to the vertex.
+For \`if(u) 3 else 2\` the step onto \`3\` reports the condition \`u\` as the predecessor and the \`if\` as the branch, together with the outcome \`u\` had, which is what the ${ctx.link('AbstractSemantics:::handleConditionBranch')} semantics of a domain are applied to on the way into a branch.
+The other direction is ${ctx.link(`${BasicCfgGuidedVisitor.name}::getDecidedConstructs`)}: standing on \`u\`, it names the \`if\` that \`u\` decides.
 
- * ${ctx.linkM(AbstractInterpretationVisitor, 'getAbstractValue')} to resolve the inferred abstract value for an AST node (this includes resolving symbols, pipes, and if expressions)
- * ${ctx.linkM(AbstractInterpretationVisitor, 'getAbstractState')} to get the inferred abstract state at an AST node mapping AST nodes to abstract values
- * ${ctx.linkM(AbstractInterpretationVisitor, 'getAbstractTrace')} to get the complete abstract trace mapping AST nodes to abstract states at the respective node
- * ${ctx.linkM(AbstractInterpretationVisitor, 'getEndState')} to get the inferred abstract state at the end of the program (at the exit points of the control flow graph)
+The analysis is interprocedural: it steps into what a call dispatches to and continues with the state at the exit points of those functions, using ${ctx.link(`${AbstractInterpreter.name}::enterCall`)}.
+This is what the ${ctx.linkConfig('abstractInterpretation.followCalls')} configuration switches off, and ${ctx.link(`${AbstractInterpreter.name}::shouldEnterCall`)} is the hook to decide it per call.
+Each call site hands its own arguments to the parameters of the function it enters, so what a function is worth depends on where it is called, and every definition a call may reach is entered with the state at the call, so what the call is worth is what either of them leaves behind.
+A definition that calls itself is run until what it leaves behind and what its parameters are worth both stop moving: \`shrink(head(x, nrow(x) - 1))\` hands over fewer rows than it was given, so the parameters are as much part of the fixpoint as the result is, and both are widened once the rounds pass the threshold so that they must stop.
+What a call is worth is only known when every way out of every definition it reaches is: a function that leaves a frame behind on one path and something else on another says nothing about its result, the same way \`if(u) df else 42\` does not.
+This is how a ${ctx.link(DataFrameShapeAnalysis)} shape flows through the functions a program defines.
 
-For example, if we want to perform a (very basic) interval analysis using abstract interpretation in _flowR_, we can implement the following ${ctx.link(IntervalInferenceVisitor)} that extends ${ctx.link(AbstractInterpretationVisitor)} using a ${ctx.link(StateAbstractDomain)} for the ${ctx.link(IntervalDomain)}:
+An abstract interpretation analysis is described declaratively by an ${ctx.link('AbsintAnalysis')} which is executed using the ${ctx.link(AbstractInterpreter)}. An abstract interpretation analysis consists of
 
-${ctx.code(IntervalInferenceVisitor, { hideDefinedAt: true })}
+ * \`domains\` — the value abstract domains to infer as a Cartesian product, mapping a name to an instance of the respective abstract domain (the abstract state maps each AST node to the values of _all_ of these domains, so multiple analyses can share a single traversal),
+ * \`semantics\` — the ${ctx.link('AbstractSemantics')} to apply for each of these domains, and
+ * \`reductions\` — optional reduction functions of the product domain refining the value of one domain based on the values of the others.
 
-The interval inference visitor first overrides the ${ctx.link(`${SemanticCfgGuidedVisitor.name}:::onNumberConstant`)} function to infer intervals for visited control flow vertices that represent numeric constants. For numeric constants, the resulting interval consists just of the number value of the constant. We then update the current abstract state of the visitor by setting the inferred abstract value of the currently visited control flow vertex to the new interval.
+The ${ctx.link('AbstractSemantics')} for a domain define the abstract semantics of different R constructs with respect to the current abstract state (e.g., ${ctx.link('AbstractSemantics:::handleFunctionCall')}, ${ctx.link('AbstractSemantics:::handleReplacementCall')}, or ${ctx.link('AbstractSemantics:::handleNumberConstant')}). All handlers are optional and receive the current abstract \`state\` to update in place, the dataflow graph vertex of the visited construct, and an ${ctx.link('AbsintContext')} providing access to the analyzed program and to the inferred abstract values (e.g., ${ctx.link('AbsintContext:::getAbstractValue')} to resolve the inferred value of an AST node, which includes resolving symbols, pipes, and if expressions).
 
-In this simple example, we only want to support the addition and subtraction of numeric values. Therefore, we override the ${ctx.link(`${AbstractInterpretationVisitor.name}:::onFunctionCall`)} function to apply the abstract semantics of additions and subtraction with resprect to the interval domain. For the addition and subtraction, we are only interested in function calls with exactly two non-empty arguments. We first resolve the currently inferred abstract value for the left and right operand of the function call. If we have not inferred a value for one of the operands, this function call might not be a numeric function call and we ignore it. Otherwise, we check whether the function call represents an addition or subtraction and apply the abstract semantics of the operation to the left and right operand. We then again update the current abstract state of the visitor by setting the inferred abstract value of the currently visited function call vertex to the abstract value resulting from applying the abstract semantics of the operation to the operands.
+The abstract semantics for a (non-relational) abstract domain can be defined declaratively using ${ctx.link(ValueSemantics)} that receives a record of abstract semantics for constants, function calls, accesses, replacement calls, and condition semantics. Function calls, accesses and replacement calls are dispatched by their qualified name (e.g., \`dplyr::filter\`), so that the semantics of a function are only applied if the called function may actually originate from the expected package. Additionally, ${ctx.link(ValueSemantics)} provides default semantics for assignments by assigning the abstract value of the source to the assignment target.
+
+After the abstract interpreter is started with ${ctx.linkM(AbstractInterpreter, 'start', { hideClass: true })}, it provides the following functions to retrieve the inferred values:
+
+ * ${ctx.linkM(AbstractInterpreter, 'getAbstractValue')} to resolve the inferred abstract value of a domain for an AST node (this includes resolving symbols, pipes, and if expressions)
+ * ${ctx.linkM(AbstractInterpreter, 'getAbstractState')} to get the inferred abstract state of a domain at an AST node mapping AST nodes to the abstract value of the domain
+ * ${ctx.linkM(AbstractInterpreter, 'getAbstractTrace')} to get the complete abstract trace mapping AST nodes to abstract states at the respective node
+ * ${ctx.linkM(AbstractInterpreter, 'getEndState')} to get the inferred abstract state at the end of the program (at the exit points of the control flow graph)
+
+For example, if we want to perform a (very basic) interval analysis using abstract interpretation in _flowR_, we can define the following analysis using the ${ctx.link(IntervalDomain)}:
+
+${ctx.code('IntervalDomains', { hideDefinedAt: true })}
+
+${ctx.code('IntervalSemantics', { hideDefinedAt: true })}
+
+${ctx.code('IntervalAnalysis', { hideDefinedAt: true })}
+
+${ctx.code(applyBinaryOp, { hideDefinedAt: true })}
+
+The semantics of the analysis first define the semantics of numeric constants, for which the resulting interval consists just of the value of the constant. We update the abstract state by setting the abstract value of the currently visited constant vertex to this new interval.
+
+In this simple example, we only want to support the addition and subtraction of numeric values. Therefore, we define the semantics of the functions \`base::+\` and \`base::-\` to apply the abstract semantics of additions and subtractions with respect to the interval domain. For the addition and subtraction, we are only interested in function calls with exactly two non-empty arguments. We first resolve the currently inferred abstract value for the left and right operand of the function call. If we have not inferred a value for one of the operands, this function call might not be a numeric function call and we ignore it. Otherwise, we again update the abstract state by setting the abstract value of the currently visited function call vertex to the abstract value resulting from applying the abstract semantics of the operation to the operands.
+
+The data frame shape inference in ${linkFlowRSourceFile('src/abstract-interpretation/data-frame')} provides a more comprehensive example of such an abstract interpretation analysis.
 
 If we now want to run the interval inference, we can write the following code:
 
 ${ctx.code(inferIntervals, { dropLinesStart: 1, dropLinesEnd: 5, hideDefinedAt: true })}
 
-We first need a ${ctx.linkPage('wiki/Analyzer', 'flowR analyzer')} (in this case, using the ${ctx.linkPage('wiki/Engines', 'tree-sitter engine')}). In this example, we want to analyze a small example code that assigns \`42\` to the variable \`x\`, randomly assigns \`6\` or \`12\` to the variable \`y\`, and assignes the sum of \`x\` and \`y\` to the variable \`z\`. For the abstract interpretation visitor, we need to retrieve the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')}, ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, ${ctx.linkPage('wiki/Control Flow Graph', 'control flow graph')}, and context of the flowR anaylzer. For performance reasons, we construct the control flow graph without simplification passes, data flow information, and function definitions. We then create a new ${ctx.link(IntervalInferenceVisitor)} using the control flow graph, dataflow graph, normalized AST, and analyzer context, and start the visitor using ${ctx.linkM(AbstractInterpretationVisitor, 'start', { hideClass: true })}. After the visitor is finished, we retrieve the inferred abstract state at the end of the program using ${ctx.linkM(AbstractInterpretationVisitor, 'getEndState', { hideClass: true })}.
+We first need a ${ctx.linkPage('wiki/Analyzer', 'flowR analyzer')} (in this case, using the ${ctx.linkPage('wiki/Engines', 'tree-sitter engine')}). In this example, we want to analyze a small example code that assigns \`42\` to the variable \`x\`, randomly assigns \`6\` or \`12\` to the variable \`y\`, and assignes the sum of \`x\` and \`y\` to the variable \`z\`. For the abstract interpreter, we need to retrieve the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')}, ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, ${ctx.linkPage('wiki/Control Flow Graph', 'control flow graph')}, and context of the flowR anaylzer. For performance reasons, we request the control flow graph without simplification passes; it is a view on the dataflow graph and is only projected once something walks it. We then create a new ${ctx.link(AbstractInterpreter)} using the control flow graph, dataflow graph, normalized AST, and analyzer context together with our interval analysis, and start the abstract interpreter using ${ctx.linkM(AbstractInterpreter, 'start', { hideClass: true })}. After the abstract interpreter is finished, we retrieve the inferred abstract state at the end of the program using ${ctx.linkM(AbstractInterpreter, 'getEndState', { hideClass: true })}.
 
 If we now print the inferred abstract state at the end of the program, we get the following output:
 
@@ -198,7 +227,8 @@ The test function ${ctx.link('testInferredValues')} combines both tests: it perf
  * \`shell\` — the R shell to use for the validation test
  * \`code\` — the R code to analyse and (for validation) to execute
  * \`expected\` — an ${ctx.link('InferenceTestCase')} mapping slicing criteria to expected abstract values, or a list of slicing criteria for validation-only tests
- * \`inference\` — a function that takes an ${ctx.link('AbsintVisitorConfiguration')} and returns an ${ctx.link(AbstractInterpretationVisitor)} to perform the inference
+ * \`createAnalysis\` — a function creating the ${ctx.link('AbsintAnalysis')} to perform
+ * \`domain\` — the name of the abstract domain of the analysis to compare the inferred values for
  * \`createOutputCode\` — a function \`(marker, symbol) => string\` that returns R code printing the analyzed properties of \`symbol\` in a line prefixed with \`marker\`
  * \`parseOutput\` — a function \`(line) => Domain | undefined\` that parses the output line produced by \`createOutputCode\` into an abstract domain value
  * \`options\` — optional inference test settings (_flowR_ configuration, additional project files, domain matching type, \`skipRun\`, etc.)
@@ -210,7 +240,7 @@ When comparing inferred values with expected values, the framework supports two 
  * ${ctx.link('DomainMatchingType::Equal')} — the inferred value must equal the expected value (default for assertion tests)
  * ${ctx.link('DomainMatchingType::Overapproximation')} — the inferred value must be an over-approximation of the actual value via ${ctx.linkM(AbstractDomain, 'leq')} (default for validation tests)
 
-For example, to use the test framework for the ${ctx.link(IntervalInferenceVisitor)} defined above, we first define how to print the properties of an actual numeric scalar value in R using \`createOutputCode\` and how to parse it into an abstract domain value using \`parseOutput\`. Then, we can use ${ctx.link('testInferredValues')} to create a test for our code example by providing a test name, an R shell, the code to test, the test locations as slicing criteria with expected values, the inference visitor, and our \`createOutputCode\` and \`parseOutput\` function:
+For example, to use the test framework for the ${ctx.link('IntervalAnalysis')} defined above, we first define how to print the properties of an actual numeric scalar value in R using \`createOutputCode\` and how to parse it into an abstract domain value using \`parseOutput\`. Then, we can use ${ctx.link('testInferredValues')} to create a test for our code example by providing a test name, an R shell, the code to test, the test locations as slicing criteria with expected values, the analysis and the name of its abstract domain, and our \`createOutputCode\` and \`parseOutput\` function:
 
 ${ctx.codeFile('test/functionality/abstract-interpretation/wiki-absint.ts', { skipImports: true, hideDefinedAt: true })}
 

@@ -144,15 +144,33 @@ if [ "$ACTION" == "doc" ]; then
    verify_doc_output
    end_group
 
+   group "Generate the landing page and the signature browser"
+   # the browser is a few MB and deliberately uncommitted, so gh-pages is where it gets published
+   $NPM_CMD run gen:landing
+   if [ ! -s "wiki/sigdb/index.html" ]; then
+     echo "::warning::the signature browser was not generated (no signature database?), so it will 404 on the site"
+   fi
+   end_group
+
    group "Create documentation commit"
    git config --local user.email "action@github.com"
    git config --local user.name "GitHub Action"
    touch .nojekyll
    git add -f ".nojekyll" "$DOC_OUT/"
    if [ -d "wiki/stats/" ]; then git add -f "wiki/stats/"; fi
+   git add -f "index.html"
+   if [ -d "wiki/sigdb/" ]; then git add -f "wiki/sigdb/"; fi
+   if [ -d "wiki/playground/" ]; then git add -f "wiki/playground/"; fi
    git commit -m "Update documentation"
-   # make the branch an orphan
+   # the branch is an orphan and force-pushed, so the site never carries its own history; it also
+   # carries only what the site serves, not the sources, so nothing piles up over the releases
    git checkout --orphan gh-pages-orphan-tmp
+   git rm -r --cached . --quiet
+   git add -f ".nojekyll" "$DOC_OUT/" "index.html"
+   for extra in "wiki/img" "wiki/stats" "wiki/sigdb" "wiki/playground"; do
+     if [ -d "$extra" ]; then git add -f "$extra"; fi
+   done
    git commit -m "Current documentation stage"
+   echo "site tree: $(git ls-files | wc -l) files, $(git ls-files -z | du -ch --files0-from=- 2>/dev/null | tail -1 | cut -f1)"
    end_group
 fi

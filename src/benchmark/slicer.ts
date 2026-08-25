@@ -13,6 +13,7 @@ import type { InlineFull, ReconstructionResult } from '../reconstruct/reconstruc
 import type { PipelineExecutor } from '../core/pipeline-executor';
 import { guard } from '../util/assert';
 import { withoutWhitespace } from '../util/text/strings';
+import { countAstComments } from './stats/count-comments';
 import type {
 	AdditionalSlicerMeasurements,
 	BenchmarkMemoryMeasurement,
@@ -45,18 +46,20 @@ import type { SyntaxNode, Tree } from 'web-tree-sitter';
 import { RShell } from '../r-bridge/shell';
 import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import { VertexType } from '../dataflow/graph/vertex';
-import { equidistantSampling } from '../util/collections/arrays';
+import { FunctionCallVertex, FunctionDefinitionVertex } from '../dataflow/graph/vertex';
+import { ControlFlowEdgeTypes, DfEdge } from '../dataflow/graph/edge';
+import { NoEdges } from '../dataflow/graph/graph';
+import { equidistantSampling, arraySum } from '../util/collections/arrays';
 import { FlowrConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
-import { extractCfg } from '../control-flow/extract-cfg';
-import { DataFrameShapeInferenceVisitor } from '../abstract-interpretation/data-frame/shape-inference';
+import { extractCfg } from '../control-flow/control-flow-graph';
+import { AbstractInterpreter } from '../abstract-interpretation/absint-inference';
+import { DataFrameShapeAnalysis } from '../abstract-interpretation/data-frame/shape-inference';
 import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
 import { SetRangeDomain } from '../abstract-interpretation/domains/set-range-domain';
 import fs from 'fs';
 import { type FlowrAnalyzerContext, contextFromInput } from '../project/context/flowr-analyzer-context';
 import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
-import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import { CallGraph } from '../dataflow/graph/call-graph';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
@@ -105,7 +108,7 @@ export type SamplingStrategy = 'random' | 'equidistant';
 
 /**
  * A slicer that can be used to slice exactly one file (multiple times).
- * It holds its own {@link RShell} instance, maintains a cached dataflow and keeps measurements.
+ * It holds its own {@link RShell} instance, maintains a cached dataflow, and keeps measurements.
  *
  * Make sure to call {@link init} to initialize the slicer, before calling {@link slice}.
  * After slicing, call {@link finish} to close the R session and retrieve the stats.
@@ -199,8 +202,8 @@ export class BenchmarkSlicer {
 				return ret;
 			};
 			const root = (this.loadedXml as Tree[]).map(t => t.rootNode);
-			numberOfRTokens = root.map(r => countChildren(r)).reduce((a, b) => a + b, 0);
-			numberOfRTokensNoComments = root.map(r => countChildren(r, true)).reduce((a, b) => a + b, 0);
+			numberOfRTokens = arraySum(root.map(r => countChildren(r)));
+			numberOfRTokensNoComments = arraySum(root.map(r => countChildren(r, true)));
 		}
 
 		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined after initialization');
@@ -209,35 +212,29 @@ export class BenchmarkSlicer {
 		// collect dataflow graph size
 		const vertices = this.dataflow.graph.vertices(true);
 		let numberOfEdges = 0;
+		let numberOfControlFlowEdges = 0;
 		let numberOfCalls = 0;
 		let numberOfDefinitions = 0;
 
 		for(const [n, info] of vertices) {
 			const outgoingEdges = this.dataflow.graph.outgoingEdges(n);
-			numberOfEdges += outgoingEdges?.size ?? 0;
-			if(info.tag === VertexType.FunctionCall) {
+			for(const [, edge] of outgoingEdges ?? NoEdges) {
+				/* the control flow lives in the very same graph, so it is counted on its own to stay comparable */
+				if(DfEdge.includesType(edge, ControlFlowEdgeTypes)) {
+					numberOfControlFlowEdges++;
+				}
+				if(!DfEdge.isOnlyControlFlow(edge)) {
+					numberOfEdges++;
+				}
+			}
+			if(FunctionCallVertex.is(info)) {
 				numberOfCalls++;
-			} else if(info.tag === VertexType.FunctionDefinition) {
+			} else if(FunctionDefinitionVertex.is(info)) {
 				numberOfDefinitions++;
 			}
 		}
 
-		let nodes = 0;
-		let nodesNoComments = 0;
-		let commentChars = 0;
-		let commentCharsNoWhitespace = 0;
-		RProject.visitAst(this.normalizedAst.ast, t => {
-			nodes++;
-			const comments = t.info.adToks?.filter(RComment.is);
-			if(comments && comments.length > 0) {
-				const content = comments.map(c => c.lexeme ?? '').join('');
-				commentChars += content.length;
-				commentCharsNoWhitespace += withoutWhitespace(content).length;
-			} else {
-				nodesNoComments++;
-			}
-			return false;
-		});
+		const { nodes, nodesNoComments, commentChars, commentCharsNoWhitespace } = countAstComments(this.normalizedAst.ast);
 
 		const split = loadedContent.split('\n');
 		const nonWhitespace = withoutWhitespace(loadedContent).length;
@@ -261,6 +258,7 @@ export class BenchmarkSlicer {
 			dataflow: {
 				numberOfNodes:               this.dataflow.graph.vertices(true).toArray().length,
 				numberOfEdges:               numberOfEdges,
+				numberOfControlFlowEdges:    numberOfControlFlowEdges,
 				numberOfCalls:               numberOfCalls,
 				numberOfFunctionDefinitions: numberOfDefinitions,
 				sizeOfObject:                getSizeOfDfGraph(this.dataflow.graph),
@@ -339,17 +337,27 @@ export class BenchmarkSlicer {
 	}
 
 	/**
-	 * Extract the control flow graph using {@link extractCFG}
+	 * Project the control flow graph out of the dataflow graph that carries it.
+	 *
+	 * There is no separate control flow analysis any more, so what the step measures is the cost of holding
+	 * the control flow as its own structure; walking it on the dataflow graph costs nothing on top of the
+	 * dataflow analysis itself.
 	 */
 	public extractCFG(): void {
 		benchmarkLogger.trace('try to extract the control flow graph');
 
 		this.guardActive();
-		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined for control flow extraction');
+		guard(this.dataflow !== undefined, 'dataflow should be defined for control flow extraction');
 
-		const ast = this.normalizedAst;
+		const dataflow = this.dataflow;
 
-		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, this.context as FlowrAnalyzerContext, undefined, undefined, true));
+		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => {
+			const cfg = extractCfg(dataflow);
+			/* the graph is a view until something asks for all of it, so this is what there is to measure */
+			cfg.graph.vertices(true);
+			cfg.graph.edges();
+			return cfg;
+		});
 		if(this.stats) {
 			this.stats.controlFlow = {
 				numberOfVertices: this.controlFlow.graph.vertices(true).size,
@@ -399,15 +407,20 @@ export class BenchmarkSlicer {
 			perNodeStats:              new Map()
 		};
 
-		const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg, normalizedAst: ast, ctx: this.context });
+		const analysis = new DataFrameShapeAnalysis();
+		const inference = new AbstractInterpreter({ controlFlow: cfinfo, dfg, normalizedAst: ast, ctx: this.context }, analysis);
 		this.measureSimpleStep('infer data frame shapes', () => inference.start());
 		const result = inference.getEndState();
 
 		stats.numberOfResultConstraints = result.isValue() ? result.value.size : 0;
 		stats.sizeOfInfo = safeSizeOf(inference.getAbstractTrace().entries().toArray());
 
-		for(const value of result.isValue() ? result.value.values() : []) {
-			if(value.isTop()) {
+		for(const node of result.isValue() ? result.value.keys() : []) {
+			const value = result.getValue(node, 'dataFrame');
+
+			if(value === undefined) {
+				continue;
+			} else if(value.isTop()) {
 				stats.numberOfResultingTop++;
 			} else if(value.isBottom()) {
 				stats.numberOfResultingBottom++;
@@ -417,15 +430,15 @@ export class BenchmarkSlicer {
 		}
 
 		RProject.visitAst(this.normalizedAst.ast, node => {
-			const operations = inference.getAbstractOperations(node.info.id);
-			const value = inference.getAbstractValue(node.info.id);
+			const operations = analysis.semantics.dataFrame.getAbstractOperations(node.info.id);
+			const value = inference.getAbstractValue(node.info.id, 'dataFrame');
 
 			// Only store per-node information for nodes representing expressions or nodes with abstract values
 			if(operations === undefined && value === undefined) {
 				stats.numberOfEmptyNodes++;
 				return;
 			}
-			const state = inference.getAbstractState(node.info.id);
+			const state = inference.getAbstractTrace().get(node.info.id);
 
 			const nodeStats: PerNodeStatsDfShape = {
 				numberOfEntries: state?.isValue() ? state.value.size : 0
@@ -461,13 +474,14 @@ export class BenchmarkSlicer {
 
 	/**
 	 * Measure the phases that are not part of the slicing itself: the dependencies query, the linter,
-	 * and the synthetic {@link runCalibration | calibration} workload.
+	 * and the synthetic {@link runCalibration | calibration} workload, the only one that reports its own time.
 	 *
 	 * These run *after* all other steps and are excluded from the {@link CommonSlicerMeasurements} (and hence from
 	 * the `total`), so that they cannot distort any of the existing measurements.
 	 * A failing phase is logged and skipped, it never aborts the benchmark.
+	 * @param calibrate - whether to run the calibration, which describes the machine and hence only has to run for some files of a suite
 	 */
-	public async measureAdditionalPhases(): Promise<void> {
+	public async measureAdditionalPhases(calibrate = true): Promise<void> {
 		this.totalStopwatch.pause();
 		try {
 			this.guardActive();
@@ -476,7 +490,10 @@ export class BenchmarkSlicer {
 				await this.measureAdditional('dependencies query', () => analyzer.query([{ type: 'dependencies' }]));
 				await this.measureAdditional('linter run', () => analyzer.query([{ type: 'linter' }]));
 			}
-			await this.measureAdditional('calibration', () => runCalibration());
+			if(calibrate) {
+				/* the calibration times itself, so that neither the warmup nor the reps it discards count */
+				this.additionalMeasurements.set('calibration', runCalibration());
+			}
 		} catch(e: unknown) {
 			benchmarkLogger.error(`failed to measure the additional phases: ${e instanceof Error ? e.message : String(e)}`);
 		} finally {
@@ -550,6 +567,12 @@ export class BenchmarkSlicer {
 		const { result } = await this.commonMeasurements.measureAsync(
 			keyToMeasure, () => this.executor.nextStep(expectedStep)
 		);
+		this.recordMemoryDelta(keyToMeasure, memoryInit);
+		return result as PipelineStepOutputWithName<SupportedPipelines, Step>;
+	}
+
+	/** Stores what the step measured as `keyToMeasure` added to the memory usage it started with. */
+	private recordMemoryDelta(keyToMeasure: CommonSlicerMeasurements, memoryInit: NodeJS.MemoryUsage): void {
 		const memoryEnd = process.memoryUsage();
 		this.deltas.set(keyToMeasure, {
 			heap:     memoryEnd.heapUsed - memoryInit.heapUsed,
@@ -557,7 +580,6 @@ export class BenchmarkSlicer {
 			external: memoryEnd.external - memoryInit.external,
 			buffs:    memoryEnd.arrayBuffers - memoryInit.arrayBuffers
 		});
-		return result as PipelineStepOutputWithName<SupportedPipelines, Step>;
 	}
 
 	private measureSimpleStep<Out>(
@@ -568,13 +590,7 @@ export class BenchmarkSlicer {
 		const result = this.commonMeasurements.measure(
 			keyToMeasure, measurement
 		);
-		const memoryEnd = process.memoryUsage();
-		this.deltas.set(keyToMeasure, {
-			heap:     memoryEnd.heapUsed - memoryInit.heapUsed,
-			rss:      memoryEnd.rss - memoryInit.rss,
-			external: memoryEnd.external - memoryInit.external,
-			buffs:    memoryEnd.arrayBuffers - memoryInit.arrayBuffers
-		});
+		this.recordMemoryDelta(keyToMeasure, memoryInit);
 		return result;
 	}
 

@@ -9,14 +9,14 @@ import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { FunctionCallVertex } from '../../dataflow/graph/vertex';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument  } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 /** the string-literal path argument of a `source()`-like call node, if it has one (else `undefined`) */
 function sourceArg(ast: NormalizedAst, callId: NodeId): string | undefined {
 	const node = ast.idMap.get(callId);
-	const arg = node?.type === RType.FunctionCall ? node.arguments[0] : undefined;
-	return arg !== undefined && arg !== EmptyArgument && arg.value?.type === RType.String ? arg.value.content.str : undefined;
+	const arg = RFunctionCall.is(node) ? node.arguments[0] : undefined;
+	return arg !== undefined && arg !== EmptyArgument && RString.is(arg.value) ? arg.value.content.str : undefined;
 }
 
 /**

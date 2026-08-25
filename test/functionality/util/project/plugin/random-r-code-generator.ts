@@ -1,4 +1,5 @@
 import { randomString } from '../../../../../src/util/random';
+import { arraySum } from '../../../../../src/util/collections/arrays';
 
 /**
  * Pools of symbols used by {@link RandomRCodeGenerator.generateString} to build random R strings.
@@ -373,7 +374,7 @@ export class RandomRCodeGenerator {
 		const len = this.rnd.int(50);
 
 		const weights = [70, 20, 10];
-		const total = weights.reduce((a, b) => a + b, 0);
+		const total = arraySum(weights);
 
 		const pickIndex = () => {
 			let r = this.rnd.int(total);

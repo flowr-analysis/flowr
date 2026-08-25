@@ -2,43 +2,22 @@ import type { InspectHigherOrderQuery, InspectHigherOrderQueryResult } from './i
 import type { BasicQueryData } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isFunctionHigherOrder } from '../../../dataflow/fn/higher-order-function';
-import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
+import { QueryFunctionFilter } from '../../query-function-filter';
 
 /**
  * Execute higher-order function inspection queries on the given analyzer.
  */
 export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, queries: readonly InspectHigherOrderQuery[]): Promise<InspectHigherOrderQueryResult> {
 	const start = Date.now();
-	let filters: SlicingCriterion[] | undefined = undefined;
-	// filter will remain undefined if at least one of the queries wants all functions
-	for(const q of queries) {
-		if(q.filter === undefined) {
-			filters = undefined;
-			break;
-		} else {
-			filters ??= [];
-			filters = filters.concat(q.filter);
-		}
-	}
-
-	const ast = await analyzer.normalize();
-
-	const filterFor = new Set<NodeId>();
-	if(filters) {
-		for(const f of filters) {
-			const i = SlicingCriterion.tryParse(f, ast.idMap);
-			if(i !== undefined) {
-				filterFor.add(i);
-			}
-		}
-	}
+	const filterFor = await QueryFunctionFilter.criteria(queries, analyzer);
 
 	const graph = (await analyzer.dataflow()).graph;
 
 	const fns = graph.verticesOfType(VertexType.FunctionDefinition)
+		.filter(([id]) => QueryFunctionFilter.written(id))
 		.filter(([,v]) => filterFor.size === 0 || filterFor.has(v.id));
 
 	let invertedGraph: DataflowGraph | undefined;

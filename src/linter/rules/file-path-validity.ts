@@ -12,8 +12,7 @@ import { LintingRuleTag } from '../linter-tags';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
 import { WorkingDirectory } from '../../dataflow/eval/resolve/resolve-working-directory';
 import { DropPathsOption, type FlowrLaxSourcingOptions } from '../../config';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument  } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -146,7 +145,7 @@ export const FILE_PATH_VALIDITY = {
 			// check if any write to the same file happens before the read, and exclude this case if so
 			const writesToFile = results.write.filter(r => samePath(r.value as string, matchingRead.value as string, data.flowrConfig.solver.resolveSource?.ignoreCapitalization));
 			const writesBefore = writesToFile.map(w => happensBefore(cfg, w.nodeId, element.node.info.id));
-			if(writesBefore.some(w => w === Ternary.Always)) {
+			if(writesBefore.includes(Ternary.Always)) {
 				metadata.totalWritesBeforeAlways++;
 				return [];
 			}
@@ -208,7 +207,7 @@ function samePath(a: string, b: string, ignoreCapitalization: boolean | undefine
 /** the string-literal path argument of a call whose resolved value is `value`, for anchoring a quick fix */
 function pathArgStringNode(idMap: AstIdMap, callId: NodeId, value: string): RString | undefined {
 	const call = idMap.get(callId);
-	if(call?.type !== RType.FunctionCall) {
+	if(!RFunctionCall.is(call)) {
 		return undefined;
 	}
 	for(const arg of call.arguments) {
@@ -222,12 +221,14 @@ function pathArgStringNode(idMap: AstIdMap, callId: NodeId, value: string): RStr
 /** rewrite the read path to `found`, an existing file surfaced by the lax retry */
 function buildDidYouMeanFix(idMap: AstIdMap, callId: NodeId, value: string, found: string): LintQuickFixReplacement[] | undefined {
 	const str = pathArgStringNode(idMap, callId, value);
-	if(!str) {
+	const loc = str === undefined ? undefined : SourceLocation.fromNode(str);
+	if(!str || loc === undefined) {
+		/* a fix that names no place cannot be carried out, so none is offered */
 		return undefined;
 	}
 	return [{
 		type:        'replace',
-		loc:         SourceLocation.fromNode(str) ?? SourceLocation.invalid(),
+		loc,
 		description: `Replace with existing path \`${found}\``,
 		replacement: str.content.quotes + found + str.content.quotes
 	}];

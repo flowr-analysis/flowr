@@ -7,7 +7,7 @@ import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 
-describe.sequential('While', withShell(shell => {
+describe('While', { concurrent: false }, withShell(shell => {
 	assertDataflow(label('simple constant while', ['while-loop', 'logical', 'numbers']), shell, 'while (TRUE) 2', emptyGraph()
 		.call('3', 'while', [argumentInCall('0'), argumentInCall('1')], { returns: [], reads: ['0', NodeId.toBuiltIn('while')], onlyBuiltIn: true, origin: [BuiltInProcName.WhileLoop] })
 		.calls('3', NodeId.toBuiltIn('while'))

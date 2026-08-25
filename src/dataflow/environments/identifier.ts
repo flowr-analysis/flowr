@@ -7,6 +7,7 @@ import type { REnvironmentInformation } from './environment';
 import type { Origin } from '../origin/dfg-get-origin';
 /* type-only, as the value import would cycle back through the graph helpers */
 import type { Dataflow } from '../graph/df-helper';
+import { enumMembers } from '../../util/objects';
 
 /** this is just a safe-guard type to prevent mixing up branded identifiers with normal strings */
 export type BrandedIdentifier = string & { __brand?: 'identifier' };
@@ -24,6 +25,11 @@ export type BrandedNamespace = string & { __brand?: 'namespace' };
  * @see {@link Identifier.toString} - to convert the identifier to a string representation
  */
 export type Identifier = BrandedIdentifier | [id: BrandedIdentifier, namespace: BrandedNamespace, internal?: boolean];
+
+/**
+ * A string type representing a namespaced identifier in the format `pkg::name`.
+ */
+export type IdentifierString = `${string}::${string}`;
 
 const dotDotDotAccess = /^\.\.\d+$/;
 
@@ -47,7 +53,7 @@ export const Identifier = {
 	 */
 	make(this: void, name: BrandedIdentifier, namespace?: BrandedNamespace, internal: boolean = false): Identifier {
 		if(startAndEndsWith(name, '`')) {
-			name = name.substring(1, name.length - 1);
+			name = name.slice(1, -1);
 		}
 		if(namespace) {
 			return [name, namespace, internal];
@@ -238,6 +244,8 @@ export const Identifier = {
 	 *    a user definition, so a local `sd()` stays bare.
 	 *
 	 * Returns `undefined` when none apply. Steps 2 and 3 need the call's `name`.
+	 * @param origins      - the origins of the call to qualify
+	 * @param name         - the name the call was written with, needed by steps 2 and 3
 	 * @param qualifyBaseR - whether to also qualify a bare base-R call from its exporting package (default `true`)
 	 * @see {@link Dataflow.qualify} - the compact form, if you have the call's id and its graph
 	 */
@@ -301,9 +309,12 @@ export const enum PkgName {
 	/* CRAN / third-party */
 	AssertThat   = 'assertthat',
 	Box          = 'box',
+	Car          = 'car',
 	Cli          = 'cli',
 	CohortBuilder = 'cohortBuilder',
 	DataTable    = 'data.table',
+	Dbi          = 'DBI',
+	DbPlyr       = 'dbplyr',
 	Devtools     = 'devtools',
 	Dplyr        = 'dplyr',
 	Fs           = 'fs',
@@ -311,15 +322,22 @@ export const enum PkgName {
 	GgPlot2      = 'ggplot2',
 	Here         = 'here',
 	Hmisc        = 'Hmisc',
+	HtmlTools    = 'htmltools',
+	HtmlWidgets  = 'htmlwidgets',
 	Import       = 'import',
 	Inferference = 'inferference',
 	Janitor      = 'janitor',
+	Jsonlite     = 'jsonlite',
 	Lattice      = 'lattice',
+	LmTest       = 'lmtest',
 	Magick       = 'magick',
 	Magrittr     = 'magrittr',
 	Msgr         = 'msgr',
+	Multcomp     = 'multcomp',
+	NorTest      = 'nortest',
 	PkgLoad      = 'pkgload',
 	Plyr         = 'plyr',
+	Processx     = 'processx',
 	Purrr        = 'purrr',
 	Ragg         = 'ragg',
 	R6           = 'R6',
@@ -329,6 +347,7 @@ export const enum PkgName {
 	Rlang        = 'rlang',
 	RmethodsS3   = 'R.methodsS3',
 	Roo          = 'R.oo',
+	Rstatix      = 'rstatix',
 	RstudioApi   = 'rstudioapi',
 	Rutils       = 'R.utils',
 	S7           = 'S7',
@@ -337,13 +356,21 @@ export const enum PkgName {
 	ShinyFiles   = 'shinyFiles',
 	ShinyJs      = 'shinyjs',
 	Soda         = 'SoDA',
+	Sqldf        = 'sqldf',
 	SvDialogs    = 'svDialogs',
+	Sys          = 'sys',
 	Tcltk        = 'tcltk',
 	Testthat     = 'testthat',
 	TidyR        = 'tidyr',
+	Tibble       = 'tibble',
+	Glue         = 'glue',
+	Stringr      = 'stringr',
 	TinyPlot     = 'tinyplot',
 	TryCatchLog  = 'tryCatchLog',
+	Tseries      = 'tseries',
 	Withr        = 'withr',
+	Forecats     = 'forcats',
+	Readr        = 'readr'
 }
 
 /**
@@ -378,11 +405,16 @@ export enum ReferenceType {
 	/** Prefix to identify S3 methods, use this, to for example dispatch a call to `f` which will then link to `f.*` */
 	S3MethodPrefix = 1 << 8,
 	/** Prefix to identify S7 methods, use this, to for example dispatch a call to `f` which will then link to `f<7>*` */
-	S7MethodPrefix = 1 << 9
+	S7MethodPrefix = 1 << 9,
+	/**
+	 * Only ever a lookup target, never the type of a definition: everything a value position may see.
+	 * `id` in `id > 2` names data, so a function `id` in scope is not what the comparison reads.
+	 */
+	NonFunction = 1 << 10
 }
 
 /** Reverse mapping of the reference types so you can get the name from the bitmask (useful for debugging) */
-export const ReferenceTypeReverseMapping = new Map<ReferenceType, string>(Object.entries(ReferenceType).map(([k, v]) => [v as ReferenceType, k]));
+export const ReferenceTypeReverseMapping = new Map<ReferenceType, string>(enumMembers(ReferenceType).map(([name, value]) => [value, name]));
 
 /**
  * Check if the reference types have an overlapping type!
@@ -396,7 +428,7 @@ export function isReferenceType(t: ReferenceType, target: ReferenceType): boolea
  * default definition for the assignment operator `<-`).
  * @see {@link InGraphIdentifierDefinition} - for the definition of an identifier within the graph
  */
-export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction>;
+export type InGraphReferenceType = Exclude<ReferenceType, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction | ReferenceType.NonFunction>;
 
 /**
  * An identifier reference points to a variable like `a` in `b <- a`.

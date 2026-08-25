@@ -3,16 +3,16 @@ import type { DataflowInformation } from '../../../../../info';
 import { ExitPointType } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { DataflowGraph } from '../../../../../graph/graph';
 import { VertexType } from '../../../../../graph/vertex';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 /**
  * Processes `::` and `:::` when called as a function, e.g., `::`(ggplot2, a).
@@ -25,7 +25,7 @@ export function processNamespaceAccess<OtherInfo>(
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: { internal: boolean }
 ): DataflowInformation {
-	if(args.length !== 2 || args[0] === EmptyArgument || args[1] === EmptyArgument) {
+	if(args.length !== 2 || RArgument.isEmpty(args[0]) || RArgument.isEmpty(args[1])) {
 		dataflowLogger.warn(`Namespace access ${Identifier.toString(name.content)} does not have exactly 2 non-empty arguments, falling back`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.NamespaceAccess }).information;
 	}
@@ -36,13 +36,13 @@ export function processNamespaceAccess<OtherInfo>(
 	let namespace:  string | undefined;
 	let symbolName: string | undefined;
 
-	if(nsNode?.type === RType.Symbol) {
+	if(RSymbol.is(nsNode)) {
 		namespace = Identifier.getName(nsNode.content);
 	} else if(nsNode && RString.is(nsNode)) {
 		namespace = nsNode.content.str;
 	}
 
-	if(symNode?.type === RType.Symbol) {
+	if(RSymbol.is(symNode)) {
 		symbolName = Identifier.getName(symNode.content);
 	} else if(symNode && RString.is(symNode)) {
 		symbolName = symNode.content.str;

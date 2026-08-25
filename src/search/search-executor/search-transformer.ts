@@ -149,7 +149,7 @@ async function getFilter<Elements extends FlowrSearchElement<ParentInformation>[
 	const test = prepareFilter(filter);
 	const shared = { dataflow };
 	return elements.mutate(
-		e => e.filter(e => test({ element: e, data: shared })) as Elements
+		e => e.filter(e => test(e, shared)) as Elements
 	) as unknown as CascadeEmpty<Elements, Elements | []>;
 }
 

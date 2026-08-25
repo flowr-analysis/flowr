@@ -6,7 +6,7 @@
 	--muted: #5c6270;
 	--border: #d6dae1;
 	--grid: #e6e9ee;
-	--accent: #0072b2;
+	--accent: #a63446;
 	--shadow: 0 1px 2px rgba(16, 20, 30, .06), 0 6px 18px rgba(16, 20, 30, .06);
 	--c1: #0072b2;
 	--c2: #d55e00;
@@ -140,11 +140,30 @@ header {
 	margin: 0;
 	font-size: 1.15rem;
 	line-height: 1.2;
+	/* the brand box takes its baseline from the mark, not from its text, so the row centres instead */
+	display: inline-flex;
+	align-items: center;
 }
 
-.titles h1 a {
+.titles h1 a.brand {
+	display: inline-flex;
+	align-items: center;
+	gap: .45rem;
+	color: var(--fg);
 	text-decoration: none;
 }
+
+.mark { flex: none; }
+
+/* the slash owns the space on both of its sides, so the two names sit evenly around it */
+.titles h1 .where {
+	color: var(--muted);
+	font-weight: 400;
+	font-size: 1.05rem;
+	white-space: nowrap;
+}
+
+.titles h1 .where::before { content: "/"; margin: 0 .5rem; opacity: .55; }
 
 /* a grid is only as wide as its widest row, which puts the release above the end of the intro */
 .titles {
@@ -166,28 +185,29 @@ header {
 	color: var(--muted);
 }
 
+/* the way back to the landing page, after the sentence rather than crowding the heading */
+.intro a { margin-left: .5rem; }
+
 /* the release this page is about, which is what a reader looks for first */
 /* the size of the title it shares its line with, so the two read as one heading */
 .latest {
-	margin: 0 0 0 auto;
-	font-size: 1.15rem;
-	line-height: 1.2;
+	margin-left: .55rem;
 	white-space: nowrap;
 }
 
-/* a link that carries its own weight instead of an underline, which would fight the title beside it */
+/* the number of the release the page is about, in the same plain text every flowR page carries */
 .latest .version {
-	color: var(--fg);
-	opacity: .35;
-	font-weight: 700;
+	font-size: .82rem;
+	font-weight: 400;
+	color: var(--muted);
 	font-variant-numeric: tabular-nums;
 	text-decoration: none;
-	transition: opacity .18s ease;
+	transition: color .18s ease;
 }
 
 .latest .version:hover,
 .latest .version:focus-visible {
-	opacity: 1;
+	color: var(--fg);
 }
 
 .theme {
@@ -832,16 +852,17 @@ svg {
 #tooltip {
 	position: fixed;
 	z-index: 10;
-	max-width: 24rem;
+	/* wide enough for a note to fit on one line, never wider than the window it has to stay inside */
+	max-width: min(30rem, calc(100vw - 1rem));
 	pointer-events: none;
-	background: color-mix(in srgb, var(--panel) 88%, transparent);
+	/* opaque: a chart read through the numbers that explain it is unreadable twice over */
+	background: var(--panel);
 	color: var(--fg);
 	border: 1px solid var(--border);
 	border-radius: 8px;
 	padding: .45rem .55rem;
 	font-size: .8rem;
 	box-shadow: var(--shadow);
-	backdrop-filter: blur(2px);
 	transition: opacity .1s ease, transform .1s ease;
 }
 
@@ -859,7 +880,7 @@ svg {
 	max-width: none;
 	padding: .5rem .6rem calc(.5rem + env(safe-area-inset-bottom, 0px));
 	border-radius: 12px;
-	background: color-mix(in srgb, var(--panel) 96%, transparent);
+	background: var(--panel);
 	font-size: .82rem;
 }
 
@@ -913,12 +934,23 @@ svg {
 
 #tooltip td.name {
 	white-space: normal;
+	overflow-wrap: anywhere;
 	width: 100%;
 }
 
 /* the values line up on their last digit, so a 100 reads taller than an 11 */
 #tooltip td:last-child {
 	text-align: right;
+}
+
+/* a series the sum of this chart does not contain, dimmed so the rows that do add up stand out */
+#tooltip tr.faint {
+	opacity: .6;
+}
+
+/* the swatch keeps its hue, but a duller one, so the row reads as an aside and not as another part */
+#tooltip tr.faint .swatch {
+	filter: saturate(.55);
 }
 
 /* a touch is coarser than a mouse: thicker lines, larger points, a cursor one can actually see */
@@ -981,8 +1013,10 @@ svg {
 	}
 }
 
+/* the notes are sentences, and a sentence that may not wrap pushes the table out of the panel around it */
 #tooltip td.msg {
 	text-align: left;
+	white-space: normal;
 }
 
 .good {
@@ -1369,3 +1403,5 @@ footer {
 .unfold.open .chevron {
 	transform: rotate(180deg);
 }
+
+.mark { flex: none; vertical-align: -.2em; margin-right: .3rem; }

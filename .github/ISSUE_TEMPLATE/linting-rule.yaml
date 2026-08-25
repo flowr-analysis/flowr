@@ -38,8 +38,11 @@ body:
         - Software Has Tests
         - Stop without call.=False argument
         - Syntactically Valid
+        - Unclosed Connection
         - Undefined Symbol
+        - Unescaped Arguments
         - Unused Definitions
+        - Unused Import
         - Useless Loops
       default: 0
   - type: checkboxes

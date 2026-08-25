@@ -3,7 +3,7 @@ import { ParseError } from './normalizer-data';
 import { SourceRange } from '../../../../../util/range';
 import { type RawRType, RType } from '../../model/type';
 import type { RNode } from '../../model/model';
-import type { RExpressionList } from '../../model/nodes/r-expression-list';
+import { RExpressionList } from '../../model/nodes/r-expression-list';
 
 /**
  * Given a JSON element, extract the source location of the corresponding element in the R-ast
@@ -81,7 +81,7 @@ export function ensureChildrenAreLhsAndRhsOrdered(first: JsonEntry, second: Json
  * Ensure that the given node is an expression list. If it is not, wrap it in an expression list.
  */
 export function ensureExpressionList<Info>(node: RNode<Info>): RExpressionList<Info> {
-	if(node.type !== RType.ExpressionList) {
+	if(!RExpressionList.is(node)) {
 		return {
 			type:     RType.ExpressionList,
 			grouping: undefined,

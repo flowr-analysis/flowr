@@ -9,6 +9,9 @@ export const DotsParameterName = '...';
  *
  * 1. every named argument that *exactly* matches a formal takes it,
  * 2. every remaining named argument that is a *unique prefix* of a still-free formal takes it (`pmatch`),
+ *    judged against the formals step 1 left free, so a formal already taken by name no longer makes a prefix
+ *    ambiguous (`f(x = 1, xylo = 2)` with formals `xylo, xb` binds `x` to `xb`). `...` has to be among the names,
+ *    as {@link findByPrefixIfUnique} reads it as the point after which a formal can only be matched exactly,
  * 3. the remaining unnamed arguments fill the still-free formals from left to right, stopping at `...`
  *    (formals behind `...` can only be matched by name), and
  * 4. everything that is still unmatched goes to `...` if the function has one.
@@ -45,8 +48,17 @@ export function matchArgumentsToParameters(
 		}
 	};
 
+	/** the formals still free, in order, which is what a prefix may be ambiguous against */
+	function *free(): Generator<string> {
+		for(let i = 0; i < names.length; i++) {
+			if(!taken.has(i)) {
+				yield names[i];
+			}
+		}
+	}
+
 	byName(name => name);                                     // (1) exact
-	byName(name => findByPrefixIfUnique(name, names));        // (2) pmatch
+	byName(name => findByPrefixIfUnique(name, free()));       // (2) pmatch
 	// (3) positional
 	let formal = 0;
 	for(let i = 0; i < argNames.length; i++) {

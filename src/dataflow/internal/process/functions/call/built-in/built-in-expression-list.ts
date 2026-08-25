@@ -3,7 +3,7 @@
  * @module
  */
 import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
-import { addNonDefaultExitPoints, alwaysExits, ExitPointType, happensInEveryBranch } from '../../../../../info';
+import { addNonDefaultExitPoints, ExitPointType, happensInEveryBranch } from '../../../../../info';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { getAllLinkedFunctionDefinitions, linkFunctionCalls } from '../../../../linker';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
@@ -13,8 +13,8 @@ import type { Environment, REnvironmentInformation } from '../../../../../enviro
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
 import { Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
+import { ControlFlow } from '../../../../control-flow';
 import { type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment } from '../../../../../environments/scoping';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
@@ -25,9 +25,11 @@ import { dataflowLogger } from '../../../../../logger';
 import { expensiveTrace } from '../../../../../../util/log';
 import type { Writable } from 'ts-essentials';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
-import { cancelRevivedKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
+import { cancelRevivedKills, dropKilledWrites, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { valueFromTsValue } from '../../../../../eval/values/general';
+import { FunctionDefinitionVertex, FunctionCallVertex } from '../../../../../graph/vertex';
+import { Resolve } from '../../../../../environments/resolve-helper';
 
 
 
@@ -50,7 +52,7 @@ function coveredByListDefinitions(targets: readonly IdentifierDefinition[], list
 
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph) {
 	const readName = read.name && Identifier.isDotDotDotAccess(read.name) ? Identifier.dotdotdot() : read.name;
-	const probableTarget = readName ? resolveByName(readName, environments, read.type) : undefined;
+	const probableTarget = readName ? Resolve.byNameAndType(readName, environments, read.type) : undefined;
 
 	if(probableTarget === undefined || !coveredByListDefinitions(probableTarget, listEnvironments)) {
 		const readId = readName ? Identifier.getName(readName) : undefined;
@@ -102,17 +104,17 @@ function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInf
 	const stack = initial.map(fn => ({ fn, direct: true }));
 	while(stack.length > 0) {
 		const { fn, direct } = stack.pop() as { fn: DataflowGraphVertexInfo, direct: boolean };
-		if(fn.tag !== VertexType.FunctionDefinition || seen.has(fn.id)) {
+		if(!FunctionDefinitionVertex.is(fn) || seen.has(fn.id)) {
 			continue;
 		}
 		seen.add(fn.id);
 		yield { fn, direct };
 		for(const nodeId of fn.subflow.graph) {
 			const call = graph.getVertex(nodeId);
-			if(call?.tag !== VertexType.FunctionCall || call.onlyBuiltin || call.name === undefined) {
+			if(!FunctionCallVertex.is(call) || call.onlyBuiltin || call.name === undefined) {
 				continue;
 			}
-			const resolved = resolveByName(call.name, resolveEnv, ReferenceType.Function);
+			const resolved = Resolve.byNameAndType(call.name, resolveEnv, ReferenceType.Function);
 			if(resolved === undefined) {
 				continue;
 			}
@@ -158,7 +160,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 	for(const { functionCall, called } of calledEnvs) {
 		let callDependencies: ControlDependency[] | null | undefined = null;
 		for(const { fn: calledFn, direct } of transitivelyCalledDefinitions(called, nextGraph, inputEnvironment)) {
-			guard(calledFn.tag === VertexType.FunctionDefinition, 'called function must be a function definition');
+			guard(FunctionDefinitionVertex.is(calledFn), 'called function must be a function definition');
 			// only merge the environments they have in common
 			let environment = direct ? calledFn.subflow.environment : withoutPackageLayers(calledFn.subflow.environment);
 			while(environment.level > inputEnvironment.level) {
@@ -297,7 +299,7 @@ export function processExpressionList<OtherInfo>(
 		}
 
 		/** if at least built-one of the exit points encountered happens unconditionally, we exit here (dead code)! */
-		if(alwaysExits(processed)) {
+		if(ControlFlow.alwaysExits(processed)) {
 			/* if there is an always-exit expression, there is no default return active anymore */
 			defaultReturnExpr = undefined;
 			break;
@@ -347,15 +349,32 @@ export function processExpressionList<OtherInfo>(
 	}
 
 	const meId = withGroup ? rootId : (processedExpressions.find(isNotUndefined)?.entryPoint ?? rootId);
+
+	/* an empty group completes on the spot, otherwise the last expression has to be able to reach the end */
+	const reachesEnd = !!withGroup && (processedExpressions.length === 0 || exitPoints.some(e => e.type === ExitPointType.Default));
+	const cfgEntry = ControlFlow.inSequence(nextGraph, processedExpressions, reachesEnd ? rootId : undefined);
+	/*
+	 * `{ break }` is entered and never left, so its `{` is reached and goes nowhere. Saying only the second
+	 * half of that leaves the vertex beside the control flow, with nothing leading to it either.
+	 */
+	if(withGroup && !reachesEnd) {
+		for(const exit of exitPoints) {
+			nextGraph.addEdge(exit.nodeId, rootId, EdgeType.FlowEdge);
+		}
+	}
+
 	return {
 		/* no active nodes remain, they are consumed within the remaining read collection */
 		unknownReferences: [],
 		in:                ingoing,
-		out,
+		/* a definition that a still-effective removal undid is no longer visible to the outside */
+		out:               dropKilledWrites(out, killed),
 		environment:       environment,
 		graph:             nextGraph,
 		/* if we have no group, we take the last evaluated expr */
 		entryPoint:        meId,
+		cfgEntry:          cfgEntry === meId ? undefined : cfgEntry,
+		cfgExit:           reachesEnd ? rootId : undefined,
 		exitPoints:        exitPoints,
 		hooks:             hooks ?? [],
 		kill:              killed,

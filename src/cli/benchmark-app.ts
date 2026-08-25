@@ -6,6 +6,7 @@ import { guard } from '../util/assert';
 import { allRFiles } from '../util/files';
 import { log } from '../util/log';
 import { LimitedThreadPool } from '../util/parallel';
+import { CalibrationSamples } from '../benchmark/calibration';
 import { processCommandLineArgs } from './common/script';
 import type { RParseRequestFromFile } from '../r-bridge/retriever';
 import type { KnownParserName } from '../r-bridge/parser';
@@ -97,6 +98,7 @@ async function benchmark() {
 	const limit = options.limit ?? files.length;
 
 	const verboseAdd = options.verbose ? ['--verbose'] : [];
+	const calibrationStep = Math.max(1, Math.ceil(files.length / CalibrationSamples));
 	const args = files.map((f, i) => [
 		'--input', f.request.content,
 		'--file-id', `${i}`,
@@ -110,7 +112,8 @@ async function benchmark() {
 		...(options.seed ? ['--seed', options.seed] : []),
 		...(options.cfg ? ['--cfg'] : []),
 		...(options.cg ? ['--cg'] : []),
-		...(options['no-extra-phases'] ? ['--no-extra-phases'] : [])
+		...(options['no-extra-phases'] ? ['--no-extra-phases'] : []),
+		...(i % calibrationStep === 0 ? ['--calibrate'] : [])
 	]);
 
 	const runs = options.runs ?? 1;

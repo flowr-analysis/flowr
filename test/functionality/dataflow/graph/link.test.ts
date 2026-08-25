@@ -5,7 +5,7 @@ import { withShell } from '../../_helper/shell';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
-describe.sequential('dataflow graph links', withShell(shell => {
+describe('dataflow graph links', { concurrent: false }, withShell(shell => {
 	function assertLink(name: string, code: string, criterion: SlicingCriterion, expect: NodeId[] | undefined) {
 		test(name, async() => {
 			const info = await createDataflowPipeline(shell, {

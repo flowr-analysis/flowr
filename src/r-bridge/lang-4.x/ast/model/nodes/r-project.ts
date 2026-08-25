@@ -71,6 +71,7 @@ export const RProject = {
 	},
 	/**
 	 * Type guard for RProject nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<OtherInfo = NoInfo>(this: void, node: unknown): node is RProject<OtherInfo> {
 		return typeof node === 'object' && node !== null && 'type' in node && node.type === RType.Project;

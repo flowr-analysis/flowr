@@ -38,7 +38,10 @@ import { contextFromInput } from '../project/context/flowr-analyzer-context';
 import { FlowrAnalyzerGasContext } from '../project/context/flowr-analyzer-gas-context';
 import { FlowrAnalyzerGasPlugin } from '../project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { GasFeatureKey, GasLevel } from '../gas';
-import { ArgProp, CallProp, ExclusiveCallProps, SigDbInferable } from '../dataflow/environments/built-in-props';
+import type { ArgProps, PropSelector } from '../dataflow/environments/built-in-props';
+import type { Identifier } from '../dataflow/environments/identifier';
+import { enumMembers } from '../util/objects';
+import { ArgProp, CallProp, ExclusiveCallProps, CallProps, SemanticCallTag, SigDbInferable } from '../dataflow/environments/built-in-props';
 import { BuiltInIndex, inferFnProps } from '../dataflow/environments/query-fn-props';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import { SemVer } from 'semver';
@@ -116,38 +119,71 @@ async function gasPluginExample() {
 		.build();
 }
 
-/** the names of the {@link CallProp} bits that make up a mask, as inline code */
-function propNames(mask: number): string {
-	return Object.entries(CallProp).filter(([, b]) => typeof b === 'number' && (b & mask) !== 0)
-		.map(([n]) => `\`${n}\``).join(', ');
+/** the names of the properties a selector includes, as inline code */
+function propNames(selector: PropSelector): string {
+	return CallProps.names(selector).map(n => `\`${n}\``).join(', ');
+}
+
+/** the {@link ArgProp} bits of a parameter as a definition writes them down, like `ArgProp.Value | ArgProp.Forced` */
+function argPropNames(props: ArgProps): string {
+	return enumMembers(ArgProp).filter(([, prop]) => (props & prop) !== 0).map(([name]) => `ArgProp.${name}`).join(' | ') || '0';
+}
+
+/** the call information about a built-in that is stated in the configuration */
+function statedOf(index: BuiltInIndex, name: Identifier) {
+	const entry = index.get(name);
+	const props = CallProps.names(entry?.props ?? 0);
+	const tags = CallProps.names(entry?.tags ?? []);
+	const sig = entry?.sig ?? [];
+
+	return {
+		/** the {@link CallProp} bits, as `Invisible | Generic` */
+		props: props.join(' | '),
+		/** the {@link SemanticCallTag}s, as `[Prints]` */
+		tags:  `[${tags.join(', ')}]`,
+		/** the `props`, `tags`, and `sig` of the definition, with the signature cut off after `sigLength` parameters */
+		config(sigLength = sig.length): string {
+			const params = sig.slice(0, sigLength).map(([param, argProps]) => `['${param}', ${argPropNames(argProps)}]`);
+			return [
+				props.length > 0 ? `props: ${props.map(name => `CallProp.${name}`).join(' | ')}` : undefined,
+				tags.length > 0 ? `tags: [${tags.map(name => `SemanticCallTag.${name}`).join(', ')}]` : undefined,
+				sig.length > 0 ? `sig: [${[...params, ...(sig.length > sigLength ? ['...'] : [])].join(', ')}]` : undefined
+			].filter(part => part !== undefined).join(', ');
+		}
+	};
 }
 
 /** The "Labeling the Built-Ins" section of the Core page, with a table per enum taken from the configuration. */
 function builtInLabelsSection(ctx: GeneralDocContext): string {
 	const index = BuiltInIndex.default();
-	/* the doc comment of a bit is its explanation, flattened to fit a table cell; bits nothing carries are left out */
-	const table = (type: 'CallProp' | 'ArgProp', of: (bit: number) => number) => [
-		`| ${type === 'CallProp' ? 'Call property' : 'Argument role'} | Built-ins | Meaning |`,
+	/* the examples below state what the configuration says about these calls, never a copy of it */
+	const [arith, print, lapply, readCsv] = ['+', 'print', 'lapply', 'read.csv'].map(name => statedOf(index, name));
+
+	const Enums = { CallProp, SemanticCallTag, ArgProp };
+	/* the doc comment of a property is its explanation, flattened to fit a table cell; properties nothing carries are left out */
+	const table = <Key extends keyof typeof Enums>(type: Key, header: string, of: (prop: PropSelector) => number) => [
+		`| ${header} | Built-ins | Meaning |`,
 		'| :-- | --: | :-- |',
-		...Object.entries(type === 'CallProp' ? CallProp : ArgProp)
-			.filter(([, bit]) => typeof bit === 'number' && of(bit) > 0)
-			.map(([name, bit]) => {
+		...(enumMembers(Enums[type]) as [string, PropSelector][]).filter(([, prop]) => of(prop) > 0)
+			.map(([name, prop]) => {
 				/* a `{@link}` has already become an anchor, so dropping the tags leaves the bare name and a stray space */
 				const doc = ctx.doc(`${type}::${name}`).replaceAll(/<[^>]*>/g, '').replaceAll(/\s+/g, ' ')
 					.replaceAll(/ ([),.;])/g, '$1').replaceAll('|', '\\|').trim();
-				const db = type === 'CallProp' && ((bit as number) & SigDbInferable) !== 0 ? '<sup>db</sup>' : '';
-				return `| \`${name}\`${db} | ${of(bit as number)} | ${doc} |`;
+				const db = type === 'CallProp' && ((prop as number) & SigDbInferable) !== 0 ? '<sup>db</sup>' : '';
+				return `| \`${name}\`${db} | ${of(prop)} | ${doc} |`;
 			})
 	].join('\n');
 
 	return `#### Labeling the Built-Ins
 
-Besides the processor, an entry says what the function *is*, in two label vocabularies:
+Besides the processor, an entry says what the function *is*, in three label vocabularies:
 
-* ${ctx.link('CallProp')} labels the call as a whole (\`props\`): whether it is pure, whether it throws, whether it
-  touches the file system, whether it dispatches, and so on. \`print\` is \`Invisible | Generic | Prints\`; R's
-  primitive generics (\`+\`, \`sin\`, \`length\`, ...) are \`Pure | Generic\`, and as they have no R body, the store is
+* ${ctx.link('CallProp')} labels how the called code behaves (\`props\`, a bitfield): whether it is pure, whether it
+  throws, whether it returns invisibly, whether it dispatches, what it does to the frames around it. R's
+  primitive generics (\`+\`, \`sin\`, \`length\`, ...) are \`${arith.props}\`, and as they have no R body, the store is
   the only place that can say they dispatch.
+* ${ctx.link('SemanticCallTag')} labels what semantic a call has (\`tags\`, an array): which resource it accesses,
+  what it produces, what it is used for. \`print\` is \`${print.props}\` with \`${print.tags}\`.
 * ${ctx.link('ArgProp')} labels each parameter (\`sig\`), in the order R declares them: which one carries the data,
   which one only selects a behavior, which one names a file, which one is called as a function.
 
@@ -162,31 +198,41 @@ So \`lapply\` is pure on its own but runs what it is handed, and says which argu
 ${codeBlock('ts', `{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['lapply', 'sapply', 'vapply']),
   processor: BuiltInProcName.Apply,
   config:    { indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true,
-               props: CallProp.MayPure, sig: [['X', ArgProp.Value], ['FUN', ArgProp.Callee]] } }`)}
+               ${lapply.config()} } }`)}
 
-The two tables below are generated from the configuration itself, so they always list every label that exists,
+while \`read.csv\` states what it does instead:
+
+${codeBlock('ts', `{ type: 'function', names: [Identifier.from(['read.csv', PkgName.Utils])],
+  processor: BuiltInProcName.DefaultReadAllArgs,
+  config:    { ${readCsv.config(2)} } }`)}
+
+The three tables below are generated from the configuration itself, so they always list every label that exists,
 what it means, and how many built-ins carry it.
 
 ${details('What each call property means', `<sup>db</sup> marks the bits the ${ctx.linkPage('wiki/Signature Database', 'signature database')}
 states for any package function on its own (${ctx.link(inferFnProps.name)} reads them off an entry and carries what a
 function calls over to the function calling it).
 
-${table('CallProp', bit => index.with(bit).length)}
+${table('CallProp', 'Call property', prop => index.with(prop).length)}`)}
 
-Most of these combine freely. The exceptions are ${ctx.link('ExclusiveCallProps')}, which a test checks the whole
-configuration against:
+${details('What each semantic property means', `
 
-${ExclusiveCallProps.map(([bit, forbidden]) => `* \`${CallProp[bit]}\` rules out ${propNames(forbidden)}`).join('\n')}
+${table('SemanticCallTag', 'Semantic property', prop => index.with(prop).length)}
 
 Two pairs read like refinements but are not: \`TempFile\` does not imply \`File\` (making up a path touches no file
 system, so a call doing both states both), and \`Reads\`/\`Writes\` say what happens to the resource an
-\`ArgProp.Resource\` argument names, so they only ever appear next to a resource bit.`)}
+\`ArgProp.Resource\` argument names, so they only ever appear next to a resource property.`)}
+
+Most of these properties combine freely. The exceptions are ${ctx.link('ExclusiveCallProps')}, which a
+test checks the whole configuration against:
+
+${ExclusiveCallProps.map(([prop, forbidden]) => `* ${propNames(prop)} rules out ${propNames(forbidden)}`).join('\n')}
 
 ${details('What each argument role means', `A role is stated per parameter in the ${ctx.link('FnSig')} of a built-in, in the order R declares
 them, with \`...\` covering every position from where it appears. The count is how many built-ins have at least one
 parameter in that role.
 
-${table('ArgProp', bit => new Set(index.params(bit).map(p => p.call)).size)}`)}
+${table('ArgProp', 'Argument role', prop => new Set(index.params(prop as number).map(p => p.call)).size)}`)}
 `;
 }
 
@@ -498,7 +544,7 @@ to produce a new dataflow information to pass upwards in the fold. The ${ctx.lin
 * the ${ctx.link(DataflowGraph)} of the current subtree 
 * the currently active ${ctx.link('REnvironmentInformation')} as an abstraction of all active definitions linking to potential definition locations (see [Advanced R::Environments](https://adv-r.hadley.nz/environments.html))
 * control flow information in ${ctx.link('DataflowCfgInformation')} which is used to enrich the dataflow information with control flow information
-* sets of currently ingoing (read), outgoing (write) and unknown ${ctx.link('IdentifierReference')}s.
+* sets of currently ingoing (read), outgoing (write), and unknown ${ctx.link('IdentifierReference')}s.
 * and a set of ${ctx.link('KillReference')}s which tracks variables that go out of scope within the current subtree (e.g., due to \`rm\`). Just like the reference sets above, kills are carried upwards in the fold so that the enclosing scope (expression list, branch, loop, or function body) can apply the removal (via ${ctx.link('applyKills')}) at the correct location, even when the \`rm\` happens nested within a branch or block. This also covers clearing the whole environment with \`rm(list=ls())\` and conservatively handling removals whose target cannot be resolved statically.
 
 While all of them are essentially empty when processing an “uninteresting leaf”, handling a constant is slightly more interesting with ${ctx.link(processValue)}:

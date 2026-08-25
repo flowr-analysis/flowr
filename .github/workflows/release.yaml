@@ -5,6 +5,9 @@ name: "Release Action"
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: "👩‍🏫 Linting (Full)"
@@ -12,6 +15,7 @@ jobs:
         startsWith(github.event.head_commit.message, '[release:major]') ||
         startsWith(github.event.head_commit.message, '[release:patch]')
     runs-on: ubuntu-22.04
+    timeout-minutes: 20
     steps:
       - name: "🛒 Checkout Repository"
         uses: actions/checkout@v6
@@ -19,7 +23,6 @@ jobs:
             submodules: true
 
       - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
@@ -27,6 +30,7 @@ jobs:
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
+          cache: npm
 
       - name: "👩‍🏫 Run linter"
         run: bash .github/workflows/scripts/run-flowr-command.sh lint-local
@@ -34,16 +38,10 @@ jobs:
   test-full:
     name: "🧪 Test Suite (full)"
     needs: ['lint']
-    if: ${{
-          startsWith(github.event.head_commit.message, '[release:minor]') ||
-          startsWith(github.event.head_commit.message, '[release:major]') ||
-          startsWith(github.event.head_commit.message, '[release:patch]') || (
-            always()
-            && !failure()
-            && (github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main')
-          )
-        }}
-    timeout-minutes: 25
+    if: startsWith(github.event.head_commit.message, '[release:minor]') ||
+        startsWith(github.event.head_commit.message, '[release:major]') ||
+        startsWith(github.event.head_commit.message, '[release:patch]')
+    timeout-minutes: 65
     strategy:
       fail-fast: false
       matrix:
@@ -65,7 +63,6 @@ jobs:
             submodules: true
 
       - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
@@ -73,9 +70,11 @@ jobs:
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
+          cache: npm
 
       - name: "⬇️ Setup R"
-        uses: r-lib/actions/setup-r@v2
+        uses: ./.github/actions/setup-r
+        timeout-minutes: 45
         with:
           r-version: ${{ matrix.r-version }}
 
@@ -84,7 +83,13 @@ jobs:
         run:   lapply(c("dplyr","readr"), install.packages, repos="https://cloud.r-project.org/")
 
       - name: "🧪 Run the Tests"
-        run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test:full -- --allowOnly=false"
+
+      # `test:full` excludes them, so the matrix is the only place they meet macOS and windows. They shell out to
+      # the cli, and the windows leg has never run them, so it reports without holding up a release until it is green.
+      - name: "⚙️ Run System Tests"
+        continue-on-error: ${{ matrix.os == 'windows-latest' }}
+        run: bash .github/workflows/scripts/run-flowr-command.sh "test:system -- --no-watch"
 
       - name: "⬆️ Upload Test Label Details"
         # the test job is a matrix, so only one leg may claim the artifact name
@@ -106,6 +111,7 @@ jobs:
   release:
     name: "📦 Release"
     runs-on: ubuntu-latest
+    timeout-minutes: 75
     needs: ['test-full']
     concurrency:
       group: release-main
@@ -123,7 +129,6 @@ jobs:
           fetch-depth: 0
 
       - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
@@ -131,24 +136,28 @@ jobs:
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
+          cache: npm
 
       - name: "⬇️ Setup R"
-        uses: r-lib/actions/setup-r@v2
+        uses: ./.github/actions/setup-r
+        timeout-minutes: 45
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
 
       - name: "📦 Install R Packages"
         uses: r-lib/actions/setup-r-dependencies@v2
+        timeout-minutes: 20
         with:
+          cache: 'true'
+          cache-version: '1'
           extra-packages: |
             any::dplyr
             any::readr
 
-      - name: "⚙️ Name and Email for Git (config) and update"
+      - name: "⚙️ Name and Email for Git (config)"
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git pull
 
       - name: "📦 Install Dependencies"
         run: npm ci
@@ -206,6 +215,7 @@ jobs:
     needs: ['release']
     name: "🚀 Deploy Docker (only on main)"
     runs-on: ubuntu-22.04
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -267,8 +277,6 @@ jobs:
             SUFFIX=""
           fi
           docker save flowr | gzip > "./flowr-${{ env.THE_FLOWR_VERSION }}$SUFFIX.tar.gz"
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
       - name: "⬆️ Upload the compressed image to the workflow"
         uses: actions/upload-artifact@v6
@@ -284,7 +292,7 @@ jobs:
       startsWith(github.event.head_commit.message, '[release:major]') ||
       startsWith(github.event.head_commit.message, '[release:patch]')
     runs-on: ubuntu-22.04
-    timeout-minutes: 60
+    timeout-minutes: 75
     strategy:
       fail-fast: true
       matrix:
@@ -298,7 +306,6 @@ jobs:
             submodules: true
 
       - name: "🌍 Load Versions to Use"
-        id: doc-global-versions
         run: bash .github/workflows/scripts/global-configuration.sh
 
       - name: "⬇️ Use Node.js"
@@ -306,21 +313,26 @@ jobs:
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
           registry-url: "https://registry.npmjs.org/"
+          cache: npm
 
       - name: "⬇️ Setup R"
-        uses: r-lib/actions/setup-r@v2
+        uses: ./.github/actions/setup-r
+        timeout-minutes: 45
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
 
       - name: "📦 Install R Packages"
         uses: r-lib/actions/setup-r-dependencies@v2
+        timeout-minutes: 20
         with:
+          cache: 'true'
+          cache-version: '1'
           extra-packages: |
             any::dplyr
             any::readr
 
       - name: "⏱️ Run the performance benchmarks"
-        run: bash .github/workflows/scripts/run-flowr-command.sh performance-test -- 1 2 "${{ matrix.name }}" "${{ matrix.parser }}"
+        run: bash .github/workflows/scripts/run-flowr-command.sh test:performance -- 1 2 "${{ matrix.name }}" "${{ matrix.parser }}"
 
       - name: "⬆️ Upload Benchmark Results"
         uses: actions/upload-artifact@v4
@@ -334,6 +346,7 @@ jobs:
   performance-test-upload:
     name: "⬆️ Upload Performance Test Results"
     runs-on: ubuntu-22.04
+    timeout-minutes: 45
     needs: [ performance-test ]
     concurrency:
       group: release-main
@@ -360,6 +373,7 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ env.ACTION_NODE_VERSION }}
+          cache: npm
 
       # the counters need node and the labels, so both have to be there before the first suite is touched
       - name: "⬇️ Get the Test Label Details"
@@ -569,14 +583,11 @@ jobs:
         run: bash .github/workflows/scripts/run-flowr-command.sh benchmark:compact
 
       - name: "⬆️ Push benchmark results"
-        # we manipulate the name of the last commit message
         run: |
-          git reset --soft HEAD~2
+          git fetch origin main
+          git reset --soft origin/main
           git add -f wiki/stats/benchmark/
           git commit -m "[skip ci] doc: new benchmark data"
 
       - name: "⬆️ Push changes"
-        uses: ad-m/github-push-action@master
-        with:
-          branch: main
-          github_token: ${{ secrets.RELEASE_TOKEN }}
+        run: git push origin HEAD:main

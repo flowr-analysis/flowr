@@ -10,8 +10,12 @@ import {
 } from './doc-util/doc-files';
 import { block } from './doc-util/doc-structure';
 import { getCliLongOptionOf } from './doc-util/doc-cli-option';
+import { DfEdge } from '../dataflow/graph/edge';
+import { Resolve } from '../dataflow/environments/resolve-helper';
+import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
+
 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing
@@ -40,6 +44,11 @@ for the latest benchmark results, see the ${ctx.linkPage('flowr:benchmarks', 'be
 - [🪈 CI Pipeline](#ci-pipeline)
 - [🧹 Linting](#linting)
   - [Oh no, the linter fails](#oh-no-the-linter-fails)
+  - [flowR-Specific Rules](#flowr-specific-rules)
+    - [Pointing at a Helper with \`@useInstead\`](#pointing-at-a-helper-with-useinstead)
+    - [Replacement Patterns](#replacement-patterns)
+    - [Suppressing a Rule](#suppressing-a-rule)
+    - [A Part of unicorn](#a-part-of-unicorn)
   - [License Checker](#license-checker)
 - [🐛 Debugging](#debugging)
   - [VS Code](#vs-code-1)
@@ -78,7 +87,7 @@ ${codeBlock('shell', 'npm run test -- --no-watch')}
 
 To run all tests, including a coverage report and label summary, run:
 
-${codeBlock('shell', 'npm run test-full')}
+${codeBlock('shell', 'npm run test:full')}
 
 However, depending on your local version of&nbsp;R, your network connection, and other factors (each test may have a set of criteria), 
 some tests may be skipped automatically as they do not apply to your current system setup (or cannot be tested with the current prerequisites). 
@@ -100,8 +109,12 @@ ${block({
 	type:    'WARNING',
 	content: `
 We name all test files using the \`.test.ts\` suffix and try to run them in parallel.
-Whenever this is impossible (e.g., when using ${ctx.link('withShell')}), please use _\`describe.sequential\`_
-to disable parallel execution for the respective test (otherwise, such tests are flaky).
+Whenever this is impossible (e.g., when using ${ctx.link('withShell')}), pass \`{ concurrent: false }\` to the
+\`describe\` to disable parallel execution for the respective test (otherwise, such tests are flaky):
+
+${codeBlock('typescript', 'describe(\'my suite\', { concurrent: false }, withShell(shell => { /* ... */ }));')}
+
+Vitest deprecated the \`describe.sequential\` form in favour of that option, so please do not reintroduce it.
 `
 })}
 
@@ -184,7 +197,7 @@ Although we measure wall time in the CI (which is subject to rather large variat
 Furthermore, the respective scripts can be used locally as well.
 To run them, issue:
 
-${codeBlock('shell', 'npm run performance-test')}
+${codeBlock('shell', 'npm run test:performance')}
 
 See ${linkFlowRSourceFile('test/performance')} for more information on the suites, how to run them, and their results. If you are interested in the results of the benchmarks, see ${ctx.linkPage('flowr:benchmarks', 'here')}.
 
@@ -255,7 +268,68 @@ it is usually best if you (when necessary) read the respective description and f
 Rules in this project cover general JavaScript issues [using regular ESLint](https://eslint.org/docs/latest/rules), TypeScript-specific issues [using typescript-eslint](https://typescript-eslint.io/rules/), and code formatting [with ESLint Stylistic](https://eslint.style/packages/default#rules).
 
 However, in case you think that the linter is wrong, please do not hesitate to open a [new issue](${FlowrGithubBaseRef}/flowr/issues/new/choose).
- 
+
+<a id='flowr-specific-rules'></a>
+### 🧭 flowR-Specific Rules
+
+flowR groups its functions in helper objects (${ctx.link(DfEdge)}, ${ctx.link(Resolve)}, ${ctx.link(NodeId)}, and
+friends) so that there is one obvious entry point per topic. Two rules of the
+[\`flowr\` plugin](${FlowrGithubBaseRef}/flowr-lint) keep the code on those entry points, both part of \`npm run lint\`.
+Each is fixed on the spot where the replacement is already imported, and offered as an editor suggestion otherwise.
+
+<a id='pointing-at-a-helper-with-useinstead'></a>
+#### Pointing at a Helper with \`@useInstead\`
+
+A function that only exists to be wired into a helper object names its replacement, and every reference outside its own
+file is then reported:
+
+${codeBlock('ts', `/**
+ * Every definition the identifier may refer to.
+ * @useInstead {@link Resolve.byName}
+ */
+export function resolveByNameAnyType(/* ... */) { /* ... */ }`)}
+
+Never reported are the references that make the replacement exist: the wiring in an object literal
+(${ctx.linkO(Resolve, 'byName')} pointing at \`resolveByNameAnyType\`), re-exports, and files declaring the helper itself.
+
+<a id='replacement-patterns'></a>
+#### Replacement Patterns
+
+Some replacements are a shape of code rather than a renamed function, such as \`edge.types === EdgeType.Reads\`, which
+reads like "has this type" (${ctx.linkO(DfEdge, 'includesType')}) but holds only if it is the *only* type
+(${ctx.linkO(DfEdge, 'isOnlyType')}). These are matched with [esquery](https://github.com/estools/esquery) selectors,
+the language \`no-restricted-syntax\` uses.
+
+The [flowr-lint README](${FlowrGithubBaseRef}/flowr-lint#flowrreplacement-pattern) documents the fields of a pattern,
+and \`npx eslint\` names the id of whichever one fires.
+To propose a new pattern or a change to any of them, open an issue with the replacement pattern template in
+[that repository](${FlowrGithubBaseRef}/flowr-lint/issues/new/choose).
+
+<a id='suppressing-a-rule'></a>
+#### Suppressing a Rule
+
+A tag on a declaration covers everything below it, a header comment above the imports covers the whole file.
+
+| | silences |
+| :-- | :-- |
+| \`// eslint-disable-next-line\` | the next line, as usual |
+| \`@lintIgnore <ids>\` | the named rules or pattern ids, all of them when given none |
+
+Put the reason in the prose above the tag, a hot path that has to keep the raw form is as good a reason as any.
+
+<a id='a-part-of-unicorn'></a>
+#### A Part of unicorn
+
+The configuration also enables a hand-picked part of [unicorn](https://github.com/sindresorhus/eslint-plugin-unicorn):
+the rules naming a shape with a clearer equivalent (\`prefer-includes\`, \`prefer-string-slice\`, and friends), not its
+opinions on naming or style. Three are left out on purpose:
+
+- \`prefer-array-flat\` rewrites \`.flatMap(f => f)\` on an iterator, which has no \`.flat()\`.
+- \`prefer-structured-clone\` does not know that a \`JSON\` round-trip is sometimes the point.
+- \`prefer-node-protocol\` is inverted, \`no-restricted-imports\` forbids the \`node:\` prefix instead: flowR is bundled for
+  the browser as well (the web build of the ${ctx.linkPage('flowr:vscode', 'VS Code extension')}), where the core modules
+  are swapped for polyfills by their bare name, and a \`node:\` specifier matches none of those bundler keys.
+
 <a id='license-checker'></a>
 ### 🪪 License Checker
 

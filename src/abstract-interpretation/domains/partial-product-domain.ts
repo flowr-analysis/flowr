@@ -4,12 +4,13 @@ import { Record } from '../../util/record';
 import { type AnyAbstractDomain, AbstractDomain } from './abstract-domain';
 
 /** The type of an abstract product of a product domain mapping named properties of the product to abstract domains */
-export type AbstractProduct<Domain extends AnyAbstractDomain = AnyAbstractDomain> = {
-	readonly [key in string]?: Domain
-};
+export type AbstractProduct<Domain extends AnyAbstractDomain = AnyAbstractDomain> = Record<string, Domain>;
+
+/** A partial product of a product domain mapping (optional) property names to abstract domains */
+export type PartialProduct<Domain extends AnyAbstractDomain = AnyAbstractDomain> = Partial<AbstractProduct<Domain>>;
 
 /** A reduction function of a reduced product domain refining the abstract value based on the values of its sub abstract domains. */
-export type ProductReduction<Product extends AbstractProduct> = (value: Product) => Product;
+export type ProductReduction<Product extends PartialProduct> = (value: Product) => Product;
 
 /**
  * A partial product abstract domain as named Cartesian product of (optional) sub abstract domains.
@@ -17,14 +18,14 @@ export type ProductReduction<Product extends AbstractProduct> = (value: Product)
  * The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as having no sub abstract domain value.
  * @template Product - Type of the abstract product of the product domain mapping (optional) property names to abstract domains
  */
-export abstract class PartialProductDomain<Product extends AbstractProduct>
+export abstract class PartialProductDomain<Product extends PartialProduct>
 	extends AbstractDomain<Product, Product, Product> {
 
 	public readonly domain:     Required<Product>;
 	public readonly reductions: readonly ProductReduction<Product>[];
 
 	constructor(value: Product, domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = [], reduce = true) {
-		super(Record.mapProperties(value, entry => entry?.create(entry.value)) as Product);
+		super(Record.mapPartialProps(value, entry => entry.create(entry.value)) as Product);
 
 		this.reductions = reductions;
 		this.domain = domain;
@@ -130,17 +131,17 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 	}
 
 	protected jsonify(): unknown {
-		return Record.mapProperties(this.value, entry => entry?.toJSON());
+		return Record.mapPartialProps(this.value, entry => entry.toJSON());
 	}
 
 	protected stringify(): string {
-		return '(' + Record.entries(this.value).map(([key, value]) => `${key}: ${value.toString()}`).join(', ') + ')';
+		return '(' + Record.entries(this.value).filter(([, value]) => isNotUndefined(value)).map(([key, value]) => `${key}: ${value.toString()}`).join(', ') + ')';
 	}
 
 	public isTop(): boolean;
 	public isTop(): this is this;
 	public isTop(): this is this {
-		return Record.values(this.value).filter(isNotUndefined).length === 0;
+		return !Record.values(this.value).some(isNotUndefined);
 	}
 
 	public isBottom(): boolean;

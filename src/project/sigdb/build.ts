@@ -4,14 +4,13 @@
  * dictionary, blob-only shards, and the sharded {@link SigDbManifest}). Split out of `../sigdb` so the reader
  * there is not weighed down by the (build-time only) encoder; imports only sibling format/codec modules.
  */
-import fs from 'node:fs';
-import path from 'node:path';
-import { once } from 'node:events';
+import fs from 'fs';
+import path from 'path';
+import { once } from 'events';
 import {
 	DefaultCranBase, MaxDefaultLength, ParamFlag, SigDbExt, SigDbMagic, SigDbSchema,
-	type PkgBlob, type Sig, type SigDb, type SigDbFeatures, type SigDbPkgMeta, type SigDbShard, type SigDbTier,
-	type SigDep, type SigDependencyInfo, type SigFn, type SigFunctionInfo, type SigParamInfo, type SigVersionInfo
-} from './schema';
+	type PkgBlob, type Sig, type SigDb, type SigDbFeatures, type SigDbPkgMeta, type SigDbPkgMetaIndex, type SigDbShard, type SigDbTier,
+	type SigDep, type SigDependencyInfo, type SigFn, type SigFunctionInfo, type SigParamInfo, type SigVersionInfo } from './schema';
 import { RVersion } from '../../util/r-version';
 import { blobTuple } from './decode';
 import { contentHash, dictionaryHash, shardHash } from './hash';
@@ -272,7 +271,7 @@ export class SigDbBuilder {
 		const blobs: PkgBlob[] = [];
 		const blobIdx = new Map<string, number>();
 		const pkgs: Record<string, number> = {};
-		const pkgMeta: Record<string, SigDbPkgMeta> = {};
+		const pkgMeta: SigDbPkgMetaIndex = {};
 		let versionCount = 0;
 		let functionCount = 0;
 		for(const name of this.selectPackages(opts)) {
@@ -322,7 +321,7 @@ export class SigDbBuilder {
 	public buildSharded(opts: Omit<SigDbBuildOptions, 'tier' | 'shard' | 'topN'>, specs: readonly ShardSpec[]): ShardedSigDb {
 		const feats = resolveFeatures(opts.features);
 		const strings = new StringPool(); // SHARED across every shard
-		const meta: Record<string, SigDbPkgMeta> = {};
+		const meta: SigDbPkgMetaIndex = {};
 		const shards: SigShard[] = specs.map(spec => {
 			const tier: SigDbTier = spec.tier ?? 'full';
 			const blobs: PkgBlob[] = [];
@@ -396,7 +395,7 @@ export interface ShardedSigDb {
 	strings:   string[];
 	dictHash:  string;
 	/** package name to metadata, shared by every shard */
-	meta:      Record<string, SigDbPkgMeta>;
+	meta:      SigDbPkgMetaIndex;
 	shards:    SigShard[];
 }
 

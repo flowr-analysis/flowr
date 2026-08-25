@@ -7,7 +7,7 @@ import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { describe } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
 
-describe.sequential('Parse simple assignments', withShell(shell => {
+describe('Parse simple assignments', { concurrent: false }, withShell(shell => {
 	describe('Constant assignments', () => {
 		for(const op of AssignmentOperators) {
 			const opOffset = op.length - 1;

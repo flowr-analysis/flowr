@@ -1,20 +1,22 @@
 import { type DataflowGraph, FunctionArgument } from '../../graph/graph';
+import { RValue } from '../values/r-value';
 import type { DataflowGraphVertexFunctionCall } from '../../graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isNotUndefined } from '../../../util/assert';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { Constant, Unknown } from '../../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from '../../environments/environment';
 import { valueSetGuard } from '../values/general';
-import { resolveIdToValue } from './alias-tracking';
 import { isValue, type Value } from '../values/r-value';
 import { RFalse, RTrue } from '../../../r-bridge/lang-4.x/convert-values';
 import { collectStrings } from '../values/string/string-constants';
 import type { VariableResolve } from '../../../config';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
+import { Resolve } from '../../environments/resolve-helper';
+import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 /**
  * Get the values of all arguments matching the criteria.
@@ -45,7 +47,7 @@ export function getArgumentStringValue(
 		const map = new Map<NodeId, Set<string | undefined>>();
 		for(const ref of references) {
 			let valueNode = graph.idMap?.get(ref);
-			if(valueNode?.type === RType.Argument) {
+			if(RArgument.is(valueNode)) {
 				valueNode = valueNode.value;
 			}
 			if(valueNode) {
@@ -62,7 +64,7 @@ export function getArgumentStringValue(
 			return undefined;
 		}
 		let valueNode = graph.idMap?.get(arg);
-		if(valueNode?.type === RType.Argument) {
+		if(RArgument.is(valueNode)) {
 			valueNode = valueNode.value;
 		}
 
@@ -101,14 +103,14 @@ function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowG
 	if(resolveValue === 'library') {
 		const hasChar = hasCharacterOnly(variableResolve, graph, vertex, idMap, ctx);
 		if(hasChar === false) {
-			if(argument.type === RType.Symbol) {
+			if(RSymbol.is(argument)) {
 				return [argument.lexeme];
 			}
 			full = false;
 		}
 	}
 
-	const resolved = valueSetGuard(resolveIdToValue(argument, { environment, graph, full, resolve: variableResolve, ctx }));
+	const resolved = valueSetGuard(Resolve.toValue(argument, { environment, graph, full, resolve: variableResolve, ctx }));
 	if(resolved) {
 		const values: string[] = [];
 		for(const value of resolved.elements) {
@@ -128,8 +130,10 @@ function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowG
  */
 function stringsOfValue(value: Value, full: boolean): string[] | undefined {
 	switch(value.type) {
-		case 'string':
-			return isValue(value.value) ? [value.value.str] : undefined;
+		case 'string': {
+			const str = RValue.stringOf(value);
+			return str !== undefined ? [str] : undefined;
+		}
 		case 'logical':
 			return isValue(value.value) ? [value.value.valueOf() ? RTrue : RFalse] : undefined;
 		case 'vector':

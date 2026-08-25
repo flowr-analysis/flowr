@@ -1,3 +1,5 @@
+import { toBase64 } from '../text/url-encoding';
+
 
 /**
  * Global mermaid helper object with useful functions.
@@ -65,6 +67,8 @@ export const Mermaid = {
 	 */
 	escapeId(this: void, text: string | number): string {
 		text = String(text).replace(/[^a-zA-Z0-9:\-./]/g, '_');
+		/* a dash before a dash or a dot reads as the start of a link, e.g. the id of `$<-.grouped_df` would cut the line in two */
+		text = text.replace(/-(?=[-.])/g, '_');
 		return text.replace(/(^|[:\-./])([a-zA-Z0-9_]+)/g, (_m, sep: string, tok: string) => sep + (Mermaid.reservedIds.has(tok) ? tok + '_' : tok));
 	},
 	/**
@@ -79,6 +83,7 @@ export const Mermaid = {
 				autoSync: true
 			}
 		};
-		return `https://mermaid.live/${edit ? 'edit' : 'view'}#base64:${Buffer.from(JSON.stringify(obj)).toString('base64')}`;
+		/* `btoa` rather than a `Buffer`, so the pages flowR ships can build this url as well */
+		return `https://mermaid.live/${edit ? 'edit' : 'view'}#base64:${toBase64(new TextEncoder().encode(JSON.stringify(obj)))}`;
 	}
 } as const;

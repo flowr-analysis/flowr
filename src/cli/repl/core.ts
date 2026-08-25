@@ -147,8 +147,11 @@ export function completionSuggestion(line: string, config: FlowrConfig): string 
 
 function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfig): CommandCompletions {
 	const nonEmpty = splitLine.slice(1).map(s => s.trim()).filter(s => s.length > 0);
-	const queryShorts = ['help'].concat(Object.keys(SupportedQueries).map(q => `@${q}`));
-	if(nonEmpty.length === 0 || (nonEmpty.length === 1 && queryShorts.some(q => q.startsWith(nonEmpty[0]) && nonEmpty[0] !== q && !startingNewArg))) {
+	/* `?<type>` documents a query instead of running it, and completes to the same names */
+	const asking = !startingNewArg && nonEmpty.length === 1 && nonEmpty[0].startsWith('?');
+	const queryShorts = asking ? Object.keys(SupportedQueries).map(q => `?${q}`)
+		: ['help'].concat(Object.keys(SupportedQueries).map(q => `@${q}`));
+	if(asking || nonEmpty.length === 0 || (nonEmpty.length === 1 && queryShorts.some(q => q.startsWith(nonEmpty[0]) && nonEmpty[0] !== q && !startingNewArg))) {
 		return { completions: queryShorts.map(q => `${q} `) };
 	} else {
 		const q = nonEmpty[0].slice(1);
@@ -258,7 +261,7 @@ async function executeStatement(output: ReplOutput, statement: string, analyzer:
 						const args = processor.argsParser(remainingLine);
 						if(args.rCode) {
 							const rawPath = args.rCode.startsWith(fileProtocol)
-								? args.rCode.substring(fileProtocol.length)
+								? args.rCode.slice(fileProtocol.length)
 								: undefined;
 							const alreadyKnown = rawPath !== undefined
 								&& analyzer.context().files.getFileByPath(rawPath) !== undefined;
@@ -390,8 +393,8 @@ export interface FlowrReplOptions extends MergeableRecord {
  * The repl allows for two kinds of inputs:
  * - Starting with a colon `:`, indicating a command (probe `:help`, and refer to {@link commands}) </li>
  * - Starting with anything else, indicating default R code to be directly executed. If you kill the underlying shell, that is on you! </li>
- * @param options - The options for the repl. See {@link FlowrReplOptions} for more information.
  *
+ * It takes a single {@link FlowrReplOptions} object, which it destructures; see there for what each option does.
  * For the execution, this function makes use of {@link replProcessAnswer}.
  */
 export async function repl(

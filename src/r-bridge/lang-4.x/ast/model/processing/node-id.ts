@@ -1,12 +1,16 @@
 import type { AstIdMap } from './decorate';
 import type { DataflowGraph } from '../../../../../dataflow/graph/graph';
-import { VertexType } from '../../../../../dataflow/graph/vertex';
+import { FunctionCallVertex, UseVertex } from '../../../../../dataflow/graph/vertex';
 import { removeRQuotes } from '../../../../retriever';
 import { Identifier } from '../../../../../dataflow/environments/identifier';
 import { RNode } from '../model';
 import type { BuiltInProcName } from '../../../../../dataflow/environments/built-in-proc-name';
 
-/** The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. */
+/**
+ * The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types.
+ * The default ids are numeric, but we use a branded type to avoid confusion with other numeric types.
+ * Custom ids or scoped ids can be strings, but they will be normalized to numbers if they are numeric strings.
+ */
 export type NodeId<T extends string | number = string | number> = T & { __brand?: 'node-id' };
 
 /**
@@ -14,11 +18,6 @@ export type NodeId<T extends string | number = string | number> = T & { __brand?
  */
 export type BuiltIn<T extends string = string> = `built-in:${T}`;
 
-/**
- * The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types.
- * The default ids are numeric, but we use a branded type to avoid confusion with other numeric types.
- * Custom ids or scoped ids can be strings, but they will be normalized to numbers if they are numeric strings.
- */
 /** whether the id starts as a number does, which `+id` alone does not tell: it turns a blank string into `0` */
 function startsNumeric(id: string): boolean {
 	const c = id.charCodeAt(0);
@@ -94,7 +93,7 @@ export const NodeId = {
 	mapBuiltInProc<T extends BuiltInProcName>(this: void, proc: T): T extends `builtin:${infer S}` ? BuiltIn<S> : BuiltIn<T> {
 		const bi = 'builtin:';
 		return NodeId.toBuiltIn(
-			proc.startsWith(bi) ? proc.substring(bi.length) : proc
+			proc.startsWith(bi) ? proc.slice(bi.length) : proc
 		) as never;
 	},
 	/**
@@ -123,7 +122,7 @@ export function recoverName(id: NodeId, idMap?: AstIdMap): string | undefined {
  */
 export function recoverContent(id: NodeId, graph: DataflowGraph): string | undefined {
 	const vertex = graph.getVertex(id);
-	if(vertex && vertex.tag === VertexType.FunctionCall && vertex.name) {
+	if(vertex && FunctionCallVertex.is(vertex) && vertex.name) {
 		return Identifier.toString(vertex.name);
 	}
 	const node = graph.idMap?.get(id);
@@ -131,7 +130,7 @@ export function recoverContent(id: NodeId, graph: DataflowGraph): string | undef
 		return undefined;
 	}
 	const lexeme = node.lexeme ?? node.info.fullLexeme ?? '';
-	if(vertex?.tag === VertexType.Use) {
+	if(UseVertex.is(vertex)) {
 		return removeRQuotes(lexeme);
 	}
 	return lexeme;

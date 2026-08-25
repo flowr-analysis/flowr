@@ -43,9 +43,11 @@ describe('Mermaid', () => {
 				assert.strictEqual(Mermaid.escapeId('built-in:subclass'), 'built-in:subclass');
 			});
 
-			test('id definition and edge target escape identically', () => {
+			test('a reserved keyword escapes to the same token wherever it appears', () => {
 				const id = 'built-in:class';
-				assert.strictEqual(Mermaid.escapeId(id), Mermaid.escapeId(id));
+				const escaped = Mermaid.escapeId(id);
+				assert.strictEqual(escaped, 'built-in:class_');
+				assert.notStrictEqual(escaped, id, 'the escape has to change the id, or a definition and its edge target diverge');
 			});
 		});
 	});

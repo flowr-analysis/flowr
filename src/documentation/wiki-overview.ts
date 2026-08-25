@@ -4,6 +4,8 @@ import { FlowrGithubBaseRef } from './doc-util/doc-files';
 import { RShell } from '../r-bridge/shell';
 import { DataflowGraph } from '../dataflow/graph/graph';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
+import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
+import { codeBlock } from './doc-util/doc-code';
 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Overview
@@ -39,7 +41,16 @@ Its subcomponents (like the custom ${ctx.link(RShell)}) or the internals of the 
 are not important if you simply wish to use _flowR_.
 If you wish to use _flowR_, check out one of its extensions (e.g., the ${ctx.linkPage('flowr:vscode', 'VS Code extension')}),
 the [REPL and server interfaces](#using-flowr-from-the-outside) or its coding API with the
-${ctx.link(FlowrAnalyzer)}. 
+${ctx.link(FlowrAnalyzer)}, which you build with the ${ctx.link(FlowrAnalyzerBuilder)}:
+
+${codeBlock('ts', `
+const analyzer = await new FlowrAnalyzerBuilder()
+    .setParser(new TreeSitterExecutor())
+    .build();
+analyzer.addRequest({ request: 'file', content: 'survey.R' });
+const result = await analyzer.query([{ type: 'dependencies' }]);
+`)}
+
 
 The benchmark module is only of interest if you want to benchmark/measure the runtime performance and reduction of the slicer.
 It is available with the [\`benchmark\`](#benchmark-the-slicer) script.

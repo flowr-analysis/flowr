@@ -7,7 +7,7 @@ import { ReferenceType } from '../../../../../src/dataflow/environments/identifi
 import { ExitPointType } from '../../../../../src/dataflow/info';
 import { KnownHooks } from '../../../../../src/dataflow/hooks';
 
-describe.sequential('Function Definition - On.Exit', withShell(shell => {
+describe('Function Definition - On.Exit', { concurrent: false }, withShell(shell => {
 	describe('Only functions', () => {
 		assertDataflow(label('call on.exit at the end', ['normal-definition', 'implicit-return', 'name-normal', 'hooks']),
 			shell, 'function() { on.exit(1) }',

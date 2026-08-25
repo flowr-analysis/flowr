@@ -31,13 +31,14 @@
 		}
 		try {
 			localStorage.setItem('flowr-bench-theme', mode);
+			localStorage.setItem('flowr-theme', mode === 'system' ? '' : mode);
 		} catch{ /* private mode, keep going */ }
 	}
 
 	function initTheme() {
 		let stored = 'system';
 		try {
-			stored = localStorage.getItem('flowr-bench-theme') || 'system';
+			stored = localStorage.getItem('flowr-bench-theme') || localStorage.getItem('flowr-theme') || 'system';
 		} catch{ /* ignore */ }
 		ui.theme.value = ['light', 'dark', 'system'].includes(stored) ? stored : 'system';
 		setTheme(ui.theme.value);
@@ -679,7 +680,7 @@
 					!ui.calibrateField.hidden && ui.calibrate.checked ? 'calibrated' : ''
 				];
 			case 'layout':
-				return [locked ? 'locked' : 'draggable', collapsed.size ? collapsed.size + ' folded' : ''];
+				return [locked ? 'locked' : 'draggable'];
 			default:
 				return ['JSON', 'CSV', 'data.js'];
 		}
@@ -975,31 +976,36 @@
 		fillOptions(ui.engine, [...new Set(parts.map(p => p.engine))], 'tree-sitter');
 	}
 
+	/** the newest run decides, so that a renamed calibration wins over the one it replaced */
 	function calibrationMetric(runs) {
-		for(const name of metricsOf(runs).keys()) {
-			if(name.toLowerCase().includes('calibration')) {
-				return name;
+		for(let i = runs.length - 1; i >= 0; i--) {
+			for(const b of runs[i].benches) {
+				if(String(b.name).toLowerCase().includes('calibration')) {
+					return b.name;
+				}
 			}
 		}
 		return null;
 	}
 
-	/** a calibration this flat, or measured this rarely, would divide every run by the same number */
-	const CALIBRATION_MIN_RUNS = 5, CALIBRATION_MIN_SPREAD = 1.05;
+	/** a calibration that never moved at all would divide every run by the same number */
+	const CALIBRATION_MIN_SPREAD = 0.001;
 
 	/**
-	 * The name of the calibration if dividing by it would change the picture, null otherwise: it needs
-	 * several runs to compare and a machine that actually differed between them.
+	 * Only a duration scales with the machine, so counts, sizes, and ratios keep their raw value
+	 * and the calibration series itself stays the yardstick it is.
 	 */
+	function calibrates(name, unit, calib) {
+		return unit === 'ms' && name !== calib;
+	}
+
+	/** the name of the calibration if dividing by it would change the picture, null otherwise */
 	function usableCalibration(runs, name) {
 		if(!name) {
 			return null;
 		}
-		const values = runs.map(r => valueOf(r, name)).filter(v => typeof v === 'number' && v > 0);
-		if(values.length < CALIBRATION_MIN_RUNS) {
-			return null;
-		}
-		return Math.max(...values) / Math.min(...values) >= CALIBRATION_MIN_SPREAD ? name : null;
+		const factors = S.calibrationFactors(runs.map(r => valueOf(r, name)));
+		return factors.some(f => Math.abs(f - 1) >= CALIBRATION_MIN_SPREAD) ? name : null;
 	}
 
 	/**
@@ -1107,8 +1113,7 @@
 
 	/** only the phases add up to something meaningful, a sum of ratios or counters would not */
 	/** the phases every analysis walks through, the ones the sum of the per-file chart adds up */
-	const CORE_PHASES = ['Retrieve AST from R code', 'Normalize R AST', 'Produce dataflow information',
-		'Extract control flow graph'];
+	const CORE_PHASES = ['Retrieve AST from R code', 'Normalize R AST', 'Produce dataflow information'];
 
 	function sumSeries(group, series, n) {
 		if(!['per-file', 'per-slice'].includes(group.id) || ui.mode.value === 'delta') {
@@ -1132,6 +1137,8 @@
 		return {
 			name:  SUM_NAME,
 			label: SUM_NAME + ' (' + parts.map(s => s.label).join(' + ') + ')',
+			/* who is in it, so a tooltip can tell a part of the sum from a series that only shares the chart */
+			parts: parts.map(s => s.name),
 			unit:  parts[0].unit, better: 'down', color: 'sum',
 			raw:   values, values, err: values.map(() => null), baseline: null
 		};
@@ -1273,14 +1280,22 @@
 			b, at: axis.x(b.index), text: b.kind === 'major' ? 'v' + b.version : b.version.replace(/\.\d+$/, '')
 		}));
 		// roughly five pixels per character, enough to keep the labels apart
-		const fits = S.fitLabels(marks.map(m => [m.at, m.text.length * 5 + 6]));
+		for(const m of marks) {
+			m.width = m.text.length * 5 + 6;
+			// the newest release sits at the border, so its label hangs to the left instead of being cut off
+			m.flip = m.at + m.width > W;
+			m.x = m.flip ? m.at - 3 : m.at + 3;
+		}
+		const fits = S.fitLabels(marks.map(m => [m.flip ? m.at - m.width : m.at, m.width]));
 		marks.forEach((m, k) => {
 			const guide = tag('line', { class: 'marker ' + m.b.kind, x1: m.at, x2: m.at, y1: PAD_T - 6, y2: H - PAD_B });
 			guide.appendChild(tag('title', {}, (m.b.kind === 'major' ? 'major release ' : 'minor release ') + m.b.version
 				+ ', ' + fmtDate(runs[m.b.index].date)));
 			svg.appendChild(guide);
 			if(fits[k]) {
-				svg.appendChild(tag('text', { class: 'axis release ' + m.b.kind, x: m.at + 3, y: PAD_T - 8 }, m.text));
+				svg.appendChild(tag('text', {
+					class: 'axis release ' + m.b.kind, x: m.x, y: PAD_T - 8, ...(m.flip ? { 'text-anchor': 'end' } : {})
+				}, m.text));
 			}
 		});
 	}
@@ -1382,6 +1397,11 @@
 		// the phases add up to the analysis, so their sum is worth a line of its own
 		const sum = sumSeries(group, shown, runs.length);
 		if(sum) {
+			/* what the sum leaves out is still worth a line, only a quieter one than the parts that add up */
+			const inSum = new Set(sum.parts);
+			for(const s of shown) {
+				s.outsideSum = !inSum.has(s.name);
+			}
 			shown = shown.concat(sum);
 			series = series.concat(sum);
 		}
@@ -1943,10 +1963,10 @@
 	}
 
 	/** one row: the colour of the series, what it is called, and what it says */
-	function tipRow(color, label, value, title) {
+	function tipRow(color, label, value, title, faint) {
 		const cell = typeof value === 'string' ? { textContent: value } : { textContent: value.text, className: value.cls || '' };
 		return dom('tr',
-			{}, dom('td', {}, dom('span', { className: swatchClass(color) })),
+			{ className: faint ? 'faint' : '' }, dom('td', {}, dom('span', { className: swatchClass(color) })),
 			dom('td', { className: 'name', textContent: label, title: title || '' }),
 			dom('td', cell));
 	}
@@ -1982,6 +2002,8 @@
 
 		// what a phase takes of its chart, the sum row being the whole rather than a part of it
 		const parts = series.filter(s => s.name !== SUM_NAME);
+		/* a chart may carry series the sum leaves out, and a reader adding the rows up should see which */
+		const outside = s => Boolean(s.outsideSum);
 		const chartSum = parts.reduce((a, s) => a + (typeof s.values[i] === 'number' ? Math.abs(s.values[i]) : 0), 0);
 
 		// one precision for the whole tooltip, so the values can be compared at a glance
@@ -2012,8 +2034,8 @@
 				val = { text: fmt(v, s.unit, decimals) };
 			}
 			/* the labels are short forms, the measurement they stand for is one hover away */
-			table.appendChild(tipRow(s.color, s.label || s.name, val, s.name));
-			const extra = s.name === SUM_NAME ? extraSum(run, series.filter(o => o.name !== SUM_NAME), s.unit, i) : extraOf(run, s.name);
+			table.appendChild(tipRow(s.color, s.label || s.name, val, s.name, outside(s)));
+			const extra = s.name === SUM_NAME ? extraSum(run, parts.filter(o => !outside(o)), s.unit, i) : extraOf(run, s.name);
 			const raw = s.raw[i];
 			const share = !isDelta && v !== null && chartSum > 0 && parts.length > 1 && s.name !== SUM_NAME
 				? (Math.abs(v) / chartSum * 100).toFixed(1) + '% of this chart' : '';
@@ -2026,16 +2048,12 @@
 			if(note) {
 				const td = dom('td', { className: 'msg', textContent: note });
 				td.colSpan = 2;
-				table.appendChild(dom('tr', {}, dom('td'), td));
+				table.appendChild(dom('tr', { className: outside(s) ? 'faint' : '' }, dom('td'), td));
 			}
 		}
 		t.appendChild(table);
 		if(sorted.length > rows.length) {
 			t.append(dom('div', { className: 'msg', textContent: (sorted.length - rows.length) + ' smaller series not shown' }));
-		}
-		/* the plotted number is the mean of the run, which only the note beside it would otherwise say */
-		if(!brief && rows.some(s => /^(mean|median):/.test(extraOf(run, s.name)))) {
-			t.append(dom('div', { className: 'msg', textContent: 'values are means, their medians are in the notes' }));
 		}
 
 		/* one line, whatever its length: a title that wraps pushes the numbers around as the pointer moves */
@@ -2098,13 +2116,40 @@
 			return;
 		}
 		const label = S.runLabel(run);
-		const name = run.commit.url
-			? dom('a', { className: 'version', href: run.commit.url, textContent: label, target: '_blank', rel: 'noopener' })
+		const tag = /^\d+\.\d+\.\d+$/.test(label) ? 'v' + label : null;
+		const href = tag ? 'https://github.com/flowr-analysis/flowr/releases/tag/' + tag : run.commit.url;
+		const name = href
+			? dom('a', { className: 'version', href: href, textContent: tag || label, target: '_blank', rel: 'noopener' })
 			: dom('span', { className: 'version', textContent: label });
-		/* the line has room for the number and no more, so the rest of what it says waits for a hover */
+		/* the tag has room for the number and no more, so the rest of what it says waits for a hover */
 		name.title = 'newest release, ' + fmtDate(run.date) + ': ' + S.commitTitle(run.commit.message);
+		if(tag) {
+			releaseName(name, tag);
+		}
 		ui.latest.hidden = false;
 		ui.latest.replaceChildren(name);
+	}
+
+	/** the name a release carries only lives on GitHub, so it is fetched once someone asks for it */
+	function releaseName(tagEl, tag) {
+		let asked = false;
+		const ask = () => {
+			if(asked) {
+				return;
+			}
+			asked = true;
+			fetch('https://api.github.com/repos/flowr-analysis/flowr/releases/tags/' + tag)
+				.then(r => r.ok ? r.json() : Promise.reject(r.status))
+				.then(release => {
+					if(release.name) {
+						const when = release.published_at ? fmtDate(release.published_at) : '';
+						tagEl.title = when ? release.name + ', released ' + when : release.name;
+					}
+				})
+				.catch(() => { /* the title it already carries says enough */ });
+		};
+		tagEl.addEventListener('pointerenter', ask);
+		tagEl.addEventListener('focus', ask);
 	}
 
 	/**
@@ -2147,11 +2192,12 @@
 		const calib = usableCalibration(runs, calibrationMetric(runs));
 		ui.calibrateField.hidden = !calib;
 		ui.calibrationNote.hidden = !calib;
-		if(!calib) {
-			ui.calibrate.checked = false;
-		} else {
+		/* the box keeps its state while it is away, so a suite that carries a calibration again is normalised again */
+		if(calib) {
 			ui.calibrationNote.textContent = 'A fixed synthetic workload runs in the same CI job, so "' + calib
-				+ '" measures how fast or loaded that machine was. Dividing the other series by it cancels the machine out.';
+				+ '" measures how fast or loaded that machine was. Whatever else the runner did can only add time, '
+				+ 'so the fastest run of a scale is the reference and every other timing has that added time taken '
+				+ 'back off, never put on. The correction is bounded, and counts, sizes, and ratios stay as measured.';
 		}
 
 		const factors = calib && ui.calibrate.checked ? S.calibrationFactors(runs.map(r => valueOf(r, calib))) : null;
@@ -2169,7 +2215,7 @@
 			const series = [];
 			for(const [name, unit] of metrics) {
 				if(S.groupOf(name, unit) === group.id) {
-					series.push(build(runs, name, unit, name === calib ? null : factors));
+					series.push(build(runs, name, unit, calibrates(name, unit, calib) ? factors : null));
 				}
 			}
 			const lines = series.filter(s => !isBar(s.name));

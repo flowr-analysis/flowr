@@ -1,4 +1,4 @@
-import { FunctionArgument, OutgoingEdges, type DataflowGraph } from '../../../dataflow/graph/graph';
+import type { OutgoingEdges, type DataflowGraph  } from '../../../dataflow/graph/graph';
 import type {
 	CallContextQuery,
 	CallContextQueryKindResult,
@@ -9,10 +9,9 @@ import type {
 	LinkTo,
 	SubCallContextQueryFormat
 } from './call-context-query-format';
-import { recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { FunctionCallVertex, FunctionDefinitionVertex, VertexType } from '../../../dataflow/graph/vertex';
+import { type NodeId, recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexInfo } from '../../../dataflow/graph/vertex';
+import { FunctionCallVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
@@ -20,8 +19,6 @@ import type { BasicQueryData } from '../../base-query-format';
 import { satisfiesCallTargets } from './identify-link-to-last-call-relation';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
-import { CfgKind } from '../../../project/cfg-kind';
-import { getCallsInCfg } from '../../../control-flow/extract-cfg';
 import { identifyLinkToRelation } from './identify-link-to-relation';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
@@ -29,12 +26,8 @@ import { ArrayQueue } from '../../../util/collections/queue';
 import { baseRExportOwner } from '../../../util/r-base-packages';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
 import { isNotUndefined, isUndefined } from '../../../util/assert';
-import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
-import type { DataflowInformation } from '../../../dataflow/info';
-import { CallGraph } from '../../../dataflow/graph/call-graph';
+import type { CallGraph } from '../../../dataflow/graph/call-graph';
 import { executeCallGraphQuery } from '../call-graph-query/call-graph-query-executor';
-import { resolveIdToValue } from '../../../dataflow/eval/resolve/alias-tracking';
-import { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { pMatch } from '../../../dataflow/internal/linker';
 
 function makeReport(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>): CallContextQueryKindResult {
@@ -177,7 +170,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 		}
 		const [info, outgoing] = vertex;
 
-		if(info.tag !== VertexType.FunctionCall) {
+		if(!FunctionCallVertex.is(info)) {
 			const wantedTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 			const x = outgoing.entries()
 				.filter(([,e]) => DfEdge.includesType(e, wantedTypes))
@@ -270,11 +263,11 @@ function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
 	return false;
 }
 
-function isDependentOn(parameter: string, dep: RegExp, q: CallNameTypes[], fCall: Required<DataflowGraphVertexInfo>  , callGraph: CallGraph, dataflowGraph: DataflowGraph<DataflowGraphVertexInfo, DfEdge>): boolean{
+function isDependentOn(parameter: string, dep: RegExp, q: CallNameTypes[], fCall: Required<DataflowGraphVertexInfo>, callGraph: CallGraph, dataflowGraph: DataflowGraph<DataflowGraphVertexInfo, DfEdge>): boolean{
 	let mapped = [];
 	if(FunctionCallVertex.is(fCall)){
-		fCall = fCall as Required<DataflowGraphVertexFunctionCall> & {tag: VertexType.FunctionCall;}
-		
+		fCall = fCall;
+
 
 		for(const directCall of callGraph.outgoingEdges(fCall.id)?.keys() ?? []){
 			const v = callGraph.getVertex(directCall);
@@ -284,13 +277,13 @@ function isDependentOn(parameter: string, dep: RegExp, q: CallNameTypes[], fCall
 				} else {
 					parameter = (q.shift() as CallNameTypes).toString();
 					dep = new RegExp((q.shift() as CallNameTypes).toString());
-					isDependentOn(parameter, dep, q, v, callGraph, dataflowGraph)
+					isDependentOn(parameter, dep, q, v, callGraph, dataflowGraph);
 				}
 			}
 		}
 		if(fCall.args.length === 0){
 			const visitedNodes = new Set<NodeId>();
-			const argDepList = callGraph.outgoingEdges(fCall.id)?.keys().toArray() ?? []
+			const argDepList = callGraph.outgoingEdges(fCall.id)?.keys().toArray() ?? [];
 			while(argDepList.length > 0){
 				const elem = argDepList.pop() as NodeId;
 				if(visitedNodes.has(elem)){
@@ -308,31 +301,31 @@ function isDependentOn(parameter: string, dep: RegExp, q: CallNameTypes[], fCall
 					} else {
 						parameter = (q.shift() as CallNameTypes).toString();
 						dep = new RegExp((q.shift() as CallNameTypes).toString());
-						isDependentOn(parameter, dep, q, node, callGraph, dataflowGraph)
+						isDependentOn(parameter, dep, q, node, callGraph, dataflowGraph);
 					}
 				} else {
 					argDepList.push(... callGraph.outgoingEdges(node.id)?.keys().toArray() ?? []);
 				}
 			}
 		}
-		
+
 		const standardmap: Record<string, string> = {
-			'...':    '...'
-		}
+			'...': '...'
+		};
 		let askFor;
 		if(parameter !== '*'){
 			standardmap[parameter] = parameter;
 			askFor = parameter;
-	} else {
-		askFor = '...';
+		} else {
+			askFor = '...';
+		}
+		const mapping = pMatch(fCall.args, standardmap);
+		mapped = mapping.get(askFor) ?? [];
+	} else {
+		mapped = dataflowGraph.outgoingEdges(fCall.id)?.entries().map(element => {
+			return element[0];
+		}).toArray() ?? [] as NodeId[];
 	}
-	const mapping = pMatch(fCall.args, standardmap);
-	mapped = mapping.get(askFor) ?? [];
-} else {
-	mapped = dataflowGraph.outgoingEdges(fCall.id)?.entries().map(element => {
-		return element[0] as NodeId;
-	}).toArray() ?? [] as NodeId[]
-}
 	for(const argId of mapped) {
 		//case: argument calls for directly
 		const v = dataflowGraph.getVertex(argId);
@@ -342,7 +335,7 @@ function isDependentOn(parameter: string, dep: RegExp, q: CallNameTypes[], fCall
 			} else {
 				parameter = (q.shift() as CallNameTypes).toString();
 				dep = new RegExp((q.shift() as CallNameTypes).toString());
-				isDependentOn(parameter, dep, q, v, callGraph, dataflowGraph)
+				isDependentOn(parameter, dep, q, v, callGraph, dataflowGraph);
 			}
 		} else {
 			if(isUndefined(dataflowGraph.outgoingEdges(argId))){
@@ -351,7 +344,7 @@ function isDependentOn(parameter: string, dep: RegExp, q: CallNameTypes[], fCall
 			//todo: are we following only the right edges? (def-on-call dürfen wir auf jeden fall nicht folgen)
 			return (dataflowGraph.outgoingEdges(argId) as OutgoingEdges).entries().filter(element => {
 				const edge = element[1];
-				return DfEdge.includesType(edge, EdgeType.Reads | EdgeType.Argument | EdgeType.DefinedBy | EdgeType.Calls)
+				return DfEdge.includesType(edge, EdgeType.Reads | EdgeType.Argument | EdgeType.DefinedBy | EdgeType.Calls);
 			}).map(element => {
 				return dataflowGraph.getVertex(element[0]);
 			}).filter(element => {
@@ -363,11 +356,11 @@ function isDependentOn(parameter: string, dep: RegExp, q: CallNameTypes[], fCall
 					} else {
 						parameter = (q.shift() as CallNameTypes).toString();
 						dep = new RegExp((q.shift() as CallNameTypes).toString());
-						isDependentOn(parameter, dep, q, element, callGraph, dataflowGraph)
+						isDependentOn(parameter, dep, q, element, callGraph, dataflowGraph);
 					}
 				}
 				return isDependentOn(parameter, dep, q, element, callGraph, dataflowGraph);
-			})
+			});
 		}
 	}
 	return false;
@@ -398,9 +391,9 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 
 	let cfg = undefined;
 	if(requiresCfg) {
-		cfg = await analyzer.controlflow(undefined, CfgKind.Quick);
+		cfg = await analyzer.controlflow(undefined);
 	}
-	const calls = cfg ? getCallsInCfg(cfg, dataflow.graph) : undefined;
+	const calls = cfg ? new Map(dataflow.graph.verticesOfType(VertexType.FunctionCall) as MapIterator<[NodeId, Required<DataflowGraphVertexFunctionCall>]>) : undefined;
 	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);
 	/* index exact-name queries so each vertex costs one map lookup instead of a predicate check per query */
 	const nonAliasByName = new Map<string, PromotedQuery[]>();
@@ -485,9 +478,9 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 			if(query.reliesOnCriteria){
 				let isDependent = true;
 				for(const q of structuredClone(query.reliesOnCriteria)){
-					if(q.length < 2 || q.length%2!==0){
+					if(q.length < 2 || q.length % 2 !== 0){
 						//Fehler
-						continue; 
+						continue;
 					}
 					const parameter = q.shift() as CallNameTypes;
 					const dep = q.shift() as CallNameTypes;

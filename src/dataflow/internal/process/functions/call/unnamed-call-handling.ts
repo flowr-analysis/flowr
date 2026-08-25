@@ -1,18 +1,21 @@
+import { MatchArgs } from '../../../../graph/match-args';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
 import type { DataflowInformation } from '../../../../info';
+import { ControlFlow } from '../../../control-flow';
+import { ExitPointType } from '../../../../info';
 import { processAllArguments } from './common';
-import { linkArgumentsOnCall } from '../../../linker';
 import type { RUnnamedFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { DfEdge, EdgeType } from '../../../../graph/edge';
 import { DataflowGraph } from '../../../../graph/graph';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
 import { VertexType } from '../../../../graph/vertex';
-import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import { dataflowLogger } from '../../../../logger';
 import { ReferenceType } from '../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { RAccess } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { RFunctionDefinition } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 export const UnnamedFunctionCallPrefix = 'unnamed-fc-';
 
@@ -55,7 +58,8 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	const {
 		finalEnv,
 		callArgs,
-		remainingReadInArgs
+		remainingReadInArgs,
+		processedArguments
 	} = processAllArguments({
 		functionName: calledFunction,
 		args:         functionCall.arguments,
@@ -77,13 +81,23 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		origin:      [BuiltInProcName.Unnamed]
 	}, data.ctx.env.makeCleanEnv());
 
+	const cfgEntry = ControlFlow.inSequence(finalGraph, [calledFunction, ...processedArguments], functionRootId);
+	/* a jump within an argument is caught here, just like for a named call */
+	for(const argument of processedArguments) {
+		for(const exit of argument?.exitPoints ?? []) {
+			if(exit.type !== ExitPointType.Default) {
+				finalGraph.addEdge(exit.nodeId, functionRootId, EdgeType.FlowEdge);
+			}
+		}
+	}
+
 	let inIds = remainingReadInArgs;
 	inIds.push({ nodeId: functionRootId, name: functionCallName, cds: data.cds, type: ReferenceType.Function });
 
 	// if we just call a nested fdef
-	if(functionCall.calledFunction.type === RType.FunctionDefinition) {
-		linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph);
-	} else if(functionCall.calledFunction.type === RType.Access && !accessResolvesToField(finalGraph, calledRootId, functionCall.calledFunction.accessed.info.id)) {
+	if(RFunctionDefinition.is(functionCall.calledFunction)) {
+		MatchArgs.onCallAndLink(callArgs, functionCall.calledFunction.parameters, finalGraph);
+	} else if(RAccess.is(functionCall.calledFunction) && !accessResolvesToField(finalGraph, calledRootId, functionCall.calledFunction.accessed.info.id)) {
 		// `obj$method()` whose callee did not resolve to a stored function: reached-but-unknown rather than dropped
 		handleUnknownSideEffect(finalGraph, data.environment, functionRootId);
 	}
@@ -99,6 +113,8 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		graph:             finalGraph,
 		environment:       finalEnv,
 		entryPoint:        functionCall.info.id,
+		cfgEntry:          cfgEntry === functionRootId ? undefined : cfgEntry,
+		cfgExit:           functionRootId,
 		exitPoints:        calledFunction.exitPoints,
 		hooks:             calledFunction.hooks,
 	};

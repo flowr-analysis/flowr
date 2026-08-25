@@ -1,4 +1,6 @@
 import { DefaultMap } from '../../util/collections/defaultmap';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isNotUndefined } from '../../util/assert';
 import { expensiveTrace } from '../../util/log';
 import type { BuiltIn } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -10,26 +12,28 @@ import {
 	isReferenceType,
 	ReferenceType
 } from '../environments/identifier';
-import { type DataflowGraph, FunctionArgument } from '../graph/graph';
+import type { FunctionArgument, DataflowGraph } from '../graph/graph';
+import { NoEdges } from '../graph/graph';
 import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowLogger } from '../logger';
-import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { DfEdge, EdgeType } from '../graph/edge';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import {
 	type DataflowGraphVertexFunctionCall,
 	type DataflowGraphVertexFunctionDefinition,
 	type DataflowGraphVertexInfo,
 	VertexType
 } from '../graph/vertex';
-import { resolveByName } from '../environments/resolve-by-name';
 import type { REnvironmentInformation } from '../environments/environment';
-import { DotsParameterName, matchArgumentsToParameters } from '../../util/arg-matching';
+import { MatchArgs } from '../graph/match-args';
 import type { ExitPoint } from '../info';
 import { negateControlDependency, doesExitPointPropagateCalls } from '../info';
 import { UnnamedFunctionCallPrefix } from './process/functions/call/unnamed-call-handling';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
+import { VariableDefinitionVertex, FunctionCallVertex, FunctionDefinitionVertex } from '../graph/vertex';
+import { Resolve } from '../environments/resolve-helper';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
 
@@ -51,19 +55,25 @@ export function findNonLocalReads(graph: DataflowGraph, ignores: ReadonlySet<Nod
 			const origin = graph.getVertex(nodeId);
 			const name = recoverName(nodeId, graph.idMap);
 
-			const type = origin?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Variable;
+			const type = FunctionCallVertex.is(origin) ? ReferenceType.Function : ReferenceType.Variable;
 
 			const identifierRef = { nodeId, name, type };
 
-			if(outgoing === undefined) {
-				nonLocalReads.push(identifierRef);
-				continue;
-			}
-			for(const [target, e] of outgoing) {
+			/* control flow edges say nothing about what a name resolves to, so they do not count as a link */
+			let linked = false;
+			let nonLocal = false;
+			for(const [target, e] of outgoing ?? NoEdges) {
+				if(DfEdge.isOnlyControlFlow(e)) {
+					continue;
+				}
+				linked = true;
 				if(DfEdge.includesType(e, EdgeType.Reads) && !defs.has(target)) {
-					nonLocalReads.push(identifierRef);
+					nonLocal = true;
 					break;
 				}
+			}
+			if(!linked || nonLocal) {
+				nonLocalReads.push(identifierRef);
 			}
 		}
 	}
@@ -84,77 +94,22 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
 	return nameIdShares;
 }
 
-/** the argument names as {@link matchArgumentsToParameters} wants them */
-function argumentNames(args: readonly FunctionArgument[]): (string | undefined)[] {
-	return args.map(a => FunctionArgument.isNamed(a) ? a.name : undefined);
-}
-
 /**
- * {@link matchArgumentsToParameters|Matches} the arguments to the parameters and links them in the graph,
+ * {@link MatchArgs.onCall|Matches} the arguments to the parameters and links them in the graph,
  * returning the resolved map from argument ids to parameter ids.
- * If you just want to match by name, use {@link pMatch}.
+ * @useInstead {@link MatchArgs.onCallAndLink}
  */
 export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: readonly RParameter<ParentInformation>[], graph: DataflowGraph): Map<NodeId, NodeId> {
-	const matched = matchArgumentsToParameters(argumentNames(args), params.map(p => p?.special ? DotsParameterName : p?.name?.content));
-	const maps = new Map<NodeId, NodeId>();
-	for(let i = 0; i < args.length; i++) {
-		const arg = args[i];
-		if(arg === EmptyArgument) {
-			continue;
-		}
-		const param = matched[i];
-		const pid = param === undefined ? undefined : params[param].name?.info.id;
-		const aid = arg.nodeId;
-		if(pid === undefined) {
-			dataflowLogger.warn(`skipping argument ${i} (id: ${aid}) as there is no corresponding parameter - R should block that`);
-			continue;
-		}
-		graph.addEdge(aid, pid, EdgeType.DefinesOnCall);
-		graph.addEdge(pid, aid, EdgeType.DefinedByOnCall);
-		maps.set(aid, pid);
-	}
-	return maps;
+	return MatchArgs.onCallAndLink(args, params, graph);
 }
 
 /**
- * {@link matchArgumentsToParameters|Matches} the arguments against a parameter specification, returning the
- * arguments bound to each target. Unlike {@link linkArgumentsOnCall} this touches no graph, so it also works
- * for a specification without parameters in the AST.
- * @example
- * ```ts
- * const parameterSpec = {
- *   'paramName':         'paramId',
- *   'anotherParamName':  'anotherParamId',
- *   // we recommend to always add '...' to your specification
- *   // this way you can collect all arguments that could not be matched!
- *   '...':               '...'
- * } as const;
- *
- * const match = pMatch(convertFnArguments(args), parameterSpec);
- * const addParam = match.get('paramId');
- * ```
- * @note
- * To obtain the arguments from a {@link RFunctionCall}[], either use {@link processAllArguments} (also available via {@link processKnownFunctionCall})
- * or convert them with {@link convertFnArguments}.
+ * {@link MatchArgs.toSpec|Matches} the arguments against a parameter specification, returning the
+ * arguments bound to each target.
+ * @useInstead {@link MatchArgs.toSpec}
  */
 export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[], params: Record<string, Targets>): Map<Targets, NodeId[]> {
-	const paramNames = Object.keys(params);
-	const matched = matchArgumentsToParameters(argumentNames(args), paramNames);
-	const maps = new Map<Targets, NodeId[]>();
-	for(let i = 0; i < args.length; i++) {
-		const arg = args[i], param = matched[i];
-		if(arg === EmptyArgument || param === undefined) {
-			continue;
-		}
-		const target = params[paramNames[param]];
-		const known = maps.get(target);
-		if(known) {
-			known.push(arg.nodeId);
-		} else {
-			maps.set(target, [arg.nodeId]);
-		}
-	}
-	return maps;
+	return MatchArgs.toSpec(args, params);
 }
 
 
@@ -169,7 +124,7 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCa
 		return;
 	}
 
-	if(linkedFunction.type !== RType.FunctionDefinition) {
+	if(!RFunctionDefinition.is(linkedFunction)) {
 		dataflowLogger.trace(`function call definition base ${functionCallName} does not lead to a function definition (${functionRootId}) but got ${linkedFunction.type}`);
 		return;
 	}
@@ -189,7 +144,7 @@ export function linkFunctionCallWithSingleTarget(
 	if(info.environment !== undefined) {
 		// for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it
 		for(const ingoing of fnSubflow.in) {
-			const defs = ingoing.name ? resolveByName(ingoing.name, info.environment, ingoing.type) : undefined;
+			const defs = ingoing.name ? Resolve.byNameAndType(ingoing.name, info.environment, ingoing.type) : undefined;
 			if(defs === undefined) {
 				continue;
 			}
@@ -203,7 +158,7 @@ export function linkFunctionCallWithSingleTarget(
 							graph.addEdge(ingoing.nodeId, v, EdgeType.Calls);
 							// add s7 to vertex
 							const vInfo = graph.getVertex(v);
-							if(vInfo && vInfo.tag === VertexType.FunctionDefinition) {
+							if(vInfo && FunctionDefinitionVertex.is(vInfo)) {
 								vInfo.mode ??= [];
 								if(!vInfo.mode.includes('s7')) {
 									vInfo.mode.push('s7');
@@ -322,7 +277,7 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 
 	const [info, outgoingEdges] = callVertex;
 
-	if(info.tag !== VertexType.FunctionCall) {
+	if(!FunctionCallVertex.is(info)) {
 		return [];
 	}
 
@@ -331,7 +286,7 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 		const refType = info.origin.includes(BuiltInProcName.S3Dispatch) ? ReferenceType.S3MethodPrefix :
 			info.origin.includes(BuiltInProcName.S7Dispatch) ? ReferenceType.S7MethodPrefix : ReferenceType.Function;
 		if(info.name !== undefined && !Identifier.getName(info.name).startsWith(UnnamedFunctionCallPrefix)) {
-			functionCallDefs = resolveByName(
+			functionCallDefs = Resolve.byNameAndType(
 				info.name, environment ?? info.environment as REnvironmentInformation, refType
 			)?.map(d => d.nodeId) ?? [];
 		}
@@ -411,7 +366,7 @@ export function getAllLinkedFunctionDefinitions(
 			continue;
 		}
 
-		const isSkipType = vertex.tag === VertexType.FunctionCall || (vertex.tag === VertexType.VariableDefinition && vertex.par);
+		const isSkipType = FunctionCallVertex.is(vertex) || (VariableDefinitionVertex.is(vertex) && vertex.par);
 		let hasReturnEdge = false;
 		let followTargets: NodeId[] | undefined;
 
@@ -437,6 +392,32 @@ export function getAllLinkedFunctionDefinitions(
 }
 
 /**
+ * Links every name in the expression rooted at `expr` against `environment`, as if it were written there, and
+ * hands back what stays unresolved. This is how an expression that was captured elsewhere is read here.
+ * @useInstead {@link Quoted.evaluateIn}
+ */
+export function linkExpressionIn<Info>(this: void, graph: DataflowGraph, expr: NodeId, environment: REnvironmentInformation, idMap: AstIdMap<Info & ParentInformation>): readonly IdentifierReference[] {
+	const node = idMap.get(expr);
+	if(node === undefined) {
+		return [];
+	}
+	const references: IdentifierReference[] = [];
+	const callees = new Set<NodeId>();
+	RNode.visitAst<Info & ParentInformation>(node, inner => {
+		if(RFunctionCall.isNamed(inner)) {
+			callees.add(inner.functionName.info.id);
+			references.push({ nodeId: inner.functionName.info.id, name: inner.functionName.content, cds: undefined, type: ReferenceType.Function });
+		} else if(RSymbol.is(inner) && !callees.has(inner.info.id)) {
+			references.push({ nodeId: inner.info.id, name: inner.content, cds: undefined, type: ReferenceType.Variable });
+		}
+		return false;
+	});
+	const unresolved: IdentifierReference[] = [];
+	linkInputs(references, environment, unresolved, graph, false);
+	return unresolved;
+}
+
+/**
  * This method links a set of read variables to definitions in an environment.
  * @param referencesToLinkAgainstEnvironment - The set of references to link against the environment
  * @param environmentInformation             - The environment information to link against
@@ -447,7 +428,7 @@ export function getAllLinkedFunctionDefinitions(
  */
 export function linkInputs(referencesToLinkAgainstEnvironment: readonly IdentifierReference[], environmentInformation: REnvironmentInformation, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean): IdentifierReference[] {
 	for(const bodyInput of referencesToLinkAgainstEnvironment) {
-		const probableTarget = bodyInput.name ? resolveByName(bodyInput.name, environmentInformation, bodyInput.type) : undefined;
+		const probableTarget = bodyInput.name ? Resolve.byNameAndType(bodyInput.name, environmentInformation, bodyInput.type) : undefined;
 		if(probableTarget === undefined) {
 			if(maybeForRemaining) {
 				bodyInput.cds ??= [];
@@ -566,3 +547,36 @@ export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: r
 		}
 	}
 }
+
+/** The open references a function definition still carries into its closure. */
+export const ClosureRefs = {
+	name: 'ClosureRefs',
+	/**
+	 * Resolves the open ingoing references of a definition called anonymously at `callId` against `environment`,
+	 * links what resolves, and leaves only the references that stay open.
+	 */
+	resolveOpenIngoing(this: void, graph: DataflowGraph, callId: NodeId, definition: DataflowGraphVertexFunctionDefinition, environment: REnvironmentInformation): void {
+		const remainingIn: IdentifierReference[] = [];
+		for(const ingoing of definition.subflow.in) {
+			const resolved = ingoing.name ? Resolve.byNameAndType(ingoing.name, environment, ingoing.type) : undefined;
+			if(resolved === undefined) {
+				remainingIn.push(ingoing);
+				continue;
+			}
+			expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${ingoing.nodeId} in closure of function definition ${callId}`);
+			let allBuiltIn = true;
+			const inId = ingoing.nodeId;
+			for(const { nodeId, type } of resolved) {
+				graph.addEdge(inId, nodeId, EdgeType.Reads);
+				graph.addEdge(callId, nodeId, EdgeType.Reads); // because the def. is the anonymous call
+				if(!isReferenceType(type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
+					allBuiltIn = false;
+				}
+			}
+			if(allBuiltIn) {
+				remainingIn.push(ingoing);
+			}
+		}
+		definition.subflow.in = remainingIn;
+	}
+} as const;

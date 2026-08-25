@@ -38,7 +38,9 @@ import { contextFromInput } from '../project/context/flowr-analyzer-context';
 import { FlowrAnalyzerGasContext } from '../project/context/flowr-analyzer-gas-context';
 import { FlowrAnalyzerGasPlugin } from '../project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { GasFeatureKey, GasLevel } from '../gas';
-import type { PropSelector } from '../dataflow/environments/built-in-props';
+import type { ArgProps, PropSelector } from '../dataflow/environments/built-in-props';
+import type { Identifier } from '../dataflow/environments/identifier';
+import { enumMembers } from '../util/objects';
 import { ArgProp, CallProp, ExclusiveCallProps, CallProps, SemanticCallTag, SigDbInferable } from '../dataflow/environments/built-in-props';
 import { BuiltInIndex, inferFnProps } from '../dataflow/environments/query-fn-props';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
@@ -122,17 +124,47 @@ function propNames(selector: PropSelector): string {
 	return CallProps.names(selector).map(n => `\`${n}\``).join(', ');
 }
 
+/** the {@link ArgProp} bits of a parameter as a definition writes them down, like `ArgProp.Value | ArgProp.Forced` */
+function argPropNames(props: ArgProps): string {
+	return enumMembers(ArgProp).filter(([, prop]) => (props & prop) !== 0).map(([name]) => `ArgProp.${name}`).join(' | ') || '0';
+}
+
+/** the call information about a built-in that is stated in the configuration */
+function statedOf(index: BuiltInIndex, name: Identifier) {
+	const entry = index.get(name);
+	const props = CallProps.names(entry?.props ?? 0);
+	const tags = CallProps.names(entry?.tags ?? []);
+	const sig = entry?.sig ?? [];
+
+	return {
+		/** the {@link CallProp} bits, as `Invisible | Generic` */
+		props: props.join(' | '),
+		/** the {@link SemanticCallTag}s, as `[Prints]` */
+		tags:  `[${tags.join(', ')}]`,
+		/** the `props`, `tags`, and `sig` of the definition, with the signature cut off after `sigLength` parameters */
+		config(sigLength = sig.length): string {
+			const params = sig.slice(0, sigLength).map(([param, argProps]) => `['${param}', ${argPropNames(argProps)}]`);
+			return [
+				props.length > 0 ? `props: ${props.map(name => `CallProp.${name}`).join(' | ')}` : undefined,
+				tags.length > 0 ? `tags: [${tags.map(name => `SemanticCallTag.${name}`).join(', ')}]` : undefined,
+				sig.length > 0 ? `sig: [${[...params, ...(sig.length > sigLength ? ['...'] : [])].join(', ')}]` : undefined
+			].filter(part => part !== undefined).join(', ');
+		}
+	};
+}
+
 /** The "Labeling the Built-Ins" section of the Core page, with a table per enum taken from the configuration. */
 function builtInLabelsSection(ctx: GeneralDocContext): string {
 	const index = BuiltInIndex.default();
+	/* the examples below state what the configuration says about these calls, never a copy of it */
+	const [arith, print, lapply, readCsv] = ['+', 'print', 'lapply', 'read.csv'].map(name => statedOf(index, name));
+
 	const Enums = { CallProp, SemanticCallTag, ArgProp };
-	const enumEntries = (type: keyof typeof Enums): [name: string, prop: PropSelector][] =>
-		Object.entries(Enums[type]).map(([name, prop]) => [name, prop as PropSelector]);
 	/* the doc comment of a property is its explanation, flattened to fit a table cell; properties nothing carries are left out */
 	const table = <Key extends keyof typeof Enums>(type: Key, header: string, of: (prop: PropSelector) => number) => [
 		`| ${header} | Built-ins | Meaning |`,
 		'| :-- | --: | :-- |',
-		...enumEntries(type).filter(([, prop]) => of(prop) > 0)
+		...(enumMembers(Enums[type]) as [string, PropSelector][]).filter(([, prop]) => of(prop) > 0)
 			.map(([name, prop]) => {
 				/* a `{@link}` has already become an anchor, so dropping the tags leaves the bare name and a stray space */
 				const doc = ctx.doc(`${type}::${name}`).replaceAll(/<[^>]*>/g, '').replaceAll(/\s+/g, ' ')
@@ -148,10 +180,10 @@ Besides the processor, an entry says what the function *is*, in three label voca
 
 * ${ctx.link('CallProp')} labels how the called code behaves (\`props\`, a bitfield): whether it is pure, whether it
   throws, whether it returns invisibly, whether it dispatches, what it does to the frames around it. R's
-  primitive generics (\`+\`, \`sin\`, \`length\`, ...) are \`Pure | Generic\`, and as they have no R body, the store is
+  primitive generics (\`+\`, \`sin\`, \`length\`, ...) are \`${arith.props}\`, and as they have no R body, the store is
   the only place that can say they dispatch.
 * ${ctx.link('SemanticCallTag')} labels what semantic a call has (\`tags\`, an array): which resource it accesses,
-  what it produces, what it is used for. \`print\` is \`Invisible | Generic\` with \`[Prints]\`.
+  what it produces, what it is used for. \`print\` is \`${print.props}\` with \`${print.tags}\`.
 * ${ctx.link('ArgProp')} labels each parameter (\`sig\`), in the order R declares them: which one carries the data,
   which one only selects a behavior, which one names a file, which one is called as a function.
 
@@ -166,12 +198,13 @@ So \`lapply\` is pure on its own but runs what it is handed, and says which argu
 ${codeBlock('ts', `{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['lapply', 'sapply', 'vapply']),
   processor: BuiltInProcName.Apply,
   config:    { indexOfFunction: 1, nameOfFunctionArgument: 'FUN', unquoteFunction: true,
-               props: CallProp.MayPure, sig: [['X', ArgProp.Value], ['FUN', ArgProp.Callee]] } }`)}
+               ${lapply.config()} } }`)}
 
 while \`read.csv\` states what it does instead:
 
-${codeBlock('ts', `{ type: 'function', names: [Identifier.from(['read.csv', PkgName.Utils])], processor: BuiltInProcName.Default,
-  config:    { tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: [['file', ArgProp.Resource], ...] } }`)}
+${codeBlock('ts', `{ type: 'function', names: [Identifier.from(['read.csv', PkgName.Utils])],
+  processor: BuiltInProcName.DefaultReadAllArgs,
+  config:    { ${readCsv.config(2)} } }`)}
 
 The three tables below are generated from the configuration itself, so they always list every label that exists,
 what it means, and how many built-ins carry it.

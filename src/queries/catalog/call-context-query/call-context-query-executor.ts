@@ -1,4 +1,3 @@
-import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type {
 	CallContextQuery,
 	CallContextQueryKindResult,
@@ -9,9 +8,6 @@ import type {
 	LinkTo,
 	SubCallContextQueryFormat
 } from './call-context-query-format';
-import { type NodeId, recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
-import { FunctionCallVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
@@ -24,7 +20,20 @@ import { Identifier } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { ArrayQueue } from '../../../util/collections/queue';
 import { baseRExportOwner } from '../../../util/r-base-packages';
-import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
+import { executeCallGraphQuery } from '../call-graph-query/call-graph-query-executor';
+import { guard } from '../../../util/assert';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { recoverContent, recoverName } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import { FunctionArgument } from '../../../dataflow/graph/graph';
+import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
+import { VertexType } from '../../../dataflow/graph/vertex';
+import type {
+	ReadOnlyFlowrAnalyzerDependenciesContext
+} from '../../../project/context/flowr-analyzer-dependencies-context';
+import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
+import { SliceDirection } from '../../../util/slice-direction';
 
 function makeReport(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>): CallContextQueryKindResult {
 	const result: CallContextQueryKindResult = {};
@@ -166,7 +175,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 		}
 		const [info, outgoing] = vertex;
 
-		if(!FunctionCallVertex.is(info)) {
+		if(info.tag !== VertexType.FunctionCall) {
 			const wantedTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 			const x = outgoing.entries()
 				.filter(([,e]) => DfEdge.includesType(e, wantedTypes))
@@ -259,6 +268,39 @@ function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
 	return false;
 }
 
+async function isDependentOn(parameter: string, dep: PromotedCallTest, fCall: Required<DataflowGraphVertexFunctionCall>, graph: DataflowGraph, analyzer: ReadonlyFlowrAnalysisProvider): Promise<boolean> {
+	/* const astCall = graph.idMap?.get(fCall?.id) as RFunctionCall<ParentInformation> | undefined;
+	if(!RFunctionCall.is(astCall)) {
+		return false;
+	}
+	// TODO: match against signaue
+	// const defs = MatchArgs.toDefinition(astCall, graph, analyzer.inspectContext());
+	*/
+	const isParam = parameter === '*' ? () => true : (p: string | undefined) => p === parameter;
+
+	for(const arg of fCall.args) {
+		if(FunctionArgument.isEmpty(arg) || !isParam(arg.name)) {
+			continue;
+		}
+		const argSlice = await analyzer.query([{
+			type:             'static-slice',
+			criteria:         [SlicingCriterion.fromId(arg.nodeId)],
+			noReconstruction: true,
+			direction:        SliceDirection.Backward
+		}]);
+		for(const results of Object.values(argSlice['static-slice'].results)) {
+			for(const resultId of results.slice.result) {
+				// TODO: check it is sreally a functin call
+				const name = recoverName(resultId, graph.idMap);
+				if(name && dep(name)) {
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
 /**
  * Multi-stage call context query resolve.
  *
@@ -309,14 +351,18 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 		}
 	}
 
+	//todo: das hier potentiell verschieben
+	const callGraph = (await executeCallGraphQuery({ analyzer }, [{ type: 'call-graph' }])).graph;
+	const dataflowGraph = dataflow.graph;
+
 	for(const [nodeId, info] of dataflow.graph.verticesOfType(VertexType.FunctionCall)) {
 		/* if we have a vertex, and we check for aliased calls, we want to know if we define this as desired! */
 		if(queriesWhichWantAliases.length > 0) {
 			/*
-			 * yes, we make an expensive call target check, we can probably do a lot of optimization here, e.g.,
-			 * by checking all of these queries would be satisfied otherwise,
-			 * in general, we first want a call to happen, i.e., trace the called targets of this!
-			 */
+             * yes, we make an expensive call target check, we can probably do a lot of optimization here, e.g.,
+             * by checking all of these queries would be satisfied otherwise,
+             * in general, we first want a call to happen, i.e., trace the called targets of this!
+             */
 			const targets = retrieveAllCallAliases(nodeId, dataflow.graph);
 			for(const [l, ids] of targets.entries()) {
 				for(const query of queriesWhichWantAliases) {
@@ -363,6 +409,21 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 				continue;
 			} else if(query.ignoreParameterValues && isParameterDefaultValue(nodeId, ast)) {
 				continue;
+			}
+			if(query.reliesOnCriteria) {
+				let isDependent = true;
+				for(const { name, calls, value } of query.reliesOnCriteria) {
+					guard(value === undefined, 'not yet supported');
+					guard(calls !== undefined, 'we want calls req.');
+					//alle Bedingungen müssen gelten
+					if(!await isDependentOn(name, promoteCallName(calls), info, dataflowGraph, analyzer)) {
+						isDependent = false;
+						break;
+					}
+				}
+				if(!isDependent) {
+					continue;
+				}
 			}
 			let linkedIds: Set<NodeId | { id: NodeId, info: object }> | undefined = undefined;
 			if(cfg && 'linkTo' in query && query.linkTo !== undefined) {

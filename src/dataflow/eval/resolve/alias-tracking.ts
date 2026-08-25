@@ -204,8 +204,8 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 	}
 }
 
-/** Resolves an id to a single constant string value, or `undefined` if it is not a unique string constant. */
 /**
+ * Resolves an id to a single constant string value, or `undefined` if it is not a unique string constant.
  * @useInstead {@link Resolve.toSingleString}
  */
 export function resolveIdToSingleString(id: NodeId | RNodeWithParent | undefined, info: ResolveInfo): string | undefined {
@@ -228,9 +228,9 @@ function iteratedElements(value: Value): readonly Value[] {
  *
  * Uses the aliases that were tracked in the environments (by the
  * {@link getAliases} function) to resolve a node to a value.
- * @param identifier - Identifier to resolve
+ * The third argument is the {@link ResolveInfo} (ctx, idMap, ...) minus the environment, which is passed on its own.
+ * @param identifier  - Identifier to resolve
  * @param environment - Environment to use
- * @param r          - Resolve information (env, ctx, ...)
  * @returns Value of Identifier or Top
  */
 export function trackAliasInEnvironments(identifier: Identifier | undefined, environment: REnvironmentInformation, { blocked, idMap, resolve = VariableResolve.Alias, ctx, graph }: Omit<ResolveInfo, 'environment'>): ResolveResult {

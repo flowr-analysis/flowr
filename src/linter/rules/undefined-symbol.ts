@@ -7,7 +7,6 @@ import { isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { FileRole } from '../../project/context/flowr-file';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { AttachedBasePackages, baseRExportOwner } from '../../util/r-base-packages';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FlowrSearchElement } from '../../search/flowr-search';
@@ -23,6 +22,7 @@ import {
 	useResolvesToDefinitionOrBuiltin
 } from './undefined-symbol-util';
 import { Dataflow } from '../../dataflow/graph/df-helper';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 /** whether the flagged symbol is used in a function-call position or as a plain variable */
 export type UndefinedSymbolKind = 'function' | 'variable';
@@ -186,7 +186,7 @@ export const UNDEFINED_SYMBOL = {
 			// variable use: only plain symbols (not argument names, `...`, or empty)
 			if(UseVertex.is(vtx) && config.checkVariables) {
 				const node = element.node;
-				if(node.type !== RType.Symbol || node.lexeme === '...' || node.lexeme === undefined) {
+				if(!RSymbol.is(node) || node.lexeme === '...' || node.lexeme === undefined) {
 					return undefined;
 				}
 				meta.totalVariableUses++;

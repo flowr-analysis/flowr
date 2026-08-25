@@ -1,3 +1,4 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
@@ -12,6 +13,7 @@ import { resolveArgToEnvir, routeWrittenToCustomEnv, signatureParamNames } from 
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { patchFunctionCall } from '../common';
 import { EdgeType } from '../../../../../graph/edge';
+import { ControlFlow } from '../../../../control-flow';
 import { linkInputs } from '../../../../linker';
 
 /** Fallback formal parameter names for `with(data, expr, ...)` / `within(data, expr, ...)` when the signature database has no `base::with`. */
@@ -57,7 +59,7 @@ export function processWithEnv<OtherInfo>(
 
 	// prefer R's real `base::with` signature from the database, falling back to the known formals when it is absent
 	// use the call's own name (`with` or `within`) qualified to base, so each gets its real signature
-	const bound = RFunctionCall.matchArgsToParams(args, signatureParamNames(data, Identifier.make(Identifier.getName(name.content), PkgName.Base), withParamsFallback));
+	const bound = MatchArgs.toNames(args, signatureParamNames(data, Identifier.make(Identifier.getName(name.content), PkgName.Base), withParamsFallback));
 	const dataArg = bound.get('data');
 	const exprArg = bound.get('expr');
 
@@ -101,6 +103,7 @@ export function processWithEnv<OtherInfo>(
 
 	const merged = dfDataArg.graph.mergeWith(dfExpr.graph);
 	merged.addEdge(rootId, envirResolution.envirNodeId, EdgeType.Reads);
+	const cfgEntry = ControlFlow.inSequence(merged, [dfDataArg, dfExpr], rootId);
 
 	const ingoing = dfDataArg.in.concat(
 		dfExpr.in,
@@ -123,6 +126,8 @@ export function processWithEnv<OtherInfo>(
 		exitPoints:        dfDataArg.exitPoints.concat(dfExpr.exitPoints),
 		graph:             merged,
 		entryPoint:        rootId,
+		cfgEntry,
+		cfgExit:           rootId,
 		in:                ingoing,
 		out:               [],   /* writes are inside envState, not directly in outer scope */
 		unknownReferences: []

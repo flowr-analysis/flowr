@@ -4,13 +4,15 @@ import { ExitPointType } from '../../../../info';
 import { type ForceArguments, processAllArguments } from './common';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { type IdentifierReference, ReferenceType } from '../../../../environments/identifier';
 import type { FunctionArgument } from '../../../../graph/graph';
 import { DataflowGraph } from '../../../../graph/graph';
 import { EdgeType } from '../../../../graph/edge';
+import { ControlFlow } from '../../../control-flow';
 import { dataflowLogger } from '../../../../logger';
 import { type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
@@ -38,6 +40,16 @@ export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments
 	readonly origin:                FunctionOriginInformation | 'default'
 	/** see {@link ProcessAllArgumentInput#nonFunction} */
 	readonly nonFunction?:          ReadonlySet<NodeId>
+	/**
+	 * Suppress the default control flow linkage (arguments in order, then the call).
+	 * Constructs that branch or loop set this and wire their control flow themselves.
+	 */
+	readonly customControlFlow?:    boolean
+	/**
+	 * From this argument index on, the arguments are alternatives of which at most one is evaluated,
+	 * which is how `switch` picks an arm. The arguments before it are evaluated in order as usual.
+	 */
+	readonly alternativeArgsFrom?:  number
 }
 
 /** The result of processing a known function call. */
@@ -148,7 +160,7 @@ function markArgument(graph: DataflowGraph, rootId: NodeId, arg: DataflowInforma
  * add any specific handling.
  */
 export function processKnownFunctionCall<OtherInfo>(
-	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect, origin, nonFunction }: ProcessKnownFunctionCallInput<OtherInfo>,
+	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect, origin, nonFunction, customControlFlow, alternativeArgsFrom }: ProcessKnownFunctionCallInput<OtherInfo>,
 ): ProcessKnownFunctionCallResult {
 	const functionName = processDataflowFor(name, data);
 	const finalGraph = new DataflowGraph(data.completeAst.idMap);
@@ -186,21 +198,46 @@ export function processKnownFunctionCall<OtherInfo>(
 
 	// if force args is not none, we need to collect all non-default exit points from our arguments!
 	let exitPoints: ExitPoint[] | undefined = undefined;
-	if(forceArgs === 'all') {
-		const nonDefaults = processedArguments.flatMap(p => p ? p.exitPoints.filter(ep => ep.type !== ExitPointType.Default) : []);
-		if(nonDefaults.length > 0) {
-			exitPoints = nonDefaults;
+	/* a jump that only happens under a condition still lets the call complete, so its default exit has to stay */
+	let alwaysJumps = false;
+	if(forceArgs) {
+		for(let i = 0; i < processedArguments.length; i++) {
+			const p = processedArguments[i];
+			if(p === undefined || (forceArgs !== 'all' && !forceArgs[i])) {
+				continue;
+			}
+			const before = exitPoints?.length ?? 0;
+			for(const exit of p.exitPoints) {
+				if(exit.type !== ExitPointType.Default) {
+					(exitPoints ??= []).push(exit);
+				}
+			}
+			alwaysJumps ||= (exitPoints?.length ?? 0) > before && ControlFlow.alwaysExits(p);
 		}
-	} else if(forceArgs) {
-		for(let i = 0; i < forceArgs.length; i++) {
-			if(forceArgs[i]) {
-				const p = processedArguments[i];
-				if(p) {
-					const nonDefaults = p.exitPoints.filter(ep => ep.type !== ExitPointType.Default);
-					if(nonDefaults.length > 0) {
-						exitPoints ??= [];
-						exitPoints.push(...nonDefaults);
-					}
+		if(exitPoints !== undefined && !alwaysJumps) {
+			exitPoints.push({ nodeId: rootId, type: ExitPointType.Default, cds: data.cds });
+		}
+	}
+
+	/* an alternative without a name is the default arm, which runs when nothing else matched */
+	const cfgEntry = customControlFlow ? rootId
+		: alternativeArgsFrom === undefined ? ControlFlow.inSequence(finalGraph, processedArguments, rootId)
+			: ControlFlow.picksOneOf(finalGraph, processedArguments, alternativeArgsFrom, rootId,
+				processArgs.slice(alternativeArgsFrom).some(a => a !== EmptyArgument && (!RArgument.is(a) || a.name === undefined)));
+	if(!customControlFlow) {
+		/*
+		 * A jump within an argument that the call does not pass on is caught here (the callee decides whether it
+		 * ever forces that argument), so control resumes at the call rather than leaving it.
+		 */
+		for(const argument of processedArguments) {
+			for(const exit of argument?.exitPoints ?? []) {
+				/*
+				 * A jump within an argument the call does not pass on resumes at the call. A `return` leaves the
+				 * enclosing function wherever the argument runs at all, so only a call that never evaluates it
+				 * may catch one (see `processQuote`).
+				 */
+				if(exit.type !== ExitPointType.Default && exit.type !== ExitPointType.Return && !exitPoints?.includes(exit)) {
+					finalGraph.addEdge(exit.nodeId, rootId, EdgeType.FlowEdge);
 				}
 			}
 		}
@@ -215,6 +252,7 @@ export function processKnownFunctionCall<OtherInfo>(
 			graph:             finalGraph,
 			environment:       finalEnv,
 			entryPoint:        rootId,
+			cfgEntry:          cfgEntry === rootId ? undefined : cfgEntry,
 			exitPoints:        exitPoints ?? [{ nodeId: rootId, type: ExitPointType.Default, cds: data.cds }],
 			hooks:             functionName.hooks
 		},

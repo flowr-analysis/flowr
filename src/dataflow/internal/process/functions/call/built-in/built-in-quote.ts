@@ -1,9 +1,8 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import type { DataflowInformation } from '../../../../../info';
+import { type DataflowInformation, ExitPointType } from '../../../../../info';
 import { markArgumentsAsNonStandardEvaluation, processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { recoverName } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -17,6 +16,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { FunctionArgument } from '../../../../../graph/graph';
 import { Nse, Unquote } from '../nse';
 import { linkInputs } from '../../../../linker';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 interface QuoteConfig extends ForceArguments {
 	quoteArgumentsWithIndex: number
@@ -55,7 +55,7 @@ export function processQuote<OtherInfo>(
 	const unknownRefs: IdentifierReference[] = [];
 
 	const quotedArg = args[config.quoteArgumentsWithIndex];
-	const evaluated = Nse.unquoted(quotedArg === EmptyArgument ? undefined : quotedArg?.value, config.unquote ?? Unquote.None);
+	const evaluated = Nse.unquoted(RArgument.isEmpty(quotedArg) ? undefined : quotedArg?.value, config.unquote ?? Unquote.None);
 
 	for(let i = 0; i < args.length; i++) {
 		const processedArg = processedArguments[i];
@@ -68,6 +68,15 @@ export function processQuote<OtherInfo>(
 
 	const quotedProcessed = processedArguments[config.quoteArgumentsWithIndex];
 	if(quotedProcessed) {
+		/*
+		 * The expression is held on to rather than evaluated, so a `return` within it never runs and control
+		 * arrives at the call. Every other jump the call catches already.
+		 */
+		for(const exit of quotedProcessed.exitPoints) {
+			if(exit.type === ExitPointType.Return) {
+				information.graph.addEdge(exit.nodeId, rootId, EdgeType.FlowEdge);
+			}
+		}
 		markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, [config.quoteArgumentsWithIndex], { evaluated });
 		if(evaluated) {
 			/* the argument was processed in a clean env, so the escaped reads need linking by hand */

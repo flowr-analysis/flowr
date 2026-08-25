@@ -67,6 +67,8 @@ export const Mermaid = {
 	 */
 	escapeId(this: void, text: string | number): string {
 		text = String(text).replace(/[^a-zA-Z0-9:\-./]/g, '_');
+		/* a dash before a dash or a dot reads as the start of a link, e.g. the id of `$<-.grouped_df` would cut the line in two */
+		text = text.replace(/-(?=[-.])/g, '_');
 		return text.replace(/(^|[:\-./])([a-zA-Z0-9_]+)/g, (_m, sep: string, tok: string) => sep + (Mermaid.reservedIds.has(tok) ? tok + '_' : tok));
 	},
 	/**

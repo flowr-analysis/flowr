@@ -42,7 +42,7 @@ import { FlowrAnalyzerIncrementalAnalysisContext } from '../project/context/flow
 import { FlowrAnalyzerGasContext } from '../project/context/flowr-analyzer-gas-context';
 import { FlowrAnalyzerGasPlugin } from '../project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import { FlowrConfig } from '../config';
-import { FlowrInlineTextFile } from '../project/context/flowr-file';
+import { FlowrFile } from '../project/context/flowr-file';
 
 async function analyzerQuickExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -538,7 +538,7 @@ For one file, the incremental state follows a fixed lifecycle:
    ${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'storeOldParseResults', { codeFont: true, realNameWrapper: 'i' })}.
    This tree is the baseline for the next incremental parse of that file.
 2. When a mutable file provider such as ${ctx.link('FlowrInlineTextFile')} is invalidated via
-   ${ctx.linkM(FlowrInlineTextFile, 'invalidate', { codeFont: true, realNameWrapper: 'i' })},
+   ${ctx.linkM(FlowrFile, 'invalidate', { codeFont: true, realNameWrapper: 'i' })},
    the analyzer receives a file invalidation event and stores the file path together with the old source text.
    If the same file is invalidated again before the next parse, this stored old text is intentionally **not** replaced:
    the stored parse tree still belongs to the version from before the first invalidation, so the incremental parse must keep that matching old-content baseline.
@@ -548,7 +548,7 @@ For one file, the incremental state follows a fixed lifecycle:
    * the stored old source text from
      ${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'getOldContentOf', { codeFont: true, realNameWrapper: 'i' })}
 
-   Using these together with the current file content, flowR computes a minimal ${ctx.link('Parser.Edit')} only when a new parse is actually requested.
+   Using these together with the current file content, ${ctx.link('computeEditRegion')} derives a minimal tree-sitter \`Parser.Edit\`, only when a new parse is actually requested.
    If the file content did not change, the previous tree can be reused directly.
    Otherwise, the edit is applied to the previous tree and Tree-sitter reparses incrementally instead of starting from scratch.
 4. The stored old-content entry is removed when it is used because it belongs only to that previous parse snapshot.

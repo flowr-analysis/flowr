@@ -68,10 +68,15 @@ describe('Quads', { concurrent: false }, withShell(shell => {
 <${idPrefix}5> <${domain}type> "32"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}2> <${domain}origin> "function" <${context}> .
 <${idPrefix}0> <${domain}edges> <${idPrefix}6> <${context}> .
+<${idPrefix}6> <${domain}next> <${idPrefix}7> <${context}> .
 <${idPrefix}6> <${domain}from> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}6> <${domain}to> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
 <${idPrefix}6> <${domain}type> "reads" <${context}> .
 <${idPrefix}6> <${domain}type> "arg" <${context}> .
+<${idPrefix}0> <${domain}edges> <${idPrefix}7> <${context}> .
+<${idPrefix}7> <${domain}from> "1"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}7> <${domain}to> "3"^^<http://www.w3.org/2001/XMLSchema#integer> <${context}> .
+<${idPrefix}7> <${domain}type> "flows-to" <${context}> .
     `);
 	});
 }));

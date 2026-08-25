@@ -1,11 +1,14 @@
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { intervalFrom } from './intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from './logical/logical-constants';
 import { type Lift, type Value, type ValueSet, Bottom, isBottom, isTop, Top } from './r-value';
 import { stringFrom } from './string/string-constants';
 import { vectorFrom } from './vectors/vector-constants';
 import { Resolve } from '../../environments/resolve-helper';
+import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RLogical } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
+import { RNumber } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import { RString } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 /**
  * Takes n potentially lifted ops and returns `Top` or `Bottom` if any is `Top` or `Bottom`.
@@ -74,13 +77,13 @@ export function valueFromTsValue(a: unknown): Value {
  * @returns abstract value
  */
 export function valueFromRNodeConstant(a: RNodeWithParent): Value {
-	if(a.type === RType.String) {
+	if(RString.is(a)) {
 		return stringFrom(a.content.str);
-	} else if(a.type === RType.Number) {
+	} else if(RNumber.is(a)) {
 		return intervalFrom(a.content.num, a.content.num);
-	} else if(a.type === RType.Logical) {
+	} else if(RLogical.is(a)) {
 		return a.content.valueOf() ? ValueLogicalTrue : ValueLogicalFalse;
-	} else if(a.type === RType.FunctionDefinition) {
+	} else if(RFunctionDefinition.is(a)) {
 		return { type: 'function-definition' };
 	}
 

@@ -1,5 +1,6 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { alwaysExits, type DataflowInformation, type KillReference } from '../../../../../info';
+import type { ControlDependency, DataflowInformation, KillReference } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
@@ -9,6 +10,7 @@ import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { EdgeType } from '../../../../../graph/edge';
+import { ControlFlow } from '../../../../control-flow';
 import { appendEnvironment } from '../../../../../environments/append';
 import { Identifier, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
@@ -16,7 +18,6 @@ import { NodeValue } from '../../../../../eval/resolve/node-value';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import { pMatch } from '../../../../linker';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
@@ -44,7 +45,7 @@ function getArguments<OtherInfo>(config: IfThenElseConfig | undefined, args: rea
 			[config.args.no]:   'no',
 			'...':              '...'
 		};
-		const argMaps = pMatch(convertFnArguments(args), params);
+		const argMaps = MatchArgs.toSpec(convertFnArguments(args), params);
 		condArg = unpackArg(RArgument.getWithId(args, argMaps.get('cond')?.[0]));
 		thenArg = unpackArg(RArgument.getWithId(args, argMaps.get('yes')?.[0]));
 		otherwiseArg = unpackArg(RArgument.getWithId(args, argMaps.get('no')?.[0]));
@@ -80,7 +81,7 @@ export function processIfThenElse<OtherInfo>(
 
 	const cond = processDataflowFor(condArg, data);
 
-	if(alwaysExits(cond)) {
+	if(ControlFlow.alwaysExits(cond)) {
 		dataflowLogger.warn(`If-then-else ${rootId} forces exit in condition, skipping rest`);
 		return cond;
 	}
@@ -94,8 +95,13 @@ export function processIfThenElse<OtherInfo>(
 
 	// we should defer this to the abstract interpretation
 	const values = NodeValue.setOf(condArg?.info.id, data);
-	const conditionIsAlwaysFalse = values?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
-	const conditionIsAlwaysTrue = values?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
+	/*
+	 * `ifelse` and its relatives are ordinary functions, so R evaluates every argument whatever the condition
+	 * says; only the `if` keyword leaves a branch unevaluated and may therefore be resolved away here.
+	 */
+	const branchesAreLazy = config?.args === undefined;
+	const conditionIsAlwaysFalse = branchesAreLazy && (values?.elements.every(d => d.type === 'logical' && d.value === false) ?? false);
+	const conditionIsAlwaysTrue = branchesAreLazy && (values?.elements.every(d => d.type === 'logical' && d.value === true) ?? false);
 
 	if(!conditionIsAlwaysFalse) {
 		then = processDataflowFor(thenArg, data);
@@ -134,8 +140,10 @@ export function processIfThenElse<OtherInfo>(
 		finalEnvironment = appendEnvironment(thenEnvironment, otherwise ? otherwise.environment : cond.environment);
 	}
 
-	const cdTrue = [{ id: rootId, when: true }];
-	const cdFalse = [{ id: rootId, when: false }];
+	const whenTrue: ControlDependency = { id: rootId, when: true };
+	const whenFalse: ControlDependency = { id: rootId, when: false };
+	const cdTrue = [whenTrue];
+	const cdFalse = [whenFalse];
 	// again within an if-then-else we consider all actives to be read
 	const ingoing: IdentifierReference[] = cond.in.concat(
 		makeThenMaybe ? makeAllMaybe(then?.in, nextGraph, finalEnvironment, false, cdTrue) : then?.in ?? [],
@@ -176,12 +184,32 @@ export function processIfThenElse<OtherInfo>(
 	const exitPoints = (then?.exitPoints ?? []).map(e => ({ ...e, cds: makeThenMaybe ? [...data.cds ?? [], { id: rootId, when: true }] : e.cds }))
 		.concat((otherwise?.exitPoints ?? []).map(e => ({ ...e, cds: makeOtherwiseMaybe ? [...data.cds ?? [], { id: rootId, when: false }] : e.cds })));
 
+	const reachesJoin = then === undefined || otherwise === undefined
+		|| ControlFlow.canComplete(then) || ControlFlow.canComplete(otherwise);
+	if(conditionIsAlwaysTrue) {
+		/* the condition is known, so there is no decision left to make and only one way to go */
+		ControlFlow.continuesWith(nextGraph, cond, then ? ControlFlow.entryOf(then) : rootId);
+	} else if(conditionIsAlwaysFalse) {
+		ControlFlow.continuesWith(nextGraph, cond, otherwise ? ControlFlow.entryOf(otherwise) : rootId);
+	} else {
+		ControlFlow.branchesTo(nextGraph, cond, then ? ControlFlow.entryOf(then) : rootId, whenTrue);
+		ControlFlow.branchesTo(nextGraph, cond, otherwise ? ControlFlow.entryOf(otherwise) : rootId, whenFalse);
+	}
+	if(then !== undefined) {
+		ControlFlow.continuesWith(nextGraph, then, rootId);
+	}
+	if(otherwise !== undefined) {
+		ControlFlow.continuesWith(nextGraph, otherwise, rootId);
+	}
+
 	return {
 		unknownReferences: [],
 		in:                [{ nodeId: rootId, name: name.content, cds: originalDependency, type: ReferenceType.Function }, ...ingoing],
 		out:               outgoing,
 		exitPoints,
 		entryPoint:        rootId,
+		cfgEntry:          ControlFlow.entryOf(cond),
+		cfgExit:           reachesJoin ? rootId : undefined,
 		environment:       finalEnvironment,
 		graph:             nextGraph,
 		hooks:             cond.hooks.concat(then?.hooks ?? [], otherwise?.hooks ?? []),

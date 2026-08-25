@@ -2,7 +2,7 @@ import { FunctionArgument, type OutgoingEdges, UnknownSideEffect } from './graph
 import { type GenericDifferenceInformation, setDifference } from '../../util/diff';
 import { jsonReplacer } from '../../util/json';
 import { arrayEqual } from '../../util/collections/arrays';
-import { DfEdge } from './edge';
+import { ControlFlowEdgeTypes, DfEdge } from './edge';
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import { Identifier } from '../environments/identifier';
@@ -17,12 +17,30 @@ import { FunctionDefinitionVertex, FunctionCallVertex } from './vertex';
 
 /**
  * This is the underlying function to calculate the difference based on a given context.
- * Use {@link Dataflow.diff} to calculate the diff of two graphs.
+ * Use {@link Dataflow.diffGraphs} to calculate the diff of two graphs.
  */
 export function diffDataflowGraph(ctx: GraphDiffContext): void {
 	diffRootVertices(ctx);
 	diffVertices(ctx);
-	GraphDiff.outgoingEdges(ctx, diffEdges);
+	GraphDiff.outgoingEdges(ctx, diffEdges, ctx.config.compareControlFlow ? undefined : withoutControlFlow);
+}
+
+/**
+ * Narrow a vertex' outgoing edges to their dataflow part, dropping the control flow the
+ * {@link ControlFlowGraph} projects out of the very same graph.
+ * Comparing control flow is the job of the control flow diff, so a dataflow comparison would only be
+ * duplicating it (and would force every expected graph to spell the control flow out again).
+ */
+function withoutControlFlow(edges: OutgoingEdges): OutgoingEdges | undefined {
+	let result: OutgoingEdges | undefined = undefined;
+	for(const [target, edge] of edges) {
+		if(DfEdge.isOnlyControlFlow(edge)) {
+			continue;
+		}
+		result ??= new Map();
+		result.set(target, DfEdge.includesType(edge, ControlFlowEdgeTypes) ? DfEdge.without(edge, ControlFlowEdgeTypes) : edge);
+	}
+	return result;
 }
 
 function diffRootVertices(ctx: GraphDiffContext): void {

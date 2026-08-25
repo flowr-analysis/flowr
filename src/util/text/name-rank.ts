@@ -31,8 +31,14 @@ export interface NameRankInput {
  * conditions, so a rule can be read, weighed against its neighbours, or added without touching the rest.
  */
 const Adjustments: readonly (readonly [points: number, when: (of: NameRankInput) => boolean])[] = [
-	/* what was typed, exactly, always comes first; the same spelling in another case comes next */
-	[1200, ({ name, needle }) => name === needle],
+	/*
+	 * What was typed, exactly, always comes first, and the bonus is large enough to mean it: everything else
+	 * together (a known name in base R, well downloaded, one place closer in the match) is worth about 1600,
+	 * so typing `Sin` used to be answered with base R's `sin` first. Several packages exporting the same exact
+	 * name all earn it, so the rules below still decide which of them leads.
+	 * The same spelling in another case comes next.
+	 */
+	[3000, ({ name, needle }) => name === needle],
 	[900, ({ name, needle }) => name !== needle && name.toLowerCase() === needle.toLowerCase()],
 	/* a real function from base R is what a reader usually means; a lone symbol almost never is */
 	[40, ({ name, baseR }) => baseR === true && name.length >= 3],

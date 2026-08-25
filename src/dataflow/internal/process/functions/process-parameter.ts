@@ -6,6 +6,7 @@ import type { ParentInformation } from '../../../../r-bridge/lang-4.x/ast/model/
 import { type IdentifierDefinition, ReferenceType } from '../../../environments/identifier';
 import { define } from '../../../environments/define';
 import { EdgeType } from '../../../graph/edge';
+import { ControlFlow } from '../../control-flow';
 import { RFunctionDefinition } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 
@@ -43,6 +44,17 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 		}
 	}
 
+	const boundAt = name.entryPoint;
+	if(defaultValue !== undefined) {
+		ControlFlow.continuesWith(graph, defaultValue, boundAt);
+		for(const exit of defaultValue.exitPoints) {
+			/* R only forces a default when the parameter is used, so a jump within one does not cut the binding */
+			if(exit.type !== ExitPointType.Default) {
+				graph.addEdge(exit.nodeId, boundAt, EdgeType.FlowEdge);
+			}
+		}
+	}
+
 	return {
 		unknownReferences: [],
 		in:                defaultValue === undefined ? [] : defaultValue.in.concat(defaultValue.unknownReferences, name.in),
@@ -50,6 +62,8 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 		graph:             graph,
 		environment:       environment,
 		entryPoint:        parameter.info.id,
+		cfgEntry:          defaultValue === undefined ? boundAt : ControlFlow.entryOf(defaultValue),
+		cfgExit:           boundAt,
 		exitPoints:        [{ nodeId: parameter.info.id, type: ExitPointType.Default, cds: data.cds }],
 		hooks:             []
 	};

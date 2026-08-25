@@ -1,10 +1,9 @@
 import { assert, test } from 'vitest';
-import { AbstractInterpreter, type AbsintAnalysis } from '../../../src/abstract-interpretation/absint-inference';
+import { AbstractInterpreter, type AbsintAnalysis, type AbsintVisitorConfiguration } from '../../../src/abstract-interpretation/absint-inference';
 import type { AnyAbstractDomain } from '../../../src/abstract-interpretation/domains/abstract-domain';
 import type { AbstractProduct } from '../../../src/abstract-interpretation/domains/partial-product-domain';
 import { FlowrConfig } from '../../../src/config';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
-import { CfgKind } from '../../../src/project/cfg-kind';
 import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { RSymbol } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -67,6 +66,22 @@ export async function runInference<Domains extends AbstractProduct>(
 	createAnalysis: () => AbsintAnalysis<Domains>,
 	options?: InferenceTestOptions
 ): Promise<AbstractInterpreter<Domains>> {
+	return runInterpreter(code, config => new AbstractInterpreter(config, createAnalysis()), options);
+}
+
+/**
+ * Runs the inference on the given code using the interpreter created by the given factory,
+ * which allows tests to plug in a subclass of the {@link AbstractInterpreter} that overrides its traversal hooks.
+ * @param code - The code to perform the inference on.
+ * @param createInterpreter - A function creating the abstract interpreter to run, given its configuration.
+ * @param options - The inference test options, including the flowR config to use and additional files to add to the flowR project context.
+ * @returns The abstract interpreter after performing the inference, which contains the inferred values.
+ */
+export async function runInterpreter<Interpreter extends { start(): void }>(
+	code: string,
+	createInterpreter: (config: AbsintVisitorConfiguration) => Interpreter,
+	options?: InferenceTestOptions
+): Promise<Interpreter> {
 	const analyzer = await new FlowrAnalyzerBuilder()
 		.setEngine('tree-sitter')
 		.setConfig(options?.config ?? FlowrConfig.default())
@@ -77,10 +92,10 @@ export async function runInference<Domains extends AbstractProduct>(
 
 	const ast = await analyzer.normalize();
 	const dfg = (await analyzer.dataflow()).graph;
-	const cfg = await analyzer.controlflow(undefined, CfgKind.NoFunctionDefs);
+	const cfg = await analyzer.controlflow();
 	const ctx = analyzer.inspectContext();
 
-	const interpreter = new AbstractInterpreter({ controlFlow: cfg, dfg: dfg, normalizedAst: ast, ctx: ctx }, createAnalysis());
+	const interpreter = createInterpreter({ controlFlow: cfg, dfg: dfg, normalizedAst: ast, ctx: ctx });
 	interpreter.start();
 
 	return interpreter;

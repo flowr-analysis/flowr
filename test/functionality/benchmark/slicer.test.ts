@@ -53,9 +53,10 @@ describe('Benchmark Slicer', () => {
 			assert.deepStrictEqual(stats.dataflow, {
 				numberOfNodes:               3,  // the defined variable, the reading ref, and the call
 				numberOfEdges:               5,  // the defined-by edge and the arguments, the built-in edge
+				numberOfControlFlowEdges:    2,  // the value is evaluated, then the variable is bound
 				numberOfCalls:               1,  // `<-`
 				numberOfFunctionDefinitions: 0,   // no definitions
-				sizeOfObject:                205,
+				sizeOfObject:                212,
 			}, statInfo);
 
 			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 1, `sliced only once ${statInfo}`);
@@ -120,9 +121,10 @@ cat(d)`
 			assert.deepStrictEqual(stats.dataflow, {
 				numberOfNodes:               23,
 				numberOfEdges:               38,
+				numberOfControlFlowEdges:    22,
 				numberOfCalls:               9,
 				numberOfFunctionDefinitions: 0,
-				sizeOfObject:                1677,
+				sizeOfObject:                1714,
 			}, statInfo);
 
 			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 3, `sliced three times ${statInfo}`);

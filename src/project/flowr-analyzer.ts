@@ -12,7 +12,6 @@ import type { AnalyzerCacheType, FlowrAnalyzerCache } from './cache/flowr-analyz
 import type { FlowrSearchLike, SearchOutput } from '../search/flowr-search-builder';
 import { type GetSearchElements, runSearch } from '../search/flowr-search-executor';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
-import { CfgKind } from './cfg-kind';
 import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
 import type { RParseRequest, RParseRequestFromFile } from '../r-bridge/retriever';
 import { isParseRequest, fileProtocol, requestFromInput } from '../r-bridge/retriever';
@@ -136,15 +135,14 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	/**
 	 * Get the control flow graph (CFG) for the request.
 	 * @param simplifications - Simplification passes to be applied to the CFG.
-	 * @param kind            - The kind of CFG that is requested. By default, the CFG without dataflow information is returned.
 	 * @param force           - Do not use the cache, instead force new analyses.
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekControlflow} - to get the CFG if already available without triggering a new computation.
 	 */
-	controlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind, force?: boolean): Promise<ControlFlowInformation>;
+	controlflow(simplifications?: readonly CfgSimplificationPassName[], force?: boolean): Promise<ControlFlowInformation>;
 	/**
 	 * Peek at the control flow graph (CFG) for the request, if it was already computed.
 	 */
-	peekControlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind): ControlFlowInformation | undefined;
+	peekControlflow(simplifications?: readonly CfgSimplificationPassName[]): ControlFlowInformation | undefined;
 	/**
 	 * Calculate the call graph for the request.
 	 */
@@ -331,12 +329,12 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return;
 	}
 
-	public async controlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind, force?: boolean): Promise<ControlFlowInformation> {
-		return this.cache.controlflow(force, kind ?? CfgKind.NoDataflow, simplifications);
+	public async controlflow(simplifications?: readonly CfgSimplificationPassName[], force?: boolean): Promise<ControlFlowInformation> {
+		return this.cache.controlflow(force, simplifications);
 	}
 
-	public peekControlflow(simplifications?: readonly CfgSimplificationPassName[], kind?: CfgKind): ControlFlowInformation | undefined {
-		return this.cache.peekControlflow(kind ?? CfgKind.NoDataflow, simplifications);
+	public peekControlflow(simplifications?: readonly CfgSimplificationPassName[]): ControlFlowInformation | undefined {
+		return this.cache.peekControlflow(simplifications);
 	}
 
 	public async callGraph(force?: boolean): Promise<CallGraph> {

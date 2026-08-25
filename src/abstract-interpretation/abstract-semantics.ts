@@ -16,8 +16,8 @@ import type { StateDomain, ValueDomain } from './domains/state-domain';
  * @template Domain - Type of the state abstract domain the semantics are defined for
  */
 export interface AbsintContext<Domain extends StateDomain> {
-	/** The normalized AST of the analyzed program */
-	readonly ast:     NormalizedAst;
+	/** The normalized AST of the analyzed program (the control flow visitor only requires its id map) */
+	readonly ast:     Pick<NormalizedAst, 'idMap'>;
 	/** The dataflow graph of the analyzed program */
 	readonly dfg:     DataflowGraph;
 	/** The control flow graph of the analyzed program */

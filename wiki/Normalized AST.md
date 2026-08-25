@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-08-18, 23:26:41 UTC (v2.14.0, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-08-21, 10:01:47 UTC (v2.14.2, R v4.6.1), please do not edit directly._
 
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST),
@@ -11,7 +11,7 @@ offering the following benefits:
 In general, the mapping should be rather intuitive and focused primarily on the
 syntactic structure of the program. As with other types in flowR, you get corresponding helper objects.
 So if you want to work with an `RBinaryOp` node, you can use the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L10"><code><span title="Operators like +, ==, &&, etc.">RBinaryOp</span></code></a> object to check whether a node is an `RBinaryOp` and to access its fields
-(e.g., with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L26"><code><span title="Type guard for RBinaryOp nodes.">RBinaryOp::<b>is</b></span></code></a>).
+(e.g., with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-binary-op.ts#L27"><code><span title="Type guard for RBinaryOp nodes.">RBinaryOp::<b>is</b></span></code></a>).
 Consider the following example which shows the normalized AST of the code
 
 
@@ -54,7 +54,7 @@ x"])
 
 ```
 	
-(The analysis required _0.6 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+(The analysis required _0.7 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 
 
 
@@ -125,11 +125,11 @@ click Record href "https://github.com/flowr-analysis/flowr/tree/main/src/util/re
 class string{
     <<variable>>
 }
-click string href "https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts#L91" ""
+click string href "https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts#L92" ""
 class domain{
     <<variable>>
 }
-click domain href "https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts#L89" ""
+click domain href "https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-absint.ts#L90" ""
 class unknown{
     <<variable>>
 }
@@ -217,22 +217,22 @@ class Leaf{
     <<type>>
 }
 style Leaf opacity:.35,fill:#FAFAFA
-click Leaf href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L141" ""
+click Leaf href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L143" ""
 class LeafRType{
     <<type>>
 }
 style LeafRType opacity:.35,fill:#FAFAFA
-click LeafRType href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L137" ""
+click LeafRType href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L139" ""
 class LeafVertexType{
     <<type>>
 }
 style LeafVertexType opacity:.35,fill:#FAFAFA
-click LeafVertexType href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L138" ""
+click LeafVertexType href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L140" ""
 class LeafSpecial~F extends FlowrFilter = FlowrFilter~{
     <<type>>
 }
 style LeafSpecial opacity:.35,fill:#FAFAFA
-click LeafSpecial href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L139" ""
+click LeafSpecial href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L141" ""
 class RLineDirective~Info = NoInfo~{
     <<interface>>
     type#58; RType.LineDirective
@@ -334,7 +334,7 @@ class RNumber~Info = NoInfo~{
     type#58; RType.Number
     content#58; RNumberValue
 }
-click RNumber href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L11" "A number like #96;3#96;, #96;#45;2.14#96;, #96;1L#96;, or #96;2i#96;. Includes numeric, integer, and complex. See; #60;code#62;RNumberValue#60;/code#62;; for more information."
+click RNumber href "https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L12" "A number like #96;3#96;, #96;#45;2.14#96;, #96;1L#96;, or #96;2i#96;. Includes numeric, integer, and complex. See; #60;code#62;RNumberValue#60;/code#62;; for more information."
 class RString~Info = NoInfo~{
     <<interface>>
     type#58; RType.String
@@ -1359,13 +1359,13 @@ In summary, we have the following types:
        
        </details>
        
-       * **[RNumber](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L11)**   
+       * **[RNumber](https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L12)**   
          A number like `3`, `-2.14`, `1L`, or `2i`.
          Includes numeric, integer, and complex.
          See
          <code>RNumberValue</code>
          for more information.
-         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L11">src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L11</a></summary>
+         <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L12">src/r-bridge/lang-4.x/ast/model/nodes/r-number.ts#L12</a></summary>
          
          
          ```ts
@@ -1532,7 +1532,7 @@ The following segments intend to give you an overview of how to work with the no
 ## How to Get a Normalized AST
 
 As explained alongside the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface#creating-analyses-with-flowr) wiki page, you can use an instance of
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L192"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> to get the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/decorate.ts#L128"><code><span title="Contains the normalized AST as a doubly linked tree and a map from ids to nodes so that parent links can be chased easily.">NormalizedAst</span></code></a>:
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L190"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> to get the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/processing/decorate.ts#L123"><code><span title="Contains the normalized AST as a doubly linked tree and a map from ids to nodes so that parent links can be chased easily.">NormalizedAst</span></code></a>:
 
 
 ```ts
@@ -1546,7 +1546,7 @@ From the REPL, you can use the <span title="Description (Repl Command): Get merm
 
 ### Multi-File Projects
 
-With the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L192"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, you can analyze multiple files at once:
+With the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L190"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, you can analyze multiple files at once:
 
 
 ```ts
@@ -1659,7 +1659,7 @@ The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang
 
 
 > [!TIP]
-> When working with names and identifiers, consider using the utilities provided with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L42"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> object.
+> When working with names and identifiers, consider using the utilities provided with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L43"><code><span title="Helper functions to work with identifiers . Use Identifier.matches to check if two identifiers match according to R's scoping rules!">Identifier</span></code></a> object.
 
 
 ### Visitors

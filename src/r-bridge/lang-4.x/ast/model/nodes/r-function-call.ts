@@ -46,6 +46,7 @@ export const RFunctionCall = {
 	name: 'RFunctionCall',
 	/**
 	 * Type guard for {@link RFunctionCall} nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RFunctionCall<Info> {
 		return node?.type === RType.FunctionCall;
@@ -63,10 +64,11 @@ export const RFunctionCall = {
 		return RFunctionCall.is(node) && !node.named;
 	},
 	/**
-	 * Bind a call's `arguments` to the formal `paramNames` with {@link matchArgumentsToParameters}, R's argument
-	 * matching. Returns a map from parameter name to the argument bound to it, so
-	 * `matchArgsToParams(call.arguments, names).get('X')` answers "which argument is mapped to parameter `X`".
-	 * An empty argument (`f(1, ,3)`) takes its formal but never appears in the map, as there is nothing to bind.
+	 * Bind a call's `arguments` to the formal `paramNames`, R's argument matching.
+	 *
+	 * Kept here rather than forwarding to {@link MatchArgs.toNames}: this module is loaded before the dataflow
+	 * layer exists, so importing the wall from here would drag it into the AST model at load time.
+	 * @useInstead {@link MatchArgs.toNames}
 	 */
 	matchArgsToParams<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], paramNames: readonly string[]): ReadonlyMap<string, RArgument<Info>> {
 		const matched = matchArgumentsToParameters(args.map(a => a === EmptyArgument ? undefined : a.name?.content), paramNames);

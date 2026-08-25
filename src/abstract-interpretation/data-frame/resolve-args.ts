@@ -1,13 +1,14 @@
+import { Identifier } from '../../dataflow/environments/identifier';
+import { Resolve } from '../../dataflow/environments/resolve-helper';
 import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
-import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isNotUndefined } from '../../util/assert';
 import { unliftRValue, unwrapRValue, unwrapRValueToString, unwrapRVector } from '../../util/r-value';
 import { startAndEndsWith } from '../../util/text/strings';
-import { Identifier } from '../../dataflow/environments/identifier';
-import { Resolve } from '../../dataflow/environments/resolve-helper';
 
 /**
  * Returns the argument name of a function argument
@@ -62,9 +63,9 @@ export function resolveIdToArgStringVector(id: NodeId | RArgument<ParentInformat
 export function resolveIdToArgValueSymbolName(id: NodeId | RArgument<ParentInformation> | undefined, info: ResolveInfo): string | undefined {
 	const node = resolveIdToArgument(id, info);
 
-	if(node?.value?.type === RType.Symbol) {
+	if(RSymbol.is(node?.value)) {
 		return unquoteArgument(Identifier.toString(node.value.content));
-	} else if(node?.value?.type === RType.String) {
+	} else if(RString.is(node?.value)) {
 		return node.value.content.str;
 	}
 	return undefined;
@@ -97,7 +98,7 @@ function resolveIdToArgument(id: NodeId | RArgument<ParentInformation> | undefin
 	idMap ??= graph?.idMap;
 	const node = id === undefined || typeof id === 'object' ? id : idMap?.get(id);
 
-	if(node?.type === RType.Argument) {
+	if(RArgument.is(node)) {
 		return node;
 	}
 	return undefined;

@@ -3,16 +3,17 @@ import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { requestFromInput } from '../../../../../../r-bridge/retriever';
 import { sourcedDeterministicCountingIdGenerator, type ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { Identifier } from '../../../../../environments/identifier';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { mergeSourced, sourceRequest } from './built-in-source';
 import { linkInputs } from '../../../../linker';
+import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /** Arguments naming the scope the template runs against, which we cannot follow. */
 const RedirectingParameters = ['.envir', '.con', '.x', '.data'];
@@ -79,7 +80,7 @@ function namedArgument<Info>(args: readonly PotentiallyEmptyRArgument<Info>[], n
 /** The string a named argument spells out, `undefined` unless it is a literal. */
 function literalOf<Info>(args: readonly PotentiallyEmptyRArgument<Info>[], name: string): string | undefined {
 	const value = namedArgument(args, name)?.value;
-	return value?.type === RType.String ? value.content.str : undefined;
+	return RString.is(value) ? value.content.str : undefined;
 }
 
 /**
@@ -105,7 +106,7 @@ export function processStringTemplate<OtherInfo>(
 
 	const results: DataflowInformation[] = [];
 	for(const arg of args) {
-		if(arg === EmptyArgument || arg.name !== undefined || arg.value?.type !== RType.String) {
+		if(RArgument.isEmpty(arg) || arg.name !== undefined || !RString.is(arg.value)) {
 			continue;
 		}
 		const template = arg.value;

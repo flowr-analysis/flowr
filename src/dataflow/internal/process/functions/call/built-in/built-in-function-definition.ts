@@ -1,4 +1,6 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
+import { ControlFlow } from '../../../../control-flow';
 import {
 	type DataflowInformation,
 	ExitPointType,
@@ -6,7 +8,6 @@ import {
 } from '../../../../../info';
 import {
 	getAllFunctionCallTargets,
-	linkArgumentsOnCall,
 	linkCircularRedefinitionsWithinALoop,
 	linkInputs,
 	produceNameSharedIdMap
@@ -16,11 +17,8 @@ import { unpackNonameArg } from '../argument/unpack-argument';
 import { guard } from '../../../../../../util/assert';
 import { dataflowLogger } from '../../../../../logger';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import {
-	EmptyArgument,
-	type PotentiallyEmptyRArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { type DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
@@ -40,10 +38,14 @@ import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
 import type { ReadOnlyFlowrAnalyzerContext, FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { attachExportVertex } from './built-in-library';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { compactHookStates, getHookInformation, KnownHooks } from '../../../../../hooks';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { Resolve } from '../../../../../environments/resolve-helper';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
+import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 /**
  * Process a function definition, i.e., `function(a, b) { ... }`
@@ -73,10 +75,12 @@ export function processFunctionDefinition<OtherInfo>(
 	let readInParameters: IdentifierReference[] = [];
 	const allParameterReads: IdentifierReference[] = [];
 	const paramIds: NodeId[] = [];
+	const processedParameters: DataflowInformation[] = [];
 	for(const param of parameters) {
 		guard(param !== EmptyArgument, () => `Empty param arg in function definition ${Identifier.toString(name.content)}, ${JSON.stringify(args)}`);
 		const processed = processDataflowFor(param, data);
-		if(param.value?.type === RType.Parameter) {
+		processedParameters.push(processed);
+		if(RParameter.is(param.value)) {
 			paramIds.push(param.value.name.info.id);
 		}
 		subgraph.mergeWith(processed.graph);
@@ -106,9 +110,9 @@ export function processFunctionDefinition<OtherInfo>(
 				continue;
 			}
 			const node = data.completeAst.idMap.get(FunctionArgument.isNamed(a) ? (a.valueId ?? a.nodeId) : a.nodeId);
-			if(node?.type === RType.String) {
+			if(RString.is(node)) {
 				names.push(node.content.str);
-			} else if(node?.type === RType.Symbol) {
+			} else if(RSymbol.is(node)) {
 				names.push(node.content);
 			}
 		}
@@ -190,20 +194,23 @@ export function processFunctionDefinition<OtherInfo>(
 		}
 		outEnvironment = overwriteEnvironment(outEnvironment, hookEnvironment);
 	}
+	const flowEntry = ControlFlow.inSequence(subgraph, processedParameters, ControlFlow.entryOf(body)) ?? ControlFlow.entryOf(body);
+
 	const flow: DataflowFunctionFlowInformation = {
 		unknownReferences: [],
 		in:                remainingRead,
 		out:               [],
 		entryPoint:        body.entryPoint,
+		cfgEntry:          flowEntry === body.entryPoint ? undefined : flowEntry,
 		graph:             new Set(subgraph.rootIds()),
 		environment:       outEnvironment,
 		hooks:             compactedHooks
 	};
 
 	updateDispatches(subgraph, parameters.map<FunctionArgument>(p => {
-		if(p === EmptyArgument) {
+		if(RArgument.isEmpty(p)) {
 			return EmptyArgument;
-		} else if(!p.name && p.value && p.value.type === RType.Parameter) {
+		} else if(!p.name && p.value && RParameter.is(p.value)) {
 			return { type: ReferenceType.Argument, cds: data.cds, nodeId: p.value.name.info.id, name: p.value.name.content, valueId: p.value.defaultValue?.info.id };
 		} else if(p.name) {
 			return { type: ReferenceType.Argument, valueId: p.value?.info.id, cds: data.cds, nodeId: p.name.info.id, name: p.name.content };
@@ -243,7 +250,7 @@ export function processFunctionDefinition<OtherInfo>(
 				break;
 			}
 			const epNode = subgraph.idMap?.get(ep.nodeId);
-			if(epNode?.type === RType.Symbol) {
+			if(RSymbol.is(epNode)) {
 				const defs = Resolve.byNameAndType(epNode.content, outEnvironment, ReferenceType.Variable);
 				const def = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined);
 				if(def?.envState) {
@@ -273,6 +280,8 @@ export function processFunctionDefinition<OtherInfo>(
 		out:               [],
 		exitPoints:        [],
 		entryPoint:        name.info.id,
+		/* evaluating a function definition produces the closure, it does not run the body */
+		cfgExit:           name.info.id,
 		graph,
 		environment:       originalEnvironment,
 		hooks:             []
@@ -389,7 +398,7 @@ function linkSuperAssignmentsToOuterDefinitions(
 			}
 
 			const targetNode = parentGraph.idMap?.get(targetId);
-			if(targetNode?.type !== RType.Symbol) {
+			if(!RSymbol.is(targetNode)) {
 				continue;
 			}
 
@@ -411,6 +420,7 @@ function linkSuperAssignmentsToOuterDefinitions(
  * Update the closure links of all nested function calls, this is probably to be done once at the end of the script
  * @param graph          - dataflow graph to collect the function calls from and to update the closure links for
  * @param outEnvironment - active environment on resolving closures (i.e., exit of the function definition)
+ * @param ctx            - the analyzer context to resolve against
  * @lintIgnore vertex-has-origin
  */
 export function updateNestedFunctionCalls(
@@ -486,8 +496,8 @@ export function updateNestedFunctionCalls(
 			expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${id}`);
 			targetVertex.subflow.in = remainingIn;
 			const linkedParameters = graph.idMap?.get(target);
-			if(linkedParameters?.type === RType.FunctionDefinition) {
-				linkArgumentsOnCall(args, linkedParameters.parameters, graph);
+			if(RFunctionDefinition.is(linkedParameters)) {
+				MatchArgs.onCallAndLink(args, linkedParameters.parameters, graph);
 			}
 		}
 		for(const nextMethodId of collectedNextMethods) {
@@ -504,21 +514,14 @@ export function updateNestedFunctionCalls(
 }
 
 function parseSysFrameOffset(node: RNode<ParentInformation> | undefined): number | undefined {
-	if(!node || node.type !== RType.FunctionCall || !node.named || node.functionName.content !== 'sys.frame' || node.arguments.length !== 1) {
+	if(!node || !RFunctionCall.is(node) || !node.named || Identifier.getName(node.functionName.content) !== 'sys.frame' || node.arguments.length !== 1) {
 		return undefined;
 	}
 	const arg = node.arguments[0];
-	if(arg === EmptyArgument || !arg.value) {
+	if(RArgument.isEmpty(arg) || !arg.value) {
 		return undefined;
 	}
-	const v = arg.value;
-	if(v.type === RType.Number) {
-		return v.content.num;
-	}
-	if(v.type === RType.UnaryOp && v.operator === '-' && v.operand.type === RType.Number) {
-		return -v.operand.content.num;
-	}
-	return undefined;
+	return RNumber.literalValueOf(arg.value);
 }
 
 function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>, rootId: NodeId) {
@@ -532,16 +535,6 @@ function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformatio
 	return { ...data, environment: env };
 }
 
-/**
- * Within something like `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }`
- * `a` will be defined by `b` and `b` will be a promise object bound by the first definition of b it can find.
- * This means that this function returns `2` due to the first `b <- 1` definition.
- * If the code is `f <- function(a=b, m=3) { if(m > 3) { b <- 1; }; a; b <- 5; a + 1 }`, we need a link to `b <- 1` and `b <- 6`
- * as `b` can be defined by either one of them.
- * <p>
- * <b>Currently we may be unable to narrow down every definition within the body as we have not implemented ways to track what covers the first definitions precisely</b>
- */
-/** Links a parameter default read to the body writes of the same name (may), returning whether any was linked. */
 /** Groups body writes by name, each list sorted by descending id (so the lowest id is last), for `linkParameterReadToBodyWrites`. */
 function groupBodyWrites(out: readonly IdentifierReference[]): Map<Identifier, IdentifierReference[]> {
 	const byName = new Map<Identifier, IdentifierReference[]>();
@@ -562,6 +555,17 @@ function groupBodyWrites(out: readonly IdentifierReference[]): Map<Identifier, I
 	return byName;
 }
 
+/**
+ * Within something like `f <- function(a=b, m=3) { b <- 1; a; b <- 5; a + 1 }`
+ * `a` will be defined by `b` and `b` will be a promise object bound by the first definition of b it can find.
+ * This means that this function returns `2` due to the first `b <- 1` definition.
+ * If the code is `f <- function(a=b, m=3) { if(m > 3) { b <- 1; }; a; b <- 5; a + 1 }`, we need a link to `b <- 1` and `b <- 6`
+ * as `b` can be defined by either one of them.
+ * <p>
+ * <b>Currently we may be unable to narrow down every definition within the body as we have not implemented ways to track what covers the first definitions precisely</b>
+ *
+ * Links a parameter default read to the body writes of the same name (may), returning whether any was linked.
+ */
 function linkParameterReadToBodyWrites(graph: DataflowGraph, read: IdentifierReference, writesByName: ReadonlyMap<Identifier, IdentifierReference[]>): boolean {
 	const writingOuts = read.name === undefined ? undefined : writesByName.get(read.name);
 	if(writingOuts === undefined) {

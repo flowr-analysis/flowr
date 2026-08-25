@@ -197,6 +197,63 @@ export interface StatedSignature {
 }
 
 /**
+ * The manual page documenting a base R primitive, for the ones not documented under their own name.
+ *
+ * A primitive is written in C and has no R closure, so nothing extracts a signature, a source file or a help
+ * topic for it and the signature database holds no entry at all: `base::sin` is documented under `Trig`, and
+ * guessing `sin` only names a page that does not exist. flowR states these names itself, so it carries where
+ * they are documented as well. Written the way R documents them, one page and everything it covers.
+ */
+const PrimitivesPerTopic: Readonly<Record<string, readonly string[]>> = {
+	'Arithmetic':   ['%%', '%/%', '*', '+', '-', '/', '^'],
+	'assignOps':    ['<-', '<<-', '='],
+	'call':         ['as.call'],
+	'CallExternal': ['.Call', '.External'],
+	'character':    ['as.character', 'is.character'],
+	'Colon':        [':'],
+	'Comparison':   ['!=', '<', '<=', '==', '>', '>='],
+	'complex':      ['Arg', 'Conj', 'Im', 'Mod', 'Re', 'as.complex'],
+	'Control':      ['break', 'for', 'if', 'next', 'repeat', 'while'],
+	'crossprod':    ['tcrossprod'],
+	'cumsum':       ['cummax', 'cummin', 'cumprod'],
+	'double':       ['as.double'],
+	'environment':  ['baseenv', 'emptyenv', 'globalenv'],
+	'Extract':      ['$', '[', '[['],
+	'Extremes':     ['max', 'min'],
+	'Foreign':      ['.C', '.Fortran'],
+	'function':     ['return'],
+	'Hyperbolic':   ['acosh', 'asinh', 'atanh', 'cosh', 'sinh', 'tanh'],
+	'integer':      ['as.integer'],
+	'Internal':     ['.Internal'],
+	'is.finite':    ['is.infinite', 'is.nan'],
+	'list':         ['is.list'],
+	'Log':          ['exp', 'expm1', 'log', 'log10', 'log1p', 'log2'],
+	'Logic':        ['!', '&', '&&', '|', '||'],
+	'logical':      ['as.logical', 'is.logical'],
+	'MathFun':      ['abs', 'sqrt'],
+	'matmult':      ['%*%'],
+	'matrix':       ['is.matrix'],
+	'NA':           ['is.na'],
+	'nchar':        ['nzchar'],
+	'ns-dblcolon':  ['::', ':::'],
+	'NULL':         ['is.null'],
+	'numeric':      ['as.numeric', 'is.numeric'],
+	'Paren':        ['(', '{'],
+	'Primitive':    ['.Primitive'],
+	'raw':          ['as.raw'],
+	'Round':        ['ceiling', 'floor', 'round', 'signif', 'trunc'],
+	'seq':          ['seq.int', 'seq_along', 'seq_len'],
+	'slotOp':       ['@'],
+	'substitute':   ['quote'],
+	'tilde':        ['~'],
+	'Trig':         ['acos', 'asin', 'atan', 'cos', 'sin', 'tan'],
+};
+
+/** {@link PrimitivesPerTopic} the way a lookup wants it: the topic documenting a name. */
+export const BasePrimitiveTopics: Readonly<Record<string, string>> = Object.fromEntries(
+	Object.entries(PrimitivesPerTopic).flatMap(([topic, names]) => names.map(name => [name, topic])));
+
+/**
  * What flowR states about every function it carries a definition for, as `name -> signatures`. A name may be
  * defined for several packages (`filter` is dplyr's and cohortBuilder's), so all of them are here and the
  * caller picks by package; {@link statedSignatureOf} does that. The signature browser and the playground both
@@ -242,33 +299,6 @@ const LinkToLastPlot = {
 	callName: toRegex((GraphicDeviceOpen as readonly string[]).concat(PlotCreate, PlotAddons, GgPlotAddons, TinyPlotAddons))
 } as const;
 
-const Arith = ['+', '-', '*', '/', '^', '**', '%%', '%/%'] as const;
-const Compare = ['==', '!=', '<', '<=', '>', '>='] as const;
-const Logic = ['&', '|'] as const;
-
-/**
- * R's group generics: a class claims every member of a group at once, with an `Ops.cls` (S3) or a
- * `setMethod('Arith', ...)` (S4), so a call to any member may dispatch to a method named after the group.
- * `Ops` is what S3 calls the union of the three S4 groups it splits into.
- */
-export const RGroupGenerics = {
-	Arith, Compare, Logic,
-	Ops:  [...Arith, ...Compare, ...Logic, '!'],
-	Math: ['abs', 'sign', 'sqrt', 'floor', 'ceiling', 'trunc', 'exp', 'expm1', 'log', 'log2', 'log10', 'log1p',
-		'cos', 'sin', 'tan', 'cosh', 'sinh', 'tanh', 'acos', 'asin', 'atan', 'acosh', 'asinh', 'atanh',
-		'cumsum', 'cumprod', 'cummax', 'cummin'],
-	Math2:   ['round', 'signif'],
-	Summary: ['any', 'sum', 'prod', 'min', 'max', 'range'],
-	Complex: ['Re', 'Im', 'Mod', 'Arg', 'Conj']
-} as const satisfies Record<string, readonly string[]>;
-
-/**
- * Every R generic flowR states a built-in for: the {@link RGroupGenerics} members, the `.S3PrimitiveGenerics` and
- * internal generics (which have no R body, so {@link fnInfoFromSignature} could never see them), and the
- * `UseMethod` closures flowR models itself, as its own definition hides the one in the signature database.
- * The `<-` forms are left out, one replacement definition covers many names.
- * `npm run check:generic-labels` (part of `checkup`) compares this against a synced database.
- */
 /**
  * The internal generics: they dispatch in C rather than through `UseMethod`, so no signature can state it and
  * the list has to be written down. Everything that dispatches from R is generated, see {@link RBasePackageStore}.
@@ -281,7 +311,14 @@ const InternalGenerics: readonly string[] = [
 	'is.na', 'is.nan', 'is.finite', 'is.infinite', 'is.matrix', 'is.numeric', 'cbind', 'rbind'
 ];
 
-/** Every name R dispatches on: the generated closure generics plus the {@link InternalGenerics}. */
+/**
+ * Every name R dispatches on: the generated closure generics plus the {@link InternalGenerics}, i.e. the
+ * {@link RGroupGenerics} members, the `.S3PrimitiveGenerics` and internal generics (which have no R body, so
+ * {@link fnInfoFromSignature} could never see them), and the `UseMethod` closures flowR models itself, as its
+ * own definition hides the one in the signature database.
+ * The `<-` forms are left out, one replacement definition covers many names.
+ * `npm run check:generic-labels` (part of `checkup`) compares this against a synced database.
+ */
 const RGenerics: ReadonlySet<string> = new Set([...RBasePackageStore.generics, ...InternalGenerics]);
 
 /** Label every {@link RGenerics} {@link CallProp.Generic}, splitting an entry that mixes them with names that do not dispatch (`&` does, `&&` does not). */
@@ -314,6 +351,25 @@ function markGenerics(definitions: BuiltInDefinitions): BuiltInDefinitions {
 	}
 	return out;
 }
+
+/** what creating a plot does; restated by the deprecated plot creators, which do the same but should not be used */
+const PlotCreateConfig = {
+	forceArgs:             'all',
+	hasUnknownSideEffects: {
+		type:     'link-to-last-call',
+		ignoreIf: (source: NodeId, graph: DataflowGraph) => {
+			const sourceVertex = graph.getVertex(source) as DataflowGraphVertexFunctionCall;
+
+			/* map with add = true appends to an existing plot */
+			return (PlotFunctionsWithAddParam.has(Identifier.getName(sourceVertex.name)) && getValueOfArgument(graph, sourceVertex, {
+				index: -1,
+				name:  'add'
+			}, [RType.Logical])?.content === true);
+		},
+		callName: toRegex(GraphicDeviceOpen)
+	},
+	props: CallProp.Graphics
+} as const;
 
 /**
  * Contains the built-in definitions recognized by flowR, as they are written down: {@link DefaultBuiltinConfig}
@@ -501,6 +557,29 @@ export const WrittenBuiltinDefinitions = [
 		config:          { props: CallProp.Pure },
 		assumePrimitive: true
 	},
+	/* the hypothesis tests: they compute a test statistic and hand it back visibly, which is the output a reader sees */
+	{
+		type:  'function',
+		names: [
+			...Identifier.fromAll(PkgName.Stats, [
+				'anova', 'ansari.test', 'aov', 'bartlett.test', 'binom.test', 'Box.test', 'chisq.test', 'cor.test',
+				'fisher.test', 'fligner.test', 'friedman.test', 'kruskal.test', 'ks.test', 'manova', 'mantelhaen.test',
+				'mauchly.test', 'mcnemar.test', 'mood.test', 'oneway.test', 'pairwise.prop.test', 'pairwise.t.test',
+				'pairwise.wilcox.test', 'poisson.test', 'PP.test', 'prop.test', 'prop.trend.test', 'quade.test',
+				'shapiro.test', 't.test', 'TukeyHSD', 'var.test', 'wilcox.test'
+			]),
+			...Identifier.fromAll(PkgName.Car, ['Anova', 'durbinWatsonTest', 'leveneTest', 'linearHypothesis', 'ncvTest', 'outlierTest']),
+			...Identifier.fromAll(PkgName.LmTest, ['bgtest', 'bptest', 'coeftest', 'dwtest', 'gqtest', 'lrtest', 'raintest', 'resettest', 'waldtest']),
+			...Identifier.fromAll(PkgName.NorTest, ['ad.test', 'cvm.test', 'lillie.test', 'pearson.test', 'sf.test']),
+			...Identifier.fromAll(PkgName.Tseries, ['adf.test', 'jarque.bera.test', 'kpss.test', 'pp.test', 'runs.test', 'white.test']),
+			...Identifier.fromAll(PkgName.Rstatix, ['anova_test', 'chisq_test', 'cor_test', 'kruskal_test', 'shapiro_test', 't_test', 'wilcox_test']),
+			Identifier.from(['glht', PkgName.Multcomp])
+		],
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { props: CallProp.Pure | CallProp.Statistics },
+		assumePrimitive: false
+	},
+
 	/* indices and index sequences: bounded by the shape of what they are handed, never by its contents */
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['which', 'which.max', 'which.min', 'seq_len', 'seq_along']),
 		processor:       BuiltInProcName.DefaultReadAllArgs, config:          { props: CallProp.Pure | CallProp.Narrows }, assumePrimitive: true },
@@ -650,25 +729,14 @@ export const WrittenBuiltinDefinitions = [
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['force', 'identity']),
 		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', keepArgumentOut: true, props: CallProp.Pure, sig: [['x', ArgProp.Alias | ArgProp.Forced]] }, assumePrimitive: false },
 	// graphics base
-	{ type:      'function', names:     namespacePlotFunctions(PlotCreate),
-		processor: BuiltInProcName.Default,
-		config:    {
-			forceArgs:             'all',
-			hasUnknownSideEffects: {
-				type:     'link-to-last-call',
-				ignoreIf: (source: NodeId, graph: DataflowGraph) => {
-					const sourceVertex = graph.getVertex(source) as DataflowGraphVertexFunctionCall;
-
-					/* map with add = true appends to an existing plot */
-					return (PlotFunctionsWithAddParam.has(Identifier.getName(sourceVertex.name)) && getValueOfArgument(graph, sourceVertex, {
-						index: -1,
-						name:  'add'
-					}, [RType.Logical])?.content === true);
-				},
-				callName: toRegex(GraphicDeviceOpen)
-			},
-			props: CallProp.Graphics
-		}, assumePrimitive: true },
+	{ type:            'function', names:           namespacePlotFunctions(PlotCreate),
+		processor:       BuiltInProcName.Default,
+		config:          PlotCreateConfig, assumePrimitive: true },
+	/* `qplot` creates a plot like the ones above and is deprecated on top of it; registered after them so this
+	   definition is the one that sticks */
+	{ type:            'function', names:           [Identifier.from(['qplot', PkgName.GgPlot2])],
+		processor:       BuiltInProcName.Default,
+		config:          { ...PlotCreateConfig, props: CallProp.Graphics | CallProp.Deprecated }, assumePrimitive: true },
 	// graphics addons
 	{ type:      'function', names:     namespacePlotFunctions(PlotAddons),
 		processor: BuiltInProcName.Default,             config:    {
@@ -782,7 +850,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type:            'function', names:           [Identifier.from(['cat', PkgName.Base])],
 		processor:       BuiltInProcName.Default, config:          { forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ }, props: CallProp.Invisible | CallProp.File | CallProp.Writes | CallProp.Prints, sig: [['...', ArgProp.Value | ArgProp.Forced], ['file', ArgProp.Resource]] }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['switch', PkgName.Base])],
-		processor:       BuiltInProcName.Default, config:          { forceArgs: [true], useAsProcessor: BuiltInProcName.Switch, props: CallProp.Pure }, assumePrimitive: false },
+		processor:       BuiltInProcName.Default, config:          { forceArgs: [true], alternativeArgsFrom: 1, useAsProcessor: BuiltInProcName.Switch, props: CallProp.Pure }, assumePrimitive: false },
 	{ type:            'function', names:           ['return'],
 		processor:       BuiltInProcName.Default, config:          { cfg: ExitPointType.Return, keepArgumentOut: true, useAsProcessor: BuiltInProcName.Return, props: CallProp.Pure, sig: [['value', ArgProp.Alias]] }, assumePrimitive: true },
 	{
@@ -810,7 +878,8 @@ export const WrittenBuiltinDefinitions = [
 	{ type:            'function', names:           ['{'],
 		processor:       BuiltInProcName.ExpressionList, config:          {}, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['source', PkgName.Base])],
-		processor:       BuiltInProcName.Source, config:          { includeFunctionCall: true, forceFollow: false }, assumePrimitive: false },
+		/* it hands back what it evaluated invisibly, so a top-level `source()` prints nothing of its own */
+		processor:       BuiltInProcName.Source, config:          { includeFunctionCall: true, forceFollow: false, props: CallProp.Invisible }, assumePrimitive: false },
 	{ type:            'function', names:           ['['],
 		processor:       BuiltInProcName.Access, config:          { treatIndicesAsString: false, props: CallProp.Pure }, assumePrimitive: true },
 	{ type:            'function', names:           ['[['],
@@ -868,11 +937,12 @@ export const WrittenBuiltinDefinitions = [
 		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: true, evalRhsWhen: false, props: CallProp.Pure }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Logical },
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['&', '|']),
 		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: false, props: CallProp.Pure }, assumePrimitive: true, evalHandler:     BuiltInEvalName.Logical },
+	/* a pipe hands back what the side it feeds hands back, which `Alias` is what states */
 	{ type:            'function', names:           ['|>'],
-		processor:       BuiltInProcName.Pipe, config:          { pipePlaceholderName: '_', assignLhs: false, returnLhs: false }, assumePrimitive: true },
-	{ type: 'function', names: [Identifier.from(['%>%', PkgName.Magrittr]), '%!>%'], processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: false, returnLhs: false, rhsMightBeSymbol: true }, assumePrimitive: true  },
-	{ type: 'function', names: [Identifier.from(['%<>%', PkgName.Magrittr])],        processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: true, returnLhs: false, rhsMightBeSymbol: true }, assumePrimitive: true  },
-	{ type: 'function', names: [Identifier.from(['%T>%', PkgName.Magrittr])],        processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: false, returnLhs: true, rhsMightBeSymbol: true }, assumePrimitive: true  },
+		processor:       BuiltInProcName.Pipe, config:          { pipePlaceholderName: '_', assignLhs: false, returnLhs: false, sig: [['lhs', ArgProp.Value], ['rhs', ArgProp.Alias]] }, assumePrimitive: true },
+	{ type: 'function', names: [Identifier.from(['%>%', PkgName.Magrittr]), '%!>%'], processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: false, returnLhs: false, rhsMightBeSymbol: true, sig: [['lhs', ArgProp.Value], ['rhs', ArgProp.Alias]] }, assumePrimitive: true  },
+	{ type: 'function', names: [Identifier.from(['%<>%', PkgName.Magrittr])],        processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: true, returnLhs: false, rhsMightBeSymbol: true, props: CallProp.Invisible | CallProp.Scope }, assumePrimitive: true  },
+	{ type: 'function', names: [Identifier.from(['%T>%', PkgName.Magrittr])],        processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: false, returnLhs: true, rhsMightBeSymbol: true, sig: [['lhs', ArgProp.Alias], ['rhs', ArgProp.Value]] }, assumePrimitive: true  },
 	{ type:      'function', names:     Identifier.fromAll(PkgName.Purrr, ['map', 'map_lgl', 'map_int', 'map_dbl', 'map_chr']), processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x': { index: 0, name: '.x' }
@@ -1025,7 +1095,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type:            'function', names:           [Identifier.from(['exec', PkgName.Rlang])],
 		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, nameOfFunctionArgument: '.fn', unquoteFunction: true, hasUnknownSideEffects: true, libFn: true, props: CallProp.MayPure, sig: [['.fn', ArgProp.Callee], ['...', ArgProp.Value]] }, assumePrimitive: false },
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Purrr, ['invoke', 'invoke_map']),
-		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, nameOfFunctionArgument: '.f', unquoteFunction: true, hasUnknownSideEffects: true, libFn: true, props: CallProp.MayPure, sig: [['.f', ArgProp.Callee], ['...', ArgProp.Value]] }, assumePrimitive: false },
+		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, nameOfFunctionArgument: '.f', unquoteFunction: true, hasUnknownSideEffects: true, libFn: true, props: CallProp.MayPure | CallProp.Deprecated, sig: [['.f', ArgProp.Callee], ['...', ArgProp.Value]] }, assumePrimitive: false },
 	/* the `{...}` of a template holds R code, evaluated where the call is; `cli_abort` stays with the other
 	 * error exits, as terminating a branch matters more than interpolating its message */
 	{ type:            'function', names:           [...Identifier.fromAll(PkgName.Glue, ['glue', 'glue_safe', 'glue_collapse']), Identifier.from(['str_glue', PkgName.Stringr])],
@@ -1035,7 +1105,7 @@ export const WrittenBuiltinDefinitions = [
 		'format_inline', 'cli_verbatim']),
 	processor: BuiltInProcName.StringTemplate, config: { markup: true, props: CallProp.MayPure }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['str_interp', PkgName.Stringr])],
-		processor:       BuiltInProcName.StringTemplate, config:          { open: '${', props: CallProp.MayPure }, assumePrimitive: false },
+		processor:       BuiltInProcName.StringTemplate, config:          { open: '${', props: CallProp.MayPure | CallProp.Deprecated }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['local', PkgName.Base])],
 		processor:       BuiltInProcName.Local, config:          { args: { env: 'envir', expr: 'expr' } }, assumePrimitive: false },
 	{ type:            'function', names:           Identifier.fromAll(PkgName.Base, ['with', 'within']),
@@ -1345,9 +1415,13 @@ export const WrittenBuiltinDefinitions = [
 
 	/* the tidyverse verbs, under the names R declares them with. They keep the data mask the group above
 	   gives them; what this adds is which argument is the data and what the further ones are called */
-	{ type:            'function', names:           Identifier.fromAll(PkgName.Dplyr, ['mutate', 'transmute', 'select', 'rename']),
+	{ type:            'function', names:           Identifier.fromAll(PkgName.Dplyr, ['mutate', 'select', 'rename']),
 		processor:       BuiltInProcName.Default,
 		config:          { markArgsAsMasked: NseArguments.AllButFirst, props: CallProp.Pure, sig: SigDataDots }, assumePrimitive: false },
+	/* `transmute` is one of them and deprecated on top of it */
+	{ type:            'function', names:           [Identifier.from(['transmute', PkgName.Dplyr])],
+		processor:       BuiltInProcName.Default,
+		config:          { markArgsAsMasked: NseArguments.AllButFirst, props: CallProp.Pure | CallProp.Deprecated, sig: SigDataDots }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['filter', PkgName.Dplyr]), Identifier.from(['slice', PkgName.Dplyr])],
 		processor:       BuiltInProcName.Default,
 		config:          { markArgsAsMasked: NseArguments.AllButFirst, props:            CallProp.Pure,
@@ -1397,7 +1471,7 @@ export const WrittenBuiltinDefinitions = [
 			sig:              [['data', ArgProp.Value], ['...', ArgProp.Value], ['names_from', ArgProp.Value], ['values_from', ArgProp.Value]] }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['separate', PkgName.TidyR])],
 		processor:       BuiltInProcName.Default,
-		config:          { markArgsAsMasked: NseArguments.AllButFirst, props:            CallProp.Pure,
+		config:          { markArgsAsMasked: NseArguments.AllButFirst, props:            CallProp.Pure | CallProp.Deprecated,
 			sig:              [['data', ArgProp.Value], ['col', ArgProp.Value], ['into', ArgProp.Value], ['sep', ArgProp.Value], ['remove', ArgProp.Flag], ['convert', ArgProp.Flag]] }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['unite', PkgName.TidyR])],
 		processor:       BuiltInProcName.Default,
@@ -1446,6 +1520,19 @@ export const WrittenBuiltinDefinitions = [
 	{ type:            'function', names:           [Identifier.from(['download.file', PkgName.Utils])],
 		processor:       BuiltInProcName.DefaultReadAllArgs,
 		config:          { props: CallProp.Network | CallProp.File | CallProp.Writes, sig: [['url', ArgProp.Resource], ['destfile', ArgProp.Resource], ['method', ArgProp.Value], ['quiet', ArgProp.Flag], ['mode', ArgProp.Value], ['cacheOK', ArgProp.Flag], ['extra', ArgProp.Value], ['headers', ArgProp.Value], ['...', ArgProp.Value]] }, assumePrimitive: false },
+	/** Deprecated Functions */
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Deprecated }, names: Identifier.fromAll(PkgName.Dplyr, ['id', 'top_n', 'sample_n', 'recode', 'progress_estimated', 'group_nest', 'add_rownames', 'tbl_df', 'src_local', 'summarise_each', 'summarize_', 'summarise_', 'slice_', 'select_vars_', 'select_', 'rename_vars_', 'rename_', 'transmute_', 'tally_', 'mutate_', 'group_indices_', 'group_by_', 'funs_', 'filter_', 'do_', 'distinct_', 'count_', 'arrange_', 'add_tally_', 'add_count_', 'funs', 'do', 'combine', 'changes', 'location', 'eval_tbls2', 'eval_tbls', 'compare_tbls2', 'compare_tbls', 'bench_tbls', 'current_vars', 'select_var', 'rename_vars', 'select_vars', 'failwith', 'all_vars', 'vars', 'select_all', 'mutate_all', 'summarise_all', 'group_by_all', 'filter_all', 'all_equal', 'arrange_all', 'distinct_all'])  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Deprecated }, names: [ Identifier.make('fct_explicit_na', PkgName.Forecats) ]  },
+	/* deprecated, but still data-masking: restating the mask keeps the column names out of the variable resolution */
+	{ type:      'function', processor: BuiltInProcName.Default, config:    { markArgsAsMasked: NseArguments.AllButFirst, props: CallProp.Pure | CallProp.Deprecated },
+		names:     [...Identifier.fromAll(PkgName.Dplyr, ['nest_by', 'with_groups', 'group_split']), ...Identifier.fromAll(PkgName.TidyR, ['spread', 'separate_rows', 'gather', 'extract'])]  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Deprecated }, names: Identifier.fromAll(PkgName.GgPlot2, ['gg_dep', 'is.theme', 'is.ggplot', 'guide_train', 'is.ggproto', 'fortify', 'is.facet', 'coord_map', 'coord_flip', 'is.Coord', 'annotation_logticks', 'aes_auto', 'aes_'])  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Deprecated }, names: Identifier.fromAll(PkgName.Plyr, ['liply', 'isplit2'])  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Deprecated }, names: Identifier.fromAll(PkgName.Purrr, ['transpose', 'as_vector', 'map_dfr', 'flatten', 'reduce_right', 'accumulate', 'map_raw', 'update_list', 'when', 'rdunif', 'rbernoulli', 'splice', 'rerun', 'prepend', 'at_depth', 'cross', 'list_along' ])  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Deprecated }, names: [ '`%@%`' ]  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Deprecated }, names: Identifier.fromAll(PkgName.Readr, ['read_table2', 'melt_table', 'melt_fwf', 'melt_delim'])  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Deprecated }, names: Identifier.fromAll(PkgName.Tibble, ['repair_names', 'set_tidy_names', 'tidy_names', 'is.tibble', 'trunc_mat', 'frame_data', 'as.tibble', 'as_data_frame', 'lst_', 'data_frame_', 'tibble_', 'data_frame', 'as_tibble' ])  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Deprecated }, names: Identifier.fromAll(PkgName.TidyR, ['nest_legacy', 'unnest_', 'unite_', 'spread_', 'separate_', 'separate_rows_', 'nest_', 'gather_', 'fill_', 'extract_', 'nesting_', 'crossing_', 'expand_', 'drop_na_', 'complete_', 'extract_numeric' ])  },
 ] as const satisfies AnyBuiltInDefinition[];
 
 /**

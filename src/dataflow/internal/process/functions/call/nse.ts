@@ -1,13 +1,14 @@
 import { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RUnaryOp } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 import { EmptyArgument, RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Identifier } from '../../../../environments/identifier';
 import { DataMaskingFunctionNames } from '../../../../environments/data-masking-functions';
 import { NoEdges, type DataflowGraph } from '../../../../graph/graph';
 import { type DataflowGraphVertexInfo, FunctionCallVertex, FunctionDefinitionVertex, UseVertex, VariableDefinitionVertex } from '../../../../graph/vertex';
 import { DfEdge, EdgeType } from '../../../../graph/edge';
+import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 /** The escape a quoting function offers, a property of the function: `quote(!!x)` negates, `expr(!!x)` splices. */
 export enum Unquote {
@@ -26,7 +27,7 @@ function unquotedOperandOf<Info>(node: RNode<Info>, style: Unquote): RNode<Info>
 			return undefined;
 		}
 		const arg = node.arguments[0];
-		return arg === EmptyArgument ? undefined : arg.value;
+		return RArgument.isEmpty(arg) ? undefined : arg.value;
 	}
 	if(!isNegation(node) || !isNegation(node.operand)) {
 		return undefined;
@@ -49,6 +50,9 @@ function isNegation<Info>(node: RNode<Info>): node is RUnaryOp<Info> {
  * tell that it does not. Only where nothing at all can be attached is a function ruled out as an operand.
  */
 function definesAFunction(graph: DataflowGraph, id: NodeId): boolean {
+	if(NodeId.isBuiltIn(id)) {
+		return true;
+	}
 	const vertex = graph.getVertex(id);
 	if(FunctionDefinitionVertex.is(vertex)) {
 		return true;

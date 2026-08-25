@@ -175,7 +175,14 @@
 	}
 
 	const CALIBRATION_BREAK = 3;
-	const CALIBRATION_MIN_SEGMENT = 2;
+	/*
+	 * How far a single run may be scaled. The break above says "this is a different workload"; this says
+	 * "this is the same workload on a machine that was this much faster or slower". A calibration is one
+	 * noisy sample of a shared runner, so a wide bound lets its noise, rather than the machine, decide
+	 * where a measurement is drawn.
+	 */
+	const CALIBRATION_MAX_FACTOR = 1.5;
+	const CALIBRATION_MIN_SEGMENT = 4;
 
 	/** splits the calibration series wherever its scale breaks, holes stay with the scale around them */
 	function calibrationScales(calibration) {
@@ -198,17 +205,25 @@
 		return scales;
 	}
 
-	/** machine speed factor per run, relative to the median run measured on the same calibration scale */
+	/**
+	 * Machine speed factor per run, relative to the *fastest* run measured on the same calibration scale.
+	 * Whatever else a shared runner is doing can only ever add time, never take it away, so the fastest
+	 * run is the one that saw the machine and every other one carries interference on top. Against the
+	 * median instead, half the runs come out below the reference, and dividing by a factor under one
+	 * inflates a clean run into a regression that never happened. Every factor here is at least one, so
+	 * normalizing only ever takes added time back off.
+	 */
 	function calibrationFactors(calibration) {
 		const factors = new Array((calibration || []).length).fill(1);
 		let at = 0;
 		for(const scale of calibrationScales(calibration)) {
-			const med = median(scale);
-			const usable = scale.filter(v => v !== null).length >= CALIBRATION_MIN_SEGMENT && isFinite(med) && med > 0;
+			const seen = scale.filter(v => v !== null);
+			const ref = Math.min.apply(null, seen);
+			const usable = seen.length >= CALIBRATION_MIN_SEGMENT && isFinite(ref) && ref > 0;
 			for(let i = 0; i < scale.length; i++) {
 				const v = scale[i];
 				if(usable && v !== null) {
-					factors[at + i] = Math.min(CALIBRATION_BREAK, Math.max(1 / CALIBRATION_BREAK, v / med));
+					factors[at + i] = Math.min(CALIBRATION_MAX_FACTOR, v / ref);
 				}
 			}
 			at += scale.length;
@@ -259,6 +274,7 @@
 		'reduction (dataflow vertices)': 'Dataflow vertices',
 		'memory (df-graph)':             'Dataflow graph',
 		'memory (cfg-graph)':            'Control flow graph',
+		'dataflow control flow edges':   'DF (control) edges',
 		'files with data frames':      'Files',
 		'data frame operations':       'Operations',
 		'data frame operation nodes':  'Operation nodes',
@@ -602,7 +618,6 @@
 		{ id: 'features', title: 'Feature set', about: 'the linting rules, their tags, and the queries this version carries', perVersion: true },
 		{ id: 'builtins', title: 'Built-in definitions', about: 'how the built-ins are handled', perVersion: true },
 		{ id: 'calibration', title: 'Machine calibration', about: 'runtime of the fixed synthetic workload', folded: true },
-		{ id: 'other', title: 'Other', about: '' },
 		{ id: 'sigdb', title: 'Signature database', about: 'the package signatures this version ships', perVersion: true, facts: true },
 		{ id: 'tests', title: 'Test suite', about: 'the labeled tests and what they cover', perVersion: true, facts: true }
 	];
@@ -655,7 +670,7 @@
 			return 'per-line';
 		}
 		// the two sizes of a graph, its calls and definitions are a breakdown of them and stay off the page
-		if(/^(dataflow|control flow) (vertices|edges)$/.test(n)) {
+		if(n === 'dataflow control flow edges' || /^(dataflow|control flow) (vertices|edges)$/.test(n)) {
 			return 'graphs';
 		}
 		if(/^(dataflow|control flow) (calls|function definitions)$/.test(n)) {

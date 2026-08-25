@@ -28,6 +28,14 @@ describe('FlowrConfig.forKind', () => {
 		assert.isUndefined(FlowrConfig.forKind(config, ProjectKind.Script).project.implicitSources);
 	});
 
+	test('a package does not echo its top level, any other kind does', () => {
+		const config = FlowrConfig.default();
+		assert.isFalse(FlowrConfig.forKind(config, ProjectKind.Package).project.assumeImplicitEcho);
+		for(const kind of [ProjectKind.Script, ProjectKind.Notebook, ProjectKind.Project, ProjectKind.ShinyApp]) {
+			assert.isTrue(FlowrConfig.forKind(config, kind).project.assumeImplicitEcho, kind);
+		}
+	});
+
 	test('any kind can be given an overwrite, not just shiny', () => {
 		const config = FlowrConfig.amend(FlowrConfig.default(), c => {
 			c.specializeConfig = { [ProjectKind.Notebook]: { project: { implicitSources: ['setup.R'] } } };

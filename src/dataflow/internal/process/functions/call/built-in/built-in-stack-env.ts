@@ -3,15 +3,18 @@ import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { EnvType, REnvironment, SearchPathPackagePrefix, type Environment, type REnvironmentInformation } from '../../../../../environments/environment';
 import { FunctionCallVertex } from '../../../../../graph/vertex';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument  } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { StackEnvBuiltins, StackEnvKind } from '../../../../../environments/default-builtin-config';
+import type { Identifier } from '../../../../../environments/identifier';
+import { ReferenceType } from '../../../../../environments/identifier';
+import { Resolve } from '../../../../../environments/resolve-helper';
+import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 /** The context needed to resolve a stack env: the current environment (for the global) and the built-in environment. */
 type StackEnvContext = Pick<DataflowProcessorInformation<never>, 'environment' | 'ctx'>;
@@ -61,14 +64,15 @@ export function resolveNodeToStackEnv<Info>(node: RNode<Info> | undefined, data:
 	if(node === undefined) {
 		return undefined;
 	}
-	const name = node.type === RType.Symbol ? String(node.content)
-		: RFunctionCall.isNamed(node) && node.functionName.type === RType.Symbol ? String(node.functionName.content)
+	const symbol = RSymbol.is(node) ? node.content
+		: RFunctionCall.isNamed(node) && RSymbol.is(node.functionName) ? node.functionName.content
 			: undefined;
-	const kind = name !== undefined ? stackEnvKind(name) : undefined;
-	if(kind === undefined) {
+	const kind = symbol !== undefined ? stackEnvKind(String(symbol)) : undefined;
+	// a user definition of the same name shadows the built-in, so the node no longer denotes a stack env
+	if(kind === undefined || !Resolve.isBuiltIn(symbol as Identifier, data.environment, RSymbol.is(node) ? ReferenceType.Constant : ReferenceType.Function)) {
 		return undefined;
 	}
-	const firstArg = node.type === RType.FunctionCall && node.arguments.length > 0 && node.arguments[0] !== EmptyArgument ? node.arguments[0].value : undefined;
+	const firstArg = RFunctionCall.is(node) && node.arguments.length > 0 && node.arguments[0] !== EmptyArgument ? node.arguments[0].value : undefined;
 	switch(kind) {
 		case StackEnvKind.Global: case StackEnvKind.Base: case StackEnvKind.Empty:
 			return fixedStackEnv(kind, data);
@@ -81,7 +85,7 @@ export function resolveNodeToStackEnv<Info>(node: RNode<Info> | undefined, data:
 			return inner !== undefined && !inner.current.builtInEnv ? { current: inner.current.parent, level: inner.level } : undefined;
 		}
 		case StackEnvKind.Named:
-			return firstArg?.type === RType.String ? asSearchPathEnv(firstArg.content.str, data) : undefined;
+			return RString.is(firstArg) ? asSearchPathEnv(firstArg.content.str, data) : undefined;
 	}
 }
 
@@ -123,5 +127,5 @@ export function stackEnvStateFromSource(sourceInfo: DataflowInformation, data: S
  * Only the rlang pronoun `.env` does: it names the surrounding scope, while `$` on a real environment stays in its frame.
  */
 export function stackEnvInheritsFields<Info>(node: RNode<Info> | undefined): boolean {
-	return node?.type === RType.Symbol && String(node.content) === EnvPronoun;
+	return RSymbol.is(node) && String(node.content) === EnvPronoun;
 }

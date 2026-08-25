@@ -5,7 +5,7 @@
  */
 import fs from 'fs';
 import path from 'path';
-import { SigDbExt, type SigDbPkgMeta, type SigDbShard, type SigDbTier } from './schema';
+import { SigDbExt, type SigDbPkgMetaIndex, type SigDbShard, type SigDbTier } from './schema';
 import type { ByteRange, SigDbIndexWire, SigShardIndexWire } from './index-format';
 import { CompressedExtPattern, compressedExtOf, decompressSyncFor, readableExtsPreferred, stripCompressedExt, writeCodecs } from './codec';
 import { sigDbCacheDir } from './decompress';
@@ -45,7 +45,7 @@ export interface SigDbManifest {
 	generated: number;
 	cranBase?: string;
 	/** package metadata, hoisted here once and shared by every shard (they hold overlapping package sets) */
-	meta?:     Record<string, SigDbPkgMeta>;
+	meta?:     SigDbPkgMetaIndex;
 	/** shared string dictionaries; a shard references one by id (they are stored once, not per shard) */
 	dicts?:    SigDbDictRef[];
 	shards:    SigDbShardRef[];

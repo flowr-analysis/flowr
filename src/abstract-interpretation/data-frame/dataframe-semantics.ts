@@ -1117,7 +1117,7 @@ function mapDataFrameSubset(
 		});
 	}
 
-	if(RArgument.isNotEmpty(filterArg)) {
+	if(filterArg !== undefined && RArgument.isNotEmpty(filterArg)) {
 		result.push({
 			operation: 'filterRows',
 			operand:   operand?.info.id,
@@ -1609,7 +1609,7 @@ function mapDataFrameIndexColRowAccess(
 	let rows: number[] | undefined = undefined;
 	let columns: string[] | number[] | undefined = undefined;
 
-	if(RArgument.isNotEmpty(rowArg)) {
+	if(rowArg !== undefined && RArgument.isNotEmpty(rowArg)) {
 		const rowValue = Resolve.argument.value(rowArg, info);
 
 		if(typeof rowValue === 'number') {
@@ -1623,7 +1623,7 @@ function mapDataFrameIndexColRowAccess(
 			rows:      rows?.map(Math.abs)
 		});
 	}
-	if(RArgument.isNotEmpty(colArg)) {
+	if(colArg !== undefined && RArgument.isNotEmpty(colArg)) {
 		const colValue = Resolve.argument.value(colArg, info);
 
 		if(typeof colValue === 'number') {
@@ -1656,7 +1656,7 @@ function mapDataFrameIndexColRowAccess(
 
 		let operand: RNode<ParentInformation> | undefined = dataFrame;
 
-		if(RArgument.isNotEmpty(rowArg)) {
+		if(rowArg !== undefined && RArgument.isNotEmpty(rowArg)) {
 			if(rowSubset) {
 				result.push({
 					operation: 'subsetRows',
@@ -1673,7 +1673,7 @@ function mapDataFrameIndexColRowAccess(
 			}
 			operand = undefined;
 		}
-		if(RArgument.isNotEmpty(colArg)) {
+		if(colArg !== undefined && RArgument.isNotEmpty(colArg)) {
 			if(colSubset) {
 				result.push({
 					operation: 'subsetCols',
@@ -1796,7 +1796,7 @@ function mapDataFrameIndexColRowAssignment(
 	const rowArg = args.length < 2 ? undefined : args[0];
 	const colArg = args.length < 2 ? args[0] : args[1];
 
-	if(RArgument.isNotEmpty(rowArg)) {
+	if(rowArg !== undefined && RArgument.isNotEmpty(rowArg)) {
 		const rowValue = Resolve.argument.value(rowArg, info);
 		let rows: number[] | undefined = undefined;
 
@@ -1811,7 +1811,7 @@ function mapDataFrameIndexColRowAssignment(
 			rows
 		});
 	}
-	if(RArgument.isNotEmpty(colArg)) {
+	if(colArg !== undefined && RArgument.isNotEmpty(colArg)) {
 		const colValue = Resolve.argument.value(colArg, info);
 		let columns: string[] | number[] | undefined = undefined;
 
@@ -1950,7 +1950,7 @@ function getRequestFromRead(
 	let source: string | undefined;
 	let request: RParseRequest | undefined;
 
-	if(RArgument.isNotEmpty(fileNameArg)) {
+	if(fileNameArg !== undefined && RArgument.isNotEmpty(fileNameArg)) {
 		const fileName = Resolve.argument.value(fileNameArg, info);
 
 		if(typeof fileName === 'string') {
@@ -1968,7 +1968,7 @@ function getRequestFromRead(
 				request = requestFromInput(text);
 			}
 		}
-	} else if(RArgument.isNotEmpty(textArg)) {
+	} else if(textArg !== undefined && RArgument.isNotEmpty(textArg)) {
 		const text = Resolve.argument.value(textArg, info);
 
 		if(typeof text === 'string') {
@@ -2012,8 +2012,8 @@ function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInfo
 		columns1 !== undefined && columns2 !== undefined ? [...columns1, ...columns2] : undefined;
 
 	for(const arg of args) {
-		if(RArgument.isNotEmpty(arg)) {
-			if(RFunctionCall.is(arg.value) && arg.value.named && arg.value.functionName.content === 'c') {
+		if(arg !== undefined && RArgument.isNotEmpty(arg)) {
+			if(RFunctionCall.isNamed(arg.value) && Identifier.getName(arg.value.functionName.content) === 'c') {
 				const result = getSelectedColumns(arg.value.arguments, info);
 				selectedCols = joinColumns(selectedCols, result.selectedCols);
 				unselectedCols = joinColumns(unselectedCols, result.unselectedCols);

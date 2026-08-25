@@ -36,6 +36,7 @@ export const RArgument = {
 	/**
 	 * Type guard for {@link RArgument} nodes.
 	 * @see {@link RArgument.isUnnamed} - to check whether an argument is unnamed
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RArgument<Info> {
 		return node?.type === RType.Argument;
@@ -48,9 +49,11 @@ export const RArgument = {
 	},
 	/**
 	 * Type guard for arguments that are _not_ empty, i.e. _not_ {@link EmptyArgument}.
+	 * It only removes the marker, it does not claim the rest is an {@link RArgument}.
+	 * @see {@link RArgument.is} - to additionally check that the node is an argument
 	 */
-	isNotEmpty<Info = NoInfo>(this: void, node: RNode<Info> | typeof EmptyArgument | undefined): node is RArgument<Info> {
-		return node !== EmptyArgument && RArgument.is(node);
+	isNotEmpty<T>(this: void, node: T): node is Exclude<T, typeof EmptyArgument> {
+		return node !== EmptyArgument;
 	},
 	/**
 	 * Type guard for named arguments, i.e. arguments with a name.
@@ -75,7 +78,7 @@ export const RArgument = {
 			return undefined;
 		}
 		for(const arg of args) {
-			if(arg === EmptyArgument) {
+			if(RArgument.isEmpty(arg)) {
 				continue;
 			}
 			if(arg.info.id === id) {

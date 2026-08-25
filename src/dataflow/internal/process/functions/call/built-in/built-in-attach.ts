@@ -4,16 +4,15 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import { unpackArg } from '../argument/unpack-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { ReferenceType, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { Environment, REnvironment } from '../../../../../environments/environment';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { EdgeType } from '../../../../../graph/edge';
 import { resolveSymbolToEnvir } from './built-in-envir-utils';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /** Processes `attach(what, ...)`, injecting the tracked env's known definitions into a new scope layer below `.GlobalEnv`. */
 export function processAttach<OtherInfo>(
@@ -27,7 +26,7 @@ export function processAttach<OtherInfo>(
 	const whatArg = args.length >= 1 ? args[0] : undefined;
 	const whatNode = whatArg && whatArg !== EmptyArgument ? unpackArg(whatArg) : undefined;
 
-	if(whatNode?.type !== RType.Symbol) {
+	if(!RSymbol.is(whatNode)) {
 		handleUnknownSideEffect(result.graph, result.environment, rootId);
 		return result;
 	}

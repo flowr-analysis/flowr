@@ -22,12 +22,15 @@ interface ReachedFunctions {
 	readonly defs:  Set<NodeId>
 }
 
+/** The exceptions each function may raise, keyed by the id of its definition. */
+export type ExceptionsByFunction = Record<NodeId, ExceptionPoint[]>;
+
 /** Whether the vertex catches what is raised below it, which ends the walk. */
 function catches(vertex: DataflowGraphVertexArgument | undefined): boolean {
 	return FunctionCallVertex.is(vertex) && vertex.origin !== 'unnamed' && vertex.origin.some(c => CatchHandlers.has(c));
 }
 
-function reach(id: NodeId, graph: CallGraph, knownThrower: Record<NodeId, ExceptionPoint[]>): ReachedFunctions {
+function reach(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction): ReachedFunctions {
 	const calls = new Map<NodeId, readonly NodeId[]>();
 	const own = new Map<NodeId, readonly ExceptionPoint[]>();
 	const defs = new Set<NodeId>();
@@ -76,7 +79,7 @@ function reach(id: NodeId, graph: CallGraph, knownThrower: Record<NodeId, Except
  * A `try` and its relatives end the search.
  * @returns A record mapping all `NodeId`s of functions that may throw exceptions to their exception points.
  */
-export function calculateExceptionsOfFunction(id: NodeId, graph: CallGraph, knownThrower: Record<NodeId, ExceptionPoint[]> = {}): Record<NodeId, ExceptionPoint[]> {
+export function calculateExceptionsOfFunction(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction = {}): ExceptionsByFunction {
 	const { calls, own, defs } = reach(id, graph, knownThrower);
 
 	const raised = new Map<NodeId, Map<NodeId, ExceptionPoint>>();
@@ -120,7 +123,7 @@ export function calculateExceptionsOfFunction(id: NodeId, graph: CallGraph, know
 		}
 	}
 
-	const result: Record<NodeId, ExceptionPoint[]> = {};
+	const result: ExceptionsByFunction = {};
 	for(const [node, points] of raised) {
 		if(defs.has(node) || node === id) {
 			result[node] = [...points.values()];

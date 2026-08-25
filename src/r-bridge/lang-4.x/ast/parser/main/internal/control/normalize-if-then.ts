@@ -5,6 +5,7 @@ import { RawRType, RType } from '../../../../model/type';
 import type { RIfThenElse } from '../../../../model/nodes/r-if-then-else';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
 import type { NamedJsonEntry } from '../../../json/format';
+import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 
 
 /**
@@ -31,7 +32,7 @@ export function tryNormalizeIfThen(
 	const parsedCondition = normalizeSingleNode(data, cT);
 	const parsedThen = normalizeSingleNode(data, tT);
 
-	if(parsedCondition.type === RType.Delimiter || parsedThen.type === RType.Delimiter) {
+	if(RDelimiter.is(parsedCondition) || RDelimiter.is(parsedThen)) {
 		throw new ParseError(`unexpected missing parts of if, received ${JSON.stringify([parsedCondition, parsedThen])} for ${JSON.stringify([ifT, lpT, cT, rpT, tT])}`);
 	}
 

@@ -11,12 +11,13 @@ import { Unknown } from '../../../queries/catalog/dependencies-query/dependencie
 import { isAbsolutePath } from '../../../util/text/strings';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { ControlDependency, negateControlDependency } from '../../info';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { DfEdge, EdgeType } from '../../graph/edge';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { toPosixPath } from '../../../util/files';
 import { platformDirname } from '../../internal/process/functions/call/built-in/built-in-source';
 import { NoEdges } from '../../graph/graph';
+import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { uniqueArray } from '../../../util/collections/arrays';
 
 /** a resolved `setwd`-style call: its `dir` is `undefined` when it cannot be determined statically */
 export interface WorkingDirectoryChange {
@@ -102,7 +103,7 @@ function enclosingFunction(idMap: DataflowGraph['idMap'], id: NodeId): NodeId | 
 	let cursor = idMap?.get(id)?.info.parent;
 	while(cursor !== undefined) {
 		const node = idMap?.get(cursor);
-		if(node?.type === RType.FunctionDefinition) {
+		if(RFunctionDefinition.is(node)) {
 			return node.info.id;
 		}
 		cursor = node?.info.parent;
@@ -148,7 +149,7 @@ function resolveAt(target: NodeId, targetCds: Guards, baseWd: string, changes: r
 			return { candidates: [], certain: false };
 		}
 	}
-	const candidates = [...new Set(states.filter(s => consistent(targetCds, s.guards)).map(s => s.wd))];
+	const candidates = uniqueArray(states.filter(s => consistent(targetCds, s.guards)).map(s => s.wd));
 	return { candidates, certain: candidates.length === 1 };
 }
 

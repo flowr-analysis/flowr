@@ -14,7 +14,6 @@ import type { CallContextQuery, CallContextQueryResult } from '../call-context-q
 import { FunctionCallVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { BasicQueryData } from '../../base-query-format';
 import { compactRecord } from '../../../util/objects';
@@ -34,6 +33,7 @@ import { log } from '../../../util/log';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionArgument } from '../../../dataflow/graph/graph';
 import { linkPlotsToDevices } from './link-devices';
+import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 
 /**
@@ -261,7 +261,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 			return undefined;
 		}
 		let get = normalize.idMap.get(id);
-		if(get?.type === RType.Argument) {
+		if(RArgument.is(get)) {
 			get = get.value;
 		}
 		return RNode.lexeme(get);

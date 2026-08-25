@@ -1,15 +1,16 @@
 import { NodeValue } from '../dataflow/eval/resolve/node-value';
 import { isValue } from '../dataflow/eval/values/r-value';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import { FunctionCallVertex, type DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
+import { FunctionCallVertex } from '../dataflow/graph/vertex';
 import { type ControlDependency, happensInEveryBranch } from '../dataflow/info';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard } from '../util/assert';
+import { NodeVisitor } from '../r-bridge/lang-4.x/ast/model/processing/visitor';
+import { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { ControlFlowInformation } from './control-flow-graph';
-import { CfgVertex } from './control-flow-graph';
-import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration } from './semantic-cfg-guided-visitor';
+import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration, type OnCall } from './semantic-cfg-guided-visitor';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
@@ -82,27 +83,25 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 
 	protected startVisitor(_: readonly NodeId[]): void {
 		const g = this.config.controlFlow.graph;
-		const ingoing = (i: NodeId) => g.ingoingEdges(i);
+		const loopNode = this.getNormalizedAst(this.loopToCheck);
+		guard(loopNode !== undefined, "Can't find the loop to check");
+		const withinLoop: NodeId[] = [];
+		new NodeVisitor<ParentInformation>(node => {
+			if(RFunctionDefinition.is(node)) {
+				/* a jump within a nested closure leaves that closure, not the loop around it */
+				return true;
+			}
+			withinLoop.push(node.info.id);
+		}).visit(loopNode);
 
-		const exits = new Set<NodeId>(CfgVertex.getEnd(g.getVertex(this.loopToCheck)) as NodeId[] ?? []);
-		guard(exits.size !== 0, "Can't find end of loop");
-
-		const stack: NodeId[] = [this.loopToCheck];
-		while(stack.length > 0) {
-			const current = stack.pop() as NodeId;
-
-			if(!this.visitNode(current)) {
+		/*
+		 * Everything the loop is made of is inspected rather than followed through the graph: a loop that always
+		 * jumps out never reaches its own vertex, so a walk from there would not find what breaks it.
+		 */
+		for(const current of withinLoop) {
+			if(!g.hasVertex(current) || !this.visitNode(current)) {
 				continue;
 			}
-
-
-			if(!exits.has(current)) {
-				const next = ingoing(current) ?? [];
-				for(const [to] of next) {
-					stack.push(to);
-				}
-			}
-
 			this.onlyLoopyOnce ||= this.encounteredLoopBreaker && happensInEveryBranch(this.loopCds?.filter(c => !c.byIteration));
 		}
 
@@ -123,22 +122,22 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 		}
 	}
 
-	protected onBreakCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+	protected onBreakCall(data: OnCall): void {
 		this.encounteredLoopBreaker = true;
 		this.app(data.call.cds);
 	}
 
-	protected onReturnCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+	protected onReturnCall(data: OnCall): void {
 		this.encounteredLoopBreaker = true;
 		this.app(data.call.cds);
 	}
 
-	protected onStopCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
+	protected onStopCall(data: OnCall): void {
 		this.encounteredLoopBreaker = true;
 		this.app(data.call.cds);
 	}
 
-	protected onStopIfNotCall(data: { call: DataflowGraphVertexFunctionCall }): void {
+	protected onStopIfNotCall(data: OnCall): void {
 		const arg = this.getBoolArgValue(data);
 		if(arg === false) {
 			this.encounteredLoopBreaker = true;

@@ -1,4 +1,5 @@
-import { RType, ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
+import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import { ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
 import type { VertexType } from '../dataflow/graph/vertex';
 import { FunctionCallVertex, ValidVertexTypes } from '../dataflow/graph/vertex';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -12,6 +13,7 @@ import { looselyCompareObjects } from '../util/objects';
 import { searchLogger } from './search-executor/search-generators';
 import { callFnProps } from '../dataflow/environments/query-fn-props';
 import type { CallProp, CallProps } from '../dataflow/environments/built-in-props';
+import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
 interface FlowrFilterWithArgs<Filter extends FlowrFilterName, Args extends FlowrFilterArgs<Filter>> {
@@ -28,7 +30,7 @@ export enum FlowrFilter {
 	/**
 	 * Only returns search elements whose enrichments' JSON representations match a given test regular expression.
 	 * This filter accepts {@link MatchesEnrichmentArgs}, which includes the enrichment to match for, as well as the regular expression to test the enrichment's (non-pretty-printed) JSON representation for.
-	 * To test for included function names in an enrichment like {@link Enrichment.CallTargets}, the helper function {@link matchIdentifiers} can be used.
+	 * To test for included function names in an enrichment like {@link Enrichment.CallTargets}, the helper function {@link Identifier.regex} can be used.
 	 */
 	MatchesEnrichment = 'matches-enrichment',
 	/**
@@ -60,7 +62,7 @@ export const ValidFlowrFiltersReverse = Object.fromEntries(Object.entries(FlowrF
 
 export const FlowrFilters = {
 	[FlowrFilter.DropEmptyArguments]: ((e: FlowrSearchElement<ParentInformation>, _args: never) => {
-		return e.node.type !== RType.Argument || e.node.name !== undefined;
+		return !RArgument.is(e.node) || e.node.name !== undefined;
 	}) satisfies FlowrFilterFunction<never>,
 	[FlowrFilter.MatchesEnrichment]: ((e: FlowrSearchElement<ParentInformation>, args: MatchesEnrichmentArgs<Enrichment>) => {
 		const content = enrichmentContent(e, args.enrichment);

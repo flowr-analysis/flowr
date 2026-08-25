@@ -88,6 +88,12 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 	if(fn.s3method) {
 		result.push(`      ╰ ${italic('S3 method of', f)} ${color(`${fn.s3method.package}::${fn.s3method.generic}`, Colors.Magenta, f)} ${italic(`(class ${fn.s3method.class})`, f)}`);
 	}
+	if(fn.s4group) {
+		const said = fn.s4group.viaGroup
+			? `answered by ${fn.package}::${fn.s4group.group}, which covers the whole group`
+			: `a package may answer it for its own class with setMethod('${fn.s4group.group}', ...)`;
+		result.push(`      ╰ ${italic('S4 group', f)} ${color(fn.s4group.group, Colors.Magenta, f)} ${italic(`(${said})`, f)}`);
+	}
 	if(fn.flowr) {
 		const args = (fn.flowr.args ?? []).map(a => `${a.name}${a.roles.length > 0 ? `: ${a.roles.join('+')}` : ''}`);
 		const props = fn.flowr.props.map(p => color(p, Colors.Blue, f)).join(', ');

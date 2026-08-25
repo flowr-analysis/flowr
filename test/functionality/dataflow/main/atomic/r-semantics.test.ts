@@ -2,6 +2,7 @@ import { assert, beforeAll, describe, test } from 'vitest';
 import { withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
+import { uniqueArray } from '../../../../../src/util/collections/arrays';
 
 /**
  * The R semantics flowR's modelling of non-standard evaluation rests on, asserted against a real R.
@@ -18,10 +19,10 @@ interface Claim {
 	readonly capabilities: readonly SupportedFlowrCapabilityId[]
 }
 
-/** lets a claim observe whether something was evaluated instead of arguing about it */
 /** what R says when the version at hand does not offer the function or argument a claim uses */
 const Unavailable = /could not find function|there is no package|unused argument|is not an exported object/;
 
+/** lets a claim observe whether something was evaluated instead of arguing about it */
 const Probe = 'hits <- character(0); probe <- function(tag, val = "a") { hits <<- c(hits, tag); val }; was <- function(tag) tag %in% hits; times <- function(tag) sum(hits == tag)';
 
 const Claims: readonly Claim[] = [
@@ -123,7 +124,7 @@ const Claims: readonly Claim[] = [
 describe('R semantics we model', { concurrent: false }, withShell(shell => {
 	let missing: ReadonlySet<string> = new Set();
 	beforeAll(async() => {
-		const needed = [...new Set(Claims.flatMap(c => c.needs ?? []))];
+		const needed = uniqueArray(Claims.flatMap(c => c.needs ?? []));
 		const [line] = await shell.sendCommandWithOutput(
 			`cat(paste0(Filter(function(p) !requireNamespace(p, quietly = TRUE), c(${needed.map(p => `"${p}"`).join(',')})), collapse = ","), "\\n")`
 		);

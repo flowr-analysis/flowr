@@ -1,5 +1,6 @@
 import { DepType } from './sigdb/schema';
 import type { PackageSignatureSource } from './sigdb/reader';
+import { uniqueArray } from '../util/collections/arrays';
 
 /**
  * Packages that attach further packages from their `.onAttach` hook, which no package metadata records: their core
@@ -25,5 +26,5 @@ export function attachedAlongside(pack: string, sources: readonly PackageSignatu
 		.flatMap(src => src.dependencies(pack, version) ?? [])
 		.filter(d => d.type === DepType.Depends && d.name !== 'R')
 		.map(d => d.name);
-	return [...new Set([...depends, ...MetaPackageCores.get(pack) ?? []])];
+	return uniqueArray([...depends, ...MetaPackageCores.get(pack) ?? []]);
 }

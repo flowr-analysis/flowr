@@ -1,7 +1,6 @@
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { ControlFlowGraph } from '../../../../../control-flow/control-flow-graph';
 import { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import type { AstIdMap, ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Identifier } from '../../../../environments/identifier';
@@ -15,6 +14,7 @@ import { linkExpressionIn, linkInputs } from '../../../linker';
 import { type MaskingCall, Nse } from './nse';
 import { Deferred } from './deferred';
 import { FunctionDefinitionVertex } from '../../../../graph/vertex';
+import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 /** Calls capturing a language object. */
 const CapturingProcessors: readonly BuiltInProcName[] = [BuiltInProcName.Quote];
@@ -206,7 +206,7 @@ function* escapingArguments(graph: DataflowGraph, id: NodeId): Generator<NodeId>
 /** The value an argument reference points at. */
 function unwrapArgument<Info>(reference: NodeId | undefined, idMap: AstIdMap<Info & ParentInformation>): NodeId | undefined {
 	const node = reference === undefined ? undefined : idMap.get(reference);
-	return node?.type === RType.Argument ? node.value?.info.id : reference;
+	return RArgument.is(node) ? node.value?.info.id : reference;
 }
 
 /** `eval(expr, envir)` runs elsewhere, so the bindings here say nothing. */

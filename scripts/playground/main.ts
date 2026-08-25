@@ -16,10 +16,13 @@ import { FlowrAnalyzerBuilder } from '../../src/project/flowr-analyzer-builder';
 import { stringifyValue } from '../../src/dataflow/eval/values/r-value';
 import { LintingRules } from '../../src/linter/linter-rules';
 import { LintingPrettyPrintContext } from '../../src/linter/linter-format';
+import type { LintQuickFix } from '../../src/linter/linter-format';
+import { LintQuickFixes } from '../../src/linter/linter-fix';
 import { DefaultBuiltinConfig, statedSignatureOf, statedSignatures } from '../../src/dataflow/environments/default-builtin-config';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { memorySourceOfPackages } from '../../src/project/sigdb/memory-source';
 import { Identifier } from '../../src/dataflow/environments/identifier';
+import { DefaultDependencyCategories } from '../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import { SliceDirection } from '../../src/util/slice-direction';
 import { rankName } from '../../src/util/text/name-rank';
 import { stripAnsi, voidFormatter } from '../../src/util/text/ansi';
@@ -28,6 +31,8 @@ import { getCommand } from '../../src/cli/repl/commands/repl-commands';
 import { splitAtEscapeSensitive } from '../../src/util/text/args';
 import type { ReplOutput } from '../../src/cli/repl/commands/repl-main';
 import { packForUrl, toBase64, unpackFromUrl } from '../../src/util/text/url-encoding';
+import type { PlaygroundMark as Mark } from '../../src/util/text/playground-link';
+import { Playground, PlaygroundBox, PlaygroundMark } from '../../src/util/text/playground-link';
 import { baseRPackages } from '../../src/util/r-base-packages';
 import { DataflowMermaid } from '../../src/util/mermaid/dfg';
 import { cfgToMermaid } from '../../src/util/mermaid/cfg';
@@ -35,22 +40,9 @@ import { normalizedAstToMermaid } from '../../src/util/mermaid/ast';
 import treeSitterWasm from '../../node_modules/web-tree-sitter/tree-sitter.wasm';
 import rWasm from '../../node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.wasm';
 
-const Sample = [
-	'library(dplyr)',
-	'',
-	'scale_to_max <- function(x) x / max(x)',
-	'',
-	'raw     <- data.frame(id = 1:6, value = c(3, 8, 7, 2, 9, 4))',
-	'clean   <- filter(raw, value > 2)',
-	'clean$scaled <- scale_to_max(clean$value)',
-	'',
-	'summary_stats <- summarise(clean, mean = mean(scaled))',
-	'unused_total  <- sum(raw$value)',
-	'',
-	'write.csv(summary_stats, "summary.csv")',
-	'plot(clean$scaled)',
-	'points(clean$id)'
-].join('\n');
+/* the script the page opens with, written into the page by the build so the documentation can link
+   to the same one rather than to a copy of it */
+const Sample = (document.getElementById('sample')?.textContent ?? '').trim();
 
 const panel = document.getElementById('panel') as HTMLElement;
 
@@ -66,6 +58,11 @@ function showTook(text: string): void {
 const setLints = StateEffect.define<readonly { from: number, to: number, message: string }[]>();
 const setSlice = StateEffect.define<readonly number[] | undefined>();
 const setLinked = StateEffect.define<readonly number[] | undefined>();
+/* what the link points at: whole lines and spans, resolved before they are handed over */
+const setShown = StateEffect.define<{ ranges: readonly ShownRange[], fresh: boolean }>();
+
+/** a place a link points at; every one of them is shown in the one colour a highlight has */
+interface ShownRange { from: number, to: number, line: boolean }
 
 /** the lines the panel row under the pointer stands for, lit up in the code */
 const linkMarks = StateField.define<DecorationSet>({
@@ -116,10 +113,26 @@ const lintMarks = StateField.define<DecorationSet>({
 		marks = marks.map(tr.changes);
 		for(const effect of tr.effects) {
 			if(effect.is(setLints)) {
-				marks = Decoration.set(effect.value.map(l => Decoration.mark({
-					class:      'cm-lint',
-					attributes: { title: l.message }
-				}).range(l.from, l.to)), true);
+				marks = Decoration.set(effect.value.map(l => Decoration.mark({ class: 'cm-lint' }).range(l.from, l.to)), true);
+			}
+		}
+		return marks;
+	},
+	provide: field => EditorView.decorations.from(field)
+});
+
+/** what a link points at, kept apart from every mark an analysis produces so nothing overwrites it */
+const shownMarks = StateField.define<DecorationSet>({
+	create: () => Decoration.none,
+	update(marks, tr) {
+		marks = marks.map(tr.changes);
+		for(const effect of tr.effects) {
+			if(effect.is(setShown)) {
+				/* the mark says so once as the page opens, which is when nobody knows yet where to look */
+				const fresh = effect.value.fresh ? ' fresh' : '';
+				marks = Decoration.set(effect.value.ranges.map(at => at.line
+					? Decoration.line({ class: `cm-shown-line${fresh}` }).range(at.from)
+					: Decoration.mark({ class: `cm-shown${fresh}` }).range(at.from, at.to)), true);
 			}
 		}
 		return marks;
@@ -277,24 +290,54 @@ function targetAt(text: string, number: number, at: number): { criterion: string
 		: { criterion: `${number}:${operator + 1}`, name: text.slice(start, found.to), from: start, to: found.to };
 }
 
-/** what flowR can say about the name under the pointer: its value, its shape, or where it comes from */
+/** what the linter said about a span of the code, so the tooltip carries it next to everything else */
+function lintsOver(from: number, to: number): readonly { rule: string, message: string }[] {
+	return shownLints.filter(found => found.from < to && found.to > from);
+}
+
+/** a finding as the page writes it: the rule as its own chip, and what it said next to it */
+function complaint(found: { rule: string, message: string }, cls: string): HTMLElement {
+	const at = document.createElement('div');
+	at.className = cls;
+	const chip = tag(found.rule, 'rule');
+	chip.dataset.category = category(found.rule);
+	at.append(chip, document.createTextNode(found.message.replace(`${found.rule}: `, '')));
+	return at;
+}
+
+/**
+ * What flowR can say about the name under the pointer: its value, its shape, or where it comes from.
+ */
 const valueTips = hoverTooltip(async(view, pos) => {
 	const line = view.state.doc.lineAt(pos);
 	const found = targetAt(line.text, line.number, pos - line.from);
 	if(found === undefined) {
 		return null;
 	}
+	/* a package name stands for no value flowR could resolve, so what it knows about it is the package */
+	if(namesPackage(line.text, found)) {
+		const info = packageInfo(found.name);
+		showPointed(found.name, packageFacts(info).join(' · '));
+		showPackage(info);
+		return {
+			pos:    line.from + found.from,
+			end:    line.from + found.to,
+			above:  false,
+			create: () => ({ dom: packageTip(info, lintsOver(line.from + found.from, line.from + found.to)) })
+		};
+	}
 	const criterion = found.criterion;
 	const about = await describe(criterion);
 	const said = about.said;
 	const known = about.local ? undefined : signatureOf(found.name, ownerOf(found.name, about.pkg));
-	showPointed(found.name, said);
+	const complaints = lintsOver(line.from + found.from, line.from + found.to);
+	showPointed(found.name, said, known);
 	showSignature(found.name, known);
-	return said === undefined && known === undefined ? null : {
+	return said === undefined && known === undefined && complaints.length === 0 ? null : {
 		pos:    line.from + found.from,
 		end:    line.from + found.to,
-		above:  true,
-		create: () => ({ dom: tip(known, said) })
+		above:  false,
+		create: () => ({ dom: tip(known, said, complaints) })
 	};
 });
 
@@ -325,9 +368,17 @@ function builtinSignature(name: string, pkg?: string): Signature | undefined {
 /** the packages the script attaches, which is what decides who owns a name */
 let attached = new Set<string>();
 
+/** the lines that attach a package, and the lines that reach into one with `::`, per package */
+const attachedLines = new Map<string, number[]>();
+const qualifiedLines = new Map<string, number[]>();
+/** the version a project pins a package to, when the analysis derived one from the files around it */
+const versionAsked = new Map<string, string>();
+
 /** the package a call belongs to here: an attached one that defines the name wins over base R */
 function ownerOf(name: string, resolved: string | undefined): string | undefined {
-	return resolved ?? (definedIn.get(name) ?? []).find(pkg => attached.has(pkg));
+	return resolved
+		?? (definedIn.get(name) ?? []).find(pkg => attached.has(pkg))
+		?? [...attached].find(pkg => exportsFrom(bakedPackages[pkg]).includes(name));
 }
 
 /**
@@ -409,8 +460,106 @@ function showSignature(name: string, known: ReturnType<typeof signatureOf>): voi
 	at.append(head, call, about);
 }
 
+/** what the page knows about a package: what the build baked in, and what this script does with it */
+interface PackageInfo {
+	name:        string,
+	/** whether the build carries this package at all; without that there is no version to show */
+	known:       boolean,
+	version?:    string,
+	released?:   string,
+	exports:     number,
+	baseR:       boolean,
+	attachedAt:  readonly number[],
+	qualifiedAt: readonly number[],
+	constraint?: string
+}
+
+/** whether the name at this spot names a package: the argument of `library()`, or the left of `::` */
+function namesPackage(text: string, found: { from: number, to: number }): boolean {
+	return /^\s*:{2,3}/.test(text.slice(found.to)) || Loading.test(text.slice(0, found.from));
+}
+
+/** the version the build read a package at, together with what this script asks of it */
+function packageInfo(name: string): PackageInfo {
+	const entry = bakedPackages[name];
+	const [version = '', released = ''] = entry ?? [];
+	return {
+		name,
+		known:       entry !== undefined,
+		version:     version.length > 0 ? version : undefined,
+		released:    released.length > 0 ? released : undefined,
+		exports:     exportsFrom(entry).length,
+		baseR:       BaseRPackages.has(name),
+		attachedAt:  attachedLines.get(name) ?? [],
+		qualifiedAt: qualifiedLines.get(name) ?? [],
+		constraint:  versionAsked.get(name)
+	};
+}
+
+/** `attached on line 3`, and `attached on lines 3, 7` when the script asks for it more than once */
+function onLines(what: string, at: readonly number[]): string | undefined {
+	return at.length === 0 ? undefined : `${what}${at.length === 1 ? '' : 's'} ${at.join(', ')}`;
+}
+
+/** everything the page can say about a package, as the parts a card is written from */
+function packageFacts(info: PackageInfo): string[] {
+	return [
+		info.known ? info.baseR ? 'ships with R' : 'from CRAN' : 'no version info for it in this build',
+		info.released === undefined ? undefined : `released ${info.released}`,
+		info.exports > 0 ? `${info.exports} export${info.exports === 1 ? '' : 's'}` : undefined,
+		info.constraint === undefined ? undefined : `this project asks for ${info.constraint}`,
+		onLines('attached on line', info.attachedAt),
+		onLines('reached into with :: on line', info.qualifiedAt)
+	].filter((fact): fact is string => fact !== undefined);
+}
+
+/** the name at the version it was read at, which heads both the card and the hover */
+function packageHead(info: PackageInfo): string {
+	return info.version === undefined ? info.name : `${info.name} ${info.version}`;
+}
+
+/** the hover card of a package: its version, what came with it, and what the linter said here */
+function packageTip(info: PackageInfo, complaints: readonly { rule: string, message: string }[]): HTMLElement {
+	const dom = document.createElement('div');
+	dom.className = 'cm-valuetip';
+	const head = document.createElement('div');
+	head.className = 'tcall';
+	head.textContent = packageHead(info);
+	dom.append(head);
+	const about = document.createElement('div');
+	about.className = 'tabout';
+	about.textContent = packageFacts(info).join(' · ');
+	dom.append(about);
+	for(const found of complaints) {
+		dom.append(complaint(found, 'tlint'));
+	}
+	return dom;
+}
+
+/** the package under the pointer, in the box a function shows its signature in */
+function showPackage(info: PackageInfo): void {
+	const at = document.getElementById('signature');
+	if(at === null) {
+		return;
+	}
+	at.replaceChildren();
+	at.hidden = false;
+	const head = document.createElement('h3');
+	head.textContent = 'Package';
+	const call = document.createElement('div');
+	call.className = 'scall';
+	call.textContent = packageHead(info);
+	const about = document.createElement('div');
+	about.className = 'sabout';
+	for(const fact of packageFacts(info)) {
+		about.append(tag(fact, 'prop'));
+	}
+	about.append(link('look it up in the signature database', `../sigdb/?q=${encodeURIComponent(info.name)}`, 'at'));
+	at.append(head, call, about);
+}
+
 /** the hover card: what the database knows about the name, then what flowR made of this script */
-function tip(known: ReturnType<typeof signatureOf>, said: string | undefined): HTMLElement {
+function tip(known: ReturnType<typeof signatureOf>, said: string | undefined, complaints: readonly { rule: string, message: string }[] = []): HTMLElement {
 	const dom = document.createElement('div');
 	dom.className = 'cm-valuetip';
 	const line = (text: string, cls: string): void => {
@@ -430,11 +579,23 @@ function tip(known: ReturnType<typeof signatureOf>, said: string | undefined): H
 	if(said !== undefined) {
 		line(said, 'tsaid');
 	}
+	for(const found of complaints) {
+		dom.append(complaint(found, 'tlint'));
+	}
 	return dom;
 }
 
+/** whether this is a page one points at, or one one taps */
+const pointing = !matchMedia('(hover: none)').matches;
+if(!pointing) {
+	const at = document.querySelector('#pinfo .pvalue');
+	if(at !== null) {
+		at.textContent = 'tap a name for what flowR knows about it';
+	}
+}
+
 /** what the pointer is on, kept in the panel next to everything else */
-function showPointed(name: string, said: string | undefined): void {
+function showPointed(name: string, said: string | undefined, known?: ReturnType<typeof signatureOf>): void {
 	const at = document.getElementById('pinfo');
 	if(at === null) {
 		return;
@@ -449,7 +610,11 @@ function showPointed(name: string, said: string | undefined): void {
 	label.title = 'look this name up in the signature database';
 	const value = document.createElement('span');
 	value.className = 'pvalue';
-	value.textContent = said ?? 'nothing known about it';
+	/* a name flowR cannot put a value on is still a name it knows something about: what it calls, and
+	   from where. Only when there is neither is there nothing to say. */
+	value.textContent = said ?? (known === undefined ? 'nothing known about it'
+		: [known.call, known.props.split(' ').filter(p => p.length > 0).map(p => p.replace(/-/g, ' ')).join(' · '), known.where]
+			.filter(text => text.length > 0).join(' · '));
 	at.append(label, value);
 }
 
@@ -518,8 +683,16 @@ const knownNames = new Set(builtInNames);
  */
 function ranked(options: readonly (Completion & { boost: number })[]): Completion[] {
 	const sorted = [...options].sort((a, b) => b.boost - a.boost);
-	const last = Math.max(1, sorted.length - 1);
-	return sorted.map((option, at) => ({ ...option, boost: Math.round(99 - at / last * 198) }));
+	/* the same name may reach the list from more than one source (a package the script attached and
+	   flowR's own built-ins both carry `ggplot`); the nearest source ranks first, so the rest go */
+	const seen = new Set<string>();
+	const unique = sorted.filter(option => {
+		const first = !seen.has(option.label);
+		seen.add(option.label);
+		return first;
+	});
+	const last = Math.max(1, unique.length - 1);
+	return unique.map((option, at) => ({ ...option, boost: Math.round(99 - at / last * 198) }));
 }
 
 function complete(context: CompletionContext): CompletionResult | null {
@@ -645,9 +818,17 @@ const configTips = hoverTooltip((view, pos) => {
 const MaxShared = 4000;
 const shared = (() => {
 	const params = new URLSearchParams(location.hash.replace(/^#/, ''));
+	/* a chat client stops a link at what looks like the end of a sentence, and what arrives then no longer
+	   reads back as what was sent: the page opens on its own sample and says why */
+	let cut = false;
 	const read = (key: string) => {
 		const found = params.get(key);
-		return found === null ? undefined : unpackFromUrl(found);
+		if(found === null) {
+			return undefined;
+		}
+		const back = unpackFromUrl(found);
+		cut ||= back === undefined;
+		return back;
 	};
 	/* the configuration travels as the keys it changed, `a.b.c=<json>` joined by `;`, which is short
 	   enough to read in the address bar and to paste into a bug report */
@@ -658,15 +839,29 @@ const shared = (() => {
 	/* the unit is the same every time, so a link carries the bare number and gets it back here; links
 	   written before that spelled the unit out and still read as they did */
 	const sized = (value: string, unit: string) => value.length === 0 ? undefined : /^[\d.]+$/.test(value) ? value + unit : value;
+	const code = read('c');
 	return {
-		code:      read('c'),
-		config:    changed === undefined ? undefined : JSON.stringify(FlowrConfig.applyPaths(changed), null, 2),
+		code,
+		cut,
+		config:     changed === undefined ? undefined : JSON.stringify(FlowrConfig.applyPaths(changed), null, 2),
 		/* `>` is how the landing page writes the forward direction, so a link reads the same on both */
-		direction: flags.includes('>') ? SliceDirection.Forward : undefined,
-		split:     sized(split, '%'),
-		repl:      sized(repl, 'px'),
+		direction:  flags.includes('>') ? SliceDirection.Forward : undefined,
+		split:      sized(split, '%'),
+		repl:       sized(repl, 'px'),
+		/* what the link points at, as `12`, `12-15`, `12@sum`, `12:5`, `lint:<rule>[@<line>]`, or a box */
+		marks:      PlaygroundMark.expand((params.get('h') ?? '').split(',').filter(mark => mark.length > 0)),
+		/* the rest of the script steps back for whoever opens the link, just as it did for whoever sent it */
+		dim:        flags.includes('d'),
+		/* the repl and the whole of a slice are as much a part of how the page was left as the panes are */
+		replOpen:   flags.includes('r'),
+		wholeSlice: flags.includes('a'),
+		/* what was asked of the repl, so a link opens on the answer it was sent for */
+		said:       (read('q') ?? '').split('\n').filter(line => line.trim().startsWith(':')).slice(0, 8),
+		/* an example opens on what it is about, with the boxes it is not about folded away */
+		folded:     (params.get('f') ?? '').split(',')
+			.filter((box): box is PlaygroundBox => (Object.values(PlaygroundBox) as string[]).includes(box)),
 		/* the line the cursor sat on rides along, so a link opens on the criterion it was shared for */
-		cursor:    (() => {
+		cursor: (() => {
 			const [line, column] = (params.get('p') ?? '').split(':').map(Number);
 			return Number.isInteger(line) && line > 0
 				? { line, column: Number.isInteger(column) && column > 0 ? column : 1 }
@@ -674,6 +869,18 @@ const shared = (() => {
 		})()
 	};
 })();
+
+/**
+ * What the link points at, as the marks it carries. Alt-click adds what it is pointed at and takes it back
+ * out, and every one of them is written the way flowR names a place: `12`, `12@sum`, `12:5`, or
+ * `lint:<rule>[@<line>]` for what a linting rule reported. They name lines rather than follow them, so an
+ * edit above a mark moves what it stands for.
+ */
+const marks: Mark[] = shared.marks;
+
+/** what the last analysis found, kept so a `lint:` or `dep:` mark can say which code it stands for */
+let shownLints: readonly { rule: string, message: string, line?: number, from: number, to: number }[] = [];
+let shownDeps: readonly { kind: string, line?: number, from: number, to: number }[] = [];
 
 /** what the tools bar says about the link, next to the button that copies it */
 function showShared(text: string): void {
@@ -684,45 +891,58 @@ function showShared(text: string): void {
 }
 
 let shareTimer = 0;
+
 /**
- * A fragment is not a query, so `,`, `:`, and the braces a configuration carries stand in it as they are and
- * only what would end it, split it, or read back as something else has to be escaped. `URLSearchParams`
- * escapes far more than that, which is what made a shared link a wall of `%2C` that chat clients cut short.
+ * Everything a link carries about the page as it stands right now. Built from the live state rather than read
+ * back out of the address bar, which {@link remember} only catches up with after a pause, so a mark set a
+ * moment ago is already in here.
  */
-function writeHash(fields: readonly (readonly [string, string])[]): string {
-	const hash = fields.map(([key, value]) => `${key}=${value.replace(/[%&#+<\s]/g, character => encodeURIComponent(character))}`).join('&');
-	/* a chat client stops a link before whatever could be the punctuation ending the sentence around it, so
-	   the fragment is made not to end on one */
-	return hash.replace(/[.,:;"')\]]$/, character => encodeURIComponent(character));
+function shareFields(): [string, string][] {
+	const fields: [string, string][] = [];
+	const written = editor.state.doc.toString();
+	/* the sample is what the page opens with anyway, so a link to it carries nothing */
+	if(written !== Sample) {
+		fields.push(['c', packForUrl(written)]);
+	}
+	const configured = config.state.doc.toString();
+	/* the configuration travels only when it is not the one the page opens with */
+	const settings = configured.trim() === Defaults.trim() ? undefined : FlowrConfig.parse(configured);
+	const changed = settings === undefined ? [] : FlowrConfig.changedPaths(settings);
+	if(changed.length > 0) {
+		fields.push(['k', changed.join(';')]);
+	}
+	const dragged = (property: string, unit: string) => document.documentElement.style.getPropertyValue(property).replace(unit, '');
+	const flags = (direction === SliceDirection.Forward ? '>' : '')
+		+ (dimOutside ? 'd' : '')
+		+ ((document.getElementById('repl') as HTMLDetailsElement | null)?.open ? 'r' : '')
+		+ (wholeSlice ? 'a' : '');
+	const view = [dragged('--split', '%'), dragged('--repl-height', 'px'), flags];
+	/* a trailing empty field says nothing and would leave the link ending in a comma, which is where a
+	   chat client stops reading it */
+	while(view.length > 0 && view[view.length - 1].length === 0) {
+		view.pop();
+	}
+	if(view.length > 0) {
+		fields.push(['v', view.join(',')]);
+	}
+	const shortened = PlaygroundMark.compress(marks);
+	if(shortened.length > 0) {
+		fields.push(['h', shortened.join(',')]);
+	}
+	if(folded.length > 0) {
+		fields.push(['f', folded.join(',')]);
+	}
+	if(replSaid.length > 0) {
+		fields.push(['q', packForUrl(replSaid.join('\n'))]);
+	}
+	return fields;
 }
 
 /** writes the current script and configuration into the url, replacing rather than growing the history */
 function remember(): void {
 	clearTimeout(shareTimer);
 	shareTimer = window.setTimeout(() => {
-		const fields: [string, string][] = [];
-		const written = editor.state.doc.toString();
-		/* the sample is what the page opens with anyway, so a link to it carries nothing */
-		if(written !== Sample) {
-			fields.push(['c', packForUrl(written)]);
-		}
-		const settings = FlowrConfig.parse(config.state.doc.toString());
-		const changed = settings === undefined ? [] : FlowrConfig.changedPaths(settings);
-		if(changed.length > 0) {
-			fields.push(['k', changed.join(';')]);
-		}
-		const dragged = (property: string, unit: string) => document.documentElement.style.getPropertyValue(property).replace(unit, '');
-		const flags = direction === SliceDirection.Forward ? '>' : '';
-		const view = [dragged('--split', '%'), dragged('--repl-height', 'px'), flags];
-		/* a trailing empty field says nothing and would leave the link ending in a comma, which is where a
-		   chat client stops reading it */
-		while(view.length > 0 && view[view.length - 1].length === 0) {
-			view.pop();
-		}
-		if(view.length > 0) {
-			fields.push(['v', view.join(',')]);
-		}
-		const hash = writeHash(fields);
+		const hash = Playground.hash(shareFields());
 		const fits = hash.length <= MaxShared;
 		try {
 			history.replaceState(null, '', fits ? `#${hash}` : location.pathname + location.search);
@@ -755,7 +975,15 @@ function readSettings(): void {
 	void run();
 }
 
-const Defaults = JSON.stringify(FlowrConfig.default(), null, 2);
+/**
+ * What the page analyzes with: flowR's own defaults, but with the lax tree-sitter parser, because a
+ * script one is still typing is a script with a syntax error in it more often than not.
+ */
+const Defaults = JSON.stringify({
+	...FlowrConfig.default(),
+	engines: [{ type: 'tree-sitter', lax: true }]
+}, null, 2);
+settings = FlowrConfig.parse(shared.config ?? Defaults);
 const config = new EditorView({
 	doc:        shared.config ?? Defaults,
 	extensions: [
@@ -802,7 +1030,7 @@ const editor = new EditorView({
 	doc:        shared.code ?? Sample,
 	extensions: [
 		basicSetup, rLanguage, look, syntaxHighlighting(highlight), callMarks,
-		lintMarks, sliceMarks, linkMarks, valueTips, autocompletion({ override: [complete] }),
+		lintMarks, sliceMarks, linkMarks, shownMarks, valueTips, autocompletion({ override: [complete] }),
 		EditorView.updateListener.of(update => {
 			if(update.docChanged) {
 				schedule();
@@ -814,6 +1042,154 @@ const editor = new EditorView({
 	],
 	parent: document.getElementById('editor') as HTMLElement
 });
+
+/** the code one mark stands for: a whole line, one name on it, or what a linting rule reported */
+function markRanges(mark: Mark): readonly ShownRange[] {
+	const doc = editor.state.doc;
+	if((Object.values(PlaygroundBox) as string[]).includes(mark)) {
+		return [];   /* a box of the page, which stands for itself rather than for a place in the script */
+	}
+	if(mark.startsWith('lint:') || mark.startsWith('dep:')) {
+		const found = mark.startsWith('lint:') ? shownLints : shownDeps;
+		const [what, only] = mark.slice(mark.indexOf(':') + 1).split('@');
+		return found
+			.filter(one => ('rule' in one ? one.rule : one.kind) === what && (only === undefined || String(one.line) === only))
+			.map(one => ({
+				from: one.from, to: one.to, line: false,
+			}));
+	}
+	/* a name may carry an `@` itself, as `object@slot` does, so only the first one separates */
+	const cut = mark.indexOf('@');
+	const [lineText, columnText] = (cut < 0 ? mark : mark.slice(0, cut)).split(':');
+	const name = cut < 0 ? undefined : mark.slice(cut + 1);
+	const number = Number(lineText);
+	if(!Number.isInteger(number) || number < 1 || number > doc.lines) {
+		return [];
+	}
+	const line = doc.line(number);
+	if(columnText !== undefined) {
+		const column = Number(columnText);
+		const found = Number.isInteger(column) && column > 0 ? targetAt(line.text, number, column - 1) : undefined;
+		return found === undefined ? [] : [{ from: line.from + found.from, to: line.from + found.to, line: false }];
+	}
+	if(name === undefined) {
+		return [{ from: line.from, to: line.to, line: true }];
+	}
+	const at = Playground.nameIndexIn(line.text, name);
+	return at === undefined ? [] : [{ from: line.from + at, to: line.from + at + name.length, line: false }];
+}
+
+/** what touches or overlaps is one mark, so a name and the line it sits on do not draw a seam */
+function mergedRanges(ranges: readonly ShownRange[]): ShownRange[] {
+	const sorted = [...ranges].sort((a, b) => Number(b.line) - Number(a.line) || a.from - b.from || a.to - b.to);
+	const merged: ShownRange[] = [];
+	for(const range of sorted) {
+		const last = merged[merged.length - 1];
+		if(last !== undefined && last.line === range.line && !range.line && range.from <= last.to) {
+			last.to = Math.max(last.to, range.to);
+		} else {
+			merged.push({ ...range });
+		}
+	}
+	return merged;
+}
+
+/** whether the marks a link arrived with have been shown once; they pulse only that first time */
+let unseenMarks = true;
+/** how long the fade itself takes, after which what faded is taken out of the page and the link */
+const FadeTakes = 1500;
+/** how long a highlight stays before it fades out */
+const MarksLinger = 6000;
+let fadeTimer = 0;
+
+/** puts every mark the link carries back on the code, and on the rows and boxes that stand for one */
+function showMarks(): void {
+	const ranges = mergedRanges(marks.flatMap(markRanges));
+	let marked = ranges.length > 0;
+	const fresh = unseenMarks;
+	editor.dispatch({ effects: setShown.of({ ranges, fresh }) });
+	for(const row of document.querySelectorAll<HTMLElement>('[data-mark]')) {
+		const mark = row.dataset.mark ?? '';
+		/* `lint:<rule>` stands for every finding of that rule, so it lights the rows of each of them */
+		const wanted = marks.some(m => m === mark || mark.startsWith(`${m}@`));
+		/* a highlight one cannot see is no highlight, so what it points at is unfolded first */
+		if(wanted && row.hidden && row.dataset.kindGroup !== undefined) {
+			toggleKind(row.dataset.kindGroup, true);
+		}
+		row.classList.toggle('shown', wanted);
+		row.classList.toggle('fresh', wanted && fresh);
+		marked ||= wanted;
+	}
+	/* a highlight is there to be noticed, not to stay: it fades, and the link keeps it all the same */
+	clearTimeout(fadeTimer);
+	editor.dom.classList.remove('faded');
+	panel.classList.remove('faded');
+	if(marked) {
+		fadeTimer = window.setTimeout(() => {
+			editor.dom.classList.add('faded');
+			panel.classList.add('faded');
+			const clear = document.getElementById('clearmarks');
+			if(clear !== null) {
+				clear.hidden = true;
+			}
+			/* once it has faded there is nothing left to point at, so the link stops saying that there is */
+			window.setTimeout(clearMarks, FadeTakes);
+		}, MarksLinger);
+	}
+	if(marked && fresh) {
+		unseenMarks = false;
+		/* the animation runs twice and is then in the way of every later mark, so it is taken back off */
+		setTimeout(showMarks, 2400);
+	}
+	/* a link that points at the repl is a link about the repl, so it opens on it */
+	const drawer = document.getElementById('repl') as HTMLDetailsElement | null;
+	if(drawer !== null && marks.includes(PlaygroundBox.Repl)) {
+		drawer.open = true;
+	}
+	const clear = document.getElementById('clearmarks');
+	if(clear !== null) {
+		/* what it clears is what is lit, not what the link asks for: a mark the page cannot place (its code was
+		   edited away, its row is not in the current answer) lights nothing, and nothing is what it clears */
+		clear.hidden = !marked;
+	}
+}
+
+/** takes every highlight out of the page and out of the link */
+function clearMarks(): void {
+	if(marks.length === 0) {
+		return;
+	}
+	marks.length = 0;
+	showMarks();
+	remember();
+}
+
+/**
+ * Alt-click points the link at what it hit, and points it away again when it hits the same thing twice.
+ * It does not pile mark upon mark: holding shift as well is what adds one to those already there.
+ */
+function toggleMark(mark: string | undefined, add = false): void {
+	if(!PlaygroundMark.isValid(mark)) {
+		return;
+	}
+	const had = marks.includes(mark);
+	const next = had ? marks.filter(other => other !== mark) : add ? [...marks, mark] : [mark];
+	marks.length = 0;
+	marks.push(...next);
+	showMarks();
+	remember();
+	showShared(had ? `${mark} is no longer highlighted` : `${mark} is highlighted, the link carries it`);
+}
+
+/** what an alt-click in the code points at: the name under it, or the line it sits on */
+function markUnderPointer(event: MouseEvent): string | undefined {
+	const at = editor.posAtCoords({ x: event.clientX, y: event.clientY });
+	if(at === null) {
+		return undefined;
+	}
+	const line = editor.state.doc.lineAt(at);
+	return targetAt(line.text, line.number, at - line.from)?.criterion ?? String(line.number);
+}
 
 
 document.getElementById('theme')?.addEventListener('click', () => {
@@ -845,9 +1221,10 @@ function cursorName(): string | undefined {
 	return found === undefined ? undefined : `${line.number}@${found.name}`;
 }
 
-function section(title: string, aside?: string, end?: Node): void {
+function section(title: string, box: PlaygroundBox, aside?: string, end?: Node): HTMLElement {
 	const head = document.createElement('h3');
-	head.textContent = title;
+	foldable(head, box);
+	head.append(title);
 	if(aside !== undefined) {
 		const said = document.createElement('span');
 		said.className = 'aside';
@@ -857,18 +1234,82 @@ function section(title: string, aside?: string, end?: Node): void {
 	if(end !== undefined) {
 		head.append(end);
 	}
-	panel.append(head);
+	const body = document.createElement('div');
+	body.className = 'sbody';
+	body.dataset.foldBody = box;
+	panel.append(head, body);
+	return body;
+}
+
+/** makes a heading fold the block under it, by pointer and by keyboard alike */
+function foldable(head: HTMLElement, box: PlaygroundBox): void {
+	head.dataset.fold = box;
+	head.tabIndex = 0;
+	head.setAttribute('role', 'button');
+	/* the controls in a heading do their own thing, and folding the block is not it */
+	const own = (event: Event) => (event.target as HTMLElement | null)?.closest('button, a, label, input') === null;
+	head.addEventListener('click', event => {
+		if(own(event)) {
+			toggleFold(box);
+		}
+	});
+	head.addEventListener('keydown', event => {
+		if((event.key === 'Enter' || event.key === ' ') && own(event)) {
+			event.preventDefault();
+			toggleFold(box);
+		}
+	});
+}
+
+/** the boxes that are folded away, which a link carries so an example opens on what it is about */
+let folded: PlaygroundBox[] = shared.folded;
+
+/** folds a box away, or brings it back, and writes it into the link either way */
+function toggleFold(box: PlaygroundBox): void {
+	folded = folded.includes(box) ? folded.filter(other => other !== box) : [...folded, box];
+	showFolds();
+	remember();
+}
+
+/** what is folded and what is not, over whatever the panel holds right now */
+function showFolds(): void {
+	for(const head of document.querySelectorAll<HTMLElement>('#panel [data-fold]')) {
+		const away = folded.includes(head.dataset.fold as PlaygroundBox);
+		head.classList.toggle('folded', away);
+		head.setAttribute('aria-expanded', String(!away));
+		/* a folded box that holds something says so, or one folds a box and stops hearing from it */
+		const body = document.querySelector<HTMLElement>(`#panel [data-fold-body="${head.dataset.fold}"]`);
+		const holds = (body?.querySelectorAll('[data-mark], .card').length ?? 0) > 0;
+		head.classList.toggle('holds', away && holds);
+		head.title = away
+			? `click to show this again${holds ? ', there is something under it' : ''}`
+			: 'click to fold this away';
+	}
+	for(const body of document.querySelectorAll<HTMLElement>('#panel [data-fold-body]')) {
+		body.hidden = folded.includes(body.dataset.foldBody as PlaygroundBox);
+	}
+}
+
+/** the issue form, carrying the script as a link when it is short enough to travel in one */
+const IssueTemplate = 'https://github.com/flowr-analysis/flowr/issues/new?template=linting-rule.yaml';
+function issueUrl(): string {
+	/* the paths, addresses, and secrets a script carries are nobody's business but the author's */
+	const link = Playground.reportLink(editor.state.doc.toString(), { marks, at: cursorCriterion() });
+	return link === undefined ? IssueTemplate
+		: `${IssueTemplate}&description=${encodeURIComponent(`The script this is about, in the playground:\n\n${link}\n\n`)}`;
 }
 
 /* the linter is only as good as its rules, so the heading offers a way to ask for another one */
 function suggestRule(): HTMLElement {
 	const link = document.createElement('a');
 	link.className = 'suggest';
-	link.href = 'https://github.com/flowr-analysis/flowr/issues/new?template=linting-rule.yaml';
+	link.href = IssueTemplate;
 	link.target = '_blank';
 	link.rel = 'noopener';
-	link.append(document.createTextNode('suggest'), tag(' a rule', 'wide'));
-	link.title = 'suggest a new linting rule';
+	/* the script travels with the report, so it is read again where the link is followed, not before */
+	link.addEventListener('mousedown', () => link.href = issueUrl());
+	link.append(document.createTextNode('suggest'), tag(' a new rule', 'wide'));
+	link.title = 'suggest a new linting rule, with this script attached to the report';
 	return link;
 }
 
@@ -884,6 +1325,39 @@ function tag(text: string, cls = 'kind'): HTMLElement {
 	el.className = cls;
 	el.textContent = text;
 	return el;
+}
+
+/** how many dependencies of one category the panel shows before the rest are folded away */
+const DepsPerKind = 3;
+/** the categories unfolded by hand, kept so a re-analysis does not fold them up again */
+const expandedKinds = new Set<string>();
+
+/** the row that stands for the dependencies of a category the panel folded away */
+function expander(kind: string, rest: number, open: boolean): HTMLElement {
+	const more = document.createElement('button');
+	more.type = 'button';
+	more.className = 'more';
+	more.dataset.expand = kind;
+	more.textContent = open ? `show fewer ${kind} dependencies` : `${rest} more ${kind} ${rest === 1 ? 'dependency' : 'dependencies'}`;
+	more.addEventListener('click', () => toggleKind(kind));
+	return more;
+}
+
+/** unfolds (or folds up again) what a category holds beyond the first {@link DepsPerKind} rows */
+function toggleKind(kind: string, open = !expandedKinds.has(kind)): void {
+	if(open) {
+		expandedKinds.add(kind);
+	} else {
+		expandedKinds.delete(kind);
+	}
+	for(const row of document.querySelectorAll<HTMLElement>(`.deps .rest[data-kind-group="${kind}"]`)) {
+		row.hidden = !open;
+	}
+	const more = document.querySelector<HTMLElement>(`.deps .more[data-expand="${kind}"]`);
+	if(more !== null) {
+		const rest = document.querySelectorAll(`.deps .rest[data-kind-group="${kind}"]`).length;
+		more.textContent = open ? `show fewer ${kind} dependencies` : `${rest} more ${kind} ${rest === 1 ? 'dependency' : 'dependencies'}`;
+	}
 }
 
 function nothing(text: string): HTMLElement {
@@ -922,24 +1396,73 @@ async function analyzer() {
 	return built;
 }
 
-interface Dependency { value?: string, nodeId?: string | number, functionName?: string, linkedIds?: readonly (string | number)[] }
+interface Dependency {
+	value?:              string,
+	nodeId?:             string | number,
+	functionName?:       string,
+	linkedIds?:          readonly (string | number)[],
+	implicit?:           boolean,
+	/* semver ranges, which only a project with a DESCRIPTION or a lockfile around it ever carries */
+	derivedRange?:       { format?: () => string },
+	versionConstraints?: readonly { format?: () => string }[]
+}
+
+/** the version a project pins a package to, as the analysis derived it from the files around the script */
+function versionRange(entry: Dependency): string | undefined {
+	return [entry.derivedRange, ...entry.versionConstraints ?? []]
+		.map(range => typeof range?.format === 'function' ? range.format() : undefined)
+		.find((said): said is string => said !== undefined && said.length > 0);
+}
 /** one dependency as the panel shows it, with whatever else was drawn onto it hanging below */
 interface DepRow {
-	kind:   string,
-	call?:  string,
-	value?: string,
-	line?:  number,
-	from?:  readonly number[],
-	id?:    string | number,
-	onto:   readonly (string | number)[],
-	parts:  DepRow[]
+	kind:      string,
+	/** R echoes this one at the top level, nothing in the code asks it to */
+	implicit?: boolean,
+	call?:     string,
+	value?:    string,
+	line?:     number,
+	from?:     readonly number[],
+	id?:       string | number,
+	onto:      readonly (string | number)[],
+	parts:     DepRow[]
 }
-interface Finding { loc?: number[] }
+interface Finding { loc?: number[], quickFix?: LintQuickFix[] }
 
 /** the first tag of a rule that says what kind of problem it is, which is what colours the chip */
 function category(rule: string): string {
 	const tags = (LintingRules as unknown as Record<string, { info?: { tags?: string[] } }>)[rule]?.info?.tags ?? [];
-	return ['bug', 'security', 'reproducibility', 'robustness', 'deprecated', 'style', 'smell'].find(t => tags.includes(t)) ?? 'other';
+	/* a rule states what it is about first, so the colour follows its order rather than one made up here:
+	   a network call is about reproducibility and only then about security, and it should not read as a leak */
+	const known = ['security', 'bug', 'reproducibility', 'robustness', 'deprecated', 'performance',
+		'style', 'smell', 'readability', 'usability', 'documentation'];
+	return tags.find(t => known.includes(t)) ?? 'other';
+}
+
+/**
+ * Carry the given quick fixes out on the script, which {@link LintQuickFixes.apply} does the same way every other
+ * consumer of flowR gets them done. The edit is a document change like any other, so the analysis reruns on its own.
+ */
+function applyFixes(fixes: readonly LintQuickFix[]): void {
+	const code = editor.state.doc.toString();
+	const fixed = LintQuickFixes.apply(code, fixes);
+	if(fixed !== code) {
+		editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: fixed } });
+	}
+}
+
+/** the button on the lint heading, which carries out every fix the findings below offer */
+function fixButton(fixes: readonly LintQuickFix[], label: string, title: string): HTMLElement {
+	const button = document.createElement('button');
+	button.className = 'fix';
+	button.type = 'button';
+	button.textContent = label;
+	button.title = title;
+	/* the row itself links to the finding, so the click must not travel up to it */
+	button.addEventListener('click', event => {
+		event.stopPropagation();
+		applyFixes(fixes);
+	});
+	return button;
 }
 
 /** the finding in the linter's own words, the same text the REPL and the extension show */
@@ -1159,10 +1682,17 @@ async function analyze(): Promise<number> {
 	box.addEventListener('change', () => {
 		dimOutside = box.checked;
 		editor.dispatch({ effects: setSlice.of(dimOutside && lastKept.length > 0 ? lastKept : undefined) });
+		remember();
 	});
 	dimmer.append(box, document.createTextNode('dim'), tag(' the rest', 'wide'));
 	head.append(dimmer);
-	panel.append(head);
+	foldable(head, PlaygroundBox.Slice);
+	/* the slice is built here, where the answer is, and put in below what the panel says about the script */
+	const sliceBlock = document.createDocumentFragment();
+	const sliceBody = document.createElement('div');
+	sliceBody.className = 'sbody';
+	sliceBody.dataset.foldBody = PlaygroundBox.Slice;
+	sliceBlock.append(head, sliceBody);
 	if(code !== undefined) {
 		const copy = document.createElement('button');
 		copy.type = 'button';
@@ -1184,28 +1714,40 @@ async function analyze(): Promise<number> {
 	} else {
 		paint(code, shown);
 	}
+	slice.dataset.mark = PlaygroundBox.Slice;
 	slice.append(shown);
-	/* a long slice is folded, because the panel is not where someone reads a whole script */
-	if((code?.split('\n').length ?? 0) > 20) {
-		slice.classList.add('folded');
-		const more = document.createElement('button');
-		more.type = 'button';
-		more.className = 'unfold';
-		more.textContent = 'show the whole slice';
-		more.addEventListener('click', () => {
-			slice.classList.remove('folded');
-			more.remove();
-		});
-		slice.append(more);
-	}
-	panel.append(slice);
+	/* the panel is not where someone reads a whole script: what is left of the window decides how much of
+	   one it shows, and the rest waits behind the button */
+	const length = code?.split('\n').length ?? 0;
+	const more = document.createElement('button');
+	more.type = 'button';
+	more.className = 'unfold';
+	more.hidden = true;
+	more.textContent = `show all ${length} lines`;
+	more.addEventListener('click', () => {
+		wholeSlice = true;
+		slice.classList.remove('folded');
+		more.hidden = true;
+		remember();
+	});
+	slice.append(more);
+	requestAnimationFrame(() => {
+		const room = panel.getBoundingClientRect().bottom - slice.getBoundingClientRect().top - 2.5 * 16;
+		const perLine = shown.getBoundingClientRect().height / Math.max(1, length);
+		const fits = Math.max(FoldedSliceLines, Math.floor(room / Math.max(perLine, 12)));
+		slice.style.setProperty('--fold-lines', String(fits));
+		slice.classList.toggle('folded', length > fits && !wholeSlice);
+		more.hidden = length <= fits || wholeSlice;
+	});
+	sliceBody.append(slice);
 
-	const kinds = ['library', 'source', 'read', 'write', 'visualize'] as const;
+	/* whatever the dependencies query answers with, so a new category shows up here without a second list */
+	const kinds = Object.keys(DefaultDependencyCategories);
 	const deps: DepRow[] = kinds.flatMap(kind => (answers.dependencies?.[kind] ?? []).map(entry => {
 		const at = idMap?.get(entry.nodeId as never)?.location;
 		const call = entry.functionName === undefined ? undefined : String(Identifier.getName(entry.functionName));
 		const value = entry.value === undefined || entry.value === 'unknown' ? undefined : entry.value;
-		return { kind, call, value, line: at?.[0], from: at, id: entry.nodeId, onto: entry.linkedIds ?? [], parts: [] };
+		return { kind, call, value, implicit: entry.implicit, line: at?.[0], from: at, id: entry.nodeId, onto: entry.linkedIds ?? [], parts: [] };
 	}));
 	/* `points()` draws onto the `plot()` above it, and the query says so: such an entry belongs to that
 	   plot rather than next to it */
@@ -1216,18 +1758,60 @@ async function analyze(): Promise<number> {
 		return onto === undefined;
 	});
 	attached = new Set(deps.filter(d => d.kind === 'library' && d.value !== undefined).map(d => d.value as string));
-	section(`Dependencies: ${deps.length}`, '(click to slice)');
-	const shownDep = (d: DepRow, part: boolean): HTMLElement => {
+	/* where each package is asked for, so hovering its name says what this script does with it */
+	attachedLines.clear();
+	qualifiedLines.clear();
+	for(const d of deps) {
+		if(d.kind !== 'library' || d.value === undefined || d.line === undefined) {
+			continue;
+		}
+		const where = d.call === '::' || d.call === ':::' ? qualifiedLines : attachedLines;
+		const lines = where.get(d.value) ?? [];
+		if(!lines.includes(d.line)) {
+			lines.push(d.line);
+		}
+		where.set(d.value, lines);
+	}
+	versionAsked.clear();
+	for(const entry of answers.dependencies?.library ?? []) {
+		const asked = entry.value === undefined ? undefined : versionRange(entry);
+		if(asked !== undefined) {
+			versionAsked.set(entry.value as string, asked);
+		}
+	}
+	shownDeps = deps.flatMap(d => {
+		const [startLine, startCol, endLine, endCol] = d.from ?? [];
+		if(startLine === undefined || startLine !== endLine || startCol === undefined || endCol === undefined
+			|| startLine < 1 || startLine > editor.state.doc.lines) {
+			return [];
+		}
+		const at = editor.state.doc.line(startLine);
+		return [{ kind: d.kind, line: startLine, from: at.from + startCol - 1, to: Math.min(at.to, at.from + endCol) }];
+	});
+	const depBody = section(`Dependencies: ${deps.length}`, PlaygroundBox.Deps, '(click to slice)');
+	const shownDep = (d: DepRow, part: boolean, repeat = false): HTMLElement => {
 		const what = document.createElement('span');
 		what.className = 'what';
 		if(d.value !== undefined) {
-			what.append(d.value);
+			/* an implicit echo says the same `stdout` as a `print()` call, and it is worth telling the two apart */
+			if(d.implicit) {
+				const echo = document.createElement('span');
+				echo.className = 'echo';
+				echo.title = 'auto-printed: this result reaches stdout on its own';
+				echo.append(d.value);
+				what.append(echo);
+			} else {
+				what.append(d.value);
+			}
 		}
 		if(d.call !== undefined) {
 			what.append(tag(`${d.call}()`, d.value === undefined ? 'call only' : 'call'));
 		}
-		const kind = tag(part ? 'draws onto' : d.kind, part ? 'kind part' : 'kind');
+		/* a category says its name once: every further row of it lines up under that one word */
+		const kind = part ? tag('draws onto', 'kind part') : repeat ? tag('', 'kind ditto') : tag(d.kind, 'kind');
 		const line = row(kind, what, tag(d.line ? `L${d.line}` : '', 'at'));
+		/* alt-click highlights this one dependency, the way it does a finding */
+		line.dataset.mark = d.line === undefined ? `dep:${d.kind}` : `dep:${d.kind}@${d.line}`;
 		if(part) {
 			line.classList.add('part');
 		}
@@ -1249,15 +1833,35 @@ async function analyze(): Promise<number> {
 	if(deps.length > 0) {
 		const rows = document.createElement('div');
 		rows.className = 'deps';
-		rows.append(...top.flatMap(d => [shownDep(d, false), ...d.parts.map(p => shownDep(p, true))]));
-		panel.append(rows);
+		rows.dataset.mark = PlaygroundBox.Deps;
+		/* the query answers by category, so the rows are already in that order: this only cuts each of them
+		   down to what one can take in at a glance, and keeps the rest a click away */
+		for(const kind of new Set(top.map(d => d.kind))) {
+			const ofKind = top.filter(d => d.kind === kind);
+			const open = expandedKinds.has(kind);
+			ofKind.forEach((d, at) => {
+				const line = shownDep(d, false, at > 0);
+				line.dataset.kindGroup = kind;
+				if(at >= DepsPerKind) {
+					line.classList.add('rest');
+					line.hidden = !open;
+				}
+				rows.append(line, ...d.parts.map(p => shownDep(p, true)));
+			});
+			if(ofKind.length > DepsPerKind) {
+				rows.append(expander(kind, ofKind.length - DepsPerKind, open));
+			}
+		}
+		depBody.append(rows);
 	} else {
-		panel.append(nothing('nothing outside this script'));
+		depBody.append(nothing('nothing outside this script'));
 	}
 
 	const found = Object.entries(answers.linter?.results ?? {}).flatMap(([rule, per]) =>
-		(per?.results ?? []).map(f => ({ rule, line: f.loc?.[0], loc: f.loc, message: explain(rule, f, per?.['.meta']) })));
-	editor.dispatch({ effects: setLints.of(found.flatMap(f => {
+		(per?.results ?? []).map(f => ({
+			rule, line: f.loc?.[0], loc: f.loc, quickFix: f.quickFix ?? [], message: explain(rule, f, per?.['.meta'])
+		})));
+	const marked = found.flatMap(f => {
 		const [startLine, startCol, endLine, endCol] = f.loc ?? [];
 		if(startLine === undefined || startLine !== endLine || startCol === undefined || endCol === undefined) {
 			return [];
@@ -1266,36 +1870,80 @@ async function analyze(): Promise<number> {
 			return [];   // a rule that points outside this file, e.g. at the project around it
 		}
 		const line = editor.state.doc.line(startLine);
-		return [{ from: line.from + startCol - 1, to: Math.min(line.to, line.from + endCol), message: `${f.rule}: ${f.message}` }];
-	})) });
-	section(`Lints: ${found.length}`, undefined, suggestRule());
+		return [{
+			rule:    f.rule, line:    startLine,
+			from:    line.from + startCol - 1, to:      Math.min(line.to, line.from + endCol),
+			message: `${f.rule}: ${f.message}`
+		}];
+	});
+	editor.dispatch({ effects: setLints.of(marked) });
+	shownLints = marked;
+	const fixable = found.flatMap(f => f.quickFix);
+	const acts = document.createElement('span');
+	acts.className = 'acts';
+	if(fixable.length > 0) {
+		acts.append(fixButton(fixable, `fix ${fixable.length}`,
+			[...new Set(fixable.map(fix => fix.description))].join('\n')));
+	}
+	acts.append(suggestRule());
+	const lintBody = section(`Lints: ${found.length}`, PlaygroundBox.Lints, undefined, acts);
 	if(found.length === 0) {
-		panel.append(nothing('no findings'));
+		lintBody.append(nothing('no findings'));
+		panel.append(sliceBlock);
+		showFolds();
+		showMarks();
 		return took;
 	}
 	const lints = document.createElement('div');
 	lints.className = 'lints';
+	lints.dataset.mark = PlaygroundBox.Lints;
 	for(const f of found) {
 		const said = document.createElement('span');
 		said.className = 'says';
 		said.textContent = f.message;
-		const chip = tag(f.rule, 'rule');
+		const chip = document.createElement('span');
+		chip.className = 'rule';
 		chip.dataset.category = category(f.rule);
+		chip.append(tag(f.rule, 'rulename'));
 		/* a narrow panel cuts the name short, so the whole of it waits under the pointer */
 		chip.title = f.rule;
+		if(f.quickFix.length > 0) {
+			/* the name gives way to the offer under the pointer, which is where the fix is carried out */
+			chip.classList.add('fixable');
+			/* the fix says what it will do to the script, which is what one wants to know before clicking */
+			chip.title = `${f.rule}: ${f.quickFix.map(fix => fix.description).join('; ')}`;
+			chip.append(tag('fix', 'offer'));
+			chip.addEventListener('click', event => {
+				/* the row itself links to the finding, so the click must not travel up to it */
+				event.stopPropagation();
+				applyFixes(f.quickFix);
+			});
+		}
 		/* one element per finding, so the hover lights the whole row; the columns still line up
 		   because the row borrows the surrounding grid */
 		const line = document.createElement('div');
 		line.className = 'lint';
+		/* alt-click makes a link out of this one finding, which is how a new rule gets shown off */
+		line.dataset.mark = f.line === undefined ? `lint:${f.rule}` : `lint:${f.rule}@${f.line}`;
+		line.title = 'alt-click to highlight this finding in the link';
 		line.append(chip, said, tag(f.line ? `L${f.line}` : '', 'at'));
 		lints.append(...linkRow([line], [f.line]));
 	}
-	panel.append(lints);
+	lintBody.append(lints);
+	panel.append(sliceBlock);
+	showFolds();
+	showMarks();
 	return took;
 }
 
+/** how much of a slice the panel shows before it is folded away */
+const FoldedSliceLines = 3;
+
+/** whether the panel shows the whole slice, rather than as much of it as the window has room for */
+let wholeSlice = shared.wholeSlice;
+
 /* whether the lines outside the slice step back in the editor, what the last slice kept, and which way it runs */
-let dimOutside = false, lastKept: readonly number[] = [];
+let dimOutside = shared.dim, lastKept: readonly number[] = [];
 let direction: SliceDirection = shared.direction ?? SliceDirection.Backward;
 let working = false, again = false;
 async function run(): Promise<void> {
@@ -1327,23 +1975,43 @@ function schedule(delay = 700): void {
 	timer = window.setTimeout(() => void run(), delay);
 }
 
+document.getElementById('clearmarks')?.addEventListener('click', () => {
+	marks.length = 0;
+	showMarks();
+	remember();
+	showShared('the highlights are cleared');
+});
+
 document.querySelector('[data-sample]')?.addEventListener('click', () => {
 	editor.dispatch({ changes: { from: 0, to: editor.state.doc.length, insert: Sample } });
 	config.dispatch({ changes: { from: 0, to: config.state.doc.length, insert: Defaults } });
+	/* an example is the script together with everything a link says about it, so what was folded away,
+	   highlighted, or sliced the other way comes back as well. The pane sizes and the repl stay as they
+	   are: those are how one works, not what one is looking at */
+	marks.length = 0;
+	folded = [];
+	direction = SliceDirection.Backward;
+	dimOutside = false;
+	wholeSlice = false;
+	editor.dispatch({ effects: setSlice.of(undefined) });
+	showMarks();
+	showFolds();
+	remember();
+	showShared('the example is back');
 });
 
-/* the url already carries the example, so sharing is a matter of handing the link over; the cursor is
-   written here rather than in {@link remember}, so the address bar does not churn on every click */
-document.getElementById('share')?.addEventListener('click', () => {
-	/* the fields the address bar already holds are handed on as they are: reading them out and writing them
-	   back would escape them a second time */
-	const fields = location.hash.replace(/^#/, '').split('&').filter(field => field.length > 0 && !field.startsWith('p='));
+/**
+ * Copies the link that brings this playground back, which the button and `ctrl+s` both ask for.
+ * The cursor is written here rather than in {@link remember}, so the address bar does not churn on every click.
+ */
+function copyLink(): void {
+	const fields = shareFields();
 	const head = editor.state.selection.main.head;
 	const line = editor.state.doc.lineAt(head);
 	if(line.number > 1 || head > line.from) {
-		fields.push(`p=${line.number}:${head - line.from + 1}`);
+		fields.push(['p', `${line.number}:${head - line.from + 1}`]);
 	}
-	const hash = fields.join('&');
+	const hash = Playground.hash(fields);
 	const link = location.href.replace(/#.*$/, '') + (hash.length > 0 ? `#${hash}` : '');
 	void navigator.clipboard?.writeText(link).then(
 		() => showShared('link copied'),
@@ -1356,12 +2024,44 @@ document.getElementById('share')?.addEventListener('click', () => {
 			}
 		}
 	);
+}
+
+document.getElementById('share')?.addEventListener('click', copyLink);
+
+/* there is nothing to save here, so `ctrl+s` keeps the script the only way this page can: as a link */
+document.addEventListener('keydown', event => {
+	if((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 's') {
+		event.preventDefault();
+		copyLink();
+	}
 });
 editor.dom.addEventListener('click', event => {
 	if(event.ctrlKey || event.metaKey) {
 		void jumpToDefinition();
+	} else if(event.altKey) {
+		event.preventDefault();
+		toggleMark(markUnderPointer(event), event.shiftKey);
 	}
 });
+/* alt-m marks what the cursor is on, which is what alt-click does to what the pointer is on */
+editor.dom.addEventListener('keydown', event => {
+	if(event.altKey && (event.key === 'm' || event.key === 'M')) {
+		event.preventDefault();
+		const at = editor.state.selection.main.head;
+		const line = editor.state.doc.lineAt(at);
+		toggleMark(targetAt(line.text, line.number, at - line.from)?.criterion ?? String(line.number), event.shiftKey);
+	}
+});
+
+/* alt-click marks a row rather than doing what a plain click on it does, so it runs before the row does */
+document.addEventListener('click', event => {
+	const row = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-mark]');
+	if(event.altKey && row !== null && row !== undefined) {
+		event.preventDefault();
+		event.stopPropagation();
+		toggleMark(row.dataset.mark, event.shiftKey);
+	}
+}, true);
 
 if(shared.config !== undefined) {
 	readSettings();   /* a configuration from the link is what the first analysis has to run with */
@@ -1429,6 +2129,12 @@ const replSink: ReplOutput = {
 const replHistory: string[] = [];
 let replAt = 0;
 
+/** how many repl commands a link carries, so a showcase stays a showcase and not a program */
+const MaxSharedCommands = 8;
+
+/** the commands typed into the repl, which a link carries so a showcase opens on what it showed */
+let replSaid: string[] = shared.said;
+
 replIn?.addEventListener('keydown', event => {
 	if(event.key === 'Tab') {
 		/* flowR's own completer, so the page offers exactly what the repl does */
@@ -1455,18 +2161,37 @@ replIn?.addEventListener('keydown', event => {
 	replIn.value = '';
 	replHistory.push(line);
 	replAt = replHistory.length;
+	runRepl(line);
+});
+
+/** runs one repl line and, if it is a command, keeps it for the link */
+function runRepl(line: string): void {
 	say(`R> ${line}`, 'said');
 	const refused = refusedScript(line);
 	if(refused !== undefined) {
 		say(refused, 'bad');
 		return;
 	}
+	/* only the commands travel: bare R is not evaluated here, and a link is not a place for a program */
+	if(line.trimStart().startsWith(':')) {
+		replSaid = [...replSaid.filter(other => other !== line), line].slice(-MaxSharedCommands);
+		remember();
+	}
 	void analyzer()
 		/* no R session in a browser, so `allowRSessionAccess` is off and bare R stays unevaluated */
 		.then(built => replProcessAnswer(built, replSink, line, false))
 		.catch((e: unknown) => say(String(e), 'bad'));
-});
+}
 say('flowR\'s repl, over whatever the editor holds. :help lists what it knows, tab completes.');
+/* a link that carried commands opens on their answers, which is what it was sent for */
+if(replSaid.length > 0) {
+	(document.getElementById('repl') as HTMLDetailsElement | null)?.setAttribute('open', '');
+	for(const line of replSaid) {
+		replHistory.push(line);
+		runRepl(line);
+	}
+	replAt = replHistory.length;
+}
 
 /**
  * The two things one drags: how wide the code pane is and how much room the repl gets. Both are written
@@ -1513,7 +2238,11 @@ document.getElementById('repl')?.addEventListener('toggle', () => {
 	if((document.getElementById('repl') as HTMLDetailsElement | null)?.open) {
 		replIn?.focus();
 	}
+	remember();
 });
+if(shared.replOpen) {
+	(document.getElementById('repl') as HTMLDetailsElement | null)?.setAttribute('open', '');
+}
 
 /* a link that carried a cursor opens on it; otherwise the cursor starts on the call in the last line,
    because slicing for `library` says nothing worth reading */
@@ -1528,6 +2257,12 @@ const start = (() => {
 })();
 if(start !== undefined) {
 	editor.dispatch({ selection: { anchor: start }, scrollIntoView: true });
+}
+if(marks.length > 0) {
+	showMarks();
+}
+if(shared.cut) {
+	showShared('this link was cut short, so what it carried could not be read back');
 }
 
 void run();

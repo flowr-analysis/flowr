@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { type DataflowInformation, filterOutLoopExitPoints } from '../../../../../info';
+import { type DataflowInformation, ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
 import {
 	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,
@@ -10,15 +10,17 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
-	EmptyArgument,
-	type PotentiallyEmptyRArgument
+import type {
+	PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { Identifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { ControlFlow } from '../../../../control-flow';
+import { applyKills } from '../../../../../environments/apply-kill';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 /**
  * Process a built-in repeat loop function call like `repeat { ... }`.
@@ -34,7 +36,7 @@ export function processRepeatLoop<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	if(args.length !== 1 || args[0] === EmptyArgument) {
+	if(args.length !== 1 || RArgument.isEmpty(args[0])) {
 		dataflowLogger.warn(`Repeat-Loop ${Identifier.toString(name.content)} does not have 1 argument, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
@@ -52,8 +54,9 @@ export function processRepeatLoop<OtherInfo>(
 			}
 			return d;
 		},
-		markAsNSE: [0],
-		origin:    BuiltInProcName.RepeatLoop
+		markAsNSE:         [0],
+		customControlFlow: true,
+		origin:            BuiltInProcName.RepeatLoop
 	});
 
 	const body = processedArguments[0];
@@ -64,6 +67,26 @@ export function processRepeatLoop<OtherInfo>(
 
 	information.exitPoints = filterOutLoopExitPoints(information.exitPoints);
 
-	/* the body is evaluated in the enclosing environment, so its definitions have to bubble up */
-	return { ...information, out: information.out.concat(body.out) };
+	const graph = information.graph;
+	const bodyEntry = ControlFlow.entryOf(body);
+	ControlFlow.continuesWith(graph, body, bodyEntry);
+	ControlFlow.jumpsTo(graph, body, ExitPointType.Next, bodyEntry);
+	ControlFlow.jumpsTo(graph, body, ExitPointType.Break, rootId);
+
+	/* the body is evaluated in the enclosing environment, so its definitions and removals have to bubble up */
+	const kill = body.kill?.length ? body.kill : undefined;
+	const leftByBreak = body.exitPoints.some(e => e.type === ExitPointType.Break);
+	if(!leftByBreak) {
+		/* without a `break` the loop never terminates, so nothing ever reaches the repeat vertex */
+		information.exitPoints = information.exitPoints.filter(e => e.type !== ExitPointType.Default || e.nodeId !== rootId);
+	}
+	return {
+		...information,
+		cfgEntry:    bodyEntry,
+		cfgExit:     leftByBreak ? rootId : undefined,
+		out:         information.out.concat(body.out),
+		/* the body always runs at least once, so a removal within it is certain */
+		environment: applyKills(information.environment, kill),
+		kill
+	};
 }

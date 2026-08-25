@@ -1,5 +1,6 @@
 import type { DataflowProcessorInformation } from '../processor';
-import type { DataflowInformation, ExitPoint, ExitPointType } from '../info';
+import type { DataflowInformation, ExitPoint } from '../info';
+import { ExitPointType } from '../info';
 import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, NseArguments, NseKind } from '../internal/process/functions/call/known-call-handling';
 import { processAccess } from '../internal/process/functions/call/built-in/built-in-access';
 import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else';
@@ -27,7 +28,7 @@ import { processFunctionDefinition } from '../internal/process/functions/call/bu
 import { processExpressionList } from '../internal/process/functions/call/built-in/built-in-expression-list';
 import { processGet } from '../internal/process/functions/call/built-in/built-in-get';
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { type BuiltIn, NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -78,6 +79,7 @@ import { processNamespaceAccess } from '../internal/process/functions/call/built
 import { processLoadCall } from '../internal/process/functions/call/built-in/built-in-load';
 import { processStringTemplate } from '../internal/process/functions/call/built-in/built-in-string-template';
 import { ArgProp, FnSig, type BuiltInFnInfo } from './built-in-props';
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 export type BuiltInIdentifierProcessor = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -121,6 +123,8 @@ export interface BuiltInIdentifierConstant<T = unknown> extends IdentifierRefere
 
 export interface DefaultBuiltInProcessorConfiguration extends ForceArguments, BuiltInFnInfo {
 	readonly cfg?:                   ExitPointType,
+	/** see {@link ProcessKnownFunctionCallInput#alternativeArgsFrom} */
+	readonly alternativeArgsFrom?:   number,
 	readonly readAllArguments?:      boolean,
 	/**
 	 * Propagate the `out` references produced by the arguments instead of dropping them.
@@ -167,7 +171,7 @@ function dataArgumentSymbols<OtherInfo>(
 	for(let i = 0; i < args.length; i++) {
 		const arg = args[i];
 		const prop = FnSig.propAt(layout, i);
-		if(arg === EmptyArgument || (prop & ArgProp.Atomic) === 0 || (prop & (ArgProp.Callee | ArgProp.Nse)) !== 0) {
+		if(RArgument.isEmpty(arg) || (prop & ArgProp.Atomic) === 0 || (prop & (ArgProp.Callee | ArgProp.Nse)) !== 0) {
 			continue;
 		}
 		const value: RNodeWithParent | undefined = RArgument.is(arg) ? arg.value : arg;
@@ -183,7 +187,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
+	{ useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, alternativeArgsFrom, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	/* a signature states per argument what the individual options state for all of them at once */
 	const layout = sig !== undefined ? FnSig.layout(sig) : undefined;
@@ -194,7 +198,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 	const nsePositions = nsePositionsOf(nse, args.length);
 	let lastEnv = data.environment;
 	const { information: res, processedArguments } = processKnownFunctionCall({
-		name, args, rootId, data, forceArgs,
+		name, args, rootId, data, forceArgs, alternativeArgsFrom,
 		origin:      useAsProcessor,
 		nonFunction: dataArgumentSymbols(args, sig),
 		/* an unevaluated argument must not read the current frame, so it is analyzed in a clean env like `quote` */
@@ -273,7 +277,10 @@ function defaultBuiltInProcessor<OtherInfo>(
 	}
 
 	if(cfg !== undefined) {
-		(res.exitPoints as ExitPoint[]).push({ type: cfg, nodeId: rootId, cds: data.cds });
+		/* the call jumps, so it never falls through to whatever follows it */
+		const exitPoints = (res.exitPoints as ExitPoint[]).filter(e => e.type !== ExitPointType.Default || e.nodeId !== rootId);
+		exitPoints.push({ type: cfg, nodeId: rootId, cds: data.cds });
+		(res as unknown as { exitPoints: ExitPoint[] }).exitPoints = exitPoints;
 	}
 
 	return res;

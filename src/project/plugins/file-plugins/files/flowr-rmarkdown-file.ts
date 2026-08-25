@@ -23,6 +23,7 @@ export class FlowrRMarkdownFile extends FlowrFile {
 	/**
 	 * Prefer the static {@link FlowrRMarkdownFile.from} method
 	 * @param file - the file to load as R Markdown
+	 * @param ctx  - the analyzer context the chunks are read with
 	 */
 	constructor(file: FlowrFileProvider<string>, ctx: FlowrAnalyzerContext) {
 		super(file.path(), file.roles ? [...file.roles, FileRole.Source] : [FileRole.Source]);

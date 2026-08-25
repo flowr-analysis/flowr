@@ -37,7 +37,7 @@ import semver from 'semver/preload';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import type { GraphDifferenceReport, ProblematicDiffInfo } from '../../../src/util/diff-graph';
-import { extractCfg } from '../../../src/control-flow/extract-cfg';
+import { extractCfg } from '../../../src/control-flow/control-flow-graph';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { assertCfgSatisfiesProperties, type CfgProperty } from '../../../src/control-flow/cfg-properties';
 import { FlowrConfig } from '../../../src/config';
@@ -128,6 +128,7 @@ function removeInformation<T extends RProject<unknown> | Record<string, unknown>
 
 function assertAstEqual<Info>(ast: RProject<Info> | RNode<Info>, expected: RProject<Info> | RNode<Info>, includeTokens: boolean, ignoreColumns: boolean, message?: () => string, ignoreMiscSourceInfo = true): void {
 	ast = removeInformation(ast, includeTokens, ignoreColumns, ignoreMiscSourceInfo);
+	// eslint-disable-next-line flowr/replacement-pattern
 	if(expected.type === RType.ExpressionList) {
 		expected = {
 			type: RType.Project,
@@ -618,7 +619,7 @@ export function assertSliced(
 			'cfg SAT properties',
 			function() {
 				const res = tsResult as PipelineOutput<typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>;
-				const cfg = extractCfg(res.normalize, contextFromInput(''), res.dataflow.graph);
+				const cfg = extractCfg(res.dataflow);
 				const check = assertCfgSatisfiesProperties(cfg, testConfig?.cfgExcludeProperties);
 				try {
 					assert.isTrue(check, 'cfg fails properties: ' + check + ' is not satisfied');

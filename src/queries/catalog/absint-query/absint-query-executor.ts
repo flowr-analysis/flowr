@@ -1,5 +1,4 @@
 import { AbstractInterpreter, type AbsintAnalysis } from '../../../abstract-interpretation/absint-inference';
-import { CfgKind } from '../../../project/cfg-kind';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
@@ -20,7 +19,7 @@ export async function executeAbsintQuery<AbsintType extends AbsintQueryType>({ a
 	const inference = AbsintQueryInferences[queries[0].inference];
 	const ast = await analyzer.normalize();
 	const dfg = (await analyzer.dataflow()).graph;
-	const cfg = await analyzer.controlflow(undefined, CfgKind.NoFunctionDefs);
+	const cfg = await analyzer.controlflow();
 
 	const start = Date.now();
 	const analysis = inference.create() as unknown as AbsintAnalysis<AbsintQueryDomains<AbsintType>>;

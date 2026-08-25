@@ -92,7 +92,7 @@ export const FlowrSearchGenerator = {
 	},
 	/**
 	 * Short form of {@link get} with only the
-	 * {@link FlowrSearchGetFilters#line|line} and {@link FlowrSearchGetFilters#column|column} filters:
+	 * {@link FlowrSearchGetFilter#line|line} and {@link FlowrSearchGetFilter#column|column} filters:
 	 * `get({line, column})`. Please use {@link FlowrSearchGenerator#locFuzzy|locFuzzy} for a fuzzy location search.
 	 * @param line - the line number to search in
 	 * @param column - the column number to search in
@@ -112,7 +112,7 @@ export const FlowrSearchGenerator = {
 		return FlowrSearchGenerator.get({ line, column, fuzzy: true, innermostOnly: innermostOnly ?? false, filePathRegex });
 	},
 	/**
-	 * Short form of {@link get} with only the {@link FlowrSearchGetFilters#name|name} and {@link FlowrSearchGetFilters#line|line} filters:
+	 * Short form of {@link get} with only the {@link FlowrSearchGetFilter#name|name} and {@link FlowrSearchGetFilter#line|line} filters:
 	 * `get({name, line})`.
 	 * @param name - the variable name to search for
 	 * @param line - the line number to search in
@@ -122,7 +122,7 @@ export const FlowrSearchGenerator = {
 		return FlowrSearchGenerator.get({ name, line, filePathRegex });
 	},
 	/**
-	 * Short form of {@link get} with only the {@link FlowrSearchGetFilters#name|name} filter:
+	 * Short form of {@link get} with only the {@link FlowrSearchGetFilter#name|name} filter:
 	 * `get({name})`.
 	 * @param name - the variable name to search for
 	 * @param filePathRegex - optional regex to filter by file path
@@ -131,7 +131,7 @@ export const FlowrSearchGenerator = {
 		return FlowrSearchGenerator.get({ name, filePathRegex });
 	},
 	/**
-	 * Short form of {@link get} with only the {@link FlowrSearchGetFilters#id|id} filter:
+	 * Short form of {@link get} with only the {@link FlowrSearchGetFilter#id|id} filter:
 	 * `get({id})`.
 	 * @param id - the node id to search for
 	 * @param filePathRegex - optional regex to filter by file path

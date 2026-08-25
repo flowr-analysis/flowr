@@ -12,6 +12,8 @@ import { CompressedExtPattern, decompressSyncFor } from '../project/sigdb/codec'
 import { DefaultAssumedRVersion } from '../config';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin } from '../project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
+import type { FlowrAnalyzer } from '../project/flowr-analyzer';
+import { Identifier } from '../dataflow/environments/identifier';
 import { FlowrAnalyzerDependenciesContext } from '../project/context/flowr-analyzer-dependencies-context';
 import type { KnownParser } from '../r-bridge/parser';
 import { warnMissingSigDb } from './doc-util/doc-sigdb';
@@ -20,6 +22,18 @@ import { warnMissingSigDb } from './doc-util/doc-sigdb';
 function usePackageDatabase(parser: KnownParser) {
 	const sigdb = new FlowrAnalyzerPackageVersionsSigDbPlugin('/path/to/sigs.manifest.json.br');
 	return new FlowrAnalyzerBuilder().setParser(parser).registerPlugins(sigdb).build();
+}
+
+/** the entry point: one database, versions already resolved the way the project's configuration says */
+function fromTheAnalyzer(analyzer: FlowrAnalyzer) {
+	const db = analyzer.inspectContext().deps.signatures();
+	const lead = Identifier.make('lead', 'dplyr');
+	return {
+		version:    db.versionOf('dplyr'),      // the version this analysis assumes
+		fn:         db.functionOf(lead),        // its entry, decoding only this one function
+		parameters: db.parametersOf(lead),      // its formals, ready for MatchArgs.toNames
+		exports:    db.exportsOf('dplyr')?.exported
+	};
 }
 
 function accessTheDatabase(source: PackageSignatureSource) {
@@ -223,7 +237,7 @@ export class WikiSignatureDatabase extends DocMaker<'wiki/Signature Database.md'
 flowR ships a database of the complete history of all exports in every version of all CRAN packages so it can resolve calls into the packages you load.
 After \`library(ggplot2)\`, a call to \`ggplot()\` resolves to \`ggplot2::ggplot\`. The same database
 qualifies bare names and backs various components like the ${ctx.linkPage('wiki/Query API', 'dependencies and call-context queries')} 
-as well as the ${ctx.linkPage('wiki/Linter', 'undefined symbol')} rule.
+as well as the ${ctx.linkPage('wiki/Linter', 'undefined symbol')} and ${ctx.linkPage('wiki/Linter', 'unused import')} rules.
 
 You can search what it knows at [flowr-analysis.github.io/flowr/wiki/sigdb](https://flowr-analysis.github.io/flowr/wiki/sigdb/),
 a static page listing every exported name, generated from this database by \`npm run gen:landing\`.
@@ -245,13 +259,32 @@ Per version the source also answers declared dependencies (${ctx.link('ResolvedD
 
 Beyond the flags above, ${ctx.link('DecodedFunction::props')} also carry ${ctx.linkE<typeof FnProp>('FnProp', 'NoDoc')} (a documented package has no help page for this name), ${ctx.linkE<typeof FnProp>('FnProp', 'S3Method')} (a registered S3 method, from the package NAMESPACE or base R's method table), and ${ctx.linkE<typeof FnProp>('FnProp', 'S3Owner')} (an exported constructor for an S3 class this package OWNS: it also registers at least one S3 method for that class). The owned classes of a version are ${ctx.link('LibraryExports::s3Classes')}, and ${ctx.linkM(SigDatabase, 'classOwner')} answers, for a class name, which package owns it (backed by a reverse index built once). This lets ${ctx.linkPage('wiki/Query API', 'version guessing')} mark a package used when the analyzed project's own NAMESPACE registers an S3 method for a class it owns, even with no direct call, e.g. tseries's \`S3method("as.irts","zoo")\` marks \`zoo\` used.
 
+The S4 side has ${ctx.linkE<typeof FnProp>('FnProp', 'S4Owner')} for an exported class and ${ctx.linkE<typeof FnProp>('FnProp', 'S4Method')} for a name a package exports because it answered a generic for one of its classes (\`setMethod("sin", "float32", ...)\` plus \`exportMethods(sin)\`), rather than because it defines a function of its own. Such a name is often documented only under its \`sin,float32-method\` Rd alias, so it also carries ${ctx.linkE<typeof FnProp>('FnProp', 'NoDoc')}. Because \`setMethod("Math", ...)\` answers every member of a group at once, ${ctx.link('SignatureDb::functionOf')} falls back to the group entry for a member it finds nothing for: \`pkg::sin\` is served by \`pkg\`'s \`Math\`, which is what the call would dispatch to. ${ctx.link('groupGenericOf')} maps a member to its group.
+
+${ctx.linkE<typeof FnProp>('FnProp', 'Value')} says the export binds a value rather than a function (\`pi\`, \`LETTERS\`, ggplot2's \`class_gg\`). Only the extractor can tell: an entry without a definition location is as likely to be a function nothing wrote down, an S4 generic \`setGeneric\` builds or a \`Vectorize\` result, so a reader that has only the location to go on can say no more than that there is none.
+
 These are derived on demand by the ${ctx.linkPage('wiki/Query API', 'signature query')}, not stored:
-- the rdrr.io documentation link ${ctx.link('SignatureFunctionView::docUrl')} (base R \`/r/<pkg>/<topic>\`, CRAN \`/cran/<pkg>/man/<topic>\`), omitted for a ${ctx.linkE<typeof FnProp>('FnProp', 'NoDoc')} function
+- the documentation link ${ctx.link('SignatureFunctionView::docUrl')}, omitted for a ${ctx.linkE<typeof FnProp>('FnProp', 'NoDoc')} function: R's own manual for a base package, rdrr.io's \`/cran/<pkg>/man/<topic>\` for CRAN. rdrr.io serves an older R, so everything R has gained since (\`sort_by\`, \`array2DF\`, ...) is a dead link there
 - ${ctx.link('SignatureFunctionView::sourceUrl')} and ${ctx.link('SignatureFunctionView::manUrl')}: the definition and its \`.Rd\` help page at the queried version, on \`github.com/cran/<pkg>\` (CRAN) or \`github.com/wch/r-source\` (base R)
 - the S3 method to generic backlink ${ctx.link('SignatureFunctionView::s3method')}, for a ${ctx.linkE<typeof FnProp>('FnProp', 'S3Method')} function, resolving its generic
+- the S4 group ${ctx.link('SignatureFunctionView::s4group')}, for a name that is a member of one (\`sin\` of \`Math\`), saying whether the view was answered by the package's entry for the group rather than by one for the name itself
 - the transitive call graph ${ctx.linkM(SigDatabase, 'transitiveCallees')}, expanding the stored local callees inside one version
 
-Read it back like this:
+## Reading It From an Analyzer
+
+${ctx.linkM(FlowrAnalyzerDependenciesContext, 'signatures')} is the entry point, and it is the one you want.
+
+${ctx.code(fromTheAnalyzer, { dropLinesStart: 1 })}
+
+The ${ctx.link('SignatureDb')} it hands back is every loaded source as one database, answering for the version
+*the analyzed project* assumes for each package, which is the version \`solver.sigdb.versionOverrides\`,
+\`solver.sigdb.versionSelection\` and \`solver.sigdb.assumedRVersion\` produced. That matters, because a
+${ctx.link('PackageSignatureSource')} asked without a version answers for whatever it happens to hold as newest,
+which is not what the analysis assumes. When the assumed version is one the database does not carry, the answer
+falls back to the newest it has and says so in the log rather than quietly answering for another version.
+
+${ctx.link('SignatureDb::sources')} is the escape hatch to the raw sources for what the interface above does not
+cover, and reaches the same functions directly.
 
 ${ctx.code(accessTheDatabase, { dropLinesStart: 1 })}
 

@@ -67,7 +67,19 @@ export const enum FnProp {
 	 * Set on the name of an S4 class this package OWNS: it exports the class via its NAMESPACE `exportClasses()`
 	 * (see {@link LibraryExports.s4Classes}, derived from this bit by {@link deriveLibraryExports}).
 	 */
-	S4Owner          = 1 << 11
+	S4Owner          = 1 << 11,
+	/**
+	 * A registered S4 method: the name is exported because the package answers a generic for one of its classes
+	 * (`setMethod('sin', 'float32', ...)`, `exportMethods(sin)`), not because it defines a function of its own.
+	 * The S4 analogue of {@link FnProp.S3Method}.
+	 */
+	S4Method         = 1 << 12,
+	/**
+	 * The export binds a value rather than a function: a constant, a dataset, a class object (`pi`, `LETTERS`,
+	 * ggplot2's `class_gg`). Only the extractor can tell: an entry without a definition location may equally be
+	 * a function built at load time, an S4 generic or a `Vectorize` result, which has no source to point at.
+	 */
+	Value            = 1 << 13
 }
 
 /** the {@link FnProp} bit to its name (for decoding); integer keys iterate in ascending bit order */
@@ -83,7 +95,9 @@ export const FnPropNames: Readonly<Record<FnProp, string>> = {
 	[FnProp.NoDoc]:            'no-doc',
 	[FnProp.S3Method]:         's3-method',
 	[FnProp.S3Owner]:          's3-owner',
-	[FnProp.S4Owner]:          's4-owner'
+	[FnProp.S4Owner]:          's4-owner',
+	[FnProp.S4Method]:         's4-method',
+	[FnProp.Value]:            'value'
 };
 
 /** parameter flags, packed into {@link SigParam}'s flag int */
@@ -147,6 +161,9 @@ export type PkgBlobTuple = [Sig[], number[][], SigFn[], Record<string, number[]>
  */
 export type SigDbPkgMeta = [latest: string, archived: number, downloads: number, core?: number];
 
+/** Every package the database knows, mapped from its name to its {@link SigDbPkgMeta}. */
+export type SigDbPkgMetaIndex = Record<string, SigDbPkgMeta>;
+
 /**
  * Temporal tier of a bundle's packages:
  * - `current` -- only each package's latest version.
@@ -191,7 +208,7 @@ export interface SigDb {
 	/** package name to its index into {@link SigDb.blobs} */
 	pkgs:      Record<string, number>;
 	/** package name to its {@link SigDbPkgMeta} */
-	meta:      Record<string, SigDbPkgMeta>;
+	meta:      SigDbPkgMetaIndex;
 }
 
 export interface SigParamInfo {

@@ -6,6 +6,8 @@ import { FunctionDefinitionVertex, VariableDefinitionVertex } from '../../datafl
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { NoEdges } from '../../dataflow/graph/graph';
+import { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 /**
  * Path heuristic for an R package `inst/` resource (installed verbatim, not namespace source). Fallback for
@@ -59,10 +61,10 @@ export function isInSubscript(graph: DataflowGraph, id: NodeId): boolean {
 	let parentId = idMap.get(id)?.info.parent;
 	for(let guard = 0; parentId !== undefined && guard < 64; guard++) {
 		const parent = idMap.get(parentId);
-		if(parent === undefined || parent.type === RType.FunctionDefinition) {
+		if(parent === undefined || RFunctionDefinition.is(parent)) {
 			return false;
 		}
-		if(parent.type === RType.Access && (parent.operator === '[' || parent.operator === '[[') && parent.accessed.info.id !== childId) {
+		if(RAccess.is(parent) && (parent.operator === '[' || parent.operator === '[[') && parent.accessed.info.id !== childId) {
 			return true;   // reached from a subscript, not the accessed object
 		}
 		childId = parentId;
@@ -93,7 +95,7 @@ function enclosingScope(idMap: AstIdMap, startParent: NodeId | undefined): { sco
 		if(node === undefined) {
 			break;
 		}
-		if(node.type === RType.FunctionDefinition) {
+		if(RFunctionDefinition.is(node)) {
 			return { scope: cur, unconditional };
 		}
 		if(ConditionalNodeTypes.has(node.type)) {
@@ -153,7 +155,7 @@ export function isDefinedInEnclosingScope(graph: DataflowGraph, defined: ScopeDe
 		if(node === undefined) {
 			break;
 		}
-		if(node.type === RType.FunctionDefinition && defined.get(cur)?.has(name)) {
+		if(RFunctionDefinition.is(node) && defined.get(cur)?.has(name)) {
 			return true;
 		}
 		cur = node.info.parent;

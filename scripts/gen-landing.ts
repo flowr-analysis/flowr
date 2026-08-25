@@ -6,6 +6,8 @@
  * without this script noticing.
  */
 import fs from 'fs';
+import { fillVersion, versionMarker } from './version-marker';
+import { execSync } from 'child_process';
 import path from 'path';
 import { TreeSitterExecutor } from '../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { FlowrAnalyzerBuilder } from '../src/project/flowr-analyzer-builder';
@@ -15,6 +17,7 @@ import { stringifyValue } from '../src/dataflow/eval/values/r-value';
 import { SliceDirection } from '../src/util/slice-direction';
 import { LintingRules } from '../src/linter/linter-rules';
 import { LintingPrettyPrintContext } from '../src/linter/linter-format';
+import { arraySum } from '../src/util/collections/arrays';
 
 /**
  * The samples every tab runs on. Each one is written next to the page as a real `.R` file, so the
@@ -286,7 +289,7 @@ function timings(): { rows: string[][], files: string, lines: string, when: stri
 	const of = (benches: Benchmark[], name: string): number | undefined => benches.find(b => b.name === name)?.value;
 	const sum = (benches: Benchmark[], names: string[]): number | undefined => {
 		const parts = names.map(n => of(benches, n));
-		return parts.every(v => v !== undefined) ? parts.reduce((a, b) => (a) + (b), 0) : undefined;
+		return parts.every(v => v !== undefined) ? arraySum(parts) : undefined;
 	};
 	const Analysis = ['Retrieve AST from R code', 'Normalize R AST', 'Produce dataflow information'];
 	const wanted: [string, (b: Benchmark[]) => number | undefined][] = [
@@ -333,6 +336,15 @@ function spark(series: readonly number[]): string {
 
 interface Benchmark { name: string, value: number, unit: string }
 interface BenchmarkData { entries: Record<string, { commit: { timestamp: string, message: string }, benches: Benchmark[] }[]> }
+
+/** when the page was last updated, taken from the repository so that rebuilding alone does not change it */
+function lastUpdated(): string {
+	try {
+		return execSync('git log -1 --format=%cI', { encoding: 'utf8' }).trim().slice(0, 16).replace('T', ', ');
+	} catch{
+		return new Date().toISOString().slice(0, 16).replace('T', ', ');
+	}
+}
 
 const escape = (text: string): string => text.replace(/[&<>"]/g, c =>
 	({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
@@ -500,9 +512,8 @@ function render(data: PageData): string {
 		.map(([label, ms, trend]) => `\t\t<span class="timing">${escape(label)}${trend}<b>${escape(ms)} ms</b></span>`)
 		.join('\n');
 
-	const version = (JSON.parse(fs.readFileSync('package.json', 'utf8')) as { version: string }).version;
-	return Template
-		.replaceAll('<!--VERSION-->', `v${version}`)
+	return fillVersion(Template, versionMarker())
+		.replace('<!--UPDATED-->', lastUpdated())
 		.replace('<!--TIMES-->', bars)
 		.replace('<!--BENCHFILES-->', measured?.files ?? '')
 		.replace('<!--BENCHLINES-->', measured?.lines ?? '')

@@ -21,6 +21,7 @@ export const RPipe = {
 	name: 'RPipe',
 	/**
 	 * Type guard for {@link RPipe} nodes.
+	 * @lintIgnore node-is node-is-optional
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RPipe<Info> {
 		return node?.type === RType.Pipe;

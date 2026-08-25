@@ -1,5 +1,5 @@
 import { guard } from '../../util/assert';
-import type { EdgeType } from './edge';
+import type { DFControlFlowEdge, EdgeType } from './edge';
 import { DfEdge } from './edge';
 import type { DataflowInformation } from '../info';
 import {
@@ -24,7 +24,7 @@ import { FunctionDefinitionVertex, ValueVertex, UseVertex, VariableDefinitionVer
 
 /**
  * Describes the information we store per function body.
- * The {@link DataflowFunctionFlowInformation#exitPoints} are stored within the enclosing {@link DataflowGraphVertexFunctionDefinition} vertex.
+ * The {@link DataflowInformation#exitPoints} this type omits are stored within the enclosing {@link DataflowGraphVertexFunctionDefinition} vertex.
  */
 export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> };
 
@@ -592,7 +592,9 @@ export class DataflowGraph<
 		return this;
 	}
 
-	public addEdge(fromId: NodeId, toId: NodeId, type: EdgeType | number): this {
+	public addEdge(fromId: NodeId, toId: NodeId, type: EdgeType.ControlEdge, data: Omit<DFControlFlowEdge, 'types'>): this;
+	public addEdge(fromId: NodeId, toId: NodeId, type: Exclude<EdgeType, EdgeType.ControlEdge> | number): this;
+	public addEdge(fromId: NodeId, toId: NodeId, type: EdgeType | number, data?: Omit<DFControlFlowEdge, 'types'>): this {
 		if(fromId === toId) {
 			return this;
 		}
@@ -602,10 +604,14 @@ export class DataflowGraph<
 		if(existing !== undefined) {
 			/* the reverse index holds this very object, so a widened type is already visible through it */
 			existing.types |= type;
+			if(data !== undefined) {
+				Object.assign(existing, data);
+			}
 			return this;
 		}
 
-		const added = { types: type } as Edge;
+		/* the spread would build the object through a slower path, and this runs for every edge of every graph */
+		const added = (data === undefined ? { types: type } : { types: type, cd: data.cd }) as unknown as Edge;
 		if(fromEdges === undefined) {
 			this.edgeInformation.set(fromId, new Map([[toId, added]]));
 		} else {

@@ -110,19 +110,25 @@ code, pre, .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, m
 .bar .version:hover { color: var(--fg); }
 .mark { color: var(--accent); flex: none; }
 .bar nav { display: flex; flex-wrap: nowrap; gap: .1rem .2rem; margin-left: auto; }
-.bar nav a { white-space: nowrap; padding: .3rem .5rem; border-radius: .4rem; color: var(--muted); text-decoration: none; font-size: .82rem; }
+.bar nav a {
+	display: inline-flex; align-items: center; height: 2rem; padding: 0 .5rem; white-space: nowrap;
+	border-radius: .5rem; color: var(--muted); text-decoration: none; font-size: .82rem;
+}
 .bar nav a:hover { background: color-mix(in srgb, var(--fg) 6%, transparent); color: var(--fg); }
 .bar .controls { display: inline-flex; align-items: center; gap: .35rem; flex: none; }
 /* a phone has no room for one row: the links wrap under the name instead of scrolling out of sight */
 @media (max-width: 46rem) {
 	.bar { flex-wrap: wrap; }
-	.bar nav { flex-wrap: wrap; margin-left: 0; order: 3; flex-basis: 100%; overflow-x: visible; }
+	/* the pills hang half a step into the margin so their words, not their backdrops, meet the brand */
+	.bar nav { flex-wrap: wrap; margin-left: -.5rem; order: 3; flex-basis: 100%; overflow-x: visible; gap: .1rem; }
 	.bar .controls { margin-left: auto; }
 }
+/* the four names no longer fit on one line: two by two reads better than three and a stray */
+@media (max-width: 21rem) { .bar nav { display: grid; grid-template-columns: 1fr 1fr; justify-items: start; } }
 /* GitHub asks that its mark stay solid black or white and unmodified, so it does not take the
    page colours; only the backdrop reacts to the pointer */
 .bar .controls .gh, .bar .controls .gh:hover { color: #181717; }
-.bar .controls .gh { display: inline-flex; padding: .3rem .35rem; border-radius: .4rem; }
+.bar .controls .gh { display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: .5rem; }
 .bar .controls .gh:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
 :root[data-theme="dark"] .bar .controls .gh, :root[data-theme="dark"] .bar .controls .gh:hover { color: #fff; }
 @media (prefers-color-scheme: dark) {
@@ -160,10 +166,11 @@ header p.lead { max-width: 44rem; margin: .6rem auto 1rem; font-size: clamp(.95r
 .cta a.primary { border-color: transparent; color: var(--accent-fg); background: var(--accent); }
 
 .demo { overflow: hidden; }
-.tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: .2rem; padding: .4rem .6rem 0; background: var(--sunk); border-bottom: 1px solid var(--border); }
+.tabs { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: .2rem; padding: .4rem .4rem 0; background: var(--sunk); border-bottom: 1px solid var(--border); }
 .tabs::-webkit-scrollbar { display: none; }
 .tabs button {
-	white-space: nowrap; font: inherit; font-size: .9rem; font-weight: 600; padding: .6rem .9rem; cursor: pointer;
+	/* .4rem strip padding + .6rem here puts the label on the same 1rem line as the code and the file name below */
+	white-space: nowrap; font: inherit; font-size: .9rem; font-weight: 600; padding: .6rem .6rem; cursor: pointer;
 	border: 0; border-bottom: 2px solid transparent; border-radius: .4rem .4rem 0 0;
 	background: none; color: var(--muted); transition: color .12s, border-color .12s, background .12s;
 }
@@ -261,16 +268,11 @@ header p.lead { max-width: 44rem; margin: .6rem auto 1rem; font-size: clamp(.95r
 .demo .panels > section { flex: 1; display: flex; flex-direction: column; min-height: 0; }
 .demo .panels > section[hidden] { display: none; }
 .demo .panels > section > .code { flex: 1 1 auto; }
-.demo .panels { min-width: 0; }
 .demo .lede { margin: 0; color: var(--fg); font-size: .95rem; }
 .demo .more { margin: .6rem 0 0; color: var(--muted); font-size: .88rem; }
 @media (max-width: 46rem) {
 	.demo .demobody { grid-template-columns: 1fr; min-height: 0; }
 	.demo .explain { grid-column: 1; grid-row: 2; border-left: 0; border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
-	.demo .panels { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; min-width: 0; }
-.demo .panels > section { flex: 1; display: flex; flex-direction: column; min-height: 0; }
-.demo .panels > section[hidden] { display: none; }
-.demo .panels > section > .code { flex: 1 1 auto; }
 }
 .demo .picking .out .line { opacity: .35; }
 .demo .picking .out .line.lit { opacity: 1; }
@@ -420,6 +422,7 @@ footer .ends > div { display: flex; flex-direction: column; gap: .3rem; }
 footer b { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
 footer a { color: var(--fg); text-decoration: none; font-size: .9rem; }
 footer a:hover { color: var(--accent); text-decoration: underline; }
+.updated { margin: .6rem 0 1.5rem; font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .prose { max-width: 58rem; color: var(--muted); }
 .prose.small { font-size: .88rem; margin-top: 2rem; }
 </style>
@@ -428,7 +431,7 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 <main>
 
 <div class="bar">
-	<h2><a class="brand" href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><a class="version" id="version" href="https://github.com/flowr-analysis/flowr/releases/tag/<!--VERSION-->" target="_blank" rel="noopener" title="the release notes of flowR <!--VERSION-->"><!--VERSION--></a></h2>
+	<h2><a class="brand" href="https://github.com/flowr-analysis/flowr"><img class="mark" src="wiki/img/flowR-mark-red.svg" alt="" width="26" height="26">flowR</a><a class="version" id="version" data-release="<!--VERSION-RELEASE-->" href="<!--VERSION-HREF-->" target="_blank" rel="noopener" title="<!--VERSION-TITLE-->"><!--VERSION-LABEL--></a></h2>
 	<nav>
 		<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
 		<a href="wiki/sigdb/" target="_blank" rel="noopener">Signature DB</a>
@@ -448,7 +451,7 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 	<h1>Program Analysis for R</h1>
 	<p class="lead">flowR is an open source static program analyzer for your R code. It helps you understand existing scripts,
 		find quality issues, improve reproducibility, and check the validity of your analyses.</p>
-	<p id="meta"><b><!--VERSION--></b> &middot; <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a></p>
+	<p id="meta"><b><!--VERSION-LABEL--></b> &middot; <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPL-3.0</a></p>
 	<p class="cta">
 		<a class="primary" href="https://github.com/flowr-analysis/flowr/wiki/Setup" target="_blank" rel="noopener">Get started</a>
 		<a href="wiki/playground/" target="_blank" rel="noopener">Playground</a>
@@ -484,7 +487,7 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 	<div class="demobody">
 	<div class="explain">
 		<p class="lede" id="lede">Point at any name below, or at an access like survey$age, and flowR keeps only the lines that matter.</p>
-		<p class="more" id="lede-more">It keeps the lines the value depends on, the called functions included, and drops the rest.</p>
+		<p class="more" id="lede-more">It keeps just the lines the value depends on (including called functions).</p>
 		<div class="direction" id="direction">
 			<span class="label">Which way?</span>
 			<div class="ways" role="group" aria-label="Which direction to slice in">
@@ -742,11 +745,13 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 	Maintained at Ulm University by <a href="https://eagleoutice.github.io/portfolio/" target="_blank" rel="noopener">Florian Sihler</a>,
 	<a href="https://www.uni-ulm.de/in/sp/team/oliver-gerstl/" target="_blank" rel="noopener">Oliver Gerstl</a>
 	and <a href="https://github.com/flowr-analysis/flowr/graphs/contributors" target="_blank" rel="noopener">everyone else who pitched in</a>,
-	free software under the <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPLv3</a>.
+	free software under the <a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">GPLv3 License</a>.
 	Funded by the German Research Foundation (DFG), grant
 	<a href="https://gepris.dfg.de/gepris/projekt/504226141" target="_blank" rel="noopener">504226141</a>, with a gift from
 	<a href="https://posit.co/" target="_blank" rel="noopener">Posit</a>.
 </p>
+
+<p class="updated">Last updated <!--UPDATED--></p>
 
 </main>
 <div id="tip" role="tooltip" aria-hidden="true"></div>
@@ -778,15 +783,15 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 	const tabs = [...document.querySelectorAll('.tabs button')];
 	const ledes = {
 		slice:     ['Point at any name, or at an access like survey$age, and flowR reduces the script to the part that computes it.',
-			'It keeps the lines the value depends on, the called functions included, and drops the rest.'],
+			'It keeps just the lines the value depends on (including called functions).'],
 		impact:    ['Point at any name to keep the part of the script its value goes on to affect.',
-			'The other direction: change this line, and these are the lines that notice.'],
+			'The other direction: marks every line impacted by the value (including called functions).'],
 		deps:      ['What this script needs, and every file it reads or writes, without running it.',
 			'flowR follows the calls rather than the text, so a path assembled in a variable still shows up, and so does a library() call behind a condition.'],
 		lint:      ['With the dataflow in hand, flowR checks things a text-based linter has no way to see.',
 			'Every finding knows where its value came from, so an unused definition is one that nothing reads, not one that merely looks unused.'],
 		values:    ['What flowR infers for each name, from data frame shapes to concrete values.',
-			'The shape survives filters and joins, so you learn how many columns a frame holds at a given line, and what they are called.'],
+			'We track the shape through filters and joins, so you learn how many columns a frame holds at a given line, and what they are called.'],
 		origin:    ['Which definition a name really reads, and which function a call really reaches.',
 			'Aliases, reassignments and shadowed names included, which is what makes jump-to-definition work in the editor.'],
 		signature: ['Ask what flowR knows about any R function, resolved from its own database.',
@@ -902,30 +907,6 @@ footer a:hover { color: var(--accent); text-decoration: underline; }
 		`<a href="https://github.com/flowr-analysis/flowr/blob/main/LICENSE" target="_blank" rel="noopener">${repo.license?.spdx_id ?? 'GPL-3.0'}</a>`
 	].join(' &middot; ')).catch(() => { /* the page reads fine without it */ });
 </script>
-<script>
-	/* the tag says the number, the name that release carries only lives on GitHub, so it is fetched once someone asks for it */
-	(function() {
-		const tag = document.getElementById('version');
-		if(!tag) { return; }
-		let asked = false;
-		const name = () => {
-			if(asked || !tag.textContent) { return; }
-			asked = true;
-			fetch('https://api.github.com/repos/flowr-analysis/flowr/releases/tags/' + tag.textContent)
-				.then(r => r.ok ? r.json() : Promise.reject(r.status))
-				.then(release => {
-				if(release.name) {
-					const when = release.published_at
-						? new Date(release.published_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
-						: '';
-					tag.title = when ? release.name + ', released ' + when : release.name;
-				}
-			})
-				.catch(() => { /* the title it already carries says enough */ });
-		};
-		tag.addEventListener('pointerenter', name);
-		tag.addEventListener('focus', name);
-	})();
-</script>
+<!--VERSION-SCRIPT-->
 </body>
 </html>

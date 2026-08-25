@@ -12,21 +12,19 @@ import { RemoteFunctions, remoteTarget } from './function-info/remote-functions'
 import { ReadFunctions } from './function-info/read-functions';
 import { WriteFunctions } from './function-info/write-functions';
 import { VisualizeFunctions } from './function-info/visualize-functions';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
+import { statisticsFunctions } from './function-info/statistics-functions';
 import type { CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { Range } from 'semver';
 import type { AsyncOrSync, MarkOptional } from 'ts-essentials';
 import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
-import { ExpectFunctionNames, TestFunctions } from './function-info/test-functions';
+import { TestFunctions } from './function-info/test-functions';
 import type { BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { compactRecord } from '../../../util/objects';
-import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
-import { CallProp } from '../../../dataflow/environments/built-in-props';
-import { FunctionCallVertex } from '../../../dataflow/graph/vertex';
-import { Dataflow } from '../../../dataflow/graph/df-helper';
+import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { collectImplicitEchoes } from './implicit-echo';
 
 /** The value could not be resolved, e.g. a path assembled at runtime. Such a dependency may be missing or fetchable. */
 export const Unknown = 'unknown';
@@ -60,7 +58,7 @@ export const DefaultDependencyCategories = {
 			if(!ignoreDefault) {
 				RProject.visitAst((await data.analyzer.normalize()).ast, node => {
 					let ns: BrandedNamespace | undefined;
-					if(node.type === RType.Symbol && (ns = Identifier.getNamespace(node.content)) !== undefined) {
+					if(RSymbol.is(node) && (ns = Identifier.getNamespace(node.content)) !== undefined) {
 						const dep = data.analyzer.inspectContext().deps.getDependency(ns);
 						/* we should improve the identification of ':::' */
 						result.push({
@@ -101,39 +99,22 @@ export const DefaultDependencyCategories = {
 		defaultValue:     Unknown
 	},
 	'write': {
-		queryDisplayName: 'Written Data',
-		functions:        WriteFunctions,
-		defaultValue:     'stdout'
-	},
-	'print': {
-		queryDisplayName:   'Auto-printed Results',
-		functions:          [],
+		queryDisplayName:   'Outputs',
+		functions:          WriteFunctions,
 		defaultValue:       'stdout',
+		/* what the top level prints on its own is an output like any other, marked {@link DependencyInfo#implicit} */
 		additionalAnalysis: async(data, ignoreDefault, _functions, queryResults, result) => {
-			if(ignoreDefault) {
+			/* without implicit echo (e.g. in a package, whose top-level code runs at install time) nothing is auto-printed */
+			if(ignoreDefault || data.analyzer.flowrConfig.project.assumeImplicitEcho === false) {
 				return;
 			}
-			const [{ ast }, dataflow] = await Promise.all([data.analyzer.normalize(), data.analyzer.dataflow()]);
-			const accountedFor = new Set(Object.values(queryResults?.kinds ?? {})
-				.flatMap(k => Object.values(k.subkinds).flat()).map(r => r.id));
-			for(const file of ast.files) {
-				for(const statement of file.root.children) {
-					if(statement.type !== RType.FunctionCall || accountedFor.has(statement.info.id)) {
-						continue;
-					}
-					const vertex = dataflow.graph.getVertex(statement.info.id);
-					const functionName = FunctionCallVertex.is(vertex)
-						? Dataflow.qualify(statement.info.id, dataflow.graph, false) ?? vertex.name : undefined;
-					if(functionName === undefined) {
-						continue;
-					}
-					const props = queryFnProps(functionName, { environment: dataflow.environment })?.props ?? 0;
-					if((props & (CallProp.Invisible | CallProp.Graphics)) !== 0 || ExpectFunctionNames.test(Identifier.getName(functionName))) {
-						continue;
-					}
-					result.push({ nodeId: statement.info.id, functionName, value: 'stdout' });
-				}
-			}
+			const [ast, dataflow] = await Promise.all([data.analyzer.normalize(), data.analyzer.dataflow()]);
+			/* a call another category reports belongs to that category, except for a statistical test: what it
+			   is asked for is the statistic it prints, so a top-level one is an output like any other */
+			const accountedFor = new Set(Object.entries(queryResults?.kinds ?? {})
+				.filter(([kind]) => kind !== 'statistics')
+				.flatMap(([, k]) => Object.values(k.subkinds).flat()).map(r => r.id));
+			collectImplicitEchoes(ast, dataflow, accountedFor, result);
 		}
 	},
 	'visualize': {
@@ -143,6 +124,10 @@ export const DefaultDependencyCategories = {
 	'test': {
 		queryDisplayName: 'Tests',
 		functions:        TestFunctions
+	},
+	'statistics': {
+		queryDisplayName: 'Statistical Tests',
+		functions:        statisticsFunctions()
 	}
 } as const satisfies Record<string, DependencyCategorySettings>;
 export type DefaultDependencyCategoryName = keyof typeof DefaultDependencyCategories;
@@ -179,6 +164,8 @@ export interface DependencyInfo extends Record<string, unknown>{
 	lexemeOfArgument?:   string;
 	/** The library name, file, source, destination etc. being sourced, read from, or written to. */
 	value?:              string
+	/** the output is not written by a call asking for it: R echoes the top-level statement on its own */
+	implicit?:           boolean
 	versionConstraints?: readonly Range[],
 	derivedRange?:       Range,
 	namespaceInfo?:      NamespaceInfo,
@@ -201,7 +188,9 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 		const value = stands !== undefined ? faint(stands, formatter) : bold(i.value as string, formatter);
 		const version = i.derivedRange !== undefined ? ` ${faint(i.derivedRange.format(), formatter)}` : '';
 		const linked = i.linkedIds ? `, linked ${i.linkedIds.join(', ')}` : '';
-		result.push(`     ${value}${version} ${faint(`via ${fn} (node ${i.nodeId}${linked})`, formatter)}`);
+		/* an output nothing asked for reads like every other one, so it says that it is the top level echoing */
+		const how = i.implicit ? 'auto-printed by' : 'via';
+		result.push(`     ${value}${version} ${faint(`${how} ${fn} (node ${i.nodeId}${linked})`, formatter)}`);
 	}
 }
 

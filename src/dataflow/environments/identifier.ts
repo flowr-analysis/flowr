@@ -7,6 +7,7 @@ import type { REnvironmentInformation } from './environment';
 import type { Origin } from '../origin/dfg-get-origin';
 /* type-only, as the value import would cycle back through the graph helpers */
 import type { Dataflow } from '../graph/df-helper';
+import { enumMembers } from '../../util/objects';
 
 /** this is just a safe-guard type to prevent mixing up branded identifiers with normal strings */
 export type BrandedIdentifier = string & { __brand?: 'identifier' };
@@ -243,6 +244,8 @@ export const Identifier = {
 	 *    a user definition, so a local `sd()` stays bare.
 	 *
 	 * Returns `undefined` when none apply. Steps 2 and 3 need the call's `name`.
+	 * @param origins      - the origins of the call to qualify
+	 * @param name         - the name the call was written with, needed by steps 2 and 3
 	 * @param qualifyBaseR - whether to also qualify a bare base-R call from its exporting package (default `true`)
 	 * @see {@link Dataflow.qualify} - the compact form, if you have the call's id and its graph
 	 */
@@ -306,6 +309,7 @@ export const enum PkgName {
 	/* CRAN / third-party */
 	AssertThat   = 'assertthat',
 	Box          = 'box',
+	Car          = 'car',
 	Cli          = 'cli',
 	CohortBuilder = 'cohortBuilder',
 	DataTable    = 'data.table',
@@ -321,9 +325,12 @@ export const enum PkgName {
 	Inferference = 'inferference',
 	Janitor      = 'janitor',
 	Lattice      = 'lattice',
+	LmTest       = 'lmtest',
 	Magick       = 'magick',
 	Magrittr     = 'magrittr',
 	Msgr         = 'msgr',
+	Multcomp     = 'multcomp',
+	NorTest      = 'nortest',
 	PkgLoad      = 'pkgload',
 	Plyr         = 'plyr',
 	Purrr        = 'purrr',
@@ -335,6 +342,7 @@ export const enum PkgName {
 	Rlang        = 'rlang',
 	RmethodsS3   = 'R.methodsS3',
 	Roo          = 'R.oo',
+	Rstatix      = 'rstatix',
 	RstudioApi   = 'rstudioapi',
 	Rutils       = 'R.utils',
 	S7           = 'S7',
@@ -352,7 +360,10 @@ export const enum PkgName {
 	Stringr      = 'stringr',
 	TinyPlot     = 'tinyplot',
 	TryCatchLog  = 'tryCatchLog',
+	Tseries      = 'tseries',
 	Withr        = 'withr',
+	Forecats     = 'forcats',
+	Readr        = 'readr'
 }
 
 /**
@@ -396,7 +407,7 @@ export enum ReferenceType {
 }
 
 /** Reverse mapping of the reference types so you can get the name from the bitmask (useful for debugging) */
-export const ReferenceTypeReverseMapping = new Map<ReferenceType, string>(Object.entries(ReferenceType).map(([k, v]) => [v as ReferenceType, k]));
+export const ReferenceTypeReverseMapping = new Map<ReferenceType, string>(enumMembers(ReferenceType).map(([name, value]) => [value, name]));
 
 /**
  * Check if the reference types have an overlapping type!

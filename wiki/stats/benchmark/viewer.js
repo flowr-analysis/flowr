@@ -2195,8 +2195,9 @@
 		/* the box keeps its state while it is away, so a suite that carries a calibration again is normalised again */
 		if(calib) {
 			ui.calibrationNote.textContent = 'A fixed synthetic workload runs in the same CI job, so "' + calib
-				+ '" measures how fast or loaded that machine was. Dividing the timings by it cancels the machine out, '
-				+ 'while counts, sizes, and ratios stay as measured.';
+				+ '" measures how fast or loaded that machine was. Whatever else the runner did can only add time, '
+				+ 'so the fastest run of a scale is the reference and every other timing has that added time taken '
+				+ 'back off, never put on. The correction is bounded, and counts, sizes, and ratios stay as measured.';
 		}
 
 		const factors = calib && ui.calibrate.checked ? S.calibrationFactors(runs.map(r => valueOf(r, calib))) : null;

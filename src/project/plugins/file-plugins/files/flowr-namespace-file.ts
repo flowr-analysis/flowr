@@ -14,13 +14,15 @@ import { foldAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/fold
 import { Identifier } from '../../../../dataflow/environments/identifier';
 import { isNotUndefined } from '../../../../util/assert';
 import type { PotentiallyEmptyRArgument, RFunctionCall } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import {
 	toUnnamedArgument
 } from '../../../../dataflow/internal/process/functions/call/argument/make-argument';
 import { SourceRange } from '../../../../util/range';
 import { parseRRegexPattern } from '../../../../util/r-regex';
+import { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { uniqueArray } from '../../../../util/collections/arrays';
+import { EmptyArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 export interface NamespaceInfo {
 	exportedSymbols:      string[];
@@ -233,7 +235,7 @@ export function getExportedNames(info: NamespaceInfo): string[] {
 			s3.push(`${g}.${m}`);
 		}
 	}
-	return [...new Set([...info.exportedSymbols, ...info.exportedFunctions, ...info.exportedPatterns, ...s3])];
+	return uniqueArray([...info.exportedSymbols, ...info.exportedFunctions, ...info.exportedPatterns, ...s3]);
 }
 
 /** The names a package makes callable: the explicitly configured {@link NamespaceInfo#callable} subset, or all exports (see {@link getExportedNames}) by default. */
@@ -300,7 +302,7 @@ function handleS3MethodCall(g: NamespaceFormat, args: readonly PotentiallyEmptyR
 	}
 	const pkgArg = args[0];
 	const funcArg = args[1];
-	if(pkgArg === EmptyArgument || funcArg === EmptyArgument || !pkgArg.lexeme || !funcArg.lexeme) {
+	if(RArgument.isEmpty(pkgArg) || RArgument.isEmpty(funcArg) || !pkgArg.lexeme || !funcArg.lexeme) {
 		return g;
 	}
 	const pkg = unquoteName(pkgArg.lexeme);
@@ -328,7 +330,7 @@ function handleImportFromCall(g: NamespaceFormat, args: readonly PotentiallyEmpt
 		return g;
 	}
 	const pkgArg = args[0];
-	if(pkgArg === EmptyArgument || !pkgArg.lexeme) {
+	if(RArgument.isEmpty(pkgArg) || !pkgArg.lexeme) {
 		return g;
 	}
 	const pkg = unquoteName(pkgArg.lexeme);
@@ -339,7 +341,7 @@ function handleImportFromCall(g: NamespaceFormat, args: readonly PotentiallyEmpt
 	}
 	for(let i = 1; i < args.length; i++) {
 		const symArg = args[i];
-		if(symArg === EmptyArgument || !symArg.lexeme) {
+		if(RArgument.isEmpty(symArg) || !symArg.lexeme) {
 			continue;
 		}
 		const sym = unquoteName(symArg.lexeme);
@@ -352,20 +354,12 @@ function handleUseDynLibCall(g: NamespaceFormat, args: readonly PotentiallyEmpty
 		return g;
 	}
 	const pkgArg = args[0];
-	if(pkgArg === EmptyArgument || !pkgArg.lexeme) {
+	if(RArgument.isEmpty(pkgArg) || !pkgArg.lexeme) {
 		return g;
 	}
 	const pkg = unquoteName(pkgArg.lexeme);
 	if(!g[pkg]) {
-		g[pkg] = {
-			exportedSymbols:      [],
-			exportedFunctions:    [],
-			exportS3Generics:     new Map<string, string[]>(),
-			exportedPatterns:     [],
-			importedPackages:     new Map<string, string[] | 'all'>(),
-			callable:             [],
-			loadsWithSideEffects: false,
-		};
+		g[pkg] = emptyNamespaceInfo();
 	}
 	g[pkg].loadsWithSideEffects = true;
 	return g;
@@ -380,18 +374,21 @@ function handleExportClassesCall(g: NamespaceFormat, args: readonly PotentiallyE
 }
 const cleanLineCommentRegex = /^#.*$/gm;
 
-function getEmptyNamespaceFormat(): NamespaceFormat {
+/** A namespace that neither exports nor imports anything yet. */
+function emptyNamespaceInfo(): NamespaceInfo {
 	return {
-		current: {
-			exportedSymbols:      [] as string[],
-			exportedFunctions:    [] as string[],
-			exportS3Generics:     new Map<string, string[]>(),
-			exportedPatterns:     [] as string[],
-			importedPackages:     new Map<string, string[] | 'all'>(),
-			callable:             [] as string[],
-			loadsWithSideEffects: false,
-		},
+		exportedSymbols:      [] as string[],
+		exportedFunctions:    [] as string[],
+		exportS3Generics:     new Map<string, string[]>(),
+		exportedPatterns:     [] as string[],
+		importedPackages:     new Map<string, string[] | 'all'>(),
+		callable:             [] as string[],
+		loadsWithSideEffects: false,
 	};
+}
+
+function getEmptyNamespaceFormat(): NamespaceFormat {
+	return { current: emptyNamespaceInfo() };
 }
 function mergeNamespaceFormat(target: NamespaceFormat, source: NamespaceFormat): NamespaceFormat {
 	return {
@@ -539,15 +536,7 @@ function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 				}
 				const [pkg] = parts;
 				if(!result[pkg]) {
-					result[pkg] = {
-						exportedSymbols:      [],
-						exportedFunctions:    [],
-						exportS3Generics:     new Map<string, string[]>(),
-						exportedPatterns:     [],
-						importedPackages:     new Map<string, string[] | 'all'>(),
-						callable:             [],
-						loadsWithSideEffects: false,
-					};
+					result[pkg] = emptyNamespaceInfo();
 				}
 				result[pkg].loadsWithSideEffects = true;
 				break;

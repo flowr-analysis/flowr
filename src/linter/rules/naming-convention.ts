@@ -118,7 +118,7 @@ export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[
 		map.set(symbol.detectedCasing, o + 1);
 	}
 
-	// Return element with most occurances
+	// Return element with most occurrences
 	return [...map].reduce((p, c) => p[1] > c[1] ? p : c)[0];
 }
 

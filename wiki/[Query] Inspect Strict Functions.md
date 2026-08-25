@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-18, 14:51:36 UTC (v2.14.0), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-20, 22:53:36 UTC (v2.14.1), please do not edit directly._
 <h2 id="Inspect Strict Functions Query">Inspect Strict Functions Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Determine whether functions force their arguments\
@@ -46,15 +46,15 @@ such as `obj$m(x)`, leaves the parameter `conditionally` strict:
 
 _Results (prettified and summarized):_
 
-Query: **inspect-strictness** (5ms)\
+Query: **inspect-strictness** (2ms)\
 &nbsp;&nbsp;- Function **10** (1.6-34) is conditionally strict (x: always, y: conditionally)\
 &nbsp;&nbsp;- Function **19** (2.14-29) is never strict (x: always, y: never)\
 &nbsp;&nbsp;- Function **28** (3.14-29) is never strict (x: never, y: always)\
-_All queries together required ≈6 ms (1ms accuracy, total 7 ms)_
+_All queries together required ≈3 ms (1ms accuracy, total 3 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _6.8 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _2.7 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -66,7 +66,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "inspect-strictness": {
     ".meta": {
-      "timing": 5
+      "timing": 2
     },
     "strictness": {
       "10": {
@@ -93,7 +93,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 6
+    "timing": 3
   }
 }
 ```
@@ -118,7 +118,7 @@ f.numeric <- function(x, y) y
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _4.6 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _1.7 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -152,7 +152,6 @@ UseMethod`"]
     style 8 stroke:purple,stroke-width:4px; 
     style 6 stroke:purple,stroke-width:4px; 
 end
-   %% No edges found for 10
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 10)`"]
     11[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -172,7 +171,6 @@ subgraph "flow-19" [function 19]
     17(["`*#91;RSymbol#93;* **x**
       *2.29* (**id: 17**)`"])
 end
-   %% No edges found for 19
     12["`*#91;RSymbol#93;* **f.default**
       *2.1-9* (**id: 12**, v: 19)`"]
     20[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -189,16 +187,21 @@ subgraph "flow-28" [function 28]
     26(["`*#91;RSymbol#93;* **y**
       *3.29* (**id: 26**)`"])
 end
-   %% No edges found for 28
     21["`*#91;RSymbol#93;* **f.numeric**
       *3.1-9* (**id: 21**, v: 28)`"]
     29[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
       *3.1-29* (**id: 29**)
     arg: (21, 28)`"]]
+    1 -.->|"flow"| 3
+    linkStyle 0 stroke:gray,color:gray;
     1 -->|"def-on-call"| 22
     1 -->|"def-on-call"| 13
+    3 -.->|"flow"| 6
+    linkStyle 3 stroke:gray,color:gray;
     3 -->|"def-on-call"| 24
     3 -->|"def-on-call"| 15
+    6 -.->|"flow"| 8
+    linkStyle 6 stroke:gray,color:gray;
     6 -->|"arg"| 1
     6 -->|"arg"| 3
     6 -->|"calls"| 28
@@ -207,37 +210,55 @@ end
     6 -->|"returns"| 17
     8 -->|"arg"| 6
     8 -.->|"reads, calls"| built-in:UseMethod
-    linkStyle 11 stroke:gray;
+    linkStyle 14 stroke:gray;
 10 -.-|function| flow-10
 
+    10 -.->|"flow"| 0
+    linkStyle 16 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 11
     0 -->|"defined-by"| 10
-    0 -->|"defined-by"| 11
     11 -->|"reads, arg"| 10
     11 -->|"returns, arg"| 0
     11 -.->|"reads, calls"| built-in:_-
-    linkStyle 17 stroke:gray;
+    linkStyle 21 stroke:gray;
+    11 -.->|"flow"| 19
+    linkStyle 22 stroke:gray,color:gray;
+    13 -.->|"flow"| 15
+    linkStyle 0 stroke:gray,color:gray;
     13 -->|"def-by-on-call"| 1
+    15 -.->|"flow"| 17
+    linkStyle 2 stroke:gray,color:gray;
     15 -->|"def-by-on-call"| 3
     17 -->|"reads"| 13
 19 -.-|function| flow-19
 
+    19 -.->|"flow"| 12
+    linkStyle 29 stroke:gray,color:gray;
+    12 -->|"defined-by, flow"| 20
     12 -->|"defined-by"| 19
-    12 -->|"defined-by"| 20
     20 -->|"reads, arg"| 19
     20 -->|"returns, arg"| 12
     20 -.->|"reads, calls"| built-in:_-
-    linkStyle 26 stroke:gray;
+    linkStyle 34 stroke:gray;
+    20 -.->|"flow"| 28
+    linkStyle 35 stroke:gray,color:gray;
+    22 -.->|"flow"| 24
+    linkStyle 0 stroke:gray,color:gray;
     22 -->|"def-by-on-call"| 1
+    24 -.->|"flow"| 26
+    linkStyle 2 stroke:gray,color:gray;
     24 -->|"def-by-on-call"| 3
     26 -->|"reads"| 24
 28 -.-|function| flow-28
 
+    28 -.->|"flow"| 21
+    linkStyle 42 stroke:gray,color:gray;
+    21 -->|"defined-by, flow"| 29
     21 -->|"defined-by"| 28
-    21 -->|"defined-by"| 29
     29 -->|"reads, arg"| 28
     29 -->|"returns, arg"| 21
     29 -.->|"reads, calls"| built-in:_-
-    linkStyle 35 stroke:gray;
+    linkStyle 47 stroke:gray;
 ```
 
 	
@@ -270,13 +291,13 @@ function definitions whether they are strict:
 
 _Results (prettified and summarized):_
 
-Query: **inspect-strictness** (5ms)\
+Query: **inspect-strictness** (2ms)\
 &nbsp;&nbsp;- Function **27** (1.6-67) is never strict (a: always, b: conditionally, c: never)\
-_All queries together required ≈5 ms (1ms accuracy, total 6 ms)_
+_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _6.3 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _2.2 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -288,7 +309,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "inspect-strictness": {
     ".meta": {
-      "timing": 5
+      "timing": 2
     },
     "strictness": {
       "27": {
@@ -302,7 +323,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 5
+    "timing": 2
   }
 }
 ```
@@ -325,7 +346,7 @@ f <- function(a, b, c) { print(a); if(runif(1) > .5) print(b); 42 }
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _3.0 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _1.5 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered unknown side effects (with ids: 12 (linked), 22 (linked)) during the analysis.
 
 
@@ -338,13 +359,10 @@ flowchart LR
 subgraph "flow-27" [function 27]
     1["`*#91;RSymbol#93;* **a**
       *1.15* (**id: 1**, v: )`"]
-   %% No edges found for 1
     3["`*#91;RSymbol#93;* **b**
       *1.18* (**id: 3**, v: )`"]
-   %% No edges found for 3
     5["`*#91;RSymbol#93;* **c**
       *1.21* (**id: 5**, v: )`"]
-   %% No edges found for 5
     10(["`*#91;RSymbol#93;* **a**
       *1.32* (**id: 10**)`"])
     12[["`*#91;RFunctionCall#93;* base#58;#58;**print**
@@ -355,7 +373,6 @@ print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     14{{"`*#91;RNumber#93;* **1**
       *1.45* (**id: 14**)`"}}
-   %% No edges found for 14
     16[["`*#91;RFunctionCall#93;* stats#58;#58;**runif**
       *1.39-46* (**id: 16**)
     arg: (14)`"]]
@@ -364,7 +381,6 @@ runif`"]
     style built-in:runif stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     17{{"`*#91;RNumber#93;* **.5**
       *1.50-51* (**id: 17**)`"}}
-   %% No edges found for 17
     18[["`*#91;RBinaryOp#93;* base#58;#58;**#62;**
       *1.39-51* (**id: 18**)
     arg: (16, 17)`"]]
@@ -384,7 +400,6 @@ if`"]
     style built-in:if stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     25{{"`*#91;RNumber#93;* **42**
       *1.64-65* (**id: 25**)`"}}
-   %% No edges found for 25
     26[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.24* (**id: 26**)
     arg: (12, 24, 25)`"]]
@@ -396,7 +411,6 @@ if`"]
     style 25 stroke:purple,stroke-width:4px; 
     style 26 stroke:purple,stroke-width:4px; 
 end
-   %% No edges found for 27
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 27)`"]
     28[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -405,40 +419,68 @@ end
     built-in:_-["`Built-In:
 #60;#45;`"]
     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 3
+    linkStyle 0 stroke:gray,color:gray;
+    3 -.->|"flow"| 5
+    linkStyle 1 stroke:gray,color:gray;
+    5 -.->|"flow"| 10
+    linkStyle 2 stroke:gray,color:gray;
     10 -->|"reads"| 1
+    10 -.->|"flow"| 12
+    linkStyle 4 stroke:gray,color:gray;
     12 -->|"reads, returns, arg"| 10
     12 -.->|"reads, calls"| built-in:print
-    linkStyle 2 stroke:gray;
+    linkStyle 6 stroke:gray;
+    12 -.->|"flow"| 14
+    linkStyle 7 stroke:gray,color:gray;
+    14 -.->|"flow"| 16
+    linkStyle 8 stroke:gray,color:gray;
     16 -->|"reads, arg"| 14
+    16 -.->|"flow"| 17
+    linkStyle 10 stroke:gray,color:gray;
     16 -.->|"reads, calls"| built-in:runif
-    linkStyle 4 stroke:gray;
+    linkStyle 11 stroke:gray;
+    17 -.->|"flow"| 18
+    linkStyle 12 stroke:gray,color:gray;
     18 -->|"reads, arg"| 16
     18 -->|"reads, arg"| 17
+    18 -.->|"branch (when: true)"| 20
+    linkStyle 15 stroke:gray,color:gray;
+    18 -.->|"branch (when: false)"| 24
+    linkStyle 16 stroke:gray,color:gray;
     18 -.->|"reads, calls"| built-in:_
-    linkStyle 7 stroke:gray;
+    linkStyle 17 stroke:gray;
     20 -->|"reads"| 3
+    20 -.->|"flow"| 22
+    linkStyle 19 stroke:gray,color:gray;
     22 -->|"reads, returns, arg"| 20
     22 -.->|"reads, calls"| built-in:print
-    linkStyle 10 stroke:gray;
-    22 -->|"CD-True"| 24
-    linkStyle 11 stroke:gray,color:gray;
+    linkStyle 21 stroke:gray;
+    22 -.->|"flow"| 24
+    linkStyle 22 stroke:gray,color:gray;
     24 -->|"returns, arg"| 22
     24 -->|"reads, arg"| 18
     24 -.->|"reads, calls"| built-in:if
-    linkStyle 14 stroke:gray;
+    linkStyle 25 stroke:gray;
+    24 -.->|"flow"| 25
+    linkStyle 26 stroke:gray,color:gray;
+    25 -.->|"flow"| 26
+    linkStyle 27 stroke:gray,color:gray;
     26 -->|"arg"| 12
     26 -->|"arg"| 24
     26 -->|"returns, arg"| 25
     26 -.->|"reads, calls"| built-in:_
-    linkStyle 18 stroke:gray;
+    linkStyle 31 stroke:gray;
 27 -.-|function| flow-27
 
+    27 -.->|"flow"| 0
+    linkStyle 33 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 28
     0 -->|"defined-by"| 27
-    0 -->|"defined-by"| 28
     28 -->|"reads, arg"| 27
     28 -->|"returns, arg"| 0
     28 -.->|"reads, calls"| built-in:_-
-    linkStyle 24 stroke:gray;
+    linkStyle 38 stroke:gray;
 ```
 
 	
@@ -477,13 +519,13 @@ This query also supports a slicing criterion based query mode that only returns 
 
 _Results (prettified and summarized):_
 
-Query: **inspect-strictness** (5ms)\
+Query: **inspect-strictness** (2ms)\
 &nbsp;&nbsp;- Function **27** (1.6-67) is never strict (a: always, b: conditionally, c: never)\
-_All queries together required ≈5 ms (1ms accuracy, total 5 ms)_
+_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _4.8 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _1.8 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -495,7 +537,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "inspect-strictness": {
     ".meta": {
-      "timing": 5
+      "timing": 2
     },
     "strictness": {
       "27": {
@@ -509,7 +551,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 5
+    "timing": 2
   }
 }
 ```
@@ -532,7 +574,7 @@ f <- function(a, b, c) { print(a); if(runif(1) > .5) print(b); 42 }
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _3.8 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _1.6 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered unknown side effects (with ids: 12 (linked), 22 (linked)) during the analysis.
 
 
@@ -545,13 +587,10 @@ flowchart LR
 subgraph "flow-27" [function 27]
     1["`*#91;RSymbol#93;* **a**
       *1.15* (**id: 1**, v: )`"]
-   %% No edges found for 1
     3["`*#91;RSymbol#93;* **b**
       *1.18* (**id: 3**, v: )`"]
-   %% No edges found for 3
     5["`*#91;RSymbol#93;* **c**
       *1.21* (**id: 5**, v: )`"]
-   %% No edges found for 5
     10(["`*#91;RSymbol#93;* **a**
       *1.32* (**id: 10**)`"])
     12[["`*#91;RFunctionCall#93;* base#58;#58;**print**
@@ -562,7 +601,6 @@ print`"]
     style built-in:print stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     14{{"`*#91;RNumber#93;* **1**
       *1.45* (**id: 14**)`"}}
-   %% No edges found for 14
     16[["`*#91;RFunctionCall#93;* stats#58;#58;**runif**
       *1.39-46* (**id: 16**)
     arg: (14)`"]]
@@ -571,7 +609,6 @@ runif`"]
     style built-in:runif stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     17{{"`*#91;RNumber#93;* **.5**
       *1.50-51* (**id: 17**)`"}}
-   %% No edges found for 17
     18[["`*#91;RBinaryOp#93;* base#58;#58;**#62;**
       *1.39-51* (**id: 18**)
     arg: (16, 17)`"]]
@@ -591,7 +628,6 @@ if`"]
     style built-in:if stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
     25{{"`*#91;RNumber#93;* **42**
       *1.64-65* (**id: 25**)`"}}
-   %% No edges found for 25
     26[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
       *1.24* (**id: 26**)
     arg: (12, 24, 25)`"]]
@@ -603,7 +639,6 @@ if`"]
     style 25 stroke:purple,stroke-width:4px; 
     style 26 stroke:purple,stroke-width:4px; 
 end
-   %% No edges found for 27
     0["`*#91;RSymbol#93;* **f**
       *1.1* (**id: 0**, v: 27)`"]
     28[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
@@ -612,40 +647,68 @@ end
     built-in:_-["`Built-In:
 #60;#45;`"]
     style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
+    1 -.->|"flow"| 3
+    linkStyle 0 stroke:gray,color:gray;
+    3 -.->|"flow"| 5
+    linkStyle 1 stroke:gray,color:gray;
+    5 -.->|"flow"| 10
+    linkStyle 2 stroke:gray,color:gray;
     10 -->|"reads"| 1
+    10 -.->|"flow"| 12
+    linkStyle 4 stroke:gray,color:gray;
     12 -->|"reads, returns, arg"| 10
     12 -.->|"reads, calls"| built-in:print
-    linkStyle 2 stroke:gray;
+    linkStyle 6 stroke:gray;
+    12 -.->|"flow"| 14
+    linkStyle 7 stroke:gray,color:gray;
+    14 -.->|"flow"| 16
+    linkStyle 8 stroke:gray,color:gray;
     16 -->|"reads, arg"| 14
+    16 -.->|"flow"| 17
+    linkStyle 10 stroke:gray,color:gray;
     16 -.->|"reads, calls"| built-in:runif
-    linkStyle 4 stroke:gray;
+    linkStyle 11 stroke:gray;
+    17 -.->|"flow"| 18
+    linkStyle 12 stroke:gray,color:gray;
     18 -->|"reads, arg"| 16
     18 -->|"reads, arg"| 17
+    18 -.->|"branch (when: true)"| 20
+    linkStyle 15 stroke:gray,color:gray;
+    18 -.->|"branch (when: false)"| 24
+    linkStyle 16 stroke:gray,color:gray;
     18 -.->|"reads, calls"| built-in:_
-    linkStyle 7 stroke:gray;
+    linkStyle 17 stroke:gray;
     20 -->|"reads"| 3
+    20 -.->|"flow"| 22
+    linkStyle 19 stroke:gray,color:gray;
     22 -->|"reads, returns, arg"| 20
     22 -.->|"reads, calls"| built-in:print
-    linkStyle 10 stroke:gray;
-    22 -->|"CD-True"| 24
-    linkStyle 11 stroke:gray,color:gray;
+    linkStyle 21 stroke:gray;
+    22 -.->|"flow"| 24
+    linkStyle 22 stroke:gray,color:gray;
     24 -->|"returns, arg"| 22
     24 -->|"reads, arg"| 18
     24 -.->|"reads, calls"| built-in:if
-    linkStyle 14 stroke:gray;
+    linkStyle 25 stroke:gray;
+    24 -.->|"flow"| 25
+    linkStyle 26 stroke:gray,color:gray;
+    25 -.->|"flow"| 26
+    linkStyle 27 stroke:gray,color:gray;
     26 -->|"arg"| 12
     26 -->|"arg"| 24
     26 -->|"returns, arg"| 25
     26 -.->|"reads, calls"| built-in:_
-    linkStyle 18 stroke:gray;
+    linkStyle 31 stroke:gray;
 27 -.-|function| flow-27
 
+    27 -.->|"flow"| 0
+    linkStyle 33 stroke:gray,color:gray;
+    0 -->|"defined-by, flow"| 28
     0 -->|"defined-by"| 27
-    0 -->|"defined-by"| 28
     28 -->|"reads, arg"| 27
     28 -->|"returns, arg"| 0
     28 -.->|"reads, calls"| built-in:_-
-    linkStyle 24 stroke:gray;
+    linkStyle 38 stroke:gray;
 ```
 
 	

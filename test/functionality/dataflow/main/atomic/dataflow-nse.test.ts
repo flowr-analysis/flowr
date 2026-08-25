@@ -8,6 +8,7 @@ import { guard } from '../../../../../src/util/assert';
 import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { NoEdges } from '../../../../../src/dataflow/graph/graph';
+import { DfEdge } from '../../../../../src/dataflow/graph/edge';
 import { OriginType } from '../../../../../src/dataflow/origin/dfg-get-origin';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 
@@ -72,7 +73,8 @@ describe('Dataflow', withTreeSitter(ts => {
 			const analysis = await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps();
 			const idMap = analysis.normalize.idMap;
 			const targets = (use: SlicingCriterion) =>
-				[...analysis.dataflow.graph.outgoingEdges(SlicingCriterion.parse(use, idMap)) ?? NoEdges].map(([target]) => target);
+				[...analysis.dataflow.graph.outgoingEdges(SlicingCriterion.parse(use, idMap)) ?? NoEdges]
+					.filter(([, edge]) => !DfEdge.isOnlyControlFlow(edge)).map(([target]) => target);
 			assert.deepStrictEqual(targets('5@id'), [SlicingCriterion.parse('5@df', idMap)], 'a name bound to a function is the column');
 			assert.sameMembers(targets('5@n'), [SlicingCriterion.parse('4@n', idMap), SlicingCriterion.parse('5@df', idMap)],
 				'a name bound to a value is both');
@@ -90,7 +92,8 @@ describe('Dataflow', withTreeSitter(ts => {
 				const analysis = await createDataflowPipeline(ts, { context: contextFromInput(code) }).allRemainingSteps();
 				const idMap = analysis.normalize.idMap;
 				const at = SlicingCriterion.parse(use, idMap);
-				const targets = [...analysis.dataflow.graph.outgoingEdges(at) ?? NoEdges].map(([target]) => target);
+				const targets = [...analysis.dataflow.graph.outgoingEdges(at) ?? NoEdges]
+					.filter(([, edge]) => !DfEdge.isOnlyControlFlow(edge)).map(([target]) => target);
 				const data = SlicingCriterion.parse(`${use.slice(0, use.indexOf('@'))}@df` as SlicingCriterion, idMap);
 				assert.include(targets, data, 'the data it may be a column of');
 				assert.strictEqual(targets.length > 1, keepsIt, keepsIt ? 'the classed closure stays a candidate' : 'a bare closure is not one');

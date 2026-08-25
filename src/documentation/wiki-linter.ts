@@ -13,6 +13,8 @@ import { joinWithLast } from '../util/text/strings';
 import { guard } from '../util/assert';
 import { getFunctionsFromFolder } from './doc-util/doc-functions';
 import { LintingResultCertainty, LintingRuleCertainty } from '../linter/linter-format';
+import { LintQuickFixes } from '../linter/linter-fix';
+import type { LinterOutputFormat } from '../linter/linter-output';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
@@ -99,7 +101,7 @@ function registerRules(knownParser: KnownParser, tagTypes: TypeElementInSource[]
 	const ruleExplanations = new Map<LintingRuleNames, () => Promise<string>>();
 
 	rule(knownParser,
-		'deprecated-functions', 'FunctionsToDetectConfig', 'DEPRECATED_FUNCTIONS', 'lint-deprecated-functions',
+		'deprecated-functions', 'DeprecatedFunctionsConfig', 'DEPRECATED_FUNCTIONS', 'lint-deprecated-functions',
 		`
 first <- data.frame(x = c(1, 2, 3), y = c(1, 2, 3))
 second <- data.frame(x = c(1, 3, 2), y = c(1, 3, 2))
@@ -198,6 +200,10 @@ function(x) {
 	rule(knownParser,
 		'unclosed-connection', 'UnclosedConnectionConfig', 'UNCLOSED_CONNECTION', 'lint-unclosed-connection',
 		'con <- file("data.csv")\nreadLines(con)', tagTypes);
+
+	rule(knownParser,
+		'unused-import', 'UnusedImportConfig', 'UNUSED_IMPORT', 'lint-unused-import',
+		'library(stats)\nprint("no stats function is used")', tagTypes);
 
 	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
@@ -323,6 +329,18 @@ ${await(async() => {
 	})()
 }
 	
+${section('Quick Fixes', 2, 'quick-fixes')}
+
+Rules tagged ${makeTagBadge(LintingRuleTag.QuickFix, tagTypes.info)} attach a ${shortLink('LintQuickFix', tagTypes.info)} to their results,
+describing the edit that resolves the finding. flowR does not only report them, it carries them out:
+${ctx.link(LintQuickFixes.byFile)} collects the fixes of a lint run per file and ${ctx.link(LintQuickFixes.apply)}
+returns that file's content with them applied. Of two overlapping fixes only the one coming first in the file is kept,
+and a removal that leaves nothing but whitespace behind takes its line with it.
+
+In ${ctx.linkE<typeof LinterOutputFormat>('LinterOutputFormat', 'Sarif')} output the fixes become SARIF \`fixes\`, which an editor
+or code scanner can offer directly. ${ctx.linkE<typeof LinterOutputFormat>('LinterOutputFormat', 'Github')} annotations carry no
+fix of their own, so the descriptions are appended to the message.
+
 ${section('Tags', 2, 'tags')}
 
 We use tags to categorize linting rules for users. The following tags are available:

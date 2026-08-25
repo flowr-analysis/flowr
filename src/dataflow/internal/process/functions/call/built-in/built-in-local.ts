@@ -1,12 +1,13 @@
+import { MatchArgs } from '../../../../../graph/match-args';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
-import { DataflowInformation, alwaysExits } from '../../../../../info';
+import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
+import { ControlFlow } from '../../../../control-flow';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { pMatch } from '../../../../linker';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
@@ -44,7 +45,7 @@ export function processLocal<OtherInfo>(
 		[config.args.env]:  'env',
 		'...':              '...'
 	};
-	const argMaps = pMatch(convertFnArguments(args), params);
+	const argMaps = MatchArgs.toSpec(convertFnArguments(args), params);
 	const env = unpackArg(RArgument.getWithId(args, argMaps.get('env')?.[0]));
 	const expr = unpackArg(RArgument.getWithId(args, argMaps.get('expr')?.[0]));
 	if(!expr) {
@@ -55,7 +56,7 @@ export function processLocal<OtherInfo>(
 	const envirResolution = env ? resolveEnvirArg(args, data, config.args.env) : undefined;
 
 	const dfEnv = env ? processDataflowFor(env, data) : DataflowInformation.initialize(rootId, data);
-	if(alwaysExits(dfEnv)) {
+	if(ControlFlow.alwaysExits(dfEnv)) {
 		patchFunctionCall({
 			nextGraph:             dfEnv.graph,
 			rootId,
@@ -89,12 +90,16 @@ export function processLocal<OtherInfo>(
 
 	const ingoing = dfEnv.in.concat(dfExpr.in, dfEnv.unknownReferences, dfExpr.unknownReferences);
 	ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
+	const graph = dfEnv.graph.mergeWith(dfExpr.graph);
+	const cfgEntry = ControlFlow.inSequence(graph, env ? [dfEnv, dfExpr] : [dfExpr], rootId);
 	const baseResult = {
 		hooks:             dfExpr.hooks.concat(dfEnv.hooks),
 		environment:       resultEnvironment,
 		exitPoints:        dfEnv.exitPoints.concat(dfExpr.exitPoints),
-		graph:             dfEnv.graph.mergeWith(dfExpr.graph),
+		graph,
 		entryPoint:        rootId,
+		cfgEntry,
+		cfgExit:           rootId,
 		in:                ingoing,
 		out:               escaping.concat(dfEnv.out),
 		unknownReferences: []

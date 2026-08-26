@@ -405,7 +405,12 @@ const NoFile = -1;
  * anything: how many shards a query set opens is not something the caller picks, and each would claim the
  * budget again. A count would not bound anything either -- one package's blob outweighs a hundred small ones.
  */
-const BlobCacheBudget = 64 * 1024 * 1024;
+let blobCacheBudget = 16 * 1024 * 1024;
+
+/** Sets how many bytes of decoded blobs all open bundles may hold together (`solver.sigdb.blobCacheBudgetMb`). */
+export function setBlobCacheBudget(bytes: number): void {
+	blobCacheBudget = Math.max(0, bytes);
+}
 
 /** one decoded blob a bundle holds, as the shared budget accounts for it */
 interface CachedBlob {
@@ -426,7 +431,7 @@ let cachedBlobBytes = 0;
  * Keep `blob` decoded for `db`, dropping blobs until all of them fit the budget (age gated).
  */
 function keepBlob(db: SigDatabase, blobIdx: number, bytes: number): CachedBlob {
-	while(cachedBlobBytes + bytes > BlobCacheBudget && cachedBlobs.length > 0) {
+	while(cachedBlobBytes + bytes > blobCacheBudget && cachedBlobs.length > 0) {
 		if(hand >= cachedBlobs.length) {
 			hand = 0;
 		}
@@ -474,7 +479,7 @@ interface VersionFns {
  */
 export class SigDatabase implements PackageSignatureSource {
 	private closed = false;
-	/** parsed blobs by blob index so repeated lookups skip the re-read + JSON.parse; bounded by {@link BlobCacheBudget} */
+	/** parsed blobs by blob index so repeated lookups skip the re-read + JSON.parse; bounded by {@link setBlobCacheBudget|the shared budget} */
 	private readonly blobCache = new Map<number, { blob: PkgBlob, entry?: CachedBlob }>();
 	/** a version's function indices plus its `name -> index` view, keyed by package and version; FIFO-bounded */
 	private readonly versionFnCache = new Map<string, VersionFns>();
@@ -736,7 +741,7 @@ export class SigDatabase implements PackageSignatureSource {
 	/**
 	 * Resolve a package version to its blob and the function records of that version (the shared prologue of
 	 * {@link functions}/{@link functionByName}). The blob comes from {@link blob} every time rather than out of
-	 * {@link versionFnCache}: holding one here would keep it decoded past what {@link BlobCacheBudget} allows.
+	 * {@link versionFnCache}: holding one here would keep it decoded past what {@link setBlobCacheBudget|the shared budget} allows.
 	 */
 	private versionFns(pkg: string, version?: string): { blob: PkgBlob, fns: VersionFns } | undefined {
 		const bm = this.blobMeta(pkg);

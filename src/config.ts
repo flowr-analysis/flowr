@@ -180,6 +180,8 @@ export interface FlowrConfig {
 			readonly loadProjectDependencies:     boolean
 			readonly eagerlyLoad:                 boolean
 			readonly eagerlyLoadExports:          boolean
+			/** How many MiB of decoded package blobs every open bundle may hold together; a bigger budget re-reads and re-parses less, a smaller one keeps less in memory (default `16`). */
+			readonly blobCacheBudgetMb?:          number
 			/**
 			 * R version assumed when resolving versioned (base-R) exports: a pin, or `"auto"` to detect the installed R
 			 * (falling back to {@link DefaultAssumedRVersion} if none, e.g. tree-sitter). See {@link resolveAssumedRVersion}.
@@ -528,7 +530,7 @@ export const FlowrConfig = {
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
-				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, linkBaseRCalls: false, linkPackageCalls: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {}, installedLibrary: { enabled: false, paths: [], useEnvironment: true, useProjectLibrary: true, maxDepth: 3, packages: [] } },
+				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, blobCacheBudgetMb: 16, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, linkBaseRCalls: false, linkPackageCalls: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {}, installedLibrary: { enabled: false, paths: [], useEnvironment: true, useProjectLibrary: true, maxDepth: 3, packages: [] } },
 				versionManagement: { linkedVersionGroups: [] },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
@@ -680,8 +682,9 @@ export const FlowrConfig = {
 					maxDepth:          Joi.number().optional().description('How far to descend into the nested layout of a project-local library (default 3).'),
 					packages:          Joi.array().items(Joi.string()).optional().description('Only recover packages whose name matches one of these regular expressions; empty means any.')
 				}).optional().description('Recovering packages no signature database knows from the copy installed on this machine.'),
-				versionSelection: Joi.string().valid(...Object.values(VersionSelection)).optional().description('When a project constrains a dependency, resolve to the newest (default), oldest, or system-installed version satisfying it; system needs R and falls back to newest. Base-R packages always resolve against the assumed R version.'),
-				versionOverrides: Joi.object().pattern(Joi.string(), Joi.string()).optional().description('Force an exact version for specific packages (name -> version), overriding both the project constraint and the versionSelection policy (default {}).')
+				blobCacheBudgetMb: Joi.number().min(0).optional().description('How many MiB of decoded package blobs every open bundle may hold together (default 16).'),
+				versionSelection:  Joi.string().valid(...Object.values(VersionSelection)).optional().description('When a project constrains a dependency, resolve to the newest (default), oldest, or system-installed version satisfying it; system needs R and falls back to newest. Base-R packages always resolve against the assumed R version.'),
+				versionOverrides:  Joi.object().pattern(Joi.string(), Joi.string()).optional().description('Force an exact version for specific packages (name -> version), overriding both the project constraint and the versionSelection policy (default {}).')
 			}).description('Resolving library exports from a signature database.'),
 			versionManagement: Joi.object({
 				linkedVersionGroups: Joi.array().items(Joi.array().items(Joi.string())).optional().description('Groups of packages that must resolve to the same version; version guessing intersects each group so its members stay mutually compatible (default []).')

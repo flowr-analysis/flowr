@@ -255,3 +255,62 @@ export class WritableMemory {
 		return this.frame.has(name, this.version);
 	}
 }
+
+/**
+ * The bindings of an attached package, built one name at a time. An attach used to materialize a definition per
+ * export, and a script attaching a handful of packages carries hundreds of thousands of them for the few dozen
+ * names it ever mentions. Here the export list is all that is held until a lookup asks for one.
+ */
+export class LazyBindings implements ReadonlyMap<BrandedIdentifier, IdentifierDefinition[]> {
+	private readonly built = new Map<BrandedIdentifier, IdentifierDefinition[]>();
+
+	constructor(
+		private readonly names:   ReadonlySet<BrandedIdentifier>,
+		private readonly bind:    (name: BrandedIdentifier) => IdentifierDefinition[]
+	) {}
+
+	public get(name: BrandedIdentifier): IdentifierDefinition[] | undefined {
+		if(!this.names.has(name)) {
+			return undefined;
+		}
+		let defs = this.built.get(name);
+		if(defs === undefined) {
+			this.built.set(name, defs = this.bind(name));
+		}
+		return defs;
+	}
+
+	public has(name: BrandedIdentifier): boolean {
+		return this.names.has(name);
+	}
+
+	public get size(): number {
+		return this.names.size;
+	}
+
+	public keys(): MapIterator<BrandedIdentifier> {
+		return this.names.keys();
+	}
+
+	public *entries(): MapIterator<[BrandedIdentifier, IdentifierDefinition[]]> {
+		for(const name of this.names) {
+			yield [name, this.get(name) as IdentifierDefinition[]];
+		}
+	}
+
+	public [Symbol.iterator](): MapIterator<[BrandedIdentifier, IdentifierDefinition[]]> {
+		return this.entries();
+	}
+
+	public *values(): MapIterator<IdentifierDefinition[]> {
+		for(const [, defs] of this.entries()) {
+			yield defs;
+		}
+	}
+
+	public forEach(fn: (defs: IdentifierDefinition[], name: BrandedIdentifier, map: ReadonlyMap<BrandedIdentifier, IdentifierDefinition[]>) => void, thisArg?: unknown): void {
+		for(const [name, defs] of this.entries()) {
+			fn.call(thisArg, defs, name, this);
+		}
+	}
+}

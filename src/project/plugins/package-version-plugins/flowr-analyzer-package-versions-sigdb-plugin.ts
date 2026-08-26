@@ -4,7 +4,7 @@ import path from 'path';
 import { Package } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import type { NamespaceInfo } from '../file-plugins/files/flowr-namespace-file';
-import { availableVersionEntries, SigDatabase, SigDatabaseSet, getSharedSigSource, getSharedSigSourceSync, type PackageSignatureSource } from '../../sigdb/reader';
+import { availableVersionEntries, SigDatabase, SigDatabaseSet, getSharedSigSource, getSharedSigSourceSync, type PackageSignatureSource, setBlobCacheBudget } from '../../sigdb/reader';
 import { SigDbExt, type LibraryExports } from '../../sigdb/schema';
 import { defaultSigDbPaths } from '../../sigdb/manifest';
 import { resolveSource } from '../../sigdb/decompress';
@@ -203,6 +203,10 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		this.resetAssembled();   // reload on (re)registration so config/source changes take effect (shared bundles are reused)
 		this.analyzerCtx = ctx;
 		if(isSigDbEnabled(ctx.config)) {
+			const budgetMb = ctx.config.solver.sigdb.blobCacheBudgetMb;
+			if(budgetMb !== undefined) {
+				setBlobCacheBudget(budgetMb * 1024 * 1024);
+			}
 			ctx.deps.addLazyResolver((name, existing) => this.resolve(name, existing));
 			if(ctx.config.solver.sigdb.warmInBackground) {
 				this.startBackgroundWarm();

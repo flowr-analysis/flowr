@@ -4,7 +4,7 @@ import { ArgProp, CallProps, SemanticCallTag } from '../../dataflow/environments
 import { Identifier, PkgName } from '../../dataflow/environments/identifier';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { FunctionArgument } from '../../dataflow/graph/graph';
+import { FunctionArgument, NoEdges } from '../../dataflow/graph/graph';
 import { MatchArgs } from '../../dataflow/graph/match-args';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { FunctionCallVertex } from '../../dataflow/graph/vertex';
@@ -13,7 +13,9 @@ import { CallTargets } from '../../queries/catalog/call-context-query/identify-l
 import { narrowingFunctions } from '../../queries/catalog/input-sources-query/input-source-functions';
 import type { InputSource, InputSources } from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { InputTraceType, InputType } from '../../queries/catalog/input-sources-query/simple-input-classifier';
+import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FlowrSearchElement } from '../../search/flowr-search';
@@ -42,6 +44,9 @@ export enum UnescapedArgumentCategory {
 	/** Functions generating/running JavaScript code, e.g. `shinyjs::runjs` */
 	JavaScript = 'javascript'
 }
+
+/** how many vertices {@link readsParameter} may visit before it gives up on finding one */
+const ParameterSearchLimit = 256;
 
 /** Maximum depth to descent to find unescaped part of argument */
 const MaxDescentDepth = 5;
@@ -234,6 +239,37 @@ function mapInputSourceToArgs(call: DataflowGraphVertexFunctionCall, sources: In
 	return result;
 }
 
+/**
+ * Whether anything `start` reads is a parameter of an enclosing function. What the call sites happen to pass says
+ * nothing here: the function escapes its parameter, and it is one call away from being handed anything at all.
+ */
+function readsParameter(graph: DataflowGraph, start: NodeId, sanitizers: ReadonlySet<string>): boolean {
+	const seen = new Set<NodeId>([start]);
+	const queue = [start];
+	while(queue.length > 0) {
+		const id = queue.pop() as NodeId;
+		if(graph.idMap?.get(id)?.info.role === RoleInParent.ParameterName) {
+			return true;
+		}
+		const vertex = graph.getVertex(id);
+		/* what a sanitizer hands back is escaped, whatever it read to get there */
+		if(FunctionCallVertex.is(vertex) && sanitizers.has(Identifier.getName(vertex.name))) {
+			continue;
+		}
+		if(seen.size > ParameterSearchLimit) {
+			return false;
+		}
+		for(const [to, edge] of graph.outgoingEdges(id) ?? NoEdges) {
+			/* only what the value is built from, never the calls it is an argument of */
+			if(!seen.has(to) && DfEdge.includesType(edge, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.Returns)) {
+				seen.add(to);
+				queue.push(to);
+			}
+		}
+	}
+	return false;
+}
+
 function isAcceptedInput(source: InputSource, config: UnescapedArgumentsConfig): boolean {
 	return source.types.every(type => config.acceptedInputs.includes(type));
 }
@@ -252,6 +288,7 @@ async function getUnescapedSources(
 	data: ReadonlyFlowrAnalysisProvider,
 	graph: DataflowGraph
 ): Promise<Map<CriticalTarget, InputSource[]>> {
+	const sanitizerNames = new Set((config.categories[category].sanitizers ?? []).map(call => Identifier.getName(call)));
 	const sanitizers = (config.categories[category].sanitizers ?? []).map(call => ({ call }));
 	const queryConfig = { narrowing: [...narrowingFunctions(), ...sanitizers] };
 	const found = new Map<CriticalTarget, InputSource[]>();
@@ -272,12 +309,18 @@ async function getUnescapedSources(
 			for(const [arg, source] of mapInputSourceToArgs(call, classified[SlicingCriterion.fromId(entry.call)] ?? [])) {
 				const vertex = graph.getVertex(arg);
 
-				if((entry.only !== undefined && !entry.only.has(arg)) || isAcceptedInput(source, config)) {
+				/* a call passing a constant today makes the argument constant, but the function still escapes its
+				   parameter, and it is one call away from being handed anything */
+				const viaParameter = isAcceptedInput(source, config)
+					&& source.types.length > 0 && source.types.every(t => t === InputType.Constant || t === InputType.DerivedConstant)
+					&& readsParameter(graph, arg, sanitizerNames);
+				if((entry.only !== undefined && !entry.only.has(arg)) || (isAcceptedInput(source, config) && !viaParameter)) {
 					continue;
-				} else if(entry.depth < config.maxDecentDepth && source.trace === InputTraceType.Known && FunctionCallVertex.is(vertex) && !FunctionCallVertex.hasOrigin(vertex, BuiltInProcName.Access)) {
+				} else if(entry.depth < config.maxDecentDepth && (source.trace === InputTraceType.Known || viaParameter) && FunctionCallVertex.is(vertex) && !FunctionCallVertex.hasOrigin(vertex, BuiltInProcName.Access)) {
 					next.push({ target: entry.target, call: arg, only: undefined, depth: entry.depth + 1 });
 				} else {
-					found.set(entry.target, [...(found.get(entry.target) ?? []), { ...source, id: arg }]);
+					const types = viaParameter ? [...source.types, InputType.Parameter] : source.types;
+					found.set(entry.target, [...(found.get(entry.target) ?? []), { ...source, id: arg, types }]);
 				}
 			}
 		}

@@ -15,6 +15,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
+import { LazyBindings } from '../../../../../environments/frame-memory';
 import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
 import type { BrandedIdentifier, IdentifierDefinition, InGraphIdentifierDefinition, InGraphReferenceType } from '../../../../../environments/identifier';
 import type { BuiltInMemory } from '../../../../../environments/built-in';
@@ -407,6 +408,18 @@ function selectExports(callables: readonly string[], spec: AttachSpec): Attached
 }
 
 /**
+ * What a package's attached layer binds, built per name on the first lookup. An attach names thousands of exports
+ * and a script mentions a few dozen, so the definitions are only made for the ones something asks about.
+ */
+function lazyExports(pack: string, exports: readonly AttachedExport[], ctx: FlowrAnalyzerContext, definedAt: NodeId | undefined): LazyBindings {
+	const byName = new Map<BrandedIdentifier, AttachedExport>();
+	for(const exp of exports) {
+		byName.set(Identifier.getName(Identifier.make(exp.as, pack)), exp);
+	}
+	return new LazyBindings(new Set(byName.keys()), name => [exportDefinition(pack, byName.get(name) as AttachedExport, ctx, definedAt)]);
+}
+
+/**
  * The identifier definition binding a package export (or its alias) to its built-in function-definition.
  * The identity stays the plain export (so a call still materializes its `built-in:pkg:fn` vertex); whatever the configuration states about that name (processor, config, eval handler) rides along on top.
  */
@@ -449,15 +462,15 @@ export function attachDependencyToEnvironment(dependency: Package, envInfo: REnv
 	// a subset import restricts the attached exports, so no imports layer is materialized
 	if(spec.namespaceOnly || (spec.include !== undefined && !spec.all)){
 		const layerType = spec.namespaceOnly ? EnvType.LoadedNamespace : EnvType.Namespace;
-		const layer = new Environment(envInfo.current).asLibrary(pack, layerType)
-			.defineAll(exports.map(exp => exportDefinition(pack, exp, ctx, definedAt)));
+		const layer = new Environment(envInfo.current).asLibrary(pack, layerType);
+		layer.adoptMap(lazyExports(pack, exports, ctx, definedAt));
 		return { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, layer, layer, spec.pos) };
 	}
 	// full attach: imports layer at the bottom, namespace (exports) layer on top
 	let importsEnv = new Environment(envInfo.current).asLibrary(pack, EnvType.Imports);
 	importsEnv = recImports(importsEnv, dependency.namespaceInfo, ctx, new Set());
-	const namespaceEnv = new Environment(importsEnv).asLibrary(pack, EnvType.Namespace)
-		.defineAll(exports.map(exp => exportDefinition(pack, exp, ctx, definedAt)));
+	const namespaceEnv = new Environment(importsEnv).asLibrary(pack, EnvType.Namespace);
+	namespaceEnv.adoptMap(lazyExports(pack, exports, ctx, definedAt));
 	const attached = { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, namespaceEnv, importsEnv, spec.pos) };
 	/* whatever R puts on the search path with it, `pack` first so a dependency cycle stays finite (the guard above stops it) */
 	return attachedAlongside(pack, ctx.deps.signatureSources()).reduce((env, alongside) => {

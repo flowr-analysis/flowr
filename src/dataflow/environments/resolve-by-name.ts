@@ -5,6 +5,9 @@ import { happensInEveryBranch } from '../info';
 import { S7DispatchSeparator } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
+/** how many answers a frozen layer memoizes before it starts over, so the memo cannot grow without bound */
+const TailCacheCap = 4096;
+
 /** A namespaced lookup only sees its matching layer; a bare lookup skips loaded-but-unattached namespaces (`requireNamespace`). */
 function layerSkipped(layer: Environment, ns: BrandedNamespace | undefined): boolean {
 	if(ns !== undefined) {
@@ -165,7 +168,11 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 		? (builtIns === undefined || builtIns.length === 0 ? definitions : definitions.concat(builtIns))
 		: (builtIns === undefined || builtIns.length > 0 ? builtIns : undefined);
 	if(flattenAt !== undefined) {
-		(flattenAt.tailCache ??= new Map()).set(key, result);
+		const memo = flattenAt.tailCache ??= new Map();
+		if(memo.size >= TailCacheCap) {
+			memo.clear();
+		}
+		memo.set(key, result);
 	}
 	return result;
 }

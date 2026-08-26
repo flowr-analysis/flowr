@@ -17,7 +17,6 @@ export type BiMapReverse = 'lazy' | 'eager';
  */
 export class BiMap<K, V extends object> implements Map<K, V> {
 	public readonly [Symbol.toStringTag]: string = 'BiMap';
-	public size = 0;
 	private readonly k2v = new Map<K, V>();
 	/* see {@link BiMapReverse}: `undefined` until the first reverse lookup unless this map was asked to be eager */
 	private v2k:                          WeakMap<V, K> | undefined;
@@ -43,8 +42,12 @@ export class BiMap<K, V extends object> implements Map<K, V> {
 		return this.k2v[Symbol.iterator]();
 	}
 
+	/** Read off the forward direction, so filling the map costs no bookkeeping per entry. */
+	public get size(): number {
+		return this.k2v.size;
+	}
+
 	public clear(): void {
-		this.size = 0;
 		this.k2v.clear();
 		this.v2k = this.eager ? new WeakMap<V, K>() : undefined;
 	}
@@ -57,7 +60,6 @@ export class BiMap<K, V extends object> implements Map<K, V> {
 		this.k2v.delete(key);
 		/* another key may still hold this value, so dropping just its entry would lose a live mapping */
 		this.staleReverse();
-		this.size = this.k2v.size;
 		return true;
 	}
 
@@ -105,7 +107,6 @@ export class BiMap<K, V extends object> implements Map<K, V> {
 				this.v2k.set(value, key);
 			}
 		}
-		this.size = this.k2v.size;
 		return this;
 	}
 

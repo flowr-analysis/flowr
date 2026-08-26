@@ -119,10 +119,10 @@ describe('Built-in properties', () => {
 			assert.isTrue(index.with(SemanticCallTag.TempFile).some(i => Identifier.getName(i) === 'tempfile'));
 			assert.strictEqual(index.propsOf('nchar'), CallProp.Pure);
 			assert.deepStrictEqual(index.get('nchar')?.tags, [SemanticCallTag.Narrows]);
-			const folding = new Set(BuiltInIndex.default().folding.map(Identifier.getName));
-			assert.isTrue(folding.has('+'), 'arithmetic is folded');
-			assert.isTrue(folding.has('paste'));
-			assert.isFalse(folding.has('read.csv'), 'reading a file is not');
+			const foldable = new Set(BuiltInIndex.default().foldable.map(Identifier.getName));
+			assert.isTrue(foldable.has('+'), 'arithmetic is folded');
+			assert.isTrue(foldable.has('paste'));
+			assert.isFalse(foldable.has('read.csv'), 'reading a file is not');
 			const registered = BuiltInIndex.ofEnvironment(getDefaultBuiltInDefinitions());
 			assert.strictEqual(registered.propsOf('nchar'), CallProp.Pure);
 			assert.deepStrictEqual(registered.get('nchar')?.tags, [SemanticCallTag.Narrows]);

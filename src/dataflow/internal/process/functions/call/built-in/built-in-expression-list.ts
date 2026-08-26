@@ -288,7 +288,8 @@ export function processExpressionList<OtherInfo>(
 		(data as Writable<DataflowProcessorInformation<OtherInfo & ParentInformation>>).environment = environment;
 		const processed = processDataflowFor(expression, data);
 		processedExpressions.push(processed);
-		nextGraph.mergeWith(processed.graph);
+		/* the expression's graph dies here, what is kept of it afterward is its entry point and its references */
+		nextGraph.mergeWith(processed.graph, true, true);
 		defaultReturnExpr = processed;
 		// a prior next/break means we do not know if the rest executes, so later environments append rather than overwrite
 		if(exitPoints.length > 0) {

@@ -190,7 +190,7 @@ export function processKnownFunctionCall<OtherInfo>(
 		cds:         data.cds,
 		args:        reverseOrder ? callArgs.toReversed() : callArgs,
 		origin:      origin === 'default' ? [BuiltInProcName.Function] : [origin]
-	}, data.ctx.env.makeCleanEnv());
+	}, data.ctx.env.cleanEnv);
 
 	if(hasUnknownSideEffect) {
 		handleUnknownSideEffect(finalGraph, data.environment, rootId);

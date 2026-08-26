@@ -79,7 +79,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		cds:         data.cds,
 		args:        callArgs, // same reference
 		origin:      [BuiltInProcName.Unnamed]
-	}, data.ctx.env.makeCleanEnv());
+	}, data.ctx.env.cleanEnv);
 
 	const cfgEntry = ControlFlow.inSequence(finalGraph, [calledFunction, ...processedArguments], functionRootId);
 	/* a jump within an argument is caught here, just like for a named call */

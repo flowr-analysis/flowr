@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-25, 23:19:19 UTC (v2.15.2), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-26, 11:43:20 UTC (v2.15.2), please do not edit directly._
 <h2 id="Input Sources Query">Input Sources Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Classify the input sources of function calls\
@@ -39,14 +39,14 @@ If you are interested in the input-sources of the `print` call, you can use:
 
 _Results (prettified and summarized):_
 
-Query: **input-sources** (22 ms)\
+Query: **input-sources** (20 ms)\
 &nbsp;&nbsp;&nbsp;╰ Input Sources for 3@print\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 3.15 (id: 11), type: ["param","const","dconst"], trace: alias\
-_All queries together required ≈23 ms (1ms accuracy, total 24 ms)_
+_All queries together required ≈21 ms (1ms accuracy, total 21 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _24.0 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _21.4 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -58,7 +58,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "input-sources": {
     ".meta": {
-      "timing": 22
+      "timing": 20
     },
     "results": {
       "3@print": [
@@ -75,7 +75,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 23
+    "timing": 21
   }
 }
 ```
@@ -120,14 +120,14 @@ server <- function(input, output, session) {
 
 _Results (prettified and summarized):_
 
-Query: **input-sources** (7 ms)\
+Query: **input-sources** (9 ms)\
 &nbsp;&nbsp;&nbsp;╰ Input Sources for 2@system\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 2.16-43 (id: 18), type: ["const","param","unknown","dconst"], trace: known\
-_All queries together required ≈7 ms (1ms accuracy, total 8 ms)_
+_All queries together required ≈9 ms (1ms accuracy, total 12 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _8.0 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _11.5 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -139,7 +139,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "input-sources": {
     ".meta": {
-      "timing": 7
+      "timing": 9
     },
     "results": {
       "2@system": [
@@ -157,7 +157,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 7
+    "timing": 9
   }
 }
 ```

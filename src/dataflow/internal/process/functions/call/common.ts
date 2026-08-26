@@ -141,8 +141,11 @@ export function processAllArguments<OtherInfo>(
 		}
 
 		let processed: DataflowInformation;
+		/* a precomputed argument is handed in from elsewhere and stays alive there, only a freshly built one dies here */
+		let ownsGraph = true;
 		if(i === 0 && data.precomputedFirstArg?.rootId === functionRootId) {
 			processed = data.precomputedFirstArg.info;
+			ownsGraph = false;
 		} else {
 			processed = RArgument.is(arg) ? processFunctionArgument(arg, data) : processDataflowFor(arg, data);
 		}
@@ -152,7 +155,8 @@ export function processAllArguments<OtherInfo>(
 		processedArguments.push(processed);
 
 		finalEnv = overwriteEnvironment(finalEnv, processed.environment);
-		finalGraph.mergeWith(processed.graph);
+		/* nothing reads the argument's own graph past this point, only its entry point and references */
+		finalGraph.mergeWith(processed.graph, true, ownsGraph);
 
 		// resolve reads within argument, we resolve before adding the `processed.environment` to avoid cyclic dependencies
 		for(const l of [processed.in, processed.unknownReferences]) {
@@ -227,7 +231,7 @@ export function patchFunctionCall<OtherInfo>(
 		args:        argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, cds: undefined, call: undefined, type: ReferenceType.Argument }),
 		origin:      [origin],
 		link
-	}, data.ctx.env.makeCleanEnv(), !nextGraph.hasVertex(rootId) || nextGraph.isRoot(rootId), true);
+	}, data.ctx.env.cleanEnv, !nextGraph.hasVertex(rootId) || nextGraph.isRoot(rootId), true);
 	for(const arg of argumentProcessResult) {
 		if(arg) {
 			nextGraph.addEdge(rootId, arg.entryPoint, EdgeType.Argument);

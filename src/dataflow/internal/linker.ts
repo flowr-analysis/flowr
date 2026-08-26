@@ -41,22 +41,22 @@ export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
  * Find all reads within the graph that do not reference a local definition in the graph.
  */
 export function findNonLocalReads(graph: DataflowGraph, ignores: ReadonlySet<NodeId> = new Set()): IdentifierReference[] {
-	const defs = new Set(graph.vertexIdsOfType(VertexType.VariableDefinition).concat(
-		graph.vertexIdsOfType(VertexType.FunctionDefinition)
-	));
+	const defs = new Set<NodeId>();
+	for(const tag of [VertexType.VariableDefinition, VertexType.FunctionDefinition]) {
+		for(const [id] of graph.verticesOfType(tag)) {
+			defs.add(id);
+		}
+	}
 	/* find all variable use ids which do not link to a given id */
 	const nonLocalReads: IdentifierReference[] = [];
-	for(const ids of [graph.vertexIdsOfType(VertexType.Use), graph.vertexIdsOfType(VertexType.FunctionCall)]) {
-		for(const nodeId of ids) {
+	/* the tag already says what the reference is, so no vertex has to be fetched to decide */
+	for(const [tag, type] of [[VertexType.Use, ReferenceType.Variable], [VertexType.FunctionCall, ReferenceType.Function]] as const) {
+		for(const [nodeId] of graph.verticesOfType(tag)) {
 			if(ignores.has(nodeId)) {
 				continue;
 			}
 			const outgoing = graph.outgoingEdges(nodeId);
-			const origin = graph.getVertex(nodeId);
 			const name = NodeId.recoverName(nodeId, graph.idMap);
-
-			const type = FunctionCallVertex.is(origin) ? ReferenceType.Function : ReferenceType.Variable;
-
 			const identifierRef = { nodeId, name, type };
 
 			/* control flow edges say nothing about what a name resolves to, so they do not count as a link */

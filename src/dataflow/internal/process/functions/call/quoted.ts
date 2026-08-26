@@ -35,8 +35,8 @@ const EvaluatingElsewhereCalls: ReadonlySet<string> = new Set(['evalq']);
  */
 const ValueFlow: EdgeType = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall | EdgeType.Returns | EdgeType.Argument;
 
-function hasOrigin(vertex: { readonly origin: readonly string[] | 'unnamed' }, of: readonly BuiltInProcName[]): boolean {
-	return vertex.origin !== 'unnamed' && vertex.origin.some(o => of.includes(o as BuiltInProcName));
+function hasOrigin(vertex: { readonly origin?: readonly string[] | 'unnamed' }, of: readonly BuiltInProcName[]): boolean {
+	return Array.isArray(vertex.origin) && vertex.origin.some(o => of.includes(o as BuiltInProcName));
 }
 
 /**

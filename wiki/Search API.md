@@ -1,10 +1,10 @@
-_<span title="an overview of flowR's search API">Generated</span> from '[wiki-search.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-search.ts "src/documentation/wiki-search.ts")' on 2026-08-20, 23:50:00 UTC (v2.14.1, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's search API">Generated</span> from '[wiki-search.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-search.ts "src/documentation/wiki-search.ts")' on 2026-08-26, 11:00:45 UTC (v2.15.1, R v4.6.1), please do not edit directly._
 
 
 This page briefly summarizes flowR's search API which provides a set of functions to search for nodes in the [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) and the
 [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST) of a given R code (the search will always consider both, with respect to your search query).
 Please see the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to access this API.
-Within code, you can execute a search using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L165"><code><span title="Run a search on the current analysis.">runSearch</span></code></a> function.
+Within code, you can execute a search using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L178"><code><span title="Run a search on the current analysis.">runSearch</span></code></a> function.
 
 For an initial motivation, let's have a look at the following example:
 
@@ -62,7 +62,7 @@ x <- x * x
 The query returns the following vetices (all references to `x` in the code):
 <b>0 ('x')</b> at L1.1, <b>1 ('x')</b> at L1.6, <b>2 ('x')</b> at L1.10
 
-The search required _2.4 ms_ (including parsing and normalization and the query) within the generation environment.
+The search required _3.4 ms_ (including parsing and normalization and the query) within the generation environment.
 
 The returned results are highlighted thick and blue within the dataflow graph:
 
@@ -109,7 +109,7 @@ flowchart LR
 ```
 
 	
-(The analysis required _1.9 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _4.0 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
@@ -196,7 +196,7 @@ x <- 2
 The query returns the following vetices (all references to `x` in the code):
 <b>9 ('x')</b> at L3.1, <b>18 ('x')</b> at L5.1
 
-The search required _2.7 ms_ (including parsing and normalization and the query) within the generation environment.
+The search required _4.9 ms_ (including parsing and normalization and the query) within the generation environment.
 
 The returned results are highlighted thick and blue within the dataflow graph:
 
@@ -319,7 +319,7 @@ print`"]
 ```
 
 	
-(The analysis required _2.2 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _2.9 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
@@ -460,4 +460,4 @@ Every search (and consequently the search pipeline) works with an array of <a hr
 Hence, even operations such as `.first` or `.last` return an array of elements (albeit with a single or no element).
 The search API does its best to stay typesafe wrt. to the return type and the transformers in use. 
 In addition, it offers optimizer passes to optimize the search pipeline before execution.
-They are executed with `.build` which may happen automatically, whenever you want to run a search using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L165"><code><span title="Run a search on the current analysis.">runSearch</span></code></a>.
+They are executed with `.build` which may happen automatically, whenever you want to run a search using <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L178"><code><span title="Run a search on the current analysis.">runSearch</span></code></a>.

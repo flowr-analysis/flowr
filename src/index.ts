@@ -19,6 +19,9 @@
 export { FlowrAnalyzer } from './project/flowr-analyzer';
 export type { FlowrAnalysisOptions, FlowrAnalysisProvider, ReadonlyFlowrAnalysisProvider } from './project/flowr-analyzer';
 export { FlowrAnalyzerBuilder } from './project/flowr-analyzer-builder';
+/* what `functionInfo` takes and hands back */
+export { Identifier } from './dataflow/environments/identifier';
+export type { FnInfo } from './dataflow/environments/query-fn-props';
 
 /* what an analysis is asked for and what it answers with */
 export type { Query, QueryResults, SupportedQueryTypes } from './queries/query';

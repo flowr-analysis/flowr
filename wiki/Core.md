@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-08-25, 23:19:25 UTC (v2.15.2, R v4.5.0), please do not edit directly._
+_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-08-26, 11:43:23 UTC (v2.15.2, R v4.6.1), please do not edit directly._
 
 
 This wiki page provides an overview of the inner workings of _flowR_.
@@ -19,7 +19,7 @@ and the [Contributing Guidelines](https://github.com/flowr-analysis/flowr/tree/m
 > 
 > ```shell
 > $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-> flowR repl v2.15.2, R v4.5.0 (r-shell engine)
+> flowR repl v2.15.2, R v4.6.1 (r-shell engine)
 > R> :parse "x <- 1; print(x)"
 > ```
 > 
@@ -72,7 +72,7 @@ and the [Contributing Guidelines](https://github.com/flowr-analysis/flowr/tree/m
 ## Creating and Using a flowR Analyzer Instance
 
 The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L38"><code><span title="Builder for the FlowrAnalyzer , use it to configure all analysis aspects before creating the analyzer instance with .build() or .buildSync() . You can add new files and folders to analyze using the .addRequest() method on the resulting analyzer.">FlowrAnalyzerBuilder</span></code></a> class should be used as a starting point to create analyses in _flowR_.
-It provides a fluent interface for the configuration and creation of a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L190"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> instance:
+It provides a fluent interface for the configuration and creation of a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L203"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> instance:
 
 
 ```ts
@@ -97,7 +97,7 @@ const cfg = await analyzer.controlflow();
 ```
 
 
-The underlying <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L190"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> instance will take care of caching, updates, and running the appropriate steps.
+The underlying <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L203"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> instance will take care of caching, updates, and running the appropriate steps.
 It also exposes the [query API](https://github.com/flowr-analysis/flowr/wiki/Query-API):
 
 
@@ -112,7 +112,7 @@ async function sliceQueryExample(analyzer: FlowrAnalyzer) {
 ```
 
 
-One of the additional advantages of using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L190"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> is that it provides you with context information about the analysed files:
+One of the additional advantages of using the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L203"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> is that it provides you with context information about the analysed files:
 
 
 ```ts
@@ -127,7 +127,7 @@ export function inspectContextExample(analyzer: FlowrAnalyzer) {
 
 ## Pipelines and their Execution
 
-At the core of every analysis done via a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L190"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> is the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/pipeline-executor.ts#L97"><code><span title="**Please note:** The PipelineExecutor is now considered to be a rather low-level API for flowR. While it still works and is the basis for all other layers, we strongly recommend using the FlowrAnalyzer and its builder to create and use an analyzer instance that is pre-configured for your use-case. The pipeline executor allows to execute arbitrary pipelines in a step-by-step fashion. If you are not...">PipelineExecutor</span></code></a> class which takes a sequence of analysis steps (in the form of a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/pipeline/pipeline.ts#L11"><code><span title="A pipeline is a collection of steps that are executed in a certain order . It is to be created createPipeline . If you want to get the type of all steps in the pipeline (given they are created canonically using const step names), refer to PipelineStepNames .">Pipeline</span></code></a>) and executes it
+At the core of every analysis done via a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L203"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> is the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/pipeline-executor.ts#L97"><code><span title="**Please note:** The PipelineExecutor is now considered to be a rather low-level API for flowR. While it still works and is the basis for all other layers, we strongly recommend using the FlowrAnalyzer and its builder to create and use an analyzer instance that is pre-configured for your use-case. The pipeline executor allows to execute arbitrary pipelines in a step-by-step fashion. If you are not...">PipelineExecutor</span></code></a> class which takes a sequence of analysis steps (in the form of a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/pipeline/pipeline.ts#L11"><code><span title="A pipeline is a collection of steps that are executed in a certain order . It is to be created createPipeline . If you want to get the type of all steps in the pipeline (given they are created canonically using const step names), refer to PipelineStepNames .">Pipeline</span></code></a>) and executes it
 on a given input. In general, these pipeline steps are analysis agnostic and may use arbitrary input and ordering. However, two important and predefined pipelines, 
 the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/pipeline/default-pipelines.ts#L30"><code><span title="The default pipeline for working with flowR, including the dataflow step. See the DEFAULT_NORMALIZE_PIPELINE for the pipeline without the dataflow step and the DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE for the pipeline with slicing and reconstructing steps">DEFAULT_DATAFLOW_PIPELINE</span></code></a> and the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/steps/pipeline/default-pipelines.ts#L31"><code>TREE_SITTER_DATAFLOW_PIPELINE</code></a> adequately cover the most common analysis steps 
 (differentiated only by the [Engine](https://github.com/flowr-analysis/flowr/wiki/Engines) used).
@@ -280,7 +280,7 @@ To explore these steps, let's use the REPL with the (very simple and contrived) 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.15.2, R v4.5.0 (r-shell engine)
+flowR repl v2.15.2, R v4.6.1 (r-shell engine)
 R> :parse "x <- 1; print(x)"
 ```
 
@@ -358,7 +358,7 @@ x"])
 
 ```
 	
-(The analysis required _2.2 ms_ (including parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+(The analysis required _4.2 ms_ (including parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 
 
 
@@ -423,7 +423,7 @@ print`"]
 ```
 
 	
-(The analysis required _2.3 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _4.6 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
@@ -531,7 +531,7 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 > 
 > ```
 > 	
-> (The analysis required _0.8 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+> (The analysis required _5.7 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 > 
 > 
 > 
@@ -596,7 +596,7 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 > ```
 > 
 > 	
-> (The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+> (The analysis required _2.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 > 
 > 
 > 
@@ -1304,7 +1304,7 @@ Besides the processor, an entry says what the function *is*, in three label voca
 * <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in-props.ts#L9"><code><span title="What a single argument of a call is used for, as a bitmask ( ArgProp.Forced / ArgProp.NoDefault lead, being the two bits the signature database can also state).">ArgProp</span></code></a> labels each parameter (`sig`), in the order R declares them: which one carries the data,
   which one only selects a behavior, which one names a file, which one is called as a function.
 
-For several analyses the labels are all they know about a call: <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/query-fn-props.ts#L275"><code><span title="The one place to ask what flowR's built-ins are: _every pure function_, _every call that reads a file_, _every parameter that names a resource_, _everything the value solver can fold_. Each answer is derived from the BuiltInFnInfo the definitions carry, so a built-in that states its CallProp bits and its FnSig is found here without anything else being registered. Build one over the DefaultBuiltinC...">BuiltInIndex</span></code></a> turns them into the
+For several analyses the labels are all they know about a call: <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/query-fn-props.ts#L387"><code><span title="The one place to ask what flowR's built-ins are: _every pure function_, _every call that reads a file_, _every parameter that names a resource_, _everything the value solver can fold_. Each answer is derived from the BuiltInFnInfo the definitions carry, so a built-in that states its CallProp bits and its FnSig is found here without anything else being registered. Build one over the DefaultBuiltinC...">BuiltInIndex</span></code></a> turns them into the
 questions callers ask over and over (`with`, `without`, `params`), which is how the
 [input-sources query](https://github.com/flowr-analysis/flowr/wiki/Query-API) knows which functions bring in data of their own, and how
 [linting rules](https://github.com/flowr-analysis/flowr/wiki/Linter) like *seeded randomness* find every call drawing from the RNG without
@@ -1338,7 +1338,7 @@ what it means, and how many built-ins carry it.
 <details><summary>What each call property means</summary>
 
 <sup>db</sup> marks the bits the [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database)
-states for any package function on its own (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/query-fn-props.ts#L154"><code><span title="What the signature database implies for a package function: what its own entry states (see fnInfoFromSignature ) plus the PropagatedProps of everything it calls, transitively. A package function that ends up in system() runs a system command as well.">inferFnProps</span></code></a> reads them off an entry and carries what a
+states for any package function on its own (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/query-fn-props.ts#L157"><code><span title="What the signature database implies for a package function: what its own entry states (see fnInfoFromSignature ) plus the PropagatedProps of everything it calls, transitively. A package function that ends up in system() runs a system command as well.">inferFnProps</span></code></a> reads them off an entry and carries what a
 function calls over to the function calling it).
 
 | Call property | Built-ins | Meaning |
@@ -1560,7 +1560,7 @@ product <- 1
 N <- 10
 for(i in 1:(N-1)) product <- product  i
 product
-All queries together required ≈3 ms (1ms accuracy, total 4 ms)
+All queries together required ≈5 ms (1ms accuracy, total 6 ms)
 ```
 
 
@@ -1646,7 +1646,7 @@ normalize, dataflow) and each <a href="https://github.com/flowr-analysis/flowr/t
 a project and then asking for twenty slices gives twenty-one contingents, not one clock the analysis spent.
 
 Anything beginning a new analysis restarts it too: an added file, a cache invalidation, a re-parse, or an
-explicit <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L229"><code>FlowrAnalyzer::<b>reset</b></code></a>. Operations in flight keep theirs, as restarting a running
+explicit <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L246"><code>FlowrAnalyzer::<b>reset</b></code></a>. Operations in flight keep theirs, as restarting a running
 traversal's clock would defeat the guard bounding it. To split your *own* phases, call
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L151"><code><span title="Restart the contingent, so what follows is measured from now. Supported API: call it between phases that should each get the full allowance (analyzer.context().gas.reset()).  flowR calls it itself whenever a new analysis begins, so a caller only has to split its *own* phases. Operations in flight keep their contingent, as restarting a running traversal's clock would defeat the guard bounding it.">FlowrAnalyzerGasContext::<i>reset</i></span></code></a> on the writeable
 context (`analyzer.context().gas.reset()`) - supported API, not an internal hook.
@@ -1665,8 +1665,8 @@ await analyzer.query([{ type: 'static-slice', criteria: ['12@product'] }], {
 
 Bare `problematic`/`critical` numbers are elapsed milliseconds; use `timeMs`/`memory` to be explicit and
 `factor` for the sensitivity. Naming a feature enables gas for it even when `config.gas.features` disables
-it (pass `factor: 0` to keep it off). <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L327"><code>FlowrAnalyzer::<b>runFull</b></code></a> and
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L354"><code>FlowrAnalyzer::<b>runSearch</b></code></a> take the same, and read-only holders of a context can derive a
+it (pass `factor: 0` to keep it off). <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L344"><code>FlowrAnalyzer::<b>runFull</b></code></a> and
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L371"><code>FlowrAnalyzer::<b>runSearch</b></code></a> take the same, and read-only holders of a context can derive a
 bounded view with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-gas-context.ts#L189"><code>FlowrAnalyzerGasContext::<i>scope</i></code></a>.
 
 ### When the Slicer Runs Out

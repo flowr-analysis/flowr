@@ -47,7 +47,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl v2.15.0, R grammar v14 (tree-sitter engine)
+    flowR repl v2.15.2, R grammar v14 (tree-sitter engine)
     R> :query @linter "read.csv(\"/root/x.txt\")"
     ```
     
@@ -56,7 +56,7 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    Query: linter (7 ms)
+    Query: linter (9 ms)
        ╰ Deprecated Functions (deprecated-functions): no findings
        ╰ File Path Validity (file-path-validity): no findings
        ╰ Seeded Randomness (seeded-randomness): no findings
@@ -74,7 +74,7 @@ It offers a wide variety of features, for example:
        ╰ Unused Import (unused-import): no findings
        ╰ Unclosed Connection (unclosed-connection): no findings
        ╰ Unescaped Arguments (unescaped-arguments): no findings
-    All queries together required ≈7 ms (1ms accuracy, total 7 ms)
+    All queries together required ≈9 ms (1ms accuracy, total 9 ms)
     ```
     
     
@@ -96,7 +96,7 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (9 ms)\
+    Query: **linter** (16 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
@@ -106,7 +106,7 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 0, processTimeMs: 0\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 1, processTimeMs: 0\
     &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation): _no findings_\
@@ -120,11 +120,11 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Unused Import** (unused-import): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Unclosed Connection** (unclosed-connection): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Unescaped Arguments** (unescaped-arguments): _no findings_\
-    _All queries together required ≈10 ms (1ms accuracy, total 10 ms)_
+    _All queries together required ≈16 ms (1ms accuracy, total 17 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _10.3 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis required _17.1 ms_ (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -141,7 +141,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "builtin": 0,
               "sigdb": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 1
             }
           },
@@ -176,7 +176,7 @@ It offers a wide variety of features, for example:
               "callsWithAssignmentProducers": 0,
               "callsWithNonConstantProducers": 0,
               "callsWithOtherBranchProducers": 0,
-              "searchTimeMs": 1,
+              "searchTimeMs": 0,
               "processTimeMs": 0
             }
           },
@@ -196,7 +196,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalConsidered": 1,
               "totalUnknown": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -224,13 +224,13 @@ It offers a wide variety of features, for example:
               "numAccesses": 0,
               "totalAccessed": 0,
               "searchTimeMs": 0,
-              "processTimeMs": 1
+              "processTimeMs": 0
             }
           },
           "dead-code": {
             "results": [],
             ".meta": {
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -285,7 +285,7 @@ It offers a wide variety of features, for example:
                 "subscript": 0
               },
               "searchTimeMs": 0,
-              "processTimeMs": 2
+              "processTimeMs": 8
             }
           },
           "unused-import": {
@@ -319,11 +319,11 @@ It offers a wide variety of features, for example:
           }
         },
         ".meta": {
-          "timing": 9
+          "timing": 16
         }
       },
       ".meta": {
-        "timing": 10
+        "timing": 16
       }
     }
     ```
@@ -389,7 +389,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl v2.15.0, R grammar v14 (tree-sitter engine)
+    flowR repl v2.15.2, R grammar v14 (tree-sitter engine)
     R> :query @static-slice (11@sum) file://test/testfiles/example.R
     ```
     
@@ -403,7 +403,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈2 ms (1ms accuracy, total 3 ms)
+    All queries together required ≈4 ms (1ms accuracy, total 4 ms)
     ```
     
     
@@ -418,7 +418,7 @@ It offers a wide variety of features, for example:
     </details>
 
 * 🚀 **fast call-graph, data-, and control-flow graphs**\
-  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">108.9 ms</span></i> (as of Aug 25, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark),
+  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">101.9 ms</span></i> (as of Aug 26, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark),
   _flowR_ can analyze the data- and control-flow of the average real-world R&nbsp;script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
   and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) for more details on the [dataflow graphs](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph) as well as [call graphs](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg).
   (&nbsp;[▶&nbsp;Explore in Browser](https://flowr-analysis.github.io/flowr/wiki/playground/#c=zDYSwRgTghhCeAUATADsWECUAoLBnAxlMAKYD6ALgPakC2UAHgAQA8AtIwGYCuAdvuSEo949DIyYB6RnXojsWaAHdGKlW0aIo5KADoO0GsXghEjALyMAjAC4AbABpGANyJdi5xvngBmRwA5HAHZHACZHAE5HABYMbHwSKB5VdQ4QYHJiCHglRxdgN0YAPkYQuISeABICImJTdWqSCmoZeHjiRIq8t3lcLho6OFJcbXJcFnZe-pgQXCM2xMdDRI8l4Qba2KxeLlnEJu1gNQm%2B7KhFTtdieUUIEAydfFwneEmB2CGR3EcAIleYWAeT2%2B2FQlHIrXKVUIJEQIMoIB4owh7UqJgwQA&p=13:1 "run this script in flowR's playground, no setup")&nbsp;)
@@ -456,7 +456,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl v2.15.0, R grammar v14 (tree-sitter engine)
+    flowR repl v2.15.2, R grammar v14 (tree-sitter engine)
     R> :dataflow* test/testfiles/example.R
     ```
     
@@ -765,7 +765,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _3.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+    (The analysis required _2.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
     
     
     

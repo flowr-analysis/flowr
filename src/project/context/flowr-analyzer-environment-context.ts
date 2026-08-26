@@ -50,6 +50,12 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 	makeCleanEnv(): REnvironmentInformation;
 
 	/**
+	 * {@link makeCleanEnv} as a stable thunk. Hand this to something that may or may not need a clean
+	 * environment (see {@link DataflowGraph#addVertex}), so offering one costs nothing when it goes unused.
+	 */
+	readonly cleanEnv: () => REnvironmentInformation;
+
+	/**
 	 * Get the fingerprint of the clean environment with the configured built-in environment as base.
 	 */
 	getCleanEnvFingerprint(): Fingerprint;
@@ -162,6 +168,9 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 			d.type === ReferenceType.BuiltInFunction && typeof d.processor === 'function'
 			&& (namespace === undefined || (d.name !== undefined && Identifier.getNamespace(d.name) === namespace)));
 	}
+
+	/* one thunk per context rather than one per call, as the callers offering it mostly do not need it */
+	public readonly cleanEnv = (): REnvironmentInformation => this.makeCleanEnv();
 
 	public makeCleanEnv(): REnvironmentInformation {
 		return {

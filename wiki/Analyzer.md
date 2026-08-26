@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-08-24, 15:54:31 UTC (v2.14.3, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-08-26, 11:00:45 UTC (v2.15.1, R v4.6.1), please do not edit directly._
 
 
 - [Overview](#Overview)
@@ -32,7 +32,7 @@ your journey starts with the <a href="https://github.com/flowr-analysis/flowr/tr
 This builder allows you to configure the analysis in many different ways, for example, by specifying which [plugins](#Plugins) to use or
 what [engine](https://github.com/flowr-analysis/flowr/wiki/Engines) to use for the analysis.
 
-When building the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L190"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> instance, the builder will take care to
+When building the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L203"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> instance, the builder will take care to
 
 * load the [requested plugins](#Plugins)
 * setup an initial [context](#Context_Information)
@@ -53,12 +53,12 @@ The builder provides two methods for building the analyzer:
 <h3 id="Overview_of_the_Analyzer">Overview of the Analyzer</h3>
 
 Once you have created an analyzer instance, you can add R files, folders, or even entire projects for analysis using the
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L265"><code>FlowrAnalyzer::<b>addRequest</b></code></a> method.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L282"><code>FlowrAnalyzer::<b>addRequest</b></code></a> method.
 All loaded [plugins](#Plugins) will be applied fully automatically during the analysis.
 Please note that adding new files _after_ you already requested analysis results may cause bigger invalidations and cause re-analysis of previously analyzed files.
 With the [files context](#Files_Context), you can also add virtual files to the analysis to consider, or *overwrite* existing files with modified content.
 For this, have a look at the
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L281"><code>FlowrAnalyzer::<b>addFile</b></code></a> method.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L298"><code>FlowrAnalyzer::<b>addFile</b></code></a> method.
 
 	
 > [!NOTE]
@@ -82,28 +82,28 @@ For this, have a look at the
 > 
 
 
-To reset the analysis (e.g., to provide new requests) you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L229"><code>FlowrAnalyzer::<b>reset</b></code></a>.
-If you need to pre-compute analysis results (e.g., to speed up future queries), you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L327"><code>FlowrAnalyzer::<b>runFull</b></code></a>.
+To reset the analysis (e.g., to provide new requests) you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L246"><code>FlowrAnalyzer::<b>reset</b></code></a>.
+If you need to pre-compute analysis results (e.g., to speed up future queries), you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L344"><code>FlowrAnalyzer::<b>runFull</b></code></a>.
 
 <h3 id="Conducting_Analyses">Conducting Analyses</h3>
 
 Please make sure to add all of the files, folder, and projects you want to analyze using the
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L265"><code>FlowrAnalyzer::<b>addRequest</b></code></a> method (or <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L281"><code>FlowrAnalyzer::<b>addFile</b></code></a> for virtual files).
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L282"><code>FlowrAnalyzer::<b>addRequest</b></code></a> method (or <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L298"><code>FlowrAnalyzer::<b>addFile</b></code></a> for virtual files).
 Afterwards, you can request different kinds of analysis results, such as:
 
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L303"><code>FlowrAnalyzer::<b>parse</b></code></a> to get the parsed information by the respective [engine](https://github.com/flowr-analysis/flowr/wiki/Engines)\
-You can also use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L307"><code>FlowrAnalyzer::<i>peekParse</i></code></a> to inspect the parse information if it was already computed (but without triggering a computation).
-With <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L220"><code>FlowrAnalyzer::<i>parserInformation</i></code></a>, you get additional information on the parser used for the analysis.
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L311"><code>FlowrAnalyzer::<b>normalize</b></code></a> to compute the [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)\
-Likewise, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L315"><code>FlowrAnalyzer::<i>peekNormalize</i></code></a> returns the normalized AST if it was already computed but without triggering a computation.
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L319"><code>FlowrAnalyzer::<b>dataflow</b></code></a> to compute the [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph)\
-Again, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L323"><code>FlowrAnalyzer::<i>peekDataflow</i></code></a> allows you to inspect the dataflow graph if it was already computed (but without triggering a computation).
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L332"><code>FlowrAnalyzer::<b>controlflow</b></code></a> to compute the [Control Flow Graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph)\
-Also, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L336"><code>FlowrAnalyzer::<i>peekControlflow</i></code></a> returns the control flow graph if it was already computed but without triggering a computation.
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L340"><code>FlowrAnalyzer::<b>callGraph</b></code></a> to compute the [call graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg) of the analyzed code\
-Likewise, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L344"><code>FlowrAnalyzer::<i>peekCallGraph</i></code></a> allows you to inspect the call graph if it was already computed (but without triggering a computation).
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L348"><code>FlowrAnalyzer::<b>query</b></code></a> to run [queries](https://github.com/flowr-analysis/flowr/wiki/Query-API) on the analyzed code.
-* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L354"><code>FlowrAnalyzer::<b>runSearch</b></code></a> to run a search query on the analyzed code using the [search API](https://github.com/flowr-analysis/flowr/wiki/Search-API)
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L320"><code>FlowrAnalyzer::<b>parse</b></code></a> to get the parsed information by the respective [engine](https://github.com/flowr-analysis/flowr/wiki/Engines)\
+You can also use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L324"><code>FlowrAnalyzer::<i>peekParse</i></code></a> to inspect the parse information if it was already computed (but without triggering a computation).
+With <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L233"><code>FlowrAnalyzer::<i>parserInformation</i></code></a>, you get additional information on the parser used for the analysis.
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L328"><code>FlowrAnalyzer::<b>normalize</b></code></a> to compute the [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)\
+Likewise, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L332"><code>FlowrAnalyzer::<i>peekNormalize</i></code></a> returns the normalized AST if it was already computed but without triggering a computation.
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L336"><code>FlowrAnalyzer::<b>dataflow</b></code></a> to compute the [Dataflow Graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph)\
+Again, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L340"><code>FlowrAnalyzer::<i>peekDataflow</i></code></a> allows you to inspect the dataflow graph if it was already computed (but without triggering a computation).
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L349"><code>FlowrAnalyzer::<b>controlflow</b></code></a> to compute the [Control Flow Graph](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph)\
+Also, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L353"><code>FlowrAnalyzer::<i>peekControlflow</i></code></a> returns the control flow graph if it was already computed but without triggering a computation.
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L357"><code>FlowrAnalyzer::<b>callGraph</b></code></a> to compute the [call graph](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph#perspectives-cg) of the analyzed code\
+Likewise, <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L361"><code>FlowrAnalyzer::<i>peekCallGraph</i></code></a> allows you to inspect the call graph if it was already computed (but without triggering a computation).
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L365"><code>FlowrAnalyzer::<b>query</b></code></a> to run [queries](https://github.com/flowr-analysis/flowr/wiki/Query-API) on the analyzed code.
+* <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L371"><code>FlowrAnalyzer::<b>runSearch</b></code></a> to run a search query on the analyzed code using the [search API](https://github.com/flowr-analysis/flowr/wiki/Search-API)
 
 We work on providing a set of example repositories that demonstrate how to use the analyzer in different scenarios:
 
@@ -133,7 +133,7 @@ By default, the builder uses flowR's standard configuration obtained with <a hre
 
 
 > [!NOTE]
-> During the analysis with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L190"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, you can also access the configuration with
+> During the analysis with the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L203"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, you can also access the configuration with
 > 		 the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L121"><code><span title="This summarizes the other context layers used by the FlowrAnalyzer . Have a look at the attributes and layers listed below (e.g., files and deps ) to get an idea of the capabilities provided by this context. Besides these, this layer only orchestrates the different steps and layers, providing a collection of convenience methods. In general, you do not have to worry about these details, as the Flow...">FlowrAnalyzerContext</span></code></a>.
 
 
@@ -318,7 +318,7 @@ Currently, flowR supports the following plugin types built-in:
 
 <h3 id="Plugin_Types">Plugin Types</h3>
 
-During the construction of a new <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L190"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, plugins of different types are applied at different stages of the analysis.
+During the construction of a new <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L203"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a>, plugins of different types are applied at different stages of the analysis.
 These plugins are grouped by their <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/flowr-analyzer-plugin.ts#L29"><code><span title="Based on *when* and *what-for* the plugin is applied during the analysis, plugins are categorized into different types.  Consult this diagram for an overview of orders and (implicit or explicit) dependencies:    ┌───────────┐ ┌───────────────────┐ ┌─────────────┐ ┌───────────────┐ ┌───────┐ │ │ │ │ │ │ │ │ │ │ │ *Builder* ├──▶│ Project Discovery ├──▶│ File Loader ├──▶│ Dependencies ├──▶│ *DFA* │ │...">PluginType</span></code></a> and are applied in the following order (as shown in the documentation of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/plugins/flowr-analyzer-plugin.ts#L29"><code><span title="Based on *when* and *what-for* the plugin is applied during the analysis, plugins are categorized into different types.  Consult this diagram for an overview of orders and (implicit or explicit) dependencies:    ┌───────────┐ ┌───────────────────┐ ┌─────────────┐ ┌───────────────┐ ┌───────┐ │ │ │ │ │ │ │ │ │ │ │ *Builder* ├──▶│ Project Discovery ├──▶│ File Loader ├──▶│ Dependencies ├──▶│ *DFA* │ │...">PluginType</span></code></a>):
 
 ```text
@@ -393,8 +393,8 @@ Otherwise, users will have to provide an instance of your plugin class directly.
 
 <h2 id="Context_Information">Context Information</h2>
 
-The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L190"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> provides various context information during the analysis.
-You can access the context with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L225"><code>FlowrAnalyzer::<b>inspectContext</b></code></a>
+The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L203"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> provides various context information during the analysis.
+You can access the context with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L238"><code>FlowrAnalyzer::<b>inspectContext</b></code></a>
 to receive a read-only view of the current analysis context.
 Likewise, you can use <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-context.ts#L332"><code><span title="Get a read-only version of this context. This is useful if you want to pass the context to a place where you do not want it to be modified or just to reduce the available methods.">FlowrAnalyzerContext::<b>inspect</b></span></code></a> to get a read-only view of a given context.
 These read-only views prevent you from accidentally modifying the context during the analysis which may cause inconsistencies (this should be done either by
@@ -627,13 +627,13 @@ that allows you to query for a specific function by name.
 
 <h3 id="Environment_Context">Environment Context</h3>
 
-Here is the structure of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L77"><code><span title="Provides the built-in environment, created from the FlowrAnalyzerContext configuration.">FlowrAnalyzerEnvironmentContext</span></code></a> that provides access to the built-in environment:
+Here is the structure of the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L83"><code><span title="Provides the built-in environment, created from the FlowrAnalyzerContext configuration.">FlowrAnalyzerEnvironmentContext</span></code></a> that provides access to the built-in environment:
 
- * [FlowrAnalyzerEnvironmentContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L77)   
+ * [FlowrAnalyzerEnvironmentContext](https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L83)   
    Provides the built-in environment, created from the
    <code>FlowrAnalyzerContext</code>
    configuration.
-   <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L77">src/project/context/flowr-analyzer-environment-context.ts#L77</a>)</i>
+   <br/><i>(Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L83">src/project/context/flowr-analyzer-environment-context.ts#L83</a>)</i>
    
     <details><summary>View more (ReadOnlyFlowrAnalyzerEnvironmentContext)</summary>
 
@@ -647,9 +647,9 @@ Here is the structure of the <a href="https://github.com/flowr-analysis/flowr/tr
     </details>
 
 The environment context provides access to the built-in environment via
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L166"><code>FlowrAnalyzerEnvironmentContext::<i>makeCleanEnv</i></code></a>.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L175"><code>FlowrAnalyzerEnvironmentContext::<i>makeCleanEnv</i></code></a>.
 It also provides the empty built-in environment, which only contains primitives, via
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L180"><code>FlowrAnalyzerEnvironmentContext::<i>makeCleanEnvWithEmptyBuiltIns</i></code></a>.
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-environment-context.ts#L189"><code>FlowrAnalyzerEnvironmentContext::<i>makeCleanEnvWithEmptyBuiltIns</i></code></a>.
 
 <h3 id="Meta_Context">Meta Context</h3>
 
@@ -812,5 +812,5 @@ The cache is maintained by the <a href="https://github.com/flowr-analysis/flowr/
 Underlying, it relies on the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/core/pipeline-executor.ts#L97"><code><span title="**Please note:** The PipelineExecutor is now considered to be a rather low-level API for flowR. While it still works and is the basis for all other layers, we strongly recommend using the FlowrAnalyzer and its builder to create and use an analyzer instance that is pre-configured for your use-case. The pipeline executor allows to execute arbitrary pipelines in a step-by-step fashion. If you are not...">PipelineExecutor</span></code></a> to cache results of different pipeline stages.
 
 Usually, you do not have to worry about the cache, as it is managed automatically by the analyzer.
-If you want to overwrite cache information, the analysis methods in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L190"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> (see [Conducting Analyses](#Conducting_Analyses) above)
+If you want to overwrite cache information, the analysis methods in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer.ts#L203"><code><span title="Central class for conducting analyses with FlowR. Use the FlowrAnalyzerBuilder to create a new instance. If you want the original pattern of creating a pipeline and running all steps, you can still do this with FlowrAnalyzer#runFull . To inspect the context of the analyzer, use FlowrAnalyzer#inspectContext (if you are a plugin and need to modify it, use FlowrAnalyzer#context instead).">FlowrAnalyzer</span></code></a> (see [Conducting Analyses](#Conducting_Analyses) above)
 usually provide an optional `force` parameter to control whether to use the cache or recompute the results.

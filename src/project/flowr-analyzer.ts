@@ -23,6 +23,9 @@ import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter
 import type { CallGraph } from '../dataflow/graph/call-graph';
 import type { InvalidationEvent } from './cache/flowr-cache';
 import type { GasOverrides } from '../gas';
+import type { FnInfo } from '../dataflow/environments/query-fn-props';
+import { fnInfo } from '../dataflow/environments/query-fn-props';
+import { Identifier } from '../dataflow/environments/identifier';
 
 /** Options for a single analyzer operation, bounding what it may cost. */
 export interface FlowrAnalysisOptions {
@@ -87,6 +90,16 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * This is the preferred method for users that want to inspect the context.
 	 */
 	inspectContext(): ReadOnlyFlowrAnalyzerContext
+	/**
+	 * What flowR knows about the function `name`, whether that is one of its own built-ins, a package function
+	 * the signature database carries, or both; see {@link fnInfo}.
+	 *
+	 * A string is read the way R source spells a name, so `'dplyr::lead'` and `'dplyr:::internal'` name the
+	 * package function rather than a symbol with a `::` in it (pass an {@link Identifier} for that one).
+	 * @param name    - The function to ask about, `'dplyr::lead'` or `Identifier.make('lead', 'dplyr')` to pin the package down.
+	 * @param version - The package version to answer for, the one the analysis assumes if omitted.
+	 */
+	functionInfo(name: Identifier | string, version?: string): FnInfo | undefined
 	/**
 	 * Get the parse output for the request.
 	 *
@@ -224,6 +237,10 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public inspectContext(): ReadOnlyFlowrAnalyzerContext {
 		return this.ctx.inspect();
+	}
+
+	public functionInfo(name: Identifier | string, version?: string): FnInfo | undefined {
+		return fnInfo(typeof name === 'string' ? Identifier.parse(name) : name, this.ctx.inspect(), version);
 	}
 
 	public reset() {

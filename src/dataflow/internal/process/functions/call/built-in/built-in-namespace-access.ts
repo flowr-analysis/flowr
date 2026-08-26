@@ -64,7 +64,7 @@ export function processNamespaceAccess<OtherInfo>(
 			tag: VertexType.Use,
 			id:  rootId,
 			cds: data.cds
-		}, data.ctx.env.makeCleanEnv()),
+		}, data.ctx.env.cleanEnv),
 		entryPoint: rootId,
 		exitPoints: [{ nodeId: rootId, type: ExitPointType.Default, cds: data.cds }],
 		hooks:      []

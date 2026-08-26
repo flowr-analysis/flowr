@@ -171,7 +171,7 @@ export function processApply<OtherInfo>(
 			cds:         data.cds,
 			args:        allOtherArguments, // same reference
 			origin:      [BuiltInProcName.Function]
-		}, data.ctx.env.makeCleanEnv());
+		}, data.ctx.env.cleanEnv);
 		information.graph.addEdge(rootId, rootFnId, EdgeType.Calls | EdgeType.Reads);
 		information.graph.addEdge(rootId, functionId, EdgeType.Calls | EdgeType.Argument);
 		information = {

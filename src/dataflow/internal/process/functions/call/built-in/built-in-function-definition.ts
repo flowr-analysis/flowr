@@ -173,7 +173,7 @@ export function processFunctionDefinition<OtherInfo>(
 				id:          read.nodeId,
 				environment: undefined,
 				cds:         undefined
-			}, data.ctx.env.makeCleanEnv());
+			}, data.ctx.env.cleanEnv);
 		}
 	}
 
@@ -268,7 +268,7 @@ export function processFunctionDefinition<OtherInfo>(
 		subflow:     flow,
 		exitPoints:  afterHookExitPoints,
 		returnEnvState
-	}, data.ctx.env.makeCleanEnv());
+	}, data.ctx.env.cleanEnv);
 
 	return {
 		/* nothing escapes a function definition, but the function itself, will be forced in assignment: { nodeId: functionDefinition.info.id, scope: data.activeScope, used: 'always', name: functionDefinition.info.id as string } */

@@ -216,7 +216,32 @@ export class DataflowGraph<
 	 * edges of many nodes scan the whole graph once per node */
 	private incomingIndex?:    Map<NodeId, IngoingEdges<Edge>>;
 
+	/* tag to the ids carrying it; a lookup re-checks the vertex, as another graph may retag an object they share */
 	private readonly types: Map<Vertex['tag'], NodeId[]> = new Map<Vertex['tag'], NodeId[]>();
+
+	/** The id list of `tag`, created on first use, so a caller adding many ids looks it up once. */
+	private typeList(tag: Vertex['tag']): NodeId[] {
+		let ids = this.types.get(tag);
+		if(ids === undefined) {
+			this.types.set(tag, ids = []);
+		}
+		return ids;
+	}
+
+	private indexType(tag: Vertex['tag'], id: NodeId): void {
+		this.typeList(tag).push(id);
+	}
+
+	/** Every write above keeps an id listed under one tag at most once, so a lookup never hands the same one out twice. */
+	private unindexType(tag: Vertex['tag'], id: NodeId): void {
+		const ids = this.types.get(tag);
+		if(ids === undefined) {
+			return;
+		}
+		for(let idx = ids.lastIndexOf(id); idx >= 0; idx = ids.lastIndexOf(id)) {
+			ids.splice(idx, 1);
+		}
+	}
 
 	/* the qualified call names, built on demand and dropped on every change, as vertices and edges both decide them */
 	private qualifiedNames?: QualificationCache;
@@ -224,8 +249,9 @@ export class DataflowGraph<
 	toJSON(): DataflowGraphJson {
 		return {
 			rootVertices:        Array.from(this.rootVertices),
-			vertexInformation:   Array.from(this.vertexInformation.entries()),
-			edgeInformation:     Array.from(this.edgeInformation.entries()).map(([id, edges]) => [id, Array.from(edges.entries())]),
+			vertexInformation:   Array.from(this.vertexInformation),
+			/* mapping inside `Array.from`, a trailing `.map()` would build the outer array twice */
+			edgeInformation:     Array.from(this.edgeInformation, ([id, edges]) => [id, Array.from(edges)] as [NodeId, [NodeId, DfEdge][]]),
 			_unknownSideEffects: Array.from(this._unknownSideEffects)
 		};
 	}
@@ -333,8 +359,12 @@ export class DataflowGraph<
 		cache.baseR.set(id, baseR);
 	}
 
-	/** Drops the cached qualifications, as the graph may no longer imply them */
+	/** set by a `consume` merge, see {@link DataflowGraph#mergeWith|mergeWith()}; the graph must not change after that */
+	private consumed = false;
+
+	/** Drops the cached qualifications, as the graph may no longer imply them. Every mutator runs through here, so the guard covers them all. */
 	private dropQualifications(): void {
+		guard(!this.consumed, 'this graph was consumed by a merge and must not be changed any more');
 		if(this.qualifiedNames !== undefined) {
 			this.qualifiedNames = undefined;
 		}
@@ -380,15 +410,28 @@ export class DataflowGraph<
 		}
 	}
 
+	/** Every vertex carrying `type`, in the order the graph learned of them. */
 	public* verticesOfType<T extends Vertex['tag']>(type: T): MapIterator<[NodeId, Vertex & { tag: T }]> {
-		const ids = this.types.get(type) ?? [];
+		const ids = this.types.get(type);
+		if(ids === undefined) {
+			return;
+		}
 		for(const id of ids) {
-			yield [id, this.vertexInformation.get(id) as Vertex & { tag: T }];
+			const vertex = this.vertexInformation.get(id);
+			/* a stale entry would hand out a vertex without the fields its tag promises */
+			if(vertex?.tag === type) {
+				yield [id, vertex as Vertex & { tag: T }];
+			}
 		}
 	}
 
+	/** The ids of {@link DataflowGraph#verticesOfType|verticesOfType}, as a fresh array the caller may keep. */
 	public vertexIdsOfType<T extends Vertex['tag']>(type: T): NodeId[] {
-		return this.types.get(type) ?? [];
+		const ids = this.types.get(type);
+		if(ids === undefined) {
+			return [];
+		}
+		return ids.filter(id => this.vertexInformation.get(id)?.tag === type);
 	}
 
 	/** Ids of all edges in the graph together with their edge information, see {@link DataflowGraph#vertices}. */
@@ -443,25 +486,34 @@ export class DataflowGraph<
 	 * Adds `vertex` to the graph, filling in `fallbackEnv` if it carries no environment. `asRoot = false` skips
 	 * adding it to {@link rootIds|root vertices} (mostly useful when constructing graphs for tests); `overwrite` replaces an existing vertex of the same id.
 	 */
-	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, fallbackEnv: REnvironmentInformation, asRoot = true, overwrite = false): this {
+	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, fallbackEnv: REnvironmentInformation | (() => REnvironmentInformation), asRoot = true, overwrite = false): this {
 		const vid = vertex.id;
-		if(this.vertexInformation.has(vid) && !overwrite) {
+		const previous = this.vertexInformation.get(vid);
+		if(previous !== undefined && !overwrite) {
 			return this;
 		}
 		this.dropQualifications();
 		const vtag = vertex.tag;
 
 		// keep a clone of the original environment, isolating the snapshot from later updates
-		(vertex as { environment: REnvironmentInformation | undefined }).environment = vertex.environment ? cloneEnvironmentInformation(vertex.environment) : (vtag === VertexType.FunctionDefinition || (vtag === VertexType.FunctionCall && !vertex.onlyBuiltin) ? fallbackEnv : undefined);
+		let environment: REnvironmentInformation | undefined;
+		if(vertex.environment) {
+			environment = cloneEnvironmentInformation(vertex.environment);
+		} else if(vtag === VertexType.FunctionDefinition || (vtag === VertexType.FunctionCall && !vertex.onlyBuiltin)) {
+			/* only here is a fallback wanted, so a thunk spares every other vertex one it would discard */
+			environment = typeof fallbackEnv === 'function' ? fallbackEnv() : fallbackEnv;
+		}
+		(vertex as { environment: REnvironmentInformation | undefined }).environment = environment;
 		this.vertexInformation.set(vid, vertex as Vertex);
 		if(activeDataflowBudget !== undefined) {
 			activeDataflowBudget.vertex();
 		}
-		const typeIds = this.types.get(vtag);
-		if(typeIds) {
-			typeIds.push(vid);
-		} else {
-			this.types.set(vtag, [vid]);
+		/* an overwrite keeping the tag is indexed already */
+		if(previous?.tag !== vtag) {
+			if(previous !== undefined) {
+				this.unindexType(previous.tag, vid);
+			}
+			this.indexType(vtag, vid);
 		}
 
 		if(asRoot) {
@@ -508,27 +560,21 @@ export class DataflowGraph<
 		return this;
 	}
 
-	/** Merges `otherGraph` into *this* one in-place (the return value is only for convenience); `mergeRootVertices = false` excludes its root vertices (useful when merging in a function definition). */
-	public mergeWith(otherGraph: DataflowGraph<Vertex, Edge> | undefined, mergeRootVertices = true): this {
+	/**
+	 * Merges `otherGraph` into *this* one in-place (the return value is only for convenience);
+	 * `mergeRootVertices = false` excludes its root vertices (useful when merging in a function definition).
+	 *
+	 * `consume` takes `otherGraph`'s edge tables instead of copying them (perf). Pass it only for a graph that dies with the call.
+	 */
+	public mergeWith(otherGraph: DataflowGraph<Vertex, Edge> | undefined, mergeRootVertices = true, consume = false): this {
 		if(otherGraph === undefined || otherGraph === this) {
 			return this;
 		}
+		guard(!otherGraph.consumed, 'a graph consumed by an earlier merge cannot be merged again');
 
 		this.mergeVertices(otherGraph, mergeRootVertices);
-		for(const [type, ids] of otherGraph.types) {
-			const existing = this.types.get(type);
-			if(existing) {
-				if(existing !== ids) {
-					for(const id of ids) {
-						existing.push(id);
-					}
-				}
-			} else {
-				this.types.set(type, ids.slice());
-			}
-		}
-
-		this.mergeEdges(otherGraph);
+		this.mergeEdges(otherGraph, consume);
+		otherGraph.consumed ||= consume;
 		return this;
 	}
 
@@ -544,20 +590,34 @@ export class DataflowGraph<
 		for(const unknown of otherGraph.unknownSideEffects) {
 			this._unknownSideEffects.add(unknown);
 		}
+		/* the tags of the vertices coming in repeat, so the list each goes on is looked up only when it changes */
+		let lastTag: Vertex['tag'] | undefined;
+		let lastIds: NodeId[] = [];
 		for(const [id, info] of otherGraph.vertexInformation) {
 			const currentInfo = this.vertexInformation.get(id);
-			this.vertexInformation.set(id, currentInfo === undefined ? info : mergeNodeInfos(currentInfo, info));
+			if(currentInfo === undefined) {
+				this.vertexInformation.set(id, info);
+				if(info.tag !== lastTag) {
+					lastIds = this.typeList(lastTag = info.tag);
+				}
+				lastIds.push(id);
+			} else {
+				/* a known vertex keeps its tag, and with it its place in the index */
+				const merged = mergeNodeInfos(currentInfo, info);
+				if(merged !== currentInfo) {
+					this.vertexInformation.set(id, merged);
+				}
+			}
 		}
 	}
 
-	private mergeEdges(otherGraph: DataflowGraph<Vertex, Edge>) {
+	private mergeEdges(otherGraph: DataflowGraph<Vertex, Edge>, consume = false) {
 		this.dropQualifications();
 		this.incomingIndex = undefined;
-		for(const [id, edges] of otherGraph.edgeInformation.entries()) {
-			let existing = this.edgeInformation.get(id);
+		for(const [id, edges] of otherGraph.edgeInformation) {
+			const existing = this.edgeInformation.get(id);
 			if(existing === undefined) {
-				existing = new Map(edges);
-				this.edgeInformation.set(id, existing);
+				this.edgeInformation.set(id, consume ? edges : new Map(edges));
 			} else {
 				for(const [target, edge] of edges) {
 					const get = existing.get(target);
@@ -585,18 +645,8 @@ export class DataflowGraph<
 			if(sourceIds) {
 				(vertex as unknown as Writable<DataflowGraphVertexVariableDefinition>).source = sourceIds;
 			}
-			const oldIds = this.types.get(oldTag);
-			if(oldIds) {
-				for(let idx = oldIds.lastIndexOf(vid); idx >= 0; idx = oldIds.lastIndexOf(vid)) {
-					oldIds.splice(idx, 1);
-				}
-			}
-			const newIds = this.types.get(VertexType.VariableDefinition);
-			if(newIds) {
-				newIds.push(vid);
-			} else {
-				this.types.set(VertexType.VariableDefinition, [vid]);
-			}
+			this.unindexType(oldTag, vid);
+			this.indexType(VertexType.VariableDefinition, vid);
 		}
 	}
 
@@ -608,18 +658,8 @@ export class DataflowGraph<
 		guard(vertex !== undefined && (UseVertex.is(vertex) || ValueVertex.is(vertex)), () => `node must be a use or value node for ${JSON.stringify(info.id)} to update it to a function call but is ${vertex?.tag}`);
 		const previousTag = vertex.tag;
 		this.vertexInformation.set(infoId, { ...vertex, ...info, tag: VertexType.FunctionCall });
-		const prevIds = this.types.get(previousTag);
-		if(prevIds) {
-			for(let idx = prevIds.lastIndexOf(infoId); idx >= 0; idx = prevIds.lastIndexOf(infoId)) {
-				prevIds.splice(idx, 1);
-			}
-		}
-		const callIds = this.types.get(VertexType.FunctionCall);
-		if(callIds) {
-			callIds.push(infoId);
-		} else {
-			this.types.set(VertexType.FunctionCall, [infoId]);
-		}
+		this.unindexType(previousTag, infoId);
+		this.indexType(VertexType.FunctionCall, infoId);
 	}
 
 	/** If you do not pass the `to` node, this will just mark the node as maybe */
@@ -658,10 +698,12 @@ export class DataflowGraph<
 		const graph = new DataflowGraph(undefined);
 		graph.rootVertices = new Set<NodeId>(data.rootVertices);
 		graph.vertexInformation = new Map<NodeId, DataflowGraphVertexInfo>(data.vertexInformation);
-		for(const [, vertex] of graph.vertexInformation) {
+		for(const [id, vertex] of graph.vertexInformation) {
 			if(vertex.environment) {
 				(vertex.environment as Writable<REnvironmentInformation>) = renvFromJson(vertex.environment as unknown as REnvironmentInformationJson);
 			}
+			/* the index is not serialized, without rebuilding it every lookup by tag comes up empty */
+			graph.indexType(vertex.tag, id);
 		}
 		graph.edgeInformation = new Map<NodeId, OutgoingEdges>(data.edgeInformation.map(([id, edges]) => [id, new Map<NodeId, DfEdge>(edges)]));
 		graph.incomingIndex = undefined;

@@ -64,7 +64,8 @@ export function processForLoop<OtherInfo>(
 	const originalDependency = data.cds;
 
 	let headEnvironments = overwriteEnvironment(vector.environment, variable.environment);
-	const headGraph = variable.graph.mergeWith(vector.graph);
+	/* only the vector's references and entry point are read past this, its graph is not */
+	const headGraph = variable.graph.mergeWith(vector.graph, true, true);
 
 	const writtenVariable = variable.unknownReferences.concat(variable.in);
 	const writtenIds = new Set<NodeId>();
@@ -84,7 +85,8 @@ export function processForLoop<OtherInfo>(
 
 	const bodyRefs = body.in.concat(body.unknownReferences);
 	applyCdsToAllInGraphButConstants(body.graph, bodyRefs, cd);
-	const nextGraph = headGraph.mergeWith(body.graph);
+	/* likewise the body's, what is taken from it afterwards are its references, exit points and hooks */
+	const nextGraph = headGraph.mergeWith(body.graph, true, true);
 
 	// now we have to identify all reads that may be effected by a circular redefinition
 	// for this, we search for all reads with a non-local read resolve!

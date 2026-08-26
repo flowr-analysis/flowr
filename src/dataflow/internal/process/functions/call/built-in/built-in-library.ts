@@ -327,7 +327,7 @@ export function attachExportVertex(graph: DataflowGraph, builtInId: NodeId, envi
 		environment, cds, params:     {},
 		subflow:    { graph: new Set(), unknownReferences: [], in: [], out: [], environment, entryPoint: builtInId, hooks: [] },
 		exitPoints: [],
-	}, ctx.env.makeCleanEnv());
+	}, ctx.env.cleanEnv);
 }
 
 /** Reserved marker binding recording an unresolved `library()`/`require()` load; the leading space cannot collide with a real export name. */

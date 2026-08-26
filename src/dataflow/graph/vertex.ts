@@ -246,7 +246,7 @@ export const FunctionCallVertex = {
 	 * Deliberately not a type predicate: a `false` says nothing about the tag, the call may simply carry another origin.
 	 */
 	hasOrigin(this: void, vertex: DataflowGraphVertexBase | undefined, origin: BuiltInProcName): boolean {
-		return FunctionCallVertex.is(vertex) && vertex.origin.includes(origin);
+		return FunctionCallVertex.is(vertex) && vertex.origin?.includes(origin) === true;
 	}
 };
 

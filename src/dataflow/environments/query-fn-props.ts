@@ -4,16 +4,19 @@ import type { BuiltInDefinition, BuiltInDefinitions } from './built-in-config';
 import { DefaultBuiltinConfig } from './default-builtin-config';
 import type { REnvironmentInformation } from './environment';
 import { REnvironment } from './environment';
-import type { IdentifierDefinition } from './identifier';
+import type { BrandedIdentifier, IdentifierDefinition } from './identifier';
 import { Identifier, PkgName, ReferenceType } from './identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PackageSignatureSource } from '../../project/sigdb/reader';
+import type { DecodedFunction } from '../../project/sigdb/decode';
+import type { SignatureDb } from '../../project/sigdb/signature-db';
+import { signatureDbOf } from '../../project/sigdb/signature-db';
 import { Resolve } from './resolve-helper';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { DataflowInformation } from '../info';
 import { FunctionCallVertex } from '../graph/vertex';
 import { Dataflow } from '../graph/df-helper';
-import { AttachedBasePackageSet } from '../../util/r-base-packages';
+import { AttachedBasePackageSet, baseRExportOwner } from '../../util/r-base-packages';
 
 /**
  * Where to look up what flowR knows about a function, in that order:
@@ -153,16 +156,125 @@ export function callFnProps(id: NodeId, { graph, environment }: Pick<DataflowInf
  */
 export function inferFnProps(src: PackageSignatureSource, pkg: string, name: string, version?: string): BuiltInFnInfo | undefined {
 	const fn = src.functionByName(pkg, name, version);
-	if(fn === undefined) {
-		return undefined;
-	}
+	return fn === undefined ? undefined : propsOfSignature(src, fn, pkg, version);
+}
+
+/** {@link inferFnProps} for an already decoded entry, so a lookup that found one does not repeat it. */
+function propsOfSignature(src: PackageSignatureSource, fn: DecodedFunction, pkg: string, version?: string): BuiltInFnInfo {
 	const own = fnInfoFromSignature(fn);
 	const known = BuiltInIndex.default();
 	let props = own;
-	for(const callee of src.transitiveCallees(pkg, name, version) ?? fn.callees) {
+	for(const callee of src.transitiveCallees(pkg, fn.name, version) ?? fn.callees) {
 		props = CallProps.join(props, CallProps.filter(known.get(callee), PropagatedProps));
 	}
 	return { sig: own.sig, ...props };
+}
+
+/**
+ * Everything flowR knows about one function, no matter which of its sources knows it; see {@link fnInfo}.
+ * It extends {@link BuiltInFnInfo}, so anything taking what a built-in states takes this as well.
+ */
+export interface FnInfo extends BuiltInFnInfo {
+	/** the identifier the answer is for, with the namespace filled in when an unqualified ask resolved to a package */
+	readonly name:       Identifier
+	/** the package the answer is for, `undefined` when the name resolves to no package at all */
+	readonly package?:   string
+	/** the package version the answer is for, i.e. the one the analysis assumes; see {@link SignatureDb.versionOf} */
+	readonly version?:   string
+	/** the formal names in order, empty when neither source declares any */
+	readonly parameters: readonly string[]
+	/** whether flowR's own built-in definitions state anything about the name */
+	readonly builtIn:    boolean
+	/** whether flowR's value solver can fold a call of it to a constant */
+	readonly foldable:   boolean
+	/** the signature database entry: where the function is defined, its callees, its help topic */
+	readonly entry?:     DecodedFunction
+}
+
+/**
+ * The one place to ask what flowR knows about a function by name: one of its own built-ins, a package function
+ * the signature database carries, or both. What the built-in states wins wherever the two overlap, exactly as
+ * {@link queryFnProps} joins them. `undefined` when neither has anything to say about the name.
+ * @param name    - The function to ask about, qualified (`Identifier.make('lead', 'dplyr')`) to pin the package down.
+ * @param ctx     - The analyzer context the built-ins, the database and the assumed versions come from.
+ * @param version - The package version to answer for, the one the analysis assumes if omitted.
+ * @example
+ * ```ts
+ * const ctx = analyzer.inspectContext();
+ * fnInfo(Identifier.make('lead', 'dplyr'), ctx)?.parameters; // ['x', 'n', 'default', 'order_by', '...']
+ * fnInfo(Identifier.make('nchar'), ctx)?.foldable;           // true, flowR folds it itself
+ * ```
+ * @see {@link fnInfoLookup} - to ask the same question for many names
+ */
+export function fnInfo(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext, version?: string): FnInfo | undefined {
+	const db = signatureDbOf(ctx.deps);
+	const available = db.available();
+	const [bare, namespace, internal] = Identifier.toArray(name);
+	const pkg = namespace ?? packageExporting(bare, ctx);
+	/* an unqualified ask keeps its form, the built-in layer has a search path of its own */
+	const stated = queryFnProps(name, { environment: ctx.env.makeCleanEnv() });
+	const qualified = pkg === undefined ? name : Identifier.make(bare, pkg, internal === true);
+	const assumed = pkg === undefined ? undefined : version ?? db.versionOf(pkg);
+	/* the identifier says how far to reach, `::` to the exports and `:::` past them */
+	const entry = pkg === undefined || !available ? undefined : db.functionOf(qualified, version);
+	const known = entry === undefined || pkg === undefined ? undefined : propsOfSignature(db.sources(), entry, pkg, assumed);
+	if(stated === undefined && known === undefined) {
+		return undefined;
+	}
+	/* the same identifier the built-in layer was asked with, so both halves of the answer describe one function */
+	const definition = ctx.env.builtInFunctionOf(name);
+	const sig = nonEmpty(stated?.sig) ?? nonEmpty(known?.sig);
+	/* the database keeps every formal, a `sig` only the ones flowR models, so it answers first, but an entry
+	 * that records none must not hide the formals the built-in does state */
+	const parameters = nonEmpty(entry?.signature)?.map(p => p.name) ?? sig?.map(([param]) => param) ?? [];
+	return {
+		name:            qualified,
+		package:         pkg,
+		version:         assumed,
+		sig,
+		parameters,
+		...CallProps.join(stated, known),
+		frame:           stated?.frame,
+		keepEnvironment: stated?.keepEnvironment,
+		builtIn:         definition !== undefined || stated !== undefined,
+		foldable:        definition?.evalHandler !== undefined,
+		entry
+	};
+}
+
+/** The array itself, `undefined` when it holds nothing, so an empty one does not count as an answer. */
+function nonEmpty<T extends { readonly length: number }>(of: T | undefined): T | undefined {
+	return of !== undefined && of.length > 0 ? of : undefined;
+}
+
+/**
+ * The package an unqualified `name` is answered for. Only one the project pulls in counts, as a name some
+ * unrelated package exports says nothing about the code at hand, and a `library()` of one sits above the base
+ * packages. Where several pulled-in packages export it the most-used answers, as attach order is not known here.
+ *
+ * Base R is settled by {@link baseRExportOwner} when the database's export index does not carry the name, so
+ * `sum` still answers as `base::sum` on a bundle holding no record of it and with no database at all.
+ */
+function packageExporting(name: BrandedIdentifier, ctx: ReadOnlyFlowrAnalyzerContext): string | undefined {
+	let best: string | undefined;
+	let bestRank = Number.MAX_SAFE_INTEGER;
+	let pulled: ReadonlySet<string> | undefined;
+	for(const pkg of ctx.deps.packagesExporting(name)) {
+		const attached = pkg === PkgName.Base || AttachedBasePackageSet.has(pkg);
+		if(!attached) {
+			pulled ??= new Set(ctx.deps.getDependencies().map(d => d.name));
+			if(!pulled.has(pkg)) {
+				continue; // nothing attaches it here, so no call in this project reaches it unqualified
+			}
+			return pkg; // and nothing outranks a package the code attaches itself
+		}
+		const rank = pkg === PkgName.Base ? 2 : 1;
+		if(rank < bestRank) {
+			bestRank = rank;
+			best = pkg;
+		}
+	}
+	return best ?? baseRExportOwner(name);
 }
 
 /** The identifiers a definition registers, with the suffixes of a replacement spelled out. */
@@ -177,15 +289,15 @@ export function builtInNames(definition: BuiltInDefinition): Identifier[] {
 /** One built-in as the {@link BuiltInIndex} sees it: the name it is registered under and what flowR states about it. */
 export interface BuiltInEntry extends StatedProps {
 	/** the identifier the built-in is registered under, with a replacement's suffix spelled out */
-	readonly name:   Identifier
+	readonly name:     Identifier
 	/** the {@link CallProp} bits the definition states, `undefined` when it states none */
-	readonly props?: CallProps
+	readonly props?:   CallProps
 	/** the {@link SemanticCallTags} entries the definition states, `undefined` when it states none */
-	readonly tags?:  SemanticCallTags
+	readonly tags?:    SemanticCallTags
 	/** the declared parameters and what each of their arguments is used for */
-	readonly sig?:   FnSig
+	readonly sig?:     FnSig
 	/** whether the value solver can fold a call of this built-in to a constant */
-	readonly folds:  boolean
+	readonly foldable: boolean
 }
 
 /** One parameter of a built-in, as {@link BuiltInIndex#params} reports it. */
@@ -206,8 +318,8 @@ function entryOfDefinition(definition: BuiltInDefinition): readonly IndexedEntry
 		return [];
 	}
 	const info = definition.config as BuiltInFnInfo | undefined;
-	const folds = definition.type === 'function' && definition.evalHandler !== undefined;
-	return builtInNames(definition).map(name => ({ name, props: info?.props, tags: info?.tags, sig: info?.sig, folds, overrides: definition.overrides }));
+	const foldable = definition.type === 'function' && definition.evalHandler !== undefined;
+	return builtInNames(definition).map(name => ({ name, props: info?.props, tags: info?.tags, sig: info?.sig, foldable, overrides: definition.overrides }));
 }
 
 function entriesOfMemory(builtIns: BuiltIns): readonly IndexedEntry[] {
@@ -223,7 +335,7 @@ function entriesOfMemory(builtIns: BuiltIns): readonly IndexedEntry[] {
 				}
 				const info = d.config as BuiltInFnInfo | undefined;
 				/* the memory is keyed by the bare name, the definition keeps the namespace it was declared with */
-				out.push({ name: d.name ?? registered, props: info?.props, tags: info?.tags, sig: info?.sig, folds: d.evalHandler !== undefined });
+				out.push({ name: d.name ?? registered, props: info?.props, tags: info?.tags, sig: info?.sig, foldable: d.evalHandler !== undefined });
 			}
 		}
 	}
@@ -239,17 +351,17 @@ let defaultIndex: BuiltInIndex | undefined;
  */
 function mergedEntry(known: BuiltInEntry, next: IndexedEntry): BuiltInEntry {
 	return {
-		name:  next.name,
-		props: next.props ?? known.props,
-		tags:  next.tags ?? known.tags,
-		sig:   next.sig ?? known.sig,
-		folds: next.folds || known.folds
+		name:     next.name,
+		props:    next.props ?? known.props,
+		tags:     next.tags ?? known.tags,
+		sig:      next.sig ?? known.sig,
+		foldable: next.foldable || known.foldable
 	};
 }
 
 /** The entry alone, without what only the index build needs to know about it. */
-function plainEntry({ name, props, tags, sig, folds }: IndexedEntry): BuiltInEntry {
-	return { name, props, tags, sig, folds };
+function plainEntry({ name, props, tags, sig, foldable }: IndexedEntry): BuiltInEntry {
+	return { name, props, tags, sig, foldable };
 }
 
 /** How early R's default search path reaches a name, deciding which package an unqualified ask answers with. */
@@ -365,8 +477,8 @@ export class BuiltInIndex {
 	}
 
 	/** Every built-in the value solver can fold to a constant (the ones with a `evalHandler`). */
-	public get folding(): readonly Identifier[] {
-		return this.cached('folding', e => e.folds);
+	public get foldable(): readonly Identifier[] {
+		return this.cached('foldable', e => e.foldable);
 	}
 
 	/** Every parameter whose argument carries at least one bit of `props`, like {@link ArgProp.Resource}. */

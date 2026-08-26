@@ -34,7 +34,7 @@ describe('Modification', () => {
 			const overwrite = defaultEnv().defineVariable('y', '_2');
 			const result = overwriteEnvironment(clean, overwrite);
 			assert.isDefined(result, 'there should be a result');
-			expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2);
+			expect(result.current.memory.size, 'there should be two definitions for x and y').to.equal(2);
 			existsDefinedAt('x', ['_1'], result.current, 'globals must be defined locally as well');
 			existsDefinedAt('y', ['_2'], result.current, 'globals must be defined locally as well');
 		});
@@ -44,7 +44,7 @@ describe('Modification', () => {
 			const overwrite = defaultEnv().defineVariable('x', '_2');
 			const result = overwriteEnvironment(clean, overwrite);
 			assert.isDefined(result, 'there should be a result');
-			expect(result.current.memory, 'there should be only one definition for x').to.have.length(1);
+			expect(result.current.memory.size, 'there should be only one definition for x').to.equal(1);
 			existsDefinedAt('x', ['_2'], result.current);
 		});
 	});
@@ -57,7 +57,7 @@ describe('Modification', () => {
 			const result = overwriteEnvironment(clean, overwrite);
 			assert.isDefined(result, 'there should be a result');
 			expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0);
-			expect(result.current.memory, 'there should be two definitions for long and short').to.have.length(2);
+			expect(result.current.memory.size, 'there should be two definitions for long and short').to.equal(2);
 			existsDefinedAt('long', ['_1'], result.current);
 			existsDefinedAt('short', ['_2'], result.current);
 		});
@@ -68,7 +68,7 @@ describe('Modification', () => {
 			const result = overwriteEnvironment(clean, overwrite);
 			assert.isDefined(result, 'there should be a result');
 			expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0);
-			expect(result.current.memory, 'there should be only one definition for long').to.have.length(1);
+			expect(result.current.memory.size, 'there should be only one definition for long').to.equal(1);
 			existsDefinedAt('long', ['_2'], result.current);
 		});
 	});
@@ -81,7 +81,7 @@ describe('Append', () => {
 			const append = defaultEnv().defineVariable('y', '_2', '_2');
 			const result = appendEnvironment(clean, append);
 			assert.isDefined(result, 'there should be a result');
-			expect(result.current.memory, 'there should be two definitions for x and y').to.have.length(2);
+			expect(result.current.memory.size, 'there should be two definitions for x and y').to.equal(2);
 			existsDefinedAt('x', ['_1'], result.current, 'globals must be defined locally as well');
 			existsDefinedAt('y', ['_2'], result.current, 'globals must be defined locally as well');
 		});
@@ -91,7 +91,7 @@ describe('Append', () => {
 			const append = defaultEnv().defineVariable('x', '_2', '_2');
 			const result = appendEnvironment(clean, append);
 			assert.isDefined(result, 'there should be a result');
-			expect(result.current.memory, 'there should be only one symbol defined (for x)').to.have.length(1);
+			expect(result.current.memory.size, 'there should be only one symbol defined (for x)').to.equal(1);
 			existsDefinedAt('x', ['_1', '_2'], result.current);
 		});
 	});
@@ -104,7 +104,7 @@ describe('Append', () => {
 			const result = appendEnvironment(clean, append);
 			assert.isDefined(result, 'there should be a result');
 			expect(result.level, 'neither definitions nor appends should produce new local scopes').to.be.equal(0);
-			expect(result.current.memory, 'there should be two definitions for local-long and local-short').to.have.length(2);
+			expect(result.current.memory.size, 'there should be two definitions for local-long and local-short').to.equal(2);
 			existsDefinedAt('local-long', ['_1'], result.current);
 			existsDefinedAt('local-short', ['_2'], result.current);
 		});
@@ -115,7 +115,7 @@ describe('Append', () => {
 			const result = appendEnvironment(clean, append);
 			assert.isDefined(result, 'there should be a result');
 			expect(result.level, 'neither definitions nor overwrites should produce new local scopes').to.be.equal(0);
-			expect(result.current.memory, 'there should be only one definition for local-long').to.have.length(1);
+			expect(result.current.memory.size, 'there should be only one definition for local-long').to.equal(1);
 			existsDefinedAt('local-long', ['_1', '_2'], result.current);
 		});
 	});

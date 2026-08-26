@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-26, 11:43:20 UTC (v2.15.2), please do not edit directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-26, 15:55:59 UTC (v2.15.2), please do not edit directly._
 <h2 id="Input Sources Query">Input Sources Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Classify the input sources of function calls\
@@ -39,14 +39,14 @@ If you are interested in the input-sources of the `print` call, you can use:
 
 _Results (prettified and summarized):_
 
-Query: **input-sources** (20 ms)\
+Query: **input-sources** (18 ms)\
 &nbsp;&nbsp;&nbsp;╰ Input Sources for 3@print\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 3.15 (id: 11), type: ["param","const","dconst"], trace: alias\
-_All queries together required ≈21 ms (1ms accuracy, total 21 ms)_
+_All queries together required ≈18 ms (1ms accuracy, total 19 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _21.4 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _19.3 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -58,7 +58,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "input-sources": {
     ".meta": {
-      "timing": 20
+      "timing": 18
     },
     "results": {
       "3@print": [
@@ -75,7 +75,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 21
+    "timing": 18
   }
 }
 ```
@@ -91,7 +91,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 	
 
 Some objects are handed to the code by a framework rather than defined in it, like the `input` of a shiny
-server function. The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/simple-input-classifier.ts#L866"><code><span title="Objects provided by a framework rather than by the code itself, like shiny's input.">InputClassifierConfig::<b>linkedObjects</b></span></code></a> configuration lists them, so that reads
+server function. The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/simple-input-classifier.ts#L865"><code><span title="Objects provided by a framework rather than by the code itself, like shiny's input.">InputClassifierConfig::<b>linkedObjects</b></span></code></a> configuration lists them, so that reads
 of such an object (and of its fields) classify as user input instead of stopping at a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/input-types.ts#L27"><code>InputType::<b>Parameter</b></code></a>:
 
 ```r
@@ -120,14 +120,14 @@ server <- function(input, output, session) {
 
 _Results (prettified and summarized):_
 
-Query: **input-sources** (9 ms)\
+Query: **input-sources** (8 ms)\
 &nbsp;&nbsp;&nbsp;╰ Input Sources for 2@system\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 2.16-43 (id: 18), type: ["const","param","unknown","dconst"], trace: known\
-_All queries together required ≈9 ms (1ms accuracy, total 12 ms)_
+_All queries together required ≈8 ms (1ms accuracy, total 10 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _11.5 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _9.6 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -139,7 +139,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "input-sources": {
     ".meta": {
-      "timing": 9
+      "timing": 8
     },
     "results": {
       "2@system": [
@@ -157,7 +157,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 9
+    "timing": 8
   }
 }
 ```
@@ -172,14 +172,14 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 
 	
 
-Every <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/simple-input-classifier.ts#L712"><code><span title="An object that a framework hands to its users without any visible definition, like the input of a shiny server function. Reads of such an object (and of its fields) are classified as its given type, so traces link up to the framework instead of stopping at an opaque parameter.">LinkedInputObject</span></code></a> names the object, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/input-types.ts#L26"><code><span title="Lattice flattening until we have a taint engine :) Please note that the classifier considers this basis with a set-lift, joining differing lattice elements.     [ Unknown ]  |  [Param] [File] [Net] [User], ...  | | | |  | [TempFile] | |  +---------+------+------+- ...  |  [ DerivedConstant ]  |  [ Constant ]  ">InputType</span></code></a> to use for it, and optionally
-the parameters the binding function has to declare as well (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/simple-input-classifier.ts#L721"><code><span title="If given, the object only counts as linked if the function binding it declares all of these parameters as well (e.g., shiny's function(input, output, session)). Without this, every input would be treated as the framework's.">LinkedInputObject::<b>withParams</b></span></code></a>) - shiny's
+Every <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/simple-input-classifier.ts#L711"><code><span title="An object that a framework hands to its users without any visible definition, like the input of a shiny server function. Reads of such an object (and of its fields) are classified as its given type, so traces link up to the framework instead of stopping at an opaque parameter.">LinkedInputObject</span></code></a> names the object, the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/input-types.ts#L26"><code><span title="Lattice flattening until we have a taint engine :) Please note that the classifier considers this basis with a set-lift, joining differing lattice elements.     [ Unknown ]  |  [Param] [File] [Net] [User], ...  | | | |  | [TempFile] | |  +---------+------+------+- ...  |  [ DerivedConstant ]  |  [ Constant ]  ">InputType</span></code></a> to use for it, and optionally
+the parameters the binding function has to declare as well (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/simple-input-classifier.ts#L720"><code><span title="If given, the object only counts as linked if the function binding it declares all of these parameters as well (e.g., shiny's function(input, output, session)). Without this, every input would be treated as the framework's.">LinkedInputObject::<b>withParams</b></span></code></a>) - shiny's
 `input` only counts as such if the function also takes an `output`, so that an ordinary function with a
 parameter named `input` is left alone. Where the framework is handed the function instead of the code naming it,
-a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/simple-input-classifier.ts#L744"><code><span title="A call a framework is given a function through, binding its parameters *by position* - which is how R passes them, so this catches a shinyApp(ui, function(i, o, s)) that no name-based rule can.">LinkedInputEntryPoint</span></code></a> is exact: it says which object goes to which parameter *by position*, just
+a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/simple-input-classifier.ts#L743"><code><span title="A call a framework is given a function through, binding its parameters *by position* - which is how R passes them, so this catches a shinyApp(ui, function(i, o, s)) that no name-based rule can.">LinkedInputEntryPoint</span></code></a> is exact: it says which object goes to which parameter *by position*, just
 like R does, so `shinyApp(ui, function(i, o, s))` works no matter what those parameters are called.
-With <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/simple-input-classifier.ts#L727"><code><span title="how the framework declares the entries of this object, so a read of input$n links to the textInput('n', …) defining it">LinkedInputObject::<b>declaredBy</b></span></code></a> a read even links back to its definition - the `textInput("n", …)`
-behind an `input$n` shows up as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/simple-input-classifier.ts#L821"><code><span title="where the framework entry this source reads is declared, e.g. the textInput('n', …) behind an input$n">InputSource::<b>declaredAt</b></span></code></a>.
+With <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/simple-input-classifier.ts#L726"><code><span title="how the framework declares the entries of this object, so a read of input$n links to the textInput('n', …) defining it">LinkedInputObject::<b>declaredBy</b></span></code></a> a read even links back to its definition - the `textInput("n", …)`
+behind an `input$n` shows up as <a href="https://github.com/flowr-analysis/flowr/tree/main/src/queries/catalog/input-sources-query/simple-input-classifier.ts#L820"><code><span title="where the framework entry this source reads is declared, e.g. the textInput('n', …) behind an input$n">InputSource::<b>declaredAt</b></span></code></a>.
 
 You do not have to pass any of this per query: the <a href="https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr" title="Configuration Option (object): Further frameworks the input-sources analysis should know about; entries are added to flowR&#39;s defaults."><code>inputSources</code></a> section of flowR's
 [configuration file](https://github.com/flowr-analysis/flowr/wiki/Interface) carries the same shape and is *added* to what flowR already

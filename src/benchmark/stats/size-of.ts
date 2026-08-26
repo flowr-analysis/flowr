@@ -10,11 +10,19 @@ import {
 import sizeof from 'object-sizeof';
 import { compactRecord } from '../../util/objects';
 
+/** the stripped copy of a frame that {@link killBuiltInEnv} hands to `sizeof`; it holds a plain map, not a frame view */
+interface SizedEnvironment {
+	readonly id:          number;
+	readonly parent:      SizedEnvironment;
+	readonly memory:      ReadonlyMap<BrandedIdentifier, IdentifierDefinition[]>;
+	readonly builtInEnv?: true;
+}
+
 /* we have to kill all processors linked in the default environment as they cannot be serialized and they are shared anyway */
-function killBuiltInEnv(env: IEnvironment | undefined): IEnvironment {
+function killBuiltInEnv(env: IEnvironment | undefined): SizedEnvironment {
 
 	if(env === undefined) {
-		return undefined as unknown as IEnvironment;
+		return undefined as unknown as SizedEnvironment;
 	} else if(env.builtInEnv) {
 		/* in this case, the reference would be shared for sure */
 		return {

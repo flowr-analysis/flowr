@@ -43,6 +43,20 @@ describe('flowR linter', withTreeSitter(parser => {
 				replacement: 'shQuote(dir)'
 			}]
 		}]);
+		assertLinter('pasted parameter with a constant and an unknown call', parser, 'f <- function(dir) system(paste0("ls ", dir))\nf("ls")\nf(x)', 'unescaped-arguments', [{
+			certainty: LintingResultCertainty.Uncertain,
+			category:  UnescapedArgumentCategory.System,
+			function:  'system',
+			loc:       SourceRange.from(1, 27, 1, 44),
+			sources:   [{ id: 7, trace: InputTraceType.Alias, types: [InputType.Constant, InputType.Scope, InputType.Parameter] }],
+			input:     [InputType.Scope, InputType.Parameter],
+			quickFix:  [{
+				type:        'replace',
+				loc:         SourceRange.from(1, 41, 1, 43),
+				description: 'Escape the value with `shQuote`',
+				replacement: 'shQuote(dir)'
+			}]
+		}]);
 		assertLinter('pasted escaped parameter', parser, 'f <- function(dir) system(paste0("ls ", shQuote(dir)))', 'unescaped-arguments', []);
 		assertLinter('partly escaped command', parser, 'f <- function(a, b) system(paste0("cp ", shQuote(a), " ", b))', 'unescaped-arguments', [{
 			certainty: LintingResultCertainty.Uncertain,

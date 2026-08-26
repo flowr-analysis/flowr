@@ -405,22 +405,61 @@ const NoFile = -1;
  * anything: how many shards a query set opens is not something the caller picks, and each would claim the
  * budget again. A count would not bound anything either -- one package's blob outweighs a hundred small ones.
  */
-const BlobCacheBudget = 8 * 1024 * 1024;
+const BlobCacheBudget = 64 * 1024 * 1024;
 
-/** what every open bundle holds decoded, oldest read first, so the budget is spent across all of them */
-const cachedBlobs: { db: SigDatabase, blobIdx: number, bytes: number }[] = [];
+/** one decoded blob a bundle holds, as the shared budget accounts for it */
+interface CachedBlob {
+	readonly db:      SigDatabase;
+	readonly blobIdx: number;
+	readonly bytes:   number;
+	/** read again since the hand last passed it, so it survives this round (see {@link keepBlob}) */
+	used:             boolean;
+}
+
+/** what every open bundle holds decoded, so the budget is spent across all of them */
+const cachedBlobs: CachedBlob[] = [];
+/** where {@link keepBlob} resumes looking for something to drop */
+let hand = 0;
 let cachedBlobBytes = 0;
 
-/** keep `blob` decoded for `db`, dropping what any bundle read longest ago until all of them fit the budget */
-function keepBlob(db: SigDatabase, blobIdx: number, bytes: number): void {
+/**
+ * Keep `blob` decoded for `db`, dropping blobs until all of them fit the budget (age gated).
+ */
+function keepBlob(db: SigDatabase, blobIdx: number, bytes: number): CachedBlob {
 	while(cachedBlobBytes + bytes > BlobCacheBudget && cachedBlobs.length > 0) {
-		const dropped = cachedBlobs.shift() as { db: SigDatabase, blobIdx: number, bytes: number };
-		/* the bytes are off the list either way: a closed bundle already let its blobs go */
-		cachedBlobBytes -= dropped.bytes;
-		dropped.db.dropBlob(dropped.blobIdx);
+		if(hand >= cachedBlobs.length) {
+			hand = 0;
+		}
+		const candidate = cachedBlobs[hand];
+		if(candidate.used) {
+			candidate.used = false;
+			hand++;
+			continue;
+		}
+		cachedBlobs.splice(hand, 1);
+		cachedBlobBytes -= candidate.bytes;
+		candidate.db.dropBlob(candidate.blobIdx);
 	}
-	cachedBlobs.push({ db, blobIdx, bytes });
+	const entry = { db, blobIdx, bytes, used: true };
+	cachedBlobs.push(entry);
 	cachedBlobBytes += bytes;
+	return entry;
+}
+
+/** Mark `entry` read, so the hand passes over it once before dropping it. */
+function touchBlob(entry: CachedBlob): void {
+	entry.used = true;
+}
+
+/** give back what `db` held, so a closed bundle stops spending the budget of the open ones */
+function releaseBlobs(db: SigDatabase): void {
+	for(let i = cachedBlobs.length - 1; i >= 0; i--) {
+		if(cachedBlobs[i].db === db) {
+			cachedBlobBytes -= cachedBlobs[i].bytes;
+			cachedBlobs.splice(i, 1);
+		}
+	}
+	hand = 0;
 }
 
 /** the function records of one package version, as {@link SigDatabase.versionFns} keeps them */
@@ -436,7 +475,7 @@ interface VersionFns {
 export class SigDatabase implements PackageSignatureSource {
 	private closed = false;
 	/** parsed blobs by blob index so repeated lookups skip the re-read + JSON.parse; bounded by {@link BlobCacheBudget} */
-	private readonly blobCache = new Map<number, PkgBlob>();
+	private readonly blobCache = new Map<number, { blob: PkgBlob, entry?: CachedBlob }>();
 	/** a version's function indices plus its `name -> index` view, keyed by package and version; FIFO-bounded */
 	private readonly versionFnCache = new Map<string, VersionFns>();
 	private static readonly VersionFnCacheCap = 2048;
@@ -463,7 +502,7 @@ export class SigDatabase implements PackageSignatureSource {
 	public static fromMemory(db: SigDb): SigDatabase {
 		const index: SigDbIndex = { byteCount: 0, dict: [0, 0], blobs: [], pkgs: db.pkgs, meta: db.meta };
 		const source = new SigDatabase(NoFile, db.strings, index, db.content, db.cranBase ?? DefaultCranBase);
-		db.blobs.forEach((blob, i) => source.blobCache.set(i, blob));
+		db.blobs.forEach((blob, i) => source.blobCache.set(i, { blob }));
 		return source;
 	}
 
@@ -529,7 +568,10 @@ export class SigDatabase implements PackageSignatureSource {
 		}
 		const cached = this.blobCache.get(blobIdx);
 		if(cached !== undefined) {
-			return cached;
+			if(cached.entry !== undefined) {
+				touchBlob(cached.entry);
+			}
+			return cached.blob;
 		}
 		if(this.fd === NoFile) {
 			return undefined;   // an in-memory database starts out with every blob cached
@@ -539,8 +581,7 @@ export class SigDatabase implements PackageSignatureSource {
 		if(!this.nameIdsOfBlob.has(blobIdx)) {
 			this.nameIdsOfBlob.set(blobIdx, Int32Array.from(new Set(blob.fns.map(fn => fn[0]))).sort());
 		}
-		keepBlob(this, blobIdx, range[1]);
-		this.blobCache.set(blobIdx, blob);
+		this.blobCache.set(blobIdx, { blob, entry: keepBlob(this, blobIdx, range[1]) });
 		return blob;
 	}
 
@@ -610,7 +651,7 @@ export class SigDatabase implements PackageSignatureSource {
 	public allBlobs(): PkgBlob[] {
 		// an in-memory database has no byte ranges to re-read: its blobs are the cached ones, in blob-index order
 		return this.fd === NoFile
-			? [...this.blobCache.entries()].sort(([a], [b]) => a - b).map(([, blob]) => blob)
+			? [...this.blobCache.entries()].sort(([a], [b]) => a - b).map(([, { blob }]) => blob)
 			: this.index.blobs.map(range => this.readBlobAt(range));
 	}
 
@@ -812,6 +853,7 @@ export class SigDatabase implements PackageSignatureSource {
 	public close(): void {
 		if(!this.closed) {
 			this.closed = true;
+			releaseBlobs(this);
 			this.blobCache.clear();
 			this.versionFnCache.clear();
 			this.classIndex = undefined;

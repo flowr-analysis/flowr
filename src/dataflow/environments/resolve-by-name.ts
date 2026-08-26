@@ -87,11 +87,24 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 	/* `current` can already be the built-in environment itself (e.g. `get(x, envir=baseenv())`);
 	 * it has no parent to walk to, so resolve directly instead of entering the loop below. */
 	if(current.builtInEnv) {
-		return current.memory.get(name);
+		return current.lookup(name);
 	}
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	const wantedType = TargetTypePredicate[target];
+	/* the attached packages below the code's own frames are a dozen layers deep and nothing writes them, so the
+	 * walk through them is done once per name and target instead of once per resolution */
+	const flatten = ns === undefined && internal !== false && typeof id === 'string'
+		&& target !== ReferenceType.S3MethodPrefix && target !== ReferenceType.S7MethodPrefix;
+	const key = flatten ? `${target}\u0000${name}` : '';
+	let flattenAt: Environment | undefined;
 	do{
+		if(flatten && flattenAt === undefined && definitions === undefined && (current.t !== undefined || current.builtInEnv)) {
+			const cached = current.tailCache?.get(key);
+			if(cached !== undefined || current.tailCache?.has(key)) {
+				return cached;
+			}
+			flattenAt = current;
+		}
 		if(layerSkipped(current, ns)) {
 			current = current.parent;
 			continue;
@@ -105,7 +118,7 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 				.flatMap(([, defs]) => defs)
 				.toArray();
 		} else {
-			definition = current.memory.get(name);
+			definition = current.lookup(name);
 			if(internal === false) {
 				definition = definition?.filter(({ name }) => name === undefined || !Identifier.accessesInternal(name));
 			}
@@ -126,6 +139,9 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 				}
 			}
 			if(allOk) {
+				if(flattenAt !== undefined) {
+					(flattenAt.tailCache ??= new Map()).set(key, definition);
+				}
 				return definition;
 			}
 			/* never alias the environment's own array, it is appended to below */
@@ -143,12 +159,15 @@ function resolveByTargetType(id: Identifier, environment: REnvironmentInformatio
 
 	/* the built-in layer is handed over as it is, except to a value position: `filter(df, c > 2)` means the
 	   column `c`, never `base::c`, and only with nothing left does `ownDefinitions` have its say */
-	const known = statedIn(current, name, ns) ?? current.memory.get(name);
+	const known = statedIn(current, name, ns) ?? current.lookup(name);
 	const builtIns = target === ReferenceType.NonFunction ? known?.filter(wantedType) : known;
-	if(definitions) {
-		return builtIns === undefined || builtIns.length === 0 ? definitions : definitions.concat(builtIns);
+	const result = definitions
+		? (builtIns === undefined || builtIns.length === 0 ? definitions : definitions.concat(builtIns))
+		: (builtIns === undefined || builtIns.length > 0 ? builtIns : undefined);
+	if(flattenAt !== undefined) {
+		(flattenAt.tailCache ??= new Map()).set(key, result);
 	}
-	return builtIns === undefined || builtIns.length > 0 ? builtIns : undefined;
+	return result;
 }
 
 /**
@@ -171,7 +190,7 @@ export function resolveByNameAnyType(id: Identifier, environment: REnvironmentIn
 
 	/* `current` can already be the built-in environment itself */
 	if(current.builtInEnv) {
-		const ret = current.memory.get(name);
+		const ret = current.lookup(name);
 		if(ret && cacheable) {
 			current.cache ??= new Map();
 			current.cache.set(id, ret);
@@ -185,7 +204,7 @@ export function resolveByNameAnyType(id: Identifier, environment: REnvironmentIn
 			current = current.parent;
 			continue;
 		}
-		let definition = current.memory.get(name);
+		let definition = current.lookup(name);
 		if(definition) {
 			if(internal === false) {
 				definition = definition.filter(({ name }) => name === undefined || !Identifier.accessesInternal(name));
@@ -207,7 +226,7 @@ export function resolveByNameAnyType(id: Identifier, environment: REnvironmentIn
 		current = current.parent;
 	} while(!current.builtInEnv);
 
-	const builtIns = statedIn(current, name, ns) ?? current.memory.get(name);
+	const builtIns = statedIn(current, name, ns) ?? current.lookup(name);
 	let ret: IdentifierDefinition[] | undefined;
 	if(definitions) {
 		ret = builtIns === undefined ? definitions : definitions.concat(builtIns);

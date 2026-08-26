@@ -7,7 +7,7 @@ import type { FlowrAnalyzerContext } from '../../../../../../project/context/flo
 import { attachDependencyToEnvironment, attachExportVertex } from './built-in-library';
 import { define } from '../../../../../environments/define';
 import type { IdentifierReference, InGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import type { BuiltInMemory } from '../../../../../environments/built-in';
+import type { Frame } from '../../../../../environments/frame-memory';
 import { FunctionCallVertex, FunctionDefinitionVertex } from '../../../../../graph/vertex';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { NoEdges } from '../../../../../graph/graph';
@@ -165,11 +165,18 @@ function* escapeTargetFrames(fdef: DataflowGraphVertexFunctionDefinition): Gener
  * dominated by the built-ins it holds, so filtering each frame once per pass saves the bulk of the work.
  */
 function escapedDefinitions(this: void): (id: NodeId, fdef: DataflowGraphVertexFunctionDefinition) => readonly NodeId[] {
-	const perFrame = new Map<BuiltInMemory, readonly NodeId[]>();
+	/* keyed by frame and then by version: one frame answers differently at each, so the version has to be part of it */
+	const perFrame = new Map<Frame, Map<number, readonly NodeId[]>>();
 	return (_id, fdef) => {
 		const defs: NodeId[] = [];
 		for(const e of escapeTargetFrames(fdef)) {
-			let escaped = perFrame.get(e.memory);
+			const { frame, version } = e.memory;
+			let byVersion = perFrame.get(frame);
+			if(byVersion === undefined) {
+				byVersion = new Map();
+				perFrame.set(frame, byVersion);
+			}
+			let escaped = byVersion.get(version);
 			if(escaped === undefined) {
 				/* a package frame holds thousands of entries and keeps none of them, so this walks them in place
 				 * rather than through a spread/flatMap/filter/map chain that allocates an array per step */
@@ -182,7 +189,7 @@ function escapedDefinitions(this: void): (id: NodeId, fdef: DataflowGraphVertexF
 					}
 				}
 				escaped = collected;
-				perFrame.set(e.memory, escaped);
+				byVersion.set(version, escaped);
 			}
 			for(const d of escaped) {
 				defs.push(d);
@@ -249,16 +256,22 @@ function propagateTransitivePackages(graph: DataflowGraph, environment: REnviron
 /** Maps each escaped definition's node id to its full (name-carrying) definition. */
 function escapedDefinitionMap(graph: DataflowGraph): Map<NodeId, InGraphIdentifierDefinition & { name: string }> {
 	const map = new Map<NodeId, InGraphIdentifierDefinition & { name: string }>();
-	const seen = new Set<BuiltInMemory>();
+	/* a frame answers differently at each version, so a visit is only a repeat when both match */
+	const seen = new Map<Frame, Set<number>>();
 	for(const [, vertex] of graph.vertices(true)) {
 		if(!FunctionDefinitionVertex.is(vertex)) {
 			continue;
 		}
 		for(const e of escapeTargetFrames(vertex)) {
-			if(seen.has(e.memory)) {
+			const { frame, version } = e.memory;
+			let versions = seen.get(frame);
+			if(versions === undefined) {
+				versions = new Set();
+				seen.set(frame, versions);
+			} else if(versions.has(version)) {
 				continue;   // a frame shared with an already-visited definition contributes the same entries
 			}
-			seen.add(e.memory);
+			versions.add(version);
 			for(const definitions of e.memory.values()) {
 				for(const def of definitions) {
 					if(!NodeId.isBuiltIn(def.nodeId) && def.name !== undefined) {

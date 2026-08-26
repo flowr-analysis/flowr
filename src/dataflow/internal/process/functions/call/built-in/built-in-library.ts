@@ -633,7 +633,7 @@ function attachStatedDefinitions(pack: string, envInfo: REnvironmentInformation,
 	}
 	const layer = new Environment(envInfo.current)
 		.asLibrary(pack, as ?? (spec.namespaceOnly ? EnvType.LoadedNamespace : EnvType.Namespace));
-	layer.memory = memory;
+	layer.adoptMap(memory);
 	return { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, layer, layer, spec.pos) };
 }
 

@@ -99,10 +99,10 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 		const builtIns = getBuiltInDefinitions(builtInsConfig.definitions, builtInsConfig.loadDefaults);
 
 		this.builtInEnv = new Environment(undefined as unknown as Environment, true);
-		this.builtInEnv.memory = builtIns.builtInMemory;
+		this.builtInEnv.adoptMap(builtIns.builtInMemory);
 
 		this.emptyBuiltInEnv = new Environment(undefined as unknown as Environment, true);
-		this.emptyBuiltInEnv.memory = builtIns.emptyBuiltInMemory;
+		this.emptyBuiltInEnv.adoptMap(builtIns.emptyBuiltInMemory);
 
 		this.stated = builtIns.packageMemory;
 		/* `pkg::fn` resolves whether or not the package is attached, so the built-in env answers for it */

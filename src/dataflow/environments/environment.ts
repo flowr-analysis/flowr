@@ -15,6 +15,7 @@ import { guard } from '../../util/assert';
 import type { ControlDependency } from '../info';
 import { happensInEveryBranch } from '../info';
 import { uniqueMergeValuesInDefinitions } from './append';
+import { Frame, MemoryView, WritableMemory } from './frame-memory';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { log } from '../../util/log';
 
@@ -25,7 +26,7 @@ export interface IEnvironment {
 	/** Lexical parent of the environment, if any (can be manipulated by R code) */
 	parent:      IEnvironment
 	/** Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions */
-	memory:      BuiltInMemory
+	memory:      MemoryView
 	/** Built-in environment that must not change; only for the top-most envs. */
 	builtInEnv?: true | undefined
 }
@@ -43,7 +44,7 @@ interface Jsonified {
 	id:          NodeId;
 	parent:      Jsonified | undefined;
 	builtInEnv?: true;
-	memory:      BuiltInMemory;
+	memory:      ReadonlyMap<BrandedIdentifier, IdentifierDefinition[]>;
 	n?:          string;
 	t?:          EnvType;
 	globalEnv?:  true;
@@ -66,25 +67,36 @@ export class Environment implements IEnvironment {
 	/** if created by a closure, the node id of that closure */
 	private c?:            NodeId;
 	parent:                Environment;
-	memory:                BuiltInMemory;
+	/** the frame this environment's names live in, shared with every other snapshot of it */
+	private frame:         Frame;
+	/** the version of {@link frame} this environment sees */
+	private fv:            number;
+	private view?:         MemoryView;
+	private writable?:     WritableMemory;
 	cache?:                Map<Identifier, IdentifierDefinition[]>;
+	/** what a resolution found below this frame, by target and name; only frames nothing writes keep one */
+	tailCache?:            Map<string, readonly IdentifierDefinition[] | undefined>;
 	builtInEnv?:           true;
-	/** {@link memory} is shared with a clone; writing needs {@link writableMemory} to unshare it first */
+	/** {@link memory} may be seen by another snapshot, so a write has to take a version of its own first */
 	private sharedMemory?: true;
 	/** {@link parent} is shared with the environment this was cloned from; writing through it needs {@link writableParent} */
 	private sharedParent?: true;
 	/** marks the global environment (`.GlobalEnv`); attached packages (see {@link EnvType}) live below it */
 	globalEnv?:            true;
 	/** What the lexical frame this stands in for held when its closure was created; `<<-` binds lexically, so defining super needs this. */
-	superMemory?:          BuiltInMemory;
+	superMemory?:          MemoryView;
 	/** What the configuration states about packages R does not attach on startup, by package; only the built-in env carries it (see {@link statedIn}). */
 	namespaces?:           ReadonlyMap<string, BuiltInMemory>;
 
-	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined, memory?: BuiltInMemory) {
+	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined, frame?: Frame, version?: number) {
 		this.id = isBuiltInDefault ? 0 : environmentIdCounter++;
 		this.parent = parent;
-		/* a clone hands its own (then shared) memory in, so the fresh map a new frame needs is not allocated to be dropped */
-		this.memory = memory ?? new Map<BrandedIdentifier, IdentifierDefinition[]>();
+		this.frame = frame ?? Frame.empty();
+		this.fv = version ?? this.frame.version;
+		if(frame === undefined) {
+			/* the shared empty frame, so the first write forks it */
+			this.sharedMemory = true;
+		}
 		// do not store if not needed!
 		if(isBuiltInDefault) {
 			this.builtInEnv = isBuiltInDefault;
@@ -105,7 +117,7 @@ export class Environment implements IEnvironment {
 	}
 
 	/** Records the lexical frame this one stands in for; see {@link superMemory}. */
-	public standsInFor(memory: BuiltInMemory): this {
+	public standsInFor(memory: MemoryView): this {
 		this.superMemory = memory;
 		return this;
 	}
@@ -134,16 +146,48 @@ export class Environment implements IEnvironment {
 		return this.parent;
 	}
 
-	/**
-	 * This environment's {@link memory}, ready to be written to; every in-place write must go through this rather
-	 *  than {@link memory} directly, since {@link clone} shares the map and only the first writer copies it.
-	 */
-	public get writableMemory(): BuiltInMemory {
+	/** What the frame binds at the version this sees; a snapshot, not a copy. */
+	public get memory(): MemoryView {
+		return this.view ??= new MemoryView(this.frame, this.fv);
+	}
+
+	/** Whether `other` holds the very bindings this does. */
+	public sameMemoryAs(other: Environment): boolean {
+		return this === other || (this.frame === other.frame && this.fv === other.fv);
+	}
+
+	/** What `name` holds here. {@link memory}'s answer without the view, for the chain walks of name resolution. */
+	public lookup(name: BrandedIdentifier): IdentifierDefinition[] | undefined {
+		const frame = this.frame;
+		return this.fv === frame.version ? frame.live.get(name) : frame.get(name, this.fv);
+	}
+
+	/** the bindings as a plain map where one is at hand, so a merge copies map from map */
+	private get copyableMemory(): ReadonlyMap<BrandedIdentifier, IdentifierDefinition[]> {
+		return this.frame.settledAt(this.fv) ?? this.memory;
+	}
+
+	/** Takes `map` as the bindings, sharing it until something writes. */
+	public adoptMap(map: ReadonlyMap<BrandedIdentifier, IdentifierDefinition[]>): void {
+		this.frame = Frame.of(map);
+		this.fv = this.frame.version;
+		this.view = undefined;
+		this.writable = undefined;
+		/* the map belongs to whoever handed it over, so the first write forks */
+		this.sharedMemory = true;
+	}
+
+	/** {@link memory} ready to be written to; every write goes through this, so the first takes a version of its own. */
+	public get writableMemory(): WritableMemory {
+		this.tailCache = undefined;
 		if(this.sharedMemory) {
-			this.memory = new Map(this.memory);
+			this.frame = this.frame.forWrite(this.fv);
+			this.fv = this.frame.nextVersion();
 			this.sharedMemory = undefined;
+			this.view = undefined;
+			this.writable = undefined;
 		}
-		return this.memory;
+		return this.writable ??= new WritableMemory(this.frame, this.fv);
 	}
 
 	/**
@@ -155,7 +199,7 @@ export class Environment implements IEnvironment {
 			return this; // do not clone the built-in environment
 		}
 
-		const clone = new Environment(this.parent, this.builtInEnv, this.memory);
+		const clone = new Environment(this.parent, this.builtInEnv, this.frame, this.fv);
 		clone.c = this.c;
 		clone.n = this.n;
 		clone.t = this.t;
@@ -203,7 +247,7 @@ export class Environment implements IEnvironment {
 		if(definition.cds === undefined) {
 			this.writableMemory.set(name, [definition]);
 		} else {
-			const existing = this.memory.get(name);
+			const existing = this.lookup(name);
 			const inGraphDefinition = definition as InGraphIdentifierDefinition;
 			if(
 				existing !== undefined &&
@@ -267,7 +311,7 @@ export class Environment implements IEnvironment {
 		do{
 			/* `<<-` binds in the closest enclosing frame that holds the name, which for an emptied frame is what
 			 * it stood in for when the closure was created (see {@link superMemory}) */
-			if(current.memory.has(name) || current.superMemory?.has(name)) {
+			if(current.lookup(name) !== undefined || current.superMemory?.has(name)) {
 				current.writableMemory.set(name, [definition]);
 				found = true;
 				break;
@@ -298,7 +342,7 @@ export class Environment implements IEnvironment {
 		if(shortcut !== undefined) {
 			return shortcut;
 		}
-		const map = new Map(this.memory);
+		const map = new Map(this.copyableMemory);
 		for(const [key, values] of other.memory) {
 			const hasMaybe = applyCds === undefined ? values.length === 0 || values.some(v => v.cds !== undefined) : true;
 			if(hasMaybe) {
@@ -335,7 +379,7 @@ export class Environment implements IEnvironment {
 		out.t = this.t;
 		out.globalEnv = this.globalEnv;
 		out.superMemory = this.superMemory ?? other.superMemory;
-		out.memory = map;
+		out.adoptMap(map);
 		return out;
 	}
 
@@ -348,7 +392,7 @@ export class Environment implements IEnvironment {
 		if(shortcut !== undefined) {
 			return shortcut;
 		}
-		const map = new Map(this.memory);
+		const map = new Map(this.copyableMemory);
 		for(const [key, value] of other.memory) {
 			const old = map.get(key);
 			if(old) {
@@ -364,7 +408,7 @@ export class Environment implements IEnvironment {
 		out.t = this.t;
 		out.globalEnv = this.globalEnv;
 		out.superMemory = this.superMemory ?? other.superMemory;
-		out.memory = map;
+		out.adoptMap(map);
 		return out;
 	}
 
@@ -420,7 +464,7 @@ export class Environment implements IEnvironment {
 					const cloned = layer.clone(false);
 					byName.set(layer.n, cloned);
 					order.push(cloned);
-				} else if(existing.memory !== layer.memory) {
+				} else if(!existing.sameMemoryAs(layer)) {
 					for(const [name, value] of layer.memory) {
 						const old = existing.memory.get(name);
 						if(old !== value) {
@@ -443,7 +487,7 @@ export class Environment implements IEnvironment {
 			this.writableParent.remove(id);
 			return this;
 		}
-		const definition = this.memory.get(name);
+		const definition = this.lookup(name);
 		let cont = true;
 		if(definition !== undefined) {
 			this.writableMemory.delete(name);
@@ -474,11 +518,11 @@ export class Environment implements IEnvironment {
 			id:         this.id,
 			parent:     this.parent,
 			builtInEnv: this.builtInEnv,
-			memory:     this.memory,
+			memory:     new Map(this.memory),
 		} : {
 			id:        this.id,
 			parent:    this.parent,
-			memory:    this.memory,
+			memory:    new Map(this.memory),
 			// markers needed to rebuild the search path after a round-trip (undefined values are dropped by JSON.stringify)
 			n:         this.n,
 			t:         this.t,
@@ -601,7 +645,7 @@ function layersEndWith(this: void, layers: readonly Environment[], tail: readonl
 	}
 	for(let i = 0; i < tail.length; i++) {
 		const l = layers[offset + i], t = tail[i];
-		if(l !== t && (l.t !== t.t || l.n !== t.n || l.memory !== t.memory)) {
+		if(l !== t && (l.t !== t.t || l.n !== t.n || !l.sameMemoryAs(t))) {
 			return false;
 		}
 	}

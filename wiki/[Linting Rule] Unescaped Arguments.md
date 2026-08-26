@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-25, 08:35:40 UTC (v2.14.4), please do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-26, 15:56:02 UTC (v2.15.2), please do not edit directly._
 <h2 id="unescaped-arguments">Unescaped Arguments&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule is used to detect security-critical. For example, missing input validation."><a href='#security'>![security](https://img.shields.io/badge/security-orange) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the shiny framework."><a href='#shiny'>![shiny](https://img.shields.io/badge/shiny-teal) </a></span>
@@ -50,16 +50,16 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (6 ms)\
+Query: **linter** (7 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Unescaped Arguments** (unescaped-arguments):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ uncertain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Unescaped system argument of `system` at 2.9-26 (1 quick fix(es) available)\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalCriticalArguments: 1, totalEscapedArguments: 0, searchTimeMs: 1, processTimeMs: 4\
-_All queries together required ≈6 ms (1ms accuracy, total 6 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalCriticalArguments: 1, totalEscapedArguments: 0, searchTimeMs: 2, processTimeMs: 5\
+_All queries together required ≈7 ms (1ms accuracy, total 8 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _6.1 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _8.0 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -117,17 +117,17 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
         ".meta": {
           "totalCriticalArguments": 1,
           "totalEscapedArguments": 0,
-          "searchTimeMs": 1,
-          "processTimeMs": 4
+          "searchTimeMs": 2,
+          "processTimeMs": 5
         }
       }
     },
     ".meta": {
-      "timing": 6
+      "timing": 7
     }
   },
   ".meta": {
-    "timing": 6
+    "timing": 7
   }
 }
 ```
@@ -249,6 +249,39 @@ quickFix:  [{
 
 See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L32) for the test-case implementation.
 		
+<h4 id="Test_Case:_pasted_parameter_with_a_constant_and_an_unknown_call">Test Case: pasted parameter with a constant and an unknown call</h4>
+
+
+Given the following input:
+
+```r
+f <- function(dir) system(paste0("ls ", dir))
+f("ls")
+f(x)
+```
+
+
+
+We expect the linter to report the following:
+
+```ts
+			certainty: LintingResultCertainty.Uncertain,
+category:  UnescapedArgumentCategory.System,
+function:  'system',
+loc:       SourceRange.from(1, 27, 1, 44),
+sources:   [{ id: 7, trace: InputTraceType.Alias, types: [InputType.Constant, InputType.Scope, InputType.Parameter] }],
+input:     [InputType.Scope, InputType.Parameter],
+quickFix:  [{
+	type:        'replace',
+	loc:         SourceRange.from(1, 41, 1, 43),
+	description: 'Escape the value with `shQuote`',
+	replacement: 'shQuote(dir)'
+}]
+```
+
+
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L46) for the test-case implementation.
+		
 <h4 id="Test_Case:_pasted_escaped_parameter">Test Case: pasted escaped parameter</h4>
 
 
@@ -267,7 +300,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L46) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L60) for the test-case implementation.
 		
 <h4 id="Test_Case:_partly_escaped_command">Test Case: partly escaped command</h4>
 
@@ -298,7 +331,7 @@ quickFix:  [{
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L47) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L61) for the test-case implementation.
 		
 <h4 id="Test_Case:_user_input_as_command">Test Case: user input as command</h4>
 
@@ -329,7 +362,7 @@ quickFix:  [{
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L61) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L75) for the test-case implementation.
 		
 <h4 id="Test_Case:_unknown_arguments">Test Case: unknown arguments</h4>
 
@@ -360,7 +393,7 @@ quickFix:  [{
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L75) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L89) for the test-case implementation.
 		
 <h4 id="Test_Case:_redefined_function">Test Case: redefined function</h4>
 
@@ -381,7 +414,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L89) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L103) for the test-case implementation.
 		
 <h4 id="Test_Case:_constant_evaluation">Test Case: constant evaluation</h4>
 
@@ -401,7 +434,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L93) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L107) for the test-case implementation.
 		
 <h4 id="Test_Case:_bounded_evaluation">Test Case: bounded evaluation</h4>
 
@@ -421,7 +454,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L94) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L108) for the test-case implementation.
 		
 <h4 id="Test_Case:_unknown_evaluation">Test Case: unknown evaluation</h4>
 
@@ -446,7 +479,7 @@ input:     [InputType.Unknown]
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L95) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L109) for the test-case implementation.
 		
 <h4 id="Test_Case:_constant_statement">Test Case: constant statement</h4>
 
@@ -466,7 +499,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L106) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L120) for the test-case implementation.
 		
 <h4 id="Test_Case:_interpolated_statement">Test Case: interpolated statement</h4>
 
@@ -486,7 +519,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L107) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L121) for the test-case implementation.
 		
 <h4 id="Test_Case:_pasted_user_input">Test Case: pasted user input</h4>
 
@@ -517,7 +550,7 @@ quickFix:  [{
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L109) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L123) for the test-case implementation.
 		
 <h4 id="Test_Case:_statement_built_elsewhere">Test Case: statement built elsewhere</h4>
 
@@ -543,7 +576,7 @@ input:     [InputType.Unknown]
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L124) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L138) for the test-case implementation.
 		
 <h4 id="Test_Case:_constant_value">Test Case: constant value</h4>
 
@@ -563,7 +596,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L136) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L150) for the test-case implementation.
 		
 <h4 id="Test_Case:_escaped_user_input">Test Case: escaped user input</h4>
 
@@ -583,7 +616,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L137) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L151) for the test-case implementation.
 		
 <h4 id="Test_Case:_pasted_user_input">Test Case: pasted user input</h4>
 
@@ -614,7 +647,7 @@ quickFix:  [{
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L138) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L152) for the test-case implementation.
 		
 <h4 id="Test_Case:_constant_code">Test Case: constant code</h4>
 
@@ -634,7 +667,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L155) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L169) for the test-case implementation.
 		
 <h4 id="Test_Case:_serialized_user_input">Test Case: serialized user input</h4>
 
@@ -654,7 +687,7 @@ We expect the linter to report the following:
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L156) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L170) for the test-case implementation.
 		
 <h4 id="Test_Case:_pasted_user_input">Test Case: pasted user input</h4>
 
@@ -685,7 +718,7 @@ quickFix:  [{
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L158) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L172) for the test-case implementation.
 		
 <h4 id="Test_Case:_unknown_code">Test Case: unknown code</h4>
 
@@ -710,4 +743,4 @@ input:     [InputType.Unknown]
 ```
 
 
-See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L173) for the test-case implementation.
+See [here](https://github.com/flowr-analysis/flowr/tree/main/test/functionality/linter/lint-unescaped-arguments.test.ts#L187) for the test-case implementation.

@@ -15,7 +15,7 @@ import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-functio
 import type { BrandedIdentifier, Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RLoopConstructs } from '../../r-bridge/lang-4.x/ast/model/model';
-import { Environment, type EnvType, type IEnvironment, type REnvironmentInformation } from '../environments/environment';
+import { Environment, type EnvType, type REnvironmentInformation } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
@@ -754,10 +754,10 @@ function envFromJson(json: IEnvironmentJson): Environment {
 	for(const [key, value] of Object.entries(json.memory)) {
 		memory.set(key, value);
 	}
-	const obj: Writable<IEnvironment> = new Environment(parent as Environment, json.builtInEnv);
+	const obj = new Environment(parent as Environment, json.builtInEnv);
 	(obj as { id: NodeId }).id = json.id;
-	obj.memory = memory;
-	const env = obj as Environment;
+	obj.adoptMap(memory);
+	const env = obj;
 	env.n = json.n;
 	env.t = json.t;
 	env.globalEnv = json.globalEnv;

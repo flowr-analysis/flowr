@@ -628,11 +628,10 @@ class InputClassifier {
 		// caller argument), follow it into the caller; only if that leads nowhere is it an opaque Scope origin
 		const onCall = this.definedByOnCallTargets(v.id);
 		if(onCall.length > 0) {
-			const callers = onCall.map(t => this.classifyInFullGraph(t))
-				.filter(isNotUndefined)
-				.filter(c => !c.types.includes(InputType.Unknown));
-			if(callers.length > 0) {
-				callers.forEach(c => acc.merge(c));
+			const callers = onCall.map(t => this.classifyInFullGraph(t)).filter(isNotUndefined);
+			const known = callers.filter(c => !c.types.includes(InputType.Unknown));
+			known.forEach(c => acc.merge(c));
+			if(known.length > 0 && known.length === callers.length) {
 				return;
 			}
 			acc.types.push(InputType.Scope);

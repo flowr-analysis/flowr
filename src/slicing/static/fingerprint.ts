@@ -2,7 +2,7 @@ import objectHash from 'object-hash';
 import type { Environment, REnvironmentInformation } from '../../dataflow/environments/environment';
 import { isDefaultBuiltInEnvironment } from '../../dataflow/environments/environment';
 import type { IdentifierDefinition } from '../../dataflow/environments/identifier';
-import type { BuiltInMemory } from '../../dataflow/environments/built-in';
+import type { Frame, MemoryView } from '../../dataflow/environments/frame-memory';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export type Fingerprint = string;
@@ -22,7 +22,7 @@ const HashOptions = {
  * (see {@link Environment#clone}): the graph holds many frames per distinct set of definitions, and hashing that
  * set is what costs. */
 const definitionHashes = new WeakMap<IdentifierDefinition & object, Fingerprint>();
-const memoryHashes = new WeakMap<BuiltInMemory, Fingerprint>();
+const memoryHashes = new WeakMap<Frame, Map<number, Fingerprint>>();
 const frameHashes = new WeakMap<Environment, Fingerprint>();
 
 function definitionHash(definition: IdentifierDefinition): Fingerprint {
@@ -34,8 +34,13 @@ function definitionHash(definition: IdentifierDefinition): Fingerprint {
 	return hash;
 }
 
-function memoryHash(memory: BuiltInMemory): Fingerprint {
-	let hash = memoryHashes.get(memory);
+function memoryHash(memory: MemoryView): Fingerprint {
+	let byVersion = memoryHashes.get(memory.frame);
+	if(byVersion === undefined) {
+		byVersion = new Map();
+		memoryHashes.set(memory.frame, byVersion);
+	}
+	let hash = byVersion.get(memory.version);
 	if(hash === undefined) {
 		const entries: string[] = [];
 		for(const [name, definitions] of memory) {
@@ -43,7 +48,7 @@ function memoryHash(memory: BuiltInMemory): Fingerprint {
 		}
 		entries.sort();
 		hash = objectHash(entries, HashOptions);
-		memoryHashes.set(memory, hash);
+		byVersion.set(memory.version, hash);
 	}
 	return hash;
 }

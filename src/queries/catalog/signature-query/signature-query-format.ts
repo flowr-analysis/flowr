@@ -97,8 +97,7 @@ export interface SignatureFunctionView {
 	/**
 	 * whether the whole view comes from flowR's built-in definition because the database has no entry: the
 	 * primitives and operators (`+`, `[`, `if`) that appear in no package's sources, and anything a flowR
-	 * configuration adds. Everything the database would contribute (defaults, callees, location) is then empty,
-	 * and since flowR records no defaults, every {@link SignatureParameterView.required} reads `false`.
+	 * configuration adds.
 	 */
 	readonly flowrOnly?: boolean;
 }

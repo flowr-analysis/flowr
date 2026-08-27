@@ -2,7 +2,7 @@ import objectHash from 'object-hash';
 import type { Environment, REnvironmentInformation } from '../../dataflow/environments/environment';
 import { isDefaultBuiltInEnvironment } from '../../dataflow/environments/environment';
 import type { IdentifierDefinition } from '../../dataflow/environments/identifier';
-import type { Frame, MemoryView } from '../../dataflow/environments/frame-memory';
+import type { MemoryView } from '../../dataflow/environments/frame-memory';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export type Fingerprint = string;
@@ -16,13 +16,12 @@ const HashOptions = {
 	replacer:                  (v: unknown) => isDefaultBuiltInEnvironment(v) ? undefined : v
 } as const satisfies objectHash.NormalOption;
 
-/* definitions, definition maps, and frames are shared across the environments a slice builds, and a definition may
- * hold a whole environment of its own (`envState`), so each is hashed once instead of on every fingerprint. The
- * map is keyed separately from the frame because cloning a frame shares its definitions until one side writes
- * (see {@link Environment#clone}): the graph holds many frames per distinct set of definitions, and hashing that
- * set is what costs. */
+/* definitions, bindings, and frames are shared across the environments a slice builds, and a definition may hold
+ * a whole environment of its own (`envState`), so each is hashed once instead of on every fingerprint. Bindings
+ * are keyed apart from the frame because cloning shares them until one side writes (see {@link Environment#clone}):
+ * the graph holds many frames per distinct set of bindings, and hashing that set is what costs. */
 const definitionHashes = new WeakMap<IdentifierDefinition & object, Fingerprint>();
-const memoryHashes = new WeakMap<Frame, Map<number, Fingerprint>>();
+const memoryHashes = new WeakMap<MemoryView & object, Fingerprint>();
 const frameHashes = new WeakMap<Environment, Fingerprint>();
 
 function definitionHash(definition: IdentifierDefinition): Fingerprint {
@@ -35,12 +34,7 @@ function definitionHash(definition: IdentifierDefinition): Fingerprint {
 }
 
 function memoryHash(memory: MemoryView): Fingerprint {
-	let byVersion = memoryHashes.get(memory.frame);
-	if(byVersion === undefined) {
-		byVersion = new Map();
-		memoryHashes.set(memory.frame, byVersion);
-	}
-	let hash = byVersion.get(memory.version);
+	let hash = memoryHashes.get(memory);
 	if(hash === undefined) {
 		const entries: string[] = [];
 		for(const [name, definitions] of memory) {
@@ -48,7 +42,7 @@ function memoryHash(memory: MemoryView): Fingerprint {
 		}
 		entries.sort();
 		hash = objectHash(entries, HashOptions);
-		byVersion.set(memory.version, hash);
+		memoryHashes.set(memory, hash);
 	}
 	return hash;
 }

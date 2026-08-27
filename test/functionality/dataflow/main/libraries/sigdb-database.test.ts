@@ -1,3 +1,4 @@
+import { SigDict } from '../../../../../src/project/sigdb/dict';
 import { afterAll, describe, expect, test } from 'vitest';
 import fs from 'fs';
 import path from 'path';
@@ -76,7 +77,7 @@ describe(`sigdb database (schema ${SigDbSchema})`, () => {
 			{ name: 'priv', props: 0, params: [], callees: [], file: 'R/b.R', line: 1 }
 		]));
 		const db = b.build(meta);
-		const info = deriveLibraryExports(db.strings, db.blobs[db.pkgs['p']], db.meta['p'], 'p');
+		const info = deriveLibraryExports(SigDict.of(db.strings), db.blobs[db.pkgs['p']], db.meta['p'], 'p');
 		expect(info?.version).toBe('2.0');
 		expect(info?.exported.toSorted()).toEqual(['dep', 'pub']);
 		expect(info?.internal).toEqual(['priv']);
@@ -91,7 +92,7 @@ describe(`sigdb database (schema ${SigDbSchema})`, () => {
 		b.addPackage('local', { latest: '0.1' });
 		b.addVersion('local', '0.1', ver([{ name: 'f', props: FnProp.Exported, params: [], callees: [], line: 1 }], false));
 		const db = b.build(meta);
-		const info = deriveLibraryExports(db.strings, db.blobs[db.pkgs['local']], db.meta['local'], 'local');
+		const info = deriveLibraryExports(SigDict.of(db.strings), db.blobs[db.pkgs['local']], db.meta['local'], 'local');
 		expect(info?.cran).toBe(false);
 		expect(info?.cranUrl).toBeUndefined();
 	});
@@ -104,7 +105,7 @@ describe(`sigdb database (schema ${SigDbSchema})`, () => {
 		b.addVersion('p', '0.10.0', ver([{ name: 'new', props: FnProp.Exported, params: [], callees: [], line: 1 }]));
 		const db = b.build(meta);
 		// 0.10.0 > 0.9.0 by R's numeric-version order (lexical string sort would wrongly pick 0.9.0)
-		const info = deriveLibraryExports(db.strings, db.blobs[db.pkgs['p']], db.meta['p'], 'p');
+		const info = deriveLibraryExports(SigDict.of(db.strings), db.blobs[db.pkgs['p']], db.meta['p'], 'p');
 		expect(info?.version).toBe('0.10.0');
 		expect(info?.exported).toEqual(['new']);
 	});
@@ -642,7 +643,7 @@ describe('sigdb dependencies and feature selection', () => {
 			{ name: 'priv', props: 0, params: [], callees: [], file: 'R/a.R', line: 2 }
 		] });
 		const db = b.build({ ...meta, features: { signatures: false, callGraphs: false } });
-		const info = deriveLibraryExports(db.strings, db.blobs[db.pkgs['p']], db.meta['p'], 'p');
+		const info = deriveLibraryExports(SigDict.of(db.strings), db.blobs[db.pkgs['p']], db.meta['p'], 'p');
 		expect(info?.exported).toEqual(['pub']);
 		expect(info?.internal).toEqual(['priv']);
 	});

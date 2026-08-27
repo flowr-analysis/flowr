@@ -12,40 +12,42 @@ import { decodeIndex, readSigDbIndex, type ByteRange, type SigDbIndex } from './
 import { tupleToBlob, decodeFunction, decodeDependencies, decodeClasses, deriveLibraryExports, versionFnIndices, transitiveCallees, type DecodedFunction, type ResolvedDependency } from './decode';
 import { isCompressed, isUnpacked, parseHeader, sigDbStream, resolveSource, ensurePlain, ensurePlainSync } from './decompress';
 import { stripCompressedExt } from './codec';
+import { SigDict } from './dict';
 import { contentHash, dictionaryHash, shardHash } from './hash';
 import { readManifestFile, SigDbManifestMagic, type SigDbManifest, type SigDbShardRef } from './manifest';
 import { uniqueArray } from '../../util/collections/arrays';
 
-/** apply one `d` line (`["d", start, payload]`, new newline-blob or legacy `string[]` form) to the dictionary in place */
-function applyDictLine(json: string, strings: string[]): void {
+/** the run of names one `d` line (`["d", start, payload]`, newline-blob or legacy `string[]` form) adds */
+function dictLineRun(json: string): { start: number, names: string } {
 	const [, start, payload] = JSON.parse(json) as [string, number, string | string[]];
-	const batch = typeof payload === 'string' ? payload.split('\n') : payload;
+	return { start, names: typeof payload === 'string' ? payload : payload.join('\n') };
+}
+
+/** apply one `d` line to a plain array, for the whole-file form {@link readSigDbFile} reads */
+function applyDictLine(json: string, strings: string[]): void {
+	const { start, names } = dictLineRun(json);
+	const batch = names.split('\n');
 	for(let k = 0; k < batch.length; k++) {
 		strings[start + k] = batch[k];
 	}
 }
 
 /**
- * Dictionary ids grouped by first character and length, shared per dictionary rather than per reader (the shards of one
- * database read the same array). One `Int32Array` per group, ascending, so a lookup answers what `indexOf` would while
- * comparing a few hundred strings rather than the 1.4 million a scan of the whole dictionary walks.
+ * Dictionary ids grouped by first byte and byte length, kept per dictionary rather than per reader (the shards of one
+ * database read the same one). One `Int32Array` per group, ascending, so a lookup answers what `indexOf` would while
+ * comparing a few hundred names rather than the 1.4 million a scan of the whole dictionary walks.
  */
-const dictionaryBuckets = new WeakMap<readonly string[], Map<number, Int32Array>>();
-
-/** the group `name` belongs to; the empty string has none of its own, which is what `0` stands for */
-function bucketKeyOf(name: string): number {
-	return name.length === 0 ? 0 : (name.charCodeAt(0) << 8) | Math.min(name.length, 255);
-}
+const dictionaryBuckets = new WeakMap<SigDict, Map<number, Int32Array>>();
 
 /** the id `strings.indexOf(name)` would give, through {@link dictionaryBuckets}; `-1` when the dictionary lacks it */
-function dictionaryIdOf(strings: readonly string[], name: string): number {
+function dictionaryIdOf(strings: SigDict, name: string): number {
 	let buckets = dictionaryBuckets.get(strings);
 	if(buckets === undefined) {
 		/* one pass over the 1.4 million entries: sizing them first meant walking all of them twice and a map
 		   lookup per entry to know where in its group the next one goes */
 		const grouped = new Map<number, number[]>();
 		for(let i = 0; i < strings.length; i++) {
-			const key = bucketKeyOf(strings[i]);
+			const key = strings.groupOf(i);
 			const group = grouped.get(key);
 			if(group === undefined) {
 				grouped.set(key, [i]);
@@ -59,17 +61,19 @@ function dictionaryIdOf(strings: readonly string[], name: string): number {
 		}
 		dictionaryBuckets.set(strings, buckets);
 	}
-	const bucket = buckets.get(bucketKeyOf(name));
+	const bucket = buckets.get(SigDict.keyOf(name));
 	/* ascending, so the first match is the one a scan from the front would have found */
 	for(const id of bucket ?? []) {
-		if(strings[id] === name) {
+		if(strings.at(id) === name) {
 			return id;
 		}
 	}
 	return -1;
 }
 
-function readDictSection(buf: Buffer, strings: string[]): void {
+/** the dictionary a bundle's `d` lines spell out */
+function readDictSection(buf: Buffer): SigDict {
+	const runs: { start: number, names: string }[] = [];
 	let off = 0;
 	while(off < buf.length) {
 		let nl = buf.indexOf(0x0a, off);
@@ -77,10 +81,11 @@ function readDictSection(buf: Buffer, strings: string[]): void {
 			nl = buf.length;
 		}
 		if(nl > off) {
-			applyDictLine(buf.toString('utf8', off, nl), strings);
+			runs.push(dictLineRun(buf.toString('utf8', off, nl)));
 		}
 		off = nl + 1;
 	}
+	return SigDict.ofRuns(runs);
 }
 
 /** stream-read a whole bundle into a {@link SigDb} (any size; never one string). Prefer {@link SigDatabase} for partial access. */
@@ -390,7 +395,7 @@ export interface SigDbOpenOptions {
 /** a caller-supplied index/dictionary for {@link SigDatabase.openSync} (both derived from the source otherwise) */
 export interface OpenSyncOptions {
 	index?:   SigDbIndex;
-	strings?: string[];
+	strings?: SigDict;
 }
 /** {@link SigDatabase.openSyncFrom} options: cache settings plus an optional precomputed hash/index/dictionary */
 export interface OpenSyncFromOptions extends SigDbOpenOptions, OpenSyncOptions {
@@ -491,11 +496,11 @@ export class SigDatabase implements PackageSignatureSource {
 	/** reverse index `S3 class -> owning package`, over every package's latest version; built once (see {@link classOwner}) */
 	private classIndex:        Map<string, string> | undefined;
 	private readonly fd:       number;
-	readonly strings:          string[];
+	readonly strings:          SigDict;
 	readonly index:            SigDbIndex;
 	readonly content:          SigDbContent | undefined;
 	private readonly cranBase: string;
-	private constructor(fd: number, strings: string[], index: SigDbIndex, content: SigDbContent | undefined, cranBase: string) {
+	private constructor(fd: number, strings: SigDict, index: SigDbIndex, content: SigDbContent | undefined, cranBase: string) {
 		this.fd = fd;
 		this.strings = strings;
 		this.index = index;
@@ -506,7 +511,7 @@ export class SigDatabase implements PackageSignatureSource {
 	/** Use an already-built {@link SigDb} directly, no file involved: its blobs start out in the cache, so a test needs only {@link SigDbBuilder} plus this. */
 	public static fromMemory(db: SigDb): SigDatabase {
 		const index: SigDbIndex = { byteCount: 0, dict: [0, 0], blobs: [], pkgs: db.pkgs, meta: db.meta };
-		const source = new SigDatabase(NoFile, db.strings, index, db.content, db.cranBase ?? DefaultCranBase);
+		const source = new SigDatabase(NoFile, SigDict.of(db.strings), index, db.content, db.cranBase ?? DefaultCranBase);
 		db.blobs.forEach((blob, i) => source.blobCache.set(i, { blob }));
 		return source;
 	}
@@ -525,13 +530,14 @@ export class SigDatabase implements PackageSignatureSource {
 		fs.readSync(fd, head, 0, head.length, 0);
 		const header = parseHeader(head.toString('utf8'));
 		let strings = opts.strings;
-		if(!strings) {
-			strings = [];
+		if(strings === undefined) {
 			const [dictStart, dictBytes] = index.dict;
 			if(dictBytes > 0) {
 				const buf = Buffer.allocUnsafe(dictBytes);
 				fs.readSync(fd, buf, 0, dictBytes, dictStart);
-				readDictSection(buf, strings);
+				strings = readDictSection(buf);
+			} else {
+				strings = SigDict.of([]);
 			}
 		}
 		const cranBase = (header?.cranBase as string | undefined) ?? DefaultCranBase;
@@ -681,7 +687,7 @@ export class SigDatabase implements PackageSignatureSource {
 
 	public sourceOf(pkg: string, version: string): string | undefined {
 		const idx = this.blob(pkg)?.sources?.[version];
-		return idx === undefined ? undefined : this.strings[idx];
+		return idx === undefined ? undefined : this.strings.at(idx);
 	}
 
 	/** `{ blob, meta }` for `pkg` when this bundle carries both, `undefined` otherwise; the shared prologue of most per-package queries below. */
@@ -781,7 +787,7 @@ export class SigDatabase implements PackageSignatureSource {
 		if(r.fns.byName === undefined) {
 			const byName = new Map<string, number>();
 			for(const i of r.fns.idxs) {
-				const fn = this.strings[r.blob.fns[i][0]];
+				const fn = this.strings.at(r.blob.fns[i][0]);
 				// first record wins, as the linear scan did
 				if(!byName.has(fn)) {
 					byName.set(fn, i);
@@ -799,7 +805,7 @@ export class SigDatabase implements PackageSignatureSource {
 	}
 
 	/** What `decode` reads off the blob for the asked version, `undefined` when this source carries neither. */
-	private decodedFor<T>(pkg: string, version: string | undefined, decode: (strings: readonly string[], blob: Readonly<PkgBlob>, ver: string) => T): T | undefined {
+	private decodedFor<T>(pkg: string, version: string | undefined, decode: (strings: SigDict, blob: Readonly<PkgBlob>, ver: string) => T): T | undefined {
 		const bm = this.blobMeta(pkg);
 		const ver = bm ? resolveVersion(bm.blob, bm.meta[0], version) : undefined;
 		return bm && ver !== undefined ? decode(this.strings, bm.blob, ver) : undefined;
@@ -982,10 +988,10 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	}
 
 	/** shared dictionaries, loaded (decompressed + parsed) once and cached by id */
-	private readonly dictCache = new Map<string, string[]>();
+	private readonly dictCache = new Map<string, SigDict>();
 
 	/** load (and cache) a shared dictionary's strings, decompressing its `.br` into the cache once */
-	private dictionaryStrings(dictId: string): string[] {
+	private dictionaryStrings(dictId: string): SigDict {
 		const cached = this.dictCache.get(dictId);
 		if(cached) {
 			return cached;
@@ -995,13 +1001,13 @@ export class SigDatabaseSet implements PackageSignatureSource {
 			throw new Error(`manifest references unknown dictionary '${dictId}'`);
 		}
 		const plain = ensurePlainSync(resolveSource(this.baseDir, ref.path), { cacheDir: this.cacheDir, hash: ref.hash, indexless: true });
-		const strings: string[] = [];
+		let strings: SigDict;
 		const fd = fs.openSync(plain, 'r');
 		try {
 			const [start, bytes] = ref.range;
 			const buf = Buffer.allocUnsafe(bytes);
 			fs.readSync(fd, buf, 0, bytes, start);
-			readDictSection(buf, strings);
+			strings = readDictSection(buf);
 		} finally {
 			fs.closeSync(fd);
 		}
@@ -1131,8 +1137,8 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		return this.manifest.shards.map((ref, i) => ({ ref, db: this.shard(i) }));
 	}
 
-	/** load (and cache) a shared dictionary's strings by id, for verification/inspection */
-	public sharedDictionary(id: string): string[] {
+	/** load (and cache) a shared dictionary by id, for verification/inspection */
+	public sharedDictionary(id: string): SigDict {
 		return this.dictionaryStrings(id);
 	}
 

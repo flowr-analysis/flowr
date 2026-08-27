@@ -15,7 +15,8 @@ import { guard } from '../../util/assert';
 import type { ControlDependency } from '../info';
 import { happensInEveryBranch } from '../info';
 import { uniqueMergeValuesInDefinitions } from './append';
-import { Frame, MemoryView, WritableMemory } from './frame-memory';
+import { Frame } from './frame-memory';
+import type { MemoryView } from './frame-memory';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { log } from '../../util/log';
 
@@ -67,17 +68,13 @@ export class Environment implements IEnvironment {
 	/** if created by a closure, the node id of that closure */
 	private c?:            NodeId;
 	parent:                Environment;
-	/** the frame this environment's names live in, shared with every other snapshot of it */
+	/** where this environment's names live; shared with every clone until one of them writes */
 	private frame:         Frame;
-	/** the version of {@link frame} this environment sees */
-	private fv:            number;
-	private view?:         MemoryView;
-	private writable?:     WritableMemory;
 	cache?:                Map<Identifier, IdentifierDefinition[]>;
 	/** what a resolution found below this frame, by target and name; only frames nothing writes keep one */
 	tailCache?:            Map<string, readonly IdentifierDefinition[] | undefined>;
 	builtInEnv?:           true;
-	/** {@link memory} may be seen by another snapshot, so a write has to take a version of its own first */
+	/** {@link memory} is shared with a clone; writing needs {@link writableMemory} to unshare it first */
 	private sharedMemory?: true;
 	/** {@link parent} is shared with the environment this was cloned from; writing through it needs {@link writableParent} */
 	private sharedParent?: true;
@@ -88,15 +85,12 @@ export class Environment implements IEnvironment {
 	/** What the configuration states about packages R does not attach on startup, by package; only the built-in env carries it (see {@link statedIn}). */
 	namespaces?:           ReadonlyMap<string, BuiltInMemory>;
 
-	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined, frame?: Frame, version?: number) {
+	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined, frame?: Frame) {
 		this.id = isBuiltInDefault ? 0 : environmentIdCounter++;
 		this.parent = parent;
 		this.frame = frame ?? Frame.empty();
-		this.fv = version ?? this.frame.version;
-		if(frame === undefined) {
-			/* the shared empty frame, so the first write forks it */
-			this.sharedMemory = true;
-		}
+		/* a clone hands its frame in and the empty one is everybody's, so the first write forks either way */
+		this.sharedMemory = true;
 		// do not store if not needed!
 		if(isBuiltInDefault) {
 			this.builtInEnv = isBuiltInDefault;
@@ -146,60 +140,44 @@ export class Environment implements IEnvironment {
 		return this.parent;
 	}
 
-	/** What the frame binds at the version this sees; a snapshot, not a copy. */
+	/** What this frame binds. */
 	public get memory(): MemoryView {
-		return this.view ??= new MemoryView(this.frame, this.fv);
+		return this.frame;
 	}
 
 	/** Whether `other` holds the very bindings this does. */
 	public sameMemoryAs(other: Environment): boolean {
-		return this === other || (this.frame === other.frame && this.fv === other.fv);
+		return this === other || this.frame === other.frame;
 	}
 
-	/** What `name` holds here. {@link memory}'s answer without the view, for the chain walks of name resolution. */
+	/** What `name` holds here; the chain walks of name resolution take this rather than {@link memory}. */
 	public lookup(name: BrandedIdentifier): IdentifierDefinition[] | undefined {
-		const frame = this.frame;
-		return this.fv === frame.version ? frame.live.get(name) : frame.get(name, this.fv);
-	}
-
-	/** the bindings as a plain map where one is at hand, so a merge copies map from map */
-	private get copyableMemory(): ReadonlyMap<BrandedIdentifier, IdentifierDefinition[]> {
-		return this.frame.settledAt(this.fv) ?? this.memory;
+		return this.frame.get(name);
 	}
 
 	/** Takes `map` as the bindings, sharing it until something writes. */
-	public adoptMap(map: ReadonlyMap<BrandedIdentifier, IdentifierDefinition[]>): void {
+	public adoptMap(map: MemoryView): void {
 		this.frame = Frame.of(map);
-		this.fv = this.frame.version;
-		this.view = undefined;
-		this.writable = undefined;
-		/* the map belongs to whoever handed it over, so the first write forks */
 		this.sharedMemory = true;
 	}
 
-	/** {@link memory} ready to be written to; every write goes through this, so the first takes a version of its own. */
-	public get writableMemory(): WritableMemory {
+	/** {@link memory} ready to be written to. Every write goes through here, since {@link clone} shares the frame. */
+	public get writableMemory(): Frame {
 		this.tailCache = undefined;
 		if(this.sharedMemory) {
-			this.frame = this.frame.forWrite(this.fv);
-			this.fv = this.frame.nextVersion();
+			this.frame = this.frame.forWrite();
 			this.sharedMemory = undefined;
-			this.view = undefined;
-			this.writable = undefined;
 		}
-		return this.writable ??= new WritableMemory(this.frame, this.fv);
+		return this.frame;
 	}
 
-	/**
-	 * Clones this environment, sharing {@link memory} until either side writes to it (see {@link writableMemory}); cloning
-	 *  is therefore independent of how many definitions a frame holds, which matters for packages with thousands of them.
-	 */
+	/** Clones this, sharing {@link memory} until either side writes; the cost is the same for a frame of any size. */
 	public clone(recurseParents: boolean): Environment {
 		if(this.builtInEnv) {
 			return this; // do not clone the built-in environment
 		}
 
-		const clone = new Environment(this.parent, this.builtInEnv, this.frame, this.fv);
+		const clone = new Environment(this.parent, this.builtInEnv, this.frame);
 		clone.c = this.c;
 		clone.n = this.n;
 		clone.t = this.t;
@@ -342,7 +320,7 @@ export class Environment implements IEnvironment {
 		if(shortcut !== undefined) {
 			return shortcut;
 		}
-		const map = new Map(this.copyableMemory);
+		const map = new Map(this.memory);
 		for(const [key, values] of other.memory) {
 			const hasMaybe = applyCds === undefined ? values.length === 0 || values.some(v => v.cds !== undefined) : true;
 			if(hasMaybe) {
@@ -392,7 +370,7 @@ export class Environment implements IEnvironment {
 		if(shortcut !== undefined) {
 			return shortcut;
 		}
-		const map = new Map(this.copyableMemory);
+		const map = new Map(this.memory);
 		for(const [key, value] of other.memory) {
 			const old = map.get(key);
 			if(old) {

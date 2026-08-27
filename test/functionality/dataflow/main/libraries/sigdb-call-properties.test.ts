@@ -1,3 +1,4 @@
+import { SigDict } from '../../../../../src/project/sigdb/dict';
 import { afterAll, describe, expect, test } from 'vitest';
 import { SigDbBuilder } from '../../../../../src/project/sigdb/build';
 import { FnProp } from '../../../../../src/project/sigdb/schema';
@@ -18,7 +19,7 @@ describe('The generic call property', () => {
 		b.addPackage('p', { latest: '1.0' });
 		b.addVersion('p', '1.0', ver([{ name: 'f', props: FnProp.Exported | props, params: [], callees }]));
 		const db = b.build(meta);
-		return decodeFunction(db.strings, db.blobs[db.pkgs['p']], 0);
+		return decodeFunction(SigDict.of(db.strings), db.blobs[db.pkgs['p']], 0);
 	};
 
 	test('the generic bit is stored and read back as a property', () => {

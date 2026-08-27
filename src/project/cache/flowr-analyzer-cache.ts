@@ -132,6 +132,11 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		if(isTreeSitterParse(parse)) {
 			this.args.context.inc.storeOldParseResults(parse);
 		}
+
+		const normalize = this.peekNormalize();
+		if(normalize) {
+			this.args.context.inc.storeOldNormalizedAst(normalize);
+		}
 	}
 
 	/**

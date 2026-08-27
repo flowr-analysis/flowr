@@ -7,6 +7,7 @@ import type { FilePath } from './flowr-file';
 import type { ParseStepOutput } from '../../r-bridge/parser';
 import fs from 'fs';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 
 interface PersistedDataflowGraphEntry {
@@ -23,6 +24,7 @@ export interface ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
 	getOldParseResultOf(filePath: FilePath): Parser.Tree | undefined;
 	getOldContentOf(filePath: FilePath): string | undefined;
 	getPersistedDataflowGraphOf(nodeId: NodeId, hash: string): PersistedDataflowGraphEntry | undefined;
+	getOldNormalizedAst(): NormalizedAst | undefined;
 }
 
 /**
@@ -48,6 +50,7 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 	 */
 	private changedFilesWithOldContent: Map<FilePath, string | undefined> = new Map();
 	private oldParseResults:            Map<FilePath, Parser.Tree> = new Map();
+	private oldNormalizedAst:           NormalizedAst | undefined = undefined;
 	private persistedDataflowGraphs:    Map<string, PersistedDataflowGraphEntry> = new Map();
 	private readonly lastKnownMtime:    Map<FilePath, number> = new Map();
 
@@ -59,6 +62,7 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 	public reset(): void {
 		this.changedFilesWithOldContent = new Map();
 		this.oldParseResults = new Map();
+		this.oldNormalizedAst = undefined;
 		this.persistedDataflowGraphs = new Map();
 	}
 
@@ -172,6 +176,14 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 
 	public getOldContentOf(filePath: FilePath): string | undefined {
 		return this.changedFilesWithOldContent.get(filePath);
+	}
+
+	public storeOldNormalizedAst(ast: NormalizedAst): void {
+		this.oldNormalizedAst = ast;
+	}
+
+	public getOldNormalizedAst(): NormalizedAst | undefined {
+		return this.oldNormalizedAst;
 	}
 
 	public deleteOldContentOf(filePath: FilePath): void {

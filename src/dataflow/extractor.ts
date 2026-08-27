@@ -1,4 +1,4 @@
-import { DataflowInformation } from './info';
+import type { DataflowInformation } from './info';
 import { type DataflowProcessorInformation, type DataflowProcessors, processDataflowFor } from './processor';
 import { processUninterestingLeaf } from './internal/process/process-uninteresting-leaf';
 import { processSymbol } from './internal/process/process-symbol';
@@ -23,7 +23,6 @@ import { updateNestedFunctionCalls } from './internal/process/functions/call/bui
 import { reResolveOpenReferences, linkMaterializedExportsToLoaders } from './internal/process/functions/call/built-in/transitive-side-effects';
 import type { IEnvironment, REnvironmentInformation } from './environments/environment';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
-import { FlowrFile } from '../project/context/flowr-file';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
 import { VertexType } from './graph/vertex';
@@ -38,8 +37,8 @@ import { dataflowLogger } from './logger';
 import { GasFeatureKey, GasLevel, GasWikiRef } from '../gas';
 import { Dataflow } from './graph/df-helper';
 import { uniqueArray } from '../util/collections/arrays';
-import { Hash53 } from '../util/hash';
-import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
+import { hashAst, IncrementalDataflowUpdateTypeDetector } from '../project/incremental/incremental-dataflow/incremental-dataflow-update-type-detector';
+import { IncrementalDataflowOrchestrator, type DataflowProcessorInformationBase } from '../project/incremental/incremental-dataflow/incremental-dataflow-orchestrator';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -129,25 +128,6 @@ function resolveLinkToSideEffects(graph: DataflowGraph, ctx: FlowrAnalyzerContex
 
 }
 
-const astHashIgnoredKeys = new Set(['id', 'parent', 'tsId', 'location', 'fullRange']);
-
-function hashAst(root: unknown): string {
-	return new Hash53().update(JSON.stringify(root, (key: string, value: unknown) => {
-		if(astHashIgnoredKeys.has(key)) {
-			return undefined;
-		}
-		// filter whitespace
-		if((key === 'lexeme' || key === 'fullLexeme') && typeof value === 'string') {
-			return value.replace(/\s+/g, ' ').trim();
-		}
-		// filter comments
-		if(Array.isArray(value)) {
-			return (value as unknown[]).filter(entry => !RComment.is(entry));
-		}
-		return value;
-	})).digest();
-}
-
 /**
  * This is the main function to produce the dataflow graph from a given request and normalized AST.
  * Note, that this requires knowledge of the active parser in case the dataflow analysis uncovers other files that have to be parsed and integrated into the analysis
@@ -163,54 +143,51 @@ export function produceDataFlowGraph<OtherInfo>(
 	// we freeze the files here to avoid endless modifications during processing
 	const files = completeAst.ast.files.slice();
 
-	ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
-
 	const incContext = ctx.inc;
-	const nodeId = files[0].root.info.id;
-	const hash = incContext.handleShouldReparseDataflow(ctx) ? hashAst(completeAst.ast) : undefined;
-	const builtInEnv = ctx.env.builtInEnvironment as IEnvironment;
-	const emptyBuiltInEnv = ctx.env.emptyBuiltInEnvironment as IEnvironment;
 
-	if(hash !== undefined) {
-		const cached = incContext.getPersistedDataflowGraphOf(nodeId, hash);
-		if(cached) {
-			dataflowLogger.info(`[Incremental DFG]: Reusing cached dataflow graph for node '${nodeId}'.`);
-			return {
-				...DataflowInformation.initialize(nodeId, {
-					environment: DataflowGraph.reviveEnvironment(cached.environment, builtInEnv, emptyBuiltInEnv),
-					completeAst
-				}),
-				graph: DataflowGraph.fromPersisted(cached.graph, builtInEnv, emptyBuiltInEnv)
-			};
-		}
-	}
-
-	const env = ctx.env.makeCleanEnv();
-	env.current.n = ctx.meta.getNamespace();
-	const environment = attachProject(env, ctx);
-
-	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
+	const dfDataBase: DataflowProcessorInformationBase<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
-		environment,
-		processors:     ctx.config.solver.instrument.dataflowExtractors?.(processors, ctx) ?? processors,
-		cds:            undefined,
-		referenceChain: [files[0].filePath],
+		processors: ctx.config.solver.instrument.dataflowExtractors?.(processors, ctx) ?? processors,
 		ctx
 	};
-	let df: DataflowInformation;
-	try {
-		df = processDataflowFor<OtherInfo>(files[0].root, dfData);
-	} catch(e) {
-		if(e instanceof RangeError) {
-			throw new Error(`Dataflow analysis exceeded the call stack for '${files[0].filePath ?? '<inline>'}' (code is too deeply nested). Consider --stack-size=65536 when invoking Node.js.`, { cause: e });
+
+	let df: DataflowInformation | undefined;
+	let hash: string | undefined = undefined;
+	if(incContext.handleShouldReparseDataflow(ctx)){
+		hash = hashAst(completeAst.ast);
+		const oldAst = ctx.inc.getOldNormalizedAst();
+		if(oldAst !== undefined){
+			const updateResult = new IncrementalDataflowUpdateTypeDetector(oldAst, completeAst, ctx).determineUpdateTypes();
+			df = new IncrementalDataflowOrchestrator(oldAst, completeAst, ctx, dfDataBase as unknown as DataflowProcessorInformationBase<ParentInformation>).tryIncrementalUpdate(updateResult);
+			dataflowLogger.info(`[Incremental DFG]: Patched dataflow graph incrementally (${updateResult.types.toString()}) for '${updateResult.filePath ?? 'the whole project'}'.`);
 		}
-		throw e;
 	}
 
-	for(let i = 1; i < files.length; i++) {
-		/* source requests register automatically */
-		df = standaloneSourceFile(i, files[i], dfData, df);
+	if(!df) {
+		const env = ctx.env.makeCleanEnv();
+		env.current.n = ctx.meta.getNamespace();
+		const environment = attachProject(env, ctx);
+
+		const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
+			...dfDataBase,
+			environment,
+			cds:            undefined,
+			referenceChain: [files[0].filePath]
+		};
+		try {
+			df = processDataflowFor<OtherInfo>(files[0].root, dfData);
+		} catch(e) {
+			if(e instanceof RangeError) {
+				throw new Error(`Dataflow analysis exceeded the call stack for '${files[0].filePath ?? '<inline>'}' (code is too deeply nested). Consider --stack-size=65536 when invoking Node.js.`, { cause: e });
+			}
+			throw e;
+		}
+
+		for(let i = 1; i < files.length; i++) {
+			/* source requests register automatically */
+			df = standaloneSourceFile(i, files[i], dfData, df);
+		}
 	}
 
 	// resolve linkages and propagate transitive side effects across calls to a fixpoint
@@ -238,6 +215,10 @@ export function produceDataFlowGraph<OtherInfo>(
 	resolveLinkToSideEffects(df.graph, ctx);
 
 	if(hash !== undefined) {
+		const nodeId = files[0].root.info.id;
+		const builtInEnv = ctx.env.builtInEnvironment as IEnvironment;
+		const emptyBuiltInEnv = ctx.env.emptyBuiltInEnvironment as IEnvironment;
+
 		incContext.storePersistedDataflowGraph(nodeId, hash, {
 			graph:       df.graph.persist(builtInEnv, emptyBuiltInEnv),
 			environment: DataflowGraph.persistEnvironment(df.environment, builtInEnv, emptyBuiltInEnv)

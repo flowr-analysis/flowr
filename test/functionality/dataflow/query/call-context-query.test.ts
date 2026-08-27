@@ -13,6 +13,7 @@ import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/n
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { cleanupSigTmpDirs, expFn, sigTmpDir, sigdbAnalyzer, ver, writeAndOpen } from '../../_helper/sigdb';
 import { SigDbBuilder } from '../../../../src/project/sigdb/build';
+import { signatureDbOf } from '../../../../src/project/sigdb/signature-db';
 
 /** simple query shortcut */
 function q(callName: RegExp | string, c: Partial<CallContextQuery> = {}): CallContextQuery {
@@ -171,31 +172,43 @@ describe('Call Context Query', withTreeSitter(parser => {
 		testQuery('2', 'b <- getOption("x", default = 1); a <- 4 + b; print(a); print(4)', [q(/print/, { reliesOnCriteria: [{ name: '*', calls: 'getOption' }] })], r([{ id: 17, name: 'print' }]));
 		testQuery('3', 'a <- 4 + 3; b <- 3; c <- 4+b; a <- 8; print(a); print(b); print(c)', [q(/print/, { reliesOnCriteria: [{ name: '*', calls: '\\+' }] })], r([{ id: 27, name: 'print' }]));
 		testQuery('4', 'a <- 4 + 3*2; b <- 3; c <- 4+b; print(x = a); print(b); print(c)', [q(/print/, { reliesOnCriteria: [{ name: 'x', calls: '\\+' }] })], r([{ id: 19, name: 'print' }]));
-		/*
-		testQuery('8', `f <- function(x = foo())  {
+		
+		//todo, genauere abfragen
+		/*testQuery('8', `f <- function(x = foo())  {
   print(x)
 }
 foo <- function() getOption("bar")
 f(getOption(toString(4)))
-f()`, [q(/f/, { reliesOnCriteria: ['*', 'getOption'] })], r([{ id: 31, name: 'f' }]));
-
-		testQuery('5', 'a <- 4 + 3*2; b <- 3; c <- 4+b; print(x = a); print(b); print(c)', [q(/print/, { reliesOnCriteria: ['x', '\\+', 'x', '\\*'] })], r([{ id: 19, name: 'print' }]));
+f()`, [q(/f/, { reliesOnCriteria: [{name: '*', calls: 'getOption'}] })], r([{ id: 31, name: 'f' }]));*/
+		//todo
+		/*
+		testQuery('5', 'a <- 4 + 3*2; b <- 3; c <- 4+b; print(x = a); print(b); print(c)', [q(/print/, { reliesOnCriteria: ['x', '\\+', 'x', '\\*'] })], r([{ id: 19, name: 'print' }]));*/
 		testQuery('6', `f <- function(x = foo())  {
   print(x)
 }
 foo <- function() getOption("bar")
 f()
-##
 f(x=42)
 f(42)
-f(getOption("bar"))`, [q(/^f$/, { reliesOnCriteria: ['*', 'getOption'] })], r([{ id: 23, name: 'f' }, { id: 39, name: 'f' }]));
+f(getOption("bar"))`, [q(/^f$/, { reliesOnCriteria: [{name: '*', calls: 'getOption'}] })], r([{ id: 23, name: 'f' }, { id: 39, name: 'f' }]));
+//todo: teste wie  zum Beispiel foo verwendet nicht direkt getOption, sondern foo ruft wieder eine andere funktion auf und diese funktion tut dann erst getOption aufrufen*/
 testQuery('7', `f <- function(x = foo())  {
   print(x)
 }
 foo <- function() getOption("bar")
-f(x=getOption("bar"))`, [q(/^f$/, { reliesOnCriteria: ['*', 'getOption'] })], r([{ id: 29, name: 'f' }]));
-		 */
+f(x=getOption("bar"))`, [q(/^f$/, { reliesOnCriteria: [{name: '*', calls: 'getOption'}] })], r([{ id: 29, name: 'f' }]));
+
+
+	});
+//todo: remove after testing
+	describe('Remove after testing', () => {
+		testQuery('6', `f <- function(x = foo())  {
+  print(x)
+}
+foo <- function() getOption("bar")
+f()
+f(x=42)
+f(42)
+f(getOption("bar"))`, [q(/^f$/, { reliesOnCriteria: [{name: '*', calls: 'getOption'}] })], r([{ id: 23, name: 'f' }, { id: 39, name: 'f' }]));
 	});
 }));
-
-//die origins abfragen und dann mit den origins davon den subgraph von dem parameter aufrufen

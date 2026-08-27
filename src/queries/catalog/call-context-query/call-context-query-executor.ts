@@ -13,7 +13,7 @@ import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
 import type { BasicQueryData } from '../../base-query-format';
 import { satisfiesCallTargets } from './identify-link-to-last-call-relation';
-import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { identifyLinkToRelation } from './identify-link-to-relation';
 import { Identifier } from '../../../dataflow/environments/identifier';
@@ -21,19 +21,31 @@ import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { ArrayQueue } from '../../../util/collections/queue';
 import { baseRExportOwner } from '../../../util/r-base-packages';
 import { executeCallGraphQuery } from '../call-graph-query/call-graph-query-executor';
-import { guard } from '../../../util/assert';
+import { guard, isNotUndefined } from '../../../util/assert';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { recoverContent, recoverName } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { FunctionArgument } from '../../../dataflow/graph/graph';
-import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
-import { VertexType } from '../../../dataflow/graph/vertex';
+import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo } from '../../../dataflow/graph/vertex';
+import { FunctionCallVertex, FunctionDefinitionVertex, VertexType } from '../../../dataflow/graph/vertex';
 import type {
 	ReadOnlyFlowrAnalyzerDependenciesContext
 } from '../../../project/context/flowr-analyzer-dependencies-context';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { SliceDirection } from '../../../util/slice-direction';
+import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { ControlFlow } from '../../../dataflow/internal/control-flow';
+import { ControlFlowGraph } from '../../../control-flow/control-flow-graph';
+import { MatchArgs } from '../../../dataflow/graph/match-args';
+import { signatureDbOf } from '../../../project/sigdb/signature-db';
+import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { resolveIdToValue } from '../../../dataflow/eval/resolve/alias-tracking';
+import { Resolve } from '../../../dataflow/environments/resolve-helper';
+import { VariableResolve } from '../../../config';
 
 function makeReport(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>): CallContextQueryKindResult {
 	const result: CallContextQueryKindResult = {};
@@ -268,32 +280,98 @@ function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
 	return false;
 }
 
-async function isDependentOn(parameter: string, dep: PromotedCallTest, fCall: Required<DataflowGraphVertexFunctionCall>, graph: DataflowGraph, analyzer: ReadonlyFlowrAnalysisProvider): Promise<boolean> {
-	/* const astCall = graph.idMap?.get(fCall?.id) as RFunctionCall<ParentInformation> | undefined;
+async function isDependentOn(parameter: string, dep: PromotedCallTest , value: string | undefined, fCall: Required<DataflowGraphVertexFunctionCall>, graph: DataflowGraph, analyzer: ReadonlyFlowrAnalysisProvider): Promise<boolean> {
+	const astCall = graph.idMap?.get(fCall?.id) as RFunctionCall<ParentInformation> | undefined;
 	if(!RFunctionCall.is(astCall)) {
 		return false;
 	}
-	// TODO: match against signaue
-	// const defs = MatchArgs.toDefinition(astCall, graph, analyzer.inspectContext());
-	*/
+	const defs = MatchArgs.toDefinition(astCall, graph, analyzer.inspectContext());
+	//todo: test for multiple steps
+	// TODO: match against signaue (so that we can for example slice for the x of a print)
+	//Todo: we want to be able to also check for the correct value 
+	const slicedParam = new Set<NodeId>();
 	const isParam = parameter === '*' ? () => true : (p: string | undefined) => p === parameter;
-
-	for(const arg of fCall.args) {
-		if(FunctionArgument.isEmpty(arg) || !isParam(arg.name)) {
-			continue;
+	if(defs === undefined){
+		for(const arg of fCall.args) {
+			if(FunctionArgument.isEmpty(arg) || !isParam(arg.name)) {
+				continue;
+			}
+			if(isNotUndefined(arg.name)){
+				slicedParam.add(arg.name);
+			}
+			if(isNotUndefined(value)){
+				const result = Resolve.toValue(arg.nodeId, { environment: fCall.environment, graph, full: true, ctx: analyzer.inspectContext(), resolve: VariableResolve.Alias });
+			}
+			const t = graph.idMap?.get(arg.nodeId) as RArgument;
+			if(t.value?.type === 'RFunctionCall' && isNotUndefined((t.value?.functionName as RSymbol).content) && dep(Identifier.getName((t.value?.functionName as RSymbol).content))){
+				return true;
+			}
+			const argSlice = await analyzer.query([{
+				type:             'static-slice',
+				criteria:         [SlicingCriterion.fromId(arg.nodeId)],
+				noReconstruction: true,
+				direction:        SliceDirection.Backward
+			}]);
+			for(const results of Object.values(argSlice['static-slice'].results)) {
+				for(const resultId of results.slice.result) {
+					const name = recoverName(resultId, graph.idMap);
+					if(name && dep(name) && FunctionCallVertex.is(graph.getVertex(resultId))) {
+						return true;
+					}
+				}
+			}
 		}
-		const argSlice = await analyzer.query([{
-			type:             'static-slice',
-			criteria:         [SlicingCriterion.fromId(arg.nodeId)],
-			noReconstruction: true,
-			direction:        SliceDirection.Backward
-		}]);
-		for(const results of Object.values(argSlice['static-slice'].results)) {
-			for(const resultId of results.slice.result) {
-				// TODO: check it is sreally a functin call
-				const name = recoverName(resultId, graph.idMap);
-				if(name && dep(name)) {
+	} else {
+		for(const [param, arg] of defs){
+			if(isParam(param)){
+				const argSlice = await analyzer.query([{
+					type:             'static-slice',
+					criteria:         [SlicingCriterion.fromId(arg.info.id)],
+					noReconstruction: true,
+					direction:        SliceDirection.Backward
+				}]);
+				slicedParam.add(param);
+				//case: dep is the argument of the call
+				if(arg.value?.type === 'RFunctionCall' && isNotUndefined((arg.value?.functionName as RSymbol).content) && dep(Identifier.getName((arg.value?.functionName as RSymbol).content))){
 					return true;
+				}
+				for(const results of Object.values(argSlice['static-slice'].results)) {
+					for(const resultId of results.slice.result) {
+						const name = recoverName(resultId, graph.idMap);
+						const node = graph.idMap?.get(resultId);
+						const isFCall = RFunctionCall.is(node)
+						if(name && dep(name) && FunctionCallVertex.is(graph.getVertex(resultId))) {
+							return true;
+						}
+					}
+				}
+			}
+		}
+	}
+	//checks the default-values of the function 	
+	//call muss genau eine FunctionDef haben
+	const def = graph.idMap?.get(graph.outgoingEdges(fCall.id)?.entries().find(([id, edge]) => {
+		return DfEdge.isOnlyType(edge, EdgeType.Calls) && FunctionDefinitionVertex.is(graph.getVertex(id));
+	})?.[0] as NodeId)
+	const defGraph = graph.getVertex(graph.outgoingEdges(fCall.id)?.entries().find(([id, edge]) => {
+		return DfEdge.isOnlyType(edge, EdgeType.Calls) && FunctionDefinitionVertex.is(graph.getVertex(id));
+	})?.[0] as NodeId) as DataflowGraphVertexFunctionDefinition
+	if(RFunctionDefinition.is(def)){
+		for(const param of def.parameters){
+			if(isParam(param.name.lexeme) && !slicedParam.has(param.name.lexeme) && isNotUndefined(param.defaultValue?.info.id)){
+				const argSlice = await analyzer.query([{
+				type:             'static-slice',
+				criteria:         [SlicingCriterion.fromId(param.defaultValue.info.id)],
+				noReconstruction: true,
+				direction:        SliceDirection.Backward
+				}]);
+				for(const results of Object.values(argSlice['static-slice'].results)) {
+					for(const resultId of results.slice.result) {
+						const name = recoverName(resultId, graph.idMap);
+						if(name && dep(name) && FunctionCallVertex.is(graph.getVertex(resultId))) {
+							return true;
+						}
+					}
 				}
 			}
 		}
@@ -413,10 +491,10 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 			if(query.reliesOnCriteria) {
 				let isDependent = true;
 				for(const { name, calls, value } of query.reliesOnCriteria) {
-					guard(value === undefined, 'not yet supported');
+					//guard(value === undefined, 'not yet supported');
 					guard(calls !== undefined, 'we want calls req.');
 					//alle Bedingungen müssen gelten
-					if(!await isDependentOn(name, promoteCallName(calls), info, dataflowGraph, analyzer)) {
+					if(!await isDependentOn(name, calls === undefined ? calls : promoteCallName(calls), value, info, dataflowGraph, analyzer)) {
 						isDependent = false;
 						break;
 					}

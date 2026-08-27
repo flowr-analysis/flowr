@@ -206,9 +206,8 @@ jobs:
         # dist paths etc.
         # besides, we make dead-sure we have a clean directory to work on!
         # uses npm trusted publishing (OIDC): no token, package.json's Trusted Publisher config on npmjs.com must
-        # match this repo/workflow/environment, and npm needs to be new enough to speak OIDC.
+        # match this repo/workflow/environment. node's bundled npm (11.9.0+ on node 25) already speaks OIDC.
         run: |
-          npm install -g npm@latest
           rm -rf dist
           npm run build
           npm run publish-library

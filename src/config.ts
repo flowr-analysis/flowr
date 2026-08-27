@@ -483,6 +483,7 @@ export const FlowrConfig = {
 	 */
 	default(this: void): FlowrConfig {
 		return {
+			logLevel:          'fatal',
 			ignoreSourceCalls: false,
 			ignoreLoadCalls:   false,
 			semantics:         {

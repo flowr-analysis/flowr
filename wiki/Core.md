@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-08-26, 16:55:30 UTC (v2.15.2, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's core">Generated</span> from '[wiki-core.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-core.ts "src/documentation/wiki-core.ts")' on 2026-08-27, 09:38:52 UTC (v2.15.4, R v4.6.1), please do not edit directly._
 
 
 This wiki page provides an overview of the inner workings of _flowR_.
@@ -19,7 +19,7 @@ and the [Contributing Guidelines](https://github.com/flowr-analysis/flowr/tree/m
 > 
 > ```shell
 > $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-> flowR repl v2.15.2, R v4.6.1 (r-shell engine)
+> flowR repl v2.15.4, R v4.6.1 (r-shell engine)
 > R> :parse "x <- 1; print(x)"
 > ```
 > 
@@ -280,7 +280,7 @@ To explore these steps, let's use the REPL with the (very simple and contrived) 
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.15.2, R v4.6.1 (r-shell engine)
+flowR repl v2.15.4, R v4.6.1 (r-shell engine)
 R> :parse "x <- 1; print(x)"
 ```
 
@@ -358,7 +358,7 @@ x"])
 
 ```
 	
-(The analysis required _2.4 ms_ (including parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+(The analysis required _3.4 ms_ (including parsing with the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 
 
 
@@ -423,7 +423,7 @@ print`"]
 ```
 
 	
-(The analysis required _2.0 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _4.2 ms_ (including parse and normalize, using the [r-shell](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
@@ -456,7 +456,7 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 > 
 > ```shell
 > $ docker run -it --rm eagleoutice/flowr --default-engine tree-sitter # or npm run flowr -- --default-engine tree-sitter
-> flowR repl v2.15.2, R grammar v14 (tree-sitter engine)
+> flowR repl v2.15.4, R grammar v14 (tree-sitter engine)
 > R> :parse "x <- 1; print(x)"
 > ```
 > 
@@ -531,7 +531,7 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 > 
 > ```
 > 	
-> (The analysis required _5.9 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+> (The analysis required _8.4 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 > 
 > 
 > 
@@ -596,7 +596,7 @@ Especially when you are just starting with flowR, we recommend using the REPL to
 > ```
 > 
 > 	
-> (The analysis required _1.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+> (The analysis required _2.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 > 
 > 
 > 
@@ -1231,9 +1231,9 @@ Essentially, these processors should use the dataflow information from their chi
 to produce a new dataflow information to pass upwards in the fold. The <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L224"><code><span title="The dataflow information is one of the fundamental structures we have in the dataflow analysis. It is continuously updated during the dataflow analysis and holds its current state for the respective subtree processed. Each processor during the dataflow analysis may use the information from its children to produce a new state of the dataflow information. You may initialize a new dataflow informatio...">DataflowInformation</span></code></a> contains:
 
 * the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L191"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a> of the current subtree 
-* the currently active <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/environment.ts#L680"><code><span title="A ( scoped ) mapping of names to their definitions ( BuiltIns ). The BuiltInEnvironment holds R's built-in functions and constants; use builtInEnvJsonReplacer during serialization to avoid inlining it.">REnvironmentInformation</span></code></a> as an abstraction of all active definitions linking to potential definition locations (see [Advanced R::Environments](https://adv-r.hadley.nz/environments.html))
+* the currently active <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/environment.ts#L658"><code><span title="A ( scoped ) mapping of names to their definitions ( BuiltIns ). The BuiltInEnvironment holds R's built-in functions and constants; use builtInEnvJsonReplacer during serialization to avoid inlining it.">REnvironmentInformation</span></code></a> as an abstraction of all active definitions linking to potential definition locations (see [Advanced R::Environments](https://adv-r.hadley.nz/environments.html))
 * control flow information in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L187"><code><span title="The control flow information for the current DataflowInformation.">DataflowCfgInformation</span></code></a> which is used to enrich the dataflow information with control flow information
-* sets of currently ingoing (read), outgoing (write), and unknown <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L552"><code><span title="An identifier reference points to a variable like a in b <- a. Without any surrounding code, a will produce the identifier reference a. Similarly, b will create a reference (although it will be an identifier definition which adds even more information). In general, references are merely pointers (with meta-information) to a vertex in the dataflow graph . In the context of the extractor, for exampl...">IdentifierReference</span></code></a>s.
+* sets of currently ingoing (read), outgoing (write), and unknown <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L557"><code><span title="An identifier reference points to a variable like a in b <- a. Without any surrounding code, a will produce the identifier reference a. Similarly, b will create a reference (although it will be an identifier definition which adds even more information). In general, references are merely pointers (with meta-information) to a vertex in the dataflow graph . In the context of the extractor, for exampl...">IdentifierReference</span></code></a>s.
 * and a set of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/info.ts#L178"><code><span title="A reference removed from scope within the current subtree (e.g., via rm). Like out references, kills bubble up so the enclosing scope can apply the removal at the right location.">KillReference</span></code></a>s which tracks variables that go out of scope within the current subtree (e.g., due to `rm`). Just like the reference sets above, kills are carried upwards in the fold so that the enclosing scope (expression list, branch, loop, or function body) can apply the removal (via <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/apply-kill.ts#L157"><code><span title="Applies the given kills to a copy of env. named kills remove (or, when conditional, weaken to maybe) a single definition; all kills clear the current frame; unknown kills weaken every in-scope definition to maybe. Returns env unchanged when there is nothing to apply.">applyKills</span></code></a>) at the correct location, even when the `rm` happens nested within a branch or block. This also covers clearing the whole environment with `rm(list=ls())` and conservatively handling removals whose target cannot be resolved statically.
 
 While all of them are essentially empty when processing an “uninteresting leaf”, handling a constant is slightly more interesting with <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/process-value.ts#L14"><code><span title="Processes a value node in the AST for dataflow analysis. For example, literals like numbers.">processValue</span></code></a>:
@@ -1276,14 +1276,14 @@ which holds a reference to the constant. If you are confused with the use of the
 this stems from the [AST decoration](#normalization) and signals that we have a decorated <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/lang-4.x/ast/model/model.ts#L268"><code><span title="The RNode type is the union of all possible nodes in the R-ast. It should be used whenever you either not care what kind of node you are dealing with or if you want to handle all possible nodes.   All other subtypes (like RLoopConstructs ) listed above can be used to restrict the kind of node. They do not have to be exclusive, some nodes can appear in multiple subtypes.">RNode</span></code></a> (which may have additional information in `OtherInfo`).
 
 Yet again, this is not very interesting. When looking at the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/extractor.ts#L44"><code><span title="The best friend of produceDataFlowGraph and processDataflowFor . Maps every RType in the normalized AST to a processor.">processors</span></code></a> object you may be confused by
-many lines just mapping the node to the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/process-named-call.ts#L19"><code><span title="Helper function for processNamedCall using the given functionName as the name of the function.">processAsNamedCall</span></code></a> function.
+many lines just mapping the node to the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/process-named-call.ts#L19"><code><span title="Helper function for processNamedCall using the given content as the name of the function.">processAsNamedCall</span></code></a> function.
 This is because during the dataflow analysis we actually "desugar" the AST, and treat syntax constructs like binary operators (e.g., `x + y`) as function calls (e.g. `` `+`(x, y) ``).
 We do this, because R does it the same way, and allows to even overwrite these operators (including `if`, `<-`, etc.) by their name.
 By treating them like R, as function calls, we get support for these overwrites for free, courtesy of flowR's call resolution.
 
 But where are all the interesting things handled then? 
 For that, we want to have a look at the built-in environment, which can be freely configured using flowR's [configuration system](https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr).
-FlowR's heart and soul resides in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/default-builtin-config.ts#L1334"><code><span title="Contains the built-in definitions recognized by flowR">DefaultBuiltinConfig</span></code></a> object, which is used to configure the built-in environment
+FlowR's heart and soul resides in the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/default-builtin-config.ts#L1338"><code><span title="Contains the built-in definitions recognized by flowR">DefaultBuiltinConfig</span></code></a> object, which is used to configure the built-in environment
 by mapping function names to <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/built-in.ts#L350"><code>BuiltInProcessorMapper</code></a> functions.
 There you can find functions like <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-access.ts#L51"><code><span title="Processes different types of access operations.  Example:   a[i] a$foo a[[i]] a@foo  ">processAccess</span></code></a> which handles the (subset) access to a variable,
 or <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/internal/process/functions/call/built-in/built-in-for-loop.ts#L38"><code><span title="Processes a for-loop call: for(<variable> in <vector>) <body> desugared as:   for(<variable>, <vector>, <body>)  ">processForLoop</span></code></a> which handles the primitive for loop construct (whenever it is not overwritten).
@@ -1344,7 +1344,7 @@ function calls over to the function calling it).
 | Call property | Built-ins | Meaning |
 | :-- | --: | :-- |
 | `Pure` | 367 | computes a result and nothing else, the positive counterpart of `hasUnknownSideEffects` (excludes ImpureProps) |
-| `MayPure` | 83 | pure on its own, but it runs code it is handed, so whatever that code does happens too. The parameter it runs is marked ArgProp.Callee or ArgProp.Nse, as with `lapply(x, f)`. |
+| `MayPure` | 92 | pure on its own, but it runs code it is handed, so whatever that code does happens too. The parameter it runs is marked ArgProp.Callee or ArgProp.Nse, as with `lapply(x, f)`. |
 | `Throws`<sup>db</sup> | 10 | may signal an error, like `stop()` (see SigDbInferable) |
 | `Invisible` | 105 | returns invisibly, so the result is not auto-printed |
 | `Generic`<sup>db</sup> | 120 | dispatches on the class of an argument (S3, S4, or S7), a group generic like `+` on either operand |
@@ -1547,7 +1547,7 @@ You can explore the slicing using the REPL with the <span title="Description (Re
 
 ```shell
 $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-flowR repl v2.15.2, R grammar v14 (tree-sitter engine)
+flowR repl v2.15.4, R grammar v14 (tree-sitter engine)
 R> :query @static-slice (12@product) file://test/testfiles/example.R
 ```
 

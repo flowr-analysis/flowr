@@ -45,6 +45,17 @@ export function interpolationsOf(template: string, open: string, close: string, 
 			continue;
 		}
 		const from = at + open.length;
+		if(close === '') {
+			/* no closing delimiter, as `rprintf` uses `$name`: the interpolation is just the identifier that follows */
+			const match = /^[A-Za-z._][A-Za-z0-9._]*/.exec(template.slice(from));
+			if(match) {
+				found.push(match[0]);
+				at = from + match[0].length;
+			} else {
+				at = from;
+			}
+			continue;
+		}
 		let depth = 1, quote: string | undefined = undefined, i = from;
 		for(; i < template.length && depth > 0; i++) {
 			const c = template[i];

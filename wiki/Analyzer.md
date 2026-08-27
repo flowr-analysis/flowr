@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-08-26, 19:37:17 UTC (v2.15.3, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's analyzer">Generated</span> from '[wiki-analyzer.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-analyzer.ts "src/documentation/wiki-analyzer.ts")' on 2026-08-27, 08:24:12 UTC (v2.15.4, R v4.6.1), please do not edit directly._
 
 
 - [Overview](#Overview)
@@ -464,10 +464,10 @@ First, let's have look at the <a href="https://github.com/flowr-analysis/flowr/t
 
 Using the available [plugins](#Plugins),
 the files context categorizes files by their <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-file.ts#L18"><code><span title="Some files have a special meaning in R projects, e.g., the DESCRIPTION file in R packages. This list may be extended in the future and reflects files that the FlowrAnalyzer can do something interesting with. If you add an interesting file that is only part of your plugin infrastructure, please use the other role.">FileRole</span></code></a> (e.g., source files or DESCRIPTION files)
-and makes them accessible by these roles (e.g., via <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L586"><code>FlowrAnalyzerFilesContext::<i>getFilesByRole</i></code></a>).
-It also provides methods to check for whether a file exists (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L448"><code>FlowrAnalyzerFilesContext::<i>hasFile</i></code></a>,
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L452"><code>FlowrAnalyzerFilesContext::<i>exists</i></code></a>)
-and to translate requests so they respect the context (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L534"><code>FlowrAnalyzerFilesContext::<i>resolveRequest</i></code></a>).
+and makes them accessible by these roles (e.g., via <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L589"><code>FlowrAnalyzerFilesContext::<i>getFilesByRole</i></code></a>).
+It also provides methods to check for whether a file exists (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L451"><code>FlowrAnalyzerFilesContext::<i>hasFile</i></code></a>,
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L455"><code>FlowrAnalyzerFilesContext::<i>exists</i></code></a>)
+and to translate requests so they respect the context (e.g., <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L537"><code>FlowrAnalyzerFilesContext::<i>resolveRequest</i></code></a>).
 
 For legacy reasons it also provides the list of files considered by the dataflow analysis via
 <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/context/flowr-analyzer-files-context.ts#L286"><code><span title="Get all files that have been considered during dataflow analysis.">FlowrAnalyzerFilesContext::<i>consideredFilesList</i></span></code></a>.

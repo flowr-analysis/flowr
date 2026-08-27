@@ -25,6 +25,7 @@
     "benchmark": "npm run build:dev && node dist/src/cli/benchmark-app.js",
     "benchmark-helper": "ts-node src/cli/benchmark-helper-app.ts",
     "summarizer": "ts-node src/cli/summarizer-app.ts",
+    "prepare": "npm run build:dev",
     "build": "npm run gen:base-packages && tsc --project . && npm run build:copy-data",
     "build:dev": "npm run build && npm run build:copy-wasm",
     "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --tree-shaking=true --minify --external:clipboardy --target=node22 --outfile=dist/src/cli/flowr.min.js && npm run build:copy-wasm",

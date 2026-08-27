@@ -840,9 +840,7 @@ const shared = (() => {
 		cut ||= back === undefined;
 		return back;
 	};
-	/* the configuration travels as the keys it changed, `a.b.c=<json>` joined by `;`, which is short
-	   enough to read in the address bar and to paste into a bug report */
-	const changed = params.get('k')?.split(';').filter(line => line.length > 0);
+	const changed = Playground.unpackConfig(params.get('k'));
 	/* everything about the view is one field, `<code width>,<repl height>,<flags>`, because four of them
 	   would be four `&`-separated names for what is really one thing: how the page was left looking */
 	const [split = '', repl = '', flags = ''] = (params.get('v') ?? '').split(',');
@@ -853,7 +851,7 @@ const shared = (() => {
 	return {
 		code,
 		cut,
-		config:     changed === undefined ? undefined : JSON.stringify(FlowrConfig.applyPaths(changed), null, 2),
+		config:     changed.length === 0 ? undefined : JSON.stringify(FlowrConfig.applyPaths(changed), null, 2),
 		/* `>` is how the landing page writes the forward direction, so a link reads the same on both */
 		direction:  flags.includes('>') ? SliceDirection.Forward : undefined,
 		split:      sized(split, '%'),
@@ -919,7 +917,7 @@ function shareFields(): [string, string][] {
 	const settings = configured.trim() === Defaults.trim() ? undefined : FlowrConfig.parse(configured);
 	const changed = settings === undefined ? [] : FlowrConfig.changedPaths(settings);
 	if(changed.length > 0) {
-		fields.push(['k', changed.join(';')]);
+		fields.push(['k', Playground.packConfig(changed)]);
 	}
 	const dragged = (property: string, unit: string) => document.documentElement.style.getPropertyValue(property).replace(unit, '');
 	const flags = (direction === SliceDirection.Forward ? '>' : '')

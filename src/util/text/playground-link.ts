@@ -1,4 +1,4 @@
-import { packForUrl } from './url-encoding';
+import { packForUrl, unpackFromUrl } from './url-encoding';
 import { uniqueArray } from '../collections/arrays';
 
 /** the parts of the page a mark can point at, rather than a place in the script */
@@ -34,6 +34,13 @@ const FoundMarkPattern = /^(lint|dep):[^@,]+(@\d+)?$/;
 const MaxExpandedRange = 500;
 /** the longest link the page still opens, and the longest a chat client hands on in one piece */
 const MaxSharedLink = 4000;
+
+/**
+ * What a fragment carries unescaped: the unreserved characters plus the sub-delimiters a link is still read
+ * with, minus `&` and `+`, which mean something of their own here. The `u` flag keeps a character outside the
+ * basic plane one match, so escaping never splits a surrogate pair.
+ */
+const FragmentSafe = /[^A-Za-z0-9\-._~!$'()*,;:@/?=]/gu;
 
 /**
  * The helper object associated with {@link PlaygroundMark}, which makes it easy to check a mark and to
@@ -144,7 +151,7 @@ export const Playground = {
 			fields.push(['c', packForUrl(code)]);
 		}
 		if(config.length > 0) {
-			fields.push(['k', config.join(';')]);
+			fields.push(['k', Playground.packConfig(config)]);
 		}
 		const kept = PlaygroundMark.compress(marks);
 		if(kept.length > 0) {
@@ -175,18 +182,36 @@ export const Playground = {
 		return hash.length > 0 ? `${base}#${hash}` : base;
 	},
 	/**
-	 * A fragment is not a query, so `,`, `:`, and the braces a configuration carries stand in it as they
-	 * are and only what would end it, split it, or read back as something else has to be escaped. `<` and
-	 * `>` go together: both are excluded from a URI, and a bare one of either ends the autolink a chat
-	 * client or a markdown reader made of the address. A link is also made not to end on punctuation,
-	 * because that is where a chat client stops reading it.
+	 * The configuration keys as one field. A key is `a.b.c=<json>`, and the json is brackets, braces and quotes
+	 * that a fragment does not carry, so it travels packed like the script rather than as a run of `%5B`.
+	 */
+	packConfig(this: void, config: readonly string[]): string {
+		return packForUrl(config.join(';'));
+	},
+	/** The keys back out of that field, which older links wrote out plainly and which is read either way. */
+	unpackConfig(this: void, field: string | null | undefined): string[] {
+		if(!field) {
+			return [];
+		}
+		/* a key carries its `=`, and neither packing produces one, so what has one was written before they did */
+		const text = field.includes('=') ? field : unpackFromUrl(field) ?? '';
+		return text.split(';').filter(key => key.length > 0);
+	},
+	/**
+	 * Everything a fragment does not carry as itself is escaped, so a configuration's brackets, braces and
+	 * quotes travel as `%5B`, `%7B` and `%22` rather than as characters a chat client, a markdown reader or
+	 * a terminal cuts the address at. What is left is what {@link FragmentSafe} lists: a fragment is not a
+	 * query, so `,`, `:` and `;` stand in it as they are and keep a link readable. `&` and `+` are escaped
+	 * beyond that, the first because it separates the fields here and the second because a reader takes it
+	 * for a space. A link is also made not to end on punctuation, because that is where a chat client stops
+	 * reading it.
 	 */
 	hash(this: void, fields: readonly (readonly [string, string])[]): string {
 		const hash = fields
 			.filter(([, value]) => value.length > 0)
-			.map(([key, value]) => `${key}=${value.replace(/[%&#+<>\s]/g, character => encodeURIComponent(character))}`)
+			.map(([key, value]) => `${key}=${value.replace(FragmentSafe, character => encodeURIComponent(character))}`)
 			.join('&');
-		return hash.replace(/[.,:;"')\]]$/, character => encodeURIComponent(character));
+		return hash.replace(/[.,:;')]$/, character => encodeURIComponent(character));
 	},
 	/**
 	 * Where a criterion points in the given code, as the `<line>:<column>` the page opens the cursor on.

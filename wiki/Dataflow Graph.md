@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-08-26, 19:37:17 UTC (v2.15.3, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's dataflow graph">Generated</span> from '[wiki-dataflow-graph.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-dataflow-graph.ts "src/documentation/wiki-dataflow-graph.ts")' on 2026-08-27, 09:31:03 UTC (v2.15.4, R v4.6.1), please do not edit directly._
 
 
 This page briefly summarizes flowR's dataflow graph (<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/graph/graph.ts#L191"><code><span title="The dataflow graph holds the dataflow information found within the given AST: directed edges ( EdgeType ) are hoisted into a flat adjacency list, while vertices ( DataflowGraphVertexArgument ) nest hierarchically (a function-definition vertex contains its subgraph's node ids). After analysis every edge endpoint must be a vertex, though not yet during construction. All methods return the modified g...">DataflowGraph</span></code></a>).
@@ -109,7 +109,7 @@ flowchart LR
 ```
 
 	
-(The analysis required _2.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
@@ -174,7 +174,7 @@ flowchart LR
 ```
 
 	
-(The analysis required _1.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _4.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
@@ -375,7 +375,7 @@ flowchart LR
 ```
 
 	
-(The analysis required _1.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
+(The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
 
 
 
@@ -503,7 +503,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -695,7 +695,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -835,7 +835,7 @@ get`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -905,7 +905,7 @@ print`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3, 0->3}.
+The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3, 0->3}.
 We encountered unknown side effects (with ids: 6 (linked)) during the analysis.
 
 
@@ -1123,7 +1123,7 @@ print`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {11, 11->0, 11->5}.
+The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {11, 11->0, 11->5}.
 We encountered unknown side effects (with ids: 13 (linked)) during the analysis.
 
 
@@ -1268,7 +1268,7 @@ print`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {16, 16->1, 16->7}.
+The analysis required _1.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {16, 16->1, 16->7}.
 We encountered unknown side effects (with ids: 18 (linked)) during the analysis.
 
 
@@ -1324,7 +1324,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _1.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -1496,7 +1496,7 @@ The related function argument references are defined like this:
      
       <details><summary>View more (IdentifierReference)</summary>
 
-     * **[IdentifierReference](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L552)**   
+     * **[IdentifierReference](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L557)**   
        An identifier reference points to a variable like `a` in `b <- a`.
        Without any surrounding code, `a` will produce the identifier reference `a`.
        Similarly, `b` will create a reference (although it will be an
@@ -1515,7 +1515,7 @@ The related function argument references are defined like this:
        or
        <code>unknown (`unknownReferences`)</code>
        .
-       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L552">src/dataflow/environments/identifier.ts#L552</a></summary>
+       <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L557">src/dataflow/environments/identifier.ts#L557</a></summary>
        
        
        ```ts
@@ -1622,7 +1622,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {8}.
+The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {8}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -1680,7 +1680,7 @@ as the `type` of these references is a bit-mask, encoding one of the following r
 In other words, we classify the references as Argument, Argument, Argument, and the (special) empty argument type (`<>`).
 For more information on the types of references, please consult the implementation.
 
- * **[ReferenceType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L493)**   
+ * **[ReferenceType](https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L498)**   
    Each reference has exactly one reference type, stored as the respective number.
    However, when checking, we may want to allow for one of several types,
    allowing the combination of the respective bitmasks.
@@ -1690,7 +1690,7 @@ For more information on the types of references, please consult the implementati
    .
    In `c <- 3; print(c(1, 2))` the call to `c` works normally (as the vector constructor),
    while writing `c <- function(...) ..1` overshadows the built-in and causes `print` to only output the first element.
-   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L493">src/dataflow/environments/identifier.ts#L493</a></summary>
+   <details><summary style="color:gray">Defined at <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/identifier.ts#L498">src/dataflow/environments/identifier.ts#L498</a></summary>
    
    
    ```ts
@@ -1788,7 +1788,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+> The analysis required _1.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -1873,7 +1873,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->0, 6->1, 6->3}.
+> The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->0, 6->1, 6->3}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -1971,7 +1971,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->5, 9->3}.
+> The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->5, 9->3}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -2120,7 +2120,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {22, 22->18}.
+> The analysis required _2.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {22, 22->18}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -2176,7 +2176,7 @@ For more information on the types of references, please consult the implementati
 > 
 > <summary style="color:gray">Dataflow Graph of the R Code</summary>
 > 
-> The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->0, 9->10}.
+> The analysis required _1.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9, 9->0, 9->10}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -2218,8 +2218,8 @@ For more information on the types of references, please consult the implementati
 >     %% Environment of 11 [level: 0]:
 >     %% Built-in
 >     %% 1----------------------------------------
->     %%   <-: {**<-** (id: 4, type: Unknown, cds: {8+}, def. @6)}
 >     %%   x:  {**x** (id: 0, type: Variable, def. @2)}
+>     %%   <-: {**<-** (id: 4, type: Unknown, cds: {8+}, def. @6)}
 >     11[["`*#91;RBinaryOp#93;* **#60;#45;**
 >       *3.1-6* (**id: 11**)
 >     arg: (9, 10)`"]]
@@ -2290,8 +2290,8 @@ For more information on the types of references, please consult the implementati
 > 
 > | Name | Definitions |
 > |------|-------------|
-> | `<-` | {**<-** (id: 4, type: Unknown, cds: {8+}, def. @6)} |
 > | `x` | {**x** (id: 0, type: Variable, def. @2)} |
+> | `<-` | {**<-** (id: 4, type: Unknown, cds: {8+}, def. @6)} |
 > 
 > <details><summary style="color:gray"> Parent Environment</summary>
 > 
@@ -2360,7 +2360,7 @@ if`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _1.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -2424,7 +2424,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->4}.
+The analysis required _1.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {6, 6->4}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -2528,7 +2528,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {12, 12->4}.
+The analysis required _6.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {12, 12->4}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -2636,7 +2636,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {8, 1->8}.
+The analysis required _2.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {8, 1->8}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -2696,7 +2696,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -2747,7 +2747,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -2882,7 +2882,7 @@ assign`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
+The analysis required _3.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -2941,7 +2941,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -2996,7 +2996,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -3109,7 +3109,7 @@ if`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _1.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -3178,7 +3178,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
+The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {2}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -3552,7 +3552,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9, 6}.
+> The analysis required _2.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9, 6}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -3657,7 +3657,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {10, 1, 3}.
+> The analysis required _2.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {10, 1, 3}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -3720,7 +3720,7 @@ and a subgraph (usually with the name `"function <id>"`) to encompass the body o
 > 
 > ```
 > 	
-> (The analysis required _0.6 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+> (The analysis required _1.1 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 > 
 > 
 > 	
@@ -3742,7 +3742,7 @@ Last but not least, please keep in mind that R offers another way of writing ano
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -3866,7 +3866,7 @@ print`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {4->0}.
+The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {4->0}.
 We encountered unknown side effects (with ids: 6 (linked)) during the analysis.
 
 
@@ -3964,7 +3964,7 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9->7, 7->3, 4->0}.
+> The analysis required _3.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {9->7, 7->3, 4->0}.
 > We encountered unknown side effects (with ids: 9 (linked)) during the analysis.
 > 
 > 
@@ -4060,7 +4060,7 @@ Reads edges mark that the source vertex (usually a [use vertex](#use-vertex)) re
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->2}.
+> The analysis required _1.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->2}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -4146,7 +4146,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {7->0}.
+The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {7->0}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4223,7 +4223,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {4->1}.
+The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {4->1}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4283,7 +4283,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
+The analysis required _0.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->1, 0->2}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4333,7 +4333,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
+The analysis required _1.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4407,7 +4407,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
+The analysis required _0.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {0->4, 0->3, 1->3}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4553,7 +4553,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
+The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {7->4}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4636,7 +4636,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {6->1, 4->0}.
+The analysis required _5.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {6->1, 4->0}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4690,7 +4690,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _1.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -4801,7 +4801,7 @@ end
 
 <summary style="color:gray">R Code of the (simplified) Dataflow Graph</summary>
 
-The analysis required _2.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {19->15, 15->14, 14->12, 14->11, 11->9, 9->7}.
+The analysis required _2.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {19->15, 15->14, 14->12, 14->11, 11->9, 9->7}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -4951,7 +4951,7 @@ f()
 
 <summary style="color:gray">Dataflow Graph of the R Code</summary>
 
-The analysis required _1.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1, 1->5, 9->5}.
+The analysis required _6.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {1, 1->5, 9->5}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -5170,7 +5170,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
+The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {5->1, 5->3}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -5281,7 +5281,7 @@ end
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
+The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->10}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -5406,7 +5406,7 @@ Marks cases in which R's non-standard evaluation mechanisms cause the default se
 > 
 > <summary style="color:gray">R Code of the Dataflow Graph</summary>
 > 
-> The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {2, 4->2}.
+> The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {2, 4->2}.
 > We encountered no unknown side effects during the analysis.
 > 
 > 
@@ -5531,7 +5531,7 @@ quote`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {5->3, 5->1, 5->2}.
+The analysis required _0.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {5->3, 5->1, 5->2}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -5675,7 +5675,7 @@ if`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {}.
+The analysis required _6.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {}.
 We encountered no unknown side effects during the analysis.
 
 
@@ -5745,7 +5745,7 @@ if`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -5819,7 +5819,7 @@ if`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _0.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -5886,7 +5886,7 @@ if`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -5978,7 +5978,7 @@ c`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _0.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -6292,7 +6292,7 @@ print`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _1.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered unknown side effects (with ids: 3, 9 (linked)) during the analysis.
 
 
@@ -6457,7 +6457,7 @@ function`"]
 
 <summary style="color:gray">R Code of the Call Graph</summary>
 
-The analysis required _1.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -6515,7 +6515,7 @@ assign`"]
 
 <summary style="color:gray">R Code of the Call Graph</summary>
 
-The analysis required _1.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _0.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -6572,7 +6572,7 @@ flowchart LR
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
+The analysis required _0.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). 
 We encountered no unknown side effects during the analysis.
 
 
@@ -6618,7 +6618,7 @@ If you are interested in which features we support and which features are still 
 FlowR supports a [configurable](https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr) level of value tracking&mdash;all with the goal of knowing the static value domain of a variable.
 These capabilities are exposed by the [resolve value Query](https://github.com/flowr-analysis/flowr/wiki/%5BQuery%5D-Resolve-Value) and backed by two important functions:
 
-<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L161"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> provides an environment-sensitive (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/environment.ts#L680"><code><span title="A ( scoped ) mapping of names to their definitions ( BuiltIns ). The BuiltInEnvironment holds R's built-in functions and constants; use builtInEnvJsonReplacer during serialization to avoid inlining it.">REnvironmentInformation</span></code></a>)
+<a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L161"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> provides an environment-sensitive (see <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/environments/environment.ts#L658"><code><span title="A ( scoped ) mapping of names to their definitions ( BuiltIns ). The BuiltInEnvironment holds R's built-in functions and constants; use builtInEnvJsonReplacer during serialization to avoid inlining it.">REnvironmentInformation</span></code></a>)
 value resolution depending on if the environment is provided.
 The idea of <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/eval/resolve/alias-tracking.ts#L161"><code><span title="Evaluates the value of a node in the set domain.  resolveIdToValue tries to resolve the value using the data it has been given. If the environment is provided the approximation is more precise, as we can track aliases in the environment. Otherwise, the graph is used to try and resolve the nodes value. If neither is provided the value cannot be resolved.  This function is also used by the Resolve V...">resolveIdToValue</span></code></a> is to provide a compromise between precision and performance, to
 be used _during_ and _after_ the core analysis. After the dataflow analysis completes, there are much more expensive queries possible (such as the resolution of the data frame shape, see the [Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API)).
@@ -6677,7 +6677,7 @@ print`"]
 
 <summary style="color:gray">R Code of the Dataflow Graph</summary>
 
-The analysis required _1.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
+The analysis required _1.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`). The following marks are used in the graph to highlight sub-parts (uses ids): {3->1}.
 We encountered unknown side effects (with ids: 3 (linked)) during the analysis.
 
 

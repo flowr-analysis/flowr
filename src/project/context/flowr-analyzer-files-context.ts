@@ -416,7 +416,10 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 * Add a file to the context. If the file has a special role, it will be added to the corresponding list of special files.
 	 * This method also applies any registered {@link FlowrAnalyzerFilePlugin}s to the file before adding it to the context.
 	 */
-	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile, roles?: readonly FileRole[]) {
+	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile | undefined, roles?: readonly FileRole[]) {
+		if(file === undefined) {
+			return;
+		}
 		const f = this.fileLoadPlugins(wrapFile(file, roles));
 
 		f.addOnInvalidate(c => {

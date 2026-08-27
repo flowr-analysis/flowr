@@ -3,6 +3,7 @@
  * dependency records, and the {@link LibraryExports} export view. Pure -- no I/O, no mutation of inputs.
  * Split out of `../sigdb` so the reader/writer there does not carry the per-record decoding.
  */
+import type { SigDict } from './dict';
 import {
 	ClassProp, DefaultCranBase, FnProp, FnPropNames, SigClassSystemNames,
 	type DepType, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigClassInfo, type SigDbPkgMeta,
@@ -104,21 +105,21 @@ export function transitiveCallees(functions: readonly DecodedFunction[], name: s
 }
 
 /** decode one of a blob's function records against the global string dictionary */
-export function decodeFunction(strings: readonly string[], blob: Readonly<PkgBlob>, fnIdx: number): DecodedFunction {
+export function decodeFunction(strings: SigDict, blob: Readonly<PkgBlob>, fnIdx: number): DecodedFunction {
 	const [nameIdx, sigIdx, cgIdx, bits, fileIdx, line, topicIdx] = blob.fns[fnIdx];
 	const signature = (sigIdx >= 0 ? blob.sigs[sigIdx] : []).map(p => {
 		const [n, props, def] = Array.isArray(p) ? [p[0], p[1], p.length === 3 ? p[2] : -1] : [p, 0, -1];
-		return compactRecord({ name: strings[n], props, default: def >= 0 ? strings[def] : undefined });
+		return compactRecord({ name: strings.at(n), props, default: def >= 0 ? strings.at(def) : undefined });
 	});
 	let callees: string[] = [];
 	if(cgIdx >= 0) {
 		let prev = 0;
-		callees = blob.cgs[cgIdx].map(d => strings[prev += d]);
+		callees = blob.cgs[cgIdx].map(d => strings.at(prev += d));
 	}
 	return compactRecord({
-		name:     strings[nameIdx],
-		topic:    topicIdx !== undefined && topicIdx >= 0 ? strings[topicIdx] : undefined,
-		file:     fileIdx >= 0 ? strings[fileIdx] : undefined,
+		name:     strings.at(nameIdx),
+		topic:    topicIdx !== undefined && topicIdx >= 0 ? strings.at(topicIdx) : undefined,
+		file:     fileIdx >= 0 ? strings.at(fileIdx) : undefined,
 		line,
 		exported: Boolean(bits & FnProp.Exported),
 		props:    Object.entries(FnPropNames).filter(([m]) => bits & Number(m)).map(([, n]) => n),
@@ -136,16 +137,16 @@ export interface ResolvedDependency {
 }
 
 /** decode the declared dependencies of one blob version (empty when it declares none / the bundle omits them) */
-export function decodeDependencies(strings: readonly string[], blob: Readonly<PkgBlob>, ver: string): ResolvedDependency[] {
+export function decodeDependencies(strings: SigDict, blob: Readonly<PkgBlob>, ver: string): ResolvedDependency[] {
 	const idx = blob.depsByVersion[ver];
 	if(idx === undefined) {
 		return [];
 	}
-	return blob.deps[idx].map(d => compactRecord({ name: strings[d[0]], type: d[1], constraint: d.length === 3 ? strings[d[2]] : undefined }));
+	return blob.deps[idx].map(d => compactRecord({ name: strings.at(d[0]), type: d[1], constraint: d.length === 3 ? strings.at(d[2]) : undefined }));
 }
 
 /** the classes a package version declares, decoded from the blob's class pool */
-export function decodeClasses(strings: readonly string[], blob: Readonly<PkgBlob>, ver: string): SigClassInfo[] {
+export function decodeClasses(strings: SigDict, blob: Readonly<PkgBlob>, ver: string): SigClassInfo[] {
 	const list = blob.classesByVersion?.[ver];
 	const pool = blob.classes;
 	if(list === undefined || pool === undefined) {
@@ -160,15 +161,15 @@ export function decodeClasses(strings: readonly string[], blob: Readonly<PkgBlob
 		}
 		const [nameIdx, system, props, supers, slots, pkgIdx] = rec;
 		out.push(compactRecord({
-			name:   strings[nameIdx],
+			name:   strings.at(nameIdx),
 			system: SigClassSystemNames[system] ?? SigClassSystemNames[0],
-			supers: supers.map(i => strings[i]),
+			supers: supers.map(i => strings.at(i)),
 			slots:  slots.map((sl): SigSlotInfo => typeof sl === 'number'
-				? { name: strings[sl] }
-				: { name: strings[sl[0]], type: strings[sl[1]] }),
+				? { name: strings.at(sl) }
+				: { name: strings.at(sl[0]), type: strings.at(sl[1]) }),
 			virtual: props & ClassProp.Virtual ? true : undefined,
 			union:   props & ClassProp.Union ? true : undefined,
-			package: pkgIdx !== undefined ? strings[pkgIdx] : undefined
+			package: pkgIdx !== undefined ? strings.at(pkgIdx) : undefined
 		}));
 	}
 	return out;
@@ -190,7 +191,7 @@ export function versionFnIndices(blob: Readonly<PkgBlob>, ver: string): number[]
 
 /** derive the {@link LibraryExports} export view of one package version from its blob + metadata */
 export function deriveLibraryExports(
-	strings: readonly string[], blob: Readonly<PkgBlob>, meta: SigDbPkgMeta, pkg: string, version?: string, cranBase = DefaultCranBase
+	strings: SigDict, blob: Readonly<PkgBlob>, meta: SigDbPkgMeta, pkg: string, version?: string, cranBase = DefaultCranBase
 ): LibraryExports | undefined {
 	const [latest, archived] = meta;
 	const ver = resolveVersion(blob, latest, version);
@@ -206,7 +207,7 @@ export function deriveLibraryExports(
 	const locations = new Map<string, SigDefinitionLocation>();
 	for(const i of idxs) {
 		const [nameIdx, , , bits, fileIdx, line] = blob.fns[i];
-		const name = strings[nameIdx];
+		const name = strings.at(nameIdx);
 		(bits & FnProp.Exported ? exported : internal).push(name);
 		if(bits & FnProp.Deprecated) {
 			deprecated.push(name);
@@ -218,7 +219,7 @@ export function deriveLibraryExports(
 			s4Classes.push(name);
 		}
 		if(fileIdx >= 0) {
-			locations.set(name, { file: strings[fileIdx], line });
+			locations.set(name, { file: strings.at(fileIdx), line });
 		}
 	}
 	const cran = !blob.noncran?.includes(ver);

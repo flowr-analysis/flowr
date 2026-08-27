@@ -66,6 +66,22 @@ describe('Playground links', () => {
 		assert.notInclude(hash, '>', 'an angle bracket ends the autolink a reader made of the address');
 	});
 
+	test(label('a configuration travels packed and reads back as it was', ['name-normal'], ['other']), () => {
+		const config = ['sp.u.l.d=["software-has-license","problematic-inputs"]', 'e=[{"type":"tree-sitter","lax":true}]'];
+		const url = Playground.link({ code, config });
+		const hash = url.split('#')[1];
+		assert.notMatch(hash.replace(/%[0-9A-Fa-f]{2}/g, ''), /[^A-Za-z0-9\-._~!$'()*,;:@/?=&]/,
+			'a fragment carries nothing outside what a URI allows in one');
+		assert.notInclude(hash, '%', 'a packed configuration needs no escaping at all');
+		assert.deepStrictEqual(Playground.unpackConfig(fields(url).k), config);
+	});
+
+	test(label('a configuration an older link spelled out still reads', ['name-normal'], ['other']), () => {
+		assert.deepStrictEqual(Playground.unpackConfig('sp.u.l.d=["a"];e=[{"lax":true}]'),
+			['sp.u.l.d=["a"]', 'e=[{"lax":true}]']);
+		assert.deepStrictEqual(Playground.unpackConfig(null), []);
+	});
+
 	test(label('the forward flag rides along escaped, and still reads back', ['name-normal'], ['other']), () => {
 		const url = Playground.link({ code, forward: true });
 		assert.notInclude(url, '>', 'a bare angle bracket is not a character a URI may carry');

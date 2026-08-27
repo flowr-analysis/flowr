@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.15.7",
+  "version": "2.15.8",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "engines": {
     "node": ">=22"

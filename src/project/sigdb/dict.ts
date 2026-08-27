@@ -38,7 +38,7 @@ export class SigDict implements Iterable<string> {
 	 */
 	public static ofRuns(runs: readonly { start: number, names: string }[]): SigDict {
 		if(runs.length === 0) {
-			return new SigDict(EmptyBytes, new Int32Array(0));
+			return new SigDict(Buffer.alloc(0), new Int32Array(0));
 		}
 		const ordered = [...runs].sort((a, b) => a.start - b.start);
 		/* sized in one pass and written in the next, so no run is ever copied twice */
@@ -97,7 +97,6 @@ export class SigDict implements Iterable<string> {
 	}
 }
 
-const EmptyBytes = Buffer.alloc(0);
 const Newline = 0x0a;
 
 /** the group a name of that byte length starting with that byte belongs to; the empty name has none of its own */

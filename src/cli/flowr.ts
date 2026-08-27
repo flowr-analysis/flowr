@@ -91,6 +91,7 @@ export const optionHelp = [
 const options = commandLineArgs(flowrMainOptionDefinitions) as FlowrCliOptions;
 
 log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.Trace : LogLevel.Error);
+log.debug(`flowR ${flowrVersion().toString()}, node ${process.version}, ${process.platform}/${process.arch}`);
 log.info('running with options', options);
 
 if(options['no-ansi'] || (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '')) {
@@ -248,6 +249,8 @@ async function mainServer(useWebSocket: boolean) {
 
 async function main() {
 	try {
+		guard(typeof (new Map()).entries().filter === 'function',
+			`flowR requires a JavaScript runtime with Iterator Helper support (e.g. node >= 22), but this is node ${process.version}.`);
 		if(options.server) {
 			await mainServer(options.ws);
 		} else {

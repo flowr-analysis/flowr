@@ -63,5 +63,8 @@ export const normalizeHashCommand: ReplCodeCommand = {
 		for(const [ type, count ] of counts.entries().toArray().sort((a, b) => b[1] - a[1])) {
 			output.stdout(`  ${(type + ':').padEnd(longestType + 1, ' ')} ${num(count, 7)}`);
 		}
+		if(result.hasError) {
+			output.stderr(output.formatter.format('There were errors during normalization, enable lax mode to parse (see :parse)!', { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
+		}
 	}
 };

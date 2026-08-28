@@ -4,6 +4,7 @@ import { type JsonEntry, convertPreparedParsedData, prepareParsedData } from '..
 import { extractLocation, getTokenType } from '../../../r-bridge/lang-4.x/ast/parser/main/normalize-meta';
 import { removeRQuotes } from '../../../r-bridge/retriever';
 import type Parser from 'web-tree-sitter';
+import type { SyntaxNode } from 'web-tree-sitter';
 import type { ParseStepOutputSingleFile } from '../../../r-bridge/parser';
 import { FlowrFile } from '../../../project/context/flowr-file';
 
@@ -136,6 +137,21 @@ function depthListToTextTree(list: Readonly<DepthList>, f: OutputFormatter): str
 	return result;
 }
 
+function findErrors(node: SyntaxNode): SyntaxNode[] {
+	const errors: SyntaxNode[] = [];
+
+	if(node.type === 'ERROR' || node.isMissing) {
+		errors.push(node);
+	}
+
+	for(const child of node.children) {
+		errors.push(...findErrors(child));
+	}
+
+	return errors;
+}
+
+
 export const parseCommand: ReplCodeCommand = {
 	description:   'Prints ASCII Art of the parsed, unmodified AST',
 	isCodeCommand: true,
@@ -169,6 +185,23 @@ export const parseCommand: ReplCodeCommand = {
 				}
 				const object = treeSitterToDepthList(parsed.rootNode);
 				output.stdout(depthListToTextTree(object, output.formatter));
+				if(parsed.rootNode.hasError) {
+					output.stdout(output.formatter.format('\n\nThe parsed AST contains errors, enable lax mode to normalize partially!\n', { style: FontStyles.Italic }));
+					// print the error nodes grouped by line:
+					const errors = findErrors(parsed.rootNode);
+					const errorsByLine = new Map<number, SyntaxNode[]>();
+					for(const error of errors) {
+						const line = error.startPosition.row + 1;
+						if(!errorsByLine.has(line)) {
+							errorsByLine.set(line, []);
+						}
+						errorsByLine.get(line)?.push(error);
+					}
+					output.stdout(output.formatter.format('Errors by line:\n', { style: FontStyles.Bold }));
+					for(const [ line, nodes ] of Array.from(errorsByLine.entries()).sort((a, b) => a[0] - b[0])) {
+						output.stdout(output.formatter.format(`  Line ${line}: ${nodes.map(n => n.type).join(', ')}`, { style: FontStyles.Italic }));
+					}
+				}
 			}
 		}
 	}

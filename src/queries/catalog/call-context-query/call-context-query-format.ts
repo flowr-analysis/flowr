@@ -24,10 +24,16 @@ export interface FileFilter<FilterType> {
 	readonly includeUndefinedFiles?: boolean;
 }
 
+export interface ParameterConstraintWithValue extends ParameterConstraint{
+	value: string;
+}
+
+export interface ParameterConstraintWithCall extends ParameterConstraint{
+	calls: CallNameTypes;
+}
+
 interface ParameterConstraint {
-	name:   string | '*';
-	value?: string;
-	calls?: CallNameTypes
+	name: string | '*';
 }
 
 
@@ -54,8 +60,14 @@ export interface DefaultCallContextQueryFormat<RegexType extends CallNameTypes> 
 	readonly ignoreParameterValues?: boolean;
 	/** Filter that, when set, a node's file attribute must match to be considered */
 	readonly fileFilter?:            FileFilter<RegexType>;
-	//todo: explanation in wiki hinzufügen
-	readonly reliesOnCriteria?:      ParameterConstraint[];
+	/**
+	 *  Only calls that match the following criteria:
+	 * name: parameter of the call that should match the criteria, or '*' when the specific parameter doesn't matter
+	 * value: the value of one of the parameters resolved to this value
+	 * calls: one of the parameters relies on this call
+	 * For nested criteria, e.g. f(getOption(toString(x))): [\{name: '*', calls: /getOption/\}, \{name: '*', calls: /toString/\}]
+	 */
+	readonly reliesOnCriteria?:      (ParameterConstraintWithCall | ParameterConstraintWithValue)[];
 }
 
 export type CallNameTypes = RegExp | string | string[];
@@ -175,7 +187,7 @@ export const CallContextQueryDefinition = {
 		callTargetNamespace:   Joi.string().optional().description('Only keep calls that resolve to (or are explicitly qualified with) this package (e.g. `bar` to find `bar::foo`).'),
 		ignoreParameterValues: Joi.boolean().optional().description('Should we ignore default values for parameters in the results?'),
 		includeAliases:        Joi.boolean().optional().description('Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results?'),
-		reliesOnCriteria:      Joi.array().optional().description('Only keep calls that match all of the given criteria. Criteria of form x means:  Any of the arguments depend on a function call that matches to the regex x. Criteria of form [x, y] means: Any argument that matches regex x must depend on a function call that matches the regex y.'),
+		reliesOnCriteria:      Joi.array().optional().description('Only calls that match the given criteria.'),
 		fileFilter:            Joi.object({
 			fileFilter:            Joi.string().required().description('Regex that a node\'s file attribute must match to be considered'),
 			includeUndefinedFiles: Joi.boolean().optional().description('If `fileFilter` is set, but a nodes `file` attribute is `undefined`, should we include it in the results? Defaults to `true`.')

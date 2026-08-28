@@ -4,6 +4,9 @@ import fs from 'fs';
 import { assertUnreachable } from '../../../../util/assert';
 import { RFunTabOffsets } from './r-fun-tab';
 import { RShellExecutor } from '../../../../r-bridge/shell-executor';
+import { log } from '../../../../util/log';
+
+const rdaLog = log.getSubLogger({ name: 'flowr-rda-file' });
 
 /**
  * This decorates a text file and provides access to its content in the format of an {@link RObjectData}.
@@ -431,7 +434,7 @@ export class RDAParser{
 		if(SupportedSerializationTypes.has(serializationType)) {
 			return this.deserialize();
 		} else if(VersionOneSerializationTypes.has(serializationType)) {
-			console.warn('Version one rda files are not supported yet');
+			rdaLog.warn('Version one rda files are not supported yet');
 		}
 		return RValues.NilValue;
 	}
@@ -742,7 +745,7 @@ export class RDAParser{
 				return s;
 			}
 			case SexpType.AltRepSxp:
-				console.warn('AltReps are not supported yet!');
+				rdaLog.warn('AltReps are not supported yet!');
 				return this.readOrSkipAltRep(object, levels, false);
 			case SexpType.SymSxp:
 				return this.readOrSkipSym(false);
@@ -1068,7 +1071,7 @@ export class RDAParser{
 
 	/** Resolves package environments. Not implemented yet!. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/envir.c#L3732-L3741 | R source: R_FindPackageEnv} */
 	rFindPackageEnv(s: RObjectData): RObjectData {
-		console.warn('Resolving package environments was triggered, but is not implemented yet!');
+		rdaLog.warn('Resolving package environments was triggered, but is not implemented yet!');
 		return s;
 	}
 
@@ -1279,7 +1282,7 @@ export class RDAParser{
 		if(levels & (1 << 1) || levels & (1 << 6)) {
 			return bytes.toString('latin1');
 		}
-		console.warn('Native encoding detected! Native encoding not supported yet! Value will be empty');
+		rdaLog.warn('Native encoding detected! Native encoding not supported yet! Value will be empty');
 		return '';
 	}
 
@@ -1721,7 +1724,7 @@ export class RDAParser{
 				case SexpType.RawSxp:
 				case SexpType.VecSxp:
 				case SexpType.ExprSxp:
-					console.warn(`cannot unserialize ALTVEC object of class '${(cSym as RObjectData).name}'
+					rdaLog.warn(`cannot unserialize ALTVEC object of class '${(cSym as RObjectData).name}'
 					from package '${(pSym as RObjectData).name}' returning length zero vector`);
 					info.type = type;
 					info.value = [];
@@ -1747,7 +1750,7 @@ export class RDAParser{
 				try {
 					this.R_FindNamespace(pName);
 				} catch(e){
-					console.log(`${pName.value as string} ${e as string}`);
+					rdaLog.warn(`${pName.value as string} ${e as string}`);
 				}
 				clss = this.LookupClass(cSym, pSym);
 			}

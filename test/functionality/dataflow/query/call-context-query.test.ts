@@ -198,17 +198,24 @@ testQuery('7', `f <- function(x = foo())  {
 foo <- function() getOption("bar")
 f(x=getOption("bar"))`, [q(/^f$/, { reliesOnCriteria: [{name: '*', calls: 'getOption'}] })], r([{ id: 29, name: 'f' }]));
 
+testQuery('values', `f <- function(x = foo())  {
+  print(x)
+}
+foo <- function() getOption("bar")
+a <- 2
+b <- a
+f(b)`, [q(/^f$/, { reliesOnCriteria: [{name: '*', value: '2'}] })], r([{ id: 31, name: 'f' }]));
+
 
 	});
 //todo: remove after testing
 	describe('Remove after testing', () => {
-		testQuery('6', `f <- function(x = foo())  {
+		testQuery('values', `f <- function(x = foo())  {
   print(x)
 }
 foo <- function() getOption("bar")
-f()
-f(x=42)
-f(42)
-f(getOption("bar"))`, [q(/^f$/, { reliesOnCriteria: [{name: '*', calls: 'getOption'}] })], r([{ id: 23, name: 'f' }, { id: 39, name: 'f' }]));
+a <- 2
+b <- a
+f(b)`, [q(/^f$/, { reliesOnCriteria: [{name: '*', value: '2'}] })], r([{ id: 31, name: 'f' }]));
 	});
 }));

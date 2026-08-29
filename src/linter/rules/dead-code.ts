@@ -23,7 +23,7 @@ export interface DeadCodeConfig extends MergeableRecord {
 	 * The simplification passes that should be run on the extracted CFG.
 	 * Defaults to the entries of {@link DefaultCfgSimplificationOrder} and `analyze-dead-code`.
 	 */
-	simplificationPasses?: CfgSimplificationPassName[]
+	simplificationPasses?: readonly CfgSimplificationPassName[]
 }
 
 export const DEAD_CODE = {
@@ -75,7 +75,7 @@ export const DEAD_CODE = {
 } as const satisfies LintingRule<DeadCodeResult, never, DeadCodeConfig>;
 
 function combineResults(results: Writable<DeadCodeResult>[]): DeadCodeResult[] {
-	for(let i = results.length - 1; i >= 0; i--){
+	for(let i = results.length - 1; i >= 0; i--) {
 		const result = results[i];
 		const other = results.find(other => result !== other && SourceLocation.isSubsetOf(result.loc, other.loc));
 		if(other !== undefined) {

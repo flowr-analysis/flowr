@@ -1,4 +1,5 @@
 import { assert, test } from 'vitest';
+import { isArray } from '../../../src/util/collections/arrays';
 import { AbstractInterpreter, type AbsintAnalysis, type AbsintVisitorConfiguration } from '../../../src/abstract-interpretation/absint-inference';
 import type { AnyAbstractDomain } from '../../../src/abstract-interpretation/domains/abstract-domain';
 import type { AbstractProduct } from '../../../src/abstract-interpretation/domains/partial-product-domain';
@@ -58,10 +59,10 @@ interface TestEntry<Domain extends AnyAbstractDomain> {
 
 /**
  * Runs the inference on the given code using the provided analysis function, which creates the abstract interpretation analysis to perform.
- * @param code - The code to perform the inference on.
+ * @param code           - The code to perform the inference on.
  * @param createAnalysis - A function creating the abstract interpretation analysis to perform.
- * @param options - The inference test options, including the flowR config to use and additional files to add to the flowR project context.
- * @returns The abstract interpretation visitor after performing the inference, which contains the inferred values.
+ * @param options        - The inference test options, including the flowR config to use and additional files to add to the flowR project context.
+ * @returns              The abstract interpretation visitor after performing the inference, which contains the inferred values.
  */
 export async function runInference<Domains extends AbstractProduct>(
 	code: string,
@@ -74,10 +75,10 @@ export async function runInference<Domains extends AbstractProduct>(
 /**
  * Runs the inference on the given code using the interpreter created by the given factory,
  * which allows tests to plug in a subclass of the {@link AbstractInterpreter} that overrides its traversal hooks.
- * @param code - The code to perform the inference on.
+ * @param code              - The code to perform the inference on.
  * @param createInterpreter - A function creating the abstract interpreter to run, given its configuration.
- * @param options - The inference test options, including the flowR config to use and additional files to add to the flowR project context.
- * @returns The abstract interpreter after performing the inference, which contains the inferred values.
+ * @param options           - The inference test options, including the flowR config to use and additional files to add to the flowR project context.
+ * @returns                 The abstract interpreter after performing the inference, which contains the inferred values.
  */
 export async function runInterpreter<Interpreter extends { start(): void }>(
 	code: string,
@@ -107,9 +108,9 @@ export async function runInterpreter<Interpreter extends { start(): void }>(
  * Resolves a slicing criterion to the AST node id an inference result should be read at.
  * For a function call name, that is the call itself rather than the name symbol, since inference results
  * are recorded on the call.
- * @param idMap - The id map of the normalized AST the criterion was parsed against.
+ * @param idMap     - The id map of the normalized AST the criterion was parsed against.
  * @param criterion - The slicing criterion to resolve.
- * @returns The resolved AST node id.
+ * @returns         The resolved AST node id.
  */
 export function resolveInferenceNodeId(idMap: AstIdMap<ParentInformation>, criterion: SlicingCriterion): NodeId {
 	let nodeId = SlicingCriterion.parse(criterion, idMap);
@@ -126,9 +127,9 @@ export function resolveInferenceNodeId(idMap: AstIdMap<ParentInformation>, crite
 /**
  * Retrieves the inferred abstract value of an abstract domain for a given slicing criterion from the results of the inference.
  * @param inference - The abstract interpretation visitor after performing the inference, which contains the inferred values.
- * @param type - The name of the abstract domain of the analysis to retrieve the inferred value for.
+ * @param type      - The name of the abstract domain of the analysis to retrieve the inferred value for.
  * @param criterion - The slicing criterion for which to retrieve the inferred value.
- * @returns The inferred abstract value for the given slicing criterion, or `undefined` if no value was inferred for it.
+ * @returns         The inferred abstract value for the given slicing criterion, or `undefined` if no value was inferred for it.
  */
 export function getInferredValueForCriterion<Domains extends AbstractProduct, Key extends keyof Domains>(
 	inference: AbstractInterpreter<Domains>,
@@ -148,15 +149,15 @@ export function getInferredValueForCriterion<Domains extends AbstractProduct, Ke
  *
  * Note that this functions inserts print statements for the actual values in the code in the line after each slicing criterion.
  * Make sure that this does not break the provided code.
- * @param name - The label of the test.
- * @param shell - The R shell to use to run the code.
- * @param code - The R code to infer the data frame shape for and to run for validation.
- * @param expected - The expected values for each slicing criterion to test or a list of slicing criteria to validate the inferred value for.
- * @param createAnalysis - A function creating the abstract interpretation analysis to perform.
- * @param type - The name of the abstract domain of the analysis to compare the inferred values for.
+ * @param name             - The label of the test.
+ * @param shell            - The R shell to use to run the code.
+ * @param code             - The R code to infer the data frame shape for and to run for validation.
+ * @param expected         - The expected values for each slicing criterion to test or a list of slicing criteria to validate the inferred value for.
+ * @param createAnalysis   - A function creating the abstract interpretation analysis to perform.
+ * @param type             - The name of the abstract domain of the analysis to compare the inferred values for.
  * @param createOutputCode - A function that takes a marker and a symbol and returns a code line to output the analyzed properties for the symbol.
- * @param parseOutput - A function that takes the output of the instrumented code and parses it into a value of the abstract domain.
- * @param options - The inference test options, including the flowR config to use, additional files to add to the flowR project context, and the domain matching type to use when comparing inferred values with expected values.
+ * @param parseOutput      - A function that takes the output of the instrumented code and parses it into a value of the abstract domain.
+ * @param options          - The inference test options, including the flowR config to use, additional files to add to the flowR project context, and the domain matching type to use when comparing inferred values with expected values.
  */
 export function testInferredValues<Domains extends AbstractProduct, Key extends keyof Domains>(
 	name: string | TestLabel,
@@ -169,7 +170,7 @@ export function testInferredValues<Domains extends AbstractProduct, Key extends 
 	parseOutput: (output: string) => Domains[Key] | undefined,
 	options?: InferenceTestOptions & Partial<TestConfiguration>
 ) {
-	if(!Array.isArray(expected)) {
+	if(!isArray<SlicingCriterion>(expected)) {
 		test(decorateLabelContext(name, ['absint']), async() => {
 			await assertInferredValues(code.trim(), expected, createAnalysis, type, options);
 		});
@@ -179,7 +180,7 @@ export function testInferredValues<Domains extends AbstractProduct, Key extends 
 			if(typeof options?.skipRun === 'function' ? options.skipRun() : options?.skipRun) {
 				skip();
 			}
-			const locations = Array.isArray(expected) ? expected : Record.keys<SlicingCriterion>(expected);
+			const locations = isArray<SlicingCriterion>(expected) ? expected : Record.keys<SlicingCriterion>(expected);
 			await validateInferredValues(shell, code.trim(), locations, createAnalysis, type, createOutputCode, parseOutput, options);
 		});
 	}
@@ -187,11 +188,11 @@ export function testInferredValues<Domains extends AbstractProduct, Key extends 
 
 /**
  * Asserts that the inferred values at given locations (as slicing criteria) match expected values.
- * @param code - The code to perform the inference on.
- * @param expected - A record mapping locations (as slicing criteria) to their expected values.
+ * @param code           - The code to perform the inference on.
+ * @param expected       - A record mapping locations (as slicing criteria) to their expected values.
  * @param createAnalysis - A function creating the abstract interpretation analysis to perform.
- * @param type - The name of the abstract domain of the analysis to compare the inferred values for.
- * @param options - The inference test options, including the flowR config to use, additional files to add to the flowR project context, and the domain matching type to use when comparing inferred values with expected values.
+ * @param type           - The name of the abstract domain of the analysis to compare the inferred values for.
+ * @param options        - The inference test options, including the flowR config to use, additional files to add to the flowR project context, and the domain matching type to use when comparing inferred values with expected values.
  */
 export async function assertInferredValues<Domains extends AbstractProduct, Key extends keyof Domains>(
 	code: string,
@@ -214,14 +215,14 @@ export async function assertInferredValues<Domains extends AbstractProduct, Key 
  *
  * Note that this functions inserts print statements for the actual values in the code in the line after each slicing criterion.
  * Make sure that this does not break the provided code.
- * @param shell - The R shell to run the instrumented code.
- * @param code - The code to perform the inference on and to run for validation.
- * @param locations - The symbol locations (as slicing criteria) to validate the inferred values against the actual values for.
- * @param createAnalysis - A function creating the abstract interpretation analysis to perform.
- * @param domain - The name of the abstract domain of the analysis to compare the inferred values for.
+ * @param shell            - The R shell to run the instrumented code.
+ * @param code             - The code to perform the inference on and to run for validation.
+ * @param locations        - The symbol locations (as slicing criteria) to validate the inferred values against the actual values for.
+ * @param createAnalysis   - A function creating the abstract interpretation analysis to perform.
+ * @param domain           - The name of the abstract domain of the analysis to compare the inferred values for.
  * @param createOutputCode - A function that takes a marker and a symbol and returns a code line to output the analyzed properties for the symbol.
- * @param parseOutput - A function that takes the output of the instrumented code and parses it into a value of the abstract domain.
- * @param options - The inference test options, including the flowR config to use, additional files to add to the flowR project context, and the domain matching type to use when comparing inferred values with expected values.
+ * @param parseOutput      - A function that takes the output of the instrumented code and parses it into a value of the abstract domain.
+ * @param options          - The inference test options, including the flowR config to use, additional files to add to the flowR project context, and the domain matching type to use when comparing inferred values with expected values.
  */
 export async function validateInferredValues<Domains extends AbstractProduct, Key extends keyof Domains>(
 	shell: RShell,
@@ -243,8 +244,7 @@ export async function validateInferredValues<Domains extends AbstractProduct, Ke
 		const node = idMap.get(nodeId);
 		guard(RSymbol.is(node), `Slicing criterion ${criterion} does not refer to an R symbol`);
 
-		const range = SourceRange.fromNode(node);
-		const line = range ? SourceRange.getEndLine(range) : undefined;
+		const line = SourceRange.getEndLine(SourceRange.fromNode(node));
 		guard(isNotUndefined(line), `Cannot resolve source code line of criterion ${criterion}`);
 
 		const inferred = getInferredValueForCriterion(result, domain, criterion);
@@ -277,9 +277,9 @@ export async function validateInferredValues<Domains extends AbstractProduct, Ke
 
 /**
  * Asserts that the inferred value for a given criterion matches the expected value or is an over-approximation of it.
- * @param criterion - The slicing criterion for which the value was inferred.
- * @param inferred - The inferred abstract value for the criterion.
- * @param expected - The expected abstract value for the criterion.
+ * @param criterion    - The slicing criterion for which the value was inferred.
+ * @param inferred     - The inferred abstract value for the criterion.
+ * @param expected     - The expected abstract value for the criterion.
  * @param matchingType - Whether the inferred value should equal the expected value or be an over-approximation of it (defaults to equal).
  */
 export function assertInferredValue<Domain extends AnyAbstractDomain>(criterion: string, inferred: Domain | undefined, expected: Domain | undefined, matchingType = DomainMatchingType.Equal) {

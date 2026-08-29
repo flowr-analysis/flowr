@@ -98,7 +98,7 @@ export const SlicingCriterion = {
 } as const;
 
 /** several {@link SlicingCriterion}s, all of which are sliced for at once */
-export type SlicingCriteria = SlicingCriterion[];
+export type SlicingCriteria = readonly SlicingCriterion[];
 
 
 export interface DecodedCriterion {

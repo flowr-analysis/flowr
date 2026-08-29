@@ -318,6 +318,14 @@ export interface TreeSitterEngineConfig extends MergeableRecord {
 	/** The path to the tree-sitter-r WASM binary to use; defaults to {@link DEFAULT_TREE_SITTER_R_WASM_PATH}. */
 	readonly wasmPath?:           string
 	readonly treeSitterWasmPath?: string
+	/**
+	 * Whether to keep parsing code that does not parse, so what tree-sitter did understand is still analyzed;
+	 * the strict parser rejects the file instead. Off by default.
+	 * @example
+	 * ```ts
+	 * new FlowrAnalyzerBuilder().setEngine('tree-sitter').configure('engine.tree-sitter.lax', true)
+	 * ```
+	 */
 	readonly lax?:                boolean
 }
 
@@ -328,6 +336,39 @@ export interface RShellEngineConfig extends MergeableRecord {
 }
 
 export type EngineConfig = TreeSitterEngineConfig | RShellEngineConfig;
+
+/** The options one engine accepts, its `type` discriminator excluded. */
+type EngineOptions<T extends EngineConfig['type']> = Omit<Extract<EngineConfig, { type: T }>, 'type'>;
+
+/**
+ * The dotted paths addressing a single engine's option, e.g. `engine.tree-sitter.lax`.
+ * {@link FlowrConfig.engines} is an array, so these do not exist as real paths; the setters below understand
+ * them anyway, which is what lets `configure('engine.tree-sitter.lax', true)` work and matches how the CLI
+ * already spells the flag.
+ */
+export type EngineConfigPath = {
+	[T in EngineConfig['type']]: { [K in keyof EngineOptions<T>]: `engine.${T}.${K & string}` }[keyof EngineOptions<T>]
+}[EngineConfig['type']];
+
+/**
+ * Sets one option of one engine, which {@link FlowrConfig.engines|the engine list} holds as an array entry rather
+ * than under a path of its own; this is what an {@link EngineConfigPath} resolves to. The entry is created if the
+ * engine has none yet, and an empty list, which stands for "every available engine", is first written out so that
+ * naming one engine does not silently narrow the analysis to it.
+ */
+function setEngineOption(config: FlowrConfig, engine: EngineConfig['type'], option: string, value: unknown): void {
+	const engines = config.engines;
+	if(engines.length === 0) {
+		engines.push(...Object.values(defaultEngineConfigs).map(e => ({ ...e })));
+	}
+	const existing = engines.find(e => e.type === engine);
+	const entry: Record<string, unknown> = existing ?? { type: engine };
+	if(existing === undefined) {
+		engines.push(entry as EngineConfig);
+	}
+	entry[option] = value;
+}
+
 export type KnownEngines = { [T in EngineConfig['type']]?: KnownParser };
 
 const defaultEngineConfigs: { [T in EngineConfig['type']]: EngineConfig & { type: T } } = {
@@ -906,19 +947,31 @@ export const FlowrConfig = {
 	 * console.log(newConfig.solver.variables); // Output: "builtin"
 	 * ```
 	 */
-	setInConfig<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: ValueAtPath<FlowrConfig, Path>): FlowrConfig {
+	setInConfig<Path extends ValidFlowrConfigPaths | EngineConfigPath>(this: void, config: FlowrConfig, key: Path, value: ConfigValueAt<Path>): FlowrConfig {
 		const clone = FlowrConfig.clone(config);
-		setOnPath(clone, key, value);
+		FlowrConfig.setInConfigInPlace(clone, key, value);
 		return clone;
 	},
 	/**
 	 * Modifies the given config object in place by setting the given value at the given key, where the key is a dot-separated path to the value in the config object.
+	 * An {@link EngineConfigPath} (`engine.<type>.<option>`) is understood as well.
 	 * @see {@link setInConfig} for a version that returns a new config object instead of modifying the given one in place.
 	 */
-	setInConfigInPlace<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: ValueAtPath<FlowrConfig, Path>): void {
-		setOnPath(config, key, value);
+	setInConfigInPlace<Path extends ValidFlowrConfigPaths | EngineConfigPath>(this: void, config: FlowrConfig, key: Path, value: ConfigValueAt<Path>): void {
+		const engine = /^engine\.([^.]+)\.(.+)$/.exec(key);
+		if(engine) {
+			setEngineOption(config, engine[1] as EngineConfig['type'], engine[2], value);
+		} else {
+			setOnPath(config, key, value);
+		}
 	},
 } as const;
+
+/** The value a {@link ValidFlowrConfigPaths} or an {@link EngineConfigPath} takes. */
+export type ConfigValueAt<Path> =
+	Path extends `engine.${infer T}.${infer K}`
+		? T extends EngineConfig['type'] ? (K extends keyof EngineOptions<T> ? EngineOptions<T>[K] : never) : never
+		: Path extends ValidFlowrConfigPaths ? ValueAtPath<FlowrConfig, Path> : never;
 
 /** Path to the user-global `flowr.json`, read as a fallback when no project config is found. */
 export function globalConfigFilePath(): string {

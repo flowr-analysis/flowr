@@ -26,12 +26,12 @@ export interface FilePathValidityConfig extends MergeableRecord {
 	 * The set of functions that should additionally be considered as reading a file path.
 	 * Entries in this array use the {@link FunctionInfo} format from the dependencies query.
 	 */
-	additionalReadFunctions:  FunctionInfo[]
+	additionalReadFunctions:  readonly FunctionInfo[]
 	/**
 	 * The set of functions that should additionally be considered as writing to a file path.
 	 * Entries in this array use the {@link FunctionInfo} format from the dependencies query.
 	 */
-	additionalWriteFunctions: FunctionInfo[]
+	additionalWriteFunctions: readonly FunctionInfo[]
 	/**
 	 * Whether unknown file paths should be included as linting results.
 	 */

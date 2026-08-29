@@ -14,7 +14,7 @@ import { SourceLocation } from '../../../util/range';
  */
 export interface InspectHigherOrderQuery extends BaseQueryFormat {
 	readonly type:    'inspect-higher-order';
-	readonly filter?: SlicingCriterion[]
+	readonly filter?: readonly SlicingCriterion[]
 }
 
 export interface InspectHigherOrderQueryResult extends BaseQueryResult {

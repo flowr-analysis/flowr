@@ -13,7 +13,7 @@ import { SourceLocation } from '../../../util/range';
  */
 export interface InspectRecursionQuery extends BaseQueryFormat {
 	readonly type:    'inspect-recursion';
-	readonly filter?: SlicingCriterion[]
+	readonly filter?: readonly SlicingCriterion[]
 }
 
 export interface InspectRecursionQueryResult extends BaseQueryResult {

@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's engines">Generated</span> from '[src/documentation/wiki-engine.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-engine.ts)' on 2026-08-16, 06:15:29 UTC (v2.13.16, R v4.6.1), so please do not edit it directly._
+_<span title="an overview of flowR's engines">Generated</span> from '[wiki-engine.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-engine.ts "src/documentation/wiki-engine.ts")' on 2026-08-29, 13:20:36 UTC (v2.15.8, R v4.6.1), please do not edit directly._
 
 
 To analyze R scripts, flowR needs to parse the R code and for that, we require a parser.
@@ -11,8 +11,20 @@ is synchronous, faster, and no longer needs an R installation, but requires the 
 To allow users of R to freely choose their backend between the R interpreter and the tree-sitter parser,
 we provide the concept of engines.
 
-Engines can be loaded with [flowR's configuration file](https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr). Additionally, they
-are exposed with some command line options (e.g., when using the docker image of flowR):
+Engines can be loaded with [flowR's configuration file](https://github.com/flowr-analysis/flowr/wiki/Interface#configuring-flowr), and an
+engine's own options are set on the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/project/flowr-analyzer-builder.ts#L37"><code><span title="Builder for the FlowrAnalyzer , use it to configure all analysis aspects before creating the analyzer instance with .build() or .buildSync() . You can add new files and folders to analyze using the .addRequest() method on the resulting analyzer.">FlowrAnalyzerBuilder</span></code></a> under the same names, so lax parsing (see
+[below](#tree-sitter)) is one call:
+
+
+```ts
+const analyzer = await new FlowrAnalyzerBuilder()
+    .setEngine('tree-sitter')
+    .configure('engine.tree-sitter.lax', true)
+    .build();
+```
+
+
+Additionally, they are exposed with some command line options (e.g., when using the docker image of flowR):
 
 - <span title="Description (Command Line Argument): Disable the R shell engine">`--engine.r-shell.disabled`</span> to disable the <a href="https://github.com/flowr-analysis/flowr/tree/main/src/r-bridge/shell.ts#L143"><code><span title="The RShell represents an interactive session with the R interpreter. You can configure it by RShellOptions . At the moment we are using a live R session (and not networking etc.) to communicate with R easily, which allows us to install packages etc. However, this might and probably will change in the future (leaving this as a legacy mode :D)">RShell</span></code></a> engine
 - <span title="Description (Command Line Argument): The path to the R executable to use. Defaults to your PATH.">`--engine.r-shell.r-path`</span> (which is the canonical version of <span title="Description (Command Line Argument): The path to the R executable to use. Defaults to your PATH. This option is being phased out in favor of the engine configuration option &quot;engine.r-shell.r-path&quot;, which should be used instead.">`--r-path`</span>)

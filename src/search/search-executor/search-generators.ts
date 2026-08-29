@@ -146,7 +146,7 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 	})));
 }
 
-async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { source: TreeSitter.Query | string, captures: readonly string[] } ): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { source: TreeSitter.Query | string, captures: readonly string[] }): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
 	// if the user didn't specify a specific capture, we want to capture the outermost item
 	if(!args.captures?.length) {
 		guard(typeof args.source === 'string', `Cannot use default capture name for pre-compiled query ${JSON.stringify(args.source)}, specify captures explicitly`);

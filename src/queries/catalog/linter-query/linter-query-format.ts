@@ -32,7 +32,7 @@ export interface LinterQuery extends BaseQueryFormat {
 	 * The rules to lint for. If unset, all rules will be included.
 	 * Optionally, a {@link ConfiguredLintingRule} can be provided, which additionally includes custom user-supplied values for the linting rules' configurations.
 	 */
-	readonly rules?:  (LintingRuleNames | ConfiguredLintingRule)[];
+	readonly rules?:  readonly (LintingRuleNames | ConfiguredLintingRule)[];
 	/** Print the findings in a machine-readable {@link LinterOutputFormat|format} instead of the human-readable summary. */
 	readonly format?: LinterOutputFormat;
 }
@@ -91,7 +91,7 @@ function linterQueryLineParser(output: ReplOutput, line: readonly string[], _con
 		rules = parseResult.valid;
 	}
 	/* an absent format must not show up as a key, a query is compared by its fingerprint */
-	return { query: [{ type: 'linter', rules, ...(format ? { format } : {}) }], rCode: rest.join(' ').trim() || undefined } ;
+	return { query: [{ type: 'linter', rules, ...(format ? { format } : {}) }], rCode: rest.join(' ').trim() || undefined };
 }
 
 function linterQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {

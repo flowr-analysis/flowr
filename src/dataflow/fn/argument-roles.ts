@@ -1,13 +1,18 @@
+/**
+ * The `Fn` facade wires these together, so a sibling here has to call the backing function
+ * directly; going through `Fn` would make `src/dataflow/fn/fn.ts` import its own importers.
+ * @lintIgnore use-instead
+ */
 import type { DataflowGraph } from '../graph/graph';
-import { FunctionArgument, NoEdges } from '../graph/graph';
+import { FunctionArgument } from '../graph/graph';
 import { Dataflow } from '../graph/df-helper';
 import { MatchArgs } from '../graph/match-args';
 import { DfEdge, EdgeType } from '../graph/edge';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo } from '../graph/vertex';
-import { FunctionCallVertex, FunctionDefinitionVertex, UseVertex, VariableDefinitionVertex } from '../graph/vertex';
+import { Vertex } from '../graph/vertex';
 import type { ArgProps, FnSig } from '../environments/built-in-props';
 import { ArgProp } from '../environments/built-in-props';
-import { callsIn, edgeTargets, FrameReflection, type BuiltInLookup } from './frame-reflection';
+import { callsIn, edgeTargets, reflectiveRolesOf, type BuiltInLookup } from './frame-reflection';
 import { builtInLookup } from '../environments/query-fn-props';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -24,9 +29,9 @@ type ArgumentProps = readonly (readonly [props: ArgProps, argument: NodeId])[];
 export type FunctionArgumentRoles = Record<NodeId, ArgProps>;
 
 /** How far a value is followed back: enough for `y <- x; y`, not a whole slice. */
-const DefaultDepth = 6;
+export const DefaultDepth = 6;
 
-/** What to ask for beyond the definitions themselves, see {@link ArgumentRoles.of}. */
+/** What to ask for beyond the definitions themselves, see {@link argumentRolesOfFunctions}. */
 export interface ArgumentRolesOptions {
 	/** how to ask what a built-in states, so a configured or overwritten one answers */
 	readonly ctx?:      ReadOnlyFlowrAnalyzerContext
@@ -37,9 +42,9 @@ export interface ArgumentRolesOptions {
 /**
  * What each definition in `ids` does with its formals, as {@link ArgProps}. A formal is {@link ArgProp.Alias}
  * only when the result is *always* that formal; every other bit is what the calls in the body state for it.
- * @useInstead {@link ArgumentRoles.of}
+ * @useInstead {@link Fn.argumentRoles}
  */
-function argumentRolesOfFunctions(this: void, ids: Iterable<NodeId>, graph: DataflowGraph, options: ArgumentRolesOptions = {}): Record<NodeId, FunctionArgumentRoles> {
+export function argumentRolesOfFunctions(this: void, ids: Iterable<NodeId>, graph: DataflowGraph, options: ArgumentRolesOptions = {}): Record<NodeId, FunctionArgumentRoles> {
 	const state = makeState(graph, options);
 	const all: Record<NodeId, FunctionArgumentRoles> = {};
 	for(const id of ids) {
@@ -51,14 +56,6 @@ function argumentRolesOfFunctions(this: void, ids: Iterable<NodeId>, graph: Data
 	return all;
 }
 
-/** What the functions of a program do with the arguments they are handed. */
-export const ArgumentRoles = {
-	name:     'ArgumentRoles',
-	/** The roles of several definitions, sharing the built-in lookups; see {@link argumentRolesOfFunctions}. */
-	of:       argumentRolesOfFunctions,
-	/** how far a value is followed back when nothing else is asked for */
-	maxDepth: DefaultDepth
-} as const;
 
 /** What one run carries along, so the built-in lookups are shared between the definitions it answers. */
 export interface LookupState {
@@ -83,7 +80,7 @@ function makeState(graph: DataflowGraph, { ctx, maxDepth = DefaultDepth }: Argum
 
 function rolesOf(id: NodeId, state: RoleState): FunctionArgumentRoles {
 	const definition = state.graph.getVertex(id);
-	if(!FunctionDefinitionVertex.is(definition)) {
+	if(!Vertex.isFunctionDefinition(definition)) {
 		return {};
 	}
 	// an exit reached only on some path does not make the formal the result, so it is not followed
@@ -91,7 +88,7 @@ function rolesOf(id: NodeId, state: RoleState): FunctionArgumentRoles {
 	const returned = identityOf(unconditional, state);
 	const stated = statedRoles(definition, state);
 	/* reflection flowR could not follow reaches every formal alike */
-	const reflective = FrameReflection.of(definition, state.graph, { known: state.info });
+	const reflective = reflectiveRolesOf(definition, state.graph, { known: state.info });
 	const roles: FunctionArgumentRoles = {};
 	for(const formal of Object.keys(definition.params)) {
 		const at = NodeId.normalize(formal);
@@ -145,7 +142,7 @@ function sameValueAs(node: NodeId, state: RoleState): [branches: NodeId[], steps
 	const graph = state.graph;
 	const vertex = graph.getVertex(node);
 	const returns = takesApart(vertex) ? [] : edgeTargets(graph, node, EdgeType.Returns);
-	if(FunctionCallVertex.is(vertex)) {
+	if(Vertex.isFunctionCall(vertex)) {
 		const alias = argumentsWith(vertex, state, ArgProp.Alias);
 		if(missesItsElse(vertex, state)) {
 			/* the other path hands back an invisible `NULL`, so what the branch yields is not what the call does */
@@ -154,10 +151,10 @@ function sameValueAs(node: NodeId, state: RoleState): [branches: NodeId[], steps
 		return returns.length > 1 ? [returns, alias] : [[], [...returns, ...alias]];
 	} else if(returns.length > 0) {
 		return returns.length > 1 ? [returns, []] : [[], returns];
-	} else if(UseVertex.is(vertex)) {
+	} else if(Vertex.isUse(vertex)) {
 		const origins = (Dataflow.origin(graph, node) ?? []).map(o => o.id).filter(other => other !== node);
 		return origins.length > 1 ? [origins, []] : [[], origins];
-	} else if(VariableDefinitionVertex.is(vertex)) {
+	} else if(Vertex.isVariableDefinition(vertex)) {
 		/* what the name was given, a call included: what that yields in turn is for the next step to say */
 		return [[], edgeTargets(graph, node, EdgeType.DefinedBy)];
 	}
@@ -175,7 +172,7 @@ function missesItsElse(vertex: DataflowGraphVertexFunctionCall, state: RoleState
 
 /** Whether the call hands back a part of what it was given (`x$a`, `x[1]`, `pkg::name`) rather than the thing. */
 function takesApart(vertex: DataflowGraphVertexInfo | undefined): boolean {
-	return FunctionCallVertex.is(vertex)
+	return Vertex.isFunctionCall(vertex)
 		&& (vertex.origin.includes(BuiltInProcName.Access) || vertex.origin.includes(BuiltInProcName.NamespaceAccess));
 }
 
@@ -215,7 +212,7 @@ function calledNames(id: NodeId, vertex: DataflowGraphVertexFunctionCall, state:
 		}
 	}
 	const called = Identifier.getName(vertex.name);
-	return [...state.graph.outgoingEdges(id) ?? NoEdges]
+	return [...state.graph.edgesFrom(id)]
 		.filter(([target, edge]) => DfEdge.includesType(edge, EdgeType.Reads) && !handed.has(target) && !NodeId.isBuiltIn(target)
 			&& state.graph.idMap?.get(target)?.lexeme === called)
 		.map(([target]) => target);

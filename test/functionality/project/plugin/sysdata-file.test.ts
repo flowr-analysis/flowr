@@ -8,7 +8,7 @@ import { RShellExecutor } from '../../../../src/r-bridge/shell-executor';
 import { rPath } from '../../_helper/r-path';
 import { SexpType } from '../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
 import { DfEdge, EdgeType } from '../../../../src/dataflow/graph/edge';
-import { NoEdges, type DataflowGraph } from '../../../../src/dataflow/graph/graph';
+import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { writeFilesUnder } from './plugin-test-helper';
 
@@ -36,7 +36,7 @@ async function analyze(root: string) {
 /** Every node a use of `name` reads, so a test can say what the name resolved to. */
 function readsOf(graph: DataflowGraph, lexemeOf: (id: NodeId) => string | undefined, name: string): string[] {
 	return [...graph.vertices(true)].filter(([id]) => lexemeOf(id) === name).flatMap(([id]) =>
-		[...graph.outgoingEdges(id) ?? NoEdges].filter(([, edge]) => DfEdge.includesType(edge, EdgeType.Reads)).map(([target]) => String(target)));
+		[...graph.edgesFrom(id)].filter(([, edge]) => DfEdge.includesType(edge, EdgeType.Reads)).map(([target]) => String(target)));
 }
 
 const SaveSysdata = (root: string) => `secretTable <- c(1, 2, 3)\nsecretHelper <- function(x) x\nsave(secretTable, secretHelper, file = "${root}/R/sysdata.rda", version = 2)`;

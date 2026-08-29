@@ -1,7 +1,7 @@
 import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
 import type { VertexType } from '../dataflow/graph/vertex';
-import { FunctionCallVertex, ValidVertexTypes } from '../dataflow/graph/vertex';
+import { Vertex, ValidVertexTypes } from '../dataflow/graph/vertex';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrSearchElement } from './flowr-search';
 import type { Enrichment } from './search-executor/search-enrichers';
@@ -72,7 +72,7 @@ export const FlowrFilters = {
 	}) satisfies FlowrFilterFunction<MatchesEnrichmentArgs<Enrichment>>,
 	[FlowrFilter.OriginKind]: ((e: FlowrSearchElement<ParentInformation>, args: OriginKindArgs, data: { dataflow: DataflowInformation }) => {
 		const dfgNode = data.dataflow.graph.getVertex(e.node.info.id);
-		if(!dfgNode || !FunctionCallVertex.is(dfgNode)) {
+		if(!dfgNode || !Vertex.isFunctionCall(dfgNode)) {
 			return args.keepNonFunctionCalls ?? false;
 		}
 		const match = typeof args.origin === 'string' ?

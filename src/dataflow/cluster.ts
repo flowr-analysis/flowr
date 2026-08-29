@@ -2,7 +2,7 @@ import type { DataflowGraph, IngoingEdges } from './graph/graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DfEdge, EdgeType } from './graph/edge';
 import { guard } from '../util/assert';
-import { FunctionDefinitionVertex } from './graph/vertex';
+import { Vertex } from './graph/vertex';
 
 export type DataflowGraphClusters = DataflowGraphCluster[];
 export interface DataflowGraphCluster {
@@ -80,8 +80,8 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 		}
 
 		// cluster function def exit points
-		if(FunctionDefinitionVertex.is(info)) {
-			for(const { nodeId } of info.exitPoints){
+		if(Vertex.isFunctionDefinition(info)) {
+			for(const { nodeId } of info.exitPoints) {
 				reach(nodeId);
 			}
 		}

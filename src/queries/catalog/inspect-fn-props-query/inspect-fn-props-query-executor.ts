@@ -4,9 +4,10 @@ import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { FunctionArgumentRoles } from '../../../dataflow/fn/argument-roles';
 import type { PropMask, StatedProps } from '../../../dataflow/environments/built-in-props';
 import { ArgProps, CallProps } from '../../../dataflow/environments/built-in-props';
-import { FunctionProps } from '../../../dataflow/fn/function-props';
 import { QueryFunctionFilter } from '../../query-function-filter';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Fn } from '../../../dataflow/fn/fn';
+
 
 /** every bit, for a query naming no properties to keep */
 const AllProps = ~0;
@@ -55,7 +56,7 @@ export async function executeFnPropsQuery({ analyzer }: BasicQueryData, queries:
 
 	const ctx = analyzer.inspectContext();
 	const graph = (await analyzer.dataflow()).graph;
-	const inferred = FunctionProps.of(QueryFunctionFilter.definitions(graph, filterFor), graph, { ctx, maxDepth, only });
+	const inferred = Fn.props(QueryFunctionFilter.definitions(graph, filterFor), graph, { ctx, maxDepth, only });
 
 	return {
 		'.meta': {

@@ -1,6 +1,6 @@
 import { Identifier, type IdentifierString } from '../dataflow/environments/identifier';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, FunctionCallVertex } from '../dataflow/graph/vertex';
+import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, Vertex } from '../dataflow/graph/vertex';
 import { Record } from '../util/record';
 
 interface UnsupportedFunctionInfo {
@@ -55,7 +55,7 @@ export const UnsupportedFunctions = {
 	 * Checks whether a data flow graph vertex represents an unsupported (environment-changing) function call (e.g. `eval`, `load`, `attach`, `rm`, ...)
 	 */
 	isUnsupportedCall(this: void, vertex: DataflowGraphVertexArgument | undefined, dfg: DataflowGraph): boolean {
-		if(!FunctionCallVertex.is(vertex)) {
+		if(!Vertex.isFunctionCall(vertex)) {
 			return false;
 		}
 		const entry = UnsupportedFunctionsList.find(entry => Identifier.matches(vertex.name, entry.identifier));

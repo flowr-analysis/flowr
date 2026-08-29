@@ -14,7 +14,7 @@ import { signatureDbOf } from '../../project/sigdb/signature-db';
 import { Resolve } from './resolve-helper';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { DataflowInformation } from '../info';
-import { FunctionCallVertex } from '../graph/vertex';
+import { Vertex } from '../graph/vertex';
 import { Dataflow } from '../graph/df-helper';
 import { AttachedBasePackageSet, baseRExportOwner } from '../../util/r-base-packages';
 
@@ -134,7 +134,7 @@ export function builtInLookup(ctx?: ReadOnlyFlowrAnalyzerContext): (name: Identi
 /** What flowR states about the call `id` makes, together with the name the call resolved to. */
 export function callFnProps(id: NodeId, { graph, environment }: Pick<DataflowInformation, 'graph' | 'environment'>): (BuiltInFnInfo & { name: Identifier }) | undefined {
 	const vertex = graph.getVertex(id);
-	if(!FunctionCallVertex.is(vertex)) {
+	if(!Vertex.isFunctionCall(vertex)) {
 		return undefined;
 	}
 	/* what the call resolved to decides, as a definition in the analyzed code shadows the built-in; a call
@@ -198,13 +198,13 @@ export interface FnInfo extends BuiltInFnInfo {
  * @param name    - The function to ask about, qualified (`Identifier.make('lead', 'dplyr')`) to pin the package down.
  * @param ctx     - The analyzer context the built-ins, the database and the assumed versions come from.
  * @param version - The package version to answer for, the one the analysis assumes if omitted.
+ * @see {@link fnInfoLookup} - to ask the same question for many names
  * @example
  * ```ts
  * const ctx = analyzer.inspectContext();
  * fnInfo(Identifier.make('lead', 'dplyr'), ctx)?.parameters; // ['x', 'n', 'default', 'order_by', '...']
  * fnInfo(Identifier.make('nchar'), ctx)?.foldable;           // true, flowR folds it itself
  * ```
- * @see {@link fnInfoLookup} - to ask the same question for many names
  */
 export function fnInfo(name: Identifier, ctx: ReadOnlyFlowrAnalyzerContext, version?: string): FnInfo | undefined {
 	const db = signatureDbOf(ctx.deps);

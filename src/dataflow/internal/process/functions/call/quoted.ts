@@ -8,12 +8,11 @@ import { Identifier } from '../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 import { DfEdge, EdgeType } from '../../../../graph/edge';
 import type { DataflowGraph } from '../../../../graph/graph';
-import { NoEdges, FunctionArgument, UnknownSideEffect } from '../../../../graph/graph';
-import { type DataflowGraphVertexFunctionCall, FunctionCallVertex, VariableDefinitionVertex, VertexType } from '../../../../graph/vertex';
+import { FunctionArgument, UnknownSideEffect } from '../../../../graph/graph';
+import { type DataflowGraphVertexFunctionCall, Vertex, VertexType } from '../../../../graph/vertex';
 import { linkExpressionIn, linkInputs } from '../../../linker';
 import { type MaskingCall, Nse } from './nse';
 import { Deferred } from './deferred';
-import { FunctionDefinitionVertex } from '../../../../graph/vertex';
 import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { removeRQuotes } from '../../../../../r-bridge/retriever';
 import { happensBefore } from '../../../../../control-flow/happens-before';
@@ -53,7 +52,7 @@ export const Quoted = {
 	/** The expressions a capturing call holds on to. */
 	capturedBy(this: void, graph: DataflowGraph, id: NodeId): readonly NodeId[] {
 		const vertex = graph.getVertex(id);
-		if(!FunctionCallVertex.is(vertex)) {
+		if(!Vertex.isFunctionCall(vertex)) {
 			return [];
 		} else if(hasOrigin(vertex, CapturingProcessors)) {
 			return capturedArgumentsOf(graph, id, true);
@@ -77,7 +76,7 @@ export const Quoted = {
 				}
 				continue;
 			}
-			for(const [target, edge] of graph.outgoingEdges(current) ?? NoEdges) {
+			for(const [target, edge] of graph.edgesFrom(current)) {
 				if(DfEdge.includesType(edge, ValueFlow) && !seen.has(target)) {
 					seen.add(target);
 					pending.push(target);
@@ -142,8 +141,8 @@ interface CapturedExpression {
 
 /** The name a delaying call binds, which is the definition its reads have to go through. */
 function boundBy(graph: DataflowGraph, id: NodeId): NodeId | undefined {
-	for(const [target, edge] of graph.ingoingEdges(id) ?? NoEdges) {
-		if(DfEdge.includesType(edge, EdgeType.DefinedBy) && VariableDefinitionVertex.is(graph.getVertex(target))) {
+	for(const [target, edge] of graph.edgesTo(id)) {
+		if(DfEdge.includesType(edge, EdgeType.DefinedBy) && Vertex.isVariableDefinition(graph.getVertex(target))) {
 			return target;
 		}
 	}
@@ -152,7 +151,7 @@ function boundBy(graph: DataflowGraph, id: NodeId): NodeId | undefined {
 
 /** Every read of the delayed name takes the promised expression's value, so all of them get the link, not just whichever forces it first. */
 function linkForcesToPromise(graph: DataflowGraph, binding: NodeId, promise: NodeId): void {
-	for(const [reader, edge] of graph.ingoingEdges(binding) ?? NoEdges) {
+	for(const [reader, edge] of graph.edgesTo(binding)) {
 		if(DfEdge.includesType(edge, EdgeType.Reads) && reader !== promise) {
 			graph.addEdge(reader, promise, EdgeType.Reads);
 		}
@@ -165,7 +164,7 @@ function linkForcesToPromise(graph: DataflowGraph, binding: NodeId, promise: Nod
  */
 function capturedArgumentsOf(graph: DataflowGraph, id: NodeId, marked: boolean): readonly NodeId[] {
 	const captured: NodeId[] = [];
-	for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
+	for(const [target, edge] of graph.edgesFrom(id)) {
 		if(DfEdge.includesType(edge, EdgeType.Argument) && (!marked || DfEdge.includesType(edge, EdgeType.NonStandardEvaluation))) {
 			captured.push(target);
 		}
@@ -204,7 +203,7 @@ function evaluationSites(graph: DataflowGraph, id: NodeId): readonly NodeId[] | 
 			continue;
 		}
 		nested = true;
-		for(const [caller, edge] of graph.ingoingEdges(definition) ?? NoEdges) {
+		for(const [caller, edge] of graph.edgesTo(definition)) {
 			if(DfEdge.includesType(edge, EdgeType.Calls)) {
 				sites.push(caller);
 			}
@@ -283,23 +282,23 @@ function sourcesHandedTo<Info>(graph: DataflowGraph, call: DataflowGraphVertexFu
  * body itself (what `force` is for) is settled during the call and stays where it is.
  */
 function* escapingArguments(graph: DataflowGraph, id: NodeId): Generator<NodeId> {
-	for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
+	for(const [target, edge] of graph.edgesFrom(id)) {
 		if(!DfEdge.includesType(edge, EdgeType.Calls)) {
 			continue;
 		}
 		const callee = graph.getVertex(target);
-		if(!FunctionDefinitionVertex.is(callee)) {
+		if(!Vertex.isFunctionDefinition(callee)) {
 			continue;
 		}
 		for(const exit of callee.exitPoints) {
 			const closure = graph.getVertex(exit.nodeId);
-			if(!FunctionDefinitionVertex.is(closure)) {
+			if(!Vertex.isFunctionDefinition(closure)) {
 				continue;
 			}
 			for(const key of Object.keys(callee.params)) {
 				const parameter = NodeId.normalize(key);
 				let escapes = true;
-				for(const [reader, edge] of graph.ingoingEdges(parameter) ?? NoEdges) {
+				for(const [reader, edge] of graph.edgesTo(parameter)) {
 					if(DfEdge.includesType(edge, EdgeType.Reads) && !closure.subflow.graph.has(reader)) {
 						escapes = false;
 						break;
@@ -308,7 +307,7 @@ function* escapingArguments(graph: DataflowGraph, id: NodeId): Generator<NodeId>
 				if(!escapes) {
 					continue;
 				}
-				for(const [argument, edge] of graph.outgoingEdges(parameter) ?? NoEdges) {
+				for(const [argument, edge] of graph.edgesFrom(parameter)) {
 					if(DfEdge.includesType(edge, EdgeType.DefinedByOnCall)) {
 						yield argument;
 					}

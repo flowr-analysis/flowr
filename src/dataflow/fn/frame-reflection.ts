@@ -1,9 +1,9 @@
 import type { DataflowGraph } from '../graph/graph';
-import { FunctionArgument, NoEdges } from '../graph/graph';
+import { FunctionArgument } from '../graph/graph';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { DfEdge, EdgeType } from '../graph/edge';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
-import { FunctionCallVertex } from '../graph/vertex';
+import { Vertex } from '../graph/vertex';
 import type { ArgProps, BuiltInFnInfo } from '../environments/built-in-props';
 import { ArgProp, FnSig as Sig } from '../environments/built-in-props';
 import type { Identifier } from '../environments/identifier';
@@ -16,14 +16,14 @@ export type BuiltInLookup = (name: Identifier) => BuiltInFnInfo | undefined;
 
 /** The nodes at the far end of `node`'s outgoing edges of any of `types`, shared by every walk here and in the sibling analyses that follow specific edge kinds. */
 export function edgeTargets(this: void, graph: DataflowGraph, node: NodeId, types: EdgeType): NodeId[] {
-	return [...graph.outgoingEdges(node) ?? NoEdges].filter(([, edge]) => DfEdge.includesType(edge, types)).map(([target]) => target);
+	return [...graph.edgesFrom(node)].filter(([, edge]) => DfEdge.includesType(edge, types)).map(([target]) => target);
 }
 
 /** The calls a definition's body reaches, id and vertex paired; shared by every walk here and in the sibling analyses that visit them all. */
 export function* callsIn(definition: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): Generator<[NodeId, DataflowGraphVertexFunctionCall]> {
 	for(const node of definition.subflow.graph) {
 		const vertex = graph.getVertex(node);
-		if(FunctionCallVertex.is(vertex)) {
+		if(Vertex.isFunctionCall(vertex)) {
 			yield [node, vertex];
 		}
 	}
@@ -60,7 +60,7 @@ export function propagateToFixpoint(seed: Iterable<NodeId>, successors: Readonly
 	}
 }
 
-/** What to ask for beyond the definition itself, see {@link FrameReflection.of}. */
+/** What to ask for beyond the definition itself, see {@link reflectiveRolesOf}. */
 export interface FrameReflectionOptions {
 	/** what flowR states about a built-in, answered once per name */
 	readonly known: BuiltInLookup
@@ -70,9 +70,9 @@ export interface FrameReflectionOptions {
  * What `definition`'s body reaches about its own formals through the frame or call it sits in, as the
  * {@link BuiltInFnInfo#frame} bits of the reflective calls it makes (`0` for none). `get("x", envir = e)` and
  * `e$x` are followed to the name directly; `as.list(environment())` and a frame handed elsewhere mean any formal.
- * @useInstead {@link FrameReflection.of}
+ * @useInstead {@link Fn.frameReflection}
  */
-function reflectiveRolesOf(this: void, definition: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, { known }: FrameReflectionOptions): ArgProps {
+export function reflectiveRolesOf(this: void, definition: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, { known }: FrameReflectionOptions): ArgProps {
 	let roles = 0;
 	for(const [node, vertex] of callsIn(definition, graph)) {
 		const frame = known(vertex.name)?.frame ?? 0;
@@ -86,21 +86,15 @@ function reflectiveRolesOf(this: void, definition: DataflowGraphVertexFunctionDe
 	return roles;
 }
 
-/** What a function's body reaches about its own formals through reflection, rather than a direct read. */
-export const FrameReflection = {
-	name: 'FrameReflection',
-	/** The reflective {@link ArgProp} bits of one definition; see {@link reflectiveRolesOf}. */
-	of:   reflectiveRolesOf
-} as const;
 
 /**
  * What `definition`'s body reaches about its own formals through the frame or call it sits in, as the
  * {@link BuiltInFnInfo#frame} bits of the reflective calls it makes (`0` for none). `get("x", envir = e)` and
  * `e$x` are followed to the name directly; `as.list(environment())` and a frame handed elsewhere mean any formal.
- * @deprecated use {@link FrameReflection.of} instead
+ * @deprecated use {@link reflectiveRolesOf} instead
  */
 export function reflectiveRoles(definition: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, known: BuiltInLookup): ArgProps {
-	return FrameReflection.of(definition, graph, { known });
+	return reflectiveRolesOf(definition, graph, { known });
 }
 
 /** Whether the call was handed the frame to look at ({@link ArgProp.Handle}, as in `environment(g)`). */
@@ -116,7 +110,7 @@ function resolvedThroughout(frame: NodeId, definition: DataflowGraphVertexFuncti
 	let consumers = 0;
 	for(const node of definition.subflow.graph) {
 		const vertex = graph.getVertex(node);
-		if(!FunctionCallVertex.is(vertex) || carrying.has(node) || !consumes(vertex, carrying)) {
+		if(!Vertex.isFunctionCall(vertex) || carrying.has(node) || !consumes(vertex, carrying)) {
 			continue;
 		}
 		consumers++;
@@ -137,7 +131,7 @@ function carriersOf(frame: NodeId, definition: DataflowGraphVertexFunctionDefini
 	for(const node of definition.subflow.graph) {
 		const vertex = graph.getVertex(node);
 		/* a call reading the frame is what uses it, so it is a consumer rather than another name for it, and carries nothing on */
-		successors.set(node, FunctionCallVertex.is(vertex) && !passesOn(vertex) ? [] : edgeTargets(graph, node, CarryingEdges));
+		successors.set(node, Vertex.isFunctionCall(vertex) && !passesOn(vertex) ? [] : edgeTargets(graph, node, CarryingEdges));
 	}
 	propagateToFixpoint(successors.keys(), successors, id => {
 		if(carrying.has(id) || !(successors.get(id) ?? []).some(to => carrying.has(to))) {

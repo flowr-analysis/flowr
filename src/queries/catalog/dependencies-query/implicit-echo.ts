@@ -11,7 +11,7 @@ import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-func
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RComment } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import { RLineDirective } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-line-directive';
-import { FunctionCallVertex } from '../../../dataflow/graph/vertex';
+import { Vertex } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
 import { ArgProp, CallProp, CallProps, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
@@ -88,7 +88,7 @@ function lastStatement<Info>(node: RExpressionList<Info>): RNode<Info> | undefin
 /** the name the call goes by, with its package when it has one */
 function qualifiedName(node: RFunctionCall<ParentInformation>, dataflow: DataflowInformation): Identifier | undefined {
 	const vertex = dataflow.graph.getVertex(node.info.id);
-	return FunctionCallVertex.is(vertex)
+	return Vertex.isFunctionCall(vertex)
 		? Dataflow.qualify(node.info.id, dataflow.graph, false) ?? vertex.name : undefined;
 }
 

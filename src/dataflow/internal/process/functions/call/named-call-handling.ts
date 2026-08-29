@@ -14,7 +14,7 @@ import type { BuiltInIdentifierDefinition } from '../../../../environments/built
 import { EdgeType } from '../../../../graph/edge';
 import { attachExportVertex, loadNodesForNamespace } from './built-in/built-in-library';
 import type { DataflowGraph } from '../../../../graph/graph';
-import { FunctionCallVertex } from '../../../../graph/vertex';
+import { Vertex } from '../../../../graph/vertex';
 import { Resolve } from '../../../../environments/resolve-helper';
 import { isNotUndefined } from '../../../../../util/assert';
 
@@ -69,7 +69,7 @@ function builtInBehindExport<OtherInfo>(
  */
 export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId, keepEnvironment = false): void {
 	const v = graph.getVertex(rootId);
-	if(FunctionCallVertex.is(v)) {
+	if(Vertex.isFunctionCall(v)) {
 		v.onlyBuiltin = true;
 		if(!keepEnvironment) {
 			v.environment = undefined;

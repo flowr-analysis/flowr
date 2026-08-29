@@ -4,7 +4,7 @@ import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
 import { isNotUndefined } from '../../util/assert';
-import { FunctionCallVertex, FunctionDefinitionVertex, VariableDefinitionVertex, VertexType } from '../../dataflow/graph/vertex';
+import { Vertex, VertexType } from '../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { F } from '../../search/flowr-search-filters';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -17,14 +17,13 @@ import { getExportedNames } from '../../project/plugins/file-plugins/files/flowr
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { removeRQuotes } from '../../r-bridge/retriever';
-import { BuiltInIndex, callFnProps  } from '../../dataflow/environments/query-fn-props';
+import { BuiltInIndex, callFnProps } from '../../dataflow/environments/query-fn-props';
 import { CallProp, CallProps, ImpureProps } from '../../dataflow/environments/built-in-props';
 import { RGroupGenerics, s3GroupGenericMembers } from '../../dataflow/environments/group-generics';
 import { EmptyArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { DataflowInformation } from '../../dataflow/info';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { NoEdges } from '../../dataflow/graph/graph';
 import { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 
 export interface UnusedDefinitionResult extends LintingResult {
@@ -234,7 +233,7 @@ function hasContractedSignature(
  * so says nothing; the same property on a call within it, as `assign` states, is an effect of its own.
  */
 function doesMoreThanCompute(id: NodeId, df: Pick<DataflowInformation, 'graph' | 'environment'>, binds: NodeId | undefined): boolean {
-	if(!FunctionCallVertex.is(df.graph.getVertex(id))) {
+	if(!Vertex.isFunctionCall(df.graph.getVertex(id))) {
 		return false;
 	}
 	/* what a call that binds the very name in question does to that name is not what keeps it alive */
@@ -254,7 +253,7 @@ function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInfo
 	const definedBys = getDefinitionArguments(variable.info.id, dfg);
 
 	const hasImportantArgs = definedBys.some(d => dfg.unknownSideEffects.has(d) || doesMoreThanCompute(d, df, variable.info.parent))
-		|| definedBys.flatMap(e => Array.from(dfg.outgoingEdges(e) ?? NoEdges))
+		|| definedBys.flatMap(e => Array.from(dfg.edgesFrom(e)))
 			.some(([target, e]) => {
 				return DfEdge.includesType(e, InterestingEdgesTargets) || dfg.unknownSideEffects.has(target);
 			});
@@ -341,8 +340,8 @@ export const UNUSED_DEFINITION = {
 
 				const dfgVertex = dataflow.graph.getVertex(element.node.info.id);
 				if(!dfgVertex || (
-					!VariableDefinitionVertex.is(dfgVertex)
-					&& FunctionDefinitionVertex.is(dfgVertex) && !config.includeFunctionDefinitions
+					!Vertex.isVariableDefinition(dfgVertex)
+					&& Vertex.isFunctionDefinition(dfgVertex) && !config.includeFunctionDefinitions
 				)) {
 					return undefined;
 				}
@@ -352,7 +351,7 @@ export const UNUSED_DEFINITION = {
 				}
 
 				// an anonymous dispatcher passed to setGeneric()/new_generic() runs on every dispatch, so it is used
-				if(FunctionDefinitionVertex.is(dfgVertex) && RFunctionDefinition.is(element.node) && isGenericDispatcherOnlyBody(element.node.body)) {
+				if(Vertex.isFunctionDefinition(dfgVertex) && RFunctionDefinition.is(element.node) && isGenericDispatcherOnlyBody(element.node.body)) {
 					return undefined;
 				}
 
@@ -368,7 +367,7 @@ export const UNUSED_DEFINITION = {
 
 				const ingoingEdges = dataflow.graph.ingoingEdges(dfgVertex.id);
 
-				const interestedIn = VariableDefinitionVertex.is(dfgVertex) ? InterestingEdgesVariable : InterestingEdgesFunction;
+				const interestedIn = Vertex.isVariableDefinition(dfgVertex) ? InterestingEdgesVariable : InterestingEdgesFunction;
 				const ingoingInteresting = ingoingEdges?.values().some(e => DfEdge.includesType(e, interestedIn));
 
 				if(ingoingInteresting) {

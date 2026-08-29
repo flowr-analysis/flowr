@@ -13,24 +13,15 @@ import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../r-
 import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../../../../environments/environment';
-import {
-	type IdentifierReference,
-	isReferenceType,
-	ReferenceType
-} from '../../../../environments/identifier';
+import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { processFunctionArgument } from '../process-argument';
-import {
-	type DataflowGraphVertexAstLink,
-	type DataflowGraphVertexFunctionDefinition,
-	type FunctionOriginInformation,
-	VertexType
-} from '../../../../graph/vertex';
+import { type DataflowGraphVertexAstLink, type DataflowGraphVertexFunctionDefinition, type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EdgeType } from '../../../../graph/edge';
 import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { FunctionCallVertex, ValueVertex, FunctionDefinitionVertex } from '../../../../graph/vertex';
+import { Vertex } from '../../../../graph/vertex';
 
 export interface ProcessAllArgumentInput<OtherInfo> {
 	/** which of the arguments the call evaluates, as {@link FnSig.forced} answers it for the signature */
@@ -61,11 +52,11 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 		return;
 	}
 	// link read if it is function definition directly and reference the exit point
-	if(FunctionDefinitionVertex.is(valueVertex)) {
+	if(Vertex.isFunctionDefinition(valueVertex)) {
 		for(const exit of valueVertex.exitPoints) {
 			graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
 		}
-	} else if(!ValueVertex.is(valueVertex)) {
+	} else if(!Vertex.isValue(valueVertex)) {
 		for(const exit of value.exitPoints) {
 			graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
 		}
@@ -166,7 +157,7 @@ export function processAllArguments<OtherInfo>(
 				/* a data argument holds a value, so a function of that name is not what it reads; the narrowed
 				   type stays on the reference as it bubbles through the enclosing calls */
 				const ingoing = nonFunction?.has(inId) ? { ...original, type: ReferenceType.NonFunction } : original;
-				const refType = FunctionCallVertex.is(finalGraph.getVertex(inId)) ? ReferenceType.Function
+				const refType = Vertex.isFunctionCall(finalGraph.getVertex(inId)) ? ReferenceType.Function
 					: ingoing.type === ReferenceType.NonFunction ? ReferenceType.NonFunction : ReferenceType.Unknown;
 
 				const tryToResolve = ingoing.name ? resolveByName(ingoing.name, data.environment, refType) : undefined;

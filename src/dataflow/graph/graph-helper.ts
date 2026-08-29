@@ -4,7 +4,7 @@ import type { NamedGraph } from '../../util/diff-graph';
 import { GraphDifferenceReport, initDiffContext } from '../../util/diff-graph';
 import type { GenericDiffConfiguration } from '../../util/diff';
 import { diffDataflowGraph } from './diff-dataflow-graph';
-import { NoEdges, DataflowGraph, UnknownSideEffect } from './graph';
+import { DataflowGraph, UnknownSideEffect } from './graph';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -130,7 +130,7 @@ export const GraphHelper = {
 				return true;
 			}
 			visited.add(currentId);
-			for(const [tar] of graph.outgoingEdges(currentId) ?? NoEdges) {
+			for(const [tar] of graph.edgesFrom(currentId)) {
 				toVisit.push(tar);
 			}
 		}

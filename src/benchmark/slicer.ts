@@ -27,16 +27,8 @@ import type {
 } from './stats/stats';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { SlicingCriteria } from '../slicing/criterion/parse';
-import {
-	createSlicePipeline,
-	type DEFAULT_SLICING_PIPELINE,
-	type TREE_SITTER_SLICING_PIPELINE
-} from '../core/steps/pipeline/default-pipelines';
-import {
-	retrieveNumberOfRTokensOfLastParse,
-	type RParseRequestFromFile,
-	type RParseRequestFromText
-} from '../r-bridge/retriever';
+import { createSlicePipeline, type DEFAULT_SLICING_PIPELINE, type TREE_SITTER_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
+import { retrieveNumberOfRTokensOfLastParse, type RParseRequestFromFile, type RParseRequestFromText } from '../r-bridge/retriever';
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
 import { collectAllSlicingCriteria, type SlicingCriteriaFilter } from '../slicing/criterion/collect-all';
 import { getSizeOfCfGraph, getSizeOfDfGraph, safeSizeOf } from './stats/size-of';
@@ -46,7 +38,7 @@ import type { SyntaxNode, Tree } from 'web-tree-sitter';
 import { RShell } from '../r-bridge/shell';
 import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import { FunctionCallVertex, FunctionDefinitionVertex } from '../dataflow/graph/vertex';
+import { Vertex } from '../dataflow/graph/vertex';
 import { ControlFlowEdgeTypes, DfEdge } from '../dataflow/graph/edge';
 import { NoEdges } from '../dataflow/graph/graph';
 import { equidistantSampling, arraySum } from '../util/collections/arrays';
@@ -227,9 +219,9 @@ export class BenchmarkSlicer {
 					numberOfEdges++;
 				}
 			}
-			if(FunctionCallVertex.is(info)) {
+			if(Vertex.isFunctionCall(info)) {
 				numberOfCalls++;
-			} else if(FunctionDefinitionVertex.is(info)) {
+			} else if(Vertex.isFunctionDefinition(info)) {
 				numberOfDefinitions++;
 			}
 		}
@@ -279,8 +271,8 @@ export class BenchmarkSlicer {
 
 	/**
 	 * Slice for the given {@link SlicingCriteria}.
-	 * @see SingleSlicingCriterion
 	 * @returns The per slice stats retrieved for this slicing criteria
+	 * @see SingleSlicingCriterion
 	 */
 	public async slice(...slicingCriteria: SlicingCriteria): Promise<BenchmarkSingleSliceStats> {
 		benchmarkLogger.trace(`try to slice for criteria ${JSON.stringify(slicingCriteria)}`);

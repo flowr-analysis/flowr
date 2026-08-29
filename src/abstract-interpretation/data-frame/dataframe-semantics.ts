@@ -3,7 +3,7 @@ import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name'
 import { Identifier, type IdentifierString } from '../../dataflow/environments/identifier';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
-import { FunctionCallVertex, type DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
+import { Vertex, type DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../dataflow/internal/process/functions/call/argument/make-argument';
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -524,7 +524,7 @@ export class DataFrameShapeSemantics extends ValueSemantics<DataFrameStateDomain
 	 * Gets the mapped abstract data frame operations for an AST node (this only includes direct function calls, replacement calls, or access operations).
 	 * This requires that the abstract interpretation visitor applying the semantics has been completed, or at least started.
 	 * @param id - The ID of the node to get the mapped abstract operations for
-	 * @returns The mapped abstract data frame operations for the node, or `undefined` if no abstract operation was mapped for the node or storing mapped abstract operations is disabled via the options.
+	 * @returns  The mapped abstract data frame operations for the node, or `undefined` if no abstract operation was mapped for the node or storing mapped abstract operations is disabled via the options.
 	 */
 	public getAbstractOperations(id: NodeId | undefined): Readonly<DataFrameOperations> {
 		return id !== undefined ? this.operations?.get(id) : undefined;
@@ -546,7 +546,7 @@ export class DataFrameShapeSemantics extends ValueSemantics<DataFrameStateDomain
 /**
  * Creates the declarative definition of the abstract semantics of the data frame domain (see {@link DataFrameSemantics}).
  * @param operations - An optional map to store the abstract data frame operations the expressions are mapped to
- * @returns The definition of the abstract semantics of the data frame domain
+ * @returns          The definition of the abstract semantics of the data frame domain
  */
 function createDataFrameSemantics(operations?: DataFrameOperationMap): SemanticsDefinition<DataFrameStateDomain> {
 	return {
@@ -563,7 +563,7 @@ function createDataFrameSemantics(operations?: DataFrameOperationMap): Semantics
  * @param params                 - The expected location of all relevant function parameters, including all `critical` parameters whose presence makes the call unsupported
  * @param returnType             - The type of the data frame returned by the function
  * @param alwaysReturnsDataFrame - Whether the function always returns a data frame, so that unsuccessful mappings are over-approximated by the `unknown` operation
- * @returns The function call semantics applying the abstract data frame operations of the function
+ * @returns                      The function call semantics applying the abstract data frame operations of the function
  */
 function applyFunctionCall<Params extends object, Mapper extends DataFrameFunctionMapping<Params>>(
 	mapper: Mapper,
@@ -593,7 +593,7 @@ function applyFunctionCall<Params extends object, Mapper extends DataFrameFuncti
 /**
  * Creates the abstract semantics of a data frame function that is not explicitly supported but always returns a data frame, such as `tibble(id = 1:5)`.
  * @param returnType - The type of the data frame returned by the function
- * @returns The function call semantics over-approximating the result of the function by the `unknown` operation
+ * @returns          The function call semantics over-approximating the result of the function by the `unknown` operation
  */
 function applyEntryPoint(returnType: DataFrameType): DataFrameCallSemantics<'handleFunctionCall'> {
 	return applyFunctionCall(() => [{ operation: 'unknown', operand: undefined }], {}, returnType);
@@ -605,7 +605,7 @@ function applyEntryPoint(returnType: DataFrameType): DataFrameCallSemantics<'han
  * @param returnType             - The type of the data frame returned by the function
  * @param alwaysReturnsDataFrame - Whether the function always returns a data frame, so that unsuccessful mappings are over-approximated by the `unknown` operation
  * @param constraintType         - The optional constraint type to overwrite the default type of the `unknown` operation (e.g. for functions modifying their operand in place)
- * @returns The function call semantics over-approximating the result of the function by the `unknown` operation
+ * @returns                      The function call semantics over-approximating the result of the function by the `unknown` operation
  */
 function applyUnknownCall(
 	dataFrame: FunctionParameterLocation | undefined,
@@ -619,7 +619,7 @@ function applyUnknownCall(
 /**
  * Creates the abstract semantics of a data frame access operation, by mapping the access to abstract data frame operations and applying their semantics.
  * @param mapper - The mapper function mapping the access operation to abstract data frame operations
- * @returns The access call semantics applying the abstract data frame operations of the access operation
+ * @returns      The access call semantics applying the abstract data frame operations of the access operation
  */
 function applyAccessCall(mapper: DataFrameAccessMapping): DataFrameCallSemantics<'handleAccessCall'> {
 	return operations => (state, vertex, ctx) => {
@@ -635,7 +635,7 @@ function applyAccessCall(mapper: DataFrameAccessMapping): DataFrameCallSemantics
 /**
  * Creates the abstract semantics of a data frame replacement function, by mapping the replacement call to abstract data frame operations and applying their semantics.
  * @param mapper - The mapper function mapping the replacement call to abstract data frame operations
- * @returns The replacement call semantics applying the abstract data frame operations of the replacement function
+ * @returns      The replacement call semantics applying the abstract data frame operations of the replacement function
  */
 function applyReplacementCall(mapper: DataFrameReplacementMapping): DataFrameCallSemantics<'handleReplacementCall'> {
 	return operations => (state, vertex, ctx, target, source) => {
@@ -681,11 +681,11 @@ function getResolveInfo(ctx: AbsintContext<DataFrameStateDomain>): ResolveInfo {
 /**
  * Applies the semantics of abstract data frame operations to an abstract state,
  * by storing the inferred abstract value either at the modified operand or at the result of the expression, depending on the {@link ConstraintType} of the operation.
- * @param state          - The abstract state to apply the semantics to
- * @param node           - The R node of the expression the abstract operations were mapped from
- * @param operations     - The abstract data frame operations to apply
- * @param ctx            - The context of the abstract interpretation analysis
- * @param operationsMap  - An optional map to store the mapped abstract data frame operations in
+ * @param state         - The abstract state to apply the semantics to
+ * @param node          - The R node of the expression the abstract operations were mapped from
+ * @param operations    - The abstract data frame operations to apply
+ * @param ctx           - The context of the abstract interpretation analysis
+ * @param operationsMap - An optional map to store the mapped abstract data frame operations in
  */
 function applyDataFrameExpression(state: DataFrameStateDomain, node: RNode<ParentInformation>, operations: DataFrameOperations, ctx: AbsintContext<DataFrameStateDomain>, operationsMap?: DataFrameOperationMap): void {
 	if(operations === undefined) {
@@ -1879,7 +1879,7 @@ function mapDataFrameDimNamesAssignment(
  * Gets the data frame operand of a replacement function call, such as `df` in `colnames(df) <- "id"`.
  * @param node - The R node of the replacement function call
  * @param ctx  - The context of the abstract interpretation analysis
- * @returns The argument of the data frame operand, or `undefined` if the call has no single argument that is a data frame
+ * @returns    The argument of the data frame operand, or `undefined` if the call has no single argument that is a data frame
  */
 function getReplacementOperand(
 	node: RNode<ParentInformation>,
@@ -1902,7 +1902,7 @@ function hasParentReplacement(
 ): node is RNode<ParentInformation & { parent: NodeId }> {
 	const parentVertex = ctx.getDfgVertex(node.info.parent);
 
-	return FunctionCallVertex.hasOrigin(parentVertex, BuiltInProcName.Replacement);
+	return Vertex.hasOrigin(parentVertex, BuiltInProcName.Replacement);
 }
 
 /**

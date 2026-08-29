@@ -2,11 +2,11 @@ import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { FunctionArgument, NoEdges } from '../../dataflow/graph/graph';
+import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { EdgeTypeBits } from '../../dataflow/graph/edge';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { FunctionCallVertex, VariableDefinitionVertex, VertexType } from '../../dataflow/graph/vertex';
+import { Vertex, VertexType } from '../../dataflow/graph/vertex';
 import type { DataflowInformation } from '../../dataflow/info';
 import { ControlDependency } from '../../dataflow/info';
 import { ArgProp, CallProps, FnSig, SemanticCallTag } from '../../dataflow/environments/built-in-props';
@@ -62,7 +62,7 @@ function openCallsReaching(graph: DataflowGraph, start: NodeId, opens: ReadonlyS
 			out.add(current);
 			continue;
 		}
-		for(const [target, edge] of graph.outgoingEdges(current) ?? NoEdges) {
+		for(const [target, edge] of graph.edgesFrom(current)) {
 			if(DfEdge.includesType(edge, ConnectionFlow) && !visited.has(target)) {
 				visited.add(target);
 				pending.push(target);
@@ -73,8 +73,8 @@ function openCallsReaching(graph: DataflowGraph, start: NodeId, opens: ReadonlyS
 
 /** The variable definition the opened connection is bound to, if it is bound to one. */
 function bindingOf(graph: DataflowGraph, open: NodeId): NodeId | undefined {
-	for(const [source, edge] of graph.ingoingEdges(open) ?? NoEdges) {
-		if(DfEdge.includesType(edge, EdgeType.DefinedBy) && VariableDefinitionVertex.is(graph.getVertex(source))) {
+	for(const [source, edge] of graph.edgesTo(open)) {
+		if(DfEdge.includesType(edge, EdgeType.DefinedBy) && Vertex.isVariableDefinition(graph.getVertex(source))) {
 			return source;
 		}
 	}
@@ -102,13 +102,13 @@ function closeFix(graph: DataflowGraph, open: NodeId): LintQuickFix[] | undefine
 	if(idMap === undefined || definition === undefined || name === undefined) {
 		return undefined;
 	}
-	const reads = (graph.ingoingEdges(definition) ?? NoEdges).entries()
+	const reads = (graph.edgesTo(definition)).entries()
 		.filter(([, edge]) => DfEdge.includesType(edge, EdgeType.Reads)).map(([source]) => source);
 	const statements = [definition, ...reads]
 		.map(id => SourceLocation.fromNode(enclosingStatement(idMap, id)))
 		.filter(isNotUndefined);
 	const last = statements.reduce<SourceLocation | undefined>(
-		(a, b) => a === undefined || SourceRange.compare(SourceLocation.getRange(a), SourceLocation.getRange(b)) < 0 ? b : a, undefined);
+		(a, b) => a === undefined || SourceRange.compare(a, b) < 0 ? b : a, undefined);
 	if(last === undefined) {
 		return undefined;
 	}
@@ -166,7 +166,7 @@ function connectionCalls(elements: readonly FlowrSearchElement<ParentInformation
 			opens.set(node.info.id, loc);
 		} else if(CallProps.hasAny(stated, SemanticCallTag.Closes) || closesByName?.test(name)) {
 			const vertex = dataflow.graph.getVertex(node.info.id);
-			if(FunctionCallVertex.is(vertex)) {
+			if(Vertex.isFunctionCall(vertex)) {
 				closes.push([vertex, stated.sig]);
 			}
 		}

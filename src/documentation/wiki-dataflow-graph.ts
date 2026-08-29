@@ -3,28 +3,15 @@ import { Quoted } from '../dataflow/internal/process/functions/call/quoted';
 import { Nse } from '../dataflow/internal/process/functions/call/nse';
 import { Deferred } from '../dataflow/internal/process/functions/call/deferred';
 import { linkToQueryOfName } from './doc-util/doc-query';
-import {
-	type DataflowGraphVertexFunctionCall,
-	type DataflowGraphVertexFunctionDefinition,
-	VertexType
-} from '../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, VertexType } from '../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../dataflow/graph/edge';
 import { DataflowGraphBuilder, emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
 import { guard } from '../util/assert';
 import { formatSideEffect, printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
-import {
-	FlowrGithubBaseRef,
-	FlowrGithubGroupName,
-	getFilePathMd
-} from './doc-util/doc-files';
+import { FlowrGithubBaseRef, FlowrGithubGroupName, getFilePathMd } from './doc-util/doc-files';
 import { jsonReplacer } from '../util/json';
 import { printEnvironmentToMarkdown } from './doc-util/doc-env';
-import {
-	type ExplanationParameters,
-	getAllEdges,
-	getAllVertices,
-	type SubExplanationParameters
-} from './data/dfg/doc-data-dfg-util';
+import { type ExplanationParameters, getAllEdges, getAllVertices, type SubExplanationParameters } from './data/dfg/doc-data-dfg-util';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { getTypesFromFolder, printHierarchy } from './doc-util/doc-types';
 import { block, details, section } from './doc-util/doc-structure';
@@ -42,9 +29,7 @@ import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { getValueOfArgument } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { NewIssueUrl } from './doc-util/doc-issue';
-import {
-	UnnamedFunctionCallPrefix
-} from '../dataflow/internal/process/functions/call/unnamed-call-handling';
+import { UnnamedFunctionCallPrefix } from '../dataflow/internal/process/functions/call/unnamed-call-handling';
 import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import type { DataflowInformation } from '../dataflow/info';
@@ -65,7 +50,7 @@ import { Dataflow } from '../dataflow/graph/df-helper';
 import { Resolve } from '../dataflow/environments/resolve-helper';
 import { MatchArgs } from '../dataflow/graph/match-args';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
-import { FunctionCallVertex, FunctionDefinitionVertex } from '../dataflow/graph/vertex';
+import { Vertex } from '../dataflow/graph/vertex';
 import { enumMembers } from '../util/objects';
 
 async function subExplanation(parser: KnownParser, ctx: GeneralDocContext, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
@@ -281,7 +266,7 @@ ${
 		await (async() => {
 			const code = 'foo(x,3,y=3,)';
 			const [text, info] = await printDfGraphForCode(parser, code, { mark: new Set([8]), exposeResult: true, ctx });
-			const callInfo = info.dataflow.graph.vertices(true).find(([, vertex]) => FunctionCallVertex.is(vertex) && Identifier.getName(vertex.name) === 'foo');
+			const callInfo = info.dataflow.graph.vertices(true).find(([, vertex]) => Vertex.isFunctionCall(vertex) && Identifier.getName(vertex.name) === 'foo');
 			guard(callInfo !== undefined, () => `Could not find call vertex for ${code}`);
 			const [callId, callVert] = callInfo as [NodeId, DataflowGraphVertexFunctionCall];
 			const inverseMapReferenceTypes = Object.fromEntries(enumMembers(ReferenceType).map(([name, value]) => [value, name]));
@@ -353,8 +338,8 @@ ${await (async() => {
 		const code = 'foo <- function() 3\nfoo()';
 		const [text, info] = await printDfGraphForCode(parser, code, { exposeResult: true, mark: new Set([6, '6->0', '6->1', '6->3']), ctx });
 
-		const numberOfEdges = [...info.dataflow.graph. edges()].flatMap(e => [...e[1].keys()]).length;
-		const callVertex = info.dataflow.graph.vertices(true).find(([, vertex]) => FunctionCallVertex.is(vertex) && Identifier.getName(vertex.name) === 'foo');
+		const numberOfEdges = [...info.dataflow.graph.edges()].flatMap(e => [...e[1].keys()]).length;
+		const callVertex = info.dataflow.graph.vertices(true).find(([, vertex]) => Vertex.isFunctionCall(vertex) && Identifier.getName(vertex.name) === 'foo');
 		guard(callVertex !== undefined, () => `Could not find call vertex for ${code}`);
 		const [callId] = callVertex;
 
@@ -595,7 +580,7 @@ ${details('Example: Parameters of a Function',
 		const [text, info] = await printDfGraphForCode(parser, code, { mark: new Set([10, 1, 3]), exposeResult: true, ctx });
 		const ast = await printNormalizedAstForCode(parser, code, { prefix: 'flowchart LR\n', showCode: false, ctx });
 
-		const functionDefinition = info.dataflow.graph.vertices(true).find(([, vertex]) => FunctionDefinitionVertex.is(vertex));
+		const functionDefinition = info.dataflow.graph.vertices(true).find(([, vertex]) => Vertex.isFunctionDefinition(vertex));
 		guard(functionDefinition !== undefined, () => `Could not find function definition for ${code}`);
 		const [id] = functionDefinition;
 
@@ -1149,10 +1134,10 @@ ${
 
 Let's start by looking at the properties of the dataflow information object: ${Object.keys(result).map(k => `\`${k}\``).join(', ')}.
 
-${ (() => {
+${(() => {
 			/* this includes the meta field for timing as well as the control flow entry and exit of the program */
 			guard(Object.keys(result).length === 12, () => 'Update Dataflow Documentation! (Keys: ' + Object.keys(result).join(', ') + ')'); return '';
-		})() }
+		})()}
 
 There are three sets of references.
 **in** (ids: ${JSON.stringify(new Set(result.in.map(n => n.nodeId)), jsonReplacer)}) and **out** (ids: ${JSON.stringify(new Set(result.out.map(n => n.nodeId)), jsonReplacer)}) contain the 
@@ -1323,7 +1308,7 @@ Consider the following example:
 ${await printDfGraphForCode(treeSitter, 'print(x)', { mark: new Set(['3->1']), ctx })}
 
 Retrieving the _types_ of the edge from the print call to its argument returns:
-${await(async() => {
+${await (async() => {
 			const dfg =  await createDataflowPipeline(treeSitter, {
 				context: contextFromInput('print(x)')
 			}).allRemainingSteps();

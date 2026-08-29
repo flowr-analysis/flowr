@@ -1,7 +1,8 @@
 import { NodeValue } from '../dataflow/eval/resolve/node-value';
+import { Resolve } from '../dataflow/environments/resolve-helper';
 import { isValue } from '../dataflow/eval/values/r-value';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import { FunctionCallVertex } from '../dataflow/graph/vertex';
+import { Vertex } from '../dataflow/graph/vertex';
 import { type ControlDependency, happensInEveryBranch } from '../dataflow/info';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -23,8 +24,8 @@ export const loopyFunctions = new Set<BuiltInProcName>([BuiltInProcName.ForLoop,
  * @param dataflow    - dataflow graph
  * @param controlflow - control flow graph
  * @param ast         - normalized ast
- * @param ctx      - current flowr analyzer context
- * @returns true if the given loop only iterates once
+ * @param ctx         - current flowr analyzer context
+ * @returns           true if the given loop only iterates once
  */
 export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow: ControlFlowInformation, ast: NormalizedAst, ctx: ReadOnlyFlowrAnalyzerContext): boolean | undefined {
 	const vertex = dataflow.getVertex(loop);
@@ -32,7 +33,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 		return undefined;
 	}
 
-	guard(FunctionCallVertex.is(vertex), 'invalid vertex type for onlyLoopsOnce');
+	guard(Vertex.isFunctionCall(vertex), 'invalid vertex type for onlyLoopsOnce');
 	guard(vertex.origin !== 'unnamed' && loopyFunctions.has(vertex.origin[0]), 'onlyLoopsOnce can only be called with loops');
 
 	// 1. In case of for loop, check if vector has only one element
@@ -46,7 +47,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 			return undefined;
 		}
 
-		const vector = NodeValue.inGraph.soleOf(vectorOfLoop.nodeId, dataflow, ctx, 'vector');
+		const vector = NodeValue.soleOf(vectorOfLoop.nodeId, Resolve.info(dataflow, ctx), 'vector');
 		if(vector === undefined || !isValue(vector.elements)) {
 			return undefined;
 		}

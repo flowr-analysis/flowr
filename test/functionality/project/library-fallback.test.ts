@@ -7,7 +7,7 @@ import { FlowrAnalyzerPackageVersionsLibraryPlugin } from '../../../src/project/
 import { withTreeSitter } from '../_helper/shell';
 import { label } from '../_helper/label';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
-import { FunctionCallVertex } from '../../../src/dataflow/graph/vertex';
+import { Vertex } from '../../../src/dataflow/graph/vertex';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 
@@ -50,7 +50,7 @@ describe('Recovering packages from an installed copy', withTreeSitter(parser => 
 	test(label('so a bare call of one of them names the package', ['name-normal'], ['other']), async() => {
 		const analyzer = await analyze(code, true);
 		const { graph } = await analyzer.dataflow();
-		const call = graph.vertices(true).find(([, v]) => FunctionCallVertex.is(v) && v.name === 'readShapePoly');
+		const call = graph.vertices(true).find(([, v]) => Vertex.isFunctionCall(v) && v.name === 'readShapePoly');
 		assert.isDefined(call);
 		assert.strictEqual(Identifier.getNamespace(Dataflow.qualify(call[0], graph, false) ?? ''), 'maptools');
 	});

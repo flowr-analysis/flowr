@@ -1,11 +1,12 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { FunctionStrictnesses } from '../../../../src/dataflow/fn/strict-function';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { Ternary } from '../../../../src/util/logic';
+import { Fn } from '../../../../src/dataflow/fn/fn';
+
 
 describe('is-strict-function', withTreeSitter(ts => {
 	/**
@@ -20,7 +21,7 @@ describe('is-strict-function', withTreeSitter(ts => {
 			const id = SlicingCriterion.tryParse(criterion, idMap);
 			assert.isDefined(id, `could not resolve criterion ${criterion}`);
 			const graph = (await analyzer.dataflow()).graph;
-			const strictness = FunctionStrictnesses.of([id], graph)[id];
+			const strictness = Fn.strictness([id], graph)[id];
 			try {
 				assert.strictEqual(strictness.strict, expected);
 				for(const [param, want] of Object.entries(params)) {

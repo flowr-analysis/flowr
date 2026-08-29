@@ -13,7 +13,7 @@ import { RForLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop'
 import type { DataflowGraph } from '../../graph/graph';
 import { onReplacementOperator, type ReplacementOperatorHandlerArgs } from '../../graph/unknown-replacement';
 import { onUnknownSideEffect } from '../../graph/unknown-side-effect';
-import { ValueVertex, VertexType, FunctionDefinitionVertex, FunctionCallVertex } from '../../graph/vertex';
+import { Vertex, VertexType } from '../../graph/vertex';
 import { valueFromRNodeConstant, valueFromTsValue, valueSetGuard } from '../values/general';
 import { Bottom, isTop, isValue, type Lift, Top, type Value, type ValueSet } from '../values/r-value';
 import { setFrom, setOf } from '../values/sets/set-constants';
@@ -24,7 +24,6 @@ import { RLoopConstructs, RNode } from '../../../r-bridge/lang-4.x/ast/model/mod
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { Resolve } from '../../environments/resolve-helper';
 import { NodeValue } from './node-value';
-import { NoEdges } from '../../graph/graph';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
 
@@ -57,7 +56,7 @@ export interface ResolveInfo {
 function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
 	const vertex = dataflow.getVertex(sourceId);
 	/* the lexeme of an infix call like `a %% b` is the whole expression, so we prefer the effective name of the vertex */
-	const identifier = FunctionCallVertex.is(vertex) ? vertex.name : NodeId.recoverName(sourceId, dataflow.idMap);
+	const identifier = Vertex.isFunctionCall(vertex) ? vertex.name : NodeId.recoverName(sourceId, dataflow.idMap);
 	if(identifier === undefined) {
 		return undefined;
 	}
@@ -110,10 +109,10 @@ function getUseAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REn
  * the sourceIds value field of their InGraphIdentifierDefinition. This enables
  * us later, in the {@link trackAliasInEnvironments} function, to get all the
  * aliases of an identifier.
- * @param sourceIds          - node ids to get the definitions for
- * @param dataflow           - dataflow graph
- * @param environment        - environment
- * @returns node id of alias
+ * @param sourceIds   - node ids to get the definitions for
+ * @param dataflow    - dataflow graph
+ * @param environment - environment
+ * @returns           node id of alias
  */
 export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
 	const definitions: Set<NodeId> = new Set<NodeId>();
@@ -122,7 +121,7 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 		const info = dataflow.getVertex(sourceId);
 		if(info === undefined) {
 			return undefined;
-		} else if(FunctionDefinitionVertex.is(info)) {
+		} else if(Vertex.isFunctionDefinition(info)) {
 			definitions.add(sourceId);
 			continue;
 		}
@@ -148,14 +147,14 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
  * This function is also used by the Resolve Value Query and the Dependency Query
  * to resolve values. For e.g. in the Dependency Query it is used to resolve calls
  * like `lapply(c("a", "b", "c"), library, character.only = TRUE)`
- * @param id                 - The node id or node to resolve
- * @param environment        - The current environment used for name resolution
- * @param graph              - The graph to resolve in
- * @param idMap              - The id map to resolve the node if given as an id
- * @param full               - Whether to track aliases on resolve
- * @param resolve            - Variable resolve mode
- * @param ctx                - Context used for clean environment
- * @param blocked            - If set, the ids that should not be considered during resolution (=&gt;top)
+ * @param  id          - The node id or node to resolve
+ * @param  environment - The current environment used for name resolution
+ * @param  graph       - The graph to resolve in
+ * @param  idMap       - The id map to resolve the node if given as an id
+ * @param  full        - Whether to track aliases on resolve
+ * @param  resolve     - Variable resolve mode
+ * @param  ctx         - Context used for clean environment
+ * @param  blocked     - If set, the ids that should not be considered during resolution (=&gt;top)
  * @useInstead {@link Resolve.toValue}
  */
 export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true, ctx, resolve = ctx.config.solver.variables, blocked }: ResolveInfo): ResolveResult {
@@ -230,7 +229,7 @@ function iteratedElements(value: Value): readonly Value[] {
  * The third argument is the {@link ResolveInfo} (ctx, idMap, ...) minus the environment, which is passed on its own.
  * @param identifier  - Identifier to resolve
  * @param environment - Environment to use
- * @returns Value of Identifier or Top
+ * @returns           Value of Identifier or Top
  */
 export function trackAliasInEnvironments(identifier: Identifier | undefined, environment: REnvironmentInformation, { blocked, idMap, resolve = VariableResolve.Alias, ctx, graph }: Omit<ResolveInfo, 'environment'>): ResolveResult {
 	if(identifier === undefined) {
@@ -346,7 +345,7 @@ function isParameterDefault(node: RNodeWithParent | undefined, idMap: AstIdMap):
  */
 function iteratedSequence(id: NodeId, graph: DataflowGraph, idMap: AstIdMap): RNodeWithParent | undefined {
 	let sequence: RNodeWithParent | undefined;
-	for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
+	for(const [target, edge] of graph.edgesFrom(id)) {
 		if(!DfEdge.includesType(edge, EdgeType.Reads)) {
 			continue;
 		}
@@ -383,7 +382,7 @@ function callsBuiltInAndDefinition(edges: ReadonlyMap<NodeId, DfEdge>): boolean 
  * @param graph   - dataflow graph
  * @param idMap   - idmap of dataflow graph
  * @param blocked - the ids already being resolved, so a cyclic definition stops
- * @returns Value of node or Top/Bottom
+ * @returns       Value of node or Top/Bottom
  */
 export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, idMap?: AstIdMap, blocked?: Set<NodeId>): ResolveResult {
 	if(!graph.get(id)) {
@@ -445,7 +444,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		}
 
 		const isFn = t === VertexType.FunctionCall;
-		const outgoingEdges = graph.outgoingEdges(id) ?? NoEdges;
+		const outgoingEdges = graph.edgesFrom(id);
 		if(isFn && callsBuiltInAndDefinition(outgoingEdges)) {
 			/* `if(u) toupper <- function(x) "z"`: the call may run the built-in just as well as the definition,
 			 * and what the two hand back has nothing to do with each other, so following the one we can walk
@@ -488,7 +487,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 	const values: Set<Value> = new Set<Value>(folded);
 	for(const id of resultIds) {
 		const vertex = graph.getVertex(id);
-		if(ValueVertex.is(vertex) && vertex.value !== undefined) {
+		if(Vertex.isValue(vertex) && vertex.value !== undefined) {
 			values.add(vertex.value);
 			continue;
 		}
@@ -507,9 +506,9 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
  * Please use {@link resolveIdToValue}
  *
  * Resolve an Identifier to a constant, if the identifier is a constant
- * @param name               - Identifier to resolve
- * @param environment        - Environment to use
- * @returns Value of Constant or Top
+ * @param    name        - Identifier to resolve
+ * @param    environment - Environment to use
+ * @returns              Value of Constant or Top
  * @useInstead {@link Resolve.toConstants}
  */
 export function resolveToConstants(name: Identifier | undefined, environment: REnvironmentInformation): ResolveResult {

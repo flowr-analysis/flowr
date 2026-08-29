@@ -3,7 +3,7 @@ import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/process
 import type { DataflowInformation } from '../../../dataflow/info';
 import { callFnProps } from '../../../dataflow/environments/query-fn-props';
 import { CallProps, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
-import { FunctionCallVertex } from '../../../dataflow/graph/vertex';
+import { Vertex } from '../../../dataflow/graph/vertex';
 import { SourceRange } from '../../../util/range';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PropSelector } from '../../../dataflow/environments/built-in-props';
@@ -29,7 +29,7 @@ export function linkPlotsToDevices(written: readonly DependencyInfo[], plots: De
 		.filter(w => w.value !== undefined && callHas(w.nodeId, dataflow, SemanticCallTag.Graphics))
 		.map(w => [w.nodeId, w.value as string]));
 	const closed = new Set(dataflow.graph.vertices(true)
-		.filter(([id, v]) => FunctionCallVertex.is(v) && callHas(id, dataflow, SemanticCallTag.Closes))
+		.filter(([id, v]) => Vertex.isFunctionCall(v) && callHas(id, dataflow, SemanticCallTag.Closes))
 		.map(([id]) => id));
 	const plotAt = new Map(plots.map((p, index) => [p.nodeId, index]));
 	const located = [...opened.keys(), ...closed, ...plotAt.keys()]

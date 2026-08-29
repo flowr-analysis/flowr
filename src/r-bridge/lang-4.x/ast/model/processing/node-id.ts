@@ -1,6 +1,6 @@
 import type { AstIdMap } from './decorate';
 import type { DataflowGraph } from '../../../../../dataflow/graph/graph';
-import { FunctionCallVertex, UseVertex } from '../../../../../dataflow/graph/vertex';
+import { Vertex } from '../../../../../dataflow/graph/vertex';
 import { removeRQuotes } from '../../../../retriever';
 import { Identifier } from '../../../../../dataflow/environments/identifier';
 import { RNode } from '../model';
@@ -21,7 +21,7 @@ export type BuiltIn<T extends string = string> = `built-in:${T}`;
 /** whether the id starts as a number does, which `+id` alone does not tell: it turns a blank string into `0` */
 function startsNumeric(id: string): boolean {
 	const c = id.charCodeAt(0);
-	return c >= 48 && c <= 57 /* 0-9 */ || c === 45 /* - */ || c === 43 /* + */ || c === 46 /* . */;
+	return c >= 48 && c <= 57 /* 0-9 */ || c === 45 /* - */ || c === 43 /* + */ || c === 46;
 }
 
 export const NodeId = {
@@ -126,7 +126,7 @@ export const NodeId = {
 	 */
 	recoverContent(this: void, id: NodeId, graph: DataflowGraph): string | undefined {
 		const vertex = graph.getVertex(id);
-		if(vertex && FunctionCallVertex.is(vertex) && vertex.name) {
+		if(vertex && Vertex.isFunctionCall(vertex) && vertex.name) {
 			return Identifier.toString(vertex.name);
 		}
 		const node = graph.idMap?.get(id);
@@ -134,7 +134,7 @@ export const NodeId = {
 			return undefined;
 		}
 		const lexeme = node.lexeme ?? node.info.fullLexeme ?? '';
-		if(UseVertex.is(vertex)) {
+		if(Vertex.isUse(vertex)) {
 			return removeRQuotes(lexeme);
 		}
 		return lexeme;

@@ -2,7 +2,7 @@ import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
 import { FunctionArgument, type DataflowGraph } from '../../dataflow/graph/graph';
-import { FunctionCallVertex, UseVertex } from '../../dataflow/graph/vertex';
+import { Vertex } from '../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../dataflow/internal/process/functions/call/argument/make-argument';
 import { Nse } from '../../dataflow/internal/process/functions/call/nse';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -41,7 +41,7 @@ export interface FunctionParameterLocation<T = never> {
  * Escapes a regular expression given as string by escaping all special regular expression characters.
  * @param text        - The text to escape
  * @param allowTokens - Whether to allow and keep unescaped tokens like `\s`, `\t`, or `\n`
- * @returns The escaped text
+ * @returns           The escaped text
  */
 export function escapeRegExp(text: string, allowTokens: boolean = false): string {
 	if(allowTokens) {  // only allow and keep the tokens `\s`, `\t`, and `\n` in the text
@@ -58,7 +58,7 @@ export function escapeRegExp(text: string, allowTokens: boolean = false): string
  * @param noDupNames   - Whether to map all duplicate column names to top (`undefined`)
  * @param noEmptyNames - Whether to map all empty column names to top (`undefined`)
  * @param collapseDups - Whether duplicate columns should be collapsed to single occurrences afterward (excluding `undefined` values)
- * @returns The filtered column names
+ * @returns            The filtered column names
  */
 export function filterValidNames(
 	colnames: (string | undefined)[] | undefined,
@@ -93,7 +93,7 @@ export function filterValidNames(
  * @param args     - The arguments to get the requested argument from
  * @param argument - The specification of the argument to get the value for
  * @param info     - Argument resolve information
- * @returns The resolved value of the argument or `undefined`
+ * @returns        The resolved value of the argument or `undefined`
  */
 export function getArgumentValue<T>(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
@@ -110,7 +110,7 @@ export function getArgumentValue<T>(
  * Gets all effective argument from a list of arguments by removing all arguments whose names should be excluded.
  * @param args     - The list of arguments to filter
  * @param excluded - The names of the arguments to exclude
- * @returns The filtered list of arguments
+ * @returns        The filtered list of arguments
  */
 export function getEffectiveArgs(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
@@ -124,7 +124,7 @@ export function getEffectiveArgs(
  * @param args     - The arguments to get the requested argument from
  * @param argument - The specification of the argument to get
  * @param info     - Argument resolve information
- * @returns An argument matching the specified `argument` or `undefined`
+ * @returns        An argument matching the specified `argument` or `undefined`
  */
 export function getFunctionArgument(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
@@ -150,7 +150,7 @@ export function getFunctionArgument(
  * Get all function arguments of a function call node in the data flow graph.
  * @param node - The function call node to get the arguments for
  * @param dfg  - The data flow graph for retrieving the arguments
- * @returns The arguments of the function call in the data flow graph
+ * @returns    The arguments of the function call in the data flow graph
  */
 export function getFunctionArguments(
 	node: RFunctionCall<ParentInformation>,
@@ -158,7 +158,7 @@ export function getFunctionArguments(
 ): readonly PotentiallyEmptyRArgument<ParentInformation>[] {
 	const vertex = dfg.getVertex(node.info.id);
 
-	if(FunctionCallVertex.is(vertex) && dfg.idMap !== undefined) {
+	if(Vertex.isFunctionCall(vertex) && dfg.idMap !== undefined) {
 		const idMap = dfg.idMap;
 
 		return vertex.args
@@ -172,7 +172,7 @@ export function getFunctionArguments(
  * Gets all nested symbols in an expression that have no outgoing edges in the data flow graph.
  * @param expression - The expression to get the symbols from
  * @param dfg        - The data flow graph for checking the outgoing edges
- * @returns The name of all unresolved symbols in the expression
+ * @returns          The name of all unresolved symbols in the expression
  */
 export function getUnresolvedSymbolsInExpression(
 	expression: PotentiallyEmptyRArgument<ParentInformation> | undefined,
@@ -190,7 +190,7 @@ export function getUnresolvedSymbolsInExpression(
 			const symbolName = unquoteArgument(Identifier.getName(node.content));
 
 			// ignore symbols named ".", as they are used as argument placeholder in magrittr pipe operations
-			if(UseVertex.is(vertex) && (edges?.size === 0 || Nse.maskedName(dfg, node.info.id)) && symbolNamespace === undefined && symbolName !== '.') {
+			if(Vertex.isUse(vertex) && (edges?.size === 0 || Nse.maskedName(dfg, node.info.id)) && symbolNamespace === undefined && symbolName !== '.') {
 				unresolvedSymbols.push(symbolName);
 			}
 		}
@@ -203,7 +203,7 @@ export function getUnresolvedSymbolsInExpression(
  * @param args     - The list of arguments to check
  * @param critical - The critical arguments to search for (as string or {@link FunctionParameterLocation}s)
  * @param info     - Argument resolve information
- * @returns Whether the arguments contain any critical argument
+ * @returns        Whether the arguments contain any critical argument
  */
 export function hasCriticalArgument(
 	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
@@ -231,7 +231,7 @@ export function hasCriticalArgument(
  * Checks if a given argument has an inferred data frame shape and therefore represents a data frame
  * @param arg - The argument to check
  * @param ctx - The context of the data frame shape analysis
- * @returns Whether the argument represents a data frame
+ * @returns   Whether the argument represents a data frame
  */
 export function isDataFrameArgument(arg: RNode<ParentInformation> | undefined, ctx: AbsintContext<StateDomain<DataFrameDomain>>):
 	arg is RNode<ParentInformation>;

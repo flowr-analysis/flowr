@@ -2,7 +2,7 @@ import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import { type DataflowGraph, FunctionArgument } from '../../../dataflow/graph/graph';
 import { visitCfgInReverseOrder } from '../../../control-flow/simple-visitor';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import { type DataflowGraphVertexFunctionCall, FunctionCallVertex, FunctionDefinitionVertex } from '../../../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, Vertex } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { assertUnreachable } from '../../../util/assert';
@@ -102,7 +102,7 @@ export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, grap
  */
 export function getValueOfArgument<Types extends readonly RType[] = readonly RType[]>(
 	graph: DataflowGraph, call: DataflowGraphVertexFunctionCall | undefined, argument: { name?: string, index: number }, additionalAllowedTypes?: Types
-): (RNodeWithParent & { type: Types[number] } ) | undefined {
+): (RNodeWithParent & { type: Types[number] }) | undefined {
 	if(!call) {
 		return undefined;
 	}
@@ -197,7 +197,7 @@ export function identifyLinkToLastCallRelationSync(
 		(node: NodeId) => knownCalls.get(node) :
 		(node: NodeId) => {
 			const v = graph.getVertex(node);
-			return FunctionCallVertex.is(v) ? v : undefined;
+			return Vertex.isFunctionCall(v) ? v : undefined;
 		};
 
 	/* function bodies the walk steps into, collected while walking and drained afterwards */
@@ -222,7 +222,7 @@ export function identifyLinkToLastCallRelationSync(
 		 */
 		for(const target of CfgVertex.getCallTargets(cfg.getVertex(node)) ?? []) {
 			const definition = graph.getVertex(target);
-			if(FunctionDefinitionVertex.is(definition)) {
+			if(Vertex.isFunctionDefinition(definition)) {
 				searchFrom.push(...definition.exitPoints.map(e => e.nodeId));
 			}
 		}

@@ -20,7 +20,7 @@ import { unpackNonameArg } from '../argument/unpack-argument';
 import { dataflowLogger } from '../../../../../logger';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { FunctionArgument } from '../../../../../graph/graph';
-import { UseVertex, FunctionCallVertex } from '../../../../../graph/vertex';
+import { Vertex } from '../../../../../graph/vertex';
 import { Resolve } from '../../../../../environments/resolve-helper';
 
 interface BuiltInPurrrFormulaConfiguration {
@@ -29,8 +29,8 @@ interface BuiltInPurrrFormulaConfiguration {
 	 * For example:
 	 * ```ts
 	 * {
-	 *      '.x': { index: 0, name: '.x' },
-	 *      '.y': { index: 1, name: '.y' }
+	 * '.x': { index: 0, name: '.x' },
+	 * '.y': { index: 1, name: '.y' }
 	 * }
 	 * ```
 	 */
@@ -134,7 +134,7 @@ export function processPurrrFormula<OtherInfo>(
 		information.graph.addEdge(rootId, fdef.info.id, EdgeType.Calls);
 		try {
 			argToParamMap = MatchArgs.onCallAndLink(filteredCallArgs, fdef.parameters, information.graph);
-		} catch(e){
+		} catch(e) {
 			dataflowLogger.warn('Failed to link arguments to parameters for purr formula, some bindings may be missing', { error: e });
 		}
 	} else if(RSymbol.is(formulaNode)) {
@@ -142,7 +142,7 @@ export function processPurrrFormula<OtherInfo>(
 	} else {
 		try {
 			Dataflow.visitDfg(information.graph, formulaNode.info.id, (vtx) => {
-				if(FunctionCallVertex.is(vtx)) {
+				if(Vertex.isFunctionCall(vtx)) {
 					information.graph.addEdge(rootId, vtx.id, EdgeType.Calls);
 
 					const targets = getAllFunctionCallTargets(vtx.id, information.graph, vtx.environment);
@@ -163,7 +163,7 @@ export function processPurrrFormula<OtherInfo>(
 						}
 					}
 					return !vtx.origin.includes(BuiltInProcName.List);
-				} else if(UseVertex.is(vtx)) {
+				} else if(Vertex.isUse(vtx)) {
 					const node = data.completeAst.idMap.get(vtx.id);
 					if(RSymbol.is(node)) {
 						linkOnSymbol(rootId, filteredCallArgs, node, information.graph, data);

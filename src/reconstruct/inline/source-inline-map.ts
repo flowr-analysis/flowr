@@ -7,9 +7,9 @@
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { FunctionCallVertex } from '../../dataflow/graph/vertex';
+import { Vertex } from '../../dataflow/graph/vertex';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
-import { RFunctionCall, EmptyArgument  } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionCall, EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 /** the string-literal path argument of a `source()`-like call node, if it has one (else `undefined`) */
@@ -26,9 +26,9 @@ function sourceArg(ast: NormalizedAst, callId: NodeId): string | undefined {
 export interface InlineWarning {
 	/**
 	 * - `cycle`: the `source()` would re-inline a file already being inlined on the current path;
-	 *   the literal call is kept at the cycle edge to break the recursion.
+	 * the literal call is kept at the cycle edge to break the recursion.
 	 * - `unresolved`: the `source()` survived the slice but could not be linked to a file
-	 *   (dynamic or missing path); the literal call is kept verbatim.
+	 * (dynamic or missing path); the literal call is kept verbatim.
 	 */
 	readonly kind:   'cycle' | 'unresolved'
 	/** the id of the `source()` function-call node that triggered the warning */
@@ -55,7 +55,7 @@ export const SourceInlineMap = {
 	 * call resolves to an already-visited index).
 	 * @param ast   - the normalized (multi-file) ast
 	 * @param graph - the dataflow graph for `ast`
-	 * @returns a map from each `source()` call node id to the index of the sourced file in `ast.ast.files`
+	 * @returns     a map from each `source()` call node id to the index of the sourced file in `ast.ast.files`
 	 */
 	build(ast: NormalizedAst, graph: DataflowGraph): Map<NodeId, number> {
 		const files = ast.ast.files;
@@ -78,7 +78,7 @@ export const SourceInlineMap = {
 		const sourceArgs = new Map<NodeId, string | undefined>();
 		const firstVertexByCd = new Map<NodeId, NodeId>();
 		for(const [id, vertex] of graph.vertices(true)) {
-			if(FunctionCallVertex.is(vertex) && Array.isArray(vertex.origin) && vertex.origin.includes(BuiltInProcName.Source)) {
+			if(Vertex.isFunctionCall(vertex) && Array.isArray(vertex.origin) && vertex.origin.includes(BuiltInProcName.Source)) {
 				sourceArgs.set(id, sourceArg(ast, id));
 			}
 			const cds = vertex.cds;

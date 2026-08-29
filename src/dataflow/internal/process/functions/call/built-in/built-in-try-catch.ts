@@ -15,7 +15,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { dataflowLogger } from '../../../../../logger';
 import { ClosureRefs } from '../../../../linker';
 import type { DataflowGraphVertexInfo } from '../../../../../graph/vertex';
-import { VertexType, FunctionDefinitionVertex } from '../../../../../graph/vertex';
+import { VertexType, Vertex } from '../../../../../graph/vertex';
 import { tryUnpackNoNameArg, unpackArg } from '../argument/unpack-argument';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { isUndefined } from '../../../../../../util/assert';
@@ -204,7 +204,7 @@ function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: Dataf
 		info.graph.addEdge(arg, functionId, EdgeType.Calls | EdgeType.Reads);
 
 		const dfVert = info.graph.getVertex(call);
-		if(dfVert && FunctionDefinitionVertex.is(dfVert)) {
+		if(dfVert && Vertex.isFunctionDefinition(dfVert)) {
 			ClosureRefs.resolveOpenIngoing(info.graph, call, dfVert, data.environment);
 		}
 		// we did the linking
@@ -228,7 +228,7 @@ function getExitPoints(vertex: DataflowGraphVertexInfo | undefined, graph: Dataf
 	if(!vertex) {
 		return undefined;
 	}
-	if(FunctionDefinitionVertex.is(vertex)) {
+	if(Vertex.isFunctionDefinition(vertex)) {
 		return vertex.exitPoints;
 	}
 	// we assumed named argument
@@ -238,7 +238,7 @@ function getExitPoints(vertex: DataflowGraphVertexInfo | undefined, graph: Dataf
 	}
 	if(RArgument.is(n) && RFunctionDefinition.is(n.value)) {
 		const fdefV = graph.getVertex(n.value.info.id);
-		if(FunctionDefinitionVertex.is(fdefV)) {
+		if(Vertex.isFunctionDefinition(fdefV)) {
 			return fdefV.exitPoints;
 		}
 	}

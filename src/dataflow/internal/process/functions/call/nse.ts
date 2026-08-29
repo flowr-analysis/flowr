@@ -5,8 +5,8 @@ import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/no
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Identifier } from '../../../../environments/identifier';
 import { DataMaskingFunctionNames } from '../../../../environments/data-masking-functions';
-import { NoEdges, type DataflowGraph } from '../../../../graph/graph';
-import { type DataflowGraphVertexInfo, FunctionCallVertex, FunctionDefinitionVertex, UseVertex, VariableDefinitionVertex } from '../../../../graph/vertex';
+import type { DataflowGraph } from '../../../../graph/graph';
+import { type DataflowGraphVertexInfo, Vertex } from '../../../../graph/vertex';
 import { DfEdge, EdgeType } from '../../../../graph/edge';
 import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
@@ -54,13 +54,13 @@ function definesAFunction(graph: DataflowGraph, id: NodeId): boolean {
 		return true;
 	}
 	const vertex = graph.getVertex(id);
-	if(FunctionDefinitionVertex.is(vertex)) {
+	if(Vertex.isFunctionDefinition(vertex)) {
 		return true;
-	} else if(!VariableDefinitionVertex.is(vertex)) {
+	} else if(!Vertex.isVariableDefinition(vertex)) {
 		return false;
 	}
-	for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
-		if(DfEdge.includesType(edge, EdgeType.DefinedBy) && FunctionDefinitionVertex.is(graph.getVertex(target))) {
+	for(const [target, edge] of graph.edgesFrom(id)) {
+		if(DfEdge.includesType(edge, EdgeType.DefinedBy) && Vertex.isFunctionDefinition(graph.getVertex(target))) {
 			return true;
 		}
 	}
@@ -74,7 +74,7 @@ function definesAFunction(graph: DataflowGraph, id: NodeId): boolean {
  */
 function readsOnlyFunctions(graph: DataflowGraph, id: NodeId): boolean {
 	let reads = false;
-	for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
+	for(const [target, edge] of graph.edgesFrom(id)) {
 		if(!DfEdge.includesType(edge, EdgeType.Reads)) {
 			continue;
 		} else if(!definesAFunction(graph, target)) {
@@ -138,7 +138,7 @@ export const Nse = {
 	/** Drops the non-standard-evaluation mark from the outgoing edges of `id` that `which` accepts, and reports them. */
 	unmark(this: void, graph: DataflowGraph, id: NodeId, which: (target: NodeId) => boolean = () => true): NodeId[] {
 		const dropped: NodeId[] = [];
-		for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
+		for(const [target, edge] of graph.edgesFrom(id)) {
 			if(DfEdge.includesType(edge, EdgeType.NonStandardEvaluation) && which(target)) {
 				graph.removeEdgeType(id, target, EdgeType.NonStandardEvaluation);
 				dropped.push(target);
@@ -149,12 +149,12 @@ export const Nse = {
 
 	/** Whether the vertex is a name a data mask may supply, which is every name appearing in the mask. */
 	maskCandidate(this: void, vertex: DataflowGraphVertexInfo | undefined): boolean {
-		return UseVertex.is(vertex);
+		return Vertex.isUse(vertex);
 	},
 
 	/** Whether `id` is a name the data mask supplies, i.e. a use the caller does not bind itself. */
 	suppliedByMask(this: void, graph: DataflowGraph, id: NodeId, vertex: DataflowGraphVertexInfo | undefined = graph.getVertex(id)): boolean {
-		return UseVertex.is(vertex) && !graph.outgoingEdges(id)?.values().some(e => DfEdge.includesType(e, EdgeType.Reads));
+		return Vertex.isUse(vertex) && !graph.outgoingEdges(id)?.values().some(e => DfEdge.includesType(e, EdgeType.Reads));
 	},
 
 	/**
@@ -163,9 +163,9 @@ export const Nse = {
 	 * is complete and that one while a call is still being processed.
 	 */
 	maskedName(this: void, graph: DataflowGraph, id: NodeId): boolean {
-		for(const [source, edge] of graph.ingoingEdges(id) ?? NoEdges) {
+		for(const [source, edge] of graph.edgesTo(id)) {
 			const call = DfEdge.includesType(edge, EdgeType.NonStandardEvaluation) ? graph.getVertex(source) : undefined;
-			if(FunctionCallVertex.is(call) && call.name !== undefined && DataMaskingFunctionNames.has(Identifier.getName(call.name))) {
+			if(Vertex.isFunctionCall(call) && call.name !== undefined && DataMaskingFunctionNames.has(Identifier.getName(call.name))) {
 				return true;
 			}
 		}
@@ -182,13 +182,13 @@ export const Nse = {
 		const links: [from: NodeId, to: NodeId][] = [];
 		for(const { id, bound } of calls) {
 			const call = graph.getVertex(id);
-			const data = FunctionCallVertex.is(call) ? call.args.find(a => a !== EmptyArgument) : undefined;
+			const data = Vertex.isFunctionCall(call) ? call.args.find(a => a !== EmptyArgument) : undefined;
 			if(data === undefined) {
 				continue;
 			}
 			/* what is still marked are the names the data supplies, the unmarked ones mean the binding too */
 			const masked = new Set(bound);
-			for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
+			for(const [target, edge] of graph.edgesFrom(id)) {
 				if(DfEdge.includesType(edge, EdgeType.NonStandardEvaluation)) {
 					masked.add(target);
 				}
@@ -200,7 +200,7 @@ export const Nse = {
 			for(const target of masked) {
 				/* a function of that name is not what the mask means, so the column takes its place */
 				if(readsOnlyFunctions(graph, target)) {
-					for(const [definition, edge] of graph.outgoingEdges(target) ?? NoEdges) {
+					for(const [definition, edge] of graph.edgesFrom(target)) {
 						if(DfEdge.includesType(edge, EdgeType.Reads)) {
 							graph.removeEdgeType(target, definition, EdgeType.Reads);
 						}

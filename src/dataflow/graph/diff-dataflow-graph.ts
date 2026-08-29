@@ -12,7 +12,7 @@ import { diffControlDependencies } from '../info';
 import type { GraphDifferenceReport, GraphDiffContext } from '../../util/diff-graph';
 import { GraphDiff } from '../../util/diff-graph';
 import type { HookInformation } from '../hooks';
-import { FunctionDefinitionVertex, FunctionCallVertex } from './vertex';
+import { Vertex } from './vertex';
 
 
 /**
@@ -165,8 +165,8 @@ export function diffVertices(ctx: GraphDiffContext): void {
 				position: `${ctx.position}Vertex ${id} differs in environment. `
 			});
 		}
-		if(FunctionCallVertex.is(lInfo)) {
-			if(!FunctionCallVertex.is(rInfo)) {
+		if(Vertex.isFunctionCall(lInfo)) {
+			if(!Vertex.isFunctionCall(rInfo)) {
 				ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`);
 			} else {
 				if(lInfo.onlyBuiltin !== rInfo.onlyBuiltin) {
@@ -184,8 +184,8 @@ export function diffVertices(ctx: GraphDiffContext): void {
 			}
 		}
 
-		if(FunctionDefinitionVertex.is(lInfo)) {
-			if(!FunctionDefinitionVertex.is(rInfo)) {
+		if(Vertex.isFunctionDefinition(lInfo)) {
+			if(!Vertex.isFunctionDefinition(rInfo)) {
 				ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.tag} vs. ${ctx.rightname}: ${rInfo.tag}`, { tag: 'vertex', id });
 			} else {
 				if(!arrayEqual(lInfo.exitPoints, rInfo.exitPoints, (a, b) => {

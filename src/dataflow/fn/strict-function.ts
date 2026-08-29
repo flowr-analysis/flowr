@@ -1,18 +1,22 @@
+/**
+ * The `Fn` facade wires these together, so a sibling here has to call the backing function
+ * directly; going through `Fn` would make `src/dataflow/fn/fn.ts` import its own importers.
+ * @lintIgnore use-instead
+ */
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ControlDependency } from '../info';
 import type { DataflowGraph } from '../graph/graph';
-import { NoEdges } from '../graph/graph';
 import { DfEdge, EdgeType } from '../graph/edge';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
-import { FunctionCallVertex, FunctionDefinitionVertex, VertexType } from '../graph/vertex';
+import { Vertex, VertexType } from '../graph/vertex';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import type { ArgProps, BuiltInFnInfo, FnSig } from '../environments/built-in-props';
 import { ArgProp, DispatchCallees, FnSig as Sig } from '../environments/built-in-props';
 import type { BuiltInLookup } from './frame-reflection';
-import { FrameReflection } from './frame-reflection';
+import { reflectiveRolesOf } from './frame-reflection';
 import { BuiltInIndex, queryFnProps } from '../environments/query-fn-props';
 import { Identifier } from '../environments/identifier';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -102,7 +106,7 @@ interface StrictnessState {
 
 /** The definition a node sits in. */
 function enclosingDefinition(id: NodeId, idMap: AstIdMap, graph: DataflowGraph): NodeId | undefined {
-	return RNode.findEnclosing(id, idMap, node => FunctionDefinitionVertex.is(graph.getVertex(node.info.id)));
+	return RNode.findEnclosing(id, idMap, node => Vertex.isFunctionDefinition(graph.getVertex(node.info.id)));
 }
 
 function makeState(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | undefined): StrictnessState {
@@ -140,8 +144,8 @@ function makeState(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | und
 			const named = (RFunctionCall.is(node) && (node.arguments?.length ?? 0) > 1) || (known?.named ?? false);
 			const certain = !underCondition(vertex.cds, graph.getVertex(within)?.cds) || (known?.certain ?? false);
 			const next = [...known?.next ?? []];
-			for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
-				if(target !== within && DfEdge.includesType(edge, EdgeType.Calls) && FunctionDefinitionVertex.is(graph.getVertex(target))) {
+			for(const [target, edge] of graph.edgesFrom(id)) {
+				if(target !== within && DfEdge.includesType(edge, EdgeType.Calls) && Vertex.isFunctionDefinition(graph.getVertex(target))) {
 					next.push(target);
 				}
 			}
@@ -230,14 +234,14 @@ function handedTo(param: NodeId, state: StrictnessState): Ternary {
  * it cannot match to a parameter, leave the question open.
  */
 function forcedByCallee(call: DataflowGraphVertexFunctionCall, argument: NodeId, idMap: AstIdMap, state: StrictnessState): Ternary {
-	const resolved = [...state.graph.outgoingEdges(call.id) ?? NoEdges]
-		.some(([target, edge]) => DfEdge.includesType(edge, EdgeType.Calls) && FunctionDefinitionVertex.is(state.graph.getVertex(target)));
+	const resolved = [...state.graph.edgesFrom(call.id)]
+		.some(([target, edge]) => DfEdge.includesType(edge, EdgeType.Calls) && Vertex.isFunctionDefinition(state.graph.getVertex(target)));
 	if(!resolved) {
 		return Ternary.Maybe;
 	}
 	const bound: Ternary[] = [];
 	for(const from of new Set([argument, argumentValue(argument, idMap)])) {
-		for(const [target, edge] of state.graph.outgoingEdges(from) ?? NoEdges) {
+		for(const [target, edge] of state.graph.edgesFrom(from)) {
 			if(DfEdge.includesType(edge, EdgeType.DefinesOnCall)) {
 				bound.push(handedTo(target, state));
 			}
@@ -265,13 +269,13 @@ function forces(read: NodeId, definition: DataflowGraphVertexFunctionDefinition,
 			certain = false;
 		}
 		if(node.info.id !== read) {
-			if(FunctionDefinitionVertex.is(vertex)) {
+			if(Vertex.isFunctionDefinition(vertex)) {
 				/* nothing says the nested definition is ever called */
 				certain = false;
 			} else if(RParameter.is(node)) {
 				/* a default is evaluated only when the argument is left out */
 				certain = false;
-			} else if(FunctionCallVertex.is(vertex) && !isDispatch(vertex) && !isCallee(node.info.id, child, idMap)) {
+			} else if(Vertex.isFunctionCall(vertex) && !isDispatch(vertex) && !isCallee(node.info.id, child, idMap)) {
 				if(!isBuiltInCall(vertex)) {
 					const handed = forcedByCallee(vertex, child, idMap, state);
 					return certain ? handed : weaken(handed);
@@ -297,7 +301,7 @@ function forces(read: NodeId, definition: DataflowGraphVertexFunctionDefinition,
 
 function strictnessOfParameter(param: NodeId, definition: DataflowGraphVertexFunctionDefinition, state: StrictnessState): Ternary {
 	const reads: Ternary[] = [];
-	for(const [read, edge] of state.graph.ingoingEdges(param) ?? NoEdges) {
+	for(const [read, edge] of state.graph.edgesTo(param)) {
 		if(DfEdge.includesType(edge, EdgeType.Reads)) {
 			reads.push(forces(read, definition, state));
 		}
@@ -305,7 +309,7 @@ function strictnessOfParameter(param: NodeId, definition: DataflowGraphVertexFun
 	const dispatch = state.dispatch.get(definition.id);
 	if(dispatch !== undefined) {
 		const methods: Ternary[] = [];
-		for(const [target, edge] of state.graph.outgoingEdges(param) ?? NoEdges) {
+		for(const [target, edge] of state.graph.edgesFrom(param)) {
 			if(DfEdge.includesType(edge, EdgeType.DefinesOnCall)) {
 				methods.push(handedTo(target, state));
 			}
@@ -335,7 +339,7 @@ function strictnessOf(id: NodeId, state: StrictnessState): FunctionStrictness {
 		return known;
 	}
 	const vertex = state.graph.getVertex(id);
-	if(!FunctionDefinitionVertex.is(vertex)) {
+	if(!Vertex.isFunctionDefinition(vertex)) {
 		return { strict: Ternary.Never, parameters: {} };
 	}
 	const params = Object.keys(vertex.params);
@@ -350,7 +354,7 @@ function strictnessOf(id: NodeId, state: StrictnessState): FunctionStrictness {
 		parameters[param] = strictnessOfParameter(NodeId.normalize(param), vertex, state);
 	}
 	/* reflection flowR could not follow may read a parameter without any read of it showing in the code */
-	if((FrameReflection.of(vertex, state.graph, { known: state.fnInfo }) & MayEvaluate) !== 0) {
+	if((reflectiveRolesOf(vertex, state.graph, { known: state.fnInfo }) & MayEvaluate) !== 0) {
 		for(const param of params) {
 			parameters[param] = TernaryLogic.or(parameters[param], Ternary.Maybe);
 		}
@@ -398,9 +402,9 @@ function strictnessOf(id: NodeId, state: StrictnessState): FunctionStrictness {
  * only claims certainty where the code gives it.
  * What a built-in does with an argument comes from the {@link ArgProp} bits its signature states, so a
  * configured or overwritten built-in is the one that answers when the analyzer context is handed along.
- * @useInstead {@link FunctionStrictnesses.of}
+ * @useInstead {@link Fn.strictness}
  */
-function strictnessOfEach(this: void, ids: Iterable<NodeId>, graph: DataflowGraph, { ctx }: FunctionStrictnessesOptions = {}): Record<NodeId, FunctionStrictness> {
+export function strictnessOfEach(this: void, ids: Iterable<NodeId>, graph: DataflowGraph, { ctx }: FunctionStrictnessesOptions = {}): Record<NodeId, FunctionStrictness> {
 	const state = makeState(graph, ctx);
 	const result: Record<NodeId, FunctionStrictness> = {};
 	for(const id of ids) {
@@ -409,31 +413,25 @@ function strictnessOfEach(this: void, ids: Iterable<NodeId>, graph: DataflowGrap
 	return result;
 }
 
-/** What to ask for beyond the definitions themselves, see {@link FunctionStrictnesses.of}. */
+/** What to ask for beyond the definitions themselves, see {@link strictnessOfEach}. */
 export interface FunctionStrictnessesOptions {
 	/** how to ask what a built-in states, so a configured or overwritten one answers */
 	readonly ctx?: ReadOnlyFlowrAnalyzerContext
 }
 
-/** How the functions of a program treat their parameters, see {@link FunctionStrictness}. */
-export const FunctionStrictnesses = {
-	name: 'FunctionStrictnesses',
-	/** The strictness of several definitions, sharing the work between them; see {@link strictnessOfEach}. */
-	of:   strictnessOfEach
-} as const;
 
 /**
  * Determines whether the function with the given id is strict, i.e., whether calling it forces its arguments.
  * {@link Ternary#Always} says every call forces every parameter, {@link Ternary#Never} that no call forces
  * all of them, and {@link Ternary#Maybe} that it depends on the path taken, on the caller, or on a function
  * flowR could not resolve. A definition without parameters has nothing to leave unforced and is strict.
- * @deprecated use {@link FunctionStrictnesses.of} instead
+ * @deprecated use {@link strictnessOfEach} instead
  */
 export function strictnessOfFunction(id: NodeId, graph: DataflowGraph, ctx?: ReadOnlyFlowrAnalyzerContext): FunctionStrictness {
-	return FunctionStrictnesses.of([id], graph, { ctx })[id];
+	return strictnessOfEach([id], graph, { ctx })[id];
 }
 
-/** @deprecated use {@link FunctionStrictnesses.of} instead */
+/** @deprecated use {@link strictnessOfEach} instead */
 export function strictnessOfFunctions(ids: Iterable<NodeId>, graph: DataflowGraph, ctx?: ReadOnlyFlowrAnalyzerContext): Record<NodeId, FunctionStrictness> {
-	return FunctionStrictnesses.of(ids, graph, { ctx });
+	return strictnessOfEach(ids, graph, { ctx });
 }

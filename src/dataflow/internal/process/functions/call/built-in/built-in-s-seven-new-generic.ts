@@ -23,11 +23,13 @@ import { isNotUndefined } from '../../../../../../util/assert';
 import type { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { Identifier } from '../../../../../environments/identifier';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
-import { VertexType, UseVertex, FunctionCallVertex, FunctionDefinitionVertex } from '../../../../../graph/vertex';
+import { VertexType, Vertex } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { type ClassDeclarationConfig, ClassDeclarations } from '../../../../../fn/class-declaration';
+import type { ClassDeclarationConfig } from '../../../../../fn/class-declaration';
 import { argFor, linkS4Declaration, linkS4Generic } from './built-in-s-four';
+import { Fn } from '../../../../../fn/fn';
+
 
 /** e.g. new_generic(name, dispatch_args, fun=NULL) */
 interface S7GenericDispatchConfig {
@@ -88,7 +90,7 @@ export function processS7NewGeneric<OtherInfo>(
 	info.graph.addEdge(rootId, funArg, EdgeType.Returns);
 	info.entryPoint = funArg;
 	const fArg = info.graph.getVertex(funArg);
-	if(FunctionDefinitionVertex.is(fArg)) {
+	if(Vertex.isFunctionDefinition(fArg)) {
 		fArg.mode ??= ['s4', 's7'];
 	}
 	if(config.binds) {
@@ -122,7 +124,7 @@ export function processMakeConstructor<OtherInfo>(
 	info.graph.addEdge(rootId, funId, EdgeType.Returns);
 	info.entryPoint = funId;
 	const fArg = info.graph.getVertex(funId);
-	if(FunctionDefinitionVertex.is(fArg) && config?.mode) {
+	if(Vertex.isFunctionDefinition(fArg) && config?.mode) {
 		fArg.mode ??= config.mode.slice();   // copy: mode is mutated in place later, config.mode is shared
 	}
 	if(config?.wrapIndex !== undefined) {
@@ -144,8 +146,8 @@ export function attachClassDeclaration<OtherInfo>(
 		return;
 	}
 	const vertex = info.graph.getVertex(rootId);
-	if(FunctionCallVertex.is(vertex)) {
-		vertex.classDecl = ClassDeclarations.of(config, args);
+	if(Vertex.isFunctionCall(vertex)) {
+		vertex.classDecl = Fn.classes.of(config, args);
 	}
 }
 
@@ -166,7 +168,7 @@ function linkWrappedFunction<OtherInfo>(
 		return;
 	}
 	const vertex = info.graph.getVertex(resolved.functionId);
-	if(!UseVertex.is(vertex)) {
+	if(!Vertex.isUse(vertex)) {
 		return;
 	}
 	info.graph.updateToFunctionCall({

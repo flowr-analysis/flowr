@@ -1,12 +1,8 @@
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { ControlFlowGraph } from '../../control-flow/control-flow-graph';
-import { FunctionDefinitionVertex, type DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
-import {
-	type BrandedIdentifier,
-	type IdentifierDefinition,
-	ReferenceType
-} from '../../dataflow/environments/identifier';
+import { Vertex, type DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
+import { type BrandedIdentifier, type IdentifierDefinition, ReferenceType } from '../../dataflow/environments/identifier';
 import sizeof from 'object-sizeof';
 import { compactRecord } from '../../util/objects';
 
@@ -64,7 +60,7 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
 			} as DataflowGraphVertexInfo;
 		}
 
-		if(FunctionDefinitionVertex.is(vertex)) {
+		if(Vertex.isFunctionDefinition(vertex)) {
 			vertex = {
 				...vertex,
 				subflow: {
@@ -101,7 +97,7 @@ export function getSizeOfCfGraph(cfg: ControlFlowGraph): number {
 /**
  * Calculates the size of an array in bytes.
  * @param array - The array to calculate the size of.
- * @returns The size of the array in bytes.
+ * @returns     The size of the array in bytes.
  */
 export function safeSizeOf<T>(array: T[]): number {
 	const size = sizeof(array) as number | unknown;

@@ -11,7 +11,6 @@ import { interpolationsOf } from '../../../../../src/dataflow/internal/process/f
 import { VertexType } from '../../../../../src/dataflow/graph/vertex';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
-import { NoEdges } from '../../../../../src/dataflow/graph/graph';
 
 /** Whether the definition at the criterion is linked to anything, which a template only does for real code. */
 describe('Dataflow', withTreeSitter(ts => {
@@ -23,7 +22,7 @@ describe('Dataflow', withTreeSitter(ts => {
 				const graph = analysis.dataflow.graph;
 				const id = SlicingCriterion.parse(criterion, analysis.normalize.idMap);
 				guard(id !== undefined);
-				const edges = [...graph.ingoingEdges(id) ?? NoEdges, ...graph.outgoingEdges(id) ?? NoEdges];
+				const edges = [...graph.edgesTo(id), ...graph.edgesFrom(id)];
 				assert.strictEqual(edges.some(([, e]) => DfEdge.includesType(e, EdgeType.Reads)), linked);
 			});
 		}
@@ -63,7 +62,7 @@ describe('Dataflow', withTreeSitter(ts => {
 			/* the two interpolations are separate reads, so neither may end up merged into the other's vertex */
 			const reads = new Map<string, NodeId[]>();
 			for(const [id] of graph.verticesOfType(VertexType.Use)) {
-				const to = [...graph.outgoingEdges(id) ?? NoEdges]
+				const to = [...graph.edgesFrom(id)]
 					.filter(([, e]) => DfEdge.includesType(e, EdgeType.Reads))
 					.map(([target]) => target);
 				if(to.length > 0) {

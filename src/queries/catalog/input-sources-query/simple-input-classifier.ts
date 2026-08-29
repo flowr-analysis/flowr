@@ -10,7 +10,7 @@ import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexVariableDefinition, DataflowGraphVertexArgument
 } from '../../../dataflow/graph/vertex';
-import { FunctionDefinitionVertex, VariableDefinitionVertex, FunctionCallVertex, VertexType } from '../../../dataflow/graph/vertex';
+import { Vertex, VertexType } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
@@ -193,9 +193,9 @@ class InputClassifier {
 		const vtx = id === undefined || depth > MaxFunctionResolveDepth ? undefined : graph.getVertex(id);
 		if(vtx === undefined) {
 			return;
-		} else if(FunctionDefinitionVertex.is(vtx)) {
+		} else if(Vertex.isFunctionDefinition(vtx)) {
 			yield vtx.id;
-		} else if(VariableDefinitionVertex.is(vtx)) {
+		} else if(Vertex.isVariableDefinition(vtx)) {
 			for(const source of vtx.source ?? []) {
 				yield* this.functionDefinitionsAt(source, depth + 1);
 			}
@@ -517,7 +517,7 @@ class InputClassifier {
 		let known = false;
 		for(const fn of this.functionDefinitionsAt(call.id)) {
 			const definition = graph.getVertex(fn);
-			if(!FunctionDefinitionVertex.is(definition)) {
+			if(!Vertex.isFunctionDefinition(definition)) {
 				continue;
 			}
 			for(const { nodeId } of definition.exitPoints) {
@@ -547,7 +547,7 @@ class InputClassifier {
 	 */
 	private *exitValues(id: NodeId, depth = 0): Generator<NodeId | undefined> {
 		const vtx = (this.dfg.getVertex(id) ?? (this.fullDfg ?? this.dfg).getVertex(id));
-		if(vtx === undefined || !FunctionCallVertex.is(vtx)) {
+		if(vtx === undefined || !Vertex.isFunctionCall(vtx)) {
 			yield id;
 			return;
 		}
@@ -639,7 +639,7 @@ class InputClassifier {
 			acc.allPure = false;
 		}
 		// if this is a variable definition that is a parameter, classify as Parameter
-		if(VariableDefinitionVertex.is(v) && this.dfg.idMap?.get(v.id)?.info.role === RoleInParent.ParameterName) {
+		if(Vertex.isVariableDefinition(v) && this.dfg.idMap?.get(v.id)?.info.role === RoleInParent.ParameterName) {
 			acc.types.push(this.matchWholeLinkedObject(v.id)?.type ?? InputType.Parameter);
 			acc.values.push(undefined);
 			return;
@@ -891,7 +891,7 @@ export function classifyInput(id: NodeId, dfg: DataflowGraph, config: InputClass
 	}
 	const c = new InputClassifier(dfg, config, fullDfg, packages);
 
-	if(FunctionCallVertex.is(vtx)) {
+	if(Vertex.isFunctionCall(vtx)) {
 		const ret: InputSources = [];
 		const args = vtx.args;
 		for(const arg of args) {

@@ -4,7 +4,7 @@ import { Identifier } from '../../dataflow/environments/identifier';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { FunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
+import { Vertex, VertexType } from '../../dataflow/graph/vertex';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { uniqueArray } from '../../util/collections/arrays';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
@@ -57,7 +57,7 @@ export interface DeprecatedFunctionInformation {
 	 * Mark specific arguments as deprecated
 	 * If only whenArgs is provided, and not sinceVersion, the function is only marked as deprecated, if the argument is provided.
 	 */
-	readonly whenArgs?:     DeprecatedArgumentInformation[]
+	readonly whenArgs?:     readonly DeprecatedArgumentInformation[]
 	/** Suggested replacement for this function */
 	readonly replacedBy?:   string
 	/** The version since this function is deprecated, if version is provided the entire function will be marked as deprecated, if the version range matches */
@@ -112,7 +112,7 @@ export enum DeprecationState {
 
 export interface DeprecatedFunctionsConfig extends MergeableRecord {
 	/** Functions to always mark as deprecated */
-	always:        Identifier[]
+	always:        readonly Identifier[]
 	/**
 	 * Functions to mark as deprecated for specific argument, argument value or version. Keyed like
 	 * {@link DeprecatedFunctionsConfig.always}: `pkg::fn` names the package the versions are checked against and
@@ -445,7 +445,7 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
 	// Deprecated Argument: If `whenArgs` is provided, only mark deprecated arguments
 	if(info.whenArgs) {
 		const vertex = dataflow.getVertex(candidate.node.info.id);
-		if(vertex === undefined || !FunctionCallVertex.is(vertex)) {
+		if(vertex === undefined || !Vertex.isFunctionCall(vertex)) {
 			return results;
 		}
 

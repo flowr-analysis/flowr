@@ -5,8 +5,8 @@ import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { Identifier } from '../dataflow/environments/identifier';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import { DfEdge, EdgeType } from '../dataflow/graph/edge';
-import { type DataflowGraph, FunctionArgument, NoEdges } from '../dataflow/graph/graph';
-import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexUse, type DataflowGraphVertexValue, type DataflowGraphVertexVariableDefinition, FunctionCallVertex, FunctionDefinitionVertex, VertexType } from '../dataflow/graph/vertex';
+import { type DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
+import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexUse, type DataflowGraphVertexValue, type DataflowGraphVertexVariableDefinition, Vertex, VertexType } from '../dataflow/graph/vertex';
 import type { ControlDependency } from '../dataflow/info';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
 import type { NoInfo } from '../r-bridge/lang-4.x/ast/model/model';
@@ -196,7 +196,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	 * Creates the abstract interpretation context that is passed to the abstract semantics of one of the abstract domains of the analysis.
 	 * The context provides access to the analyzed program and to the abstract states and values inferred for the requested abstract domain so far.
 	 * @param type - The name of the abstract domain to create the context for
-	 * @returns The abstract interpretation context for the requested abstract domain
+	 * @returns    The abstract interpretation context for the requested abstract domain
 	 */
 	public getContext<Key extends keyof Domains>(type: Key): AbsintContext<StateDomain<Domains[Key]>> {
 		const cached = this.contexts.get(type);
@@ -227,7 +227,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	 * All modifications of the returned view are applied to the underlying multi-value abstract state.
 	 * @param type  - The name of the abstract domain to create the state view for
 	 * @param state - The multi-value abstract state to create the view for (defaults to the current abstract state)
-	 * @returns The state abstract domain of the requested abstract domain
+	 * @returns     The state abstract domain of the requested abstract domain
 	 */
 	public getState<Key extends keyof Domains>(type: Key, state = this.currentState): StateDomain<Domains[Key]> {
 		return {
@@ -248,7 +248,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	 * This requires that the abstract interpretation visitor has been completed, or at least started.
 	 * @param nodeId - The node (or ID of the node) to get the inferred abstract value for
 	 * @param type   - The name of the abstract domain to get the inferred abstract value for
-	 * @returns The inferred abstract value of the node, or `undefined` if no value was inferred for the node
+	 * @returns      The inferred abstract value of the node, or `undefined` if no value was inferred for the node
 	 */
 	public getAbstractValue<Key extends keyof Domains>(nodeId: RNodeWithParent | NodeId | undefined, type: Key, state?: StateDomain<Domains[Key]>): Domains[Key] | undefined;
 	public getAbstractValue(nodeId: RNodeWithParent | NodeId | undefined, type?: undefined, state?: MultiValueStateDomain<Partial<Domains>>): MultiValueDomain<Partial<Domains>> | undefined;
@@ -272,7 +272,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 			return state.get(node.info.id);
 		}
 		const vertex = this.getDataflowGraph(node.info.id);
-		const call = FunctionCallVertex.is(vertex) ? vertex : undefined;
+		const call = Vertex.isFunctionCall(vertex) ? vertex : undefined;
 		const origins = Array.isArray(call?.origin) ? call.origin : [];
 
 		if(RSymbol.is(node)) {
@@ -319,7 +319,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	 * This requires that the abstract interpretation visitor has been completed, or at least started.
 	 * @param nodeId - The ID of the node to get the abstract state at
 	 * @param type   - The name of the abstract domain to get the abstract state for
-	 * @returns The abstract state at the node, or `undefined` if the node has no abstract state for the abstract domain
+	 * @returns      The abstract state at the node, or `undefined` if the node has no abstract state for the abstract domain
 	 */
 	public getAbstractState<Key extends keyof Domains>(nodeId: NodeId | undefined, type: Key): StateDomain<Domains[Key]> | undefined;
 	public getAbstractState(nodeId: NodeId | undefined): MultiValueStateDomain<Partial<Domains>> | undefined;
@@ -340,7 +340,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	 * Gets the inferred abstract state at the end of the program (exit nodes of the control flow graph).
 	 * This requires that the abstract interpretation visitor has been completed, or at least started.
 	 * @param type - The name of the abstract domain to get the abstract state for
-	 * @returns The inferred abstract state at the end of the program
+	 * @returns    The inferred abstract state at the end of the program
 	 */
 	public getEndState<Key extends keyof Domains>(type: Key): StateDomain<Domains[Key]>;
 	public getEndState(): MultiValueStateDomain<Partial<Domains>>;
@@ -670,7 +670,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	}
 
 	protected handleConditionBranch(state: MultiValueStateDomain<Partial<Domains>>, conditionVertex: DataflowGraphVertexArgument, branch: typeof RTrue | typeof RFalse): MultiValueStateDomain<Partial<Domains>> {
-		if(FunctionCallVertex.is(conditionVertex) && conditionVertex.args.every(FunctionArgument.isNotEmpty)) {
+		if(Vertex.isFunctionCall(conditionVertex) && conditionVertex.args.every(FunctionArgument.isNotEmpty)) {
 			const name = Identifier.getName(conditionVertex.name);
 			const isNot = Identifier.matches(name, ['base', '!']);
 			const isAnd = Identifier.matches(name, ['base', '&&']) || Identifier.matches(name, ['base', '&']);
@@ -725,7 +725,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	/** What the control flow graph itself says leads here, which is the same however often it is asked. */
 	private collectPredecessors(vertexId: NodeId): readonly AbsintPredecessor[] {
 		const result: AbsintPredecessor[] = [];
-		for(const [id, edge] of this.config.controlFlow.graph.ingoingEdges(vertexId) ?? NoEdges) {
+		for(const [id, edge] of this.config.controlFlow.graph.edgesTo(vertexId)) {
 			const branch = CfgEdge.isControlDependency(edge) ? edge : undefined;
 			const vertex = this.getCfgVertex(id);
 			if(vertex === undefined) {
@@ -789,13 +789,13 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	/** Where a function definition starts, i.e. the first thing that runs when it is called. */
 	protected getFunctionEntry(defId: NodeId): NodeId | undefined {
 		const def = this.getDataflowGraph(defId);
-		return FunctionDefinitionVertex.is(def) ? def.subflow.cfgEntry ?? def.subflow.entryPoint : undefined;
+		return Vertex.isFunctionDefinition(def) ? def.subflow.cfgEntry ?? def.subflow.entryPoint : undefined;
 	}
 
 	/** Where a function definition is left, i.e. its last expressions and `return` calls. */
 	protected getFunctionExits(defId: NodeId): readonly NodeId[] {
 		const def = this.getDataflowGraph(defId);
-		return FunctionDefinitionVertex.is(def) ? def.exitPoints.map(exit => exit.nodeId) : NoNeighbors;
+		return Vertex.isFunctionDefinition(def) ? def.exitPoints.map(exit => exit.nodeId) : NoNeighbors;
 	}
 
 	/**
@@ -947,7 +947,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	private parameterValues(defId: NodeId): (MultiValueDomain<Partial<Domains>> | undefined)[] {
 		const definition = this.getDataflowGraph(defId);
 
-		if(!FunctionDefinitionVertex.is(definition)) {
+		if(!Vertex.isFunctionDefinition(definition)) {
 			return [];
 		}
 		return Object.keys(definition.params).map(key => this.currentState.get(NodeId.normalize(key)));
@@ -981,14 +981,14 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		const call = this.getDataflowGraph(callId);
 		const definition = this.getDataflowGraph(defId);
 
-		if(!FunctionCallVertex.is(call) || !FunctionDefinitionVertex.is(definition)) {
+		if(!Vertex.isFunctionCall(call) || !Vertex.isFunctionDefinition(definition)) {
 			return;
 		}
 		const args = new Set(call.args.filter(FunctionArgument.isNotEmpty).map(arg => arg.nodeId));
 		for(const key of Object.keys(definition.params)) {
 			/* object keys are strings, the graph keys its vertices by the id itself */
 			const parameter = NodeId.normalize(key);
-			for(const [target, edge] of this.config.dfg.outgoingEdges(parameter) ?? NoEdges) {
+			for(const [target, edge] of this.config.dfg.edgesFrom(parameter)) {
 				if(!DfEdge.includesType(edge, EdgeType.DefinedByOnCall) || !args.has(target)) {
 					continue;
 				}

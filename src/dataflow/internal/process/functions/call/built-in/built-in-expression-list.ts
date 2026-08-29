@@ -24,7 +24,7 @@ import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { cancelRevivedKills, dropKilledWrites, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { valueFromTsValue } from '../../../../../eval/values/general';
-import { FunctionDefinitionVertex, FunctionCallVertex } from '../../../../../graph/vertex';
+import { Vertex } from '../../../../../graph/vertex';
 import { Resolve } from '../../../../../environments/resolve-helper';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 
@@ -95,14 +95,14 @@ function* transitivelyCalledDefinitions(initial: readonly DataflowGraphVertexInf
 	const stack = initial.map(fn => ({ fn, direct: true }));
 	while(stack.length > 0) {
 		const { fn, direct } = stack.pop() as { fn: DataflowGraphVertexInfo, direct: boolean };
-		if(!FunctionDefinitionVertex.is(fn) || seen.has(fn.id)) {
+		if(!Vertex.isFunctionDefinition(fn) || seen.has(fn.id)) {
 			continue;
 		}
 		seen.add(fn.id);
 		yield { fn, direct };
 		for(const nodeId of fn.subflow.graph) {
 			const call = graph.getVertex(nodeId);
-			if(!FunctionCallVertex.is(call) || call.onlyBuiltin || call.name === undefined) {
+			if(!Vertex.isFunctionCall(call) || call.onlyBuiltin || call.name === undefined) {
 				continue;
 			}
 			const resolved = Resolve.byNameAndType(call.name, resolveEnv, ReferenceType.Function);
@@ -170,7 +170,7 @@ function errorEscapes(from: NodeId, expression: NodeId, idMap: AstIdMap, graph: 
 				break;
 			case RType.FunctionCall:
 				/* a handler catches the error instead of passing it on */
-				if(FunctionCallVertex.hasOrigin(graph.getVertex(parent.info.id), BuiltInProcName.Try)) {
+				if(Vertex.hasOrigin(graph.getVertex(parent.info.id), BuiltInProcName.Try)) {
 					return false;
 				}
 				break;
@@ -201,7 +201,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 	for(const { functionCall, called } of calledEnvs) {
 		let callDependencies: ControlDependency[] | null | undefined = null;
 		for(const { fn: calledFn, direct } of transitivelyCalledDefinitions(called, nextGraph, inputEnvironment)) {
-			guard(FunctionDefinitionVertex.is(calledFn), 'called function must be a function definition');
+			guard(Vertex.isFunctionDefinition(calledFn), 'called function must be a function definition');
 			// only merge the environments they have in common
 			let environment = direct ? calledFn.subflow.environment : withoutPackageLayers(calledFn.subflow.environment);
 			if(environment.level > inputEnvironment.level) {

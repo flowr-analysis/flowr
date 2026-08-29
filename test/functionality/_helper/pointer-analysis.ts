@@ -29,7 +29,7 @@ const ClosingBracketOf: Record<AccessType, string> = {
 /**
  * Returns the closing bracket for the given access type.
  * @param type - Access type
- * @returns Closing bracket
+ * @returns    Closing bracket
  */
 function getClosingBracket(type: AccessType): string {
 	return ClosingBracketOf[type];
@@ -45,7 +45,7 @@ const AccessCapabilityOf: Record<AccessType, SupportedFlowrCapabilityId> = {
 /**
  * Returns the capability for the given access type.
  * @param type - Access type
- * @returns Capability ID
+ * @returns    Capability ID
  */
 function getAccessCapability(type: AccessType): SupportedFlowrCapabilityId {
 	return AccessCapabilityOf[type];
@@ -128,10 +128,10 @@ function definitionHelper(
  *
  * Depending on {@link hasNamedArguments}, either {@link queryNamedArgument} or {@link queryUnnamedArgument} is used.
  * @param hasNamedArguments - Whether arguments are named
- * @param index - Argument index
- * @param value - Argument value
- * @param line - Line number
- * @returns Query object
+ * @param index             - Argument index
+ * @param value             - Argument value
+ * @param line              - Line number
+ * @returns                 Query object
  */
 function queryArgument(hasNamedArguments: boolean, index: number, value: string, line: number) {
 	if(hasNamedArguments) {
@@ -151,7 +151,7 @@ function queryArgument(hasNamedArguments: boolean, index: number, value: string,
  * ```
  * @param name - Argument name
  * @param line - Line number
- * @returns Query object
+ * @returns    Query object
  */
 function queryNamedArgument(name: string, line: number) {
 	return { query: Q.varInLine(name, line).filter(RType.Argument) };
@@ -166,8 +166,8 @@ function queryNamedArgument(name: string, line: number) {
  * # queries first parameter '1'
  * ```
  * @param value - Argument value
- * @param line - Line number
- * @returns Query object
+ * @param line  - Line number
+ * @returns     Query object
  */
 function queryUnnamedArgument(value: string, line: number) {
 	return { query: Q.varInLine(value, line).filter(RType.Number) };
@@ -187,8 +187,8 @@ function queryUnnamedArgument(value: string, line: number) {
  * ```
  * @param type - Access type
  * @param line - Line number
- * @param fn - Optional function to modify the query, default is identity function
- * @returns Query object
+ * @param fn   - Optional function to modify the query, default is identity function
+ * @returns    Query object
  */
 function queryAccessInLine(
 	type: AccessType,
@@ -200,7 +200,9 @@ function queryAccessInLine(
 
 
 /**
- *
+ * Registers the test cases that build, read and write one container type, so every container is
+ * put through the same set.
+ * @param containerType - the container to test
  */
 export function setupContainerFunctions(
 	containerType: ContainerType,

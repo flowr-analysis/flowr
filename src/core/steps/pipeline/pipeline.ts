@@ -80,6 +80,7 @@ export type PipelineStepPrintersWithName<P extends Pipeline, Name extends Pipeli
 export type PipelineStepOutputWithName<P extends Pipeline, Name extends PipelineStepName> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>> & PipelinePerStepMetaInformation;
 /**
  * Returns a union type that represents the required inputs to be passed to the given pipeline.
+ * @see {@link PipelineOutput}
  * @example
  * ```ts
  * type Foo = PipelineInput<typeof DEFAULT_DATAFLOW_PIPELINE>
@@ -88,7 +89,6 @@ export type PipelineStepOutputWithName<P extends Pipeline, Name extends Pipeline
  *
  * In short, this can be useful whenever you want to describe _all_ inputs a complete
  * pipeline needs to run through (i.e., the union of all inputs required by the individual steps).
- * @see {@link PipelineOutput}
  */
 export type PipelineInput<P extends Pipeline> = UnionToIntersection<PipelineStep<P>['requiredInput']>;
 

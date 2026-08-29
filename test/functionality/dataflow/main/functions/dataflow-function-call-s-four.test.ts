@@ -13,8 +13,7 @@ age(j) <- 50
 print(age(j))
 `, emptyGraph()
 			.calls('5@age', '3@function')
-			.calls('6@age', '2@function')
-		,
+			.calls('6@age', '2@function'),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
 
@@ -24,8 +23,7 @@ print(age(j))
 setClass("P", representation(s = "numeric"))
 o <- new("P", s = 1)
 `, emptyGraph()
-			.reads('3@new', '2@setClass')
-		,
+			.reads('3@new', '2@setClass'),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
 
@@ -35,8 +33,7 @@ o <- new("P", s = 1)
 setGeneric("sz", function(x) standardGeneric("sz"))
 setMethod("sz", "numeric", function(x) x * 3)
 `, emptyGraph()
-			.reads('3@setMethod', '2@setGeneric')
-		,
+			.reads('3@setMethod', '2@setGeneric'),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
 
@@ -46,8 +43,7 @@ setMethod("sz", "numeric", function(x) x * 3)
 setClass("A", representation(x = "numeric"))
 setClass("B", contains = "A")
 `, emptyGraph()
-			.reads('3@setClass', '2@setClass')
-		,
+			.reads('3@setClass', '2@setClass'),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
 }));

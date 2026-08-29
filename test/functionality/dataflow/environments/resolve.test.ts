@@ -388,7 +388,7 @@ describe('Resolve', { concurrent: false }, withShell(shell => {
 		});
 	});
 	describe.each<[string, With]>([
-		['Graph only',  With.GraphOnly  ],
+		['Graph only',  With.GraphOnly],
 		['Environment', With.Environment],
 	])('Resolve built-in constants (%s)', (_name, resolveWith) => {
 		testResolve('T resolves to true',         '1@T',    'T',             set([true]),  Allow.ExactOnly, resolveWith);

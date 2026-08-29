@@ -122,7 +122,7 @@ function doesCallQueryLineParser(output: ReplOutput, line: readonly string[], _c
 				calls:   constraint.constraint,
 			}],
 		rCode: queryLineCode(line)
-	} ;
+	};
 }
 
 export const DoesCallQueryDefinition = {

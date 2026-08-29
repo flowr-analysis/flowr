@@ -2,8 +2,8 @@ import {
 	type CfgBasicBlockVertex, type CfgExpressionVertex,
 	CfgVertex,
 	type CfgStatementVertex,
-	type ControlFlowInformation
-	, CfgVertexType
+	type ControlFlowInformation,
+	CfgVertexType
 } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { assertUnreachable } from '../util/assert';

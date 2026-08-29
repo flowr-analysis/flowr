@@ -63,7 +63,7 @@ const _scripts = {
 		usageExample:  'benchmark-single "example.R" --output "example.json"',
 		options:       benchmarkHelperOptions,
 		type:          'helper script',
-		masterScripts: [ 'benchmark' ]
+		masterScripts: ['benchmark']
 	},
 	'summarizer': {
 		toolName:     'summarizer',

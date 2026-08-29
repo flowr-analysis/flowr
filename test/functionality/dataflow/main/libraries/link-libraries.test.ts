@@ -108,7 +108,7 @@ describe('Link libraries', withTreeSitter(ts => {
 				a.context().deps.addDependency(new Package({
 					name:          'dplyr',
 					namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(across)')).content().current, ['across'])
-				}));;
+				}));
 			},
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true
@@ -134,7 +134,7 @@ describe('Link libraries', withTreeSitter(ts => {
 				a.context().deps.addDependency(new Package({
 					name:          'pkgB',
 					namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(x)\nexport(y)\nexport(c)\nexport(d)\nexport(e)')).content().current, ['x', 'y', 'c', 'd', 'e'])
-				}));;
+				}));
 			},
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true
@@ -483,7 +483,7 @@ async function loadedLayers(ts: TreeSitterExecutor, code: string): Promise<[stri
 	const df = await analyzer.dataflow();
 	const layers: [string | undefined, EnvType | undefined][] = [];
 	// attached packages sit below the global env
-	for(let env = REnvironment.findGlobal(df.environment.current).parent; env.t !== undefined; env = env.parent){
+	for(let env = REnvironment.findGlobal(df.environment.current).parent; env.t !== undefined; env = env.parent) {
 		layers.push([env.n, env.t]);
 	}
 	return layers;
@@ -494,6 +494,6 @@ async function loadedPackages(ts: TreeSitterExecutor, code: string): Promise<(st
 	return (await loadedLayers(ts, code)).filter(l => l[1] === EnvType.Namespace).map(l => l[0]);
 }
 
-function compare<T>(s1: Set<T>, s2: Set<T>){
+function compare<T>(s1: Set<T>, s2: Set<T>) {
 	return s1.difference(s2).size === 0 && s2.difference(s1).size === 0;
 }

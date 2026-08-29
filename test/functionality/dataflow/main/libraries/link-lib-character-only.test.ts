@@ -129,7 +129,7 @@ describe('Link libraries with character.only', withTreeSitter(ts => {
 		const df = await analyzer.dataflow();
 		let env = REnvironment.findGlobal(df.environment.current).parent;
 		const environments = [[env.n, env.t]];
-		for(let i = 0; i < 3; i++){
+		for(let i = 0; i < 3; i++) {
 			env = env.parent;
 			environments.push([env.n, env.t]);
 		}
@@ -137,7 +137,7 @@ describe('Link libraries with character.only', withTreeSitter(ts => {
 		environments.sort();
 		expected.sort();
 		let match = environments.length === expected.length;
-		for(let i = 0; i < Math.min(expected.length, environments.length); i++){
+		for(let i = 0; i < Math.min(expected.length, environments.length); i++) {
 			match = match && expected[i][0] === environments[i][0] && environments[i][1] === expected[i][1];
 		}
 		expect(match).toBeTruthy();
@@ -166,7 +166,7 @@ describe('Link libraries with character.only', withTreeSitter(ts => {
 		const df = await analyzer.dataflow();
 		let env = REnvironment.findGlobal(df.environment.current).parent;
 		const environments = [[env.n, env.t]];
-		for(let i = 0; i < 3; i++){
+		for(let i = 0; i < 3; i++) {
 			env = env.parent;
 			environments.push([env.n, env.t]);
 		}
@@ -174,7 +174,7 @@ describe('Link libraries with character.only', withTreeSitter(ts => {
 		environments.sort();
 		expected.sort();
 		let match = environments.length === expected.length;
-		for(let i = 0; i < Math.min(expected.length, environments.length); i++){
+		for(let i = 0; i < Math.min(expected.length, environments.length); i++) {
 			match = match && expected[i][0] === environments[i][0] && environments[i][1] === expected[i][1];
 		}
 		expect(match).toBeTruthy();

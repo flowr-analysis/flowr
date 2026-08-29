@@ -20,8 +20,8 @@ export function fingerPrintOfQuery(query: StaticSliceQuery): string {
 /**
  * Execute static slice queries, catching duplicates with the same fingerprint
  * @param analyzer - The basic query data containing the analyzer
- * @param queries - The static slice queries to execute
- * @returns The results of the static slice queries
+ * @param queries  - The static slice queries to execute
+ * @returns        The results of the static slice queries
  */
 export async function executeStaticSliceQuery({ analyzer }: BasicQueryData, queries: readonly StaticSliceQuery[]): Promise<StaticSliceQueryResult> {
 	const start = Date.now();

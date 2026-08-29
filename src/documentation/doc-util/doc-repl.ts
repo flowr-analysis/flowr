@@ -27,7 +27,7 @@ function printHelpForScript(script: [string, ReplBaseCommand], starredVersion?: 
 
 
 /**
- *
+ * Every REPL command as a markdown table, the way the wiki's interface page lists them.
  */
 export function printReplHelpAsMarkdownTable(): string {
 	const scriptHelp = [];

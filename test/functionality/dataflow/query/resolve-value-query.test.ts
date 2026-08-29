@@ -16,7 +16,7 @@ import { intervalFrom, intervalFromValues } from '../../../../src/dataflow/eval/
 import { getScalarFromInteger } from '../../../../src/dataflow/eval/values/scalar/scalar-constants';
 import { vectorFrom } from '../../../../src/dataflow/eval/values/vectors/vector-constants';
 
-describe('Resolve Value Query', withTreeSitter( parser => {
+describe('Resolve Value Query', withTreeSitter(parser => {
 	function testQuery(name: string, code: string, criteria: SlicingCriteria, expected: ResolveResult[][]) {
 		const queries: ResolveValueQuery[] = [{ type: 'resolve-value' as const, criteria }];
 		assertQuery(label(name), parser, code, queries, ({ dataflow }) => {

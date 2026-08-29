@@ -22,7 +22,8 @@ export interface ReplParserTestCase<QueryType extends BaseQueryFormat['type']> {
 
 
 /**
- *
+ * Asserts that the REPL parses `line` into the expected query.
+ * @param testCase - what to parse, with what, and what to expect
  */
 export function assertReplParser<QueryType extends BaseQueryFormat['type']>({ label, parser, line, config = FlowrConfig.default(), expectedParse }: ReplParserTestCase<QueryType>) {
 	test(label, () => {
@@ -42,7 +43,8 @@ export interface ReplCompletionTestCase {
 
 
 /**
- *
+ * Asserts that the REPL completes a partial line into the expected candidates.
+ * @param testCase - what to complete, with what, and what to expect
  */
 export function assertReplCompletions({ completer, label, startingNewArg, splitLine, config = FlowrConfig.default(), expectedCompletions }: ReplCompletionTestCase) {
 	test(label, () => {

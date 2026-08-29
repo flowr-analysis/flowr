@@ -19,7 +19,7 @@ export type SupportedFlowrCapabilityId = ExtractAllIds<Capabilities, { readonly 
 
 type PathToCapability = readonly number[];
 
-export interface FlowrCapabilityWithPath extends FlowrCapability{
+export interface FlowrCapabilityWithPath extends FlowrCapability {
 	path: PathToCapability
 }
 

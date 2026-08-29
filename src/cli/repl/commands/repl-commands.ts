@@ -105,7 +105,7 @@ export const helpCommand: ReplCommand = {
 	isCodeCommand: false,
 	script:        false,
 	usageExample:  ':help',
-	aliases:       [ 'h', '?' ],
+	aliases:       ['h', '?'],
 	fn:            ({ output }) => {
 		initCommandMapping();
 		output.stdout(`
@@ -275,7 +275,7 @@ export function getCommand(command: string): ReplCodeCommand | ReplCommand | und
 /**
  * Formats the given argument name as a command line option (with single or double dashes).
  */
-export function asOptionName(argument: string): string{
+export function asOptionName(argument: string): string {
 	if(argument.length == 1) {
 		return `-${argument}`;
 	} else {

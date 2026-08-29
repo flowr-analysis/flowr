@@ -32,7 +32,7 @@ export interface IEnvironment {
 	builtInEnv?: true | undefined
 }
 
-export enum EnvType{
+export enum EnvType {
 	Namespace = 'ns',
 	Imports = 'imp',
 	/** `requireNamespace("pkg")`: `pkg::fn` resolves, bare `fn` does not */

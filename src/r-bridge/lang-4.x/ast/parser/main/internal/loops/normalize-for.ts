@@ -17,7 +17,11 @@ import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
 
 
 /**
- *
+ * Normalizes a `for(<variable> in <vector>) <body>`, `undefined` if the entry is not one.
+ * @param data      - the normalizer's state
+ * @param forToken  - the `for` keyword itself
+ * @param condition - the `(<variable> in <vector>)` head
+ * @param body      - what the loop repeats
  */
 export function tryNormalizeFor(
 	data: NormalizerData,

@@ -65,8 +65,8 @@ export class FlowrRMarkdownFile extends FlowrFile {
 	}
 
 	/**
- 	* Postprocess blocks with options like child='other.Rmd'
-  */
+	 * Postprocess blocks with options like child='other.Rmd'
+	 */
 	private postProcessCodeBlocks() {
 		guard(this.data !== undefined);
 
@@ -183,7 +183,7 @@ export function globalChunkOptions(frontmatter: object): CodeBlockOptions {
 /**
  * Parse the contents of a RMarkdown file into complete code and blocks
  * @param raw - the raw file content
- * @returns Rmd Info
+ * @returns   Rmd Info
  */
 export function parseRMarkdownFile(raw: string): RmdInfo {
 	// Read and Parse Markdown

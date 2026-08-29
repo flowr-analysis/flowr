@@ -58,7 +58,7 @@ export interface StatefulFoldFunctions<Info, Down, Up> {
 		foldLineDirective: (comment: RLineDirective<Info>, down: Down) => Up;
 	};
 	/** The `otherwise` argument is `undefined` if the `else` branch is missing */
-	foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: Up, then: Up, otherwise: Up | undefined, down: Down ) => Up;
+	foldIfThenElse: (ifThenExpr: RIfThenElse<Info>, cond: Up, then: Up, otherwise: Up | undefined, down: Down) => Up;
 	foldExprList:   (exprList: RExpressionList<Info>, grouping: [start: Up, end: Up] | undefined, expressions: Up[], down: Down) => Up;
 	functions: {
 		foldFunctionDefinition: (definition: RFunctionDefinition<Info>, params: Up[], body: Up, down: Down) => Up;

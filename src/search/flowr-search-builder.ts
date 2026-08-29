@@ -94,8 +94,8 @@ export const FlowrSearchGenerator = {
 	 * Short form of {@link get} with only the
 	 * {@link FlowrSearchGetFilter#line|line} and {@link FlowrSearchGetFilter#column|column} filters:
 	 * `get({line, column})`. Please use {@link FlowrSearchGenerator#locFuzzy|locFuzzy} for a fuzzy location search.
-	 * @param line - the line number to search in
-	 * @param column - the column number to search in
+	 * @param line          - the line number to search in
+	 * @param column        - the column number to search in
 	 * @param filePathRegex - optional regex to filter by file path
 	 */
 	loc(line?: number, column?: number, filePathRegex?: string): FlowrSearchBuilder<'get'> {
@@ -103,8 +103,8 @@ export const FlowrSearchGenerator = {
 	},
 	/**
 	 * Fuzzy variant of {@link loc} that matches any node whose source range contains the given position.
-	 * @param line - the line number to search in (required for fuzzy matching)
-	 * @param column - the column number to search in
+	 * @param line          - the line number to search in (required for fuzzy matching)
+	 * @param column        - the column number to search in
 	 * @param innermostOnly - if true, return only the deepest (innermost) matching nodes in the AST
 	 * @param filePathRegex - optional regex to filter by file path
 	 */
@@ -114,8 +114,8 @@ export const FlowrSearchGenerator = {
 	/**
 	 * Short form of {@link get} with only the {@link FlowrSearchGetFilter#name|name} and {@link FlowrSearchGetFilter#line|line} filters:
 	 * `get({name, line})`.
-	 * @param name - the variable name to search for
-	 * @param line - the line number to search in
+	 * @param name          - the variable name to search for
+	 * @param line          - the line number to search in
 	 * @param filePathRegex - optional regex to filter by file path
 	 */
 	varInLine(name: string, line: number, filePathRegex?: string): FlowrSearchBuilder<'get'> {
@@ -124,7 +124,7 @@ export const FlowrSearchGenerator = {
 	/**
 	 * Short form of {@link get} with only the {@link FlowrSearchGetFilter#name|name} filter:
 	 * `get({name})`.
-	 * @param name - the variable name to search for
+	 * @param name          - the variable name to search for
 	 * @param filePathRegex - optional regex to filter by file path
 	 */
 	var(name: string, filePathRegex?: string): FlowrSearchBuilder<'get'> {
@@ -133,7 +133,7 @@ export const FlowrSearchGenerator = {
 	/**
 	 * Short form of {@link get} with only the {@link FlowrSearchGetFilter#id|id} filter:
 	 * `get({id})`.
-	 * @param id - the node id to search for
+	 * @param id            - the node id to search for
 	 * @param filePathRegex - optional regex to filter by file path
 	 */
 	id(id: NodeId, filePathRegex?: string): FlowrSearchBuilder<'get'> {
@@ -192,7 +192,7 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 	/**
 	 * only returns the elements that match the given filter.
 	 */
-	filter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter> ): FlowrSearchBuilderOut<Generator, Transformers, Info, 'filter'> {
+	filter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'filter'> {
 		this.search.push({ type: 'transformer', name: 'filter', args: { filter: filter as FlowrFilterExpression } });
 		return this;
 	}
@@ -262,7 +262,7 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 	 * Added enrichments can later be retrieved using the {@link enrichmentContent} function.
 	 */
 	with<ConcreteEnrichment extends Enrichment>(enrichment: ConcreteEnrichment, args?: EnrichmentElementArguments<ConcreteEnrichment>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'with'> {
-		this.search.push( { type: 'transformer', name: 'with', args: { info: enrichment, args: args as EnrichmentElementArguments<Enrichment> } });
+		this.search.push({ type: 'transformer', name: 'with', args: { info: enrichment, args: args as EnrichmentElementArguments<Enrichment> } });
 		return this;
 	}
 
@@ -270,7 +270,7 @@ export class FlowrSearchBuilder<Generator extends GeneratorNames, Transformers e
 	 * Maps the elements of the search to new values using the given mapper function.
 	 */
 	map<MapperType extends Mapper>(mapper: MapperType, args: MapperArguments<MapperType>): FlowrSearchBuilderOut<Generator, Transformers, Info, 'map'> {
-		this.search.push( { type: 'transformer', name: 'map', args: { mapper: mapper, args: args as MapperArguments<Mapper> } });
+		this.search.push({ type: 'transformer', name: 'map', args: { mapper: mapper, args: args as MapperArguments<Mapper> } });
 		return this;
 	}
 

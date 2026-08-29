@@ -92,7 +92,7 @@ export interface ParseStepOutput<T> {
  * Takes an input program and parses it using the given parser.
  * @param _results - just a proxy for the pipeline, signifies that this function does not need prior knowledge of the pipeline
  * @param input    - the input to the parse step
- * @returns The parsed AST per request in the loading order obtained from the {@link FlowrAnalyzerFilesContext|files context} of the given {@link FlowrAnalyzerContext}.
+ * @returns        The parsed AST per request in the loading order obtained from the {@link FlowrAnalyzerFilesContext|files context} of the given {@link FlowrAnalyzerContext}.
  */
 export async function parseRequests<T extends KnownParserType>(_results: unknown, input: Partial<ParseRequiredInput<T>>):
 Promise<ParseStepOutput<T>> {
@@ -101,7 +101,7 @@ Promise<ParseStepOutput<T>> {
 	/* in the future, we want to expose all cases */
 	const translatedRequests = loadingOrder.map(r => (input.context as FlowrAnalyzerContext).files.resolveRequest(r));
 
-	if(input.parser?.async){
+	if(input.parser?.async) {
 		/* sadly we cannot Promise.all with the Rshell as it has to process commands in order and is not thread safe */
 		const files: ParseStepOutputSingleFile<T>[] = [];
 		for(const req of translatedRequests) {

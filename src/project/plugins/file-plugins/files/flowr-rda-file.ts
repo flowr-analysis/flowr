@@ -286,7 +286,7 @@ const SpecialValueSxps: ReadonlyMap<SexpType, { readonly value: RValues, readonl
  * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c | R source: serialize.c}
  * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/saveload.c | R source: saveload.c}
  */
-export class RDAParser{
+export class RDAParser {
 	private readonly file:                 FlowrFileProvider;
 	private readonly shortcut:             boolean;
 	private buffer!:                       Buffer;
@@ -414,7 +414,7 @@ export class RDAParser{
 	 * Deserializes a decompressed RDA-file. Answers {@link RObject}, or {@link RValues.NilValue} if deserialization fails.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/saveload.c#L1923-L1972 | R source: R_LoadFromFile}
 	 */
-	deserialize2(): RObject{
+	deserialize2(): RObject {
 		this.offset = 0;
 		/* an `.rds` holds a single object as a bare stream: no workspace magic, no pairlist of names */
 		if(isBareSerializationStream(this.buffer)) {
@@ -509,7 +509,7 @@ export class RDAParser{
 				this.offset += 4;
 				return i;
 			}
-			case SerializationFormat.Xdr:{
+			case SerializationFormat.Xdr: {
 				const i = this.buffer.readInt32BE(this.offset);
 				this.offset += 4;
 				return i;
@@ -555,7 +555,7 @@ export class RDAParser{
 
 		do{
 			c = this.inChar();
-			if(c === -1){
+			if(c === -1) {
 				throw new Error('Read character is -1.');
 			}
 		} while(this.isSpace(c));
@@ -599,7 +599,7 @@ export class RDAParser{
 	 */
 	inString(len: number): string {
 		if(this.format === SerializationFormat.Ascii) {
-			if(len > 0){
+			if(len > 0) {
 				const result = [];
 
 				while(this.offset < this.buffer.length) {
@@ -613,9 +613,9 @@ export class RDAParser{
 
 				for(let i = 0; i < len; i++) {
 					let c = String.fromCodePoint(this.buffer[this.offset++]);
-					if(c === '\\'){
+					if(c === '\\') {
 						c = String.fromCodePoint(this.buffer[this.offset++]);
-						switch(c){
+						switch(c) {
 							case 'n': result.push('\n'); break;
 							case 't': result.push('\t'); break;
 							case 'v': result.push('\v'); break;
@@ -1147,7 +1147,7 @@ export class RDAParser{
 			throw new Error("'parent' is not an environment");
 		}
 
-		for(let e: RObject = v; e !== RValues.NilValue; e = e.enClos ?? RValues.NilValue){
+		for(let e: RObject = v; e !== RValues.NilValue; e = e.enClos ?? RValues.NilValue) {
 			if(e === x) {
 				throw new Error('cycles in parent chains are not allowed');
 			}
@@ -1160,7 +1160,7 @@ export class RDAParser{
 	 * chain. Throws Error if the initial type is not a valid pairlist type.
 	 * See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1800-L1868 | R source: ReadItem_Iterative}
 	 */
-	readItemIterative(flags: number): RObjectData{
+	readItemIterative(flags: number): RObjectData {
 		let sFirst: RObjectData | null = null;
 		let sLast: RObjectData = {};
 
@@ -1225,7 +1225,7 @@ export class RDAParser{
 	}
 
 	/** Allocates and initializes a weak reference object. Throws error if `key`'s type is invalid. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L1388-L1422 | R source: NewWeakRef} */
-	newWeakRef(key: RObjectData, val: RObject, fin: RObjectData, _onexit: boolean): RObject{
+	newWeakRef(key: RObjectData, val: RObject, fin: RObjectData, _onexit: boolean): RObject {
 		switch(key.type) {
 			case SexpType.NilSxp:
 			case SexpType.EnvSxp:
@@ -1238,7 +1238,7 @@ export class RDAParser{
 
 		const w: RObjectData = { type: SexpType.WeakRefSxp };
 
-		if(key.value !== RValues.NilValue){
+		if(key.value !== RValues.NilValue) {
 			w.key = key;
 			w.value = val;
 			w.finalizer = fin;
@@ -1269,7 +1269,7 @@ export class RDAParser{
 	 * bit 1 raw bytes, bit 6 ASCII); answers `''` for a native encoding, which is not yet handled.
 	 * See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1689-L1759 | R source: ReadChar}
 	 */
-	readChar(len: number, levels: number): string{
+	readChar(len: number, levels: number): string {
 		const cBuf = this.inString(len);
 		const bytes = Buffer.from(cBuf, 'latin1');
 
@@ -1385,7 +1385,7 @@ export class RDAParser{
 	 * See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L427-L463 | R source: InReal}
 	 */
 	inReal(skip: boolean = false): Real {
-		switch(this.format){
+		switch(this.format) {
 			case SerializationFormat.Ascii: {
 				if(skip) {
 					this.skipWord();
@@ -1484,7 +1484,7 @@ export class RDAParser{
 	}
 
 	/** Advances past a bytecode object. Mirrors {@link readBC}. */
-	skipBC(): void{
+	skipBC(): void {
 		this.skipInteger();
 		this.skipBC1();
 	}
@@ -1519,7 +1519,7 @@ export class RDAParser{
 	}
 
 	/** Encodes bytecode instructions. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/eval.c#L8723-L8771 | R source: R_bcEncode} */
-	_R_bcEncode(_bytes: Int32Array){
+	_R_bcEncode(_bytes: Int32Array) {
 		throw new Error('Not implemented');
 	}
 
@@ -1682,7 +1682,7 @@ export class RDAParser{
 	}
 
 	/** Whether a {@link SexpType.BcodesSxp}'s version is within the supported range. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/eval.c#L7166-L7175 | R source: R_BCVersionOK} */
-	R_BCVersionOK(s: RObjectData): boolean{
+	R_BCVersionOK(s: RObjectData): boolean {
 		if(s.type !== SexpType.BcodesSxp) {
 			return false;
 		}
@@ -1749,7 +1749,7 @@ export class RDAParser{
 				const pName = this.ScalarString(pSym.name as string);
 				try {
 					this.R_FindNamespace(pName);
-				} catch(e){
+				} catch(e) {
 					rdaLog.warn(`${pName.value as string} ${e as string}`);
 				}
 				clss = this.LookupClass(cSym, pSym);
@@ -1766,7 +1766,7 @@ export class RDAParser{
 	}
 
 	/** Searches the ALTREP class registry for an entry matching `cSym`/`pSym`. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/altrep.c#L53-L59 | R source: LookupClassEntry} */
-	LookupClassEntry(cSym: RObject, pSym: RObject): RObjectData | null{
+	LookupClassEntry(cSym: RObject, pSym: RObject): RObjectData | null {
 		if(!this.Registry) {
 			return null;
 		}
@@ -1780,14 +1780,14 @@ export class RDAParser{
 	}
 
 	/** A length-1 {@link SexpType.StrSxp} character vector wrapping `x`. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/include/Rinlinedfuns.h#L1044-L1052 | R source: ScalarString} */
-	ScalarString(x: string): RObjectData{
+	ScalarString(x: string): RObjectData {
 		const ans: RObjectData = { type: SexpType.StrSxp, value: new Array(1) };
 		this.SET_STRING_ELT(ans, 0, { name: x });
 		return ans;
 	}
 
 	/** Recomputes and restores the cached hash-table priority count for environment `s`. See {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/envir.c#L3685-L3698 | R source: R_RestoreHashCount} */
-	restoreHashCount(s: RObjectData): void{
+	restoreHashCount(s: RObjectData): void {
 		if(s.hashTab !== RValues.NilValue) {
 			const table = s.hashTab as RObjectData;
 			const size = (table.value as RObject[]).length;

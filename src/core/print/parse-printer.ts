@@ -6,6 +6,6 @@ import { convertPreparedParsedData, prepareParsedData } from '../../r-bridge/lan
  * @see {@link serialize2quads}
  * @see {@link QuadSerializationConfiguration}
  */
-export function parseToQuads(code: string, config: QuadSerializationConfiguration): string{
+export function parseToQuads(code: string, config: QuadSerializationConfiguration): string {
 	return serialize2quads(convertPreparedParsedData(prepareParsedData(code)), config);
 }

@@ -76,7 +76,7 @@ function sliceQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 			criteria:  criteria,
 			direction: direction,
 			...options
-		}], rCode: queryLineCode(line) } ;
+		}], rCode: queryLineCode(line) };
 }
 
 export const StaticSliceQueryDefinition = {

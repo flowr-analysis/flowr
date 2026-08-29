@@ -60,11 +60,11 @@ export class DataflowGraphBuilder<
 
 	/**
 	 * Adds a **vertex** for a **function definition** (V1).
-	 * @param id - AST node ID
-	 * @param subflow - Subflow data graph for the defined function.
+	 * @param id         - AST node ID
+	 * @param subflow    - Subflow data graph for the defined function.
 	 * @param exitPoints - Node IDs for exit point vertices.
-	 * @param info - Additional/optional properties.
-	 * @param asRoot - should the vertex be part of the root vertex set of the graph
+	 * @param info       - Additional/optional properties.
+	 * @param asRoot     - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public defineFunction(id: NodeId,
@@ -95,10 +95,10 @@ export class DataflowGraphBuilder<
 
 	/**
 	 * Adds a **vertex** for a **function call** (V2).
-	 * @param id - AST node ID
-	 * @param name - Function name
-	 * @param args - Function arguments; may be empty
-	 * @param info - Additional/optional properties.
+	 * @param id     - AST node ID
+	 * @param name   - Function name
+	 * @param args   - Function arguments; may be empty
+	 * @param info   - Additional/optional properties.
 	 * @param asRoot - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
@@ -124,7 +124,7 @@ export class DataflowGraphBuilder<
 			environment: (info?.onlyBuiltIn || onlyBuiltInAuto) ? undefined : info?.environment ?? this.defaultEnvironment,
 			cds:         info?.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })),
 			onlyBuiltin: info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false,
-			origin:      info?.origin ?? [ getDefaultProcessor(name) ?? BuiltInProcName.Function ],
+			origin:      info?.origin ?? [getDefaultProcessor(name) ?? BuiltInProcName.Function],
 			link:        info?.link
 		}, asRoot);
 		if(!info?.omitArgs) {
@@ -164,9 +164,9 @@ export class DataflowGraphBuilder<
 
 	/**
 	 * Adds a **vertex** for a **variable definition** (V4).
-	 * @param id - AST node ID
-	 * @param name - Variable name
-	 * @param info - Additional/optional properties.
+	 * @param id     - AST node ID
+	 * @param name   - Variable name
+	 * @param info   - Additional/optional properties.
 	 * @param asRoot - Should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
@@ -188,9 +188,9 @@ export class DataflowGraphBuilder<
 
 	/**
 	 * Adds a **vertex** for **variable use** (V5). Intended for creating dataflow graphs as part of function tests.
-	 * @param id - AST node id
-	 * @param name - Variable name
-	 * @param info - Additional/optional properties; i.e., scope, when, or environment.
+	 * @param id     - AST node id
+	 * @param name   - Variable name
+	 * @param info   - Additional/optional properties; i.e., scope, when, or environment.
 	 * @param asRoot - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point) or is it nested (e.g., as part of a function definition)
 	 */
@@ -210,9 +210,9 @@ export class DataflowGraphBuilder<
 
 	/**
 	 * Adds a **vertex** for a **constant value** (V6).
-	 * @param id - AST node ID
+	 * @param id      - AST node ID
 	 * @param options - Additional/optional properties;
-	 * @param asRoot - should the vertex be part of the root vertex set of the graph
+	 * @param asRoot  - should the vertex be part of the root vertex set of the graph
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public constant(id: NodeId, options?: { cds?: ControlDependency[] }, asRoot: boolean = true) {
@@ -274,8 +274,8 @@ export class DataflowGraphBuilder<
 
 	/**
 	 * Adds a **read edge** with a query for the from and/or to vertices.
-	 * @param from - Either a node id or a query to find the node id.
-	 * @param to - Either a node id or a query to find the node id.
+	 * @param from  - Either a node id or a query to find the node id.
+	 * @param to    - Either a node id or a query to find the node id.
 	 * @param input - The input to search in i.e. the dataflow graph.
 	 */
 	public readsQuery(from: FromQueryParam, to: ToQueryParam, input: ReadonlyFlowrAnalysisProvider) {
@@ -423,7 +423,9 @@ export class DataflowGraphBuilder<
 
 
 /**
- *
+ * The side effect the default built-in configuration states for the function `name`,
+ * `undefined` if it states none (or does not know the name at all).
+ * @param name - the function to look up
  */
 export function getBuiltInSideEffect(name: string): LinkTo<RegExp> | undefined {
 	const got = DefaultBuiltinConfig.find(e => (e.names as string[]).includes(name));

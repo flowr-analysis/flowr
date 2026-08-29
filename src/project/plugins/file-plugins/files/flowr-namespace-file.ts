@@ -90,7 +90,7 @@ export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 	/**
 	 * Lifts a file to a {@link FlowrNamespaceFile}, reusing it if already one and assigning roles.
 	 * @param file - The file to lift or return if already a namespace file
-	 * @param ctx - An optional analyzer context to use for complex parsing
+	 * @param ctx  - An optional analyzer context to use for complex parsing
 	 * @param role - An optional role to assign to the file
 	 */
 	public static from(file: FlowrFileProvider | FlowrNamespaceFile, ctx?: FlowrAnalyzerContext, role?: FileRole): FlowrNamespaceFile {
@@ -229,8 +229,8 @@ function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContex
 /** All exported names of a namespace that can be referenced (functions, symbols, patterns, and S3 methods as `generic.class`). */
 export function getExportedNames(info: NamespaceInfo): string[] {
 	const s3: string[] = [];
-	for(const [g, methods] of info.exportS3Generics){
-		for(const m of methods){
+	for(const [g, methods] of info.exportS3Generics) {
+		for(const m of methods) {
 			s3.push(`${g}.${m}`);
 		}
 	}
@@ -244,10 +244,10 @@ export function getCallables(info: NamespaceInfo): string[] {
 }
 
 /** Sets the given list of strings as callable functions */
-export function setCallable(info: NamespaceInfo, func: string[]): NamespaceInfo{
+export function setCallable(info: NamespaceInfo, func: string[]): NamespaceInfo {
 	const all = new Set(getExportedNames(info));
-	for(const f of func){
-		if(all.has(f)){
+	for(const f of func) {
+		if(all.has(f)) {
 			info.callable.push(f);
 		}
 	}

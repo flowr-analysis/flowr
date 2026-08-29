@@ -35,8 +35,8 @@ export const RArgument = {
 	name: 'RArgument',
 	/**
 	 * Type guard for {@link RArgument} nodes.
-	 * @see {@link RArgument.isUnnamed} - to check whether an argument is unnamed
 	 * @lintIgnore node-is node-is-optional
+	 * @see {@link RArgument.isUnnamed} - to check whether an argument is unnamed
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RArgument<Info> {
 		return node?.type === RType.Argument;

@@ -88,14 +88,14 @@ export type EdgeTypeBits = number;
 export const ControlFlowEdgeTypes: EdgeTypeBits = EdgeType.FlowEdge | EdgeType.ControlEdge;
 
 const edgeTypeToHumanReadableName: ReadonlyMap<EdgeType, EdgeTypeName> = new Map<EdgeType, EdgeTypeName>([
-	[EdgeType.Reads,                 EdgeTypeName.Reads                ],
-	[EdgeType.DefinedBy,             EdgeTypeName.DefinedBy            ],
-	[EdgeType.Calls,                 EdgeTypeName.Calls                ],
-	[EdgeType.Returns,               EdgeTypeName.Returns              ],
-	[EdgeType.DefinesOnCall,         EdgeTypeName.DefinesOnCall        ],
-	[EdgeType.DefinedByOnCall,       EdgeTypeName.DefinedByOnCall      ],
-	[EdgeType.Argument,              EdgeTypeName.Argument             ],
-	[EdgeType.SideEffectOnCall,      EdgeTypeName.SideEffectOnCall     ],
+	[EdgeType.Reads,                 EdgeTypeName.Reads],
+	[EdgeType.DefinedBy,             EdgeTypeName.DefinedBy],
+	[EdgeType.Calls,                 EdgeTypeName.Calls],
+	[EdgeType.Returns,               EdgeTypeName.Returns],
+	[EdgeType.DefinesOnCall,         EdgeTypeName.DefinesOnCall],
+	[EdgeType.DefinedByOnCall,       EdgeTypeName.DefinedByOnCall],
+	[EdgeType.Argument,              EdgeTypeName.Argument],
+	[EdgeType.SideEffectOnCall,      EdgeTypeName.SideEffectOnCall],
 	[EdgeType.NonStandardEvaluation, EdgeTypeName.NonStandardEvaluation],
 	[EdgeType.FlowEdge,              EdgeTypeName.FlowEdge],
 	[EdgeType.ControlEdge,           EdgeTypeName.ControlEdge]

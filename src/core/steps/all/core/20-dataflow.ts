@@ -22,7 +22,7 @@ const staticDataflowCommon = {
 		[StepOutputFormat.Mermaid]:    Dataflow.visualize.mermaid.raw,
 		[StepOutputFormat.MermaidUrl]: Dataflow.visualize.mermaid.url
 	},
-	dependencies: [ 'normalize' ],
+	dependencies: ['normalize'],
 } as const;
 
 function processor(results: { normalize?: NormalizedAst }, input: { parser?: Parser<KnownParserType>, context?: FlowrAnalyzerContext }) {

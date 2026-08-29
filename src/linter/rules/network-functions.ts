@@ -23,7 +23,7 @@ export interface NetworkFunctionsConfig extends MergeableRecord {
 	fns: readonly (Identifier | NetworkFunction)[]
 }
 
-export interface NetworkFunction extends MergeableRecord{
+export interface NetworkFunction extends MergeableRecord {
 	/**
 	 * The name of the network function to find.
 	 */

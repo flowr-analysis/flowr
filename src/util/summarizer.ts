@@ -6,7 +6,7 @@ export const enum SummarizerType {
 	Statistics = 'statistics',
 }
 
-export interface CommonSummarizerConfiguration extends MergeableRecord{
+export interface CommonSummarizerConfiguration extends MergeableRecord {
 	logger: (message: string) => void
 }
 

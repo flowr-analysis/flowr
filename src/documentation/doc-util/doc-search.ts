@@ -63,7 +63,7 @@ ${metaInfo}
 
 The returned results are highlighted thick and blue within the dataflow graph:
 
-${await printDfGraphForCode(shell, code, { showCode: false, switchCodeAndGraph: false, mark: new Set(result.getElements().map(({ node }) => node.info.id )) } )}
+${await printDfGraphForCode(shell, code, { showCode: false, switchCodeAndGraph: false, mark: new Set(result.getElements().map(({ node }) => node.info.id)) })}
 
 
 ${collapseResult ? '</details>' : ''}

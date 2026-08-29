@@ -187,7 +187,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			certainty:      LintingResultCertainty.Certain,
 			detectedCasing: CasingConvention.Unknown,
 			name:           '._',
-			loc:            [ 1, 1, 1, 2],
+			loc:            [1, 1, 1, 2],
 			quickFix:       undefined
 		}], undefined, {
 			caseing:        CasingConvention.SnakeCase,

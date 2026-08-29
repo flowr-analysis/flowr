@@ -182,9 +182,9 @@ describe('rda-files', () => {
 
 /**
  * Loads an RDA file in a fresh R environment and returns a map of variable names to their types.
- * @param file    - Path to the RDA file to load
- * @param rShell  - The R shell executor to use for running the R code
- * @returns A map from variable name to its R type string
+ * @param file   - Path to the RDA file to load
+ * @param rShell - The R shell executor to use for running the R code
+ * @returns      A map from variable name to its R type string
  */
 export function getVarsAndTypesFromShell(file: string, rShell: RShellExecutor) {
 	const output = rShell.run(`

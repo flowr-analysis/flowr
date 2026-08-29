@@ -29,7 +29,7 @@ type SyntaxAndRNode = [SyntaxNode, RNode<TreeSitterInfo>];
 
 /**
  * @param tree - The tree to normalize
- * @param lax - Whether to use lax parsing (i.e., ignore errors) or strict parsing (i.e., fail on errors)
+ * @param lax  - Whether to use lax parsing (i.e., ignore errors) or strict parsing (i.e., fail on errors)
  */
 export function normalizeTreeSitterTreeToAst(tree: ParseStepOutputSingleFile<Tree>[], lax?: boolean): RProject<TreeSitterInfo> {
 	if(lax) {
@@ -282,7 +282,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				return {
 					type:     RType.Symbol,
 					location: makeSourceRange(rhs),
-					content:  Identifier.make(rhsText, lhs.text, int.text === ':::' ),
+					content:  Identifier.make(rhsText, lhs.text, int.text === ':::'),
 					lexeme:   rhsText,
 					...defaultInfo(),
 					info:     {
@@ -707,7 +707,7 @@ function splitComments(nodes: readonly SyntaxNode[]): [comments: SyntaxAndRNode[
 
 /**
  * Find the first sibling of the given node that is not a comment, starting from the given node and going to the right.
- * @param snode - the node for which to find the first non-comment sibling
+ * @param snode      - the node for which to find the first non-comment sibling
  * @param knownNexts - cache map from node id to the id of the first non-comment sibling
  */
 function findFirstNonCommentSibling(snode: SyntaxNode, knownNexts: Map<number, SyntaxNode | null>): SyntaxNode | null {
@@ -767,7 +767,7 @@ function linkCommentsToNextNodes(nodes: SyntaxAndRNode[], comments: SyntaxAndRNo
 
 function getNodesUntil(nodes: SyntaxNode[], type: TreeSitterType | string, startIndex = 0): SyntaxNode[] {
 	const ret = [];
-	for(let i = startIndex; i < nodes.length; i++){
+	for(let i = startIndex; i < nodes.length; i++) {
 		if(nodes[i].type === type) {
 			break;
 		}

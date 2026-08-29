@@ -424,10 +424,10 @@ class RShellSession {
 	 * Collect lines from the selected streams until the given condition is met or the timeout is reached
 	 *
 	 * This method does allow other listeners to consume the same input
-	 * @param from        - The stream(s) to collect the information from
-	 * @param until       - If the predicate returns true, this will stop the collection and resolve the promise
-	 * @param timeout     - Configuration for how and when to timeout
-	 * @param action      - Event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
+	 * @param from    - The stream(s) to collect the information from
+	 * @param until   - If the predicate returns true, this will stop the collection and resolve the promise
+	 * @param timeout - Configuration for how and when to timeout
+	 * @param action  - Event to be performed after all listeners are installed, this might be the action that triggers the output you want to collect
 	 */
 	public async collectLinesUntil(from: OutputStreamSelector, until: CollectorUntil, timeout: CollectorTimeout, action?: () => void): Promise<string[]> {
 		const result: string[] = [];
@@ -474,7 +474,7 @@ class RShellSession {
 	/**
 	 * close the current R session, makes the object effectively invalid (can no longer be reopened etc.)
 	 * @param filesToUnlink - If set, these files will be unlinked before closing the session (e.g., to clean up tempfiles)
-	 * @returns true if the kill succeeds, false otherwise
+	 * @returns             true if the kill succeeds, false otherwise
 	 * @see RShell#close
 	 */
 	end(filesToUnlink?: readonly string[]): boolean {

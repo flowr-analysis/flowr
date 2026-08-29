@@ -127,7 +127,7 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * Checks both disk-backed files and inline files.
 	 * However, this will not load new files that have not yet been requested by flowR.
 	 * @param path - The exact path of the file.
-	 * @returns The file if found, otherwise `undefined`.
+	 * @returns    The file if found, otherwise `undefined`.
 	 */
 	getFileByPath(path: string): FlowrFileProvider | undefined;
 	/**
@@ -146,11 +146,11 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	hasFile(path: string): boolean;
 	/**
 	 * Check if a file exists at the given path, optionally ignoring case.
-	 * @param path - The path to the file.
+	 * @param path       - The path to the file.
 	 * @param ignoreCase - Whether to ignore case when checking for the file.
 	 *
 	 * Please note that this method checks the file system based on the configuration (see {@link FlowrConfig.project.resolveUnknownPathsOnDisk}).
-	 * @returns The actual path of the file if it exists, otherwise `undefined`.
+	 * @returns          The actual path of the file if it exists, otherwise `undefined`.
 	 */
 	exists(path: string, ignoreCase: boolean): string | undefined;
 	/** The project root folder (common directory of the requested roots), or `undefined` if none was requested. */

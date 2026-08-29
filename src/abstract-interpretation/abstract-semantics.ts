@@ -30,35 +30,35 @@ export interface AbsintContext<Domain extends StateDomain> {
 	/**
 	 * Gets the normalized AST node with the given node ID.
 	 * @param nodeId - The ID of the node to get the AST node for
-	 * @returns The normalized AST node, or `undefined` if there is no such node
+	 * @returns      The normalized AST node, or `undefined` if there is no such node
 	 */
 	getAstNode(nodeId: NodeId | undefined): RNodeWithParent | undefined;
 
 	/**
 	 * Gets the dataflow graph vertex with the given node ID.
 	 * @param vertexId - The ID of the vertex to get the dataflow graph vertex for
-	 * @returns The dataflow graph vertex, or `undefined` if there is no such vertex
+	 * @returns        The dataflow graph vertex, or `undefined` if there is no such vertex
 	 */
 	getDfgVertex(vertexId: NodeId | undefined): DataflowGraphVertexArgument | undefined;
 
 	/**
 	 * Gets the control flow graph vertex with the given node ID.
 	 * @param vertexId - The ID of the vertex to get the control flow graph vertex for
-	 * @returns The control flow graph vertex, or `undefined` if there is no such vertex
+	 * @returns        The control flow graph vertex, or `undefined` if there is no such vertex
 	 */
 	getCfgVertex(vertexId: NodeId | undefined): CfgVertex | undefined;
 
 	/**
 	 * Gets the abstract state inferred at the location of an AST node.
 	 * @param nodeId - The ID of the node to get the abstract state at
-	 * @returns The abstract state at the node, or `undefined` if the node has no abstract state (i.e. the node has not been visited or is unreachable)
+	 * @returns      The abstract state at the node, or `undefined` if the node has no abstract state (i.e. the node has not been visited or is unreachable)
 	 */
 	getAbstractState(nodeId: NodeId | undefined): Domain | undefined;
 
 	/**
 	 * Gets the origins of a variable use, i.e. the definitions the variable may be read from.
 	 * @param nodeId - The ID of the node to get the variable origins for
-	 * @returns The IDs of the definitions the variable may be read from
+	 * @returns      The IDs of the definitions the variable may be read from
 	 */
 	getVariableOrigins(nodeId: NodeId): readonly NodeId[];
 
@@ -67,7 +67,7 @@ export interface AbsintContext<Domain extends StateDomain> {
 	 * arguments to their values, expression lists to their last expression, and pipes and `if` expressions to their results.
 	 * @param node  - The node (or ID of the node) to get the inferred abstract value for
 	 * @param state - An optional abstract state used to resolve the inferred value (defaults to the state at the requested node)
-	 * @returns The inferred abstract value of the node, or `undefined` if no value was inferred for the node
+	 * @returns     The inferred abstract value of the node, or `undefined` if no value was inferred for the node
 	 */
 	getAbstractValue(node: RNodeWithParent | NodeId | undefined, state?: Domain): ValueDomain<Domain> | undefined;
 }
@@ -265,10 +265,10 @@ export interface AbstractSemantics<Domain extends StateDomain> {
 	/**
 	 * Handles a control flow edge that is only taken if a condition evaluates to a specific value,
 	 * allowing to refine the abstract state with the information gained from the taken branch.
-	 * @param state     - The abstract state to apply the semantics to
-	 * @param vertex    - The dataflow graph vertex of the condition of the branch
-	 * @param ctx       - The context of the abstract interpretation analysis
-	 * @param branch    - Whether the branch is taken if the condition evaluates to `TRUE` or to `FALSE`
+	 * @param state  - The abstract state to apply the semantics to
+	 * @param vertex - The dataflow graph vertex of the condition of the branch
+	 * @param ctx    - The context of the abstract interpretation analysis
+	 * @param branch - Whether the branch is taken if the condition evaluates to `TRUE` or to `FALSE`
 	 */
 	handleConditionBranch?(state: Domain, vertex: DataflowGraphVertexArgument, ctx: AbsintContext<Domain>, branch: typeof RTrue | typeof RFalse): void;
 }

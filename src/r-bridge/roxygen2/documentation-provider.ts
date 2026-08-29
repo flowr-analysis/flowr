@@ -44,8 +44,8 @@ const defaultRetriever = (c: RNode<ParentInformation>, a: AstIdMap) => parseRoxy
  * Given a normalized AST and a node ID, returns the Roxygen documentation (if any) associated with that node.
  * Please note that this does more than {@link parseRoxygenCommentsOfNode}, as it also traverses up the AST to find documentation.
  * Additionally, this function instruments the normalized AST to cache the parsed documentation for future queries.
- * @param idMap   - The AST ID map to use for looking up nodes and traversing the AST.
- * @param nodeId  - The ID of the node to get documentation for.
+ * @param  idMap  - The AST ID map to use for looking up nodes and traversing the AST.
+ * @param  nodeId - The ID of the node to get documentation for.
  * @useInstead {@link RNode.documentation}
  */
 export function getDocumentationOf(nodeId: NodeId, idMap: AstIdMap<ParentInformation & DocumentationInfo>): Documentation | undefined {

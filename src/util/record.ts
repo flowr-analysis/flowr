@@ -41,7 +41,7 @@ export const Record = {
 	},
 	/**
 	 * Transforms a record by applying a callback function to each key-value pair in the record.
-	 * @param object - The record that should be transformed.
+	 * @param object     - The record that should be transformed.
 	 * @param callbackfn - The callback function that transforms each key-value pair of the record.
 	 * @see {@link Record.mapPartial} for a version that works with partial records.
 	 */
@@ -52,7 +52,7 @@ export const Record = {
 	},
 	/**
 	 * Transforms a partial record by applying a callback function to each key-value pair in the record.
-	 * @param object - The record that should be transformed.
+	 * @param object     - The record that should be transformed.
 	 * @param callbackfn - The callback function that transforms each key-value pair of the record.
 	 * @see {@link Record.map} for a version that works with required records.
 	 */
@@ -65,7 +65,7 @@ export const Record = {
 	},
 	/**
 	 * Transforms a record by applying a callback function to each key in the record.
-	 * @param object - The record that should be transformed.
+	 * @param object     - The record that should be transformed.
 	 * @param callbackfn - The callback function that transforms each key of the record.
 	 * @see {@link Record.mapPartialKeys} for a version that works with partial records.
 	 */
@@ -74,7 +74,7 @@ export const Record = {
 	},
 	/**
 	 * Transforms a partial record by applying a callback function to each key in the record.
-	 * @param object - The record that should be transformed.
+	 * @param object     - The record that should be transformed.
 	 * @param callbackfn - The callback function that transforms each key of the record.
 	 * @see {@link Record.mapKeys} for a version that works with required records.
 	 */
@@ -83,7 +83,7 @@ export const Record = {
 	},
 	/**
 	 * Transforms a record by applying a callback function to each property value in the record.
-	 * @param object - The record that should be transformed.
+	 * @param object     - The record that should be transformed.
 	 * @param callbackfn - The callback function that transforms each property value of the record.
 	 * @see {@link Record.mapPartialProps} for a version that works with partial records.
 	 */
@@ -92,7 +92,7 @@ export const Record = {
 	},
 	/**
 	 * Transforms a partial record by applying a callback function to each property value in the record.
-	 * @param object - The record that should be transformed.
+	 * @param object     - The record that should be transformed.
 	 * @param callbackfn - The callback function that transforms each property value of the record.
 	 * @see {@link Record.mapProps} for a version that works with required records.
 	 */

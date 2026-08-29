@@ -69,7 +69,7 @@ function computeCompletions(line: string, config: FlowrConfig): [string[], strin
 	const startingNewArg = line.endsWith(' ');
 
 	// if we typed a command fully already, autocomplete the arguments
-	if(splitLine.length > 1 || startingNewArg){
+	if(splitLine.length > 1 || startingNewArg) {
 		const commandNameColon = replCompleterKeywords().find(k => splitLine[0] === k);
 		if(commandNameColon) {
 			let completions: string[] = [];
@@ -80,7 +80,7 @@ function computeCompletions(line: string, config: FlowrConfig): [string[], strin
 
 			const commandName = commandNameColon.slice(1);
 			const cmd = getCommand(commandName);
-			if(cmd?.script === true){
+			if(cmd?.script === true) {
 				// autocomplete script arguments
 				const options = scripts[commandName as keyof typeof scripts].options;
 				completions = completions.concat(getValidOptionsForCompletion(options, splitLine).map(o => `${o} `));
@@ -278,7 +278,7 @@ async function executeStatement(output: ReplOutput, statement: string, analyzer:
 			} else {
 				output.stderr(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
 			}
-		} catch(e){
+		} catch(e) {
 			reportFailure(e);
 		}
 	} else {

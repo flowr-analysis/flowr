@@ -23,7 +23,7 @@ import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
  *                                                           │               │        │  ┌───────────┐
  *                                                           └───────────────┘        └─▶│    Gas    │
  *                                                                                       └───────────┘
- *```
+ * ```
  *
  */
 export enum PluginType {

@@ -268,7 +268,7 @@ The builder provides a plethora of methods to configure the resulting analyzer i
 
 ${
 	Object.getOwnPropertyNames(FlowrAnalyzerBuilder.prototype).filter(c => c !== 'constructor' && !c.startsWith('build')).sort().map(
-		key => `- ${ctx.link( `${FlowrAnalyzerBuilder.name}::${key}`)}\\\n${ctx.doc(`${FlowrAnalyzerBuilder.name}::${key}`)}`
+		key => `- ${ctx.link(`${FlowrAnalyzerBuilder.name}::${key}`)}\\\n${ctx.doc(`${FlowrAnalyzerBuilder.name}::${key}`)}`
 	).join('\n')
 }
 
@@ -276,7 +276,7 @@ To build the analyzer after you have configured the builder, you can use one of 
 
 ${
 	Object.getOwnPropertyNames(FlowrAnalyzerBuilder.prototype).filter(c => c.startsWith('build')).sort().map(
-		key => `- ${ctx.link( `${FlowrAnalyzerBuilder.name}::${key}`)}\\\n${ctx.doc(`${FlowrAnalyzerBuilder.name}::${key}`)}`
+		key => `- ${ctx.link(`${FlowrAnalyzerBuilder.name}::${key}`)}\\\n${ctx.doc(`${FlowrAnalyzerBuilder.name}::${key}`)}`
 	).join('\n')
 }
 

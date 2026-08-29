@@ -212,10 +212,10 @@ export function deepClonePreserveUnclonable<T>(obj: T): T {
 
 /**
  * Compares the two passed objects deeply using the loose comparison system designed for the {@link FlowrFilter.MatchesEnrichment}. For this system in use, see {@link FlowrFilter.MatchesEnrichment} in use.
- * @param obj - The real object which we want to test against.
- * @param expected - The object to test the real value {@link obj} against, which should be an object in the shape of {@link obj} with each value to test for replaced by a {@link RegExp} or value to match against. The test will pass if the partial structure matches and the value at each {@link RegExp}, string or primitive location matches the corresponding regular expression. For array entries, {@link arrayMatch} determines whether every element in the array has to match the given expected value, or only some.
+ * @param obj        - The real object which we want to test against.
+ * @param expected   - The object to test the real value {@link obj} against, which should be an object in the shape of {@link obj} with each value to test for replaced by a {@link RegExp} or value to match against. The test will pass if the partial structure matches and the value at each {@link RegExp}, string or primitive location matches the corresponding regular expression. For array entries, {@link arrayMatch} determines whether every element in the array has to match the given expected value, or only some.
  * @param arrayMatch - For array entries, the expected value in {@link test} is compared against each array entry in the real value. This property determines whether every element in the array has to match, or only some. If unset, this defaults to `some`.
- * @param logger - The logger to use for trace debugging.
+ * @param logger     - The logger to use for trace debugging.
  */
 export function looselyCompareObjects(obj: Record<string, unknown>, expected: Record<string, unknown>, arrayMatch?: 'some' | 'every', logger?: Logger<ILogObj>): boolean {
 	expensiveTrace(logger, () => `Comparing ${JSON.stringify(obj)} against ${JSON.stringify(expected)}`);

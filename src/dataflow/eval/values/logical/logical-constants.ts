@@ -2,7 +2,8 @@ import { type Lift, type TernaryLogical, type ValueLogical, Bottom, Top } from '
 
 
 /**
- *
+ * Lifts a ternary logical into the {@link ValueLogical} the evaluator works on, `Top` included.
+ * @param log - the logical to lift
  */
 export function liftLogical(log: Lift<TernaryLogical>): ValueLogical {
 	if(log === Top) {

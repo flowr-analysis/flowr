@@ -126,8 +126,7 @@ indirect()
 					'tryCatch(x, error=function(e) {})',
 					emptyGraph()
 						.addEdge('1@tryCatch', '$10', EdgeType.Reads | EdgeType.Calls | EdgeType.Argument)
-						.addEdge('$10', '1@function', EdgeType.Reads | EdgeType.Calls)
-					,
+						.addEdge('$10', '1@function', EdgeType.Reads | EdgeType.Calls),
 					{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 				);
 				assertDataflow(label('Call edges for error with fn', ['exceptions-and-errors', 'call-normal']), ts,
@@ -135,8 +134,7 @@ indirect()
 					emptyGraph()
 						.addEdge('2@tryCatch', '$10', EdgeType.Reads | EdgeType.Calls | EdgeType.Argument)
 						.addEdge('$10', '2@f', EdgeType.Reads | EdgeType.Calls)
-						.addEdge('2@f', '1@function', EdgeType.Calls)
-					,
+						.addEdge('2@f', '1@function', EdgeType.Calls),
 					{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 				);
 				assertDataflow(label('Call edges with may built-in', ['exceptions-and-errors', 'call-normal', 'built-in']), ts,
@@ -145,8 +143,7 @@ indirect()
 						.addEdge('2@tryCatch', '$13', EdgeType.Reads | EdgeType.Calls | EdgeType.Argument)
 						.addEdge('$13', '2@sum', EdgeType.Reads | EdgeType.Calls)
 						.calls('2@sum', '1@function')
-						.addEdge('2@sum', NodeId.toBuiltIn('sum'), EdgeType.Calls | EdgeType.Reads)
-					,
+						.addEdge('2@sum', NodeId.toBuiltIn('sum'), EdgeType.Calls | EdgeType.Reads),
 					{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 				);
 			});

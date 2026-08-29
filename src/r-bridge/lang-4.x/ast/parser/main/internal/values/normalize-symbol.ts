@@ -11,7 +11,7 @@ import type { SourceRange } from '../../../../../../../util/range';
  * Normalize the given object as an R symbol (incorporating namespace information).
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param objs - The JSON object to extract the meta-information from
- * @returns The parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol.
+ * @returns    The parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol.
  * @see {@link RSymbol} for more information about R symbols.
  */
 export function tryNormalizeSymbol(data: NormalizerData, objs: readonly NamedJsonEntry[]): RSymbol | undefined {

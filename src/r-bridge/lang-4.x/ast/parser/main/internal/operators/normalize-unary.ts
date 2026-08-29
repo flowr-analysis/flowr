@@ -17,7 +17,7 @@ import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
  * @param data     - The data used by the parser (see {@link NormalizerData})
  * @param operator - The operator token
  * @param operand  - The operand of the unary operator
- * @returns The parsed {@link RUnaryOp} or `undefined` if the given construct is not a unary operator
+ * @returns        The parsed {@link RUnaryOp} or `undefined` if the given construct is not a unary operator
  */
 export function tryNormalizeUnary(data: NormalizerData, [operator, operand]: [NamedJsonEntry, NamedJsonEntry]): RNode | undefined {
 	expensiveTrace(parseLog, () => `unary op for ${operator.name} ${operand.name}`);

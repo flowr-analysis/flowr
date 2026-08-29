@@ -4,12 +4,12 @@
  * @lintIgnore use-instead
  */
 import type { DataflowGraph } from '../graph/graph';
+import { Fn } from './fn';
 import { FunctionArgument } from '../graph/graph';
 import { Dataflow } from '../graph/df-helper';
-import { MatchArgs } from '../graph/match-args';
 import { DfEdge, EdgeType } from '../graph/edge';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexInfo } from '../graph/vertex';
-import { Vertex } from '../graph/vertex';
+import { DfgVertex } from '../graph/vertex';
 import type { ArgProps, FnSig } from '../environments/built-in-props';
 import { ArgProp } from '../environments/built-in-props';
 import { callsIn, edgeTargets, reflectiveRolesOf, type BuiltInLookup } from './frame-reflection';
@@ -80,7 +80,7 @@ function makeState(graph: DataflowGraph, { ctx, maxDepth = DefaultDepth }: Argum
 
 function rolesOf(id: NodeId, state: RoleState): FunctionArgumentRoles {
 	const definition = state.graph.getVertex(id);
-	if(!Vertex.isFunctionDefinition(definition)) {
+	if(!DfgVertex.isFunctionDefinition(definition)) {
 		return {};
 	}
 	// an exit reached only on some path does not make the formal the result, so it is not followed
@@ -142,7 +142,7 @@ function sameValueAs(node: NodeId, state: RoleState): [branches: NodeId[], steps
 	const graph = state.graph;
 	const vertex = graph.getVertex(node);
 	const returns = takesApart(vertex) ? [] : edgeTargets(graph, node, EdgeType.Returns);
-	if(Vertex.isFunctionCall(vertex)) {
+	if(DfgVertex.isFunctionCall(vertex)) {
 		const alias = argumentsWith(vertex, state, ArgProp.Alias);
 		if(missesItsElse(vertex, state)) {
 			/* the other path hands back an invisible `NULL`, so what the branch yields is not what the call does */
@@ -151,10 +151,10 @@ function sameValueAs(node: NodeId, state: RoleState): [branches: NodeId[], steps
 		return returns.length > 1 ? [returns, alias] : [[], [...returns, ...alias]];
 	} else if(returns.length > 0) {
 		return returns.length > 1 ? [returns, []] : [[], returns];
-	} else if(Vertex.isUse(vertex)) {
+	} else if(DfgVertex.isUse(vertex)) {
 		const origins = (Dataflow.origin(graph, node) ?? []).map(o => o.id).filter(other => other !== node);
 		return origins.length > 1 ? [origins, []] : [[], origins];
-	} else if(Vertex.isVariableDefinition(vertex)) {
+	} else if(DfgVertex.isVariableDefinition(vertex)) {
 		/* what the name was given, a call included: what that yields in turn is for the next step to say */
 		return [[], edgeTargets(graph, node, EdgeType.DefinedBy)];
 	}
@@ -172,7 +172,7 @@ function missesItsElse(vertex: DataflowGraphVertexFunctionCall, state: RoleState
 
 /** Whether the call hands back a part of what it was given (`x$a`, `x[1]`, `pkg::name`) rather than the thing. */
 function takesApart(vertex: DataflowGraphVertexInfo | undefined): boolean {
-	return Vertex.isFunctionCall(vertex)
+	return DfgVertex.isFunctionCall(vertex)
 		&& (vertex.origin.includes(BuiltInProcName.Access) || vertex.origin.includes(BuiltInProcName.NamespaceAccess));
 }
 
@@ -280,7 +280,7 @@ function matchArgumentProps(vertex: DataflowGraphVertexFunctionCall, state: Role
 	if(sig === undefined) {
 		return [];
 	}
-	const bound = MatchArgs.toSpec(vertex.args, Object.fromEntries(sig.map(([formal]) => [formal, formal])));
+	const bound = Fn.call.match.toSpec(vertex.args, Object.fromEntries(sig.map(([formal]) => [formal, formal])));
 	/* a named argument is bound by the node naming it, while what the call was handed is the value below it */
 	const values = new Map(vertex.args.filter(FunctionArgument.isNamed).map(a => [a.nodeId, a.valueId]));
 	const found: [ArgProps, NodeId][] = [];

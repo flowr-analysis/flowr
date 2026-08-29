@@ -1,4 +1,5 @@
 import { DefaultMap } from '../../util/collections/defaultmap';
+import { Fn } from '../fn/fn';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isNotUndefined } from '../../util/assert';
@@ -14,12 +15,11 @@ import { dataflowLogger } from '../logger';
 import { DfEdge, EdgeType } from '../graph/edge';
 import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, VertexType } from '../graph/vertex';
 import type { REnvironmentInformation } from '../environments/environment';
-import { MatchArgs } from '../graph/match-args';
 import type { ExitPoint } from '../info';
 import { negateControlDependency, doesExitPointPropagateCalls } from '../info';
 import { UnnamedFunctionCallPrefix } from './process/functions/call/unnamed-call-handling';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
-import { Vertex } from '../graph/vertex';
+import { DfgVertex } from '../graph/vertex';
 import { Resolve } from '../environments/resolve-helper';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -84,21 +84,21 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
 }
 
 /**
- * {@link MatchArgs.onCall|Matches} the arguments to the parameters and links them in the graph,
+ * {@link Fn.call.match.onCall|Matches} the arguments to the parameters and links them in the graph,
  * returning the resolved map from argument ids to parameter ids.
- * @useInstead {@link MatchArgs.onCallAndLink}
+ * @useInstead {@link Fn.call.match.onCallAndLink}
  */
 export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: readonly RParameter<ParentInformation>[], graph: DataflowGraph): Map<NodeId, NodeId> {
-	return MatchArgs.onCallAndLink(args, params, graph);
+	return Fn.call.match.onCallAndLink(args, params, graph);
 }
 
 /**
- * {@link MatchArgs.toSpec|Matches} the arguments against a parameter specification, returning the
+ * {@link Fn.call.match.toSpec|Matches} the arguments against a parameter specification, returning the
  * arguments bound to each target.
- * @useInstead {@link MatchArgs.toSpec}
+ * @useInstead {@link Fn.call.match.toSpec}
  */
 export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[], params: Record<string, Targets>): Map<Targets, NodeId[]> {
-	return MatchArgs.toSpec(args, params);
+	return Fn.call.match.toSpec(args, params);
 }
 
 /**
@@ -144,7 +144,7 @@ export function linkFunctionCallWithSingleTarget(
 							graph.addEdge(id, v, EdgeType.Calls);
 							graph.addEdge(ingoing.nodeId, v, EdgeType.Calls);
 							const vInfo = graph.getVertex(v);
-							if(vInfo && Vertex.isFunctionDefinition(vInfo)) {
+							if(vInfo && DfgVertex.isFunctionDefinition(vInfo)) {
 								vInfo.mode ??= [];
 								if(!vInfo.mode.includes('s7')) {
 									vInfo.mode.push('s7');
@@ -258,7 +258,7 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 
 	const [info, outgoingEdges] = callVertex;
 
-	if(!Vertex.isFunctionCall(info)) {
+	if(!DfgVertex.isFunctionCall(info)) {
 		return [];
 	}
 
@@ -337,7 +337,7 @@ export function getAllLinkedFunctionDefinitions(
 			continue;
 		}
 
-		const isSkipType = Vertex.isFunctionCall(vertex) || (Vertex.isVariableDefinition(vertex) && vertex.par);
+		const isSkipType = DfgVertex.isFunctionCall(vertex) || (DfgVertex.isVariableDefinition(vertex) && vertex.par);
 		let hasReturnEdge = false;
 		let followTargets: NodeId[] | undefined;
 
@@ -365,7 +365,7 @@ export function getAllLinkedFunctionDefinitions(
 /**
  * Links every name in the expression rooted at `expr` against `environment`, as if it were written there, and
  * hands back what stays unresolved. This is how an expression that was captured elsewhere is read here.
- * @useInstead {@link Quoted.evaluateIn}
+ * @useInstead {@link Fn.call.quoted.evaluateIn}
  */
 export function linkExpressionIn<Info>(this: void, graph: DataflowGraph, expr: NodeId, environment: REnvironmentInformation, idMap: AstIdMap<Info & ParentInformation>): readonly IdentifierReference[] {
 	const node = idMap.get(expr);

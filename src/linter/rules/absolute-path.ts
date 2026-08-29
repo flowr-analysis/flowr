@@ -11,7 +11,7 @@ import { WriteFunctions } from '../../queries/catalog/dependencies-query/functio
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
-import { type DataflowGraphVertexFunctionCall, Vertex, VertexType } from '../../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { QueryResults } from '../../queries/query';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
@@ -200,7 +200,7 @@ export const ABSOLUTE_PATH = {
 					}
 				} else {
 					const dfNode = dataflow.graph.getVertex(node.info.id);
-					if(Vertex.isFunctionCall(dfNode)) {
+					if(DfgVertex.isFunctionCall(dfNode)) {
 						const handler = dfNode.name ? PathFunctions.get(dfNode.name) : undefined;
 						const strings = handler ? handler(dataflow.graph, dfNode, data.inspectContext()) : [];
 						if(strings) {

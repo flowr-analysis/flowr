@@ -8,7 +8,7 @@ import { computeCallGraphSummaries, propagateTransitiveSideEffects } from '../in
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { DataflowGraphVertexInfo } from './vertex';
-import { Vertex } from './vertex';
+import { DfgVertex } from './vertex';
 import { Identifier } from '../environments/identifier';
 import { Resolve } from '../environments/resolve-helper';
 import { isBaseRPackage } from '../../util/r-base-packages';
@@ -86,7 +86,7 @@ export const Dataflow = {
 	packagesOf(this: void, nodes: Iterable<NodeId>, graph: DataflowGraph, includeBaseR = false): Set<string> {
 		const packages = new Set<string>();
 		for(const id of nodes) {
-			if(!Vertex.isFunctionCall(graph.getVertex(id))) {
+			if(!DfgVertex.isFunctionCall(graph.getVertex(id))) {
 				continue;
 			}
 			const qualified = Dataflow.qualify(id, graph, includeBaseR);
@@ -121,7 +121,7 @@ export const Dataflow = {
 	 */
 	hasComputedArguments(this: void, id: NodeId, graph: DataflowGraph): boolean {
 		for(const [target] of graph.edgesFrom(id)) {
-			if(!NodeId.isBuiltIn(target) && !Vertex.isValue(graph.getVertex(target))) {
+			if(!NodeId.isBuiltIn(target) && !DfgVertex.isValue(graph.getVertex(target))) {
 				return true;
 			}
 		}
@@ -296,7 +296,7 @@ export const Dataflow = {
 /** both qualifications of a call from a single origin resolution, as the base-R step only adds to what the origins gave */
 const resolveQualification: CallQualifier = (graph, id, vertex) => {
 	const origins = getOriginInDfg(graph, id);
-	const name = Vertex.isFunctionCall(vertex) ? vertex.name : undefined;
+	const name = DfgVertex.isFunctionCall(vertex) ? vertex.name : undefined;
 	const bare = Identifier.toQualified(origins, name, false);
 	return [bare, bare ?? Identifier.toQualified(origins, name, true)];
 };

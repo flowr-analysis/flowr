@@ -19,11 +19,27 @@ export type SlicingCriterion = `${number}:${number}${FileFilterSuffix}` | `${num
 	| `${number}^${FileFilterSuffix}` | `${number}@${string}` | `$${NodeId | number}`;
 
 /**
- * The helper object associated with {@link SlicingCriterion} which makes it easy
- * to parse, validate, and resolve slicing criteria.
+ * The helper object for slicing criteria: parsing, validating and resolving them, one
+ * ({@link SlicingCriterion.parse}) or several ({@link SlicingCriterion.decodeAll}) at a time.
  */
 export const SlicingCriterion = {
 	name: 'SlicingCriterion',
+	/**
+	 * Decodes several criteria to their node ids at once.
+	 * @throws CriteriaParseError if any of the criteria can not be resolved
+	 * @see {@link SlicingCriterion.convertAll} - which keeps a criterion it cannot resolve
+	 */
+	decodeAll(this: void, criteria: SlicingCriteria, decorated: AstIdMap): DecodedCriteria {
+		return criteria.map(l => ({ criterion: l, id: SlicingCriterion.parse(l, decorated) }));
+	},
+	/**
+	 * Converts several criteria to their id in the AST if possible, keeping the original criterion where it
+	 * cannot be resolved.
+	 * @see {@link SlicingCriterion.decodeAll} - which throws instead
+	 */
+	convertAll(this: void, criteria: SlicingCriteria, decorated: AstIdMap): NodeId[] {
+		return criteria.map(l => SlicingCriterion.tryParse(l, decorated) ?? l);
+	},
 	/**
 	 * Checks whether a value has a valid slicing criterion syntax.
 	 * This does not check whether the slicing criterion exists (represents a valid node ID).
@@ -107,28 +123,6 @@ export interface DecodedCriterion {
 }
 
 export type DecodedCriteria = ReadonlyArray<DecodedCriterion>;
-
-/**
- * The helper object associated with {@link SlicingCriteria} which makes it easy to parse, validate, and resolve slicing criteria.
- */
-export const SlicingCriteria = {
-	name: 'SlicingCriteria',
-	/**
-	 * Decodes all slicing criteria to their corresponding node ids
-	 * @throws CriteriaParseError if any of the criteria can not be resolved
-	 * @see {@link SlicingCriteria.convertAll}
-	 */
-	decodeAll(this: void, criteria: SlicingCriteria, decorated: AstIdMap): DecodedCriteria {
-		return criteria.map(l => ({ criterion: l, id: SlicingCriterion.parse(l, decorated) }));
-	},
-	/**
-	 * Converts all criteria to their id in the AST if possible, this keeps the original criterion if it can not be resolved.
-	 * @see {@link SlicingCriteria.decodeAll}
-	 */
-	convertAll(this: void, criteria: SlicingCriteria, decorated: AstIdMap): NodeId[] {
-		return criteria.map(l => SlicingCriterion.tryParse(l, decorated) ?? l);
-	}
-} as const;
 
 /**
  * Thrown if the given slicing criteria can not be found

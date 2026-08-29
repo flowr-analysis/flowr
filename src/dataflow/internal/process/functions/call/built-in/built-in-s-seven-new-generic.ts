@@ -1,5 +1,3 @@
-import { MatchArgs } from '../../../../../graph/match-args';
-import { FnSig } from '../../../../../environments/built-in-props';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -23,7 +21,7 @@ import { isNotUndefined } from '../../../../../../util/assert';
 import type { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { Identifier } from '../../../../../environments/identifier';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
-import { VertexType, Vertex } from '../../../../../graph/vertex';
+import { VertexType, DfgVertex } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import type { ClassDeclarationConfig } from '../../../../../fn/class-declaration';
@@ -64,7 +62,7 @@ export function processS7NewGeneric<OtherInfo>(
 	}
 	params[config.args.fun] = 'fun';
 	params['...'] = '...';
-	const argMaps = MatchArgs.toSpec(convertFnArguments(args), params);
+	const argMaps = Fn.call.match.toSpec(convertFnArguments(args), params);
 	const genName = unpackArg(RArgument.getWithId(args, argMaps.get('name')?.[0]));
 	if(!genName) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
@@ -85,12 +83,12 @@ export function processS7NewGeneric<OtherInfo>(
 		effectiveArgs.push(newFun[0]);
 		funArg = newFun[1];
 	}
-	const info = processKnownFunctionCall({ name, sig: FnSig.every, args: effectiveArgs, rootId, data, origin: BuiltInProcName.S7NewGeneric }).information;
+	const info = processKnownFunctionCall({ name, sig: Fn.call.signature.every, args: effectiveArgs, rootId, data, origin: BuiltInProcName.S7NewGeneric }).information;
 
 	info.graph.addEdge(rootId, funArg, EdgeType.Returns);
 	info.entryPoint = funArg;
 	const fArg = info.graph.getVertex(funArg);
-	if(Vertex.isFunctionDefinition(fArg)) {
+	if(DfgVertex.isFunctionDefinition(fArg)) {
 		fArg.mode ??= ['s4', 's7'];
 	}
 	if(config.binds) {
@@ -120,11 +118,11 @@ export function processMakeConstructor<OtherInfo>(
 ): DataflowInformation {
 	// synthesise `function(...) S7_dispatch()` and make the call return it
 	const [funArg, funId]: [RArgument<OtherInfo & ParentInformation>, NodeId] = makeS7DispatchFDef(name, [], rootId, args.length, data.completeAst.idMap);
-	const info = processKnownFunctionCall({ name, sig: FnSig.every, args: [...args, funArg], rootId, data, origin: BuiltInProcName.S7MakeConstructor }).information;
+	const info = processKnownFunctionCall({ name, sig: Fn.call.signature.every, args: [...args, funArg], rootId, data, origin: BuiltInProcName.S7MakeConstructor }).information;
 	info.graph.addEdge(rootId, funId, EdgeType.Returns);
 	info.entryPoint = funId;
 	const fArg = info.graph.getVertex(funId);
-	if(Vertex.isFunctionDefinition(fArg) && config?.mode) {
+	if(DfgVertex.isFunctionDefinition(fArg) && config?.mode) {
 		fArg.mode ??= config.mode.slice();   // copy: mode is mutated in place later, config.mode is shared
 	}
 	if(config?.wrapIndex !== undefined) {
@@ -146,7 +144,7 @@ export function attachClassDeclaration<OtherInfo>(
 		return;
 	}
 	const vertex = info.graph.getVertex(rootId);
-	if(Vertex.isFunctionCall(vertex)) {
+	if(DfgVertex.isFunctionCall(vertex)) {
 		vertex.classDecl = Fn.classes.of(config, args);
 	}
 }
@@ -168,7 +166,7 @@ function linkWrappedFunction<OtherInfo>(
 		return;
 	}
 	const vertex = info.graph.getVertex(resolved.functionId);
-	if(!Vertex.isUse(vertex)) {
+	if(!DfgVertex.isUse(vertex)) {
 		return;
 	}
 	info.graph.updateToFunctionCall({

@@ -2,7 +2,7 @@ import { NodeValue } from '../dataflow/eval/resolve/node-value';
 import { Resolve } from '../dataflow/environments/resolve-helper';
 import { isValue } from '../dataflow/eval/values/r-value';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import { Vertex } from '../dataflow/graph/vertex';
+import { DfgVertex } from '../dataflow/graph/vertex';
 import { type ControlDependency, happensInEveryBranch } from '../dataflow/info';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -33,7 +33,7 @@ export function onlyLoopsOnce(loop: NodeId, dataflow: DataflowGraph, controlflow
 		return undefined;
 	}
 
-	guard(Vertex.isFunctionCall(vertex), 'invalid vertex type for onlyLoopsOnce');
+	guard(DfgVertex.isFunctionCall(vertex), 'invalid vertex type for onlyLoopsOnce');
 	guard(vertex.origin !== 'unnamed' && loopyFunctions.has(vertex.origin[0]), 'onlyLoopsOnce can only be called with loops');
 
 	// 1. In case of for loop, check if vector has only one element

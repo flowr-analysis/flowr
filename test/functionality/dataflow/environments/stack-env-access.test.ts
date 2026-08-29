@@ -6,7 +6,7 @@ import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/defa
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { DfEdge, EdgeType } from '../../../../src/dataflow/graph/edge';
-import { Vertex } from '../../../../src/dataflow/graph/vertex';
+import { DfgVertex } from '../../../../src/dataflow/graph/vertex';
 import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
 
 describe('access on stack environments', withTreeSitter(ts => {
@@ -17,7 +17,7 @@ describe('access on stack environments', withTreeSitter(ts => {
 			const { idMap } = analysis.normalize;
 			const graph = analysis.dataflow.graph;
 			const got = [...graph.edgesFrom(SlicingCriterion.parse(at, idMap))]
-				.filter(([target, e]) => DfEdge.includesType(e, EdgeType.Reads) && Vertex.isVariableDefinition(graph.getVertex(target)))
+				.filter(([target, e]) => DfEdge.includesType(e, EdgeType.Reads) && DfgVertex.isVariableDefinition(graph.getVertex(target)))
 				.map(([target]) => String(target)).sort();
 			assert.deepStrictEqual(got, expected.map(e => String(SlicingCriterion.parse(e, idMap))).sort(),
 				`${code}\n${Dataflow.visualize.mermaid.url(graph)}`);

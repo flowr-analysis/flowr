@@ -13,7 +13,7 @@ import { RForLoop } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-for-loop'
 import type { DataflowGraph } from '../../graph/graph';
 import { onReplacementOperator, type ReplacementOperatorHandlerArgs } from '../../graph/unknown-replacement';
 import { onUnknownSideEffect } from '../../graph/unknown-side-effect';
-import { Vertex, VertexType } from '../../graph/vertex';
+import { DfgVertex, VertexType } from '../../graph/vertex';
 import { valueFromRNodeConstant, valueFromTsValue, valueSetGuard } from '../values/general';
 import { Bottom, isTop, isValue, type Lift, Top, type Value, type ValueSet } from '../values/r-value';
 import { setFrom, setOf } from '../values/sets/set-constants';
@@ -56,7 +56,7 @@ export interface ResolveInfo {
 function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
 	const vertex = dataflow.getVertex(sourceId);
 	/* the lexeme of an infix call like `a %% b` is the whole expression, so we prefer the effective name of the vertex */
-	const identifier = Vertex.isFunctionCall(vertex) ? vertex.name : NodeId.recoverName(sourceId, dataflow.idMap);
+	const identifier = DfgVertex.isFunctionCall(vertex) ? vertex.name : NodeId.recoverName(sourceId, dataflow.idMap);
 	if(identifier === undefined) {
 		return undefined;
 	}
@@ -121,7 +121,7 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 		const info = dataflow.getVertex(sourceId);
 		if(info === undefined) {
 			return undefined;
-		} else if(Vertex.isFunctionDefinition(info)) {
+		} else if(DfgVertex.isFunctionDefinition(info)) {
 			definitions.add(sourceId);
 			continue;
 		}
@@ -487,7 +487,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 	const values: Set<Value> = new Set<Value>(folded);
 	for(const id of resultIds) {
 		const vertex = graph.getVertex(id);
-		if(Vertex.isValue(vertex) && vertex.value !== undefined) {
+		if(DfgVertex.isValue(vertex) && vertex.value !== undefined) {
 			values.add(vertex.value);
 			continue;
 		}

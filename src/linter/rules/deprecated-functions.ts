@@ -1,10 +1,11 @@
 import type { Range } from 'semver';
+import { Fn } from '../../dataflow/fn/fn';
 import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { Vertex, VertexType } from '../../dataflow/graph/vertex';
+import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { uniqueArray } from '../../util/collections/arrays';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
@@ -24,7 +25,7 @@ import { hasArgumentValue } from './function-finder-util';
 import { Ternary } from '../../util/logic';
 import type  { KnownParser } from '../../r-bridge/parser';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
-import { CallProps, SemanticCallTag } from '../../dataflow/environments/built-in-props';
+import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 
 /**
@@ -221,7 +222,7 @@ function certaintyOf(target: Identifier, owners: readonly (BrandedNamespace | un
 
 function functionListFromBuiltinConfig(): Identifier[] {
 	return DefaultBuiltinConfig.filter(def => def.type === 'function'
-			&& CallProps.hasAny(def.config, SemanticCallTag.Deprecated))
+			&& Fn.call.props.hasAny(def.config, SemanticCallTag.Deprecated))
 		.flatMap(def => def.names);
 }
 
@@ -445,7 +446,7 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
 	// Deprecated Argument: If `whenArgs` is provided, only mark deprecated arguments
 	if(info.whenArgs) {
 		const vertex = dataflow.getVertex(candidate.node.info.id);
-		if(vertex === undefined || !Vertex.isFunctionCall(vertex)) {
+		if(vertex === undefined || !DfgVertex.isFunctionCall(vertex)) {
 			return results;
 		}
 

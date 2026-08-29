@@ -6,7 +6,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Ternary } from '../util/logic';
 import type { CfgPassInfo } from './cfg-simplification';
 import { SemanticCfgGuidedVisitor, type OnCall } from './semantic-cfg-guided-visitor';
-import { Vertex, type DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
+import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import { FunctionArgument } from '../dataflow/graph/graph';
 import { NodeValue } from '../dataflow/eval/resolve/node-value';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
@@ -160,7 +160,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		let result = false;
 		for(let node = this.getNormalizedAst(id)?.info.parent; node !== undefined;) {
 			const vertex = this.getDataflowGraph(node);
-			if(Vertex.isFunctionCall(vertex) && Array.isArray(vertex.origin) && vertex.origin.includes(BuiltInProcName.Try)) {
+			if(DfgVertex.isFunctionCall(vertex) && Array.isArray(vertex.origin) && vertex.origin.includes(BuiltInProcName.Try)) {
 				result = true;
 				break;
 			}
@@ -172,7 +172,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 
 	private switchArmDefinitelyNotTaken(cause: NodeId, from: NodeId): boolean {
 		const v = this.config.dfg.getVertex(cause);
-		if(!Vertex.isFunctionCall(v) || !v.origin.includes(BuiltInProcName.Switch)) {
+		if(!DfgVertex.isFunctionCall(v) || !v.origin.includes(BuiltInProcName.Switch)) {
 			return false;
 		}
 		const selected = this.selectedSwitchArm(v);

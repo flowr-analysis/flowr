@@ -26,7 +26,8 @@ import type {
 	SlicerStatsDfShape
 } from './stats/stats';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { SlicingCriteria } from '../slicing/criterion/parse';
+import type { SlicingCriteria } from '../slicing/criterion/parse';
+import { SlicingCriterion } from '../slicing/criterion/parse';
 import { createSlicePipeline, type DEFAULT_SLICING_PIPELINE, type TREE_SITTER_SLICING_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import { retrieveNumberOfRTokensOfLastParse, type RParseRequestFromFile, type RParseRequestFromText } from '../r-bridge/retriever';
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
@@ -38,7 +39,7 @@ import type { SyntaxNode, Tree } from 'web-tree-sitter';
 import { RShell } from '../r-bridge/shell';
 import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import { Vertex } from '../dataflow/graph/vertex';
+import { DfgVertex } from '../dataflow/graph/vertex';
 import { ControlFlowEdgeTypes, DfEdge } from '../dataflow/graph/edge';
 import { NoEdges } from '../dataflow/graph/graph';
 import { equidistantSampling, arraySum } from '../util/collections/arrays';
@@ -219,9 +220,9 @@ export class BenchmarkSlicer {
 					numberOfEdges++;
 				}
 			}
-			if(Vertex.isFunctionCall(info)) {
+			if(DfgVertex.isFunctionCall(info)) {
 				numberOfCalls++;
-			} else if(Vertex.isFunctionDefinition(info)) {
+			} else if(DfgVertex.isFunctionDefinition(info)) {
 				numberOfDefinitions++;
 			}
 		}
@@ -299,7 +300,7 @@ export class BenchmarkSlicer {
 
 
 		const slicedOutput = await this.measureSliceStep('slice', measurements, 'static slicing');
-		const decodedCriteria = SlicingCriteria.decodeAll(slicingCriteria, (this.normalizedAst as NormalizedAst).idMap);
+		const decodedCriteria = SlicingCriterion.decodeAll(slicingCriteria, (this.normalizedAst as NormalizedAst).idMap);
 		stats.slicingCriteria = Array.from(decodedCriteria);
 
 		stats.reconstructedCode = await this.measureSliceStep('reconstruct', measurements, 'reconstruct code');

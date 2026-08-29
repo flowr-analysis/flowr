@@ -6,7 +6,7 @@ import { createSlicePipeline } from '../../../../../src/core/steps/pipeline/defa
 import { deterministicCountingIdGenerator } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNode } from '../../../../../src/r-bridge/lang-4.x/ast/model/model';
 import { reconstructToCode } from '../../../../../src/reconstruct/reconstruct';
-import { SourceInlineMap } from '../../../../../src/reconstruct/inline/source-inline-map';
+import { buildSourceInlineMap } from '../../../../../src/reconstruct/inline/source-inline-map';
 import type { SlicingCriteria } from '../../../../../src/slicing/criterion/parse';
 import type { ParentInformation } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
@@ -28,7 +28,7 @@ async function run(input: string, files: FlowrInlineTextFile[], criteria: Slicin
 		context,
 		criterion: criteria
 	}).allRemainingSteps();
-	const map = SourceInlineMap.build(res.normalize, res.dataflow.graph);
+	const map = buildSourceInlineMap(res.normalize, res.dataflow.graph);
 	const inlined = reconstructToCode(res.normalize, {
 		nodes:         res.slice.result,
 		inlineSources: true,
@@ -59,8 +59,8 @@ describe('inline source()', { concurrent: false }, () => {
 	});
 	afterAll(() => { /* nothing to clean up */ });
 
-	test('SourceInlineMap.build links the source() call to the sourced file', async() => {
-		const { res, map } = await run('source("a")\ncat(N)', [ new FlowrInlineTextFile('a', 'N <- 9') ], ['2@N']);
+	test('buildSourceInlineMap links the source() call to the sourced file', async() => {
+		const { res, map } = await run('source("a")\ncat(N)', [new FlowrInlineTextFile('a', 'N <- 9')], ['2@N']);
 		expect(res.normalize.ast.files.length).toBe(2);
 		expect(map.size).toBe(1);
 		// the single mapping must point at file index 1 (the sourced file)
@@ -71,7 +71,7 @@ describe('inline source()', { concurrent: false }, () => {
 	});
 
 	test('single inline splices the sourced definition and drops the source() call', async() => {
-		const { inlined } = await run('source("a")\ncat(N)', [ new FlowrInlineTextFile('a', 'N <- 9') ], ['2@N']);
+		const { inlined } = await run('source("a")\ncat(N)', [new FlowrInlineTextFile('a', 'N <- 9')], ['2@N']);
 		const code = inlined.code as string;
 		expect(code).toContain('N <- 9');
 		expect(code).not.toContain('source(');
@@ -151,7 +151,7 @@ describe('inline source()', { concurrent: false }, () => {
 	});
 
 	test('respects the exact reconstruction for a plain single inline', async() => {
-		const { inlined } = await run('source("a")\ncat(N)', [ new FlowrInlineTextFile('a', 'N <- 9') ], ['2@N']);
+		const { inlined } = await run('source("a")\ncat(N)', [new FlowrInlineTextFile('a', 'N <- 9')], ['2@N']);
 		assert.strictEqual(inlined.code, 'N <- 9\nN');
 	});
 
@@ -166,7 +166,7 @@ describe('inline source()', { concurrent: false }, () => {
 	});
 
 	test('the reconstruct pipeline step inlines sources when the inlineSources input is set (backward)', async() => {
-		const reconstruct = await runViaPipeline('source("a")\ncat(N)', [ new FlowrInlineTextFile('a', 'N <- 9') ], ['2@N']);
+		const reconstruct = await runViaPipeline('source("a")\ncat(N)', [new FlowrInlineTextFile('a', 'N <- 9')], ['2@N']);
 		const code = reconstruct.code as string;
 		expect(code).toContain('N <- 9');
 		expect(code).not.toContain('source(');

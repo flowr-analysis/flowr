@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-24, 13:26:44 UTC (v2.14.3), please do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-29, 14:26:35 UTC (v2.15.8), please do not edit directly._
 <h2 id="undefined-symbol">Undefined Symbol&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect bugs in the code. Everything that affects the semantics of the code, such as incorrect function calls, wrong arguments, etc. is to be considered a bug. Otherwise, it may be a smell or a style issue."><a href='#bug'>![bug](https://img.shields.io/badge/bug-red) </a></span> <span title="This marks rules which are currently considered experimental, _not_ that they detect experimental code."><a href='#experimental'>![experimental](https://img.shields.io/badge/experimental-teal) </a></span>
@@ -7,7 +7,7 @@ _<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter
 This rule is a `over-approximative` rule.
  
 Flags functions and variables that are neither defined locally, a base R builtin, nor exported by a loaded package.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L102">src/linter/rules/undefined-symbol.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L95">src/linter/rules/undefined-symbol.ts</a>._
 
 
 ### Configuration
@@ -15,12 +15,12 @@ _This linting rule is implemented in <a href="https://github.com/flowr-analysis/
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `undefined-symbol` rule accepts the following configuration options:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L43"><code><span title="flag names used in a function-call position that cannot be resolved (default true)">checkFunctions</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L36"><code><span title="flag names used in a function-call position that cannot be resolved (default true)">checkFunctions</span></code></a>\
 flag names used in a function-call position that cannot be resolved (default `true`)
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L54"><code><span title="flag unresolved symbols used as [/[[ subscripts (default false). Off by default to mute data.table's DT[i, j, by] column masking, which flowR cannot distinguish from ordinary indexing.">checkSubscripts</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L47"><code><span title="flag unresolved symbols used as [/[[ subscripts (default false). Off by default to mute data.table's DT[i, j, by] column masking, which flowR cannot distinguish from ordinary indexing.">checkSubscripts</span></code></a>\
 flag unresolved symbols used as `[`/`[[` subscripts (default `false`). Off by default to mute
 `data.table`'s `DT[i, j, by]` column masking, which flowR cannot distinguish from ordinary indexing.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L49"><code><span title="flag names used as a variable read that cannot be resolved (default true). Formulas and data-masking (dplyr/tidyr/ggplot, subset/with) are recognised via flowR's dataflow, so this is precise; residual false positives are possible in dynamic eval/attach.">checkVariables</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/undefined-symbol.ts#L42"><code><span title="flag names used as a variable read that cannot be resolved (default true). Formulas and data-masking (dplyr/tidyr/ggplot, subset/with) are recognised via flowR's dataflow, so this is precise; residual false positives are possible in dynamic eval/attach.">checkVariables</span></code></a>\
 flag names used as a variable read that cannot be resolved (default `true`). Formulas and data-masking
 (dplyr/tidyr/ggplot, `subset`/`with`) are recognised via flowR's dataflow, so this is precise; residual
 false positives are possible in dynamic `eval`/`attach`.
@@ -49,16 +49,16 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (32 ms)\
+Query: **linter** (5 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ uncertain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Undefined function `undefined_helper` at 1.1-20\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalFunctionCalls: 1, totalVariableUses: 0, suppressed: 0, searchTimeMs: 0, processTimeMs: 32\
-_All queries together required ≈32 ms (1ms accuracy, total 33 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalFunctionCalls: 1, totalVariableUses: 0, suppressed: 0, searchTimeMs: 0, processTimeMs: 5\
+_All queries together required ≈5 ms (1ms accuracy, total 5 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _32.7 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _5.5 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -96,16 +96,16 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
             "subscript": 0
           },
           "searchTimeMs": 0,
-          "processTimeMs": 32
+          "processTimeMs": 5
         }
       }
     },
     ".meta": {
-      "timing": 32
+      "timing": 5
     }
   },
   ".meta": {
-    "timing": 32
+    "timing": 5
   }
 }
 ```

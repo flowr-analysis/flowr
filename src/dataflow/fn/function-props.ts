@@ -4,11 +4,12 @@
  * @lintIgnore use-instead
  */
 import type { DataflowGraph } from '../graph/graph';
+import { Fn } from './fn';
 import { EdgeType } from '../graph/edge';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
-import { Vertex } from '../graph/vertex';
+import { DfgVertex } from '../graph/vertex';
 import type { BuiltInFnInfo, StatedProps } from '../environments/built-in-props';
-import { ArgProp, CallProp, CallProps, DispatchCallees, FnSig as Sig, PropagatedProps } from '../environments/built-in-props';
+import { ArgProp, CallProp, DispatchCallees, FnSig as Sig, PropagatedProps } from '../environments/built-in-props';
 import { builtInLookup } from '../environments/query-fn-props';
 import { Identifier } from '../environments/identifier';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
@@ -65,7 +66,7 @@ function callProps(definitions: readonly NodeId[], graph: DataflowGraph, strict:
 			continue;
 		}
 		const own = propsOf(id, state);
-		props.set(id, strict[id]?.strict === Ternary.Always ? CallProps.join(own.stated, { props: CallProp.Strict }) : own.stated);
+		props.set(id, strict[id]?.strict === Ternary.Always ? Fn.call.props.join(own.stated, { props: CallProp.Strict }) : own.stated);
 		callees.set(id, own.callees);
 		toVisit.push(...own.callees);
 	}
@@ -73,7 +74,7 @@ function callProps(definitions: readonly NodeId[], graph: DataflowGraph, strict:
 	const all: Record<NodeId, StatedProps> = {};
 	for(const id of definitions) {
 		const found = props.get(id);
-		if(CallProps.hasAny(found)) {
+		if(Fn.call.props.hasAny(found)) {
 			all[id] = found as StatedProps;
 		}
 	}
@@ -86,7 +87,7 @@ function propagateOverCalls(props: Map<NodeId, StatedProps>, callees: ReadonlyMa
 		const before = props.get(id);
 		let grown = before ?? {};
 		for(const callee of callees.get(id) ?? []) {
-			grown = CallProps.join(grown, CallProps.filter(props.get(callee), PropagatedProps));
+			grown = Fn.call.props.join(grown, Fn.call.props.filter(props.get(callee), PropagatedProps));
 		}
 		/* joining only ever adds, so nothing new means the same bits and the same number of tags */
 		if((grown.props ?? 0) === (before?.props ?? 0) && (grown.tags?.length ?? 0) === (before?.tags?.length ?? 0)) {
@@ -129,32 +130,32 @@ interface OwnProps {
 
 function propsOf(id: NodeId, state: LookupState): OwnProps {
 	const definition = state.graph.getVertex(id);
-	if(!Vertex.isFunctionDefinition(definition)) {
+	if(!DfgVertex.isFunctionDefinition(definition)) {
 		return { stated: {}, callees: [] };
 	}
 	let stated: StatedProps = {};
 	const callees: NodeId[] = [];
 	for(const [node, vertex] of callsIn(definition, state.graph)) {
 		const info = state.info(vertex.name);
-		const carried = CallProps.filter(info, PropagatedProps);
-		stated = CallProps.join(stated, {
+		const carried = Fn.call.props.filter(info, PropagatedProps);
+		stated = Fn.call.props.join(stated, {
 			props: (carried.props ?? 0) & (bindsOutside(vertex, info) ? ~0 : ~CallProp.Scope),
 			tags:  carried.tags
 		});
 		if(DispatchCallees.has(Identifier.getName(vertex.name))) {
-			stated = CallProps.join(stated, { props: CallProp.Generic });
+			stated = Fn.call.props.join(stated, { props: CallProp.Generic });
 		}
 		callees.push(...calledDefinitions(node, state));
 	}
 	if(returnsInvisibly(definition, state)) {
-		stated = CallProps.join(stated, { props: CallProp.Invisible });
+		stated = Fn.call.props.join(stated, { props: CallProp.Invisible });
 	}
 	return { stated, callees };
 }
 
 /** The definitions of the program the call resolved to, which are the ones stating what the call does. */
 function calledDefinitions(node: NodeId, state: LookupState): NodeId[] {
-	return edgeTargets(state.graph, node, EdgeType.Calls).filter(target => Vertex.isFunctionDefinition(state.graph.getVertex(target)));
+	return edgeTargets(state.graph, node, EdgeType.Calls).filter(target => DfgVertex.isFunctionDefinition(state.graph.getVertex(target)));
 }
 
 /** the assignments binding in the frame they run in, which is a scope of the function's own */
@@ -186,7 +187,7 @@ const MaxDepth = 6;
 
 function yieldsInvisibly(node: NodeId, state: LookupState, depth: number): boolean {
 	const vertex = state.graph.getVertex(node);
-	if(Vertex.isFunctionCall(vertex) && ((state.info(vertex.name)?.props ?? 0) & CallProp.Invisible) !== 0) {
+	if(DfgVertex.isFunctionCall(vertex) && ((state.info(vertex.name)?.props ?? 0) & CallProp.Invisible) !== 0) {
 		return true;
 	}
 	if(depth >= MaxDepth) {

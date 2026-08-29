@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's query API">Generated</span> from '[src/documentation/wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts)' on 2026-08-16, 06:15:25 UTC (v2.13.16), so please do not edit it directly._
+_<span title="an overview of flowR's query API">Generated</span> from '[wiki-query.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-query.ts "src/documentation/wiki-query.ts")' on 2026-08-29, 14:26:35 UTC (v2.15.8), please do not edit directly._
 <h2 id="Location Map Query">Location Map Query&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Query-API">overview</a>]</sup></h2>
 
 Returns a simple mapping of ids to their location in the source file\
@@ -34,15 +34,15 @@ The following query then gives you the aforementioned mapping:
 
 _Results (prettified and summarized):_
 
-Query: **location-map** (1 ms)\
+Query: **location-map** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ File List:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 0: `@inline`\
 &nbsp;&nbsp;&nbsp;╰ Id List: {<span title="['0','1','2','3','4','5','2-arg','5-arg','0-arg','1-arg','3-arg','4-arg']">0, 1, 2, 3, 4, 5, 2-arg, ... (see JSON)</span>}\
-_All queries together required ≈2 ms (1ms accuracy, total 3 ms)_
+_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _2.6 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _2.5 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -54,7 +54,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "location-map": {
     ".meta": {
-      "timing": 1
+      "timing": 0
     },
     "map": {
       "files": {
@@ -204,15 +204,15 @@ The query also accepts a list of slice criteria to filter the results to only in
 
 _Results (prettified and summarized):_
 
-Query: **location-map** (1 ms)\
+Query: **location-map** (0 ms)\
 &nbsp;&nbsp;&nbsp;╰ File List:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ 0: `@inline`\
 &nbsp;&nbsp;&nbsp;╰ Id List: {0, 3}\
-_All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
+_All queries together required ≈1 ms (1ms accuracy, total 1 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _2.2 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _1.2 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -224,7 +224,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 {
   "location-map": {
     ".meta": {
-      "timing": 1
+      "timing": 0
     },
     "map": {
       "files": {
@@ -253,7 +253,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
     }
   },
   ".meta": {
-    "timing": 2
+    "timing": 1
   }
 }
 ```
@@ -268,7 +268,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
 
 	
 
-All locations are given as a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L67"><code><span title="**Please note** that for multi-file projects we also have a source location type that includes the file name. Describe the start and end source position of an element.">SourceRange</span></code></a> paired with the file id in the format `[file-id, [start-line, start-column, end-line, end-column]]`.
+All locations are given as a <a href="https://github.com/flowr-analysis/flowr/tree/main/src/util/range.ts#L31"><code><span title="**Please note** that for multi-file projects we also have a source location type that includes the file name. Describe the start and end source position of an element. Every source range is also a valid source location (one without a file), so all readers below accept either.">SourceRange</span></code></a> paired with the file id in the format `[file-id, [start-line, start-column, end-line, end-column]]`.
 
 		
 

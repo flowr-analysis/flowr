@@ -1,15 +1,16 @@
 import type { DependencyInfo } from './dependencies-query-format';
+import { Fn } from '../../../dataflow/fn/fn';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
 import { callFnProps } from '../../../dataflow/environments/query-fn-props';
-import { CallProps, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
-import { Vertex } from '../../../dataflow/graph/vertex';
+import { SemanticCallTag } from '../../../dataflow/environments/built-in-props';
+import { DfgVertex } from '../../../dataflow/graph/vertex';
 import { SourceRange } from '../../../util/range';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PropSelector } from '../../../dataflow/environments/built-in-props';
 
 function callHas(id: NodeId, dataflow: DataflowInformation, props: PropSelector): boolean {
-	return CallProps.hasAny(callFnProps(id, dataflow), props);
+	return Fn.call.props.hasAny(callFnProps(id, dataflow), props);
 }
 
 /**
@@ -29,7 +30,7 @@ export function linkPlotsToDevices(written: readonly DependencyInfo[], plots: De
 		.filter(w => w.value !== undefined && callHas(w.nodeId, dataflow, SemanticCallTag.Graphics))
 		.map(w => [w.nodeId, w.value as string]));
 	const closed = new Set(dataflow.graph.vertices(true)
-		.filter(([id, v]) => Vertex.isFunctionCall(v) && callHas(id, dataflow, SemanticCallTag.Closes))
+		.filter(([id, v]) => DfgVertex.isFunctionCall(v) && callHas(id, dataflow, SemanticCallTag.Closes))
 		.map(([id]) => id));
 	const plotAt = new Map(plots.map((p, index) => [p.nodeId, index]));
 	const located = [...opened.keys(), ...closed, ...plotAt.keys()]

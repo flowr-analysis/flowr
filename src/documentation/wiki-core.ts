@@ -284,6 +284,9 @@ See the ${ctx.linkPage('wiki/FAQ', 'FAQ')} (*How to get flowR to talk?*) for mor
   * [Static Backward Slicing](#static-backward-slicing)
 * [Gas (Resource Guard)](#gas-resource-guard)
 
+Whatever any of these steps hands you, the questions you may ask of it live on a helper object named after it;
+the ${ctx.linkPage('wiki/Helper Objects', 'Helper Objects')} page lists all of them, grouped by what they are about.
+
 ## Creating and Using a flowR Analyzer Instance
 
 The ${ctx.link(FlowrAnalyzerBuilder)} class should be used as a starting point to create analyses in _flowR_.

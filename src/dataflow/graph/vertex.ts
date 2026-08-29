@@ -197,7 +197,7 @@ export type DataflowGraphVertexInfo = Required<DataflowGraphVertexArgument>;
 export type DataflowGraphVertices<Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo> = Map<NodeId, Vertex>;
 
 /**
- * Maps a {@link VertexType} to the vertex it tags, so {@link Vertex.is} can narrow from a tag alone.
+ * Maps a {@link VertexType} to the vertex it tags, so {@link DfgVertex.is} can narrow from a tag alone.
  */
 export interface VertexByType {
 	[VertexType.Value]:              DataflowGraphVertexValue;
@@ -215,17 +215,17 @@ export interface VertexByType {
  * @example
  * ```ts
  * const vertex = graph.getVertex(id);
- * Vertex.isFunctionCall(vertex) && vertex.name;     // narrows, so `name` is there
- * Vertex.is(vertex, VertexType.Use);                // the same check from a tag
- * Vertex.hasOrigin(vertex, 'builtin:eval');         // the call is an eval
+ * DfgVertex.isFunctionCall(vertex) && vertex.name;     // narrows, so `name` is there
+ * DfgVertex.is(vertex, VertexType.Use);                // the same check from a tag
+ * DfgVertex.hasOrigin(vertex, 'builtin:eval');         // the call is an eval
  * ```
  */
-export const Vertex = {
-	name: 'Vertex',
+export const DfgVertex = {
+	name: 'DfgVertex',
 	/**
 	 * Whether the vertex carries the given {@link VertexType|tag}, narrowing it to the vertex that tag names.
-	 * @see {@link Vertex.isValue}, {@link Vertex.isUse}, {@link Vertex.isFunctionCall},
-	 * {@link Vertex.isVariableDefinition}, {@link Vertex.isFunctionDefinition} - if the kind is known upfront
+	 * @see {@link DfgVertex.isValue}, {@link DfgVertex.isUse}, {@link DfgVertex.isFunctionCall},
+	 * {@link DfgVertex.isVariableDefinition}, {@link DfgVertex.isFunctionDefinition} - if the kind is known upfront
 	 */
 	is<T extends VertexType>(this: void, vertex: DataflowGraphVertexBase | undefined, tag: T): vertex is VertexByType[T] {
 		return vertex?.tag === tag;
@@ -255,6 +255,6 @@ export const Vertex = {
 	 * Deliberately not a type predicate: a `false` says nothing about the tag, the call may simply carry another origin.
 	 */
 	hasOrigin(this: void, vertex: DataflowGraphVertexBase | undefined, origin: BuiltInProcName): boolean {
-		return Vertex.isFunctionCall(vertex) && vertex.origin?.includes(origin) === true;
+		return DfgVertex.isFunctionCall(vertex) && vertex.origin?.includes(origin) === true;
 	}
 } as const;

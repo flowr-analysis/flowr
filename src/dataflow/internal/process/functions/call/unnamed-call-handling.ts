@@ -1,5 +1,5 @@
-import { MatchArgs } from '../../../../graph/match-args';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
+import { Fn } from '../../../../fn/fn';
 import type { DataflowInformation } from '../../../../info';
 import { ControlFlow } from '../../../control-flow';
 import { ExitPointType } from '../../../../info';
@@ -96,7 +96,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 
 	// if we just call a nested fdef
 	if(RFunctionDefinition.is(functionCall.calledFunction)) {
-		MatchArgs.onCallAndLink(callArgs, functionCall.calledFunction.parameters, finalGraph);
+		Fn.call.match.onCallAndLink(callArgs, functionCall.calledFunction.parameters, finalGraph);
 	} else if(RAccess.is(functionCall.calledFunction) && !accessResolvesToField(finalGraph, calledRootId, functionCall.calledFunction.accessed.info.id)) {
 		// `obj$method()` whose callee did not resolve to a stored function: reached-but-unknown rather than dropped
 		handleUnknownSideEffect(finalGraph, data.environment, functionRootId);

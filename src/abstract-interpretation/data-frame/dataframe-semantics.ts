@@ -3,7 +3,7 @@ import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name'
 import { Identifier, type IdentifierString } from '../../dataflow/environments/identifier';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
-import { Vertex, type DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
+import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../dataflow/internal/process/functions/call/argument/make-argument';
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -1902,7 +1902,7 @@ function hasParentReplacement(
 ): node is RNode<ParentInformation & { parent: NodeId }> {
 	const parentVertex = ctx.getDfgVertex(node.info.parent);
 
-	return Vertex.hasOrigin(parentVertex, BuiltInProcName.Replacement);
+	return DfgVertex.hasOrigin(parentVertex, BuiltInProcName.Replacement);
 }
 
 /**

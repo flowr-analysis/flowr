@@ -1,5 +1,5 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Vertex } from '../graph/vertex';
+import { DfgVertex } from '../graph/vertex';
 import type { CallGraph } from '../graph/call-graph';
 
 /**
@@ -7,7 +7,7 @@ import type { CallGraph } from '../graph/call-graph';
  */
 export function isFunctionRecursive(id: NodeId, graph: CallGraph): boolean {
 	const vert = graph.getVertex(id);
-	if(!Vertex.isFunctionDefinition(vert)) {
+	if(!DfgVertex.isFunctionDefinition(vert)) {
 		return false;
 	}
 

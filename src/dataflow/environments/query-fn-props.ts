@@ -1,4 +1,10 @@
-import { type ArgProps, type BuiltInFnInfo, CallProp, CallProps, fnInfoFromSignature, type FnSig, PropagatedProps, type PropSelector, type SemanticCallTags, type StatedProps } from './built-in-props';
+/**
+ * `Fn` wires the call helpers together and this file sits below it, so `CallProps` is used directly
+ * here; reaching for `Fn.call.props` would make `src/dataflow/fn/fn.ts` import its own importers.
+ * @lintIgnore use-instead
+ */
+import { type ArgProps, type BuiltInFnInfo, CallProp, fnInfoFromSignature, type FnSig, PropagatedProps, type PropSelector, type SemanticCallTags, type StatedProps, CallProps } from './built-in-props';
+import { Fn } from '../fn/fn';
 import type { BuiltIns } from './built-in';
 import type { BuiltInDefinition, BuiltInDefinitions } from './built-in-config';
 import { DefaultBuiltinConfig } from './default-builtin-config';
@@ -14,7 +20,7 @@ import { signatureDbOf } from '../../project/sigdb/signature-db';
 import { Resolve } from './resolve-helper';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { DataflowInformation } from '../info';
-import { Vertex } from '../graph/vertex';
+import { DfgVertex } from '../graph/vertex';
 import { Dataflow } from '../graph/df-helper';
 import { AttachedBasePackageSet, baseRExportOwner } from '../../util/r-base-packages';
 
@@ -73,10 +79,10 @@ function ofDefinitions(definitions: readonly IdentifierDefinition[] | undefined)
 		}
 		const info = d.config as BuiltInFnInfo | undefined;
 		sig ??= info?.sig;
-		stated = CallProps.join(stated, info);
+		stated = Fn.call.props.join(stated, info);
 		frame = info?.frame === undefined ? frame : (frame ?? 0) | info.frame;
 	}
-	return sig === undefined && frame === undefined && !CallProps.hasAny(stated) ? undefined : { sig, ...stated, frame };
+	return sig === undefined && frame === undefined && !Fn.call.props.hasAny(stated) ? undefined : { sig, ...stated, frame };
 }
 
 /**
@@ -134,7 +140,7 @@ export function builtInLookup(ctx?: ReadOnlyFlowrAnalyzerContext): (name: Identi
 /** What flowR states about the call `id` makes, together with the name the call resolved to. */
 export function callFnProps(id: NodeId, { graph, environment }: Pick<DataflowInformation, 'graph' | 'environment'>): (BuiltInFnInfo & { name: Identifier }) | undefined {
 	const vertex = graph.getVertex(id);
-	if(!Vertex.isFunctionCall(vertex)) {
+	if(!DfgVertex.isFunctionCall(vertex)) {
 		return undefined;
 	}
 	/* what the call resolved to decides, as a definition in the analyzed code shadows the built-in; a call
@@ -165,7 +171,7 @@ function propsOfSignature(src: PackageSignatureSource, fn: DecodedFunction, pkg:
 	const known = BuiltInIndex.default();
 	let props = own;
 	for(const callee of src.transitiveCallees(pkg, fn.name, version) ?? fn.callees) {
-		props = CallProps.join(props, CallProps.filter(known.get(callee), PropagatedProps));
+		props = Fn.call.props.join(props, Fn.call.props.filter(known.get(callee), PropagatedProps));
 	}
 	return { sig: own.sig, ...props };
 }
@@ -452,7 +458,7 @@ export class BuiltInIndex {
 
 	/** Every built-in carrying at least one property of `props`, like {@link SemanticCallTag.File} for the file calls. */
 	public with(props: PropSelector): readonly Identifier[] {
-		return this.cached(`with:${CallProps.key(props)}`, e => CallProps.hasAny(e, props));
+		return this.cached(`with:${Fn.call.props.key(props)}`, e => Fn.call.props.hasAny(e, props));
 	}
 
 	/**
@@ -460,7 +466,7 @@ export class BuiltInIndex {
 	 * like {@link FileInputProps} for the calls that read a file rather than only write one.
 	 */
 	public withAll(props: PropSelector): readonly Identifier[] {
-		return this.cached(`all:${CallProps.key(props)}`, e => CallProps.hasAny(e) && CallProps.hasAll(e, props));
+		return this.cached(`all:${Fn.call.props.key(props)}`, e => Fn.call.props.hasAny(e) && Fn.call.props.hasAll(e, props));
 	}
 
 	/**
@@ -468,7 +474,7 @@ export class BuiltInIndex {
 	 * the calls that derive their result from their arguments alone.
 	 */
 	public without(props: PropSelector): readonly Identifier[] {
-		return this.cached(`without:${CallProps.key(props)}`, e => CallProps.hasAny(e) && !CallProps.hasAny(e, props));
+		return this.cached(`without:${Fn.call.props.key(props)}`, e => Fn.call.props.hasAny(e) && !Fn.call.props.hasAny(e, props));
 	}
 
 	/** Every built-in flowR states computes a result and nothing else ({@link CallProp.Pure}). */

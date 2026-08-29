@@ -1,7 +1,8 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { Fn } from '../../../../../fn/fn';
 import type { DataflowInformation } from '../../../../../info';
 import { markArgumentsAsNonStandardEvaluation, NseArguments, NseKind, processKnownFunctionCall } from '../known-call-handling';
-import { Nse, Unquote } from '../nse';
+import { Unquote } from '../nse';
 import { DataMaskingFunctionNames } from '../../../../../environments/data-masking-functions';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { log, LogLevel } from '../../../../../../util/log';
@@ -25,7 +26,7 @@ import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
-import { Vertex, VertexType } from '../../../../../graph/vertex';
+import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
@@ -210,7 +211,7 @@ function processMaskedNamePair<OtherInfo>(
 	const target = args[0];
 	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, NseArguments.First, {
 		kind:      NseKind.DataMasked,
-		evaluated: Nse.unquoted(RArgument.isEmpty(target) ? undefined : target?.value, Unquote.Rlang)
+		evaluated: Fn.call.nse.unquoted(RArgument.isEmpty(target) ? undefined : target?.value, Unquote.Rlang)
 	});
 	return information;
 }
@@ -424,7 +425,7 @@ function checkTargetReferenceType(sourceInfo: DataflowInformation, fnModes: Data
  */
 function isEnvCreatorSource(sourceInfo: DataflowInformation): boolean {
 	const vert = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
-	return Vertex.hasOrigin(vert, BuiltInProcName.NewEnv);
+	return DfgVertex.hasOrigin(vert, BuiltInProcName.NewEnv);
 }
 
 /**
@@ -613,13 +614,13 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 				?? findReturnsEnvState(defs);
 		} else {
 			const entryVertex = sourceArg.graph.getVertex(sourceArg.entryPoint);
-			if(Vertex.hasOrigin(entryVertex, BuiltInProcName.List)) {
+			if(DfgVertex.hasOrigin(entryVertex, BuiltInProcName.List)) {
 				envState = resolveListToEnvState(source, data);
-			} else if(Vertex.hasOrigin(entryVertex, BuiltInProcName.ClassGenerator)) {
+			} else if(DfgVertex.hasOrigin(entryVertex, BuiltInProcName.ClassGenerator)) {
 				returnsEnvState = resolveClassMethodsToEnvState(source, data);
-			} else if(Vertex.isFunctionDefinition(entryVertex) && entryVertex.returnEnvState !== undefined) {
+			} else if(DfgVertex.isFunctionDefinition(entryVertex) && entryVertex.returnEnvState !== undefined) {
 				returnsEnvState = entryVertex.returnEnvState;
-			} else if(Vertex.isFunctionCall(entryVertex) && entryVertex.name) {
+			} else if(DfgVertex.isFunctionCall(entryVertex) && entryVertex.name) {
 				envState = findReturnsEnvState(Resolve.byNameAndType(entryVertex.name, data.environment, ReferenceType.Function));
 			}
 			envState ??= resolveConstructorInstanceEnvState(source, data);

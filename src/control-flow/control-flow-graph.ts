@@ -6,7 +6,7 @@ import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../dataflow/graph/edge';
 import type { ControlDependency, DataflowInformation } from '../dataflow/info';
 import { ControlDependency as ControlDependencyHelper, ExitPointType } from '../dataflow/info';
 import type { DataflowGraphVertexFunctionDefinition } from '../dataflow/graph/vertex';
-import { Vertex } from '../dataflow/graph/vertex';
+import { DfgVertex } from '../dataflow/graph/vertex';
 import { graph2quads, type QuadSerializationConfiguration } from '../util/quads';
 import { ControlFlow } from '../dataflow/internal/control-flow';
 import type { MergeableRecord } from '../util/objects';
@@ -784,7 +784,7 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 	childrenOf(id: NodeId): readonly NodeId[] | undefined {
 		if(this.isView) {
 			const vertex = (this.dfg as DataflowGraph).getVertex(id);
-			return Vertex.isFunctionDefinition(vertex) ? bodyOf(vertex) : undefined;
+			return DfgVertex.isFunctionDefinition(vertex) ? bodyOf(vertex) : undefined;
 		}
 		return CfgVertex.getChildren(this.getVertex(id));
 	}
@@ -1067,7 +1067,7 @@ function toCfgEdge(edge: DfEdge): CfgEdge | undefined {
 function makeCfgVertex(dfg: DataflowGraph, id: NodeId): CfgVertex {
 	const type = ControlFlow.isStatement(dfg, id) ? CfgVertexType.Statement : CfgVertexType.Expression;
 	const vertex = dfg.getVertex(id);
-	if(Vertex.isFunctionDefinition(vertex)) {
+	if(DfgVertex.isFunctionDefinition(vertex)) {
 		/*
 		 * The body is a region of its own: evaluating the definition produces the closure and does not run it,
 		 * so nothing flows from here into the body. Naming the body as children is what lets a traversal step
@@ -1086,7 +1086,7 @@ function makeCfgVertex(dfg: DataflowGraph, id: NodeId): CfgVertex {
  */
 function collectCallTargets(dfg: DataflowGraph, id: NodeId): Set<NodeId> | undefined {
 	const vertex = dfg.getVertex(id);
-	if(!Vertex.isFunctionCall(vertex)) {
+	if(!DfgVertex.isFunctionCall(vertex)) {
 		return undefined;
 	}
 	let targets: Set<NodeId> | undefined = undefined;

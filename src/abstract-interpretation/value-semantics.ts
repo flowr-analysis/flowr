@@ -1,7 +1,7 @@
 import type { IdentifierString } from '../dataflow/environments/identifier';
 import { Identifier } from '../dataflow/environments/identifier';
 import { Dataflow } from '../dataflow/graph/df-helper';
-import { Vertex, type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexValue } from '../dataflow/graph/vertex';
+import { DfgVertex, type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import type { RLogicalValue } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RNull, RNumberValue, RStringValue, RFalse, RTrue  } from '../r-bridge/lang-4.x/convert-values';
@@ -178,7 +178,7 @@ export class ValueSemantics<Domain extends StateDomain<AnyAbstractDomain>> imple
 
 	/** Applies the abstract semantics defined for the function call guarding a branch, if the called function is supported (see {@link CallSemantics}) */
 	public handleConditionBranch(state: Domain, vertex: DataflowGraphVertexArgument, ctx: AbsintContext<Domain>, branch: typeof RTrue | typeof RFalse): void {
-		if(Vertex.isFunctionCall(vertex)) {
+		if(DfgVertex.isFunctionCall(vertex)) {
 			const applySemantics = this.getSemantics('conditionSemantics', vertex, ctx);
 			applySemantics?.(state, vertex, ctx, branch);
 		} else {

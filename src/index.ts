@@ -31,7 +31,7 @@ export type { SourcePosition, SourceLocationLike } from './util/range';
 /* what the analyses hand back: the graph, its vertices and edges, and the AST behind them */
 export { Dataflow } from './dataflow/graph/df-helper';
 export { DataflowGraph } from './dataflow/graph/graph';
-export { Vertex, VertexType } from './dataflow/graph/vertex';
+export { DfgVertex, VertexType } from './dataflow/graph/vertex';
 export type { DataflowGraphVertexInfo } from './dataflow/graph/vertex';
 export { DfEdge, EdgeType } from './dataflow/graph/edge';
 export { Fn } from './dataflow/fn/fn';
@@ -40,7 +40,8 @@ export type { NodeId } from './r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /* what an analysis is asked for and what it answers with */
 export type { Query, QueryResults, SupportedQueryTypes } from './queries/query';
-export { SlicingCriteria, SlicingCriterion } from './slicing/criterion/parse';
+export type { SlicingCriteria } from './slicing/criterion/parse';
+export { SlicingCriterion } from './slicing/criterion/parse';
 
 /* what to analyze, and what reads it */
 export { requestFromInput } from './r-bridge/retriever';

@@ -1,4 +1,4 @@
-import { Vertex, VertexType } from '../../dataflow/graph/vertex';
+import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { UnknownSideEffect } from '../../dataflow/graph/graph';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Q } from '../../search/flowr-search-builder';
@@ -166,7 +166,7 @@ export const UNDEFINED_SYMBOL = {
 			}
 			const inInstalledFile = isInstalledFile(element.node.info.file);
 
-			if(Vertex.isFunctionCall(vtx)) {
+			if(DfgVertex.isFunctionCall(vtx)) {
 				if(vtx.origin === 'unnamed' || !config.checkFunctions) {
 					return undefined;
 				}
@@ -179,7 +179,7 @@ export const UNDEFINED_SYMBOL = {
 			}
 
 			// variable use: only plain symbols (not argument names, `...`, or empty)
-			if(Vertex.isUse(vtx) && config.checkVariables) {
+			if(DfgVertex.isUse(vtx) && config.checkVariables) {
 				const node = element.node;
 				if(!RSymbol.is(node) || node.lexeme === '...' || node.lexeme === undefined) {
 					return undefined;

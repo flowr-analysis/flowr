@@ -1,5 +1,5 @@
-import { MatchArgs } from '../../../../../graph/match-args';
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { Fn } from '../../../../../fn/fn';
 import { processDataflowFor } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, NseArguments, NseKind } from '../known-call-handling';
@@ -59,7 +59,7 @@ export function processWithEnv<OtherInfo>(
 
 	// prefer R's real `base::with` signature from the database, falling back to the known formals when it is absent
 	// use the call's own name (`with` or `within`) qualified to base, so each gets its real signature
-	const bound = MatchArgs.toNames(args, signatureParamNames(data, Identifier.make(Identifier.getName(name.content), PkgName.Base), withParamsFallback));
+	const bound = Fn.call.match.toNames(args, signatureParamNames(data, Identifier.make(Identifier.getName(name.content), PkgName.Base), withParamsFallback));
 	const dataArg = bound.get('data');
 	const exprArg = bound.get('expr');
 

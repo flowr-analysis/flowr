@@ -6,7 +6,7 @@ import { LintingRuleTag } from '../linter-tags';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
-import { Vertex } from '../../dataflow/graph/vertex';
+import { DfgVertex } from '../../dataflow/graph/vertex';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
@@ -103,7 +103,7 @@ function unusedPackages(attachments: readonly Attachment[], graph: DataflowGraph
 			continue;
 		}
 		const vertex = graph.getVertex(id);
-		if(Vertex.isFunctionCall(vertex) && isUnbound(graph, id)) {
+		if(DfgVertex.isFunctionCall(vertex) && isUnbound(graph, id)) {
 			unbound.add(Identifier.getName(vertex.name));
 		}
 	}

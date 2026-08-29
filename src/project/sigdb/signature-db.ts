@@ -1,4 +1,5 @@
 import { Identifier } from '../../dataflow/environments/identifier';
+import { Fn } from '../../dataflow/fn/fn';
 import { groupGenericOf } from '../../dataflow/environments/group-generics';
 import type { DecodedFunction } from './decode';
 import type { PackageSignatureSource } from './reader';
@@ -56,7 +57,7 @@ export interface SignatureDb {
 	 */
 	functionOf(this: void, id: Identifier, version?: string): DecodedFunction | undefined;
 	/**
-	 * The formal parameter names of a qualified call, ready to hand to {@link MatchArgs.toNames}.
+	 * The formal parameter names of a qualified call, ready to hand to {@link Fn.call.match.toNames}.
 	 * @param id      - The qualified identifier of the function.
 	 * @param version - The version to answer for, {@link versionOf} of its package if omitted.
 	 */

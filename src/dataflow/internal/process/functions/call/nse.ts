@@ -6,7 +6,7 @@ import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/mod
 import { Identifier } from '../../../../environments/identifier';
 import { DataMaskingFunctionNames } from '../../../../environments/data-masking-functions';
 import type { DataflowGraph } from '../../../../graph/graph';
-import { type DataflowGraphVertexInfo, Vertex } from '../../../../graph/vertex';
+import { type DataflowGraphVertexInfo, DfgVertex } from '../../../../graph/vertex';
 import { DfEdge, EdgeType } from '../../../../graph/edge';
 import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
@@ -54,13 +54,13 @@ function definesAFunction(graph: DataflowGraph, id: NodeId): boolean {
 		return true;
 	}
 	const vertex = graph.getVertex(id);
-	if(Vertex.isFunctionDefinition(vertex)) {
+	if(DfgVertex.isFunctionDefinition(vertex)) {
 		return true;
-	} else if(!Vertex.isVariableDefinition(vertex)) {
+	} else if(!DfgVertex.isVariableDefinition(vertex)) {
 		return false;
 	}
 	for(const [target, edge] of graph.edgesFrom(id)) {
-		if(DfEdge.includesType(edge, EdgeType.DefinedBy) && Vertex.isFunctionDefinition(graph.getVertex(target))) {
+		if(DfEdge.includesType(edge, EdgeType.DefinedBy) && DfgVertex.isFunctionDefinition(graph.getVertex(target))) {
 			return true;
 		}
 	}
@@ -96,7 +96,6 @@ export interface MaskingCall {
 
 /** The parts of a call R does not evaluate the standard way. */
 export const Nse = {
-	name: 'Nse',
 	/** The ids an {@link Unquote} escape hands back to standard evaluation, the markers themselves excluded. */
 	unquoted<Info extends ParentInformation>(this: void, root: RNode<Info> | undefined, style: Unquote): ReadonlySet<NodeId> | undefined {
 		if(root === undefined || style === Unquote.None) {
@@ -149,12 +148,12 @@ export const Nse = {
 
 	/** Whether the vertex is a name a data mask may supply, which is every name appearing in the mask. */
 	maskCandidate(this: void, vertex: DataflowGraphVertexInfo | undefined): boolean {
-		return Vertex.isUse(vertex);
+		return DfgVertex.isUse(vertex);
 	},
 
 	/** Whether `id` is a name the data mask supplies, i.e. a use the caller does not bind itself. */
 	suppliedByMask(this: void, graph: DataflowGraph, id: NodeId, vertex: DataflowGraphVertexInfo | undefined = graph.getVertex(id)): boolean {
-		return Vertex.isUse(vertex) && !graph.outgoingEdges(id)?.values().some(e => DfEdge.includesType(e, EdgeType.Reads));
+		return DfgVertex.isUse(vertex) && !graph.outgoingEdges(id)?.values().some(e => DfEdge.includesType(e, EdgeType.Reads));
 	},
 
 	/**
@@ -165,7 +164,7 @@ export const Nse = {
 	maskedName(this: void, graph: DataflowGraph, id: NodeId): boolean {
 		for(const [source, edge] of graph.edgesTo(id)) {
 			const call = DfEdge.includesType(edge, EdgeType.NonStandardEvaluation) ? graph.getVertex(source) : undefined;
-			if(Vertex.isFunctionCall(call) && call.name !== undefined && DataMaskingFunctionNames.has(Identifier.getName(call.name))) {
+			if(DfgVertex.isFunctionCall(call) && call.name !== undefined && DataMaskingFunctionNames.has(Identifier.getName(call.name))) {
 				return true;
 			}
 		}
@@ -182,7 +181,7 @@ export const Nse = {
 		const links: [from: NodeId, to: NodeId][] = [];
 		for(const { id, bound } of calls) {
 			const call = graph.getVertex(id);
-			const data = Vertex.isFunctionCall(call) ? call.args.find(a => a !== EmptyArgument) : undefined;
+			const data = DfgVertex.isFunctionCall(call) ? call.args.find(a => a !== EmptyArgument) : undefined;
 			if(data === undefined) {
 				continue;
 			}

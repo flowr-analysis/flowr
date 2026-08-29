@@ -5,6 +5,7 @@
  * @lintIgnore use-instead
  */
 import { type DataflowInformation, happensInEveryBranch } from '../../../../info';
+import { Fn } from '../../../../fn/fn';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RConstant } from '../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -21,10 +22,10 @@ import { type DataflowGraphVertexAstLink, type DataflowGraphVertexFunctionDefini
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EdgeType } from '../../../../graph/edge';
 import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { Vertex } from '../../../../graph/vertex';
+import { DfgVertex } from '../../../../graph/vertex';
 
 export interface ProcessAllArgumentInput<OtherInfo> {
-	/** which of the arguments the call evaluates, as {@link FnSig.forced} answers it for the signature */
+	/** which of the arguments the call evaluates, as {@link Fn.call.signature.forced} answers it for the signature */
 	readonly forced?:        readonly boolean[]
 	readonly functionName:   DataflowInformation
 	readonly args:           readonly (RNode<OtherInfo & ParentInformation> | PotentiallyEmptyRArgument<OtherInfo & ParentInformation>)[]
@@ -52,11 +53,11 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 		return;
 	}
 	// link read if it is function definition directly and reference the exit point
-	if(Vertex.isFunctionDefinition(valueVertex)) {
+	if(DfgVertex.isFunctionDefinition(valueVertex)) {
 		for(const exit of valueVertex.exitPoints) {
 			graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
 		}
-	} else if(!Vertex.isValue(valueVertex)) {
+	} else if(!DfgVertex.isValue(valueVertex)) {
 		for(const exit of value.exitPoints) {
 			graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
 		}
@@ -157,7 +158,7 @@ export function processAllArguments<OtherInfo>(
 				/* a data argument holds a value, so a function of that name is not what it reads; the narrowed
 				   type stays on the reference as it bubbles through the enclosing calls */
 				const ingoing = nonFunction?.has(inId) ? { ...original, type: ReferenceType.NonFunction } : original;
-				const refType = Vertex.isFunctionCall(finalGraph.getVertex(inId)) ? ReferenceType.Function
+				const refType = DfgVertex.isFunctionCall(finalGraph.getVertex(inId)) ? ReferenceType.Function
 					: ingoing.type === ReferenceType.NonFunction ? ReferenceType.NonFunction : ReferenceType.Unknown;
 
 				const tryToResolve = ingoing.name ? resolveByName(ingoing.name, data.environment, refType) : undefined;

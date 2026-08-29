@@ -1,4 +1,5 @@
 import type { AnyBuiltInDefinition, BuiltInDefinitions, BuiltInFunctionDefinition, BuiltInReplacementDefinition } from './built-in-config';
+import { Fn } from '../fn/fn';
 import { ExitPointType } from '../info';
 import { getValueOfArgument } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { DataflowGraph } from '../graph/graph';
@@ -14,7 +15,7 @@ import { BuiltInEvalName } from './built-in-eval-name';
 import { NseArguments } from '../internal/process/functions/call/known-call-handling';
 import { Unquote } from '../internal/process/functions/call/nse';
 import { DataMaskingFunctionIdentifiers } from './data-masking-functions';
-import { ArgProp, ArgProps, CallProp, CallProps, type FnSig, SemanticCallTag, type SemanticCallTags, type StatedProps } from './built-in-props';
+import { ArgProp, CallProp, type FnSig, SemanticCallTag, type SemanticCallTags, type StatedProps } from './built-in-props';
 import { ClassSystem, MemberVisibility } from '../fn/class-declaration';
 import { AttachedBasePackageSet, baseRExportOwner } from '../../util/r-base-packages';
 import { RBasePackageStore } from '../../data/r-base-packages.generated';
@@ -291,9 +292,9 @@ export interface StatedSignature {
 	readonly pkg:     string;
 	/** The formals flowR models, `x, ...`, or `undefined` where it declares none (not R's own declaration). */
 	readonly params?: string;
-	/** what it does, from {@link CallProps.labels} */
+	/** what it does, from {@link Fn.call.props.labels} */
 	readonly props:   readonly string[];
-	/** each formal with what it is used for, from {@link ArgProps.words}; the roles read like the types R has none of */
+	/** each formal with what it is used for, from {@link Fn.call.argument.words}; the roles read like the types R has none of */
 	readonly args?:   readonly (readonly [name: string, roles: readonly string[]])[];
 }
 
@@ -365,8 +366,8 @@ export function statedSignatures(definitions: BuiltInDefinitions = DefaultBuilti
 			const entry = {
 				pkg,
 				params: declared.length > 0 ? declared.map(([param]) => param).join(', ') : undefined,
-				props:  CallProps.labels(info),
-				args:   declared.length > 0 ? declared.map(([param, props]) => [param, ArgProps.words(props)] as const) : undefined
+				props:  Fn.call.props.labels(info),
+				args:   declared.length > 0 ? declared.map(([param, props]) => [param, Fn.call.argument.words(props)] as const) : undefined
 			};
 			const known = stated.get(name) ?? [];
 			/* the last definition for a package is the one that resolves, so it is the one stated */
@@ -609,7 +610,7 @@ export const WrittenBuiltinDefinitions = [
 		assumePrimitive: true
 	},
 	/* the hypothesis tests: they compute a test statistic and hand it back visibly, which is the output a reader sees */
-	{ type: 'function', names: [ ...Identifier.fromAll(PkgName.Stats, [ 'anova', 'ansari.test', 'aov', 'bartlett.test', 'binom.test', 'Box.test', 'chisq.test', 'cor.test', 'fisher.test', 'fligner.test', 'friedman.test', 'kruskal.test', 'ks.test', 'manova', 'mantelhaen.test', 'mauchly.test', 'mcnemar.test', 'mood.test', 'oneway.test', 'pairwise.prop.test', 'pairwise.t.test', 'pairwise.wilcox.test', 'poisson.test', 'PP.test', 'prop.test', 'prop.trend.test', 'quade.test', 'shapiro.test', 't.test', 'TukeyHSD', 'var.test', 'wilcox.test' ]), ...Identifier.fromAll(PkgName.Car, ['Anova', 'durbinWatsonTest', 'leveneTest', 'linearHypothesis', 'ncvTest', 'outlierTest']), ...Identifier.fromAll(PkgName.LmTest, ['bgtest', 'bptest', 'coeftest', 'dwtest', 'gqtest', 'lrtest', 'raintest', 'resettest', 'waldtest']), ...Identifier.fromAll(PkgName.NorTest, ['ad.test', 'cvm.test', 'lillie.test', 'pearson.test', 'sf.test']), ...Identifier.fromAll(PkgName.Tseries, ['adf.test', 'jarque.bera.test', 'kpss.test', 'pp.test', 'runs.test', 'white.test']), ...Identifier.fromAll(PkgName.Rstatix, ['anova_test', 'chisq_test', 'cor_test', 'kruskal_test', 'shapiro_test', 't_test', 'wilcox_test']), Identifier.from(['glht', PkgName.Multcomp]) ], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, tags: [SemanticCallTag.Statistics] }, assumePrimitive: false },
+	{ type: 'function', names: [...Identifier.fromAll(PkgName.Stats, ['anova', 'ansari.test', 'aov', 'bartlett.test', 'binom.test', 'Box.test', 'chisq.test', 'cor.test', 'fisher.test', 'fligner.test', 'friedman.test', 'kruskal.test', 'ks.test', 'manova', 'mantelhaen.test', 'mauchly.test', 'mcnemar.test', 'mood.test', 'oneway.test', 'pairwise.prop.test', 'pairwise.t.test', 'pairwise.wilcox.test', 'poisson.test', 'PP.test', 'prop.test', 'prop.trend.test', 'quade.test', 'shapiro.test', 't.test', 'TukeyHSD', 'var.test', 'wilcox.test']), ...Identifier.fromAll(PkgName.Car, ['Anova', 'durbinWatsonTest', 'leveneTest', 'linearHypothesis', 'ncvTest', 'outlierTest']), ...Identifier.fromAll(PkgName.LmTest, ['bgtest', 'bptest', 'coeftest', 'dwtest', 'gqtest', 'lrtest', 'raintest', 'resettest', 'waldtest']), ...Identifier.fromAll(PkgName.NorTest, ['ad.test', 'cvm.test', 'lillie.test', 'pearson.test', 'sf.test']), ...Identifier.fromAll(PkgName.Tseries, ['adf.test', 'jarque.bera.test', 'kpss.test', 'pp.test', 'runs.test', 'white.test']), ...Identifier.fromAll(PkgName.Rstatix, ['anova_test', 'chisq_test', 'cor_test', 'kruskal_test', 'shapiro_test', 't_test', 'wilcox_test']), Identifier.from(['glht', PkgName.Multcomp])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, tags: [SemanticCallTag.Statistics] }, assumePrimitive: false },
 
 	/* indices and index sequences: bounded by the shape of what they are handed, never by its contents */
 	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['which', 'which.max', 'which.min', 'seq_len', 'seq_along']), processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Pure, tags: [SemanticCallTag.Narrows] }, assumePrimitive: true },
@@ -870,7 +871,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: Identifier.fromAll(PkgName.Utils, ['read.table', 'read.delim', 'read.csv2', 'read.delim2']), processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: [['file', ArgProp.Forced | ArgProp.Resource]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['download.file', PkgName.Utils])], processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Network, SemanticCallTag.File, SemanticCallTag.Writes], sig: [['url', ArgProp.Forced | ArgProp.Resource], ['destfile', ArgProp.Forced | ArgProp.Resource]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['jitter', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Random] }, assumePrimitive: true },
-	{ type: 'function', names: [ ...Identifier.fromAll(PkgName.Base, ['sample', 'sample.int']), ...Identifier.fromAll(PkgName.Stats, [ 'runif', 'rnorm', 'rbinom', 'rpois', 'rexp', 'rgamma', 'rbeta', 'rcauchy', 'rchisq', 'rgeom', 'rhyper', 'rlnorm', 'rlogis', 'rmultinom', 'rnbinom', 'rsignrank', 'rt', 'rf', 'rweibull', 'rwilcox', 'arima.sim', 'simulate', 'kmeans' ]) ], processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Random] }, assumePrimitive: false },
+	{ type: 'function', names: [...Identifier.fromAll(PkgName.Base, ['sample', 'sample.int']), ...Identifier.fromAll(PkgName.Stats, ['runif', 'rnorm', 'rbinom', 'rpois', 'rexp', 'rgamma', 'rbeta', 'rcauchy', 'rchisq', 'rgeom', 'rhyper', 'rlnorm', 'rlogis', 'rmultinom', 'rnbinom', 'rsignrank', 'rt', 'rf', 'rweibull', 'rwilcox', 'arima.sim', 'simulate', 'kmeans'])], processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Random] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['expression', PkgName.Base])], processor: BuiltInProcName.DefaultReadAllArgs, config: { props: CallProp.Lang }, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from(['rm', PkgName.Base])], processor: BuiltInProcName.Rm, config: { props: CallProp.Invisible | CallProp.Scope }, assumePrimitive: true },
 	/* they read the state they set, so both bits apply */
@@ -921,7 +922,7 @@ export const WrittenBuiltinDefinitions = [
 	// plot tags
 	{ type: 'function', names: namespacePlotFunctions(GgPlotAddons), processor: BuiltInProcName.Default, config: { libFn: true, hasUnknownSideEffects: { type: 'link-to-last-call', callName: toRegex((GgPlotCreate as readonly string[]).concat(GgPlotAddons)) }, tags: [SemanticCallTag.Graphics], sig: [['...', ArgProp.Forced]] }, assumePrimitive: true },
 	{ type: 'function', names: namespacePlotFunctions(TinyPlotAddons), processor: BuiltInProcName.Default, config: { libFn: true, hasUnknownSideEffects: { type: 'link-to-last-call', callName: toRegex([...TinyPlotCrate, ...TinyPlotAddons]) }, tags: [SemanticCallTag.Graphics], sig: [['...', ArgProp.Forced]] }, assumePrimitive: true },
-	{ type: 'function', names: [ ...Identifier.fromAll(PkgName.Magick, ['image_capture']), ...Identifier.fromAll(PkgName.GrDevices, ['dev.capture']) ], processor: BuiltInProcName.Default, config: { libFn: true, hasUnknownSideEffects: LinkToLastPlot, tags: [SemanticCallTag.Graphics], sig: [['...', ArgProp.Forced]] }, assumePrimitive: true },
+	{ type: 'function', names: [...Identifier.fromAll(PkgName.Magick, ['image_capture']), ...Identifier.fromAll(PkgName.GrDevices, ['dev.capture'])], processor: BuiltInProcName.Default, config: { libFn: true, hasUnknownSideEffects: LinkToLastPlot, tags: [SemanticCallTag.Graphics], sig: [['...', ArgProp.Forced]] }, assumePrimitive: true },
 	/* they put what the device holds on disk */
 	{ type: 'function', names: [Identifier.from(['image_write', PkgName.Magick])], processor: BuiltInProcName.Default, config: { libFn: true, hasUnknownSideEffects: LinkToLastPlot, tags: [SemanticCallTag.Graphics, SemanticCallTag.File, SemanticCallTag.Writes], sig: [['image', ArgProp.Forced | ArgProp.Value], ['path', ArgProp.Forced | ArgProp.Resource]] }, assumePrimitive: true },
 	{ type: 'function', names: Identifier.fromAll(PkgName.GrDevices, ['dev.off', 'graphics.off']), processor: BuiltInProcName.Default, config: { libFn: true, hasUnknownSideEffects: LinkToLastPlot, tags: [SemanticCallTag.Graphics, SemanticCallTag.Closes, SemanticCallTag.File, SemanticCallTag.Writes], sig: [['...', ArgProp.Forced]] }, assumePrimitive: true },
@@ -1091,7 +1092,7 @@ export const WrittenBuiltinDefinitions = [
 				{ name: 'active', visibility: MemberVisibility.Active }
 			]
 		} }, assumePrimitive: false },
-	{ type: 'function', names: [Identifier.from(['setRefClass', PkgName.Methods])], processor: BuiltInProcName.ClassGenerator, config: { classDecl: { system: ClassSystem.RefClass, nameArg: { idx: 0, name: 'Class' }, containsArg: { idx: 2, name: 'contains' }, memberArgs: [ { idx: 1, name: 'fields', typed: true }, { idx: 3, name: 'methods', methods: true } ] } }, assumePrimitive: false },
+	{ type: 'function', names: [Identifier.from(['setRefClass', PkgName.Methods])], processor: BuiltInProcName.ClassGenerator, config: { classDecl: { system: ClassSystem.RefClass, nameArg: { idx: 0, name: 'Class' }, containsArg: { idx: 2, name: 'contains' }, memberArgs: [{ idx: 1, name: 'fields', typed: true }, { idx: 3, name: 'methods', methods: true }] } }, assumePrimitive: false },
 	/* env-returning builtins pointing into the current search-path stack (`e <- globalenv(); e$x`) */
 	{ type:  'function', names: Object.entries(StackEnvBuiltins)
 		.filter(([n, kind]) => !n.startsWith('.') && (kind === StackEnvKind.Global || kind === StackEnvKind.Base || kind === StackEnvKind.Empty))
@@ -1112,7 +1113,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [Identifier.from(['new_generic', PkgName.S7])], processor: BuiltInProcName.S7NewGeneric, config: { args: { name: 'name', dispatchArg: 'dispatch_args', fun: 'fun' } }, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from(['setGeneric', PkgName.Methods])], processor: BuiltInProcName.S7NewGeneric, config: { args: { name: 'name', dispatchArg: undefined, fun: 'fun' }, binds: true }, assumePrimitive: true },
 	{ type: 'function', names: [Identifier.from(['S7_dispatch', PkgName.S7])], processor: BuiltInProcName.S7Dispatch, config: { libFn: true }, assumePrimitive: true },
-	{ type: 'function', names: [ Identifier.from(['make_constructor', PkgName.GgPlot2]), Identifier.from(['new_class', PkgName.S7]) ], processor: BuiltInProcName.S7MakeConstructor, config: { mode: ['s7'], classDecl: { system: ClassSystem.S7, nameArg: { idx: 0, name: 'name' }, containsArg: { idx: 1, name: 'parent' }, memberArgs: [{ name: 'properties', typed: true }], virtualArg: { name: 'abstract' } } }, assumePrimitive: true },
+	{ type: 'function', names: [Identifier.from(['make_constructor', PkgName.GgPlot2]), Identifier.from(['new_class', PkgName.S7])], processor: BuiltInProcName.S7MakeConstructor, config: { mode: ['s7'], classDecl: { system: ClassSystem.S7, nameArg: { idx: 0, name: 'name' }, containsArg: { idx: 1, name: 'parent' }, memberArgs: [{ name: 'properties', typed: true }], virtualArg: { name: 'abstract' } } }, assumePrimitive: true },
 	/* S4 keeps its classes and generics in string-keyed registries, so a call naming one depends on whatever registered it */
 	{ type: 'function', names: [Identifier.from(['new', PkgName.Methods])], processor: BuiltInProcName.S4Use, config: { classArgs: [{ idx: 0, name: 'Class' }] }, assumePrimitive: false },
 	{ type: 'function', names: Identifier.fromAll(PkgName.Methods, ['getClass', 'getClassDef', 'getSlots', 'slotNames', 'isVirtualClass', 'removeClass', 'resetClass', 'getValidity']), processor: BuiltInProcName.S4Use, config: { classArgs: [{ idx: 0, name: 'Class' }] }, assumePrimitive: false },
@@ -1151,7 +1152,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [Identifier.from(['cmpfun', PkgName.Compiler])], processor: BuiltInProcName.Default, config: { sig: [['f', ArgProp.Alias]] } },
 	{ type: 'function', names: [Identifier.from(['compile', PkgName.Compiler])], processor: BuiltInProcName.Default, config: { sig: [['e', ArgProp.Alias]] } },
 	{ type: 'function', names: [Identifier.from(['loadcmp', PkgName.Compiler])],                                                processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true } },
-	{ type: 'function', names: [ Identifier.from(['setnames', PkgName.DataTable]), Identifier.from(['setNames', PkgName.Base]), Identifier.from(['setNames', PkgName.FastUtils]), ...Identifier.fromAll(PkgName.DataTable, ['setkey', 'setkeyv', 'setindex', 'setindexv', 'setattr']) ], processor: BuiltInProcName.Assignment, config: { canBeReplacement: false, targetVariable: false, makeMaybe: true, mayHaveMoreArgs: true } },
+	{ type: 'function', names: [Identifier.from(['setnames', PkgName.DataTable]), Identifier.from(['setNames', PkgName.Base]), Identifier.from(['setNames', PkgName.FastUtils]), ...Identifier.fromAll(PkgName.DataTable, ['setkey', 'setkeyv', 'setindex', 'setindexv', 'setattr'])], processor: BuiltInProcName.Assignment, config: { canBeReplacement: false, targetVariable: false, makeMaybe: true, mayHaveMoreArgs: true } },
 	{
 		type:  'function',
 		names: [
@@ -1165,7 +1166,7 @@ export const WrittenBuiltinDefinitions = [
 		assumePrimitive: false
 	},
 	/* they create, move, or delete files */
-	{ type: 'function', names: [ Identifier.from(['dir.create', PkgName.Base]), Identifier.from(['dir_create', PkgName.Fs]), ...Identifier.fromAll(PkgName.Base, ['Sys.chmod', 'unlink', 'file.remove', 'file.rename', 'file.copy', 'file.link', 'file.append', 'Sys.junction']) ], processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes] }, assumePrimitive: false },
+	{ type: 'function', names: [Identifier.from(['dir.create', PkgName.Base]), Identifier.from(['dir_create', PkgName.Fs]), ...Identifier.fromAll(PkgName.Base, ['Sys.chmod', 'unlink', 'file.remove', 'file.rename', 'file.copy', 'file.link', 'file.append', 'Sys.junction'])], processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, tags: [SemanticCallTag.File, SemanticCallTag.Writes] }, assumePrimitive: false },
 	/* `sink` diverts the output, `par`/`tpar` set the parameters of the current device */
 	{ type: 'function', names: [Identifier.from(['sink', PkgName.Base])], processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, props: CallProp.Invisible, tags: [SemanticCallTag.File, SemanticCallTag.Writes], sig: [['file', ArgProp.Resource]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['par', PkgName.Graphics]), Identifier.from(['tpar', PkgName.TinyPlot])], processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true, tags: [SemanticCallTag.Graphics] }, assumePrimitive: false },
@@ -1215,7 +1216,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [Identifier.from(['eval.parent', PkgName.Base])], processor: BuiltInProcName.Default, config: { props: CallProp.Lang, tags: [SemanticCallTag.Eval], sig: [['expr', ArgProp.Forced | ArgProp.Value | ArgProp.Injectable], ['n', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['eval_tidy', PkgName.Rlang])], processor: BuiltInProcName.Default, config: { libFn: true, props: CallProp.Lang, tags: [SemanticCallTag.Eval], sig: [['expr', ArgProp.Forced | ArgProp.Value | ArgProp.Injectable], ['data', ArgProp.Forced | ArgProp.Value], ['env', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['eval_bare', PkgName.Rlang])], processor: BuiltInProcName.Default, config: { libFn: true, props: CallProp.Lang, tags: [SemanticCallTag.Eval], sig: [['expr', ArgProp.Forced | ArgProp.Value | ArgProp.Injectable], ['env', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
-	{ type: 'function', names: [ ...Identifier.fromAllIn(TidyEvalPackages, ['enexpr', 'enexprs', 'enquo', 'enquos', 'ensym', 'ensyms', 'sym', 'syms', 'quo_name', 'as_label']), ...Identifier.fromAll(PkgName.Rlang, ['inject', 'enquo0', 'enquos0', 'new_formula', 'f_rhs', 'f_lhs', 'fn_body', 'fn_fmls', 'fn_fmls_names', 'call2', 'as_name', 'as_string']) ], processor: BuiltInProcName.Default, config: { libFn: true, props: CallProp.Lang, sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
+	{ type: 'function', names: [...Identifier.fromAllIn(TidyEvalPackages, ['enexpr', 'enexprs', 'enquo', 'enquos', 'ensym', 'ensyms', 'sym', 'syms', 'quo_name', 'as_label']), ...Identifier.fromAll(PkgName.Rlang, ['inject', 'enquo0', 'enquos0', 'new_formula', 'f_rhs', 'f_lhs', 'fn_body', 'fn_fmls', 'fn_fmls_names', 'call2', 'as_name', 'as_string'])], processor: BuiltInProcName.Default, config: { libFn: true, props: CallProp.Lang, sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
 	/* native code */
 	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['dyn.load', 'getNativeSymbolInfo']), processor: BuiltInProcName.Default, config: { props: CallProp.Ffi, sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['sourceCpp', PkgName.Rcpp])], processor: BuiltInProcName.Default, config: { libFn: true, props: CallProp.Ffi, tags: [SemanticCallTag.File, SemanticCallTag.Reads], sig: [['file', ArgProp.Forced | ArgProp.Resource]] }, assumePrimitive: false },
@@ -1240,7 +1241,7 @@ export const WrittenBuiltinDefinitions = [
 	{ type: 'function', names: [Identifier.from(['html', PkgName.ShinyJs])], processor: BuiltInProcName.Default, config: { libFn: true, tags: [SemanticCallTag.Html], sig: [['id', ArgProp.Forced | ArgProp.Value], ['html', ArgProp.Forced | ArgProp.Value | ArgProp.Injectable], ['add', ArgProp.Forced | ArgProp.Flag], ['selector', ArgProp.Forced | ArgProp.Value], ['asis', ArgProp.Forced | ArgProp.Flag]] }, assumePrimitive: false },
 	{ type: 'function', names: [Identifier.from(['extendShinyjs', PkgName.ShinyJs])], processor: BuiltInProcName.Default, config: { libFn: true, tags: [SemanticCallTag.JavaScript, SemanticCallTag.File, SemanticCallTag.Reads], sig: [['script', ArgProp.Forced | ArgProp.Resource], ['text', ArgProp.Forced | ArgProp.Value | ArgProp.Injectable], ['functions', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
 	/* whatever the user types, picks, or sends along with a request */
-	{ type: 'function', names: [ ...Identifier.fromAll(PkgName.Base, ['readline', 'file.choose']), ...Identifier.fromAll(PkgName.Utils, ['askYesNo', 'choose.files', 'choose.dir', 'menu', 'select.list', 'winDialogString', 'winDialog']) ], processor: BuiltInProcName.Default, config: { tags: [SemanticCallTag.User], sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
+	{ type: 'function', names: [...Identifier.fromAll(PkgName.Base, ['readline', 'file.choose']), ...Identifier.fromAll(PkgName.Utils, ['askYesNo', 'choose.files', 'choose.dir', 'menu', 'select.list', 'winDialogString', 'winDialog'])], processor: BuiltInProcName.Default, config: { tags: [SemanticCallTag.User], sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
 	{
 		type:  'function',
 		names: [
@@ -1259,13 +1260,13 @@ export const WrittenBuiltinDefinitions = [
 	},
 	/* they only make up a path, they do not go near the file system, so `File` would be wrong here */
 	{ type: 'function', names: Identifier.fromAll(PkgName.Base, ['tempfile', 'tempdir']), processor: BuiltInProcName.Default, config: { tags: [SemanticCallTag.TempFile], sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
-	{ type: 'function', names: [ ...Identifier.fromAll(PkgName.Fs, ['file_temp', 'path_temp', 'dir_temp']), ...Identifier.fromAll(PkgName.Withr, ['local_tempfile', 'with_tempfile', 'local_tempdir', 'with_tempdir']) ], processor: BuiltInProcName.Default, config: { libFn: true, tags: [SemanticCallTag.TempFile], sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
+	{ type: 'function', names: [...Identifier.fromAll(PkgName.Fs, ['file_temp', 'path_temp', 'dir_temp']), ...Identifier.fromAll(PkgName.Withr, ['local_tempfile', 'with_tempfile', 'local_tempdir', 'with_tempdir'])], processor: BuiltInProcName.Default, config: { libFn: true, tags: [SemanticCallTag.TempFile], sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
 	/* wrappers that run the expression they are handed; `observe`/`render*` are left out, they yield a handle instead */
 	{ type: 'function', names: Identifier.fromAll(PkgName.Shiny, ['reactive', 'eventReactive', 'bindEvent', 'bindCache', 'isolate', 'req', 'debounce', 'throttle', 'reactiveVal', 'reactiveValues', 'reactiveValuesToList', 'freezeReactiveVal']), processor: BuiltInProcName.Default, config: { libFn: true, props: CallProp.MayPure, sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
 	/* assembling a cohort keeps the data of its source; `filter` is registered above, dplyr holds that name */
 	{ type: 'function', names: Identifier.fromAll(PkgName.CohortBuilder, ['cohort', 'set_source', 'add_source', 'update_source', 'add_filter', 'update_filter', 'rm_filter', 'bind_key', 'bind_keys', 'as.tblist', 'tblist', 'step', 'add_step', 'rm_step', 'run', 'restore']), processor: BuiltInProcName.Default, config: { libFn: true, props: CallProp.Pure, sig: [['...', ArgProp.Forced]] }, assumePrimitive: false },
 	/* they are all mapped to `<-` but we separate super assignments */
-	{ type: 'replacement', suffixes: ['<-', '<<-'], names: [ '[', '[[', ...Identifier.fromAll(PkgName.Base, ['names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames', 'body', 'environment', 'formals', 'length', 'dim']) ], config: { readIndices: true, props: CallProp.Scope } },
+	{ type: 'replacement', suffixes: ['<-', '<<-'], names: ['[', '[[', ...Identifier.fromAll(PkgName.Base, ['names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames', 'body', 'environment', 'formals', 'length', 'dim'])], config: { readIndices: true, props: CallProp.Scope } },
 	{ type: 'replacement', suffixes: ['<-', '<<-'], names: [Identifier.from(['method', PkgName.S7])], config: { readIndices: true, constructName: 's7' } },
 	{ type: 'replacement', suffixes: ['<-', '<<-'], names: ['$', '@'], config: { readIndices: false, props: CallProp.Scope } },
 	/* the string and shape functions R declares formals for, restated one by one: the group above gives them
@@ -1322,16 +1323,16 @@ export const WrittenBuiltinDefinitions = [
 	{ overrides: true, type: 'function', names: [Identifier.from(['download.file', PkgName.Utils])], processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Network, SemanticCallTag.File, SemanticCallTag.Writes], sig: [['url', ArgProp.Forced | ArgProp.Resource], ['destfile', ArgProp.Forced | ArgProp.Resource], ['method', ArgProp.Forced | ArgProp.Value], ['quiet', ArgProp.Forced | ArgProp.Flag], ['mode', ArgProp.Forced | ArgProp.Value], ['cacheOK', ArgProp.Forced | ArgProp.Flag], ['extra', ArgProp.Forced | ArgProp.Value], ['headers', ArgProp.Forced | ArgProp.Value], ['...', ArgProp.Forced | ArgProp.Value]] }, assumePrimitive: false },
 	/** Deprecated Functions */
 	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.Dplyr, ['id', 'top_n', 'sample_n', 'recode', 'progress_estimated', 'group_nest', 'add_rownames', 'tbl_df', 'src_local', 'summarise_each', 'summarize_', 'summarise_', 'slice_', 'select_vars_', 'select_', 'rename_vars_', 'rename_', 'transmute_', 'tally_', 'mutate_', 'group_indices_', 'group_by_', 'funs_', 'filter_', 'do_', 'distinct_', 'count_', 'arrange_', 'add_tally_', 'add_count_', 'funs', 'do', 'combine', 'changes', 'location', 'eval_tbls2', 'eval_tbls', 'compare_tbls2', 'compare_tbls', 'bench_tbls', 'current_vars', 'select_var', 'rename_vars', 'select_vars', 'failwith', 'all_vars', 'vars', 'select_all', 'mutate_all', 'summarise_all', 'group_by_all', 'filter_all', 'all_equal', 'arrange_all', 'distinct_all'])  },
-	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: [ Identifier.make('fct_explicit_na', PkgName.Forecats) ]  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: [Identifier.make('fct_explicit_na', PkgName.Forecats)]  },
 	/* deprecated, but still data-masking: restating the mask keeps the column names out of the variable resolution */
 	{ overrides: true, type: 'function', processor: BuiltInProcName.Default, config: { markArgsAsMasked: NseArguments.AllButFirst, props: CallProp.Pure, tags: [SemanticCallTag.Deprecated] }, names: [...Identifier.fromAll(PkgName.Dplyr, ['nest_by', 'with_groups', 'group_split']), ...Identifier.fromAll(PkgName.TidyR, ['spread', 'separate_rows', 'gather', 'extract'])] },
 	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.GgPlot2, ['gg_dep', 'is.theme', 'is.ggplot', 'guide_train', 'is.ggproto', 'fortify', 'is.facet', 'is.Coord', 'aes_auto', 'aes_'])  },
 	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.Plyr, ['liply', 'isplit2'])  },
-	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.Purrr, ['transpose', 'as_vector', 'map_dfr', 'flatten', 'reduce_right', 'accumulate', 'map_raw', 'update_list', 'when', 'rdunif', 'rbernoulli', 'splice', 'rerun', 'prepend', 'at_depth', 'cross', 'list_along' ])  },
-	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: [ '`%@%`' ]  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.Purrr, ['transpose', 'as_vector', 'map_dfr', 'flatten', 'reduce_right', 'accumulate', 'map_raw', 'update_list', 'when', 'rdunif', 'rbernoulli', 'splice', 'rerun', 'prepend', 'at_depth', 'cross', 'list_along'])  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: ['`%@%`']  },
 	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.Readr, ['read_table2', 'melt_table', 'melt_fwf', 'melt_delim'])  },
-	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.Tibble, ['repair_names', 'set_tidy_names', 'tidy_names', 'is.tibble', 'trunc_mat', 'frame_data', 'as.tibble', 'as_data_frame', 'lst_', 'data_frame_', 'tibble_', 'data_frame', 'as_tibble' ])  },
-	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.TidyR, ['nest_legacy', 'unnest_', 'unite_', 'spread_', 'separate_', 'separate_rows_', 'nest_', 'gather_', 'fill_', 'extract_', 'nesting_', 'crossing_', 'expand_', 'drop_na_', 'complete_', 'extract_numeric' ])  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.Tibble, ['repair_names', 'set_tidy_names', 'tidy_names', 'is.tibble', 'trunc_mat', 'frame_data', 'as.tibble', 'as_data_frame', 'lst_', 'data_frame_', 'tibble_', 'data_frame', 'as_tibble'])  },
+	{ type: 'function', processor: BuiltInProcName.DefaultReadAllArgs, config: { tags: [SemanticCallTag.Deprecated] }, names: Identifier.fromAll(PkgName.TidyR, ['nest_legacy', 'unnest_', 'unite_', 'spread_', 'separate_', 'separate_rows_', 'nest_', 'gather_', 'fill_', 'extract_', 'nesting_', 'crossing_', 'expand_', 'drop_na_', 'complete_', 'extract_numeric'])  },
 ] as const satisfies AnyBuiltInDefinition[];
 
 /** Contains the built-in definitions recognized by flowR */

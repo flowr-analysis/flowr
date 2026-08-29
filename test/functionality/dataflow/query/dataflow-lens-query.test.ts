@@ -2,7 +2,7 @@ import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { executeQueries } from '../../../../src/queries/query';
-import { Vertex } from '../../../../src/dataflow/graph/vertex';
+import { DfgVertex } from '../../../../src/dataflow/graph/vertex';
 
 describe('Dataflow Lens Query', withTreeSitter(parser => {
 	test('hides operators and keywords without dropping names that merely contain one', async() => {
@@ -12,7 +12,7 @@ describe('Dataflow Lens Query', withTreeSitter(parser => {
 		const graph = result['dataflow-lens'].simplifiedGraph;
 
 		const calls = [...graph.vertices(true)]
-			.filter(([, v]) => Vertex.isFunctionCall(v))
+			.filter(([, v]) => DfgVertex.isFunctionCall(v))
 			.map(([, v]) => (v as { name: string }).name);
 		assert.includeMembers(calls, ['ifelse', 'print'], `kept calls: ${calls.join(', ')}`);
 		for(const hidden of ['<-', '+', '>']) {

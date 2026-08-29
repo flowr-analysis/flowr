@@ -1,4 +1,5 @@
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Fn } from '../../dataflow/fn/fn';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
@@ -6,10 +7,10 @@ import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { EdgeTypeBits } from '../../dataflow/graph/edge';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { Vertex, VertexType } from '../../dataflow/graph/vertex';
+import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { DataflowInformation } from '../../dataflow/info';
 import { ControlDependency } from '../../dataflow/info';
-import { ArgProp, CallProps, FnSig, SemanticCallTag } from '../../dataflow/environments/built-in-props';
+import { ArgProp, SemanticCallTag, type FnSig } from '../../dataflow/environments/built-in-props';
 import { callFnProps } from '../../dataflow/environments/query-fn-props';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Dataflow } from '../../dataflow/graph/df-helper';
@@ -44,7 +45,7 @@ const ConnectionFlow: EdgeTypeBits = EdgeType.Reads | EdgeType.DefinedBy | EdgeT
 
 /** The arguments holding the handle the call acts on, all of them if it does not state which. */
 function handleArguments(vertex: DataflowGraphVertexFunctionCall, sig: FnSig | undefined): readonly FunctionArgument[] {
-	const stated = sig && FnSig.posWith(FnSig.layout(sig), vertex.args.length, ArgProp.Handle);
+	const stated = sig && Fn.call.signature.posWith(Fn.call.signature.layout(sig), vertex.args.length, ArgProp.Handle);
 	return stated?.length ? stated.map(i => vertex.args[i]) : vertex.args;
 }
 
@@ -74,7 +75,7 @@ function openCallsReaching(graph: DataflowGraph, start: NodeId, opens: ReadonlyS
 /** The variable definition the opened connection is bound to, if it is bound to one. */
 function bindingOf(graph: DataflowGraph, open: NodeId): NodeId | undefined {
 	for(const [source, edge] of graph.edgesTo(open)) {
-		if(DfEdge.includesType(edge, EdgeType.DefinedBy) && Vertex.isVariableDefinition(graph.getVertex(source))) {
+		if(DfEdge.includesType(edge, EdgeType.DefinedBy) && DfgVertex.isVariableDefinition(graph.getVertex(source))) {
 			return source;
 		}
 	}
@@ -162,11 +163,11 @@ function connectionCalls(elements: readonly FlowrSearchElement<ParentInformation
 		}
 		const name = Identifier.toString(stated.name);
 		const loc = SourceLocation.fromNode(node);
-		if(loc !== undefined && (CallProps.hasAny(stated, SemanticCallTag.Opens) || opensByName?.test(name))) {
+		if(loc !== undefined && (Fn.call.props.hasAny(stated, SemanticCallTag.Opens) || opensByName?.test(name))) {
 			opens.set(node.info.id, loc);
-		} else if(CallProps.hasAny(stated, SemanticCallTag.Closes) || closesByName?.test(name)) {
+		} else if(Fn.call.props.hasAny(stated, SemanticCallTag.Closes) || closesByName?.test(name)) {
 			const vertex = dataflow.graph.getVertex(node.info.id);
-			if(Vertex.isFunctionCall(vertex)) {
+			if(DfgVertex.isFunctionCall(vertex)) {
 				closes.push([vertex, stated.sig]);
 			}
 		}

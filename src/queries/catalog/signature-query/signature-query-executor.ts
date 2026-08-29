@@ -1,4 +1,5 @@
 import { satisfies as semverSatisfies, validRange } from 'semver';
+import { Fn } from '../../../dataflow/fn/fn';
 import type { BasicQueryData } from '../../base-query-format';
 import type {
 	SignatureQuery, SignatureQueryResult, SignaturePackageView, SignatureFunctionView, SignatureDatabaseView,
@@ -14,7 +15,7 @@ import type { DecodedFunction } from '../../../project/sigdb/decode';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
 import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
 import type { BuiltInFnInfo } from '../../../dataflow/environments/built-in-props';
-import { ArgProp, ArgProps, CallProps } from '../../../dataflow/environments/built-in-props';
+import { ArgProp } from '../../../dataflow/environments/built-in-props';
 import { Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
 import { RVersion } from '../../../util/r-version';
 import { baseRPackages, baseRExportOwner } from '../../../util/r-base-packages';
@@ -205,13 +206,13 @@ function locationFields(pkg: string, fn: DecodedFunction, version: string | unde
 /** the view of one {@link BuiltInFnInfo}: every declared parameter with what it is used for, and what comes back */
 function flowrViewOf(info: BuiltInFnInfo, sigParams: readonly string[]): SignatureFlowrView {
 	/* every declared parameter, even one flowR says nothing about, so the answer is the whole signature */
-	const args = (info.sig ?? []).map(([n, p]) => ({ name: n, roles: ArgProps.words(p) }));
+	const args = (info.sig ?? []).map(([n, p]) => ({ name: n, roles: Fn.call.argument.words(p) }));
 	const params = args.map(a => a.name);
 	const returns = info.sig?.find(([, p]) => (p & ArgProp.Alias) !== 0)?.[0];
 	/* flowR usually declares only the parameters it models, which is no disagreement as long as they line up */
 	const same = params.every((n, i) => n === sigParams[i]);
 	return compactRecord({
-		props:      CallProps.names([info.props ?? 0, ...info.tags ?? []]).map(name => name.toLowerCase()),
+		props:      Fn.call.props.names([info.props ?? 0, ...info.tags ?? []]).map(name => name.toLowerCase()),
 		args:       args.length > 0 ? args : undefined,
 		returns,
 		parameters: params.length > 0 && !same ? params : undefined

@@ -14,7 +14,7 @@ import { cloneEnvironmentInformation } from '../environments/clone';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { Writable } from 'ts-essentials';
 import type { BuiltInMemory } from '../environments/built-in';
-import { Vertex } from './vertex';
+import { DfgVertex } from './vertex';
 import { activeDataflowBudget } from '../../gas';
 
 /**
@@ -666,7 +666,7 @@ export class DataflowGraph<
 		this.dropQualifications();
 		const vertex = this.getVertex(reference.nodeId);
 		guard(vertex !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set reference`);
-		if(Vertex.isFunctionDefinition(vertex) || Vertex.isVariableDefinition(vertex)) {
+		if(DfgVertex.isFunctionDefinition(vertex) || DfgVertex.isVariableDefinition(vertex)) {
 			vertex.cds = reference.cds;
 		} else {
 			const oldTag = vertex.tag;
@@ -685,7 +685,7 @@ export class DataflowGraph<
 		this.dropQualifications();
 		const infoId = info.id;
 		const vertex = this.getVertex(infoId);
-		guard(vertex !== undefined && (Vertex.isUse(vertex) || Vertex.isValue(vertex)), () => `node must be a use or value node for ${JSON.stringify(info.id)} to update it to a function call but is ${vertex?.tag}`);
+		guard(vertex !== undefined && (DfgVertex.isUse(vertex) || DfgVertex.isValue(vertex)), () => `node must be a use or value node for ${JSON.stringify(info.id)} to update it to a function call but is ${vertex?.tag}`);
 		const previousTag = vertex.tag;
 		this.vertexInformation.set(infoId, { ...vertex, ...info, tag: VertexType.FunctionCall });
 		this.unindexType(previousTag, infoId);
@@ -747,7 +747,7 @@ export class DataflowGraph<
 function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex, next: Vertex): Vertex {
 	if(current.tag !== next.tag) {
 		return current;
-	} else if(Vertex.isFunctionDefinition(current)) {
+	} else if(DfgVertex.isFunctionDefinition(current)) {
 		const n = next as DataflowGraphVertexFunctionDefinition;
 		current.exitPoints = uniqueArrayMerge(current.exitPoints, n.exitPoints);
 		if(n.mode && n.mode.length > 0) {

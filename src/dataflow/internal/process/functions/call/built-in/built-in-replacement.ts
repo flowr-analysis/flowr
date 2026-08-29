@@ -24,7 +24,7 @@ import { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-a
 import { FunctionArgument } from '../../../../../graph/graph';
 import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { Vertex } from '../../../../../graph/vertex';
+import { DfgVertex } from '../../../../../graph/vertex';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
@@ -78,11 +78,11 @@ export function processReplacementFunction<OtherInfo>(
 	);
 
 	const createdVert = res.graph.getVertex(rootId);
-	if(Vertex.isFunctionCall(createdVert)) {
+	if(DfgVertex.isFunctionCall(createdVert)) {
 		createdVert.origin = [BuiltInProcName.Replacement];
 	}
 	const targetVert = res.graph.getVertex(unpackArg(args[0])?.info.id as NodeId);
-	if(Vertex.isVariableDefinition(targetVert)) {
+	if(DfgVertex.isVariableDefinition(targetVert)) {
 		(targetVert as { par: boolean }).par = true;
 	}
 

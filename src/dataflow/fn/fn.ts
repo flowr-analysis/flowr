@@ -5,7 +5,13 @@ import { isHigherOrder } from './higher-order-function';
 import { argumentRolesOfFunctions } from './argument-roles';
 import { reflectiveRolesOf } from './frame-reflection';
 import { argForImpl, classDeclarationOfImpl, declaredClassesImpl, superClassesOfImpl, toSigClassesImpl } from './class-declaration';
-import { Vertex } from '../graph/vertex';
+import { DfgVertex } from '../graph/vertex';
+import { ArgProps, CallProps, FnSig } from '../environments/built-in-props';
+import { MatchArgs } from '../graph/match-args';
+import { Nse } from '../internal/process/functions/call/nse';
+import { Quoted } from '../internal/process/functions/call/quoted';
+import { Deferred } from '../internal/process/functions/call/deferred';
+import { UnsupportedFunctions } from '../../abstract-interpretation/unsupported-functions';
 import type { DataflowGraphVertexInfo } from '../graph/vertex';
 
 /**
@@ -20,6 +26,8 @@ import type { DataflowGraphVertexInfo } from '../graph/vertex';
  * Fn.isHigherOrder(definition, graph);     // whether they call what they are handed
  * Fn.argumentRoles(definitions, graph);    // what each formal is used as
  * Fn.classes.declared(graph);              // the classes the project declares
+ * Fn.call.props.hasAny(stated, CallProp.Scope);  // what flowR states one call does
+ * Fn.call.match(call, formals);           // how R binds its arguments
  * ```
  */
 export const Fn = {
@@ -36,8 +44,30 @@ export const Fn = {
 	argumentRoles:   argumentRolesOfFunctions,
 	/** The reflective argument bits of one definition. */
 	frameReflection: reflectiveRolesOf,
+	/**
+	 * What one *call* of a function means: what flowR states about it, how R binds its arguments, and which of
+	 * them it does not simply evaluate.
+	 */
+	call:            {
+		/** What flowR states a call does (it reads a file, it asks the user, ...). */
+		props:       CallProps,
+		/** The formals a built-in declares. */
+		signature:   FnSig,
+		/** The same as {@link Fn.call.props}, for one argument. */
+		argument:    ArgProps,
+		/** R's argument matching -- exact, then partial, then positional. */
+		match:       MatchArgs,
+		/** The arguments a call does not evaluate. */
+		nse:         Nse,
+		/** The expressions it quotes instead. */
+		quoted:      Quoted,
+		/** The ones it evaluates at a time flowR cannot pin down. */
+		deferred:    Deferred,
+		/** The calls that change the environment in ways flowR cannot follow. */
+		unsupported: UnsupportedFunctions
+	},
 	/** What the project declares as a class, and how those relate. */
-	classes:         {
+	classes: {
 		/** The declaration a call states. */
 		of:       classDeclarationOfImpl,
 		/** Every class the graph declares, keyed by name. */
@@ -50,7 +80,7 @@ export const Fn = {
 		argFor:   argForImpl,
 		/** Whether the vertex is a call that declares a class; its `classDecl` is then set. */
 		isDeclaring(this: void, vertex: DataflowGraphVertexInfo | undefined): boolean {
-			return Vertex.isFunctionCall(vertex) && vertex.classDecl !== undefined;
+			return DfgVertex.isFunctionCall(vertex) && vertex.classDecl !== undefined;
 		}
 	}
 } as const;

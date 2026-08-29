@@ -1,5 +1,5 @@
-import { MatchArgs } from '../../../../../graph/match-args';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
+import { Fn } from '../../../../../fn/fn';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowInformation, ExitPointType, overwriteExitPoints } from '../../../../../info';
 import { getAllFunctionCallTargets, getAllLinkedFunctionDefinitions, linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap } from '../../../../linker';
@@ -15,7 +15,7 @@ import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model'
 import { type DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
 import { Identifier, type InGraphIdentifierDefinition, type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
-import { Vertex, VertexType } from '../../../../../graph/vertex';
+import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { createFreshEnvState } from './built-in-new-env';
 import { cleanEnvOf, popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
 import type { Environment, IEnvironment, REnvironmentInformation } from '../../../../../environments/environment';
@@ -166,7 +166,7 @@ export function processFunctionDefinition<OtherInfo>(
 	// an on.exit hook's `<<-` escapes like a body `<<-`; fold its escaping writes into this function's subflow
 	for(const hook of exitHooks) {
 		const vert = subgraph.getVertex(hook.id);
-		if(!Vertex.isFunctionDefinition(vert)) {
+		if(!DfgVertex.isFunctionDefinition(vert)) {
 			continue;
 		}
 		let hookEnvironment = vert.subflow.environment;
@@ -211,7 +211,7 @@ export function processFunctionDefinition<OtherInfo>(
 	let afterHookExitPoints = exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default || e.type === ExitPointType.Error) ?? [];
 	for(const hook of exitHooks) {
 		const vert = subgraph.getVertex(hook.id);
-		if(!Vertex.isFunctionDefinition(vert)) {
+		if(!DfgVertex.isFunctionDefinition(vert)) {
 			continue;
 		}
 		// call all hooks
@@ -226,7 +226,7 @@ export function processFunctionDefinition<OtherInfo>(
 	if(data.ctx.config.solver.trackEnvironments) {
 		for(const ep of afterHookExitPoints) {
 			const epVertex = subgraph.getVertex(ep.nodeId);
-			if(Vertex.hasOrigin(epVertex, BuiltInProcName.NewEnv)) {
+			if(DfgVertex.hasOrigin(epVertex, BuiltInProcName.NewEnv)) {
 				returnEnvState = createFreshEnvState(data, { graph: subgraph, entryPoint: ep.nodeId });
 				break;
 			}
@@ -301,7 +301,7 @@ function dispatchesOnFirstParameter<Info>(id: NodeId, idMap: AstIdMap<Info & Par
 
 function updateDispatches<Info>(graph: DataflowGraph, myArgs: FunctionArgument[], idMap: AstIdMap<Info & ParentInformation>): void {
 	for(const [, info] of graph.vertices(false)) {
-		if(!Vertex.isFunctionCall(info) || (!info.origin.includes(BuiltInProcName.S3Dispatch) && !info.origin.includes(BuiltInProcName.S7Dispatch))) {
+		if(!DfgVertex.isFunctionCall(info) || (!info.origin.includes(BuiltInProcName.S3Dispatch) && !info.origin.includes(BuiltInProcName.S7Dispatch))) {
 			continue;
 		}
 		if(info.args.length === 0) {
@@ -376,7 +376,7 @@ function linkSuperAssignmentsToOuterDefinitions(
 ): void {
 	for(const nodeId of nestedGraphNodeIds) {
 		const vertex = parentGraph.getVertex(nodeId);
-		if(!Vertex.hasOrigin(vertex, BuiltInProcName.SuperAssignment)) {
+		if(!DfgVertex.hasOrigin(vertex, BuiltInProcName.SuperAssignment)) {
 			continue;
 		}
 
@@ -391,7 +391,7 @@ function linkSuperAssignmentsToOuterDefinitions(
 			}
 
 			const targetVertex = parentGraph.getVertex(targetId);
-			if(!Vertex.isVariableDefinition(targetVertex)) {
+			if(!DfgVertex.isVariableDefinition(targetVertex)) {
 				continue;
 			}
 
@@ -512,8 +512,8 @@ export function updateNestedFunctionCalls(
 			}
 			const targetVertex = graph.getVertex(target);
 			// support reads on symbols
-			if(!Vertex.isFunctionDefinition(targetVertex)) {
-				if(Vertex.isUse(targetVertex)) {
+			if(!DfgVertex.isFunctionDefinition(targetVertex)) {
+				if(DfgVertex.isUse(targetVertex)) {
 					graph.addEdge(id, target, EdgeType.Reads);
 				}
 				continue;
@@ -532,7 +532,7 @@ export function updateNestedFunctionCalls(
 				// collect all next method calls to link them to the same targets!
 				for(const s of targetVertex.subflow.graph) {
 					const v = graph.getVertex(s);
-					if(Vertex.isFunctionCall(v) && v.origin.includes(BuiltInProcName.S3DispatchNext)) {
+					if(DfgVertex.isFunctionCall(v) && v.origin.includes(BuiltInProcName.S3DispatchNext)) {
 						collectedNextMethods.add(v.id);
 					}
 				}
@@ -548,15 +548,15 @@ export function updateNestedFunctionCalls(
 			});
 			const linkedParameters = graph.idMap?.get(target);
 			if(RFunctionDefinition.is(linkedParameters)) {
-				MatchArgs.onCallAndLink(args, linkedParameters.parameters, graph);
+				Fn.call.match.onCallAndLink(args, linkedParameters.parameters, graph);
 			}
 		}
 		for(const nextMethodId of collectedNextMethods) {
 			for(const target of targets) {
 				const targetVertex = graph.getVertex(target);
-				if(Vertex.isUse(targetVertex)) {
+				if(DfgVertex.isUse(targetVertex)) {
 					graph.addEdge(nextMethodId, target, EdgeType.Reads);
-				} else if(Vertex.isFunctionDefinition(targetVertex)) {
+				} else if(DfgVertex.isFunctionDefinition(targetVertex)) {
 					graph.addEdge(nextMethodId, target, EdgeType.Calls);
 				}
 			}

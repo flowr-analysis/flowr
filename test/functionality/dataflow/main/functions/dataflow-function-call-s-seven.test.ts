@@ -4,7 +4,7 @@ import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
-import { Vertex } from '../../../../../src/dataflow/graph/vertex';
+import { DfgVertex } from '../../../../../src/dataflow/graph/vertex';
 import { getAllFunctionCallTargets } from '../../../../../src/dataflow/internal/linker';
 import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 
@@ -62,12 +62,12 @@ sample(42)
 			const analyzer = await applyAssumedPackages(new FlowrAnalyzerBuilder().setParser(ts), assumedPackagesOf(undefined)).build();
 			analyzer.addRequest(code);
 			const g = (await analyzer.dataflow()).graph;
-			const call = g.vertices(true).find(([, v]) => Vertex.isFunctionCall(v) && Identifier.getName(v.name) === callName);
+			const call = g.vertices(true).find(([, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === callName);
 			if(call === undefined) {
 				throw new Error(`${callName} call vertex not found`);
 			}
 			const targets = [...getAllFunctionCallTargets(call[0], g)];
-			const resolvesToFdef = targets.some(t => Vertex.isFunctionDefinition(g.getVertex(t) ?? { tag: undefined } as never));
+			const resolvesToFdef = targets.some(t => DfgVertex.isFunctionDefinition(g.getVertex(t) ?? { tag: undefined } as never));
 			expect(resolvesToFdef, `${callName}() resolves to a (synthetic) function definition`).toBe(true);
 		}
 	});

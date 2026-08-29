@@ -4,7 +4,7 @@ import { ExitPointType } from '../info';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import type { CallGraph } from '../graph/call-graph';
 import type { DataflowGraphVertexArgument } from '../graph/vertex';
-import { Vertex } from '../graph/vertex';
+import { DfgVertex } from '../graph/vertex';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -39,7 +39,7 @@ export type ExceptionsByFunction = Record<NodeId, ExceptionPoint[]>;
  * (`tryCatch`) catches only what the names written for it say.
  */
 function catches(vertex: DataflowGraphVertexArgument | undefined, graph: CallGraph, info: BuiltInLookup): boolean {
-	if(!Vertex.isFunctionCall(vertex) || vertex.origin === 'unnamed' || !vertex.origin.some(c => CatchHandlers.has(c))) {
+	if(!DfgVertex.isFunctionCall(vertex) || vertex.origin === 'unnamed' || !vertex.origin.some(c => CatchHandlers.has(c))) {
 		return false;
 	}
 	const sig = info(vertex.name)?.sig;
@@ -93,7 +93,7 @@ function reach(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction)
 			calls.set(current, []);
 			continue;
 		}
-		if(Vertex.isFunctionDefinition(vertex)) {
+		if(DfgVertex.isFunctionDefinition(vertex)) {
 			defs.add(current);
 			own.set(current, vertex.exitPoints.filter(e => e.type === ExitPointType.Error).map(e => ({ id: e.nodeId, cds: e.cds })));
 		}

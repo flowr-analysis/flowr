@@ -20,7 +20,7 @@ import type { DataflowInformation } from '../../dataflow/info';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import { Vertex } from '../../dataflow/graph/vertex';
+import { DfgVertex } from '../../dataflow/graph/vertex';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 /**
@@ -125,7 +125,7 @@ export function findEnclosingFunctionDefinition(id: NodeId, idMap: AstIdMap): No
  */
 export function sliceReachesFunctionInterface(fnDefId: NodeId, graph: DataflowGraph, queue: VisitingQueue, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	const vertex = graph.getVertex(fnDefId);
-	if(vertex === undefined || !Vertex.isFunctionDefinition(vertex)) {
+	if(vertex === undefined || !DfgVertex.isFunctionDefinition(vertex)) {
 		return false;
 	}
 	// (a) the slice reaches a parameter of this definition

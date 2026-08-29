@@ -21,7 +21,7 @@ export enum PlaygroundBox {
  * - `lint:<rule>` is everything a linting rule reported, `lint:<rule>@12` its finding on that line
  * - `dep:<kind>` is what the dependency query found of that kind, `dep:<kind>@12` the one on that line
  * - a {@link PlaygroundBox} is one of the boxes of the page itself
- * @see {@link PlaygroundMark.isValid} to check one, {@link PlaygroundMark.compress} to shorten a list
+ * @see {@link Mark.isValid} to check one, {@link Mark.compress} to shorten a list
  */
 export type PlaygroundMark = `${number}` | `${number}-${number}` | `${number}:${number}` | `${number}@${string}`
 	| `lint:${string}` | `dep:${string}` | PlaygroundBox;
@@ -43,11 +43,10 @@ const MaxSharedLink = 4000;
 const FragmentSafe = /[^A-Za-z0-9\-._~!$'()*,;:@/?=]/gu;
 
 /**
- * The helper object associated with {@link PlaygroundMark}, which makes it easy to check a mark and to
- * keep a list of them as short as a link should be.
+ * What a {@link PlaygroundMark} is, reached as {@link Playground.Mark}: checking one, and keeping a list of
+ * them as short as a link should be.
  */
-export const PlaygroundMark = {
-	name: 'PlaygroundMark',
+const Mark = {
 	/**
 	 * Checks whether a value has a valid mark syntax. This does not check whether the mark points at
 	 * anything: a line past the end of the script is valid and simply marks nothing.
@@ -65,7 +64,7 @@ export const PlaygroundMark = {
 	 * so this shortens rather than packs.
 	 */
 	compress(this: void, marks: readonly PlaygroundMark[]): PlaygroundMark[] {
-		const kept = uniqueArray(marks.filter(PlaygroundMark.isValid));
+		const kept = uniqueArray(marks.filter(Mark.isValid));
 		/* `lint:<rule>` stands for each of its findings, so the single ones beside it say nothing more */
 		const whole = kept.filter(mark => FoundMarkPattern.test(mark) && !mark.includes('@'));
 		const left = kept.filter(mark => !whole.some(all => mark.startsWith(`${all}@`)));
@@ -81,12 +80,12 @@ export const PlaygroundMark = {
 		}
 		return [...ranges, ...left.filter(mark => !/^\d+$/.test(mark))];
 	},
-	/** the inverse of {@link PlaygroundMark.compress}: every range back to the lines it stands for */
+	/** the inverse of {@link Mark.compress}: every range back to the lines it stands for */
 	expand(this: void, marks: readonly string[]): PlaygroundMark[] {
 		return marks.flatMap((mark): PlaygroundMark[] => {
 			const range = /^(\d+)-(\d+)$/.exec(mark);
 			if(range === null) {
-				return PlaygroundMark.isValid(mark) ? [mark] : [];
+				return Mark.isValid(mark) ? [mark] : [];
 			}
 			const [from, to] = [Number(range[1]), Number(range[2])];
 			return from <= to && to - from < MaxExpandedRange
@@ -136,7 +135,7 @@ export const Playground = {
 	/** where the page these links point at is served from */
 	BaseRef: 'https://flowr-analysis.github.io/flowr/wiki/playground/',
 	/** what a link can point at */
-	Mark:    PlaygroundMark,
+	Mark,
 	/** the boxes of the page a mark can point at */
 	Box:     PlaygroundBox,
 	/**
@@ -153,7 +152,7 @@ export const Playground = {
 		if(config.length > 0) {
 			fields.push(['k', Playground.packConfig(config)]);
 		}
-		const kept = PlaygroundMark.compress(marks);
+		const kept = Mark.compress(marks);
 		if(kept.length > 0) {
 			fields.push(['h', kept.join(',')]);
 		}

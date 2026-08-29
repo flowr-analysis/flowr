@@ -2,7 +2,7 @@ import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Vertex } from '../../dataflow/graph/vertex';
+import { DfgVertex } from '../../dataflow/graph/vertex';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
@@ -31,7 +31,7 @@ export function useResolvesToDefinitionOrBuiltin(graph: DataflowGraph, id: NodeI
 			return true;
 		}
 		const targetVtx = graph.getVertex(target);
-		if(Vertex.isVariableDefinition(targetVtx) || Vertex.isFunctionDefinition(targetVtx)) {
+		if(DfgVertex.isVariableDefinition(targetVtx) || DfgVertex.isFunctionDefinition(targetVtx)) {
 			return true;
 		}
 	}
@@ -118,7 +118,7 @@ export function collectScopeDefinedNames(graph: DataflowGraph): ScopeDefinedName
 		return byScope;
 	}
 	for(const [id, vtx] of graph.vertices(true)) {
-		if(!Vertex.isVariableDefinition(vtx)) {
+		if(!DfgVertex.isVariableDefinition(vtx)) {
 			continue;   // function bindings/params surface as variable definitions of their name symbol
 		}
 		const name = idMap.get(id)?.lexeme;

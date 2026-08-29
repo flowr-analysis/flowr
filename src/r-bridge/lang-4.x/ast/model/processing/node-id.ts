@@ -1,6 +1,6 @@
 import type { AstIdMap } from './decorate';
 import type { DataflowGraph } from '../../../../../dataflow/graph/graph';
-import { Vertex } from '../../../../../dataflow/graph/vertex';
+import { DfgVertex } from '../../../../../dataflow/graph/vertex';
 import { removeRQuotes } from '../../../../retriever';
 import { Identifier } from '../../../../../dataflow/environments/identifier';
 import { RNode } from '../model';
@@ -24,6 +24,10 @@ function startsNumeric(id: string): boolean {
 	return c >= 48 && c <= 57 /* 0-9 */ || c === 45 /* - */ || c === 43 /* + */ || c === 46;
 }
 
+/**
+ * What a {@link NodeId} is: the identity of a node within one analysis, plus the built-in and `pkg::fn`
+ * names encoded as one, and the ways to read a name back out of it.
+ */
 export const NodeId = {
 	name: 'NodeId',
 	/**
@@ -126,7 +130,7 @@ export const NodeId = {
 	 */
 	recoverContent(this: void, id: NodeId, graph: DataflowGraph): string | undefined {
 		const vertex = graph.getVertex(id);
-		if(vertex && Vertex.isFunctionCall(vertex) && vertex.name) {
+		if(vertex && DfgVertex.isFunctionCall(vertex) && vertex.name) {
 			return Identifier.toString(vertex.name);
 		}
 		const node = graph.idMap?.get(id);
@@ -134,7 +138,7 @@ export const NodeId = {
 			return undefined;
 		}
 		const lexeme = node.lexeme ?? node.info.fullLexeme ?? '';
-		if(Vertex.isUse(vertex)) {
+		if(DfgVertex.isUse(vertex)) {
 			return removeRQuotes(lexeme);
 		}
 		return lexeme;

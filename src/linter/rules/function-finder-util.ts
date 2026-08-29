@@ -9,7 +9,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { isNotUndefined } from '../../util/assert';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { Vertex, VertexType } from '../../dataflow/graph/vertex';
+import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
@@ -120,7 +120,7 @@ export const functionFinderUtil = {
 		}
 
 		const vert = dataflow.graph.getVertex(element.node.info.id);
-		if(Vertex.isFunctionCall(vert)) {
+		if(DfgVertex.isFunctionCall(vert)) {
 			return hasArgumentValue(requireValue, vert, analyzer, dataflow.graph, info.resolveValue, info.argName, info.argIdx);
 		}
 

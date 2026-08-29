@@ -1,17 +1,10 @@
-import { MatchArgs } from '../../../../../graph/match-args';
-import { FnSig } from '../../../../../environments/built-in-props';
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { Fn } from '../../../../../fn/fn';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { requestFromInput } from '../../../../../../r-bridge/retriever';
-import {
-	type ParentInformation,
-	sourcedDeterministicCountingIdGenerator
-} from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
-	type PotentiallyEmptyRArgument,
-	RFunctionCall
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type ParentInformation, sourcedDeterministicCountingIdGenerator } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { type PotentiallyEmptyRArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -47,7 +40,7 @@ export function processEvalCall<OtherInfo>(
 		supportFunctionCall?: boolean
 	}
 ): DataflowInformation {
-	const bound = MatchArgs.toNames(args, EvalParameterNames);
+	const bound = Fn.call.match.toNames(args, EvalParameterNames);
 	/* `evalText` names its formal differently, so a lone argument is the expression whatever it is called */
 	const evalArgument = (bound.get('expr') ?? RFunctionCall.soleArgument(args))?.value;
 	const envirArg = bound.get('envir');
@@ -60,7 +53,7 @@ export function processEvalCall<OtherInfo>(
 	}
 
 	const information = config.includeFunctionCall ?
-		processKnownFunctionCall({ name, args, rootId, data, sig: FnSig.only(0, 'expr'), origin: BuiltInProcName.Eval }).information
+		processKnownFunctionCall({ name, args, rootId, data, sig: Fn.call.signature.only(0, 'expr'), origin: BuiltInProcName.Eval }).information
 		: DataflowInformation.initialize(rootId, data);
 
 	if(config.includeFunctionCall) {
@@ -114,7 +107,7 @@ export function processEvalCall<OtherInfo>(
 function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, config: { includeFunctionCall?: boolean, supportFunctionCall?: boolean }, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
 	const val = evalArgument;
 
-	if(config.supportFunctionCall){
+	if(config.supportFunctionCall) {
 		return getAsString(val, data);
 	} else {
 		if(

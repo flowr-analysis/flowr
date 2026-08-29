@@ -277,7 +277,6 @@ function getPropMask(this: void, selector: PropSelector): PropMask {
  * All helpers use {@link PropSelector}s to identify call properties.
  */
 export const CallProps = {
-	name: 'CallProps',
 	/** Checks whether a {@link PropSelector} is a bitfield of {@link CallProp}s. */
 	isCallProp,
 	/** Checks whether a {@link PropSelector} is a {@link SemanticCallTag}. */
@@ -377,7 +376,6 @@ const ForcingEvery: FnSig = [['...', ArgProp.Forced]];
  * Utility functions for {@link FnSig|function signatures}.
  */
 export const FnSig = {
-	name:    'FnSig',
 	/** The positional view of a signature; see {@link sigLayout}. */
 	layout:  sigLayout,
 	/** The roles of the argument at a position; see {@link argProp}. */
@@ -456,7 +454,6 @@ const ArgPropEntries = bitEntries(ArgPropNames);
  * Utility functions for {@link ArgProps|argument property bitfields}.
  */
 export const ArgProps = {
-	name:  'ArgProps',
 	/** the {@link ArgProp} bit to its name, in ascending bit order */
 	names: ArgPropNames,
 	/** What an argument is used for, as words; see {@link wordsOf}. */

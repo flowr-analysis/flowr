@@ -3,7 +3,7 @@ import { withTreeSitter } from '../../../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { Package } from '../../../../../src/project/plugins/package-version-plugins/package';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Vertex } from '../../../../../src/dataflow/graph/vertex';
+import { DfgVertex } from '../../../../../src/dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../../../src/dataflow/graph/edge';
 import type { DataflowInformation } from '../../../../../src/dataflow/info';
 import type { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
@@ -23,7 +23,7 @@ function exportResolution(df: DataflowInformation): Map<string, string[]> {
 	const byName = new Map<string, string[]>();
 	for(const [id, vertex] of df.graph.vertices(true)) {
 		const name = String(vertex.name);
-		if(Vertex.isFunctionCall(vertex) && /^f\d+$/.test(name)) {
+		if(DfgVertex.isFunctionCall(vertex) && /^f\d+$/.test(name)) {
 			const targets: string[] = [];
 			for(const [target, edge] of df.graph.edgesFrom(id)) {
 				if(DfEdge.includesType(edge, EdgeType.Reads | EdgeType.Calls) && NodeId.isBuiltIn(target)) {

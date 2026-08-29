@@ -1,7 +1,8 @@
 import { assert, describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { queryCase } from '../_helper/query';
-import { SlicingCriteria } from '../../../src/slicing/criterion/parse';
+import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
+import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
 import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
@@ -13,7 +14,7 @@ describe('Inspect Recursion Query', withTreeSitter(parser => {
 	function testRecursion(name: string, code: string, recursive: SlicingCriteria) {
 		queryCase(parser, 'inspect-recursion', name, code, async({ result, idMap, analyzer }) => {
 			const found = result.recursive;
-			const expectedRecursive = new Set(SlicingCriteria.decodeAll(recursive, idMap).map(d => String(d.id)));
+			const expectedRecursive = new Set(SlicingCriterion.decodeAll(recursive, idMap).map(d => String(d.id)));
 
 			const expected: Record<string, boolean> = {};
 			for(const [id] of (await analyzer.dataflow()).graph.verticesOfType(VertexType.FunctionDefinition)) {

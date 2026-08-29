@@ -1,8 +1,9 @@
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RValue } from './r-value';
 import { intervalFrom, intervalFromValues } from './intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from './logical/logical-constants';
 import { type Lift, type Value, type ValueInterval, type ValueSet, Bottom, isBottom, isTop, Top } from './r-value';
-import { RStringLiteral, stringFrom } from './string/string-constants';
+import { stringFrom } from './string/string-constants';
 import { vectorFrom } from './vectors/vector-constants';
 import { Resolve } from '../../environments/resolve-helper';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
@@ -47,7 +48,7 @@ export function soleValue<T extends Value['type']>(this: void, set: ValueSet<Val
  * The one value a set holds, `undefined` unless it holds exactly one, optionally of the given kind.
  * @param set  - the set to take the value from
  * @param type - the kind the value has to have, any kind if unset
- * @returns the sole value, `undefined` if the set holds another number of them or another kind
+ * @returns    the sole value, `undefined` if the set holds another number of them or another kind
  */
 export function soleValue<T extends Value['type']>(this: void, set: ValueSet<Value[]> | undefined, type?: T): Value | undefined {
 	const only = set?.elements.length === 1 ? set.elements[0] : undefined;
@@ -96,7 +97,7 @@ export function valueFromRNumber(value: RNumberValue): ValueInterval {
  */
 export function valueFromRNodeConstant(a: RNodeWithParent): Value {
 	if(RString.is(a)) {
-		return RStringLiteral.value(a.content) ?? Top;
+		return RValue.ofStringLiteral(a.content) ?? Top;
 	} else if(RNumber.is(a)) {
 		return valueFromRNumber(a.content);
 	} else if(RLogical.is(a)) {

@@ -29,6 +29,7 @@ const MaxCodePoint = 0x10FFFF;
 const EscapePattern = /\\(?:x([0-9a-fA-F]{1,2})|u\{([0-9a-fA-F]{1,6})\}|u([0-9a-fA-F]{1,4})|U\{([0-9a-fA-F]{1,8})\}|U([0-9a-fA-F]{1,8})|([0-7]{1,3})|([\s\S]))/g;
 
 /** the characters an R string literal stands for (`"a\tb"` is three characters, not the four its source is written with); undefined for an escape R would reject */
+export
 function unescapeRString(this: void, str: string): string | undefined {
 	if(!str.includes('\\')) {
 		return str;
@@ -49,6 +50,7 @@ function unescapeRString(this: void, str: string): string | undefined {
 }
 
 /** the {@link ValueString} an R string literal stands for, escapes resolved (a raw string has none, so it stands for its characters as written); undefined for an escape R would reject */
+export
 function stringFromLiteral(this: void, value: RStringValue): ValueString | undefined {
 	if(value.flag === 'raw') {
 		return stringFrom(value);
@@ -75,7 +77,7 @@ export function collectStrings(a: Value[], withQuotes: boolean = false): string[
 		}
 
 		if(withQuotes) {
-			values.push(`${value.value.quotes}${value.value.str}${value.value.quotes}` );
+			values.push(`${value.value.quotes}${value.value.str}${value.value.quotes}`);
 		} else {
 			values.push(value.value.str);
 		}
@@ -85,14 +87,6 @@ export function collectStrings(a: Value[], withQuotes: boolean = false): string[
 }
 
 /** utility functions for the strings a program writes down, as opposed to the ones it computes */
-export const RStringLiteral = {
-	name:     'RStringLiteral',
-	/** What the escapes in a literal stand for; see {@link unescapeRString}. */
-	unescape: unescapeRString,
-	/** The value a literal stands for, `undefined` when R would not accept it; see {@link stringFromLiteral}. */
-	value:    stringFromLiteral
-} as const;
-
 export const ValueEmptyString = stringFrom('');
 export const ValueStringTop = liftString(Top);
 export const ValueStringBot = liftString(Bottom);

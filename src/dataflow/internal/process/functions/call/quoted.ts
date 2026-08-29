@@ -1,3 +1,9 @@
+/**
+ * `Fn.call` is the entry point these members are reached through, and it is built on this file, so the backing
+ * functions are called directly here; going through `Fn` would make `src/dataflow/fn/fn.ts` import its own
+ * importers.
+ * @lintIgnore use-instead
+ */
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { ControlFlowGraph } from '../../../../../control-flow/control-flow-graph';
 import { RFunctionCall } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -9,7 +15,7 @@ import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 import { DfEdge, EdgeType } from '../../../../graph/edge';
 import type { DataflowGraph } from '../../../../graph/graph';
 import { FunctionArgument, UnknownSideEffect } from '../../../../graph/graph';
-import { type DataflowGraphVertexFunctionCall, Vertex, VertexType } from '../../../../graph/vertex';
+import { type DataflowGraphVertexFunctionCall, DfgVertex, VertexType } from '../../../../graph/vertex';
 import { linkExpressionIn, linkInputs } from '../../../linker';
 import { type MaskingCall, Nse } from './nse';
 import { Deferred } from './deferred';
@@ -48,11 +54,10 @@ function hasOrigin(vertex: { readonly origin?: readonly string[] | 'unnamed' }, 
  * ```
  */
 export const Quoted = {
-	name: 'Quoted',
 	/** The expressions a capturing call holds on to. */
 	capturedBy(this: void, graph: DataflowGraph, id: NodeId): readonly NodeId[] {
 		const vertex = graph.getVertex(id);
-		if(!Vertex.isFunctionCall(vertex)) {
+		if(!DfgVertex.isFunctionCall(vertex)) {
 			return [];
 		} else if(hasOrigin(vertex, CapturingProcessors)) {
 			return capturedArgumentsOf(graph, id, true);
@@ -133,6 +138,7 @@ export const Quoted = {
 	}
 } as const;
 
+export
 interface CapturedExpression {
 	readonly expr: NodeId
 	/** the capturing call, whose scope encloses `expr` */
@@ -142,7 +148,7 @@ interface CapturedExpression {
 /** The name a delaying call binds, which is the definition its reads have to go through. */
 function boundBy(graph: DataflowGraph, id: NodeId): NodeId | undefined {
 	for(const [target, edge] of graph.edgesTo(id)) {
-		if(DfEdge.includesType(edge, EdgeType.DefinedBy) && Vertex.isVariableDefinition(graph.getVertex(target))) {
+		if(DfEdge.includesType(edge, EdgeType.DefinedBy) && DfgVertex.isVariableDefinition(graph.getVertex(target))) {
 			return target;
 		}
 	}
@@ -287,12 +293,12 @@ function* escapingArguments(graph: DataflowGraph, id: NodeId): Generator<NodeId>
 			continue;
 		}
 		const callee = graph.getVertex(target);
-		if(!Vertex.isFunctionDefinition(callee)) {
+		if(!DfgVertex.isFunctionDefinition(callee)) {
 			continue;
 		}
 		for(const exit of callee.exitPoints) {
 			const closure = graph.getVertex(exit.nodeId);
-			if(!Vertex.isFunctionDefinition(closure)) {
+			if(!DfgVertex.isFunctionDefinition(closure)) {
 				continue;
 			}
 			for(const key of Object.keys(callee.params)) {

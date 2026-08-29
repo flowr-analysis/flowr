@@ -212,10 +212,12 @@ function resolveAsNumeric(this: void, args: BuiltInEvalHandlerArgs): Value {
 }
 
 /**
- * Folding the numeric built-ins, from an operator to `sqrt`.
+ * Folding the numeric and bitwise built-ins, from an operator to `sqrt`.
+ *
+ * Wired into {@link BuiltInEvalHandlerMapper} and internal to evaluation: to ask what a node holds, use
+ * {@link NodeValue} or {@link Resolve}.
  */
 export const NumericFold = {
-	name: 'NumericFold',
 	/** every numeric built-in that is folded, see {@link NumericFns} */
 	fns:  NumericFns,
 	/** What a numeric call amounts to; see {@link resolveAsNumeric}. */

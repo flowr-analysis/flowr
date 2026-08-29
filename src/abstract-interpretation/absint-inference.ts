@@ -1,4 +1,5 @@
 import { CfgEdge, CfgVertex, type ControlFlowInformation, NoNeighbors, type ReadOnlyControlFlowGraph } from '../control-flow/control-flow-graph';
+import { Fn } from '../dataflow/fn/fn';
 import { type OnCall, SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { visitCfgInOrder } from '../control-flow/simple-visitor';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
@@ -6,7 +7,7 @@ import { Identifier } from '../dataflow/environments/identifier';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import { DfEdge, EdgeType } from '../dataflow/graph/edge';
 import { type DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
-import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexUse, type DataflowGraphVertexValue, type DataflowGraphVertexVariableDefinition, Vertex, VertexType } from '../dataflow/graph/vertex';
+import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexUse, type DataflowGraphVertexValue, type DataflowGraphVertexVariableDefinition, DfgVertex, VertexType } from '../dataflow/graph/vertex';
 import type { ControlDependency } from '../dataflow/info';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
 import type { NoInfo } from '../r-bridge/lang-4.x/ast/model/model';
@@ -35,7 +36,6 @@ import type { MultiValueDomain } from './domains/multi-value-state-domain';
 import { MultiValueStateDomain } from './domains/multi-value-state-domain';
 import type { AbstractProduct, ProductReduction } from './domains/partial-product-domain';
 import type { StateDomain } from './domains/state-domain';
-import { UnsupportedFunctions } from './unsupported-functions';
 
 /**
  * Represents the abstract semantics for each abstract domain in an analysis.
@@ -272,7 +272,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 			return state.get(node.info.id);
 		}
 		const vertex = this.getDataflowGraph(node.info.id);
-		const call = Vertex.isFunctionCall(vertex) ? vertex : undefined;
+		const call = DfgVertex.isFunctionCall(vertex) ? vertex : undefined;
 		const origins = Array.isArray(call?.origin) ? call.origin : [];
 
 		if(RSymbol.is(node)) {
@@ -670,7 +670,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	}
 
 	protected handleConditionBranch(state: MultiValueStateDomain<Partial<Domains>>, conditionVertex: DataflowGraphVertexArgument, branch: typeof RTrue | typeof RFalse): MultiValueStateDomain<Partial<Domains>> {
-		if(Vertex.isFunctionCall(conditionVertex) && conditionVertex.args.every(FunctionArgument.isNotEmpty)) {
+		if(DfgVertex.isFunctionCall(conditionVertex) && conditionVertex.args.every(FunctionArgument.isNotEmpty)) {
 			const name = Identifier.getName(conditionVertex.name);
 			const isNot = Identifier.matches(name, ['base', '!']);
 			const isAnd = Identifier.matches(name, ['base', '&&']) || Identifier.matches(name, ['base', '&']);
@@ -789,13 +789,13 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	/** Where a function definition starts, i.e. the first thing that runs when it is called. */
 	protected getFunctionEntry(defId: NodeId): NodeId | undefined {
 		const def = this.getDataflowGraph(defId);
-		return Vertex.isFunctionDefinition(def) ? def.subflow.cfgEntry ?? def.subflow.entryPoint : undefined;
+		return DfgVertex.isFunctionDefinition(def) ? def.subflow.cfgEntry ?? def.subflow.entryPoint : undefined;
 	}
 
 	/** Where a function definition is left, i.e. its last expressions and `return` calls. */
 	protected getFunctionExits(defId: NodeId): readonly NodeId[] {
 		const def = this.getDataflowGraph(defId);
-		return Vertex.isFunctionDefinition(def) ? def.exitPoints.map(exit => exit.nodeId) : NoNeighbors;
+		return DfgVertex.isFunctionDefinition(def) ? def.exitPoints.map(exit => exit.nodeId) : NoNeighbors;
 	}
 
 	/**
@@ -947,7 +947,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 	private parameterValues(defId: NodeId): (MultiValueDomain<Partial<Domains>> | undefined)[] {
 		const definition = this.getDataflowGraph(defId);
 
-		if(!Vertex.isFunctionDefinition(definition)) {
+		if(!DfgVertex.isFunctionDefinition(definition)) {
 			return [];
 		}
 		return Object.keys(definition.params).map(key => this.currentState.get(NodeId.normalize(key)));
@@ -981,7 +981,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 		const call = this.getDataflowGraph(callId);
 		const definition = this.getDataflowGraph(defId);
 
-		if(!Vertex.isFunctionCall(call) || !Vertex.isFunctionDefinition(definition)) {
+		if(!DfgVertex.isFunctionCall(call) || !DfgVertex.isFunctionDefinition(definition)) {
 			return;
 		}
 		const args = new Set(call.args.filter(FunctionArgument.isNotEmpty).map(arg => arg.nodeId));
@@ -1042,7 +1042,7 @@ export class AbstractInterpreter<Domains extends AbstractProduct, Config extends
 
 	/** Checks whether a node represents a unsupported (environment-changing) function call (e.g. `eval`, `load`, `attach`, `rm`, ...) */
 	protected isUnsupportedFunctionCall(nodeId: NodeId): boolean {
-		return UnsupportedFunctions.isUnsupportedCall(this.getDataflowGraph(nodeId), this.config.dfg);
+		return Fn.call.unsupported.isUnsupportedCall(this.getDataflowGraph(nodeId), this.config.dfg);
 	}
 
 	/**

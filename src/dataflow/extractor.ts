@@ -1,4 +1,5 @@
 import type { DataflowInformation } from './info';
+import { Fn } from './fn/fn';
 import { type DataflowProcessorInformation, type DataflowProcessors, processDataflowFor } from './processor';
 import { processUninterestingLeaf } from './internal/process/process-uninteresting-leaf';
 import { processSymbol } from './internal/process/process-symbol';
@@ -16,8 +17,7 @@ import { attachProject } from './internal/process/functions/call/built-in/built-
 import { type DataflowGraph, UnknownSideEffect } from './graph/graph';
 import { ControlFlowGraph } from '../control-flow/control-flow-graph';
 import { EdgeType } from './graph/edge';
-import { identifyLinkToLastCallRelationSync
-} from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import { identifyLinkToLastCallRelationSync } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
 import { reResolveOpenReferences, linkMaterializedExportsToLoaders } from './internal/process/functions/call/built-in/transitive-side-effects';
@@ -29,7 +29,6 @@ import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
 import { VertexType } from './graph/vertex';
 import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
 import { Identifier } from './environments/identifier';
-import { Quoted } from './internal/process/functions/call/quoted';
 import { SourceRange } from '../util/range';
 import { dataflowLogger } from './logger';
 import { type DataflowBudgetTracker, GasFeatureKey, GasLevel, GasWikiRef, withDataflowBudget } from '../gas';
@@ -208,7 +207,7 @@ function extractDataFlowGraph<OtherInfo>(
 	}
 	// link on-demand-materialized package exports back to their `library()` loaders
 	linkMaterializedExportsToLoaders(df.graph, df.environment);
-	Quoted.finalize(df.graph, completeAst.idMap, () => new ControlFlowGraph(df.graph));
+	Fn.call.quoted.finalize(df.graph, completeAst.idMap, () => new ControlFlowGraph(df.graph));
 
 	resolveLinkToSideEffects(df.graph, ctx);
 

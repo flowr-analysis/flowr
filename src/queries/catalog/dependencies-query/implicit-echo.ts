@@ -1,4 +1,5 @@
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Fn } from '../../../dataflow/fn/fn';
 import type { NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
 import type { DependencyInfo } from './dependencies-query-format';
@@ -11,10 +12,10 @@ import { RFunctionCall } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-func
 import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RComment } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import { RLineDirective } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-line-directive';
-import { Vertex } from '../../../dataflow/graph/vertex';
+import { DfgVertex } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
-import { ArgProp, CallProp, CallProps, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
+import { ArgProp, CallProp, SemanticCallTag } from '../../../dataflow/environments/built-in-props';
 import { ExpectFunctionNames } from './function-info/test-functions';
 
 /** the node whose value R echoes for a statement, `undefined` if the statement yields nothing visible */
@@ -88,7 +89,7 @@ function lastStatement<Info>(node: RExpressionList<Info>): RNode<Info> | undefin
 /** the name the call goes by, with its package when it has one */
 function qualifiedName(node: RFunctionCall<ParentInformation>, dataflow: DataflowInformation): Identifier | undefined {
 	const vertex = dataflow.graph.getVertex(node.info.id);
-	return Vertex.isFunctionCall(vertex)
+	return DfgVertex.isFunctionCall(vertex)
 		? Dataflow.qualify(node.info.id, dataflow.graph, false) ?? vertex.name : undefined;
 }
 
@@ -99,7 +100,7 @@ function callName(node: RFunctionCall<ParentInformation>, dataflow: DataflowInfo
 		return undefined;
 	}
 	const props = queryFnProps(name, { environment: dataflow.environment });
-	return CallProps.hasAny(props, [CallProp.Invisible, SemanticCallTag.Graphics]) || ExpectFunctionNames.test(Identifier.getName(name))
+	return Fn.call.props.hasAny(props, [CallProp.Invisible, SemanticCallTag.Graphics]) || ExpectFunctionNames.test(Identifier.getName(name))
 		? undefined : name;
 }
 

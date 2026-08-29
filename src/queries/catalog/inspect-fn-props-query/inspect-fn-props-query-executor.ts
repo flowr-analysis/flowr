@@ -1,9 +1,8 @@
 import type { InspectFnPropsQuery, InspectFnPropsQueryResult } from './inspect-fn-props-query-format';
+import type { ArgProps, PropMask, StatedProps  } from '../../../dataflow/environments/built-in-props';
 import type { BasicQueryData } from '../../base-query-format';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { FunctionArgumentRoles } from '../../../dataflow/fn/argument-roles';
-import type { PropMask, StatedProps } from '../../../dataflow/environments/built-in-props';
-import { ArgProps, CallProps } from '../../../dataflow/environments/built-in-props';
 import { QueryFunctionFilter } from '../../query-function-filter';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Fn } from '../../../dataflow/fn/fn';
@@ -40,8 +39,8 @@ function keepProps(all: Record<NodeId, StatedProps>, mask: PropMask | undefined)
 	}
 	const kept: Record<NodeId, StatedProps> = {};
 	for(const [id, stated] of Object.entries(all)) {
-		const some = CallProps.filter(stated, mask);
-		if(CallProps.hasAny(some)) {
+		const some = Fn.call.props.filter(stated, mask);
+		if(Fn.call.props.hasAny(some)) {
 			kept[id] = some;
 		}
 	}
@@ -62,7 +61,7 @@ export async function executeFnPropsQuery({ analyzer }: BasicQueryData, queries:
 		'.meta': {
 			timing: Date.now() - start
 		},
-		roles: keepRoles(inferred.roles, graph, formals && new Set(formals), props ? ArgProps.mask(props) : AllProps),
-		props: keepProps(inferred.props, props ? CallProps.mask(props) : undefined)
+		roles: keepRoles(inferred.roles, graph, formals && new Set(formals), props ? Fn.call.argument.mask(props) : AllProps),
+		props: keepProps(inferred.props, props ? Fn.call.props.mask(props) : undefined)
 	};
 }

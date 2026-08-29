@@ -5,7 +5,7 @@ import { type EdgeTypeBits, EdgeType, DfEdge } from '../graph/edge';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { isNotUndefined } from '../../util/assert';
 import type { Identifier } from '../environments/identifier';
-import { Vertex } from '../graph/vertex';
+import { DfgVertex } from '../graph/vertex';
 
 export const enum OriginType {
 	ReadVariableOrigin = 0,
@@ -93,7 +93,7 @@ export function getOriginInDfg(this: void, dfg: DataflowGraph, id: NodeId): Orig
 	const vtx = dfg.getVertex(id);
 	if(vtx === undefined) {
 		return undefined;
-	} else if(Vertex.isValue(vtx) || Vertex.isFunctionDefinition(vtx)) {
+	} else if(DfgVertex.isValue(vtx) || DfgVertex.isFunctionDefinition(vtx)) {
 		return [{ type: OriginType.ConstantOrigin, id }];
 	} else if(dfg.isQuoted(id)) {
 		/* a quoted node is never evaluated, so it neither reads, writes, nor calls anything */
@@ -122,7 +122,7 @@ function getVariableUseOrigin(dfg: DataflowGraph, use: { id: NodeId }): Origin[]
 		const targetVtx = dfg.getVertex(target);
 		if(NodeId.isBuiltIn(target)) {
 			/* a built-in constant such as `pi` carries a value vertex, a built-in function named as a value has none */
-			origins.push(Vertex.isValue(targetVtx) ? {
+			origins.push(DfgVertex.isValue(targetVtx) ? {
 				type: OriginType.ConstantOrigin,
 				id:   target
 			} : {
@@ -131,7 +131,7 @@ function getVariableUseOrigin(dfg: DataflowGraph, use: { id: NodeId }): Origin[]
 				id:   use.id,
 				proc: target
 			});
-		} else if(Vertex.isVariableDefinition(targetVtx)) {
+		} else if(DfgVertex.isVariableDefinition(targetVtx)) {
 			origins.push({
 				type: OriginType.ReadVariableOrigin,
 				id:   target
@@ -151,7 +151,7 @@ function getVariableDefinitionOrigin(dfg: DataflowGraph, vtx: DataflowGraphVerte
 			if(!targetVtx) {
 				continue;
 			}
-			if(Vertex.isVariableDefinition(targetVtx)) {
+			if(DfgVertex.isVariableDefinition(targetVtx)) {
 				pool.push({
 					type: OriginType.ReadVariableOrigin,
 					id:   target
@@ -188,11 +188,11 @@ function getCallTarget(dfg: DataflowGraph, call: DataflowGraphVertexFunctionCall
 			};
 		}
 		const get = dfg.getVertex(target);
-		if(!Vertex.isFunctionDefinition(get) && !Vertex.isVariableDefinition(get)) {
+		if(!DfgVertex.isFunctionDefinition(get) && !DfgVertex.isVariableDefinition(get)) {
 			return undefined;
 		}
 		return {
-			type: Vertex.isFunctionDefinition(get) ? (OriginType.FunctionCallOrigin as const) : (OriginType.ReadVariableOrigin as const),
+			type: DfgVertex.isFunctionDefinition(get) ? (OriginType.FunctionCallOrigin as const) : (OriginType.ReadVariableOrigin as const),
 			id:   target
 		};
 	}).filter(isNotUndefined));

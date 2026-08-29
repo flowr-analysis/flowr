@@ -1,26 +1,17 @@
 import type { DataflowProcessorInformation } from '../processor';
+import { Fn } from '../fn/fn';
 import type { DataflowInformation, ExitPoint } from '../info';
 import { ExitPointType } from '../info';
 import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, NseArguments, NseKind } from '../internal/process/functions/call/known-call-handling';
 import { processAccess } from '../internal/process/functions/call/built-in/built-in-access';
 import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else';
-import {
-	processAssignment,
-	processAssignmentLike,
-	processDefineArgument
-} from '../internal/process/functions/call/built-in/built-in-assignment';
+import { processAssignment, processAssignmentLike, processDefineArgument } from '../internal/process/functions/call/built-in/built-in-assignment';
 import { processSpecialBinOp } from '../internal/process/functions/call/built-in/built-in-special-bin-op';
 import { processPipe } from '../internal/process/functions/call/built-in/built-in-pipe';
 import { processForLoop } from '../internal/process/functions/call/built-in/built-in-for-loop';
 import { processRepeatLoop } from '../internal/process/functions/call/built-in/built-in-repeat-loop';
 import { processWhileLoop } from '../internal/process/functions/call/built-in/built-in-while-loop';
-import {
-	type BrandedIdentifier,
-	Identifier,
-	type IdentifierDefinition,
-	type IdentifierReference,
-	ReferenceType
-} from './identifier';
+import { type BrandedIdentifier, Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from './identifier';
 import { guard } from '../../util/assert';
 import { processReplacementFunction } from '../internal/process/functions/call/built-in/built-in-replacement';
 import { processQuote } from '../internal/process/functions/call/built-in/built-in-quote';
@@ -79,7 +70,7 @@ import { processWithEnv } from '../internal/process/functions/call/built-in/buil
 import { processNamespaceAccess } from '../internal/process/functions/call/built-in/built-in-namespace-access';
 import { processLoadCall } from '../internal/process/functions/call/built-in/built-in-load';
 import { processStringTemplate } from '../internal/process/functions/call/built-in/built-in-string-template';
-import { ArgProp, FnSig, type BuiltInFnInfo } from './built-in-props';
+import { ArgProp, type BuiltInFnInfo, type FnSig } from './built-in-props';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { AttachedBasePackageSet } from '../../util/r-base-packages';
 import { cleanEnvOf } from './scoping';
@@ -166,14 +157,14 @@ function dataArgumentSymbols<OtherInfo>(
 	args: readonly (RNodeWithParent | PotentiallyEmptyRArgument<OtherInfo & ParentInformation>)[],
 	sig: FnSig | undefined
 ): ReadonlySet<NodeId> | undefined {
-	const layout = sig === undefined ? undefined : FnSig.layout(sig);
+	const layout = sig === undefined ? undefined : Fn.call.signature.layout(sig);
 	if(layout === undefined || (layout.any & ArgProp.Atomic) === 0) {
 		return undefined;
 	}
 	let symbols: Set<NodeId> | undefined;
 	for(let i = 0; i < args.length; i++) {
 		const arg = args[i];
-		const prop = FnSig.propAt(layout, i);
+		const prop = Fn.call.signature.propAt(layout, i);
 		if(RArgument.isEmpty(arg) || (prop & ArgProp.Atomic) === 0 || (prop & (ArgProp.Callee | ArgProp.Nse)) !== 0) {
 			continue;
 		}
@@ -193,9 +184,9 @@ function defaultBuiltInProcessor<OtherInfo>(
 	{ useAsProcessor = BuiltInProcName.Default, readAllArguments, cfg, alternativeArgsFrom, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	/* a signature states per argument what the individual options state for all of them at once */
-	const layout = sig !== undefined ? FnSig.layout(sig) : undefined;
+	const layout = sig !== undefined ? Fn.call.signature.layout(sig) : undefined;
 	if(layout !== undefined) {
-		nse ??= (layout.any & ArgProp.Nse) !== 0 ? FnSig.posWith(layout, args.length, ArgProp.Nse) : undefined;
+		nse ??= (layout.any & ArgProp.Nse) !== 0 ? Fn.call.signature.posWith(layout, args.length, ArgProp.Nse) : undefined;
 	}
 	const nsePositions = nsePositionsOf(nse, args.length);
 	let lastEnv = data.environment;
@@ -233,7 +224,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 			}
 		}
 	} else if(layout !== undefined && (layout.any & (ArgProp.Value | ArgProp.Shape)) !== 0) {
-		for(const i of FnSig.posWith(layout, processedArguments.length, ArgProp.Value | ArgProp.Shape)) {
+		for(const i of Fn.call.signature.posWith(layout, processedArguments.length, ArgProp.Value | ArgProp.Shape)) {
 			const arg = processedArguments[i];
 			if(arg) {
 				res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Reads);
@@ -443,7 +434,7 @@ export class BuiltIns {
 	/**
 	 * Register a built-in function (like `print` or `c`) to the given {@link BuiltIns}
 	 */
-	registerBuiltInFunctions<BuiltInProcessor extends keyof typeof BuiltInProcessorMapper>({ names, processor, config, assumePrimitive, evalHandler }: BuiltInFunctionDefinition<BuiltInProcessor> ): void {
+	registerBuiltInFunctions<BuiltInProcessor extends keyof typeof BuiltInProcessorMapper>({ names, processor, config, assumePrimitive, evalHandler }: BuiltInFunctionDefinition<BuiltInProcessor>): void {
 		guard(processor !== undefined, () => `Processor for ${JSON.stringify(names)} is undefined, maybe you have an import loop? You may run 'npm run detect-circular-deps' - although by far not all are bad`);
 		const mappedProcessor = BuiltInProcessorMapper[processor];
 		guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);

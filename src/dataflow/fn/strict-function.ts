@@ -4,6 +4,7 @@
  * @lintIgnore use-instead
  */
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Fn } from './fn';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -11,7 +12,7 @@ import type { ControlDependency } from '../info';
 import type { DataflowGraph } from '../graph/graph';
 import { DfEdge, EdgeType } from '../graph/edge';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
-import { Vertex, VertexType } from '../graph/vertex';
+import { DfgVertex, VertexType } from '../graph/vertex';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import type { ArgProps, BuiltInFnInfo, FnSig } from '../environments/built-in-props';
 import { ArgProp, DispatchCallees, FnSig as Sig } from '../environments/built-in-props';
@@ -106,7 +107,7 @@ interface StrictnessState {
 
 /** The definition a node sits in. */
 function enclosingDefinition(id: NodeId, idMap: AstIdMap, graph: DataflowGraph): NodeId | undefined {
-	return RNode.findEnclosing(id, idMap, node => Vertex.isFunctionDefinition(graph.getVertex(node.info.id)));
+	return RNode.findEnclosing(id, idMap, node => DfgVertex.isFunctionDefinition(graph.getVertex(node.info.id)));
 }
 
 function makeState(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | undefined): StrictnessState {
@@ -145,7 +146,7 @@ function makeState(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | und
 			const certain = !underCondition(vertex.cds, graph.getVertex(within)?.cds) || (known?.certain ?? false);
 			const next = [...known?.next ?? []];
 			for(const [target, edge] of graph.edgesFrom(id)) {
-				if(target !== within && DfEdge.includesType(edge, EdgeType.Calls) && Vertex.isFunctionDefinition(graph.getVertex(target))) {
+				if(target !== within && DfEdge.includesType(edge, EdgeType.Calls) && DfgVertex.isFunctionDefinition(graph.getVertex(target))) {
 					next.push(target);
 				}
 			}
@@ -211,7 +212,7 @@ function isCallee(call: NodeId, child: NodeId, idMap: AstIdMap): boolean {
 
 /**
  * What flowR states the argument at `index` of the call is used for. A `...` covers every position from
- * where it is declared, which {@link FnSig.propAt} takes care of.
+ * where it is declared, which {@link Fn.call.signature.propAt} takes care of.
  */
 function argProps(vertex: DataflowGraphVertexFunctionCall, index: number, state: StrictnessState): ArgProps {
 	const name = Identifier.getName(vertex.name);
@@ -235,7 +236,7 @@ function handedTo(param: NodeId, state: StrictnessState): Ternary {
  */
 function forcedByCallee(call: DataflowGraphVertexFunctionCall, argument: NodeId, idMap: AstIdMap, state: StrictnessState): Ternary {
 	const resolved = [...state.graph.edgesFrom(call.id)]
-		.some(([target, edge]) => DfEdge.includesType(edge, EdgeType.Calls) && Vertex.isFunctionDefinition(state.graph.getVertex(target)));
+		.some(([target, edge]) => DfEdge.includesType(edge, EdgeType.Calls) && DfgVertex.isFunctionDefinition(state.graph.getVertex(target)));
 	if(!resolved) {
 		return Ternary.Maybe;
 	}
@@ -269,13 +270,13 @@ function forces(read: NodeId, definition: DataflowGraphVertexFunctionDefinition,
 			certain = false;
 		}
 		if(node.info.id !== read) {
-			if(Vertex.isFunctionDefinition(vertex)) {
+			if(DfgVertex.isFunctionDefinition(vertex)) {
 				/* nothing says the nested definition is ever called */
 				certain = false;
 			} else if(RParameter.is(node)) {
 				/* a default is evaluated only when the argument is left out */
 				certain = false;
-			} else if(Vertex.isFunctionCall(vertex) && !isDispatch(vertex) && !isCallee(node.info.id, child, idMap)) {
+			} else if(DfgVertex.isFunctionCall(vertex) && !isDispatch(vertex) && !isCallee(node.info.id, child, idMap)) {
 				if(!isBuiltInCall(vertex)) {
 					const handed = forcedByCallee(vertex, child, idMap, state);
 					return certain ? handed : weaken(handed);
@@ -339,7 +340,7 @@ function strictnessOf(id: NodeId, state: StrictnessState): FunctionStrictness {
 		return known;
 	}
 	const vertex = state.graph.getVertex(id);
-	if(!Vertex.isFunctionDefinition(vertex)) {
+	if(!DfgVertex.isFunctionDefinition(vertex)) {
 		return { strict: Ternary.Never, parameters: {} };
 	}
 	const params = Object.keys(vertex.params);

@@ -1,7 +1,7 @@
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { ControlFlowGraph } from '../../control-flow/control-flow-graph';
-import { Vertex, type DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
+import { DfgVertex, type DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import { type BrandedIdentifier, type IdentifierDefinition, ReferenceType } from '../../dataflow/environments/identifier';
 import sizeof from 'object-sizeof';
 import { compactRecord } from '../../util/objects';
@@ -60,7 +60,7 @@ export function getSizeOfDfGraph(df: DataflowGraph): number {
 			} as DataflowGraphVertexInfo;
 		}
 
-		if(Vertex.isFunctionDefinition(vertex)) {
+		if(DfgVertex.isFunctionDefinition(vertex)) {
 			vertex = {
 				...vertex,
 				subflow: {

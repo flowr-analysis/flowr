@@ -6,7 +6,7 @@
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isReferenceType, ReferenceType } from '../environments/identifier';
 import type { DataflowGraph } from '../graph/graph';
-import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionDefinition, Vertex } from '../graph/vertex';
+import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionDefinition, DfgVertex } from '../graph/vertex';
 import { isNotUndefined } from '../../util/assert';
 import { DfEdge, EdgeType } from '../graph/edge';
 import { NodeValue } from '../eval/resolve/node-value';
@@ -27,11 +27,11 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 			continue;
 		}
 		seen.add(current.id);
-		if(Vertex.isFunctionDefinition(current)) {
+		if(DfgVertex.isFunctionDefinition(current)) {
 			return true;
 		}
 		const next = graph.edgesFrom(current.id);
-		const isCall = Vertex.isFunctionCall(current);
+		const isCall = DfgVertex.isFunctionCall(current);
 		for(const [t, e] of next) {
 			/* a call hands back what its callee returns, which its `returns` edges name, and never the callee itself */
 			if(isCall && !DfEdge.includesType(e, EdgeType.Returns)) {
@@ -74,7 +74,7 @@ function definitionsBehind(id: NodeId, graph: DataflowGraph): ReadonlySet<NodeId
 			continue;
 		}
 		seen.add(current);
-		if(Vertex.isFunctionDefinition(graph.getVertex(current))) {
+		if(DfgVertex.isFunctionDefinition(graph.getVertex(current))) {
 			found.add(current);
 			continue;
 		}
@@ -95,7 +95,7 @@ function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition
 			continue;
 		}
 		const caller = graph.getVertex(callerId);
-		if(!caller || !Vertex.isFunctionCall(caller)) {
+		if(!caller || !DfgVertex.isFunctionCall(caller)) {
 			continue;
 		}
 		for(const arg of caller.args) {
@@ -137,7 +137,7 @@ export interface HigherOrderFunctionsOptions {
  */
 export function isHigherOrder(this: void, id: NodeId, graph: DataflowGraph, { ctx, invertedGraph }: HigherOrderFunctionsOptions): boolean {
 	const vert = graph.getVertex(id);
-	if(!vert || !Vertex.isFunctionDefinition(vert)) {
+	if(!vert || !DfgVertex.isFunctionDefinition(vert)) {
 		return false;
 	}
 

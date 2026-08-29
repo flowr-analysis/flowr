@@ -90,7 +90,7 @@ export function initDiffContext<Graph>(left: NamedGraph<Graph>, right: NamedGrap
 }
 
 /** The minimum a graph has to offer for {@link GraphDiff} to compare its edges. */
-interface EdgeIndexedGraph<EdgeMap> {
+export interface EdgeIndexedGraph<EdgeMap> {
 	edges():   Iterable<readonly [NodeId, EdgeMap]>
 	hasVertex(id: NodeId): boolean
 }
@@ -112,7 +112,6 @@ function collectEdges<EdgeMap>(graph: EdgeIndexedGraph<EdgeMap>, project?: (edge
 
 /** The edge-differencing steps shared by the dataflow and the control flow graph diff. */
 export const GraphDiff = {
-	name: 'GraphDiff',
 	/** Compares all edges of both graphs vertex by vertex, handing each pair to `diffEdges`. */
 	outgoingEdges<EdgeMap, Graph extends EdgeIndexedGraph<EdgeMap>>(
 		this: void,

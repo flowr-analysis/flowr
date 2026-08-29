@@ -147,9 +147,11 @@ function resolveAsStringFn(this: void, args: BuiltInEvalHandlerArgs): Value {
 
 /**
  * Folding the string built-ins, from `paste` to `basename`.
+ *
+ * Wired into {@link BuiltInEvalHandlerMapper} and internal to evaluation: to ask what a node holds, use
+ * {@link NodeValue} or {@link Resolve}.
  */
 export const StringFold = {
-	name:      'StringFold',
 	/** every string built-in that is folded, see {@link StringFns} */
 	fns:       StringFns,
 	/** the calls pasting their arguments together, see {@link PasteLikeCalls} */

@@ -3,7 +3,7 @@ import { FunctionArgument } from '../graph/graph';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { DfEdge, EdgeType } from '../graph/edge';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
-import { Vertex } from '../graph/vertex';
+import { DfgVertex } from '../graph/vertex';
 import type { ArgProps, BuiltInFnInfo } from '../environments/built-in-props';
 import { ArgProp, FnSig as Sig } from '../environments/built-in-props';
 import type { Identifier } from '../environments/identifier';
@@ -23,7 +23,7 @@ export function edgeTargets(this: void, graph: DataflowGraph, node: NodeId, type
 export function* callsIn(definition: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): Generator<[NodeId, DataflowGraphVertexFunctionCall]> {
 	for(const node of definition.subflow.graph) {
 		const vertex = graph.getVertex(node);
-		if(Vertex.isFunctionCall(vertex)) {
+		if(DfgVertex.isFunctionCall(vertex)) {
 			yield [node, vertex];
 		}
 	}
@@ -110,7 +110,7 @@ function resolvedThroughout(frame: NodeId, definition: DataflowGraphVertexFuncti
 	let consumers = 0;
 	for(const node of definition.subflow.graph) {
 		const vertex = graph.getVertex(node);
-		if(!Vertex.isFunctionCall(vertex) || carrying.has(node) || !consumes(vertex, carrying)) {
+		if(!DfgVertex.isFunctionCall(vertex) || carrying.has(node) || !consumes(vertex, carrying)) {
 			continue;
 		}
 		consumers++;
@@ -131,7 +131,7 @@ function carriersOf(frame: NodeId, definition: DataflowGraphVertexFunctionDefini
 	for(const node of definition.subflow.graph) {
 		const vertex = graph.getVertex(node);
 		/* a call reading the frame is what uses it, so it is a consumer rather than another name for it, and carries nothing on */
-		successors.set(node, Vertex.isFunctionCall(vertex) && !passesOn(vertex) ? [] : edgeTargets(graph, node, CarryingEdges));
+		successors.set(node, DfgVertex.isFunctionCall(vertex) && !passesOn(vertex) ? [] : edgeTargets(graph, node, CarryingEdges));
 	}
 	propagateToFixpoint(successors.keys(), successors, id => {
 		if(carrying.has(id) || !(successors.get(id) ?? []).some(to => carrying.has(to))) {

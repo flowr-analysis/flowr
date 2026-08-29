@@ -516,6 +516,10 @@ function expandPath(path: string, within: unknown): string | undefined {
 	return full.length > 0 ? full.join('.') : undefined;
 }
 
+/**
+ * flowR's configuration: its default, reading one from disk, and getting or setting a single value at a
+ * dotted path (an {@link EngineConfigPath} included).
+ */
 export const FlowrConfig = {
 	name: 'FlowrConfig',
 	/**

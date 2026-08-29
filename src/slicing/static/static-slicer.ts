@@ -7,7 +7,7 @@ import { findEnclosingFunctionDefinition, handleReturns, includeCalleesOfDefinit
 import type { AstIdMap, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Vertex } from '../../dataflow/graph/vertex';
+import { DfgVertex } from '../../dataflow/graph/vertex';
 import { DfEdge, EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import type { DataflowInformation } from '../../dataflow/info';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
@@ -152,7 +152,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 
 		if(!onlyForSideEffects) {
-			if(Vertex.isFunctionCall(currentVertex) && !currentVertex.onlyBuiltin) {
+			if(DfgVertex.isFunctionCall(currentVertex) && !currentVertex.onlyBuiltin) {
 				sliceForCall(current, currentVertex, info, queue, ctx);
 			}
 
@@ -210,7 +210,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 function freeNamesOf(slice: ReadonlySet<NodeId>, graph: DataflowGraph): readonly string[] {
 	const free = new Set<string>();
 	for(const id of slice) {
-		if(!Vertex.isUse(graph.getVertex(id))) {
+		if(!DfgVertex.isUse(graph.getVertex(id))) {
 			continue;
 		}
 		let defined = false;

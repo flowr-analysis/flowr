@@ -1,4 +1,5 @@
 import { RFunctionCall, EmptyArgument  } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RValue } from '../values/r-value';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RNumberValue } from '../../../r-bridge/lang-4.x/convert-values';
 import { isRNumberValue, unliftRValue } from '../../../util/r-value';
@@ -6,7 +7,6 @@ import type { BuiltInEvalHandler, BuiltInEvalHandlerArgs } from '../../environme
 import { OriginType } from '../../origin/dfg-get-origin';
 import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-constants';
 import { type Lift, Top, type Value, type ValueNumber, type ValueVector } from '../values/r-value';
-import { RStringLiteral } from '../values/string/string-constants';
 import { flattenVectorElements, vectorFrom } from '../values/vectors/vector-constants';
 import { valueFromRNumber } from '../values/general';
 import { liftScalar } from '../values/scalar/scalar-constants';
@@ -74,7 +74,7 @@ export function resolveNode(args: BuiltInEvalHandlerArgs): Value {
 	const { node, environment, ctx } = args;
 	const nt = node.type;
 	if(nt === RType.String) {
-		return RStringLiteral.value(node.content) ?? Top;
+		return RValue.ofStringLiteral(node.content) ?? Top;
 	} else if(nt === RType.Number) {
 		return valueFromRNumber(node.content);
 	} else if(nt === RType.Logical) {

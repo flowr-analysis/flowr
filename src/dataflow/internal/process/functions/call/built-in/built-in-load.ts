@@ -1,5 +1,5 @@
-import { MatchArgs } from '../../../../../graph/match-args';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { Fn } from '../../../../../fn/fn';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowProcessorInformation } from '../../../../../processor';
@@ -246,8 +246,8 @@ function defineLoadedClosure<OtherInfo>(
 }
 
 /** The kind of reference a serialized R object stands for, from the {@link SexpType} it was stored as. */
-export function sexpTypeToReferenceType(type?: SexpType): ReferenceType{
-	if(type === undefined){
+export function sexpTypeToReferenceType(type?: SexpType): ReferenceType {
+	if(type === undefined) {
 		return ReferenceType.Unknown;
 	}
 	switch(type) {
@@ -283,7 +283,7 @@ export function sexpTypeToReferenceType(type?: SexpType): ReferenceType{
 function getArguments<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	// prefer R's real `base::load` signature from the database, falling back to the known formals when it is absent
 	const loadParams = signatureParamNames(data, Identifier.make('load', PkgName.Base), ['file', 'envir', 'verbose']);
-	const bound = MatchArgs.toNames(args, loadParams);
+	const bound = Fn.call.match.toNames(args, loadParams);
 
 	const fileArgBound = bound.get('file');
 	const envirArg = bound.get('envir');

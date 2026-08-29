@@ -399,4 +399,85 @@ describe('Range', () => {
 			});
 		});
 	});
+	describe('undefined-tolerant accessors', () => {
+		const range = SourceRange.from(2, 3, 5, 7);
+		const located: SourceLocation = SourceLocation.from(range, 'a.R');
+		const absent: SourceLocation | undefined = undefined;
+		test('read a range without unwrapping it first', () => {
+			assert.strictEqual(SourceRange.getStartLine(range), 2);
+			assert.strictEqual(SourceRange.getStartColumn(range), 3);
+			assert.strictEqual(SourceRange.getEndLine(range), 5);
+			assert.strictEqual(SourceRange.getEndColumn(range), 7);
+			assert.deepStrictEqual(SourceRange.getStart(range), [2, 3]);
+			assert.deepStrictEqual(SourceRange.getEnd(range), [5, 7]);
+		});
+		test('a location is readable like a range, file included', () => {
+			assert.strictEqual(SourceLocation.getStartLine(located), 2);
+			assert.strictEqual(SourceLocation.getEndColumn(located), 7);
+			assert.strictEqual(SourceLocation.getFile(located), 'a.R');
+			assert.deepStrictEqual(SourceLocation.getRange(located), range);
+			// the range functions accept the location as-is
+			assert.strictEqual(SourceRange.getStartLine(located), 2);
+		});
+		test('an absent location yields undefined instead of throwing', () => {
+			assert.isUndefined(SourceRange.getStartLine(absent));
+			assert.isUndefined(SourceRange.getEndLine(absent));
+			assert.isUndefined(SourceRange.getStart(absent));
+			assert.isUndefined(SourceLocation.getRange(absent));
+			assert.isUndefined(SourceLocation.getFile(absent));
+			assert.isUndefined(SourceLocation.view(absent));
+			assert.isFalse(SourceRange.isValid(absent));
+		});
+		test('validity and shape', () => {
+			assert.isTrue(SourceRange.isValid(range));
+			assert.isFalse(SourceRange.isValid(SourceRange.invalid()));
+			assert.isFalse(SourceRange.isSingleLine(range));
+			assert.strictEqual(SourceRange.lineCount(range), 4);
+			assert.isTrue(SourceRange.isSingleLine(SourceRange.from(1, 1, 1, 9)));
+			assert.strictEqual(SourceRange.lineCount(SourceRange.from(1, 1, 1, 9)), 1);
+		});
+	});
+	describe('SourceLocationView', () => {
+		const located: SourceLocation = SourceLocation.from(SourceRange.from(2, 3, 5, 7), 'a.R');
+		const view = SourceLocation.view(located);
+		test('exposes the tuple as properties without copying it', () => {
+			assert.strictEqual(view.startLine, 2);
+			assert.strictEqual(view.startColumn, 3);
+			assert.strictEqual(view.endLine, 5);
+			assert.strictEqual(view.endColumn, 7);
+			assert.strictEqual(view.file, 'a.R');
+			assert.deepStrictEqual(view.start, [2, 3]);
+			assert.deepStrictEqual(view.end, [5, 7]);
+			assert.deepStrictEqual(view.range, SourceRange.from(2, 3, 5, 7));
+			assert.strictEqual(view.raw, located);
+			assert.isTrue(view.isValid);
+			assert.isFalse(view.isSingleLine);
+			assert.strictEqual(view.lineCount, 4);
+		});
+		test('serializes back to the plain location', () => {
+			assert.strictEqual(JSON.stringify(view), JSON.stringify(located));
+			assert.strictEqual(view.toString(), SourceLocation.format(located));
+			assert.deepStrictEqual([...view], [...located]);
+		});
+		test('predicates accept both views and tuples', () => {
+			const inner = SourceLocation.view(SourceLocation.from(SourceRange.from(3, 1, 4, 1), 'a.R'));
+			assert.isTrue(view.containsRange(inner));
+			assert.isTrue(view.containsRange(inner.raw));
+			assert.isTrue(inner.isSubsetOf(view));
+			assert.isFalse(inner.isSubsetOf(view.withFile('b.R')));
+			assert.isTrue(view.overlaps(inner));
+			assert.isTrue(view.contains(3));
+			assert.isFalse(view.contains(1));
+			assert.isTrue(view.equals(located));
+			assert.isFalse(view.equals(view.withFile('b.R')));
+			assert.strictEqual(view.compareTo(inner), -1);
+			assert.isTrue(SourceLocation.view(SourceRange.from(1, 1, 1, 2)).startsCompletelyBefore(view));
+		});
+		test('merging keeps the file and fails across files', () => {
+			const merged = view.merge(SourceLocation.from(SourceRange.from(1, 1, 1, 2), 'a.R'));
+			assert.deepStrictEqual(merged?.raw, SourceLocation.from(SourceRange.from(1, 1, 5, 7), 'a.R'));
+			assert.isUndefined(view.merge(view.withFile('b.R')));
+			assert.strictEqual(view.withFile(undefined).file, undefined);
+		});
+	});
 });

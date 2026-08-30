@@ -24,8 +24,8 @@ export const scaleDomain = new FiniteDomainBuilder<Top, Bottom, [Top, Bottom, ..
 /** Sink condition reporting the aggregate of data whose taint is one of the given elements as a known constant. */
 function constantAggregate(...elements: symbol[]): TaintCondition<typeof scaleDomain> {
 	return {
-		argTaints: [{ pos: 0, name: 'x' }],
-		condition: (_args, [taint]) => elements.includes(taint) ? Bottom : (taint ?? Top)
+		argTaints:   [{ pos: 0, name: 'x' }],
+		conditionFn: (_args, [taint]) => elements.includes(taint) ? Bottom : (taint ?? Top)
 	};
 }
 
@@ -38,8 +38,8 @@ export const scaleAnalysis = new TaintAnalysisDefinition('scale', scaleDomain)
 					{ pos: 1, name: 'center', default: true },
 					{ pos: 2, name: 'scale', default: true }
 				],
-				argTaints: [{ pos: 0, name: 'x' }],
-				condition: ([center, scale], [taint]) => {
+				argTaints:   [{ pos: 0, name: 'x' }],
+				conditionFn: ([center, scale], [taint]) => {
 					if(center === true && scale === true) {
 						return ZScore;
 					} else if(center === true) {

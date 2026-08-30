@@ -74,7 +74,7 @@ export class TaintAnalysisInstrumentation {
 		return this._trace;
 	}
 
-	fnCallHook = ({ name, taint, node, value, projectArg, call, dfg, ctx, role }: FnCallHookInfo) => {
+	fnCallHook = ({ name, node, value, projectArg, call, dfg, ctx, role }: FnCallHookInfo) => {
 		const fnCallInfo = this.addFile(name, node);
 		const localTargets = satisfiesCallTargets(call, dfg, CallTargets.OnlyLocal);
 		const cds = call.cds?.map(cd => resolveControlDependency(cd, dfg));
@@ -86,7 +86,7 @@ export class TaintAnalysisInstrumentation {
 			...(localTargets === 'no' ? {} : { localTargets }),
 			...(cds?.length ? { cds, inEveryBranch: happensInEveryBranch(call.cds) } : {}),
 		};
-		if(taint) {
+		if(value) {
 			fnCallInfo.mappedCalls.push({ ...callInfo, taint: value.toJSON(), role });
 		} else {
 			fnCallInfo.unmappedCalls.push(callInfo);

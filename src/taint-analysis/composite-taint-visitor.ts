@@ -3,11 +3,12 @@ import { AbstractInterpretationVisitor } from '../abstract-interpretation/absint
 import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import type { TaintMapper } from './function-mapper';
-import { mapFnCallToTaint, resolveTaint } from './function-mapper';
+import { getMappingsForCall, resolveFnCallToTaint } from './function-mapper';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AbstractProduct, ProductReduction } from '../abstract-interpretation/domains/partial-product-domain';
 import { type MultiValueDomain, MultiValueStateDomain } from '../abstract-interpretation/domains/multi-value-state-domain';
 import type { Writable } from 'ts-essentials';
+import { RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 /**
  * The abstract product mapping the name of a (component) taint analysis to its (value) abstract domain.
@@ -63,18 +64,18 @@ export class CompositeTaintInferenceVisitor extends AbstractInterpretationVisito
 		super.onFunctionCall({ call });
 
 		const node = this.getNormalizedAst(call.id);
-
-		if(node === undefined) {
+		if(!node || !RFunctionCall.is(node) || !node.named) {
 			return;
 		}
 		const product: Writable<TaintProduct> = {};
 
 		for(const component of this.components) {
-			const taint = mapFnCallToTaint(node, component.mapper, this.config.dfg, this.config.ctx);
+			const taint = getMappingsForCall(node, component.mapper);
 
 			// project the product state of an argument node onto the component of this analysis (defaulting to Top)
-			product[component.name] = resolveTaint(taint, component.domain, argId =>
-				this.getAbstractValue(argId)?.value[component.name] ?? component.domain.top());
+			const resolved = resolveFnCallToTaint(node, taint, component.domain, argId =>
+				this.getAbstractValue(argId)?.value[component.name] ?? component.domain.top(), this.config.dfg, this.config.ctx);
+			product[component.name] = resolved?.value;
 		}
 		this.currentState.set(node.info.id, this.currentState.domain.create(product));
 	}

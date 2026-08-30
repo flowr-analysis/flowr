@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-08-21, 10:01:47 UTC (v2.14.2, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's normalized ast">Generated</span> from '[wiki-normalized-ast.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-normalized-ast.ts "src/documentation/wiki-normalized-ast.ts")' on 2026-08-25, 08:02:45 UTC (v2.14.4, R v4.5.0), please do not edit directly._
 
 
 _flowR_ produces a normalized version of R's abstract syntax tree (AST),
@@ -54,7 +54,7 @@ x"])
 
 ```
 	
-(The analysis required _0.7 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+(The analysis required _6.1 ms_ (including parsing with the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
 
 
 
@@ -217,22 +217,22 @@ class Leaf{
     <<type>>
 }
 style Leaf opacity:.35,fill:#FAFAFA
-click Leaf href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L143" ""
+click Leaf href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L145" ""
 class LeafRType{
     <<type>>
 }
 style LeafRType opacity:.35,fill:#FAFAFA
-click LeafRType href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L139" ""
+click LeafRType href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L141" ""
 class LeafVertexType{
     <<type>>
 }
 style LeafVertexType opacity:.35,fill:#FAFAFA
-click LeafVertexType href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L140" ""
+click LeafVertexType href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L142" ""
 class LeafSpecial~F extends FlowrFilter = FlowrFilter~{
     <<type>>
 }
 style LeafSpecial opacity:.35,fill:#FAFAFA
-click LeafSpecial href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L141" ""
+click LeafSpecial href "https://github.com/flowr-analysis/flowr/tree/main/src/search/flowr-search-filters.ts#L143" ""
 class RLineDirective~Info = NoInfo~{
     <<interface>>
     type#58; RType.LineDirective

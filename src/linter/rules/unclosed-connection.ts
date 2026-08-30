@@ -10,7 +10,7 @@ import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/verte
 import { FunctionCallVertex, VariableDefinitionVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { DataflowInformation } from '../../dataflow/info';
 import { ControlDependency } from '../../dataflow/info';
-import { ArgProp, CallProp, FnSig } from '../../dataflow/environments/built-in-props';
+import { ArgProp, CallProps, FnSig, SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { callFnProps } from '../../dataflow/environments/query-fn-props';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Dataflow } from '../../dataflow/graph/df-helper';
@@ -34,9 +34,9 @@ export interface UnclosedConnectionMetadata extends MergeableRecord {
 }
 
 export interface UnclosedConnectionConfig extends MergeableRecord {
-	/** functions opening a connection, besides the ones flowR states {@link CallProp.Opens} for */
+	/** functions opening a connection, besides the ones flowR states {@link SemanticCallTag.Opens} for */
 	openFns:  readonly Identifier[],
-	/** functions closing the connection they are handed, besides the ones flowR states {@link CallProp.Closes} for */
+	/** functions closing the connection they are handed, besides the ones flowR states {@link SemanticCallTag.Closes} for */
 	closeFns: readonly Identifier[]
 }
 
@@ -161,12 +161,11 @@ function connectionCalls(elements: readonly FlowrSearchElement<ParentInformation
 		if(stated === undefined) {
 			continue;
 		}
-		const props = stated.props ?? 0;
 		const name = Identifier.toString(stated.name);
 		const loc = SourceLocation.fromNode(node);
-		if(loc !== undefined && ((props & CallProp.Opens) !== 0 || opensByName?.test(name))) {
+		if(loc !== undefined && (CallProps.hasAny(stated, SemanticCallTag.Opens) || opensByName?.test(name))) {
 			opens.set(node.info.id, loc);
-		} else if((props & CallProp.Closes) !== 0 || closesByName?.test(name)) {
+		} else if(CallProps.hasAny(stated, SemanticCallTag.Closes) || closesByName?.test(name)) {
 			const vertex = dataflow.graph.getVertex(node.info.id);
 			if(FunctionCallVertex.is(vertex)) {
 				closes.push([vertex, stated.sig]);

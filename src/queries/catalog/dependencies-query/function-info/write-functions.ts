@@ -1,8 +1,9 @@
 import { DependencyInfoLinkConstraint, type DependencyInfoLink, type FunctionInfo } from './function-info';
-import { CallProp } from '../../../../dataflow/environments/built-in-props';
+import { SemanticCallTag } from '../../../../dataflow/environments/built-in-props';
 import { functionInfosFromProps } from './derived-functions';
 import { OtherPathFunctions } from './other-path-functions';
 import { ReadFunctions } from './read-functions';
+import { PkgName } from '../../../../dataflow/environments/identifier';
 
 const OutputRedirects = [
 	{ type: 'link-to-last-call', callName: 'sink', attachLinkInfo: { argIdx: 0, argName: 'file', when: DependencyInfoLinkConstraint.IfUnknown, resolveValue: true } }
@@ -97,7 +98,7 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 	{ package: 'tinyplot', name: 'tinyplot',  argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'tinyplot', name: 'plt',  argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'highcharter', name: 'hc_exporting', argName: 'filename', resolveValue: true },
-	{ package: 'jsonlite', name: 'write_json', argIdx: 1, argName: 'path', resolveValue: true },
+	{ package: PkgName.Jsonlite, name: 'write_json', argIdx: 1, argName: 'path', resolveValue: true },
 	{ package: 'rpolars', name: 'sink_ipc', argIdx: 0, argName: 'path', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'rpolars', name: 'sink_csv', argIdx: 0, argName: 'path', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'rpolars', name: 'sink_ndjson', argIdx: 0, argName: 'path', resolveValue: true, ignoreIf: 'arg-missing' },
@@ -156,5 +157,5 @@ const WriteFunctionsWithMore: FunctionInfo[] = [
 
 export const WriteFunctions: FunctionInfo[] = [
 	...WriteFunctionsWithMore,
-	...functionInfosFromProps(CallProp.File | CallProp.Writes, [...WriteFunctionsWithMore, ...OtherPathFunctions, ...ReadFunctions])
+	...functionInfosFromProps([SemanticCallTag.File, SemanticCallTag.Writes], [...WriteFunctionsWithMore, ...OtherPathFunctions, ...ReadFunctions])
 ];

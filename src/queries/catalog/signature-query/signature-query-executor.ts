@@ -12,8 +12,8 @@ import { defaultSigDbPaths } from '../../../project/sigdb/manifest';
 import type { DecodedFunction } from '../../../project/sigdb/decode';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
 import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
-import type { BuiltInFnInfo } from '../../../dataflow/environments/built-in-props';
-import { ArgProp, CallProp } from '../../../dataflow/environments/built-in-props';
+import type { ArgProps, BuiltInFnInfo } from '../../../dataflow/environments/built-in-props';
+import { ArgProp, CallProps } from '../../../dataflow/environments/built-in-props';
 import { Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
 import { RVersion } from '../../../util/r-version';
 import { baseRPackages, baseRExportOwner } from '../../../util/r-base-packages';
@@ -208,21 +208,21 @@ function locationFields(pkg: string, fn: DecodedFunction, version: string | unde
 	};
 }
 
-/** the {@link CallProp}/{@link ArgProp} bits of `props`, lowercased, as the names to print */
-function propNames(props: number, of: Record<string, string | number>): string[] {
-	return Object.entries(of).filter(([, v]) => typeof v === 'number' && (props & v) !== 0).map(([k]) => k.toLowerCase());
+/** the {@link ArgProp} bits of `props`, lowercased, as the names to print */
+function argRoles(props: ArgProps): string[] {
+	return Object.entries(ArgProp).filter(([, v]) => typeof v === 'number' && (props & v) !== 0).map(([k]) => k.toLowerCase());
 }
 
 /** the view of one {@link BuiltInFnInfo}: every declared parameter with what it is used for, and what comes back */
 function flowrViewOf(info: BuiltInFnInfo, sigParams: readonly string[]): SignatureFlowrView {
 	/* every declared parameter, even one flowR says nothing about, so the answer is the whole signature */
-	const args = (info.sig ?? []).map(([n, p]) => ({ name: n, roles: propNames(p, ArgProp) }));
+	const args = (info.sig ?? []).map(([n, p]) => ({ name: n, roles: argRoles(p) }));
 	const params = args.map(a => a.name);
 	const returns = info.sig?.find(([, p]) => (p & ArgProp.Alias) !== 0)?.[0];
 	/* flowR usually declares only the parameters it models, which is no disagreement as long as they line up */
 	const same = params.every((n, i) => n === sigParams[i]);
 	return {
-		props: propNames(info.props ?? 0, CallProp),
+		props: CallProps.names([info.props ?? 0, ...info.tags ?? []]).map(name => name.toLowerCase()),
 		...(args.length > 0 ? { args } : {}),
 		...(returns !== undefined ? { returns } : {}),
 		...(params.length > 0 && !same ? { parameters: params } : {})

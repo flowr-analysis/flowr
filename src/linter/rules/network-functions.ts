@@ -9,7 +9,7 @@ import { Ternary } from '../../util/logic';
 import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
 import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
-import { Identifier } from '../../dataflow/environments/identifier';
+import { Identifier, PkgName } from '../../dataflow/environments/identifier';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import type { MergeableRecord } from '../../util/objects';
 
@@ -100,7 +100,7 @@ export const NETWORK_FUNCTIONS = {
 				Identifier.make('getURL', 'RCurl'),
 				Identifier.make('fread', 'data.table'),
 				Identifier.make('getForm', 'rBDAT'),
-				Identifier.make('fromJSON', 'jsonlite'),
+				Identifier.make('fromJSON', PkgName.Jsonlite),
 				Identifier.make('read.xlsx', 'openxlsx'),
 				Identifier.make('storage_download', 'googleCloudStorageR'),
 				Identifier.make('AnnotationHub', 'AnnotationHub'),

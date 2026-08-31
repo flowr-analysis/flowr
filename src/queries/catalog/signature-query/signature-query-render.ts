@@ -29,12 +29,16 @@ export function printSignatureHelp(output: ReplOutput): void {
 	ex(':query @signature dplyr::lead --cg-max 80', 'the same, capped at 80 nodes instead of the default');
 	output.stdout('');
 	output.stdout(`${bold('Signature', f)}  ${color('required', Colors.Yellow, f)} params (no default) are yellow, ${italic('non-forced', f)} (lazily evaluated) italic, defaults dimmed`);
+	output.stdout(`${bold('Fallback', f)}   names no database records are answered from flowR's own built-in configuration and marked ${color(BuiltInMark, Colors.Magenta, f)}`);
 	output.stdout(italic(':query* dumps the full JSON (every function, the whole match set).', f));
 }
 
 /** how many names to show inline before an `+N more`: a short sample for a package's functions, more for lists */
 const SampleFns = 5;
 const MaxList   = 25;
+
+/** what marks a hit that only flowR's built-in configuration states, so it is never read as a database record */
+const BuiltInMark = '[flowR built-in]';
 
 const baseSet = new Set(baseRPackages());
 
@@ -195,6 +199,11 @@ export function pushMatches(result: string[], f: OutputFormatter, out: Signature
 	const onlyLatest = out.latestOnly && out.searched !== undefined
 		? faint(' latest versions only, add ', f) + italic('@*', f) + faint(' to the package to search the history', f) : '';
 	result.push(`   ╰ ${bold(String(out.matchCount ?? matches.length), f)} function${matches.length === 1 ? '' : 's'} matched${scanned}${cap}${onlyLatest}`);
+	const fromBuiltIns = matches.filter(m => m.flowrOnly).length;
+	if(fromBuiltIns > 0) {
+		// the fallback answers are the ones no database records, so say which they are before listing them
+		result.push(`      ${italic(`${fromBuiltIns} of them marked ${BuiltInMark} come from flowR's built-in configuration, not from a signature database`, f)}`);
+	}
 	for(const m of matches) {
 		const matched = new Set(m.matchedParameters ?? []);
 		const params = m.parameters?.length
@@ -203,7 +212,8 @@ export function pushMatches(result: string[], f: OutputFormatter, out: Signature
 		const loc = m.file ? `  ${linkLocation(m.file, m.line, m.sourceUrl, f)}` : '';
 		// one link on a search hit: the version-exact help page when there is one, else the rdrr.io page
 		const doc = m.manUrl ? `  ${f.hyperlink('man', m.manUrl)}` : (m.docUrl ? `  ${f.hyperlink('docs', m.docUrl)}` : '');
-		result.push(`      ╰ ${color(m.package, Colors.Cyan, f)}::${bold(m.name, f)}${params}${m.version ? italic(` v${m.version}`, f) : ''}${loc}${doc}`);
+		const own = m.flowrOnly ? `  ${color(BuiltInMark, Colors.Magenta, f, { style: FontStyles.Bold })}` : '';
+		result.push(`      ╰ ${color(m.package, Colors.Cyan, f)}::${bold(m.name, f)}${params}${m.version ? italic(` v${m.version}`, f) : ''}${loc}${doc}${own}`);
 	}
 }
 
@@ -222,11 +232,21 @@ export function pushPackages(result: string[], f: OutputFormatter, out: Signatur
 
 /** render the summary of the loaded databases into `result` */
 export function pushSummary(result: string[], f: OutputFormatter, out: SignatureQueryResult): void {
+	// the fallback pool answers whether or not a database is loaded, so it is reported in both cases
+	const builtIns = out.builtInCount
+		? `      ╰ ${bold(String(out.builtInCount), f)} names come from flowR's built-in configuration ${italic(`(the ${BuiltInMark} fallback, answered even when no database records them)`, f)}`
+		: undefined;
 	if(out.databases.length === 0 && out.sourceCount === 0) {
 		result.push(`   ╰ ${italic('No signature databases are loaded (the solver may be disabled or no bundle was found).', f)}`);
+		if(builtIns) {
+			result.push(builtIns);
+		}
 		return;
 	}
 	result.push(`   ╰ ${bold(String(out.packageCount), f)} packages across ${out.sourceCount} source${out.sourceCount === 1 ? '' : 's'}`);
+	if(builtIns) {
+		result.push(builtIns);
+	}
 	for(const db of out.databases) {
 		result.push(`      ╰ ${color(db.scope, Colors.Cyan, f)}${db.version ? ` v${db.version}` : ''}${db.date ? italic(` (${db.date})`, f) : ''}`);
 	}

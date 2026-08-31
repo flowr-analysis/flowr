@@ -13,10 +13,10 @@ import { attachedAlongside } from '../../../project/attached-packages';
 import { defaultSigDbPaths } from '../../../project/sigdb/manifest';
 import type { DecodedFunction } from '../../../project/sigdb/decode';
 import type { REnvironmentInformation } from '../../../dataflow/environments/environment';
-import { queryFnProps } from '../../../dataflow/environments/query-fn-props';
-import type { BuiltInFnInfo } from '../../../dataflow/environments/built-in-props';
+import { BuiltInIndex, queryFnProps } from '../../../dataflow/environments/query-fn-props';
+import type { BuiltInFnInfo, FnSig } from '../../../dataflow/environments/built-in-props';
 import { ArgProp } from '../../../dataflow/environments/built-in-props';
-import { Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
+import { Identifier, PkgName, ReferenceType } from '../../../dataflow/environments/identifier';
 import { RVersion } from '../../../util/r-version';
 import { baseRPackages, baseRExportOwner } from '../../../util/r-base-packages';
 import { Mermaid } from '../../../util/mermaid/mermaid';
@@ -605,6 +605,102 @@ function isVerbatimFunction(sources: readonly PackageSignatureSource[], pkg: str
 	return sources.some(s => s.has(pkg) && ((s.functions(pkg, version) ?? s.functions(pkg))?.some(f => f.name === name) ?? false));
 }
 
+/**
+ * A built-in read as if it were a database record, so the search filters ({@link parameterFilter},
+ * {@link matchedParamPreview}) apply to it unchanged. flowR's configuration states no defaults and no
+ * location, so nothing here claims a parameter is required (see {@link flowrOnlyFunctionInfo}).
+ */
+function builtInAsDecoded(name: string, sig: FnSig | undefined): DecodedFunction {
+	return {
+		name,
+		line:      -1,
+		exported:  true,
+		props:     [],
+		signature: (sig ?? []).map(([param, props]) => ({ name: param, props: props & ~ArgProp.NoDefault })),
+		callees:   []
+	};
+}
+
+/** the names flowR's own built-in configuration registers under `pkg`, which a lookup falls back to */
+function builtInNamesOf(pkg: string): string[] {
+	return BuiltInIndex.default().entries
+		.filter(e => String(Identifier.getNamespace(e.name) ?? PkgName.Base) === pkg)
+		.map(e => String(Identifier.getName(e.name)));
+}
+
+/**
+ * The fallback a wildcard search takes when no loaded database records a name: the entries of flowR's own
+ * built-in configuration, which is where the primitives and operators (`+`, `[`, `if`) live and which answers
+ * even with no database mounted at all. Only entries the analysis still resolves are reported, so a
+ * configuration that drops the defaults drops them here too, and every hit is marked
+ * {@link SignatureMatchView.flowrOnly}.
+ *
+ * `seen` holds the `pkg::name` keys the database already answered, which win over the built-in view.
+ */
+function builtInMatches(
+	env: REnvironmentInformation | undefined, q: SignatureQuery, literalFunction: boolean,
+	seen: ReadonlySet<string>, room: number
+): SignatureMatchView[] {
+	/* flowR states no defaults, so it cannot say how many parameters of a built-in are required: a
+	   `--required` filter is a question only the database can answer, and the fallback stays out of it */
+	if(env === undefined || room <= 0 || q.requiredParameters !== undefined) {
+		return [];
+	}
+	const pkgMatch = nameMatcher(q.package as string);
+	const fnMatch = q.function ? nameMatcher(q.function, literalFunction) : () => true;
+	const paramPred = parameterFilter(q);
+	const found: SignatureMatchView[] = [];
+	for(const entry of BuiltInIndex.default().entries) {
+		if(found.length >= room) {
+			break;
+		}
+		const name = String(Identifier.getName(entry.name));
+		const pkg = String(Identifier.getNamespace(entry.name) ?? PkgName.Base);
+		if(!fnMatch(name) || !pkgMatch(pkg) || seen.has(`${pkg}::${name}`)) {
+			continue;
+		}
+		const decoded = builtInAsDecoded(name, entry.sig);
+		if(paramPred && !paramPred(decoded)) {
+			continue;
+		}
+		/* the same resolution the exact lookup uses, so the search never offers a name the detailed view denies */
+		if(flowrOnlyFunctionInfo(env, pkg, name) === undefined) {
+			continue;
+		}
+		const params = matchedParamPreview(decoded, q);
+		found.push({
+			package:   pkg,
+			name,
+			exported:  true,
+			flowrOnly: true,
+			...(params && params.preview.length > 0 ? { parameters: params.preview } : {}),
+			...(params && params.matched.length > 0 ? { matchedParameters: params.matched } : {})
+		});
+	}
+	return found;
+}
+
+/**
+ * Folds the built-in fallback ({@link builtInMatches}) into what the databases found, keeping the databases'
+ * answers first and the {@link MaxMatches} cap intact. A package search (no function, no parameter filter)
+ * lists packages rather than functions and is handed back untouched.
+ */
+function withBuiltInFallback(
+	found: Partial<SignatureQueryResult>, env: REnvironmentInformation | undefined,
+	q: SignatureQuery, literalFunction: boolean
+): Partial<SignatureQueryResult> {
+	if(found.matches === undefined || found.truncated) {
+		return found;
+	}
+	const seen = new Set(found.matches.map(m => `${m.package}::${m.name}`));
+	const extra = builtInMatches(env, q, literalFunction, seen, MaxMatches - found.matches.length);
+	if(extra.length === 0) {
+		return found;
+	}
+	const matches = [...found.matches, ...extra];
+	return { ...found, matches, matchCount: matches.length };
+}
+
 /** run a wildcard search across the loaded sources: matching packages (no function), or matching functions */
 function searchSources(sources: readonly PackageSignatureSource[], allNames: ReadonlySet<string>, q: SignatureQuery, literalFunction = false): Partial<SignatureQueryResult> {
 	const cap = MaxMatches;
@@ -820,12 +916,15 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 		}
 	}
 	const meta = (): SignatureQueryResult => ({ '.meta': { timing: Date.now() - start }, databases, packageCount: packages.size, sourceCount: sources.length });
+	/* one clean environment for every built-in lookup of this query, as building one is not free */
+	let cleanEnv: REnvironmentInformation | undefined;
+	const env = () => cleanEnv ??= analyzer.inspectContext().env.makeCleanEnv();
 	/* the built-in environment answers for the primitives no package's sources contain, see flowrOnlyFunctionInfo */
-	const builtIn = (pkg: string | undefined, name: string) => flowrOnlyFunctionInfo(analyzer.inspectContext().env.makeCleanEnv(), pkg, name);
+	const builtIn = (pkg: string | undefined, name: string) => flowrOnlyFunctionInfo(env(), pkg, name);
 
 	if(!q.package) {
 		// shard load-state is only shown in the summary, so it is only worth its filesystem probes here
-		return { ...meta(), shards: collectShardStatus(sources) };
+		return { ...meta(), shards: collectShardStatus(sources), builtInCount: BuiltInIndex.default().entries.length };
 	}
 
 	// wildcard search: a glob in the package/function name, a version spec matching more than one release (a range or
@@ -835,7 +934,8 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	const literalFunction = q.function !== undefined && hasGlob(q.function) && !hasGlob(q.package)
 		&& (isVerbatimFunction(sources, q.package, q.function, q.version) || builtIn(q.package, q.function) !== undefined);
 	if(hasGlob(q.package) || (q.function !== undefined && hasGlob(q.function) && !literalFunction) || (q.version !== undefined && (isMultiVersion(q.version) || isDateBound(q.version))) || hasParameterFilter(q)) {
-		const found = searchSources(sources, packages, q, literalFunction);
+		// what the databases record, then what only flowR's built-in configuration states (marked as such)
+		const found = withBuiltInFallback(searchSources(sources, packages, q, literalFunction), env(), q, literalFunction);
 		// a version glob against a single concrete, known package that matched no release: point at the available versions
 		// (the same guidance the exact-version path gives) instead of a bare "0 matched"
 		if((found.matchCount === 0 || found.packages?.length === 0) && !hasGlob(q.package) && q.version !== undefined) {
@@ -870,7 +970,7 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	}
 	const resolvedSrc = src ?? owning[0];
 	if(q.function) {
-		const fn = signatureFunctionInfo(resolvedSrc, q.package, q.function, version, analyzer.inspectContext().env.makeCleanEnv());
+		const fn = signatureFunctionInfo(resolvedSrc, q.package, q.function, version, env());
 		if(fn) {
 			const cg = q.callGraph ? signatureCallGraphUrl(resolvedSrc, q.package, version, fn.name, q.callGraphMaxNodes ?? DefaultCallGraphMaxNodes) : undefined;
 			return { ...meta(), function: cg ? { ...fn, callGraph: cg } : fn };
@@ -885,11 +985,14 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 			...(exports?.exported ?? []),
 			...(resolvedSrc.functions(q.package, version) ?? resolvedSrc.functions(q.package) ?? []).map(f => f.name)
 		]);
+		// what the database cannot offer, flowR's own configuration still can; kept apart so the two are never confused
+		const fromBuiltIns = builtInNamesOf(q.package).filter(n => !universe.has(n));
 		return {
 			...meta(),
-			package:     signaturePackageInfo(resolvedSrc, q.package, version),
-			message:     `'${q.package}' does not define '${q.function}'.`,
-			suggestions: suggest(universe, q.function)
+			package:            signaturePackageInfo(resolvedSrc, q.package, version),
+			message:            `'${q.package}' does not define '${q.function}'.`,
+			suggestions:        suggest(universe, q.function),
+			builtInSuggestions: suggest(fromBuiltIns, q.function)
 		};
 	}
 	return { ...meta(), package: signaturePackageInfo(resolvedSrc, q.package, version) };

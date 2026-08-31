@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { Fn } from '../../../../../fn/fn';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { RValue } from '../../../../../eval/values/r-value';
 import type { DataflowInformation, ControlDependency } from '../../../../../info';
 import type { DataflowGraph } from '../../../../../graph/graph';
@@ -84,7 +84,7 @@ export function processLibrary<OtherInfo>(
 	/* parse the import selection before the library flow rewrites `args` below */
 	const parsedSpec: AttachSpec = config.fromImports ? parseFromSpec(args) : { namespaceOnly: config.namespaceOnly };
 	// 'pos' last, so the positional fallback keeps its previous order; `import::from` has no `pos`, its extra arguments name exports
-	const argMaps = Fn.call.match.toSpec(convertFnArguments(args), { 'package': 'pkg', 'character.only': 'char', 'pos': 'pos' });
+	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), { 'package': 'pkg', 'character.only': 'char', 'pos': 'pos' });
 	const charId = uniqueArray(argMaps.get('char') ?? []);
 	const spec: AttachSpec = { ...parsedSpec, pos: config.fromImports ? undefined : resolveAttachPosition(argMaps.get('pos')?.[0], data) };
 

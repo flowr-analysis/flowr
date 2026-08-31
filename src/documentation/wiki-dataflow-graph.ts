@@ -1261,7 +1261,7 @@ Everything else lives on a helper object named after the thing it works on:
 * ${ctx.link(Resolve, undefined, { type: 'variable' })} for everything that resolves, with ${ctx.linkO(Resolve, 'infoOf')} stating *where* to resolve, straight from an analyzer. Take the narrowest entry point:
   ${ctx.linkO(Resolve, 'byName')} walks the environment layers once, ${ctx.linkO(Resolve, 'byNameAndType')} merges the definitions of every layer it passes,
   and ${ctx.linkO(Resolve, 'toValue')} as well as ${ctx.linkO(Resolve, 'argument')} run the evaluator on top of a resolution (see [below](#dfg-resolving-values))
-* ${ctx.link({ name: 'MatchArgs' }, undefined, { type: 'variable' })} (reached as \`Fn.call.match\`) to bind a call's arguments to the formals of what it calls (see [below](#dfg-matching-arguments))
+* ${ctx.link({ name: 'MatchArgs' }, undefined, { type: 'variable' })} (reached as \`FunctionSemantics.call.match\`) to bind a call's arguments to the formals of what it calls (see [below](#dfg-matching-arguments))
 
 These are the ones this page needs; the ${ctx.linkPage('wiki/Helper Objects', 'Helper Objects')} page lists every helper object flowR has, grouped by what it is about.
 

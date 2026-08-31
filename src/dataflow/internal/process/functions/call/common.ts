@@ -5,7 +5,7 @@
  * @lintIgnore use-instead
  */
 import { type DataflowInformation, happensInEveryBranch } from '../../../../info';
-import { Fn } from '../../../../fn/fn';
+import { FunctionSemantics } from '../../../../fn/function-semantics';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RConstant } from '../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -25,7 +25,7 @@ import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-ar
 import { DfgVertex } from '../../../../graph/vertex';
 
 export interface ProcessAllArgumentInput<OtherInfo> {
-	/** which of the arguments the call evaluates, as {@link Fn.call.signature.forced} answers it for the signature */
+	/** which of the arguments the call evaluates, as {@link FunctionSemantics.call.signature.forced} answers it for the signature */
 	readonly forced?:        readonly boolean[]
 	readonly functionName:   DataflowInformation
 	readonly args:           readonly (RNode<OtherInfo & ParentInformation> | PotentiallyEmptyRArgument<OtherInfo & ParentInformation>)[]

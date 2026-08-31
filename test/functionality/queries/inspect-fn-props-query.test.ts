@@ -1,5 +1,5 @@
 import { assert, describe, test } from 'vitest';
-import { Fn } from '../../../src/dataflow/fn/fn';
+import { FunctionSemantics } from '../../../src/dataflow/fn/function-semantics';
 import { withTreeSitter } from '../_helper/shell';
 import { label } from '../_helper/label';
 import { queryCase, runQuery } from '../_helper/query';
@@ -28,7 +28,7 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 					found[idMap.get(Number(formal))?.lexeme ?? formal] = props;
 				}
 			}
-			assertProps(found, expected, Fn.call.argument.words);
+			assertProps(found, expected, FunctionSemantics.call.argument.words);
 		});
 	}
 
@@ -41,7 +41,7 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 	function testProps(name: string, code: string, expected: readonly StatedProps[]) {
 		queryCase(parser, 'inspect-fn-props', name, code, ({ result }) => {
 			const found = Object.values(result.props).map(stated);
-			assertProps(found, expected.map(stated), Fn.call.props.labels);
+			assertProps(found, expected.map(stated), FunctionSemantics.call.props.labels);
 		});
 	}
 
@@ -158,7 +158,7 @@ describe('Inspect Argument Roles Query', withTreeSitter(parser => {
 			for(const [id, props] of Object.entries(result.props)) {
 				found[idMap.get(Number(id))?.info.fullLexeme ?? id] = stated(props);
 			}
-			assertProps(found, Object.fromEntries(Object.entries(expected).map(([k, v]) => [k, stated(v)])), Fn.call.props.labels);
+			assertProps(found, Object.fromEntries(Object.entries(expected).map(([k, v]) => [k, stated(v)])), FunctionSemantics.call.props.labels);
 		});
 	}
 

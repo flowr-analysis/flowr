@@ -1,6 +1,6 @@
 /**
- * The `Fn` facade wires these together, so a sibling here has to call the backing function
- * directly; going through `Fn` would make `src/dataflow/fn/fn.ts` import its own importers.
+ * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function
+ * directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
  * @lintIgnore use-instead
  */
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -133,7 +133,7 @@ export interface HigherOrderFunctionsOptions {
 /**
  * Whether the function is higher-order: it takes a function argument, may return one, or calls one of its own
  * formals as a function. `function(x) x` alone is not higher-order.
- * @useInstead {@link Fn.isHigherOrder}
+ * @useInstead {@link FunctionSemantics.isHigherOrder}
  */
 export function isHigherOrder(this: void, id: NodeId, graph: DataflowGraph, { ctx, invertedGraph }: HigherOrderFunctionsOptions): boolean {
 	const vert = graph.getVertex(id);

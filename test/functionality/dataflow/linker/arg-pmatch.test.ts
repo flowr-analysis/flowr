@@ -1,5 +1,5 @@
 import { assert, describe, test } from 'vitest';
-import { Fn } from '../../../../src/dataflow/fn/fn';
+import { FunctionSemantics } from '../../../../src/dataflow/fn/function-semantics';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import type { FunctionArgument, OutgoingEdges } from '../../../../src/dataflow/graph/graph';
 import { ReferenceType } from '../../../../src/dataflow/environments/identifier';
@@ -69,7 +69,7 @@ describe('Dataflow Linker - Argument Matching', () => {
 				defaultValue: undefined
 			} satisfies RParameter<ParentInformation>));
 
-			Fn.call.match.onCallAndLink(useArgs, useParams, graph);
+			FunctionSemantics.call.match.onCallAndLink(useArgs, useParams, graph);
 
 			const edges = new Map(graph.edges());
 			for(let i = 0; i < expected.length; i++) {

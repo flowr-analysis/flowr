@@ -1,5 +1,5 @@
 import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../linter-format';
-import { Fn } from '../../dataflow/fn/fn';
+import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { SourceLocation } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -49,7 +49,7 @@ export const STOP_WITH_CALL_ARG = {
 							'call.':  'call.',
 							'domain': 'domain'
 						} as const;
-						const mapping = Fn.call.match.toSpec(fCall.args, stopParamMap);
+						const mapping = FunctionSemantics.call.match.toSpec(fCall.args, stopParamMap);
 						const mappedToStop = mapping.get('call.') ?? [];
 						for(const argId of mappedToStop) {
 							const res = Resolve.toValue(argId, { graph: dataflow.graph, environment: fCall.environment, ctx: data.inspectContext() });

@@ -1,5 +1,5 @@
 import { DefaultMap } from '../../util/collections/defaultmap';
-import { Fn } from '../fn/fn';
+import { FunctionSemantics } from '../fn/function-semantics';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { isNotUndefined } from '../../util/assert';
@@ -84,21 +84,21 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
 }
 
 /**
- * {@link Fn.call.match.onCall|Matches} the arguments to the parameters and links them in the graph,
+ * {@link FunctionSemantics.call.match.onCall|Matches} the arguments to the parameters and links them in the graph,
  * returning the resolved map from argument ids to parameter ids.
- * @useInstead {@link Fn.call.match.onCallAndLink}
+ * @useInstead {@link FunctionSemantics.call.match.onCallAndLink}
  */
 export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: readonly RParameter<ParentInformation>[], graph: DataflowGraph): Map<NodeId, NodeId> {
-	return Fn.call.match.onCallAndLink(args, params, graph);
+	return FunctionSemantics.call.match.onCallAndLink(args, params, graph);
 }
 
 /**
- * {@link Fn.call.match.toSpec|Matches} the arguments against a parameter specification, returning the
+ * {@link FunctionSemantics.call.match.toSpec|Matches} the arguments against a parameter specification, returning the
  * arguments bound to each target.
- * @useInstead {@link Fn.call.match.toSpec}
+ * @useInstead {@link FunctionSemantics.call.match.toSpec}
  */
 export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[], params: Record<string, Targets>): Map<Targets, NodeId[]> {
-	return Fn.call.match.toSpec(args, params);
+	return FunctionSemantics.call.match.toSpec(args, params);
 }
 
 /**
@@ -365,7 +365,7 @@ export function getAllLinkedFunctionDefinitions(
 /**
  * Links every name in the expression rooted at `expr` against `environment`, as if it were written there, and
  * hands back what stays unresolved. This is how an expression that was captured elsewhere is read here.
- * @useInstead {@link Fn.call.quoted.evaluateIn}
+ * @useInstead {@link FunctionSemantics.call.quoted.evaluateIn}
  */
 export function linkExpressionIn<Info>(this: void, graph: DataflowGraph, expr: NodeId, environment: REnvironmentInformation, idMap: AstIdMap<Info & ParentInformation>): readonly IdentifierReference[] {
 	const node = idMap.get(expr);

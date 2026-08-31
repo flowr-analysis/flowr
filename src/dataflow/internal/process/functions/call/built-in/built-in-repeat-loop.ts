@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { Fn } from '../../../../../fn/fn';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { type DataflowInformation, ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
 import { findNonLocalReads, linkCircularRedefinitionsWithinALoop, produceNameSharedIdMap, reapplyLoopExitPoints } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -43,7 +43,7 @@ export function processRepeatLoop<OtherInfo>(
 		args:      unpacked ? [unpacked] : args,
 		rootId,
 		data,
-		sig:       Fn.call.signature.every,
+		sig:       FunctionSemantics.call.signature.every,
 		patchData: (d, i) => {
 			if(i === 0) {
 				return { ...d, cds: [...d.cds ?? [], { id: name.info.id }] };

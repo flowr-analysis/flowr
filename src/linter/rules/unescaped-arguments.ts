@@ -1,5 +1,5 @@
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
-import { Fn } from '../../dataflow/fn/fn';
+import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { ArgProps, FnSig, PropSelector } from '../../dataflow/environments/built-in-props';
 import { ArgProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { Identifier, PkgName } from '../../dataflow/environments/identifier';
@@ -166,7 +166,7 @@ function getEnabledCriticalCalls(config: UnescapedArgumentsConfig, index: BuiltI
 			continue;
 		}
 		for(const entry of index.entries) {
-			if(Fn.call.props.hasAny(entry, criticalCallProps) && entry.sig?.some(([, prop]) => (prop & criticalArgProps) !== 0)) {
+			if(FunctionSemantics.call.props.hasAny(entry, criticalCallProps) && entry.sig?.some(([, prop]) => (prop & criticalArgProps) !== 0)) {
 				result.push({ category, name: entry.name, signature: entry.sig });
 			}
 		}
@@ -211,7 +211,7 @@ function getCriticalTargets(
 			if(!Identifier.matches(name, call.name) && !Identifier.matches(call.name, name)) {
 				continue;
 			}
-			for(const arg of Fn.call.match.findWithProps(call.args, signature, config.categories[category].criticalArgs)) {
+			for(const arg of FunctionSemantics.call.match.findWithProps(call.args, signature, config.categories[category].criticalArgs)) {
 				const location = SourceLocation.fromNode(graph.idMap?.get(arg));
 				const key = `${category}-${call.id}-${arg}`;
 
@@ -340,7 +340,7 @@ function escapeFix(fix: EscapeQuickFix, target: CriticalTarget, source: InputSou
 	let leading = '';
 
 	if(fix.firstArg !== undefined) {
-		const [arg] = Fn.call.match.findWithProps(target.call.args, target.signature, fix.firstArg);
+		const [arg] = FunctionSemantics.call.match.findWithProps(target.call.args, target.signature, fix.firstArg);
 		const first = arg === undefined || arg === target.arg ? undefined : RNode.lexeme(idMap.get(arg));
 
 		if(first === undefined) {

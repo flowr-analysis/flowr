@@ -5,7 +5,7 @@ import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-bui
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { Ternary } from '../../../../src/util/logic';
-import { Fn } from '../../../../src/dataflow/fn/fn';
+import { FunctionSemantics } from '../../../../src/dataflow/fn/function-semantics';
 
 
 describe('is-strict-function', withTreeSitter(ts => {
@@ -21,7 +21,7 @@ describe('is-strict-function', withTreeSitter(ts => {
 			const id = SlicingCriterion.tryParse(criterion, idMap);
 			assert.isDefined(id, `could not resolve criterion ${criterion}`);
 			const graph = (await analyzer.dataflow()).graph;
-			const strictness = Fn.strictness([id], graph)[id];
+			const strictness = FunctionSemantics.strictness([id], graph)[id];
 			try {
 				assert.strictEqual(strictness.strict, expected);
 				for(const [param, want] of Object.entries(params)) {

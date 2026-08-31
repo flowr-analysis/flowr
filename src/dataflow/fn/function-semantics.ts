@@ -20,18 +20,18 @@ import type { DataflowGraphVertexInfo } from '../graph/vertex';
  * that used to sit one per file under `src/dataflow/fn/`.
  * @example
  * ```ts
- * Fn.props(definitions, graph);            // what the definitions do with what they get
- * Fn.exceptions(definition, callGraph);    // what they may raise
- * Fn.strictness(definitions, graph);       // which formals they force
- * Fn.isHigherOrder(definition, graph);     // whether they call what they are handed
- * Fn.argumentRoles(definitions, graph);    // what each formal is used as
- * Fn.classes.declared(graph);              // the classes the project declares
- * Fn.call.props.hasAny(stated, CallProp.Scope);  // what flowR states one call does
- * Fn.call.match(call, formals);           // how R binds its arguments
+ * FunctionSemantics.props(definitions, graph);            // what the definitions do with what they get
+ * FunctionSemantics.exceptions(definition, callGraph);    // what they may raise
+ * FunctionSemantics.strictness(definitions, graph);       // which formals they force
+ * FunctionSemantics.isHigherOrder(definition, graph);     // whether they call what they are handed
+ * FunctionSemantics.argumentRoles(definitions, graph);    // what each formal is used as
+ * FunctionSemantics.classes.declared(graph);              // the classes the project declares
+ * FunctionSemantics.call.props.hasAny(stated, CallProp.Scope);   // what flowR states one call does
+ * FunctionSemantics.call.match(call, formals);            // how R binds its arguments
  * ```
  */
-export const Fn = {
-	name:            'Fn',
+export const FunctionSemantics = {
+	name:            'FunctionSemantics',
 	/** What several definitions and their formals do. */
 	props:           inferFunctions,
 	/** The exceptions a definition may raise. */
@@ -53,7 +53,7 @@ export const Fn = {
 		props:       CallProps,
 		/** The formals a built-in declares. */
 		signature:   FnSig,
-		/** The same as {@link Fn.call.props}, for one argument. */
+		/** The same as {@link FunctionSemantics.call.props}, for one argument. */
 		argument:    ArgProps,
 		/** R's argument matching -- exact, then partial, then positional. */
 		match:       MatchArgs,

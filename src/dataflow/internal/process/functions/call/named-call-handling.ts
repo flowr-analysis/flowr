@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../processor';
-import { Fn } from '../../../../fn/fn';
+import { FunctionSemantics } from '../../../../fn/function-semantics';
 import { DataflowInformation } from '../../../../info';
 import { processKnownFunctionCall } from './known-call-handling';
 import { appendEnvironment } from '../../../../environments/append';
@@ -122,7 +122,7 @@ export function processNamedCall<OtherInfo>(
 
 	if(defaultProcessor) {
 		/* if we do not know where we land, we force! reuse `resolved`, data.environment did not change above */
-		const call = processKnownFunctionCall({ name, args, rootId, data, sig: resolved.length > 0 ? undefined : Fn.call.signature.every, origin: 'default' });
+		const call = processKnownFunctionCall({ name, args, rootId, data, sig: resolved.length > 0 ? undefined : FunctionSemantics.call.signature.every, origin: 'default' });
 		information = mergeInformation(information, call.information);
 	} else if(information && builtIn) {
 		// mark the function call as built in only

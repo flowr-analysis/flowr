@@ -5,7 +5,7 @@ import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { FunctionArgumentRoles } from '../../../dataflow/fn/argument-roles';
 import { QueryFunctionFilter } from '../../query-function-filter';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Fn } from '../../../dataflow/fn/fn';
+import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 
 
 /** every bit, for a query naming no properties to keep */
@@ -39,8 +39,8 @@ function keepProps(all: Record<NodeId, StatedProps>, mask: PropMask | undefined)
 	}
 	const kept: Record<NodeId, StatedProps> = {};
 	for(const [id, stated] of Object.entries(all)) {
-		const some = Fn.call.props.filter(stated, mask);
-		if(Fn.call.props.hasAny(some)) {
+		const some = FunctionSemantics.call.props.filter(stated, mask);
+		if(FunctionSemantics.call.props.hasAny(some)) {
 			kept[id] = some;
 		}
 	}
@@ -55,13 +55,13 @@ export async function executeFnPropsQuery({ analyzer }: BasicQueryData, queries:
 
 	const ctx = analyzer.inspectContext();
 	const graph = (await analyzer.dataflow()).graph;
-	const inferred = Fn.props(QueryFunctionFilter.definitions(graph, filterFor), graph, { ctx, maxDepth, only });
+	const inferred = FunctionSemantics.props(QueryFunctionFilter.definitions(graph, filterFor), graph, { ctx, maxDepth, only });
 
 	return {
 		'.meta': {
 			timing: Date.now() - start
 		},
-		roles: keepRoles(inferred.roles, graph, formals && new Set(formals), props ? Fn.call.argument.mask(props) : AllProps),
-		props: keepProps(inferred.props, props ? Fn.call.props.mask(props) : undefined)
+		roles: keepRoles(inferred.roles, graph, formals && new Set(formals), props ? FunctionSemantics.call.argument.mask(props) : AllProps),
+		props: keepProps(inferred.props, props ? FunctionSemantics.call.props.mask(props) : undefined)
 	};
 }

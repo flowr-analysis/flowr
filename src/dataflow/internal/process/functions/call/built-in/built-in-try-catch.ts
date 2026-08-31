@@ -1,5 +1,5 @@
 import { namesAnErrorHandler } from '../../../../../fn/condition-handlers';
-import { Fn } from '../../../../../fn/fn';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
 import { ExitPointType, happensInEveryBranch } from '../../../../../info';
@@ -42,7 +42,7 @@ export function processTryCatch<OtherInfo>(
 		}
 	}
 ): DataflowInformation {
-	const res = processKnownFunctionCall({ name, args: args.map(tryUnpackNoNameArg), rootId, data, origin: BuiltInProcName.Try, sig: Fn.call.signature.every });
+	const res = processKnownFunctionCall({ name, args: args.map(tryUnpackNoNameArg), rootId, data, origin: BuiltInProcName.Try, sig: FunctionSemantics.call.signature.every });
 	if(args.length < 1 || RArgument.isEmpty(args[0])) {
 		dataflowLogger.warn(`TryCatch Handler ${Identifier.toString(name.content)} does not have 1 argument, skipping`);
 		return res.information;
@@ -60,7 +60,7 @@ export function processTryCatch<OtherInfo>(
 		params[config.handlers.finally] = 'finally';
 	}
 	// only remove exit points from the block
-	const argMaps = Fn.call.match.toSpec(res.callArgs, params);
+	const argMaps = FunctionSemantics.call.match.toSpec(res.callArgs, params);
 	const info = res.information;
 
 	const blockArg = new Set(argMaps.get('block'));

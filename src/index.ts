@@ -34,7 +34,7 @@ export { DataflowGraph } from './dataflow/graph/graph';
 export { DfgVertex, VertexType } from './dataflow/graph/vertex';
 export type { DataflowGraphVertexInfo } from './dataflow/graph/vertex';
 export { DfEdge, EdgeType } from './dataflow/graph/edge';
-export { Fn } from './dataflow/fn/fn';
+export { FunctionSemantics } from './dataflow/fn/function-semantics';
 export { RNode } from './r-bridge/lang-4.x/ast/model/model';
 export type { NodeId } from './r-bridge/lang-4.x/ast/model/processing/node-id';
 

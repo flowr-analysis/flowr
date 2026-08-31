@@ -1,5 +1,5 @@
 import type { FunctionInfo } from './function-info';
-import { Fn } from '../../../../dataflow/fn/fn';
+import { FunctionSemantics } from '../../../../dataflow/fn/function-semantics';
 import type { BuiltInFnInfo, PropSelector } from '../../../../dataflow/environments/built-in-props';
 import { ArgProp } from '../../../../dataflow/environments/built-in-props';
 import { DefaultBuiltinConfig } from '../../../../dataflow/environments/default-builtin-config';
@@ -34,7 +34,7 @@ export function functionInfosFromProps(props: PropSelector, except: readonly Fun
 	const found: FunctionInfo[] = [];
 	for(const d of DefaultBuiltinConfig) {
 		const info = d.type !== 'constant' ? (d as { config?: BuiltInFnInfo }).config : undefined;
-		if(info?.sig === undefined || !Fn.call.props.hasAny(info) || !Fn.call.props.hasAll(info, props)) {
+		if(info?.sig === undefined || !FunctionSemantics.call.props.hasAny(info) || !FunctionSemantics.call.props.hasAll(info, props)) {
 			continue;
 		}
 		const argIdx = info.sig.findIndex(([, p]) => (p & ArgProp.Resource) !== 0);

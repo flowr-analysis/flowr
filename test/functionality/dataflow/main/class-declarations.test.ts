@@ -2,17 +2,17 @@ import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { ClassSystem, type DeclaredClass, MemberVisibility } from '../../../../src/dataflow/fn/class-declaration';
 import { applyAssumedPackages, assumedPackagesOf, assumeLoadedPackages } from '../../_helper/shell';
-import { Fn } from '../../../../src/dataflow/fn/fn';
+import { FunctionSemantics } from '../../../../src/dataflow/fn/function-semantics';
 
 
 assumeLoadedPackages('R6', 'S7');
 
-/** the classes {@link Fn.classes.declared} finds in `code`; `attach` leaves nothing assumed, so the snippet's own `library()` has to bring the package in */
+/** the classes {@link FunctionSemantics.classes.declared} finds in `code`; `attach` leaves nothing assumed, so the snippet's own `library()` has to bring the package in */
 async function classesOf(code: string, attach = false): Promise<Map<string, DeclaredClass>> {
 	const builder = attach ? new FlowrAnalyzerBuilder() : applyAssumedPackages(new FlowrAnalyzerBuilder(), assumedPackagesOf(undefined));
 	const analyzer = await builder.build();
 	analyzer.addRequest(code);
-	return Fn.classes.declared((await analyzer.dataflow()).graph);
+	return FunctionSemantics.classes.declared((await analyzer.dataflow()).graph);
 }
 
 /** runs `pick` over what {@link classesOf} finds in `code` and compares it against `expected` */
@@ -40,7 +40,7 @@ setValidity("Derived", function(object) TRUE)
 		c => ({ union: c.get('NumOrChar')?.union, virtual: c.get('NumOrChar')?.virtual }), { union: ['numeric', 'character'], virtual: true });
 	testClasses('setValidity attributes to a class rather than declaring one, so it contributes no class of its own', code, c => c.has('object'), false);
 	testClasses('setIs extends the contains chain the way it would state itself, and the superclass chain resolves it', code,
-		c => ({ hasBase: (c.get('Derived')?.contains ?? []).includes('Base'), hasAbstract: (c.get('Derived')?.contains ?? []).includes('Abstract'), supers: Fn.classes.superOf('Derived', c).toSorted() }),
+		c => ({ hasBase: (c.get('Derived')?.contains ?? []).includes('Base'), hasAbstract: (c.get('Derived')?.contains ?? []).includes('Abstract'), supers: FunctionSemantics.classes.superOf('Derived', c).toSorted() }),
 		{ hasBase: true, hasAbstract: true, supers: ['Abstract', 'Base'] });
 });
 
@@ -61,7 +61,7 @@ Range <- S7::new_class("Range", parent = S7::S7_object, properties = list(start 
 			{ name: 'name', visibility: MemberVisibility.Public }, { name: 'greet', method: true, visibility: MemberVisibility.Public },
 			{ name: 'secret', visibility: MemberVisibility.Private }, { name: 'upper', method: true, visibility: MemberVisibility.Active }] });
 	testClasses('an R6 parent by generator variable resolves', code,
-		c => ({ byVariable: c.get('Employee')?.byVariable, contains: c.get('Employee')?.contains, supers: Fn.classes.superOf('Employee', c) }),
+		c => ({ byVariable: c.get('Employee')?.byVariable, contains: c.get('Employee')?.contains, supers: FunctionSemantics.classes.superOf('Employee', c) }),
 		{ byVariable: ['Person'], contains: ['Person'], supers: ['Person'] });
 	testClasses('an S7 class states its properties and abstractness', code,
 		c => ({ system: c.get('Range')?.system, members: c.get('Range')?.members, virtual: c.get('Range')?.virtual }),
@@ -70,9 +70,9 @@ Range <- S7::new_class("Range", parent = S7::S7_object, properties = list(start 
 
 describe('Handing the declarations to the signature database', () => {
 	testClasses('a declared class becomes a record the package owns, with no package of its own', 'setClass("A", contains = "B", slots = c(x = "numeric"))',
-		c => Fn.classes.toSig(c)[0], { name: 'A', system: 's4', supers: ['B'], slots: [{ name: 'x', type: 'numeric' }] });
+		c => FunctionSemantics.classes.toSig(c)[0], { name: 'A', system: 's4', supers: ['B'], slots: [{ name: 'x', type: 'numeric' }] });
 	testClasses('a superclass declared elsewhere is attributed to its package, or left out if nothing places it', 'setClass("A", contains = "B")',
-		c => ({ withOwner: Fn.classes.toSig(c, n => n === 'B' ? 'otherpkg' : undefined).find(r => r.name === 'B'), withoutOwner: Fn.classes.toSig(c, () => undefined).length }),
+		c => ({ withOwner: FunctionSemantics.classes.toSig(c, n => n === 'B' ? 'otherpkg' : undefined).find(r => r.name === 'B'), withoutOwner: FunctionSemantics.classes.toSig(c, () => undefined).length }),
 		{ withOwner: { name: 'B', system: 's4', supers: [], slots: [], package: 'otherpkg' }, withoutOwner: 1 });
 });
 

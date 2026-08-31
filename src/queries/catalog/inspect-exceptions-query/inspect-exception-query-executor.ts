@@ -5,7 +5,7 @@ import type { BasicQueryData } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ExceptionPoint, ExceptionsByFunction } from '../../../dataflow/fn/exceptions-of-function';
 import { QueryFunctionFilter } from '../../query-function-filter';
-import { Fn } from '../../../dataflow/fn/fn';
+import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 
 
 /**
@@ -20,7 +20,7 @@ export async function executeExceptionQuery({ analyzer }: BasicQueryData, querie
 		if(result[id]) {
 			continue;
 		}
-		const res = Fn.exceptions(id, cg, { knownThrower: result });
+		const res = FunctionSemantics.exceptions(id, cg, { knownThrower: result });
 		for(const [k, v] of Object.entries(res) as [NodeId, ExceptionPoint[]][]) {
 			if(!result[k]) {
 				result[k] = v;

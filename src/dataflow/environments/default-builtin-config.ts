@@ -1,5 +1,5 @@
 import type { AnyBuiltInDefinition, BuiltInDefinitions, BuiltInFunctionDefinition, BuiltInReplacementDefinition } from './built-in-config';
-import { Fn } from '../fn/fn';
+import { FunctionSemantics } from '../fn/function-semantics';
 import { ExitPointType } from '../info';
 import { getValueOfArgument } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { DataflowGraph } from '../graph/graph';
@@ -292,9 +292,9 @@ export interface StatedSignature {
 	readonly pkg:     string;
 	/** The formals flowR models, `x, ...`, or `undefined` where it declares none (not R's own declaration). */
 	readonly params?: string;
-	/** what it does, from {@link Fn.call.props.labels} */
+	/** what it does, from {@link FunctionSemantics.call.props.labels} */
 	readonly props:   readonly string[];
-	/** each formal with what it is used for, from {@link Fn.call.argument.words}; the roles read like the types R has none of */
+	/** each formal with what it is used for, from {@link FunctionSemantics.call.argument.words}; the roles read like the types R has none of */
 	readonly args?:   readonly (readonly [name: string, roles: readonly string[]])[];
 }
 
@@ -366,8 +366,8 @@ export function statedSignatures(definitions: BuiltInDefinitions = DefaultBuilti
 			const entry = {
 				pkg,
 				params: declared.length > 0 ? declared.map(([param]) => param).join(', ') : undefined,
-				props:  Fn.call.props.labels(info),
-				args:   declared.length > 0 ? declared.map(([param, props]) => [param, Fn.call.argument.words(props)] as const) : undefined
+				props:  FunctionSemantics.call.props.labels(info),
+				args:   declared.length > 0 ? declared.map(([param, props]) => [param, FunctionSemantics.call.argument.words(props)] as const) : undefined
 			};
 			const known = stated.get(name) ?? [];
 			/* the last definition for a package is the one that resolves, so it is the one stated */

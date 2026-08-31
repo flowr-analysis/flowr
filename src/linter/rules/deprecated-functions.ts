@@ -1,5 +1,5 @@
 import type { Range } from 'semver';
-import { Fn } from '../../dataflow/fn/fn';
+import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { BrandedIdentifier, BrandedNamespace } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
@@ -222,7 +222,7 @@ function certaintyOf(target: Identifier, owners: readonly (BrandedNamespace | un
 
 function functionListFromBuiltinConfig(): Identifier[] {
 	return DefaultBuiltinConfig.filter(def => def.type === 'function'
-			&& Fn.call.props.hasAny(def.config, SemanticCallTag.Deprecated))
+			&& FunctionSemantics.call.props.hasAny(def.config, SemanticCallTag.Deprecated))
 		.flatMap(def => def.names);
 }
 

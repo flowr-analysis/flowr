@@ -1,10 +1,10 @@
 /**
- * The `Fn` facade wires these together, so a sibling here has to call the backing function
- * directly; going through `Fn` would make `src/dataflow/fn/fn.ts` import its own importers.
+ * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function
+ * directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
  * @lintIgnore use-instead
  */
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Fn } from './fn';
+import { FunctionSemantics } from './function-semantics';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -212,7 +212,7 @@ function isCallee(call: NodeId, child: NodeId, idMap: AstIdMap): boolean {
 
 /**
  * What flowR states the argument at `index` of the call is used for. A `...` covers every position from
- * where it is declared, which {@link Fn.call.signature.propAt} takes care of.
+ * where it is declared, which {@link FunctionSemantics.call.signature.propAt} takes care of.
  */
 function argProps(vertex: DataflowGraphVertexFunctionCall, index: number, state: StrictnessState): ArgProps {
 	const name = Identifier.getName(vertex.name);
@@ -403,7 +403,7 @@ function strictnessOf(id: NodeId, state: StrictnessState): FunctionStrictness {
  * only claims certainty where the code gives it.
  * What a built-in does with an argument comes from the {@link ArgProp} bits its signature states, so a
  * configured or overwritten built-in is the one that answers when the analyzer context is handed along.
- * @useInstead {@link Fn.strictness}
+ * @useInstead {@link FunctionSemantics.strictness}
  */
 export function strictnessOfEach(this: void, ids: Iterable<NodeId>, graph: DataflowGraph, { ctx }: FunctionStrictnessesOptions = {}): Record<NodeId, FunctionStrictness> {
 	const state = makeState(graph, ctx);

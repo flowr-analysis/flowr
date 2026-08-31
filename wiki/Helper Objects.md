@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's every helper object flowR has, by what it is about">Generated</span> from '[wiki-helper-objects.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts "src/documentation/wiki-helper-objects.ts")' on 2026-08-29, 18:23:14 UTC (v2.15.8, R v4.6.1), please do not edit directly._
+_<span title="an overview of flowR's every helper object flowR has, by what it is about">Generated</span> from '[wiki-helper-objects.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-helper-objects.ts "src/documentation/wiki-helper-objects.ts")' on 2026-08-31, 22:34:06 UTC (v2.15.8, R v4.6.1), please do not edit directly._
 
 
 A *helper object* is a `const` named after a type, holding the operations on values of it. flowR has
@@ -113,9 +113,9 @@ What an analysis works out about a definition, and what one call of it amounts t
 
 | helper | what it is |
 | :-- | :-- |
-| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/fn/fn.ts#L33"><code><span title="The one helper to ask what a function *does*: what it makes of its arguments, what it may raise, which formals it forces, and what it declares as a class. It replaces the seven single-purpose helper objects that used to sit one per file under src/dataflow/fn/.">Fn</span></code></a> | The one helper to ask what a function *does*: what it makes of its arguments, what it may raise, which formals it forces, and what it declares as a class. |
+| <a href="https://github.com/flowr-analysis/flowr/tree/main/src/dataflow/fn/function-semantics.ts#L33"><code><span title="The one helper to ask what a function *does*: what it makes of its arguments, what it may raise, which formals it forces, and what it declares as a class. It replaces the seven single-purpose helper objects that used to sit one per file under src/dataflow/fn/.">FunctionSemantics</span></code></a> | The one helper to ask what a function *does*: what it makes of its arguments, what it may raise, which formals it forces, and what it declares as a class. |
 
-One entry point covers both halves: `Fn.props`, `Fn.exceptions`, `Fn.strictness` and their kin answer about a definition, while `Fn.call` holds what flowR states about a call (`props`, `signature`, `argument`), how R binds its arguments (`match`), and which of them it does not simply evaluate (`nse`, `quoted`, `deferred`).
+One entry point covers both halves: `FunctionSemantics.props`, `FunctionSemantics.exceptions`, `FunctionSemantics.strictness` and their kin answer about a definition, while `FunctionSemantics.call` holds what flowR states about a call (`props`, `signature`, `argument`), how R binds its arguments (`match`), and which of them it does not simply evaluate (`nse`, `quoted`, `deferred`).
 
 
 <h2 id="Asking_flowR_something">Asking flowR something</h2>

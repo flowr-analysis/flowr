@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { Fn } from '../../../../../fn/fn';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { requestFromInput } from '../../../../../../r-bridge/retriever';
@@ -40,7 +40,7 @@ export function processEvalCall<OtherInfo>(
 		supportFunctionCall?: boolean
 	}
 ): DataflowInformation {
-	const bound = Fn.call.match.toNames(args, EvalParameterNames);
+	const bound = FunctionSemantics.call.match.toNames(args, EvalParameterNames);
 	/* `evalText` names its formal differently, so a lone argument is the expression whatever it is called */
 	const evalArgument = (bound.get('expr') ?? RFunctionCall.soleArgument(args))?.value;
 	const envirArg = bound.get('envir');
@@ -53,7 +53,7 @@ export function processEvalCall<OtherInfo>(
 	}
 
 	const information = config.includeFunctionCall ?
-		processKnownFunctionCall({ name, args, rootId, data, sig: Fn.call.signature.only(0, 'expr'), origin: BuiltInProcName.Eval }).information
+		processKnownFunctionCall({ name, args, rootId, data, sig: FunctionSemantics.call.signature.only(0, 'expr'), origin: BuiltInProcName.Eval }).information
 		: DataflowInformation.initialize(rootId, data);
 
 	if(config.includeFunctionCall) {

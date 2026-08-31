@@ -1,5 +1,5 @@
 import type { DependencyInfo } from './dependencies-query-format';
-import { Fn } from '../../../dataflow/fn/fn';
+import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
 import { callFnProps } from '../../../dataflow/environments/query-fn-props';
@@ -10,7 +10,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import type { PropSelector } from '../../../dataflow/environments/built-in-props';
 
 function callHas(id: NodeId, dataflow: DataflowInformation, props: PropSelector): boolean {
-	return Fn.call.props.hasAny(callFnProps(id, dataflow), props);
+	return FunctionSemantics.call.props.hasAny(callFnProps(id, dataflow), props);
 }
 
 /**

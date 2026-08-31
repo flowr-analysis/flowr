@@ -1,10 +1,10 @@
 /**
- * The `Fn` facade wires these together, so a sibling here has to call the backing function
- * directly; going through `Fn` would make `src/dataflow/fn/fn.ts` import its own importers.
+ * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function
+ * directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
  * @lintIgnore use-instead
  */
 import type { DataflowGraph } from '../graph/graph';
-import { Fn } from './fn';
+import { FunctionSemantics } from './function-semantics';
 import { FunctionArgument } from '../graph/graph';
 import { Dataflow } from '../graph/df-helper';
 import { DfEdge, EdgeType } from '../graph/edge';
@@ -42,7 +42,7 @@ export interface ArgumentRolesOptions {
 /**
  * What each definition in `ids` does with its formals, as {@link ArgProps}. A formal is {@link ArgProp.Alias}
  * only when the result is *always* that formal; every other bit is what the calls in the body state for it.
- * @useInstead {@link Fn.argumentRoles}
+ * @useInstead {@link FunctionSemantics.argumentRoles}
  */
 export function argumentRolesOfFunctions(this: void, ids: Iterable<NodeId>, graph: DataflowGraph, options: ArgumentRolesOptions = {}): Record<NodeId, FunctionArgumentRoles> {
 	const state = makeState(graph, options);
@@ -280,7 +280,7 @@ function matchArgumentProps(vertex: DataflowGraphVertexFunctionCall, state: Role
 	if(sig === undefined) {
 		return [];
 	}
-	const bound = Fn.call.match.toSpec(vertex.args, Object.fromEntries(sig.map(([formal]) => [formal, formal])));
+	const bound = FunctionSemantics.call.match.toSpec(vertex.args, Object.fromEntries(sig.map(([formal]) => [formal, formal])));
 	/* a named argument is bound by the node naming it, while what the call was handed is the value below it */
 	const values = new Map(vertex.args.filter(FunctionArgument.isNamed).map(a => [a.nodeId, a.valueId]));
 	const found: [ArgProps, NodeId][] = [];

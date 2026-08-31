@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { Fn } from '../../../../../fn/fn';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { Unquote } from '../nse';
@@ -52,10 +52,10 @@ function markPipedDataMask<OtherInfo>(rhs: RFunctionCall<OtherInfo & ParentInfor
 			continue;
 		}
 		RNode.visitAst<OtherInfo & ParentInformation>(arg, node => {
-			if(Fn.call.nse.isUnquote(node, Unquote.Rlang)) {
+			if(FunctionSemantics.call.nse.isUnquote(node, Unquote.Rlang)) {
 				return true;
 			}
-			if(RSymbol.is(node) && Fn.call.nse.suppliedByMask(graph, node.info.id)) {
+			if(RSymbol.is(node) && FunctionSemantics.call.nse.suppliedByMask(graph, node.info.id)) {
 				graph.addEdge(rhs.info.id, node.info.id, EdgeType.NonStandardEvaluation);
 			}
 			return false;

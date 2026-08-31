@@ -1,5 +1,5 @@
 import type { OutputFormatter } from '../../../util/text/ansi';
-import { Fn } from '../../../dataflow/fn/fn';
+import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import { bold, italic, faint, color, Colors, FontStyles } from '../../../util/text/ansi';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { cranPageUrl } from './signature-query-executor';
@@ -76,7 +76,7 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 	result.push(`      ╰ ${renderSignature(f, fn)}`);
 	/* what the signature styling does not already say: everything the database states beyond forced/no-default */
 	const roles = fn.parameters
-		.map(p => [p.name, Fn.call.argument.words(p.props & ~(ArgProp.Forced | ArgProp.NoDefault))] as const)
+		.map(p => [p.name, FunctionSemantics.call.argument.words(p.props & ~(ArgProp.Forced | ArgProp.NoDefault))] as const)
 		.filter(([, words]) => words.length > 0)
 		.map(([name, words]) => `${name}: ${words.join('+')}`);
 	if(roles.length > 0) {

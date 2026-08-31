@@ -1,5 +1,5 @@
 import { filterLineParser, type BaseQueryFormat, type BaseQueryResult } from '../../base-query-format';
-import { Fn } from '../../../dataflow/fn/fn';
+import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
@@ -21,8 +21,8 @@ function rejectEmptyAnswer(query: InspectFnPropsQuery, helpers: Joi.CustomHelper
 		return helpers.message({ custom: '`formals` narrows the formals, which `only: function` does not answer' }) as unknown as InspectFnPropsQuery;
 	}
 	const namesNone = props === undefined ? false :
-		only === 'arguments' ? Fn.call.argument.mask(props) === 0 :
-			only === 'function' ? Fn.call.props.isEmptyMask(Fn.call.props.mask(props)) : false;
+		only === 'arguments' ? FunctionSemantics.call.argument.mask(props) === 0 :
+			only === 'function' ? FunctionSemantics.call.props.isEmptyMask(FunctionSemantics.call.props.mask(props)) : false;
 	if(namesNone) {
 		return helpers.message({ custom: `\`props\` names no ${only === 'arguments' ? 'ArgProp' : 'CallProp'}, so nothing about ${only === 'arguments' ? 'a formal' : 'a function'} could come back` }) as unknown as InspectFnPropsQuery;
 	}
@@ -61,9 +61,9 @@ export const InspectFnPropsQueryDefinition = {
 			const node = idMap.get(NodeId.normalize(id));
 			const loc = node ? SourceLocation.fromNode(node) : undefined;
 			const formals = Object.entries(out.roles[id] ?? {})
-				.map(([formal, props]) => `${idMap.get(NodeId.normalize(formal))?.lexeme ?? formal}: ${Fn.call.argument.words(props).join(', ')}`)
+				.map(([formal, props]) => `${idMap.get(NodeId.normalize(formal))?.lexeme ?? formal}: ${FunctionSemantics.call.argument.words(props).join(', ')}`)
 				.join(', ');
-			const states = Fn.call.props.labels(out.props[id]).join(', ');
+			const states = FunctionSemantics.call.props.labels(out.props[id]).join(', ');
 			result.push(`  - Function ${bold(id, formatter)} (${SourceLocation.format(loc)}) ${formals}${states.length > 0 ? ` [${states}]` : ''}`);
 		}
 		return true;

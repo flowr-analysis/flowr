@@ -26,7 +26,7 @@ import { SourceRange } from '../../../../../../util/range';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import type { ClassDeclarationConfig } from '../../../../../fn/class-declaration';
 import { argFor, linkS4Declaration, linkS4Generic } from './built-in-s-four';
-import { Fn } from '../../../../../fn/fn';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 
 
 /** e.g. new_generic(name, dispatch_args, fun=NULL) */
@@ -62,7 +62,7 @@ export function processS7NewGeneric<OtherInfo>(
 	}
 	params[config.args.fun] = 'fun';
 	params['...'] = '...';
-	const argMaps = Fn.call.match.toSpec(convertFnArguments(args), params);
+	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), params);
 	const genName = unpackArg(RArgument.getWithId(args, argMaps.get('name')?.[0]));
 	if(!genName) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
@@ -83,7 +83,7 @@ export function processS7NewGeneric<OtherInfo>(
 		effectiveArgs.push(newFun[0]);
 		funArg = newFun[1];
 	}
-	const info = processKnownFunctionCall({ name, sig: Fn.call.signature.every, args: effectiveArgs, rootId, data, origin: BuiltInProcName.S7NewGeneric }).information;
+	const info = processKnownFunctionCall({ name, sig: FunctionSemantics.call.signature.every, args: effectiveArgs, rootId, data, origin: BuiltInProcName.S7NewGeneric }).information;
 
 	info.graph.addEdge(rootId, funArg, EdgeType.Returns);
 	info.entryPoint = funArg;
@@ -118,7 +118,7 @@ export function processMakeConstructor<OtherInfo>(
 ): DataflowInformation {
 	// synthesise `function(...) S7_dispatch()` and make the call return it
 	const [funArg, funId]: [RArgument<OtherInfo & ParentInformation>, NodeId] = makeS7DispatchFDef(name, [], rootId, args.length, data.completeAst.idMap);
-	const info = processKnownFunctionCall({ name, sig: Fn.call.signature.every, args: [...args, funArg], rootId, data, origin: BuiltInProcName.S7MakeConstructor }).information;
+	const info = processKnownFunctionCall({ name, sig: FunctionSemantics.call.signature.every, args: [...args, funArg], rootId, data, origin: BuiltInProcName.S7MakeConstructor }).information;
 	info.graph.addEdge(rootId, funId, EdgeType.Returns);
 	info.entryPoint = funId;
 	const fArg = info.graph.getVertex(funId);
@@ -145,7 +145,7 @@ export function attachClassDeclaration<OtherInfo>(
 	}
 	const vertex = info.graph.getVertex(rootId);
 	if(DfgVertex.isFunctionCall(vertex)) {
-		vertex.classDecl = Fn.classes.of(config, args);
+		vertex.classDecl = FunctionSemantics.classes.of(config, args);
 	}
 }
 

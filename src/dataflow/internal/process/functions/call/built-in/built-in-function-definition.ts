@@ -1,5 +1,5 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { Fn } from '../../../../../fn/fn';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { ControlFlow } from '../../../../control-flow';
 import { type DataflowInformation, ExitPointType, overwriteExitPoints } from '../../../../../info';
 import { getAllFunctionCallTargets, getAllLinkedFunctionDefinitions, linkCircularRedefinitionsWithinALoop, linkInputs, produceNameSharedIdMap } from '../../../../linker';
@@ -548,7 +548,7 @@ export function updateNestedFunctionCalls(
 			});
 			const linkedParameters = graph.idMap?.get(target);
 			if(RFunctionDefinition.is(linkedParameters)) {
-				Fn.call.match.onCallAndLink(args, linkedParameters.parameters, graph);
+				FunctionSemantics.call.match.onCallAndLink(args, linkedParameters.parameters, graph);
 			}
 		}
 		for(const nextMethodId of collectedNextMethods) {

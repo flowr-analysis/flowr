@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../processor';
-import { Fn } from '../fn/fn';
+import { FunctionSemantics } from '../fn/function-semantics';
 import type { DataflowInformation, ExitPoint } from '../info';
 import { ExitPointType } from '../info';
 import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, NseArguments, NseKind } from '../internal/process/functions/call/known-call-handling';
@@ -157,14 +157,14 @@ function dataArgumentSymbols<OtherInfo>(
 	args: readonly (RNodeWithParent | PotentiallyEmptyRArgument<OtherInfo & ParentInformation>)[],
 	sig: FnSig | undefined
 ): ReadonlySet<NodeId> | undefined {
-	const layout = sig === undefined ? undefined : Fn.call.signature.layout(sig);
+	const layout = sig === undefined ? undefined : FunctionSemantics.call.signature.layout(sig);
 	if(layout === undefined || (layout.any & ArgProp.Atomic) === 0) {
 		return undefined;
 	}
 	let symbols: Set<NodeId> | undefined;
 	for(let i = 0; i < args.length; i++) {
 		const arg = args[i];
-		const prop = Fn.call.signature.propAt(layout, i);
+		const prop = FunctionSemantics.call.signature.propAt(layout, i);
 		if(RArgument.isEmpty(arg) || (prop & ArgProp.Atomic) === 0 || (prop & (ArgProp.Callee | ArgProp.Nse)) !== 0) {
 			continue;
 		}
@@ -184,9 +184,9 @@ function defaultBuiltInProcessor<OtherInfo>(
 	{ useAsProcessor = BuiltInProcName.Default, readAllArguments, cfg, alternativeArgsFrom, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, markArgsAsMasked: masked, keepArgumentOut, sig }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	/* a signature states per argument what the individual options state for all of them at once */
-	const layout = sig !== undefined ? Fn.call.signature.layout(sig) : undefined;
+	const layout = sig !== undefined ? FunctionSemantics.call.signature.layout(sig) : undefined;
 	if(layout !== undefined) {
-		nse ??= (layout.any & ArgProp.Nse) !== 0 ? Fn.call.signature.posWith(layout, args.length, ArgProp.Nse) : undefined;
+		nse ??= (layout.any & ArgProp.Nse) !== 0 ? FunctionSemantics.call.signature.posWith(layout, args.length, ArgProp.Nse) : undefined;
 	}
 	const nsePositions = nsePositionsOf(nse, args.length);
 	let lastEnv = data.environment;
@@ -224,7 +224,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 			}
 		}
 	} else if(layout !== undefined && (layout.any & (ArgProp.Value | ArgProp.Shape)) !== 0) {
-		for(const i of Fn.call.signature.posWith(layout, processedArguments.length, ArgProp.Value | ArgProp.Shape)) {
+		for(const i of FunctionSemantics.call.signature.posWith(layout, processedArguments.length, ArgProp.Value | ArgProp.Shape)) {
 			const arg = processedArguments[i];
 			if(arg) {
 				res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Reads);

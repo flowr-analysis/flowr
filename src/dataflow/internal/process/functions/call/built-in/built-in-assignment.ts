@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { Fn } from '../../../../../fn/fn';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
 import { markArgumentsAsNonStandardEvaluation, NseArguments, NseKind, processKnownFunctionCall } from '../known-call-handling';
 import { Unquote } from '../nse';
@@ -211,7 +211,7 @@ function processMaskedNamePair<OtherInfo>(
 	const target = args[0];
 	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, NseArguments.First, {
 		kind:      NseKind.DataMasked,
-		evaluated: Fn.call.nse.unquoted(RArgument.isEmpty(target) ? undefined : target?.value, Unquote.Rlang)
+		evaluated: FunctionSemantics.call.nse.unquoted(RArgument.isEmpty(target) ? undefined : target?.value, Unquote.Rlang)
 	});
 	return information;
 }

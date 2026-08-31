@@ -1,5 +1,5 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { Fn } from '../../../../../fn/fn';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { ControlDependency, DataflowInformation, KillReference } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { convertFnArguments, patchFunctionCall } from '../common';
@@ -45,7 +45,7 @@ function getArguments<OtherInfo>(config: IfThenElseConfig | undefined, args: rea
 			[config.args.no]:   'no',
 			'...':              '...'
 		};
-		const argMaps = Fn.call.match.toSpec(convertFnArguments(args), params);
+		const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), params);
 		condArg = unpackArg(RArgument.getWithId(args, argMaps.get('cond')?.[0]));
 		thenArg = unpackArg(RArgument.getWithId(args, argMaps.get('yes')?.[0]));
 		otherwiseArg = unpackArg(RArgument.getWithId(args, argMaps.get('no')?.[0]));

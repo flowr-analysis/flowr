@@ -1,5 +1,5 @@
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Fn } from '../../../dataflow/fn/fn';
+import { FunctionSemantics } from '../../../dataflow/fn/function-semantics';
 import type { NormalizedAst, ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
 import type { DependencyInfo } from './dependencies-query-format';
@@ -100,7 +100,7 @@ function callName(node: RFunctionCall<ParentInformation>, dataflow: DataflowInfo
 		return undefined;
 	}
 	const props = queryFnProps(name, { environment: dataflow.environment });
-	return Fn.call.props.hasAny(props, [CallProp.Invisible, SemanticCallTag.Graphics]) || ExpectFunctionNames.test(Identifier.getName(name))
+	return FunctionSemantics.call.props.hasAny(props, [CallProp.Invisible, SemanticCallTag.Graphics]) || ExpectFunctionNames.test(Identifier.getName(name))
 		? undefined : name;
 }
 

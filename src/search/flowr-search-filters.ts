@@ -1,5 +1,5 @@
 import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import { Fn } from '../dataflow/fn/fn';
+import { FunctionSemantics } from '../dataflow/fn/function-semantics';
 import { ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
 import type { VertexType } from '../dataflow/graph/vertex';
 import { DfgVertex, ValidVertexTypes } from '../dataflow/graph/vertex';
@@ -91,7 +91,7 @@ export const FlowrFilters = {
 	}) satisfies FlowrFilterFunction<FilePathFilterArgs>,
 	[FlowrFilter.CallProps]: ((e: FlowrSearchElement<ParentInformation>, args: CallPropsArgs, data: { dataflow: DataflowInformation }) => {
 		const props = callFnProps(e.node.info.id, data.dataflow);
-		return args.matchType === 'every' ? Fn.call.props.hasAll(props, args.props) : Fn.call.props.hasAny(props, args.props);
+		return args.matchType === 'every' ? FunctionSemantics.call.props.hasAll(props, args.props) : FunctionSemantics.call.props.hasAny(props, args.props);
 	}) satisfies FlowrFilterFunction<CallPropsArgs>
 } as const;
 export type FlowrFilterArgs<F extends FlowrFilter> = typeof FlowrFilters[F] extends FlowrFilterFunction<infer Args> ? Args : never;

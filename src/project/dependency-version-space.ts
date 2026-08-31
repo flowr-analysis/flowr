@@ -6,7 +6,7 @@
  * the `guess-dep-versions` query presents it, but it is usable on its own (e.g. for compatibility-matrix tooling).
  */
 import { minVersion, type Range } from 'semver';
-import { Fn } from '../dataflow/fn/fn';
+import { FunctionSemantics } from '../dataflow/fn/function-semantics';
 import { RRange, RVersion, rReleaseDate, type VersionString } from '../util/r-version';
 import { findByPrefixIfUnique } from '../util/prefix';
 import { RBasePrimitives } from '../data/r-base-primitives.generated';
@@ -510,7 +510,7 @@ function isCompatible(getFn: FnResolver, version: string, usage: PackageUsage, t
 		}
 		for(const args of use.calls.values()) {
 			// R's matching: exact, pmatch prefix, or positional; `...` absorbs the rest
-			const bound = Fn.call.match.toSpec(args, decoded.signature);
+			const bound = FunctionSemantics.call.match.toSpec(args, decoded.signature);
 			let placed = 0;
 			for(const ids of bound.values()) {
 				placed += ids.length;

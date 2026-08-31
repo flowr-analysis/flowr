@@ -3,7 +3,7 @@ import { withTreeSitter } from '../../_helper/shell';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
-import { Fn } from '../../../../src/dataflow/fn/fn';
+import { FunctionSemantics } from '../../../../src/dataflow/fn/function-semantics';
 
 
 describe('is-higher-order-function', withTreeSitter(ts => {
@@ -27,7 +27,7 @@ describe('is-higher-order-function', withTreeSitter(ts => {
 					// move up the error message :sparkles:
 					assert.isDefined(id, `could not resolve criterion ${c}`);
 
-					assert.strictEqual(Fn.isHigherOrder(id, df.dataflow.graph, { ctx: context }), exp);
+					assert.strictEqual(FunctionSemantics.isHigherOrder(id, df.dataflow.graph, { ctx: context }), exp);
 				});
 			}
 		}

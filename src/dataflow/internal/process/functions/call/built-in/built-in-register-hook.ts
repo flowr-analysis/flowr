@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { Fn } from '../../../../../fn/fn';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -50,7 +50,7 @@ export function processRegisterHook<OtherInfo>(
 	}
 	params['...'] = '...';
 
-	const argMaps = Fn.call.match.toSpec(convertFnArguments(args), params);
+	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), params);
 	const exprIds = new Set(argMaps.get('expr'));
 	const addIds = config.args.add ? new Set(argMaps.get('add')) : new Set<NodeId>();
 	const afterIds = config.args.after ? new Set(argMaps.get('after')) : new Set<NodeId>();

@@ -1,5 +1,5 @@
 import type { DataflowInformation } from './info';
-import { Fn } from './fn/fn';
+import { FunctionSemantics } from './fn/function-semantics';
 import { type DataflowProcessorInformation, type DataflowProcessors, processDataflowFor } from './processor';
 import { processUninterestingLeaf } from './internal/process/process-uninteresting-leaf';
 import { processSymbol } from './internal/process/process-symbol';
@@ -207,7 +207,7 @@ function extractDataFlowGraph<OtherInfo>(
 	}
 	// link on-demand-materialized package exports back to their `library()` loaders
 	linkMaterializedExportsToLoaders(df.graph, df.environment);
-	Fn.call.quoted.finalize(df.graph, completeAst.idMap, () => new ControlFlowGraph(df.graph));
+	FunctionSemantics.call.quoted.finalize(df.graph, completeAst.idMap, () => new ControlFlowGraph(df.graph));
 
 	resolveLinkToSideEffects(df.graph, ctx);
 

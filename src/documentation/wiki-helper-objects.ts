@@ -96,9 +96,9 @@ const Groups: readonly HelperGroup[] = [
 	{
 		title:   'What a function and its calls mean',
 		about:   'What an analysis works out about a definition, and what one call of it amounts to.',
-		objects: ['Fn'],
-		also:    'One entry point covers both halves: `Fn.props`, `Fn.exceptions`, `Fn.strictness` and their kin '
-			+ 'answer about a definition, while `Fn.call` holds what flowR states about a call (`props`, '
+		objects: ['FunctionSemantics'],
+		also:    'One entry point covers both halves: `FunctionSemantics.props`, `FunctionSemantics.exceptions`, `FunctionSemantics.strictness` and their kin '
+			+ 'answer about a definition, while `FunctionSemantics.call` holds what flowR states about a call (`props`, '
 			+ '`signature`, `argument`), how R binds its arguments (`match`), and which of them it does not '
 			+ 'simply evaluate (`nse`, `quoted`, `deferred`).'
 	},

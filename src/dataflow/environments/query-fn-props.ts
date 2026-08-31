@@ -1,10 +1,10 @@
 /**
- * `Fn` wires the call helpers together and this file sits below it, so `CallProps` is used directly
- * here; reaching for `Fn.call.props` would make `src/dataflow/fn/fn.ts` import its own importers.
+ * `FunctionSemantics` wires the call helpers together and this file sits below it, so `CallProps` is used directly
+ * here; reaching for `FunctionSemantics.call.props` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
  * @lintIgnore use-instead
  */
 import { type ArgProps, type BuiltInFnInfo, CallProp, fnInfoFromSignature, type FnSig, PropagatedProps, type PropSelector, type SemanticCallTags, type StatedProps, CallProps } from './built-in-props';
-import { Fn } from '../fn/fn';
+import { FunctionSemantics } from '../fn/function-semantics';
 import type { BuiltIns } from './built-in';
 import type { BuiltInDefinition, BuiltInDefinitions } from './built-in-config';
 import { DefaultBuiltinConfig } from './default-builtin-config';
@@ -79,10 +79,10 @@ function ofDefinitions(definitions: readonly IdentifierDefinition[] | undefined)
 		}
 		const info = d.config as BuiltInFnInfo | undefined;
 		sig ??= info?.sig;
-		stated = Fn.call.props.join(stated, info);
+		stated = FunctionSemantics.call.props.join(stated, info);
 		frame = info?.frame === undefined ? frame : (frame ?? 0) | info.frame;
 	}
-	return sig === undefined && frame === undefined && !Fn.call.props.hasAny(stated) ? undefined : { sig, ...stated, frame };
+	return sig === undefined && frame === undefined && !FunctionSemantics.call.props.hasAny(stated) ? undefined : { sig, ...stated, frame };
 }
 
 /**
@@ -171,7 +171,7 @@ function propsOfSignature(src: PackageSignatureSource, fn: DecodedFunction, pkg:
 	const known = BuiltInIndex.default();
 	let props = own;
 	for(const callee of src.transitiveCallees(pkg, fn.name, version) ?? fn.callees) {
-		props = Fn.call.props.join(props, Fn.call.props.filter(known.get(callee), PropagatedProps));
+		props = FunctionSemantics.call.props.join(props, FunctionSemantics.call.props.filter(known.get(callee), PropagatedProps));
 	}
 	return { sig: own.sig, ...props };
 }
@@ -458,7 +458,7 @@ export class BuiltInIndex {
 
 	/** Every built-in carrying at least one property of `props`, like {@link SemanticCallTag.File} for the file calls. */
 	public with(props: PropSelector): readonly Identifier[] {
-		return this.cached(`with:${Fn.call.props.key(props)}`, e => Fn.call.props.hasAny(e, props));
+		return this.cached(`with:${FunctionSemantics.call.props.key(props)}`, e => FunctionSemantics.call.props.hasAny(e, props));
 	}
 
 	/**
@@ -466,7 +466,7 @@ export class BuiltInIndex {
 	 * like {@link FileInputProps} for the calls that read a file rather than only write one.
 	 */
 	public withAll(props: PropSelector): readonly Identifier[] {
-		return this.cached(`all:${Fn.call.props.key(props)}`, e => Fn.call.props.hasAny(e) && Fn.call.props.hasAll(e, props));
+		return this.cached(`all:${FunctionSemantics.call.props.key(props)}`, e => FunctionSemantics.call.props.hasAny(e) && FunctionSemantics.call.props.hasAll(e, props));
 	}
 
 	/**
@@ -474,7 +474,7 @@ export class BuiltInIndex {
 	 * the calls that derive their result from their arguments alone.
 	 */
 	public without(props: PropSelector): readonly Identifier[] {
-		return this.cached(`without:${Fn.call.props.key(props)}`, e => Fn.call.props.hasAny(e) && !Fn.call.props.hasAny(e, props));
+		return this.cached(`without:${FunctionSemantics.call.props.key(props)}`, e => FunctionSemantics.call.props.hasAny(e) && !FunctionSemantics.call.props.hasAny(e, props));
 	}
 
 	/** Every built-in flowR states computes a result and nothing else ({@link CallProp.Pure}). */

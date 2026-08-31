@@ -1,10 +1,10 @@
 /**
- * The `Fn` facade wires these together, so a sibling here has to call the backing function
- * directly; going through `Fn` would make `src/dataflow/fn/fn.ts` import its own importers.
+ * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function
+ * directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
  * @lintIgnore use-instead
  */
 import type { DataflowGraph } from '../graph/graph';
-import { Fn } from './fn';
+import { FunctionSemantics } from './function-semantics';
 import { EdgeType } from '../graph/edge';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
 import { DfgVertex } from '../graph/vertex';
@@ -42,7 +42,7 @@ export interface FunctionPropsOptions extends ArgumentRolesOptions {
  * What each of the `definitions` does, stated the way a built-in states it: {@link CallProp} bits for the
  * function ({@link PropagatedProps} bits its callees carry over included) and {@link ArgProp} bits per formal,
  * `Forced`/`Lazy` included. An unset bit reads as "nothing says so", never as "no".
- * @useInstead {@link Fn.props}
+ * @useInstead {@link FunctionSemantics.props}
  */
 export function inferFunctions(this: void, definitions: readonly NodeId[], graph: DataflowGraph, options: FunctionPropsOptions = {}): InferredFunctions {
 	const { ctx, only } = options;
@@ -66,7 +66,7 @@ function callProps(definitions: readonly NodeId[], graph: DataflowGraph, strict:
 			continue;
 		}
 		const own = propsOf(id, state);
-		props.set(id, strict[id]?.strict === Ternary.Always ? Fn.call.props.join(own.stated, { props: CallProp.Strict }) : own.stated);
+		props.set(id, strict[id]?.strict === Ternary.Always ? FunctionSemantics.call.props.join(own.stated, { props: CallProp.Strict }) : own.stated);
 		callees.set(id, own.callees);
 		toVisit.push(...own.callees);
 	}
@@ -74,7 +74,7 @@ function callProps(definitions: readonly NodeId[], graph: DataflowGraph, strict:
 	const all: Record<NodeId, StatedProps> = {};
 	for(const id of definitions) {
 		const found = props.get(id);
-		if(Fn.call.props.hasAny(found)) {
+		if(FunctionSemantics.call.props.hasAny(found)) {
 			all[id] = found as StatedProps;
 		}
 	}
@@ -87,7 +87,7 @@ function propagateOverCalls(props: Map<NodeId, StatedProps>, callees: ReadonlyMa
 		const before = props.get(id);
 		let grown = before ?? {};
 		for(const callee of callees.get(id) ?? []) {
-			grown = Fn.call.props.join(grown, Fn.call.props.filter(props.get(callee), PropagatedProps));
+			grown = FunctionSemantics.call.props.join(grown, FunctionSemantics.call.props.filter(props.get(callee), PropagatedProps));
 		}
 		/* joining only ever adds, so nothing new means the same bits and the same number of tags */
 		if((grown.props ?? 0) === (before?.props ?? 0) && (grown.tags?.length ?? 0) === (before?.tags?.length ?? 0)) {
@@ -137,18 +137,18 @@ function propsOf(id: NodeId, state: LookupState): OwnProps {
 	const callees: NodeId[] = [];
 	for(const [node, vertex] of callsIn(definition, state.graph)) {
 		const info = state.info(vertex.name);
-		const carried = Fn.call.props.filter(info, PropagatedProps);
-		stated = Fn.call.props.join(stated, {
+		const carried = FunctionSemantics.call.props.filter(info, PropagatedProps);
+		stated = FunctionSemantics.call.props.join(stated, {
 			props: (carried.props ?? 0) & (bindsOutside(vertex, info) ? ~0 : ~CallProp.Scope),
 			tags:  carried.tags
 		});
 		if(DispatchCallees.has(Identifier.getName(vertex.name))) {
-			stated = Fn.call.props.join(stated, { props: CallProp.Generic });
+			stated = FunctionSemantics.call.props.join(stated, { props: CallProp.Generic });
 		}
 		callees.push(...calledDefinitions(node, state));
 	}
 	if(returnsInvisibly(definition, state)) {
-		stated = Fn.call.props.join(stated, { props: CallProp.Invisible });
+		stated = FunctionSemantics.call.props.join(stated, { props: CallProp.Invisible });
 	}
 	return { stated, callees };
 }

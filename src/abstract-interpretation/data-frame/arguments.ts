@@ -1,5 +1,5 @@
 import { Identifier, type BrandedIdentifier } from '../../dataflow/environments/identifier';
-import { Fn } from '../../dataflow/fn/fn';
+import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import { Resolve } from '../../dataflow/environments/resolve-helper';
 import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
 import { FunctionArgument, type DataflowGraph } from '../../dataflow/graph/graph';
@@ -190,7 +190,7 @@ export function getUnresolvedSymbolsInExpression(
 			const symbolName = unquoteArgument(Identifier.getName(node.content));
 
 			// ignore symbols named ".", as they are used as argument placeholder in magrittr pipe operations
-			if(DfgVertex.isUse(vertex) && (edges?.size === 0 || Fn.call.nse.maskedName(dfg, node.info.id)) && symbolNamespace === undefined && symbolName !== '.') {
+			if(DfgVertex.isUse(vertex) && (edges?.size === 0 || FunctionSemantics.call.nse.maskedName(dfg, node.info.id)) && symbolNamespace === undefined && symbolName !== '.') {
 				unresolvedSymbols.push(symbolName);
 			}
 		}

@@ -1,5 +1,5 @@
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Fn } from '../../dataflow/fn/fn';
+import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
@@ -45,7 +45,7 @@ const ConnectionFlow: EdgeTypeBits = EdgeType.Reads | EdgeType.DefinedBy | EdgeT
 
 /** The arguments holding the handle the call acts on, all of them if it does not state which. */
 function handleArguments(vertex: DataflowGraphVertexFunctionCall, sig: FnSig | undefined): readonly FunctionArgument[] {
-	const stated = sig && Fn.call.signature.posWith(Fn.call.signature.layout(sig), vertex.args.length, ArgProp.Handle);
+	const stated = sig && FunctionSemantics.call.signature.posWith(FunctionSemantics.call.signature.layout(sig), vertex.args.length, ArgProp.Handle);
 	return stated?.length ? stated.map(i => vertex.args[i]) : vertex.args;
 }
 
@@ -163,9 +163,9 @@ function connectionCalls(elements: readonly FlowrSearchElement<ParentInformation
 		}
 		const name = Identifier.toString(stated.name);
 		const loc = SourceLocation.fromNode(node);
-		if(loc !== undefined && (Fn.call.props.hasAny(stated, SemanticCallTag.Opens) || opensByName?.test(name))) {
+		if(loc !== undefined && (FunctionSemantics.call.props.hasAny(stated, SemanticCallTag.Opens) || opensByName?.test(name))) {
 			opens.set(node.info.id, loc);
-		} else if(Fn.call.props.hasAny(stated, SemanticCallTag.Closes) || closesByName?.test(name)) {
+		} else if(FunctionSemantics.call.props.hasAny(stated, SemanticCallTag.Closes) || closesByName?.test(name)) {
 			const vertex = dataflow.graph.getVertex(node.info.id);
 			if(DfgVertex.isFunctionCall(vertex)) {
 				closes.push([vertex, stated.sig]);

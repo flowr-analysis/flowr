@@ -1,6 +1,6 @@
 /**
- * `Fn.call` is the entry point these members are reached through, and it is built on this file, so the backing
- * functions are called directly here; going through `Fn` would make `src/dataflow/fn/fn.ts` import its own
+ * `FunctionSemantics.call` is the entry point these members are reached through, and it is built on this file, so the backing
+ * functions are called directly here; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own
  * importers.
  * @lintIgnore use-instead
  */

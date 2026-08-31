@@ -1,6 +1,6 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
 import type { FnSig } from '../../../../environments/built-in-props';
-import { Fn } from '../../../../fn/fn';
+import { FunctionSemantics } from '../../../../fn/function-semantics';
 import type { ExitPoint, DataflowInformation } from '../../../../info';
 import { ExitPointType } from '../../../../info';
 import { processAllArguments } from './common';
@@ -99,13 +99,13 @@ export enum NseKind {
 
 export interface NseMarkOptions {
 	readonly kind?:      NseKind
-	/** ids an unquote escape splices back in, see {@link Fn.call.nse.unquoted} */
+	/** ids an unquote escape splices back in, see {@link FunctionSemantics.call.nse.unquoted} */
 	readonly evaluated?: ReadonlySet<NodeId>
 }
 
 /**
  * Marks the selected arguments as {@link EdgeType.NonStandardEvaluation}: a {@link NseKind.Quoted|quoted} one
- * entirely, a {@link NseKind.DataMasked|data-masked} one only where {@link Fn.call.nse.suppliedByMask} holds, and a
+ * entirely, a {@link NseKind.DataMasked|data-masked} one only where {@link FunctionSemantics.call.nse.suppliedByMask} holds, and a
  * {@link NseKind.Reevaluated|reevaluated} one as a whole but not within.
  */
 export function markArgumentsAsNonStandardEvaluation(
@@ -150,9 +150,9 @@ function markArgument(graph: DataflowGraph, rootId: NodeId, arg: DataflowInforma
 			continue;
 		}
 		/* every name in a mask is a candidate column, even one the caller binds: R asks the data first.
-		   {@link Fn.call.nse.dropResolvedMask} takes the mark off the bound ones again, and keeps them as the
+		   {@link FunctionSemantics.call.nse.dropResolvedMask} takes the mark off the bound ones again, and keeps them as the
 		   names that mean both */
-		if(kind === NseKind.Quoted || Fn.call.nse.maskCandidate(info)) {
+		if(kind === NseKind.Quoted || FunctionSemantics.call.nse.maskCandidate(info)) {
 			graph.addEdge(rootId, vtx, EdgeType.NonStandardEvaluation);
 		}
 	}
@@ -169,7 +169,7 @@ export function processKnownFunctionCall<OtherInfo>(
 	const finalGraph = new DataflowGraph(data.completeAst.idMap);
 	const functionCallName = name.content;
 	const processArgs = reverseOrder ? args.toReversed() : args;
-	const forced = Fn.call.signature.forced(sig, processArgs.length);
+	const forced = FunctionSemantics.call.signature.forced(sig, processArgs.length);
 
 	const {
 		finalEnv,

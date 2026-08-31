@@ -1,5 +1,5 @@
 import { type LintingResult, type LintingRule, type LintQuickFixRemove, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
-import { Fn } from '../../dataflow/fn/fn';
+import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
@@ -239,7 +239,7 @@ function doesMoreThanCompute(id: NodeId, df: Pick<DataflowInformation, 'graph' |
 	}
 	/* what a call that binds the very name in question does to that name is not what keeps it alive */
 	const worthKeeping = id === binds ? { props: ImpureProps.props & ~CallProp.Scope, tags: ImpureProps.tags } : ImpureProps;
-	return Fn.call.props.hasAny(callFnProps(id, df), worthKeeping);
+	return FunctionSemantics.call.props.hasAny(callFnProps(id, df), worthKeeping);
 }
 
 function buildQuickFix(variable: RNode<ParentInformation>, df: Pick<DataflowInformation, 'graph' | 'environment'>, ast: NormalizedAst): LintQuickFixRemove[] | undefined {

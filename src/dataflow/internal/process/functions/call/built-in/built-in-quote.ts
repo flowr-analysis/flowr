@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { Fn } from '../../../../../fn/fn';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { type DataflowInformation, ExitPointType } from '../../../../../info';
 import { markArgumentsAsNonStandardEvaluation, processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -54,7 +54,7 @@ export function processQuote<OtherInfo>(
 	const unknownRefs: IdentifierReference[] = [];
 
 	const quotedArg = args[config.quoteArgumentsWithIndex];
-	const evaluated = Fn.call.nse.unquoted(RArgument.isEmpty(quotedArg) ? undefined : quotedArg?.value, config.unquote ?? Unquote.None);
+	const evaluated = FunctionSemantics.call.nse.unquoted(RArgument.isEmpty(quotedArg) ? undefined : quotedArg?.value, config.unquote ?? Unquote.None);
 
 	for(let i = 0; i < args.length; i++) {
 		const processedArg = processedArguments[i];

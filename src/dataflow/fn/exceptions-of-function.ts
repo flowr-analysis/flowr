@@ -125,7 +125,7 @@ export interface FunctionExceptionsOptions {
 /**
  * The `NodeId`s of functions that may throw exceptions when called by `id`, restricted to functions known by
  * flowR. `knownThrower` seeds additional throwers, e.g. the result of an earlier call, counting its callees.
- * @useInstead {@link Fn.exceptions}
+ * @useInstead {@link FunctionSemantics.exceptions}
  */
 export function exceptionsOfFunction(this: void, id: NodeId, graph: CallGraph, { knownThrower = {} }: FunctionExceptionsOptions = {}): ExceptionsByFunction {
 	const { calls, own, defs } = reach(id, graph, knownThrower);

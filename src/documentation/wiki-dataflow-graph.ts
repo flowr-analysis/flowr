@@ -1,30 +1,15 @@
 import { DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
 import { Quoted } from '../dataflow/internal/process/functions/call/quoted';
-import { Nse } from '../dataflow/internal/process/functions/call/nse';
-import { Deferred } from '../dataflow/internal/process/functions/call/deferred';
 import { linkToQueryOfName } from './doc-util/doc-query';
-import {
-	type DataflowGraphVertexFunctionCall,
-	type DataflowGraphVertexFunctionDefinition,
-	VertexType
-} from '../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, VertexType } from '../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../dataflow/graph/edge';
 import { DataflowGraphBuilder, emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
 import { guard } from '../util/assert';
 import { formatSideEffect, printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
-import {
-	FlowrGithubBaseRef,
-	FlowrGithubGroupName,
-	getFilePathMd
-} from './doc-util/doc-files';
+import { FlowrGithubBaseRef, FlowrGithubGroupName, getFilePathMd } from './doc-util/doc-files';
 import { jsonReplacer } from '../util/json';
 import { printEnvironmentToMarkdown } from './doc-util/doc-env';
-import {
-	type ExplanationParameters,
-	getAllEdges,
-	getAllVertices,
-	type SubExplanationParameters
-} from './data/dfg/doc-data-dfg-util';
+import { type ExplanationParameters, getAllEdges, getAllVertices, type SubExplanationParameters } from './data/dfg/doc-data-dfg-util';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { getTypesFromFolder, printHierarchy } from './doc-util/doc-types';
 import { block, details, section } from './doc-util/doc-structure';
@@ -42,9 +27,7 @@ import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { getValueOfArgument } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { NewIssueUrl } from './doc-util/doc-issue';
-import {
-	UnnamedFunctionCallPrefix
-} from '../dataflow/internal/process/functions/call/unnamed-call-handling';
+import { UnnamedFunctionCallPrefix } from '../dataflow/internal/process/functions/call/unnamed-call-handling';
 import { defaultEnv } from '../../test/functionality/_helper/dataflow/environment-builder';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import type { DataflowInformation } from '../dataflow/info';
@@ -65,7 +48,7 @@ import { Dataflow } from '../dataflow/graph/df-helper';
 import { Resolve } from '../dataflow/environments/resolve-helper';
 import { MatchArgs } from '../dataflow/graph/match-args';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
-import { FunctionCallVertex, FunctionDefinitionVertex } from '../dataflow/graph/vertex';
+import { DfgVertex } from '../dataflow/graph/vertex';
 import { enumMembers } from '../util/objects';
 
 async function subExplanation(parser: KnownParser, ctx: GeneralDocContext, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
@@ -281,7 +264,7 @@ ${
 		await (async() => {
 			const code = 'foo(x,3,y=3,)';
 			const [text, info] = await printDfGraphForCode(parser, code, { mark: new Set([8]), exposeResult: true, ctx });
-			const callInfo = info.dataflow.graph.vertices(true).find(([, vertex]) => FunctionCallVertex.is(vertex) && Identifier.getName(vertex.name) === 'foo');
+			const callInfo = info.dataflow.graph.vertices(true).find(([, vertex]) => DfgVertex.isFunctionCall(vertex) && Identifier.getName(vertex.name) === 'foo');
 			guard(callInfo !== undefined, () => `Could not find call vertex for ${code}`);
 			const [callId, callVert] = callInfo as [NodeId, DataflowGraphVertexFunctionCall];
 			const inverseMapReferenceTypes = Object.fromEntries(enumMembers(ReferenceType).map(([name, value]) => [value, name]));
@@ -353,8 +336,8 @@ ${await (async() => {
 		const code = 'foo <- function() 3\nfoo()';
 		const [text, info] = await printDfGraphForCode(parser, code, { exposeResult: true, mark: new Set([6, '6->0', '6->1', '6->3']), ctx });
 
-		const numberOfEdges = [...info.dataflow.graph. edges()].flatMap(e => [...e[1].keys()]).length;
-		const callVertex = info.dataflow.graph.vertices(true).find(([, vertex]) => FunctionCallVertex.is(vertex) && Identifier.getName(vertex.name) === 'foo');
+		const numberOfEdges = [...info.dataflow.graph.edges()].flatMap(e => [...e[1].keys()]).length;
+		const callVertex = info.dataflow.graph.vertices(true).find(([, vertex]) => DfgVertex.isFunctionCall(vertex) && Identifier.getName(vertex.name) === 'foo');
 		guard(callVertex !== undefined, () => `Could not find call vertex for ${code}`);
 		const [callId] = callVertex;
 
@@ -595,7 +578,7 @@ ${details('Example: Parameters of a Function',
 		const [text, info] = await printDfGraphForCode(parser, code, { mark: new Set([10, 1, 3]), exposeResult: true, ctx });
 		const ast = await printNormalizedAstForCode(parser, code, { prefix: 'flowchart LR\n', showCode: false, ctx });
 
-		const functionDefinition = info.dataflow.graph.vertices(true).find(([, vertex]) => FunctionDefinitionVertex.is(vertex));
+		const functionDefinition = info.dataflow.graph.vertices(true).find(([, vertex]) => DfgVertex.isFunctionDefinition(vertex));
 		guard(functionDefinition !== undefined, () => `Could not find function definition for ${code}`);
 		const [id] = functionDefinition;
 
@@ -849,9 +832,9 @@ ${details('Example: For-Loop Body', await printDfGraphForCode(parser, 'for(i in 
 ${details('Example: While-Loop Body', await printDfGraphForCode(parser, 'while(TRUE) b', { mark: new Set([1, '3->1']), ctx }))}
 
 Three helpers decide what such a mark means once the graph is complete:
-${ctx.link(Quoted.name, undefined, { type: 'variable' })} settles what a capture reaches when it is handed to \`eval\` (see ${ctx.linkO(Quoted, 'finalize')}),
-${ctx.link(Nse.name, undefined, { type: 'variable' })} models the escapes a quoting function offers (rlang's \`!!\` and \`bquote\`'s \`.(x)\`), and
-${ctx.link(Deferred.name, undefined, { type: 'variable' })} links an expression R evaluates at a moment we cannot pin down, as \`delayedAssign\` binds one.
+${ctx.link({ name: 'Quoted' }, undefined, { type: 'variable' })} settles what a capture reaches when it is handed to \`eval\` (see ${ctx.linkO({ ...Quoted, name: 'Quoted' }, 'finalize')}),
+${ctx.link({ name: 'Nse' }, undefined, { type: 'variable' })} models the escapes a quoting function offers (rlang's \`!!\` and \`bquote\`'s \`.(x)\`), and
+${ctx.link({ name: 'Deferred' }, undefined, { type: 'variable' })} links an expression R evaluates at a moment we cannot pin down, as \`delayedAssign\` binds one.
 				`
 	})
 }
@@ -1149,10 +1132,10 @@ ${
 
 Let's start by looking at the properties of the dataflow information object: ${Object.keys(result).map(k => `\`${k}\``).join(', ')}.
 
-${ (() => {
+${(() => {
 			/* this includes the meta field for timing as well as the control flow entry and exit of the program */
 			guard(Object.keys(result).length === 12, () => 'Update Dataflow Documentation! (Keys: ' + Object.keys(result).join(', ') + ')'); return '';
-		})() }
+		})()}
 
 There are three sets of references.
 **in** (ids: ${JSON.stringify(new Set(result.in.map(n => n.nodeId)), jsonReplacer)}) and **out** (ids: ${JSON.stringify(new Set(result.out.map(n => n.nodeId)), jsonReplacer)}) contain the 
@@ -1275,10 +1258,12 @@ Everything else lives on a helper object named after the thing it works on:
 * ${ctx.link(RNode, undefined, { type: 'variable' })} for the nodes behind the vertices, e.g. \`RNode.lexeme(graph.idMap?.get(id))\` for what a vertex is written as
 * ${ctx.link(Identifier, undefined, { type: 'variable' })} for identifiers, e.g. \`Identifier.toString(vertex.name)\`
 * ${ctx.link(FunctionArgument, undefined, { type: 'variable' })} for the arguments of a call, e.g. \`FunctionArgument.isNotEmpty(arg)\`
-* ${ctx.link(Resolve, undefined, { type: 'variable' })} (also reachable as \`Dataflow.resolve\`) for everything that resolves. Take the narrowest entry point:
+* ${ctx.link(Resolve, undefined, { type: 'variable' })} for everything that resolves, with ${ctx.linkO(Resolve, 'infoOf')} stating *where* to resolve, straight from an analyzer. Take the narrowest entry point:
   ${ctx.linkO(Resolve, 'byName')} walks the environment layers once, ${ctx.linkO(Resolve, 'byNameAndType')} merges the definitions of every layer it passes,
   and ${ctx.linkO(Resolve, 'toValue')} as well as ${ctx.linkO(Resolve, 'argument')} run the evaluator on top of a resolution (see [below](#dfg-resolving-values))
-* ${ctx.link(MatchArgs, undefined, { type: 'variable' })} to bind a call's arguments to the formals of what it calls (see [below](#dfg-matching-arguments))
+* ${ctx.link({ name: 'MatchArgs' }, undefined, { type: 'variable' })} (reached as \`FunctionSemantics.call.match\`) to bind a call's arguments to the formals of what it calls (see [below](#dfg-matching-arguments))
+
+These are the ones this page needs; the ${ctx.linkPage('wiki/Helper Objects', 'Helper Objects')} page lists every helper object flowR has, grouped by what it is about.
 
 Some of these functions have been explained in their respective wiki pages. However, some are part of the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph API')} and so we explain them here.
 If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities', 'capabilities')} page.
@@ -1302,16 +1287,16 @@ ${section('Matching Arguments to Parameters', 3, 'dfg-matching-arguments')}
 R does not bind a call's arguments to the formals left to right. An exactly named argument takes its formal, then a
 uniquely abbreviated one does (\`pmatch\`), then the rest fill what is still free until \`...\`, and whatever is
 left over goes to \`...\`. ${ctx.link('matchArgumentsToParameters')} is that algorithm, and
-${ctx.link(MatchArgs, undefined, { type: 'variable' })} is how you ask for it:
+${ctx.link({ name: 'MatchArgs' }, undefined, { type: 'variable' })} is how you ask for it:
 
 | Use case | member |
 |----------|--------|
-| AST arguments and the formal names | ${ctx.linkO(MatchArgs, 'toNames')} |
-| graph arguments and the formals (a spec, or a database signature) | ${ctx.linkO(MatchArgs, 'toSpec')} |
-| graph arguments and the callee's ${ctx.link('RParameter')}s, **also adding the [DefinesOnCall](#5-definesoncall-edge) and [DefinedByOnCall](#6-definedbyoncall-edge) edges** | ${ctx.linkO(MatchArgs, 'onCallAndLink')} |
-| only the call, the formals are looked up for you | ${ctx.linkO(MatchArgs, 'toDefinition')} |
+| AST arguments and the formal names | ${ctx.linkO({ ...MatchArgs, name: 'MatchArgs' }, 'toNames')} |
+| graph arguments and the formals (a spec, or a database signature) | ${ctx.linkO({ ...MatchArgs, name: 'MatchArgs' }, 'toSpec')} |
+| graph arguments and the callee's ${ctx.link('RParameter')}s, **also adding the [DefinesOnCall](#5-definesoncall-edge) and [DefinedByOnCall](#6-definedbyoncall-edge) edges** | ${ctx.linkO({ ...MatchArgs, name: 'MatchArgs' }, 'onCallAndLink')} |
+| only the call, the formals are looked up for you | ${ctx.linkO({ ...MatchArgs, name: 'MatchArgs' }, 'toDefinition')} |
 
-${ctx.linkO(MatchArgs, 'toDefinition')} takes the formals from the ${ctx.link('RFunctionDefinition')} the call
+${ctx.linkO({ ...MatchArgs, name: 'MatchArgs' }, 'toDefinition')} takes the formals from the ${ctx.link('RFunctionDefinition')} the call
 resolves to in user code, and from the ${ctx.linkPage('wiki/Signature Database', 'signature database')} otherwise.
 
 ${section('Assessing Edges', 3, 'dfg-assess-edge')}
@@ -1323,7 +1308,7 @@ Consider the following example:
 ${await printDfGraphForCode(treeSitter, 'print(x)', { mark: new Set(['3->1']), ctx })}
 
 Retrieving the _types_ of the edge from the print call to its argument returns:
-${await(async() => {
+${await (async() => {
 			const dfg =  await createDataflowPipeline(treeSitter, {
 				context: contextFromInput('print(x)')
 			}).allRemainingSteps();

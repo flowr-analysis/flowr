@@ -1,24 +1,18 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { FnSig } from '../../../../../environments/built-in-props';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import {
-	EmptyArgument,
-	type PotentiallyEmptyRArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { MergeableRecord } from '../../../../../../util/objects';
 import { dataflowLogger } from '../../../../../logger';
-import { VertexType, FunctionDefinitionVertex } from '../../../../../graph/vertex';
+import { VertexType, DfgVertex } from '../../../../../graph/vertex';
 import type { FunctionArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import {
-	type Identifier,
-	ReferenceType
-} from '../../../../../environments/identifier';
+import { type Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import { ClosureRefs } from '../../../../linker';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
@@ -85,7 +79,7 @@ export function processApply<OtherInfo>(
 	const { indexOfFunction = 1, nameOfFunctionArgument, unquoteFunction, resolveInEnvironment, resolveValue, hasUnknownSideEffects } = config;
 	/* the length is one-based and the argument mapping zero-based, so the function sits at `indexOfFunction` */
 	const resFn = processKnownFunctionCall({
-		name, args, rootId, data, sig: FnSig.only(indexOfFunction, nameOfFunctionArgument ?? 'FUN'), origin: BuiltInProcName.Apply
+		name, args, rootId, data, sig: FunctionSemantics.call.signature.only(indexOfFunction, nameOfFunctionArgument ?? 'FUN'), origin: BuiltInProcName.Apply
 	});
 	let information = resFn.information;
 	if(hasUnknownSideEffects) {
@@ -182,7 +176,7 @@ export function processApply<OtherInfo>(
 			]
 		};
 		const dfVert = information.graph.getVertex(rootId);
-		if(dfVert && FunctionDefinitionVertex.is(dfVert)) {
+		if(dfVert && DfgVertex.isFunctionDefinition(dfVert)) {
 			ClosureRefs.resolveOpenIngoing(information.graph, rootId, dfVert, data.environment);
 		}
 	} else {

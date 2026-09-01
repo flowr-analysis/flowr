@@ -1,20 +1,12 @@
-import {
-	LintingPrettyPrintContext,
-	type LintingResult,
-	LintingResultCertainty,
-	type LintingRule,
-	LintingRuleCertainty,
-	type LintQuickFix
-} from '../linter-format';
+import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty, type LintingRule, LintingRuleCertainty, type LintQuickFix } from '../linter-format';
 import { SourceLocation } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { LintingRuleTag } from '../linter-tags';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { NoEdges } from '../../dataflow/graph/graph';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
-import { FunctionCallVertex } from '../../dataflow/graph/vertex';
+import { DfgVertex } from '../../dataflow/graph/vertex';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
@@ -37,7 +29,7 @@ export interface UnusedImportResult extends LintingResult {
 
 export interface UnusedImportConfig extends MergeableRecord {
 	/** packages that do their work on load and hence should never be reported, however unused they look */
-	whitelist: string[]
+	whitelist: readonly string[]
 }
 
 export interface UnusedImportMetadata extends MergeableRecord {
@@ -86,7 +78,7 @@ function removalWouldBreakSyntax(node: RNode<ParentInformation>, idMap: AstIdMap
 
 /** whether anything reads out of the attach itself */
 function isReadFrom(graph: DataflowGraph, id: NodeId): boolean {
-	for(const edge of (graph.ingoingEdges(id) ?? NoEdges).values()) {
+	for(const edge of (graph.edgesTo(id)).values()) {
 		if(DfEdge.includesType(edge, EdgeType.Reads)) {
 			return true;
 		}
@@ -111,7 +103,7 @@ function unusedPackages(attachments: readonly Attachment[], graph: DataflowGraph
 			continue;
 		}
 		const vertex = graph.getVertex(id);
-		if(FunctionCallVertex.is(vertex) && isUnbound(graph, id)) {
+		if(DfgVertex.isFunctionCall(vertex) && isUnbound(graph, id)) {
 			unbound.add(Identifier.getName(vertex.name));
 		}
 	}

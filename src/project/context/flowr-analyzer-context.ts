@@ -342,7 +342,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		this.meta.reset();
 		this.gas.reset();
 		this.activatedPlugins.clear();
-		this.receive( { type: InvalidationEventType.Full });
+		this.receive({ type: InvalidationEventType.Full });
 	}
 
 	receive(event: InvalidationEvent): void {
@@ -370,7 +370,7 @@ export function contextFromInput(
 	const context = new FlowrAnalyzerContext(config, plugins);
 	if(typeof input === 'string' || Array.isArray(input) && input.every(i => typeof i === 'string')) {
 		const requests = requestFromInput(input);
-		context.addRequests(Array.isArray(requests) ? requests : [requests] );
+		context.addRequests(Array.isArray(requests) ? requests : [requests]);
 	} else {
 		const requests: RParseRequests = Array.isArray(input) ? input : [input];
 		context.addRequests(requests);

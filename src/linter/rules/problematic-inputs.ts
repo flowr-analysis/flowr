@@ -1,4 +1,5 @@
 import { type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingRuleCertainty, LintingResultCertainty } from '../linter-format';
+import { isArray } from '../../util/collections/arrays';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
@@ -29,20 +30,20 @@ const defaultPipeCommandFunctions: readonly PipeCommandFunctionSpec[] = [
 	{ pattern: '^postscript$', argIdx: 0, argName: 'file' }
 ];
 
-function normalizePatternList(cfg: string | string[] | undefined, defaults: readonly string[]): RegExp[] {
+function normalizePatternList(cfg: string | readonly string[] | undefined, defaults: readonly string[]): RegExp[] {
 	if(cfg === undefined) {
 		return Array.from(defaults, s => new RegExp(s));
 	}
-	if(Array.isArray(cfg)) {
-		const arr = cfg.length === 0 ? Array.from(defaults) : cfg;
+	if(isArray<string>(cfg)) {
+		const arr = cfg.length === 0 ? defaults : cfg;
 		return Array.from(new Set(arr), s => new RegExp(s));
 	}
 	return [new RegExp(cfg)];
 }
 
-function normalizePipeSpecs(cfg: PipeCommandFunctionSpec | PipeCommandFunctionSpec[] | undefined): Array<{ pattern: RegExp, argIdx: number, argName: string }> {
+function normalizePipeSpecs(cfg: PipeCommandFunctionSpec | readonly PipeCommandFunctionSpec[] | undefined): Array<{ pattern: RegExp, argIdx: number, argName: string }> {
 	const raw = cfg === undefined ? defaultPipeCommandFunctions
-		: Array.isArray(cfg) ? (cfg.length === 0 ? defaultPipeCommandFunctions : cfg)
+		: isArray<PipeCommandFunctionSpec>(cfg) ? (cfg.length === 0 ? defaultPipeCommandFunctions : cfg)
 			: [cfg];
 	return raw.map(s => ({ pattern: new RegExp(s.pattern), argIdx: s.argIdx, argName: s.argName }));
 }
@@ -112,9 +113,9 @@ export interface ProblematicInputsResult extends LintingResult {
 }
 
 export interface ProblematicInputsConfig extends MergeableRecord {
-	consider?:             string | string[]
+	consider?:             string | readonly string[]
 	inputFns?:             InputClassifierConfig
-	pipeCommandFunctions?: PipeCommandFunctionSpec | PipeCommandFunctionSpec[]
+	pipeCommandFunctions?: PipeCommandFunctionSpec | readonly PipeCommandFunctionSpec[]
 }
 
 export const PROBLEMATIC_INPUTS = {

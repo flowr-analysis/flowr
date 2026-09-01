@@ -1,5 +1,5 @@
-import { MatchArgs } from '../../../../../graph/match-args';
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { processDataflowFor } from '../../../../../processor';
 import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
@@ -45,7 +45,7 @@ export function processLocal<OtherInfo>(
 		[config.args.env]:  'env',
 		'...':              '...'
 	};
-	const argMaps = MatchArgs.toSpec(convertFnArguments(args), params);
+	const argMaps = FunctionSemantics.call.match.toSpec(convertFnArguments(args), params);
 	const env = unpackArg(RArgument.getWithId(args, argMaps.get('env')?.[0]));
 	const expr = unpackArg(RArgument.getWithId(args, argMaps.get('expr')?.[0]));
 	if(!expr) {

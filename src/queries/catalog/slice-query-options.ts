@@ -6,10 +6,11 @@
 import Joi from 'joi';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { CriteriaParseError, SlicingCriteria } from '../../slicing/criterion/parse';
+import type { SlicingCriteria } from '../../slicing/criterion/parse';
+import { CriteriaParseError, SlicingCriterion } from '../../slicing/criterion/parse';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { type InlineFull, type ReconstructionResult, reconstructToCode } from '../../reconstruct/reconstruct';
-import { SourceInlineMap } from '../../reconstruct/inline/source-inline-map';
+import { buildSourceInlineMap } from '../../reconstruct/inline/source-inline-map';
 import { doNotAutoSelect } from '../../reconstruct/auto-select/auto-select-defaults';
 import { makeMagicCommentHandler } from '../../reconstruct/auto-select/magic-comments';
 
@@ -99,10 +100,10 @@ export function isSerializedQuery(key: string): boolean {
 
 /**
  * Resolves the criteria to their node ids, reporting those that match no node: they would slice nothing,
- * as {@link SlicingCriteria.convertAll} keeps them verbatim.
+ * as {@link SlicingCriterion.convertAll} keeps them verbatim.
  */
 export function resolveSliceCriteria(criteria: SlicingCriteria, ast: NormalizedAst): NodeId[] {
-	const ids = SlicingCriteria.convertAll(criteria, ast.idMap);
+	const ids = SlicingCriterion.convertAll(criteria, ast.idMap);
 	const unresolved = criteria.filter((_, i) => !ast.idMap.has(ids[i]));
 	if(unresolved.length > 0) {
 		throw new CriteriaParseError(`the slicing criteria ${unresolved.map(c => `'${c}'`).join(', ')} match no element of the program`);
@@ -119,6 +120,27 @@ export function reconstructSlice(ast: NormalizedAst, graph: DataflowGraph, nodes
 		inlineSources,
 		inlineFull,
 		reconstructFiles: perFile && !inlining ? 'all' : undefined,
-		sourceMap:        inlining ? SourceInlineMap.build(ast, graph) : undefined
+		sourceMap:        inlining ? buildSourceInlineMap(ast, graph) : undefined
 	}, noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect));
+}
+
+/** A value reported together with how long producing it took. */
+type Timed<T> = T & { readonly '.meta': { readonly timing: number } };
+
+/**
+ * How a slicing query reports one result: the slice with the time it took, and -- unless the query asked for
+ * none -- the reconstruction with its own. `static-slice` and `dice` differ in what they slice, not in how they
+ * report it, so both build their entry here; `reconstruct` is only called when one is wanted, and is timed
+ * around that call alone.
+ */
+export function timedSliceEntry<Slice extends object>(
+	options: SliceQueryOptions, slice: Slice, sliceTiming: number, reconstruct: () => ReconstructionResult
+): { slice: Timed<Slice>, reconstruct?: Timed<ReconstructionResult> } {
+	const timedSlice = { ...slice, '.meta': { timing: sliceTiming } };
+	if(options.noReconstruction) {
+		return { slice: timedSlice };
+	}
+	const start = Date.now();
+	const result = reconstruct();
+	return { slice: timedSlice, reconstruct: { ...result, '.meta': { timing: Date.now() - start } } };
 }

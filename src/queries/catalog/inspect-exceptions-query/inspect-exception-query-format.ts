@@ -17,7 +17,7 @@ import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 export interface InspectExceptionQuery extends BaseQueryFormat {
 	readonly type:    'inspect-exception';
 	/** If given, only function definitions that match one of the given slicing criteria are considered. */
-	readonly filter?: SlicingCriterion[];
+	readonly filter?: readonly SlicingCriterion[];
 }
 
 export interface InspectExceptionQueryResult extends BaseQueryResult {

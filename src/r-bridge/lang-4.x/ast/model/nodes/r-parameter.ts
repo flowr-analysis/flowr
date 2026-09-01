@@ -24,8 +24,8 @@ export const RParameter = {
 	name: 'RParameter',
 	/**
 	 * Type guard for {@link RParameter} nodes.
-	 * @see {@link RParameter.isDotDotDotDot} - to check whether a parameter is the special `...` parameter
 	 * @lintIgnore node-is node-is-optional
+	 * @see {@link RParameter.isDotDotDotDot} - to check whether a parameter is the special `...` parameter
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RParameter<Info> {
 		return node?.type === RType.Parameter;

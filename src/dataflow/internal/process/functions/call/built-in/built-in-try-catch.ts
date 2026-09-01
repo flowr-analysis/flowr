@@ -1,6 +1,5 @@
-import { MatchArgs } from '../../../../../graph/match-args';
-import { FnSig } from '../../../../../environments/built-in-props';
 import { namesAnErrorHandler } from '../../../../../fn/condition-handlers';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
 import { ExitPointType, happensInEveryBranch } from '../../../../../info';
@@ -15,7 +14,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { dataflowLogger } from '../../../../../logger';
 import { ClosureRefs } from '../../../../linker';
 import type { DataflowGraphVertexInfo } from '../../../../../graph/vertex';
-import { VertexType, FunctionDefinitionVertex } from '../../../../../graph/vertex';
+import { VertexType, DfgVertex } from '../../../../../graph/vertex';
 import { tryUnpackNoNameArg, unpackArg } from '../argument/unpack-argument';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { isUndefined } from '../../../../../../util/assert';
@@ -43,7 +42,7 @@ export function processTryCatch<OtherInfo>(
 		}
 	}
 ): DataflowInformation {
-	const res = processKnownFunctionCall({ name, args: args.map(tryUnpackNoNameArg), rootId, data, origin: BuiltInProcName.Try, sig: FnSig.every });
+	const res = processKnownFunctionCall({ name, args: args.map(tryUnpackNoNameArg), rootId, data, origin: BuiltInProcName.Try, sig: FunctionSemantics.call.signature.every });
 	if(args.length < 1 || RArgument.isEmpty(args[0])) {
 		dataflowLogger.warn(`TryCatch Handler ${Identifier.toString(name.content)} does not have 1 argument, skipping`);
 		return res.information;
@@ -61,7 +60,7 @@ export function processTryCatch<OtherInfo>(
 		params[config.handlers.finally] = 'finally';
 	}
 	// only remove exit points from the block
-	const argMaps = MatchArgs.toSpec(res.callArgs, params);
+	const argMaps = FunctionSemantics.call.match.toSpec(res.callArgs, params);
 	const info = res.information;
 
 	const blockArg = new Set(argMaps.get('block'));
@@ -204,7 +203,7 @@ function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: Dataf
 		info.graph.addEdge(arg, functionId, EdgeType.Calls | EdgeType.Reads);
 
 		const dfVert = info.graph.getVertex(call);
-		if(dfVert && FunctionDefinitionVertex.is(dfVert)) {
+		if(dfVert && DfgVertex.isFunctionDefinition(dfVert)) {
 			ClosureRefs.resolveOpenIngoing(info.graph, call, dfVert, data.environment);
 		}
 		// we did the linking
@@ -228,7 +227,7 @@ function getExitPoints(vertex: DataflowGraphVertexInfo | undefined, graph: Dataf
 	if(!vertex) {
 		return undefined;
 	}
-	if(FunctionDefinitionVertex.is(vertex)) {
+	if(DfgVertex.isFunctionDefinition(vertex)) {
 		return vertex.exitPoints;
 	}
 	// we assumed named argument
@@ -238,7 +237,7 @@ function getExitPoints(vertex: DataflowGraphVertexInfo | undefined, graph: Dataf
 	}
 	if(RArgument.is(n) && RFunctionDefinition.is(n.value)) {
 		const fdefV = graph.getVertex(n.value.info.id);
-		if(FunctionDefinitionVertex.is(fdefV)) {
+		if(DfgVertex.isFunctionDefinition(fdefV)) {
 			return fdefV.exitPoints;
 		}
 	}

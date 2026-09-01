@@ -98,11 +98,10 @@ export function resolveConstantString<OtherInfo>(
 	node: RNode<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): string | undefined {
-	const info = NodeValue.infoOf(data);
 	const unshadowed = new Map<string, boolean>();
 	const fold = (n: RNode<OtherInfo & ParentInformation>): string | undefined => {
 		if(!RFunctionCall.isNamed(n)) {
-			return Resolve.toSingleString(n.info.id, info);
+			return NodeValue.singleStringOf(n.info.id, data);
 		}
 		const fnName = Identifier.getName(n.functionName.content);
 		if(!StringFold.pasteLike.has(fnName)) {

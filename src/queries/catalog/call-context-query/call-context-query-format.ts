@@ -97,7 +97,7 @@ export interface LinkToNestedCall<CallName extends CallNameTypes = CallNameTypes
 export type LinkTo<CallName extends CallNameTypes = CallNameTypes, AttachLinkInfo = NoInfo> = (LinkToLastCall<CallName> | LinkToNestedCall<CallName>) & { attachLinkInfo?: AttachLinkInfo };
 
 export interface SubCallContextQueryFormat<CallName extends CallNameTypes = CallNameTypes, AttachLinkInfo = NoInfo> extends DefaultCallContextQueryFormat<CallName> {
-	readonly linkTo?: LinkTo<CallName, AttachLinkInfo> | LinkTo<CallName, AttachLinkInfo>[];
+	readonly linkTo?: LinkTo<CallName, AttachLinkInfo> | readonly LinkTo<CallName, AttachLinkInfo>[];
 }
 
 export interface CallContextQuerySubKindResult {

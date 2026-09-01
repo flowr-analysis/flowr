@@ -1,7 +1,7 @@
 import type { BasicQueryData } from '../../base-query-format';
 import type { DiceQuery, DiceQueryResult } from './dice-query-format';
 import { staticDice } from '../../../slicing/static/static-slicer';
-import { reconstructSlice, resolveSliceCriteria, sliceResultKeys } from '../slice-query-options';
+import { reconstructSlice, resolveSliceCriteria, sliceResultKeys, timedSliceEntry } from '../slice-query-options';
 import { log } from '../../../util/log';
 
 /**
@@ -23,25 +23,14 @@ export async function executeDiceQuery({ analyzer }: BasicQueryData, queries: re
 			continue;
 		}
 
-		const { from, to, noReconstruction, includeCallees } = query;
+		const { from, to, includeCallees } = query;
 		const startIds = resolveSliceCriteria(from, ast);
 		const endIds = resolveSliceCriteria(to, ast);
 
 		const sliceStart = Date.now();
 		const slice = staticDice(analyzer.inspectContext(), df, ast, startIds, endIds, analyzer.flowrConfig.solver.slicer?.threshold, includeCallees);
-		const sliceEnd = Date.now();
-
-		if(noReconstruction) {
-			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart } } };
-		} else {
-			const reconstructStart = Date.now();
-			const reconstruct = reconstructSlice(ast, df.graph, slice.result, query);
-			const reconstructEnd = Date.now();
-			results[key] = {
-				slice:       { ...slice, '.meta': { timing: sliceEnd - sliceStart } },
-				reconstruct: { ...reconstruct, '.meta': { timing: reconstructEnd - reconstructStart } }
-			};
-		}
+		results[key] = timedSliceEntry(query, slice, Date.now() - sliceStart,
+			() => reconstructSlice(ast, df.graph, slice.result, query));
 	}
 
 	return {

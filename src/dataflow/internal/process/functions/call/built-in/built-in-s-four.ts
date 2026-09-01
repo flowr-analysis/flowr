@@ -11,7 +11,7 @@ import { type ClassArgRef, argFor, ClassSystem } from '../../../../../fn/class-d
 import { type Identifier, type IdentifierReference, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { define } from '../../../../../environments/define';
 import { NodeValue } from '../../../../../eval/resolve/node-value';
-import { FunctionCallVertex } from '../../../../../graph/vertex';
+import { DfgVertex } from '../../../../../graph/vertex';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { processKnownFunctionCall } from '../known-call-handling';
 
@@ -94,7 +94,7 @@ export function linkS4Uses<O>(info: DataflowInformation, args: Args<O>, rootId: 
 /** wires what the attached {@link DataflowGraphVertexFunctionCall.classDecl|class declaration} states, S4 only: a declaration reads the classes it builds on and registers its own name; a mere relation (`setIs`, `setValidity`) reads and re-registers the class it names */
 export function linkS4Declaration<O>(info: DataflowInformation, rootId: NodeId, data: Data<O>): void {
 	const vertex = info.graph.getVertex(rootId);
-	const decl = FunctionCallVertex.is(vertex) ? vertex.classDecl : undefined;
+	const decl = DfgVertex.isFunctionCall(vertex) ? vertex.classDecl : undefined;
 	if(decl === undefined || decl.system !== ClassSystem.S4) {
 		return;
 	}

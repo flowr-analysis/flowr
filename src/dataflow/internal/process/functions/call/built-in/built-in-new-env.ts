@@ -9,7 +9,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { pushLocalEnvironment } from '../../../../../environments/scoping';
 import { Environment, type REnvironmentInformation } from '../../../../../environments/environment';
 import { unpackArg } from '../argument/unpack-argument';
-import { FunctionCallVertex } from '../../../../../graph/vertex';
+import { DfgVertex } from '../../../../../graph/vertex';
 import { RNull } from '../../../../../../r-bridge/lang-4.x/convert-values';
 import { resolveSymbolToEnvir } from './built-in-envir-utils';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -37,7 +37,7 @@ export function processNewEnv<OtherInfo>(
 	if(data.ctx.config.solver.trackEnvironments) {
 		const parentState = resolveNewEnvParentArg(args, data);
 		const vertex = result.graph.getVertex(rootId);
-		if(parentState !== undefined && FunctionCallVertex.is(vertex)) {
+		if(parentState !== undefined && DfgVertex.isFunctionCall(vertex)) {
 			vertex.newEnvParent = parentState;
 		}
 	}
@@ -104,7 +104,7 @@ export function createFreshEnvState(
 ): REnvironmentInformation {
 	if(sourceInfo !== undefined) {
 		const vertex = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
-		if(FunctionCallVertex.is(vertex) && vertex.newEnvParent !== undefined) {
+		if(DfgVertex.isFunctionCall(vertex) && vertex.newEnvParent !== undefined) {
 			return {
 				current: new Environment(vertex.newEnvParent.current),
 				level:   vertex.newEnvParent.level + 1

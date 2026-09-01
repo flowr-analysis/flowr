@@ -582,13 +582,13 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('complex', 'plot()\nx <- 2\ncat(x)\ncoord_trans(x, y, z)', { visualize: [
 				{ nodeId: '1@plot', functionName: 'plot', parts: ['4@coord_trans'] },
 				{ nodeId: '4@coord_trans', functionName: 'coord_trans', linkedIds: [1] }
-			] }, { enabledCategories: ['visualize'] } );
+			] }, { enabledCategories: ['visualize'] });
 			testQuery('multiple', 'plot()\nx <- 2\ncat(x)\ncoord_trans(x, y, z)\nplot()\ntinyplot_add(x, y, z)', { visualize: [
 				{ nodeId: '1@plot', functionName: 'plot', parts: ['4@coord_trans'] },
 				{ nodeId: '5@plot', functionName: 'plot', parts: ['6@tinyplot_add'] },
 				{ nodeId: '4@coord_trans', functionName: 'coord_trans', linkedIds: [1] },
 				{ nodeId: '6@tinyplot_add', functionName: 'tinyplot_add', linkedIds: [18] }
-			] }, { enabledCategories: ['visualize'] } );
+			] }, { enabledCategories: ['visualize'] });
 		});
 	});
 

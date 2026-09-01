@@ -1,12 +1,7 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { FnSig } from '../../../../../environments/built-in-props';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import { type DataflowInformation, ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
-import {
-	findNonLocalReads,
-	linkCircularRedefinitionsWithinALoop,
-	produceNameSharedIdMap,
-	reapplyLoopExitPoints
-} from '../../../../linker';
+import { findNonLocalReads, linkCircularRedefinitionsWithinALoop, produceNameSharedIdMap, reapplyLoopExitPoints } from '../../../../linker';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
@@ -25,11 +20,11 @@ import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 
 /**
  * Process a built-in repeat loop function call like `repeat { ... }`.
- * @param name     - The name of the function being called.
- * @param args     - The arguments passed to the function.
- * @param rootId   - The root node ID for the current processing context.
- * @param data     - Additional dataflow processor information.
- * @returns        - The resulting dataflow information after processing the repeat loop.
+ * @param name   - The name of the function being called.
+ * @param args   - The arguments passed to the function.
+ * @param rootId - The root node ID for the current processing context.
+ * @param data   - Additional dataflow processor information.
+ * @returns      - The resulting dataflow information after processing the repeat loop.
  */
 export function processRepeatLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -48,7 +43,7 @@ export function processRepeatLoop<OtherInfo>(
 		args:      unpacked ? [unpacked] : args,
 		rootId,
 		data,
-		sig:       FnSig.every,
+		sig:       FunctionSemantics.call.signature.every,
 		patchData: (d, i) => {
 			if(i === 0) {
 				return { ...d, cds: [...d.cds ?? [], { id: name.info.id }] };

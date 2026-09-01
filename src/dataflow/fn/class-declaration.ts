@@ -12,13 +12,12 @@ import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { DataflowGraph } from '../graph/graph';
-import { NoEdges } from '../graph/graph';
 import { DfEdge, EdgeType } from '../graph/edge';
 import { isNotUndefined } from '../../util/assert';
 import { compactRecord } from '../../util/objects';
 import type { SigClassInfo } from '../../project/sigdb/schema';
-import { FunctionCallVertex, VertexType  } from '../graph/vertex';
-import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexInfo } from '../graph/vertex';
+import { VertexType } from '../graph/vertex';
+import type { DataflowGraphVertexFunctionCall } from '../graph/vertex';
 
 /** The object system a declaration belongs to. */
 export const enum ClassSystem {
@@ -110,7 +109,7 @@ export interface ClassDeclarationConfig {
 const VirtualClass = 'VIRTUAL';
 
 /** The argument `ref` names, by name when the call gives one and by position among the unnamed ones otherwise. */
-function argForImpl<Info>(args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[], ref: ClassArgRef | undefined): RNode<Info & ParentInformation> | undefined {
+export function argForImpl<Info>(args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[], ref: ClassArgRef | undefined): RNode<Info & ParentInformation> | undefined {
 	if(ref === undefined) {
 		return undefined;
 	}
@@ -139,10 +138,10 @@ function argForImpl<Info>(args: readonly PotentiallyEmptyRArgument<Info & Parent
  * The argument `ref` names, by name when the call gives one and by position among the unnamed ones otherwise.
  * Exported so `built-in-s-four.ts` can drop its own copy of this instead of hand-rolling it again; that file
  * already imports {@link ClassArgRef} from here, so the reverse import would cycle.
- * @deprecated use {@link ClassDeclarations.argFor} instead
+ * @deprecated use {@link argForImpl} instead
  */
 export function argFor<Info>(args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[], ref: ClassArgRef | undefined): RNode<Info & ParentInformation> | undefined {
-	return ClassDeclarations.argFor(args, ref);
+	return argForImpl(args, ref);
 }
 
 /** The string a node states literally, `undefined` for anything that is not a literal (a variable, a call, ...). */
@@ -221,7 +220,7 @@ function isTrue<Info>(node: RNode<Info & ParentInformation> | undefined): boolea
  * Reads the {@link ClassDeclaration} a call states, following the argument mapping its built-in declares.
  * An argument that resolves to no literal contributes a {@link ClassDeclaration.byVariable|by-variable} name, or nothing.
  */
-function classDeclarationOfImpl<Info>(config: ClassDeclarationConfig, args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[]): ClassDeclaration {
+export function classDeclarationOfImpl<Info>(config: ClassDeclarationConfig, args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[]): ClassDeclaration {
 	const byVariable: string[] = [];
 	const nameNode = argForImpl(args, config.nameArg);
 	const name = literal(nameNode);
@@ -260,9 +259,9 @@ function classDeclarationOfImpl<Info>(config: ClassDeclarationConfig, args: read
 	});
 }
 
-/** @deprecated use {@link ClassDeclarations.of} instead */
+/** @deprecated use {@link classDeclarationOfImpl} instead */
 export function classDeclarationOf<Info>(config: ClassDeclarationConfig, args: readonly PotentiallyEmptyRArgument<Info & ParentInformation>[]): ClassDeclaration {
-	return ClassDeclarations.of(config, args);
+	return classDeclarationOfImpl(config, args);
 }
 
 /** One class the analysis saw declared, with the call that declared it. */
@@ -274,7 +273,7 @@ export interface DeclaredClass extends ClassDeclaration {
 }
 
 /** Every class the graph declares, keyed by name. A later declaration of the same name wins, as it would in R. */
-function declaredClassesImpl(graph: DataflowGraph): Map<string, DeclaredClass> {
+export function declaredClassesImpl(graph: DataflowGraph): Map<string, DeclaredClass> {
 	const classes = new Map<string, DeclaredClass>();
 	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionCall)) {
 		const decl = (vertex as DataflowGraphVertexFunctionCall).classDecl;
@@ -317,9 +316,9 @@ function declaredClassesImpl(graph: DataflowGraph): Map<string, DeclaredClass> {
 	return classes;
 }
 
-/** @deprecated use {@link ClassDeclarations.declared} instead */
+/** @deprecated use {@link declaredClassesImpl} instead */
 export function declaredClasses(graph: DataflowGraph): Map<string, DeclaredClass> {
-	return ClassDeclarations.declared(graph);
+	return declaredClassesImpl(graph);
 }
 
 /** Variable name to the class its generator declares, for the `Cls <- R6Class(...)`/`Cls <- new_class(...)` bindings. */
@@ -334,7 +333,7 @@ function generatorVariables(graph: DataflowGraph, classes: ReadonlyMap<string, D
 		if(lexeme === undefined) {
 			continue;
 		}
-		for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
+		for(const [target, edge] of graph.edgesFrom(id)) {
 			const cls = byName.get(target);
 			if(cls !== undefined && DfEdge.includesType(edge, EdgeType.DefinedBy)) {
 				generators.set(lexeme, cls);
@@ -348,7 +347,7 @@ function generatorVariables(graph: DataflowGraph, classes: ReadonlyMap<string, D
  * The transitive superclasses of `name` among `classes`, nearest first and each named once. A class the
  * analysis never saw declared ends the chain, so what another package contributes is simply not in the answer.
  */
-function superClassesOfImpl(name: string, classes: ReadonlyMap<string, ClassDeclaration>): string[] {
+export function superClassesOfImpl(name: string, classes: ReadonlyMap<string, ClassDeclaration>): string[] {
 	const chain: string[] = [];
 	const seen = new Set<string>([name]);
 	const queue = [...(classes.get(name)?.contains ?? [])];
@@ -364,16 +363,11 @@ function superClassesOfImpl(name: string, classes: ReadonlyMap<string, ClassDecl
 	return chain;
 }
 
-/** @deprecated use {@link ClassDeclarations.superOf} instead */
-export function superClassesOf(name: string, classes: ReadonlyMap<string, ClassDeclaration>): string[] {
-	return ClassDeclarations.superOf(name, classes);
-}
-
 /**
  * The {@link SigClassInfo} records the signature database stores for the classes an analysis found. A class
  * the analysis declared carries no `package`; a referenced class `ownerOf` can place becomes a `foreign` record.
  */
-function toSigClassesImpl(classes: ReadonlyMap<string, DeclaredClass>, ownerOf?: (name: string) => string | undefined): SigClassInfo[] {
+export function toSigClassesImpl(classes: ReadonlyMap<string, DeclaredClass>, ownerOf?: (name: string) => string | undefined): SigClassInfo[] {
 	const records: SigClassInfo[] = [];
 	for(const declared of classes.values()) {
 		records.push(compactRecord({
@@ -402,26 +396,8 @@ function toSigClassesImpl(classes: ReadonlyMap<string, DeclaredClass>, ownerOf?:
 	return records;
 }
 
-/** @deprecated use {@link ClassDeclarations.toSig} instead */
+/** @deprecated use {@link toSigClassesImpl} instead */
 export function toSigClasses(classes: ReadonlyMap<string, DeclaredClass>, ownerOf?: (name: string) => string | undefined): SigClassInfo[] {
-	return ClassDeclarations.toSig(classes, ownerOf);
+	return toSigClassesImpl(classes, ownerOf);
 }
 
-/** Utilities for the class declarations of an analysis. */
-export const ClassDeclarations = {
-	name:     'ClassDeclarations',
-	/** The declaration a call states; see {@link classDeclarationOfImpl}. */
-	of:       classDeclarationOfImpl,
-	/** Every class the graph declares, keyed by name; see {@link declaredClassesImpl}. */
-	declared: declaredClassesImpl,
-	/** The transitive superclasses of a declared class; see {@link superClassesOfImpl}. */
-	superOf:  superClassesOfImpl,
-	/** The signature-database records for a set of declared classes; see {@link toSigClassesImpl}. */
-	toSig:    toSigClassesImpl,
-	/** The argument a class-declaring built-in's config names; see {@link argForImpl}. */
-	argFor:   argForImpl,
-	/** Whether the vertex is a call that declares a class; its {@link DataflowGraphVertexFunctionCall.classDecl} is then set. */
-	isDeclaring(this: void, vertex: DataflowGraphVertexInfo | undefined): boolean {
-		return FunctionCallVertex.is(vertex) && vertex.classDecl !== undefined;
-	}
-} as const;

@@ -21,8 +21,8 @@ export const RString = {
 	name: 'RString',
 	/**
 	 * Type guard for RString nodes.
-	 * @see {@link RString}
 	 * @lintIgnore node-is node-is-optional
+	 * @see {@link RString}
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RString<Info> {
 		return node?.type === RType.String;

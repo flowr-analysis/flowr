@@ -7,7 +7,7 @@ import { findEnclosingFunctionDefinition, handleReturns, includeCalleesOfDefinit
 import type { AstIdMap, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { FunctionCallVertex, UseVertex } from '../../dataflow/graph/vertex';
+import { DfgVertex } from '../../dataflow/graph/vertex';
 import { DfEdge, EdgeType, shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import type { DataflowInformation } from '../../dataflow/info';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
@@ -17,7 +17,6 @@ import { SliceDirection } from '../../util/slice-direction';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { GasOverrides } from '../../gas';
-import { NoEdges } from '../../dataflow/graph/graph';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 
@@ -153,7 +152,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 
 		if(!onlyForSideEffects) {
-			if(FunctionCallVertex.is(currentVertex) && !currentVertex.onlyBuiltin) {
+			if(DfgVertex.isFunctionCall(currentVertex) && !currentVertex.onlyBuiltin) {
 				sliceForCall(current, currentVertex, info, queue, ctx);
 			}
 
@@ -211,11 +210,11 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 function freeNamesOf(slice: ReadonlySet<NodeId>, graph: DataflowGraph): readonly string[] {
 	const free = new Set<string>();
 	for(const id of slice) {
-		if(!UseVertex.is(graph.getVertex(id))) {
+		if(!DfgVertex.isUse(graph.getVertex(id))) {
 			continue;
 		}
 		let defined = false;
-		for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
+		for(const [target, edge] of graph.edgesFrom(id)) {
 			if(DfEdge.includesType(edge, EdgeType.Reads) && (slice.has(target) || NodeId.isBuiltIn(target))) {
 				defined = true;
 				break;

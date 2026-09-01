@@ -102,6 +102,9 @@ export interface GeneralDocContext {
 	 *                  you can also pass the function/constructor reference directly (e.g., `link(MyClass)`).
 	 * @param fmt     - Formatting options for the link (see {@link LinkFormat})
 	 * @param filter  - An optional filter to further specify the element to link to, in case multiple elements with the same name exist.
+	 * @see {@link linkFile}  - to create a link using the file path as name.
+	 * @see {@link shortLink} - for the underlying impl.
+	 * @see {@link dropGenericsFromTypeName} - to clean up type names for display.
 	 * @example
 	 * ```ts
 	 * link(registerPluginMaker.name)
@@ -110,23 +113,20 @@ export interface GeneralDocContext {
 	 * Creates a (markdown) link to the `registerPluginMaker` function in the code base
 	 * and, if available, attaches the TS documentation as tooltip.
 	 * By using the `.name`, the link text will be `registerPluginMaker` but respect, e.g., renaming refactorings done in the code base.
-	 * @see {@link linkFile}  - to create a link using the file path as name.
-	 * @see {@link shortLink} - for the underlying impl.
-	 * @see {@link dropGenericsFromTypeName} - to clean up type names for display.
 	 */
 	link(element: ElementIdOrRef, fmt?: LinkFormat, filter?: ElementFilter): string;
 
 	/**
 	 * Generate a hyperlink to a member of a class in the wiki.
 	 * This is a convenience method around {@link GeneralDocContext#link|link}.
+	 * @see {@link GeneralDocContext#link|link} - for the underlying impl.
+	 * @see {@link GeneralDocContext#linkO|linkO} - to link using an object reference instead of a class and member name (e.g. for helper objects).
 	 * @example
 	 * ```ts
 	 * linkM(MyClass, 'myMethod')
 	 * ```
 	 *
 	 * Creates a (markdown) link to the `myMethod` member of the `MyClass` class in the code base.
-	 * @see {@link GeneralDocContext#link|link} - for the underlying impl.
-	 * @see {@link GeneralDocContext#linkO|linkO} - to link using an object reference instead of a class and member name (e.g. for helper objects).
 	 */
 	linkM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, fmt?: LinkFormat & { hideClass?: boolean }, filter?: ElementFilter): string;
 	/**
@@ -147,14 +147,14 @@ export interface GeneralDocContext {
 	/**
 	 * Generate a hyperlink to a type/element definition in the code base which is displayed using the file path as name
 	 * @param element - The element to create a link for, the name can be qualified with `::` to specify the class.
+	 * @see {@link GeneralDocContext#link|link} - to create a link with a custom name/using the type name by default.
+	 * @see {@link linkFile}  - for the underlying impl.
 	 * @example
 	 * ```ts
 	 * linkFile(registerPluginMaker.name)
 	 * ```
 	 * Creates a (markdown) link to the `registerPluginMaker` function in the code base
 	 * using the file path as link name.
-	 * @see {@link GeneralDocContext#link|link} - to create a link with a custom name/using the type name by default.
-	 * @see {@link linkFile}  - for the underlying impl.
 	 */
 	linkFile(element: ElementIdOrRef): string;
 
@@ -164,28 +164,28 @@ export interface GeneralDocContext {
 	 * use {@link prefixLines}.
 	 * @param element - The element to create documentation for, the name can be qualified with `::` to specify the class.
 	 * @param filter  - An optional filter to further specify the element to get the documentation for, in case multiple elements with the same name exist.
+	 * @see {@link getDocumentationForType} - for the underlying impl.
+	 * @see {@link removeCommentSymbolsFromTypeScriptComment} - to clean up TS doc comments.
 	 * @example
 	 * ```ts
 	 * doc(exampleFn.name)
 	 * ```
 	 *
 	 * Creates the documentation for the `exampleFn` function in the code base as markdown string.
-	 * @see {@link getDocumentationForType} - for the underlying impl.
-	 * @see {@link removeCommentSymbolsFromTypeScriptComment} - to clean up TS doc comments.
 	 */
 	doc(element: ElementIdOrRef, filter?: Omit<ElementFilter, 'file'>): string;
 
 	/**
 	 * Returns the documentation for a member of a class as Markdown string.
 	 * This is a convenience method around {@link GeneralDocContext#doc|doc}.
+	 * @see {@link GeneralDocContext#doc|doc}   - for the underlying impl.
+	 * @see {@link GeneralDocContext#docO|docO} - to get documentation using an object reference instead of a class and member name.
 	 * @example
 	 * ```ts
 	 * docM(MyClass, 'myMethod')
 	 * ```
 	 *
 	 * Creates the documentation for the `myMethod` member of the `MyClass` class in the code base.
-	 * @see {@link GeneralDocContext#doc|doc}   - for the underlying impl.
-	 * @see {@link GeneralDocContext#docO|docO} - to get documentation using an object reference instead of a class and member name.
 	 */
 	docM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, filter?: Omit<ElementFilter, 'file'>): string;
 
@@ -200,6 +200,7 @@ export interface GeneralDocContext {
 	 * @param element - The element to create a code snippet for, the name can be qualified with `::` to specify the class.
 	 * @param fmt     - Formatting options for the code snippet (see {@link FnElementInfo})
 	 * @param filter  - An optional filter to further specify the element to get the code for, in case multiple elements with the same name exist.
+	 * @see {@link printCodeOfElement} - for the underlying impl.
 	 * @example
 	 * ```ts
 	 * code(exampleFn.name, { dropLinesStart: 1, dropLinesEnd: 2 })
@@ -223,7 +224,6 @@ export interface GeneralDocContext {
 	 * // This is an example
 	 * const result = a + b;
 	 * ```
-	 * @see {@link printCodeOfElement} - for the underlying impl.
 	 */
 	code(element: ElementIdOrRef, fmt?: Omit<FnElementInfo, 'info' | 'program'>, filter?: ElementFilter): string;
 
@@ -247,6 +247,7 @@ export interface GeneralDocContext {
 	 * @param element - The element to create a hierarchy for, the name can be qualified with `::` to specify the class.
 	 * @param fmt     - Formatting options for the hierarchy (see {@link PrintHierarchyArguments})
 	 * @param filter  - An optional filter to further specify the element to get the hierarchy for, in case multiple elements with the same name exist.
+	 * @see {@link printHierarchy} - for the underlying impl.
 	 * @example
 	 * ```ts
 	 * hierarchy(MyClass.name, { maxDepth: 2 })
@@ -254,13 +255,12 @@ export interface GeneralDocContext {
 	 *
 	 * Creates the hierarchy for the `MyClass` class in the code base,
 	 * including up to two levels of inheritance.
-	 * @see {@link printHierarchy} - for the underlying impl.
 	 */
 	hierarchy(element: ElementIdOrRef, fmt?: Omit<PrintHierarchyArguments, 'info' | 'program' | 'root'>, filter?: ElementFilter): string;
 	/**
 	 * Generates an auto-generation header for the wiki page.
 	 * @param filename - The name of the file being generated. Probably use `module.filename`.
-	 * @param purpose - The purpose of the file, e.g., 'wiki context for types'.
+	 * @param purpose  - The purpose of the file, e.g., 'wiki context for types'.
 	 */
 	header(filename: string, purpose: string): Promise<string>;
 
@@ -273,15 +273,15 @@ export interface GeneralDocContext {
 
 	/**
 	 * Generates a wiki link to another wiki or general docs page.
+	 * @param pageName - The name of the wiki page to link to.
+	 * @param linkText - Optional text to display for the link. If not provided, the page name will be used.
+	 * @param segment  - An optional segment within the page to link to (e.g., a header anchor).
 	 * @example
 	 * ```ts
 	 * linkWikiPage('wiki/Setup')
 	 * ```
 	 * Creates a link to the `wiki/Setup` wiki page with the link text `Setup`.
 	 * This also supports a select subset of external pages in the context of flowR
-	 * @param pageName - The name of the wiki page to link to.
-	 * @param linkText - Optional text to display for the link. If not provided, the page name will be used.
-	 * @param segment  - An optional segment within the page to link to (e.g., a header anchor).
 	 */
 	linkPage(pageName: ValidWikiDocumentTargetsNoSuffix | keyof typeof ConstantWikiLinkInfo, linkText?: string, segment?: string): string;
 
@@ -294,17 +294,17 @@ export interface GeneralDocContext {
 
 	/**
 	 * Generates the CLI long option for a given script and option name.
-	 * @example
-	 * ```ts
-	 * cliOption('flowr', 'help')
-	 * ```
-	 * Returns `--help` with the accompanying docs.
 	 * @param scriptName - The name of the script (e.g., 'flowr', 'analyze', etc.)
 	 * @param optionName - The name of the option for which to generate the long option string.
 	 * @param withAlias  - Whether to include the alias in the output. Default is `false`.
 	 * @param quote      - Whether to wrap the option in backticks. Default is `true`.
 	 * @see {@link ScriptOptions} - for the valid option names per script.
 	 * @see {@link getCliLongOptionOf} - for the underlying impl.
+	 * @example
+	 * ```ts
+	 * cliOption('flowr', 'help')
+	 * ```
+	 * Returns `--help` with the accompanying docs.
 	 */
 	cliOption<
 		ScriptName extends keyof typeof scripts | 'flowr',
@@ -313,28 +313,28 @@ export interface GeneralDocContext {
 
 	/**
 	 * Generates the REPL command string for a given command name.
+	 * @param commandName - The name of the REPL command.
+	 * @param quote       - Whether to wrap the command in backticks. Default is `true`.
+	 * @param showStar    - Whether to show a `[*]` suffix for starred commands. Default is `false`.
+	 * @see {@link getReplCommand} - for the underlying impl.
 	 * @example
 	 * ```ts
 	 * replCmd('help')
 	 * ```
 	 * Returns `:help` with the accompanying docs.
-	 * @param commandName - The name of the REPL command.
-	 * @param quote - Whether to wrap the command in backticks. Default is `true`.
-	 * @param showStar - Whether to show a `[*]` suffix for starred commands. Default is `false`.
-	 * @see {@link getReplCommand} - for the underlying impl.
 	 */
 	replCmd(commandName: ReplCommandNames, quote?: boolean, showStar?: boolean): string
 
 	/**
 	 * Generates a link to a flowR configuration option, resolving its schema type and description as a hover tooltip.
+	 * @param path  - The `.`-separated configuration path (autocompletes to valid config keys only).
+	 * @param quote - Whether to render the path as inline code. Default is `false`.
+	 * @see {@link getConfigOption} - for the underlying impl.
 	 * @example
 	 * ```ts
 	 * linkConfig('solver.sigdb.enabled')
 	 * ```
 	 * Returns a link to the configuration section of the Interface wiki page, showing `solver.sigdb.enabled` with its documentation on hover.
-	 * @param path  - The `.`-separated configuration path (autocompletes to valid config keys only).
-	 * @param quote - Whether to render the path as inline code. Default is `false`.
-	 * @see {@link getConfigOption} - for the underlying impl.
 	 */
 	linkConfig<K extends AutocompletablePaths<FlowrConfig>>(path: K, quote?: boolean): string
 }

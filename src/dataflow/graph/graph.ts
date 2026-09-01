@@ -2,14 +2,7 @@ import { guard } from '../../util/assert';
 import type { DFControlFlowEdge } from './edge';
 import { DfEdge, EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
-import {
-	type DataflowGraphVertexArgument,
-	type DataflowGraphVertexFunctionCall,
-	type DataflowGraphVertexFunctionDefinition,
-	type DataflowGraphVertexInfo,
-	type DataflowGraphVertexVariableDefinition,
-	type DataflowGraphVertices, VertexType
-} from './vertex';
+import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition, type DataflowGraphVertexInfo, type DataflowGraphVertexVariableDefinition, type DataflowGraphVertices, VertexType } from './vertex';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { BrandedIdentifier, Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
@@ -21,7 +14,7 @@ import { cloneEnvironmentInformation } from '../environments/clone';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { Writable } from 'ts-essentials';
 import type { BuiltInMemory } from '../environments/built-in';
-import { FunctionDefinitionVertex, ValueVertex, UseVertex, VariableDefinitionVertex } from './vertex';
+import { DfgVertex } from './vertex';
 import { activeDataflowBudget } from '../../gas';
 
 /**
@@ -106,18 +99,22 @@ export type OutgoingEdges<Edge extends DfEdge = DfEdge> = Map<NodeId, Edge>;
  */
 export type IngoingEdges<Edge extends DfEdge = DfEdge> = Map<NodeId, Edge>;
 /**
- * {@link IngoingEdges} as handed out by {@link DataflowGraph#ingoingEdges|ingoingEdges()}: a vertex without any
+ * {@link IngoingEdges} as handed out by {@link DataflowGraph#edgesTo|edgesTo()}: a vertex without any
  * shares the single {@link NoEdges}, so what a caller gets back is not theirs to write into.
  */
 export type ReadonlyIngoingEdges<Edge extends DfEdge = DfEdge> = ReadonlyMap<NodeId, Edge>;
+/**
+ * {@link OutgoingEdges} as handed out by {@link DataflowGraph#edgesFrom|edgesFrom()}, with the same
+ * do-not-write-into contract as {@link ReadonlyIngoingEdges}.
+ */
+export type ReadonlyOutgoingEdges<Edge extends DfEdge = DfEdge> = ReadonlyMap<NodeId, Edge>;
 
 /**
  * The shared answer for a vertex without edges. Use it instead of a fresh `[]` fallback, the lookups sit in
  * traversal loops where a miss is the common case.
- * @example
- * ```ts
- * for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) { /* ... *\/ }
- * ```
+ *
+ * You rarely need it by hand: {@link DataflowGraph#edgesFrom|edgesFrom()} and
+ * {@link DataflowGraph#edgesTo|edgesTo()} already answer with it rather than with `undefined`.
  */
 export const NoEdges: ReadonlyMap<NodeId, never> = new Map<NodeId, never>();
 
@@ -276,10 +273,43 @@ export class DataflowGraph<
 		return this.vertexInformation.get(id);
 	}
 
+	/**
+	 * The edges leaving `id`, the mutable map the graph stores, `undefined` for a vertex that has none.
+	 * @useInstead {@link DataflowGraph#edgesFrom|edgesFrom()} - unless you mean to write into what you get back
+	 */
 	public outgoingEdges(id: NodeId): OutgoingEdges | undefined {
 		return this.edgeInformation.get(id);
 	}
 
+	/**
+	 * The edges leaving `id`, i.e. what it depends on, as a map from target to edge.
+	 * A vertex without any answers with the shared empty {@link NoEdges} rather than with `undefined`,
+	 * so this can be iterated straight away.
+	 * @see {@link DataflowGraph#edgesTo|edgesTo()} - for the other direction
+	 * @example
+	 * ```ts
+	 * for(const [target, edge] of graph.edgesFrom(id)) { /* ... *\/ }
+	 * ```
+	 */
+	public edgesFrom(id: NodeId): ReadonlyOutgoingEdges {
+		return this.edgeInformation.get(id) ?? NoEdges;
+	}
+
+	/**
+	 * The edges arriving at `id`, i.e. what depends on it, as a map from source to edge.
+	 * A vertex without any answers with the shared empty {@link NoEdges} rather than with `undefined`.
+	 *
+	 * The first call builds the index over every edge of the graph; it is kept until the graph changes.
+	 * @see {@link DataflowGraph#edgesFrom|edgesFrom()} - for the other direction
+	 */
+	public edgesTo(id: NodeId): ReadonlyIngoingEdges {
+		return this.ingoingEdges(id) ?? NoEdges;
+	}
+
+	/**
+	 * The edges arriving at `id`, building the incoming index on first use.
+	 * @useInstead {@link DataflowGraph#edgesTo|edgesTo()} - which states in its type that it never answers `undefined`
+	 */
 	public ingoingEdges(id: NodeId): ReadonlyIngoingEdges | undefined {
 		if(this.incomingIndex === undefined) {
 			const index = new Map<NodeId, IngoingEdges<Edge>>();
@@ -636,7 +666,7 @@ export class DataflowGraph<
 		this.dropQualifications();
 		const vertex = this.getVertex(reference.nodeId);
 		guard(vertex !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set reference`);
-		if(FunctionDefinitionVertex.is(vertex) || VariableDefinitionVertex.is(vertex)) {
+		if(DfgVertex.isFunctionDefinition(vertex) || DfgVertex.isVariableDefinition(vertex)) {
 			vertex.cds = reference.cds;
 		} else {
 			const oldTag = vertex.tag;
@@ -655,7 +685,7 @@ export class DataflowGraph<
 		this.dropQualifications();
 		const infoId = info.id;
 		const vertex = this.getVertex(infoId);
-		guard(vertex !== undefined && (UseVertex.is(vertex) || ValueVertex.is(vertex)), () => `node must be a use or value node for ${JSON.stringify(info.id)} to update it to a function call but is ${vertex?.tag}`);
+		guard(vertex !== undefined && (DfgVertex.isUse(vertex) || DfgVertex.isValue(vertex)), () => `node must be a use or value node for ${JSON.stringify(info.id)} to update it to a function call but is ${vertex?.tag}`);
 		const previousTag = vertex.tag;
 		this.vertexInformation.set(infoId, { ...vertex, ...info, tag: VertexType.FunctionCall });
 		this.unindexType(previousTag, infoId);
@@ -717,7 +747,7 @@ export class DataflowGraph<
 function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex, next: Vertex): Vertex {
 	if(current.tag !== next.tag) {
 		return current;
-	} else if(FunctionDefinitionVertex.is(current)) {
+	} else if(DfgVertex.isFunctionDefinition(current)) {
 		const n = next as DataflowGraphVertexFunctionDefinition;
 		current.exitPoints = uniqueArrayMerge(current.exitPoints, n.exitPoints);
 		if(n.mode && n.mode.length > 0) {

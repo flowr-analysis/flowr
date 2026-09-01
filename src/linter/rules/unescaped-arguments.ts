@@ -1,13 +1,13 @@
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
+import { FunctionSemantics } from '../../dataflow/fn/function-semantics';
 import type { ArgProps, FnSig, PropSelector } from '../../dataflow/environments/built-in-props';
-import { ArgProp, CallProps, SemanticCallTag } from '../../dataflow/environments/built-in-props';
+import { ArgProp, SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { Identifier, PkgName } from '../../dataflow/environments/identifier';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import { FunctionArgument, NoEdges } from '../../dataflow/graph/graph';
-import { MatchArgs } from '../../dataflow/graph/match-args';
+import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { FunctionCallVertex } from '../../dataflow/graph/vertex';
+import { DfgVertex } from '../../dataflow/graph/vertex';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { CallTargets } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { narrowingFunctions } from '../../queries/catalog/input-sources-query/input-source-functions';
@@ -166,7 +166,7 @@ function getEnabledCriticalCalls(config: UnescapedArgumentsConfig, index: BuiltI
 			continue;
 		}
 		for(const entry of index.entries) {
-			if(CallProps.hasAny(entry, criticalCallProps) && entry.sig?.some(([, prop]) => (prop & criticalArgProps) !== 0)) {
+			if(FunctionSemantics.call.props.hasAny(entry, criticalCallProps) && entry.sig?.some(([, prop]) => (prop & criticalArgProps) !== 0)) {
 				result.push({ category, name: entry.name, signature: entry.sig });
 			}
 		}
@@ -204,14 +204,14 @@ function getCriticalTargets(
 	for(const { node } of elements) {
 		const call = graph.getVertex(node.info.id);
 
-		if(!FunctionCallVertex.is(call)) {
+		if(!DfgVertex.isFunctionCall(call)) {
 			continue;
 		}
 		for(const { category, name, signature } of criticalCalls.get(Identifier.getName(call.name)) ?? []) {
 			if(!Identifier.matches(name, call.name) && !Identifier.matches(call.name, name)) {
 				continue;
 			}
-			for(const arg of MatchArgs.findWithProps(call.args, signature, config.categories[category].criticalArgs)) {
+			for(const arg of FunctionSemantics.call.match.findWithProps(call.args, signature, config.categories[category].criticalArgs)) {
 				const location = SourceLocation.fromNode(graph.idMap?.get(arg));
 				const key = `${category}-${call.id}-${arg}`;
 
@@ -253,13 +253,13 @@ function readsParameter(graph: DataflowGraph, start: NodeId, sanitizers: Readonl
 		}
 		const vertex = graph.getVertex(id);
 		/* what a sanitizer hands back is escaped, whatever it read to get there */
-		if(FunctionCallVertex.is(vertex) && sanitizers.has(Identifier.getName(vertex.name))) {
+		if(DfgVertex.isFunctionCall(vertex) && sanitizers.has(Identifier.getName(vertex.name))) {
 			continue;
 		}
 		if(seen.size > ParameterSearchLimit) {
 			return false;
 		}
-		for(const [to, edge] of graph.outgoingEdges(id) ?? NoEdges) {
+		for(const [to, edge] of graph.edgesFrom(id)) {
 			/* only what the value is built from, never the calls it is an argument of */
 			if(!seen.has(to) && DfEdge.includesType(edge, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.Returns)) {
 				seen.add(to);
@@ -303,7 +303,7 @@ async function getUnescapedSources(
 		for(const entry of entries) {
 			const call = graph.getVertex(entry.call);
 
-			if(!FunctionCallVertex.is(call)) {
+			if(!DfgVertex.isFunctionCall(call)) {
 				continue;
 			}
 			for(const [arg, source] of mapInputSourceToArgs(call, classified[SlicingCriterion.fromId(entry.call)] ?? [])) {
@@ -316,7 +316,7 @@ async function getUnescapedSources(
 					&& readsParameter(graph, arg, sanitizerNames);
 				if((entry.only !== undefined && !entry.only.has(arg)) || (isAcceptedInput(source, config) && !viaParameter)) {
 					continue;
-				} else if(entry.depth < config.maxDecentDepth && (source.trace === InputTraceType.Known || viaParameter) && FunctionCallVertex.is(vertex) && !FunctionCallVertex.hasOrigin(vertex, BuiltInProcName.Access)) {
+				} else if(entry.depth < config.maxDecentDepth && (source.trace === InputTraceType.Known || viaParameter) && DfgVertex.isFunctionCall(vertex) && !DfgVertex.hasOrigin(vertex, BuiltInProcName.Access)) {
 					next.push({ target: entry.target, call: arg, only: undefined, depth: entry.depth + 1 });
 				} else {
 					const types = viaParameter ? [...source.types, InputType.Parameter] : source.types;
@@ -340,7 +340,7 @@ function escapeFix(fix: EscapeQuickFix, target: CriticalTarget, source: InputSou
 	let leading = '';
 
 	if(fix.firstArg !== undefined) {
-		const [arg] = MatchArgs.findWithProps(target.call.args, target.signature, fix.firstArg);
+		const [arg] = FunctionSemantics.call.match.findWithProps(target.call.args, target.signature, fix.firstArg);
 		const first = arg === undefined || arg === target.arg ? undefined : RNode.lexeme(idMap.get(arg));
 
 		if(first === undefined) {

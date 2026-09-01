@@ -40,4 +40,31 @@ describe('Config paths', () => {
 			assert.strictEqual(JSON.stringify(FlowrConfig.applyPaths([line])), untouched, `${JSON.stringify(line)} sets nothing`);
 		}
 	});
+	describe('engine options', () => {
+		test('an engine option is reachable under `engine.<type>.<option>`', () => {
+			const config = FlowrConfig.setInConfig(FlowrConfig.default(), 'engine.tree-sitter.lax', true);
+			assert.isTrue(FlowrConfig.getForEngine(config, 'tree-sitter')?.lax);
+		});
+		test('naming one engine does not narrow the analysis to it', () => {
+			assert.deepStrictEqual(FlowrConfig.default().engines, [], 'the default stands for every engine');
+			const config = FlowrConfig.setInConfig(FlowrConfig.default(), 'engine.tree-sitter.lax', true);
+			assert.deepStrictEqual(
+				config.engines.map(e => e.type).sort(),
+				['r-shell', 'tree-sitter'],
+				'the empty list is written out rather than replaced'
+			);
+			assert.isDefined(FlowrConfig.getForEngine(config, 'r-shell'));
+		});
+		test('setting one option twice keeps a single entry', () => {
+			const config = FlowrConfig.setInConfig(FlowrConfig.default(), 'engine.tree-sitter.lax', true);
+			FlowrConfig.setInConfigInPlace(config, 'engine.tree-sitter.lax', false);
+			assert.lengthOf(config.engines.filter(e => e.type === 'tree-sitter'), 1);
+			assert.isFalse(FlowrConfig.getForEngine(config, 'tree-sitter')?.lax);
+		});
+		test('the default configuration is left alone', () => {
+			FlowrConfig.setInConfig(FlowrConfig.default(), 'engine.tree-sitter.lax', true);
+			assert.deepStrictEqual(FlowrConfig.default().engines, []);
+			assert.isUndefined(FlowrConfig.getForEngine(FlowrConfig.default(), 'tree-sitter')?.lax);
+		});
+	});
 });

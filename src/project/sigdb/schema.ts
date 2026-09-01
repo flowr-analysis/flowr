@@ -136,13 +136,6 @@ export const enum ClassProp {
 	Foreign = 1 << 2
 }
 
-/** the {@link ClassProp} bit to its name (for decoding); integer keys iterate in ascending bit order */
-export const ClassPropNames: Readonly<Record<ClassProp, string>> = {
-	[ClassProp.Virtual]: 'virtual',
-	[ClassProp.Union]:   'union',
-	[ClassProp.Foreign]: 'foreign'
-};
-
 /**
  * One declared member of a class (an S4 slot, an S7 property, an RC field, an R6 entry): just `nameIdx` when
  * the declaration states no type, `[nameIdx, typeIdx]` when it does. Both index the global dictionary.

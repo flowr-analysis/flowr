@@ -39,7 +39,7 @@ df3 <- df1 %>%
 
 print(df3${access})
 			`.trim();
-		};
+		}
 
 		describe('Valid data frame access', () => {
 			const testCases: string[] = [

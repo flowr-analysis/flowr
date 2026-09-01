@@ -79,9 +79,9 @@ const MatchingClose = {
 /**
  * Splits the given string on 'and', but only if not nested inside `<>`, `[]`, `()`, or quotes.
  * This also handles escaped quotes.
- * @param str - The string to split
+ * @param str     - The string to split
  * @param splitOn - The string to split on (default: 'and')
- * @param closes - The matching of closing characters for nesting, structures with different open and close characters only can be nested
+ * @param closes  - The matching of closing characters for nesting, structures with different open and close characters only can be nested
  *                 of each other, while those with the same open and close character (like quotes) can not be nested inside themselves.
  */
 export function splitOnNestingSensitive(

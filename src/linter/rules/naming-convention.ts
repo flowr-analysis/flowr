@@ -105,7 +105,7 @@ export function detectCasing(identifier: string, ignorePrefix?:  string): Casing
 /**
  * Determines the most used casing convention in the given list of symbols.
  */
-export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[] ): CasingConvention {
+export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[]): CasingConvention {
 	if(symbols.length === 0) {
 		return CasingConvention.Unknown;
 	}

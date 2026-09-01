@@ -191,11 +191,6 @@ export function defaultSigDbPath(scope?: SigDbScope, searchRoots?: readonly stri
  */
 const defaultSigDbPathsMemo = new Map<string, { paths: readonly string[], watched: readonly (readonly [string, number])[] }>();
 
-/** Forget what {@link defaultSigDbPaths} discovered, so the next call scans the filesystem again. */
-export function clearDefaultSigDbPathsMemo(): void {
-	defaultSigDbPathsMemo.clear();
-}
-
 /** Whether every directory the memoized scan read still carries the modification time it had back then */
 function memoizedScanStillCurrent(watched: readonly (readonly [string, number])[]): boolean {
 	for(const [dir, mtimeMs] of watched) {

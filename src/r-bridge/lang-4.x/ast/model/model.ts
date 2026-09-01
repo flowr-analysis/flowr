@@ -1,4 +1,5 @@
 import { SourceLocation, SourceRange } from '../../../../util/range';
+import type { Accessor } from '../../../../util/accessor';
 import { RType } from './type';
 import type { MergeableRecord } from '../../../../util/objects';
 import type { RNumber } from './nodes/r-number';
@@ -281,15 +282,13 @@ export const RNode = {
 	 * A helper function to retrieve the location of a given node, if available.
 	 * @see SourceLocation.fromNode
 	 */
-	getLocation(this: void, node: RNode): SourceLocation | undefined {
+	getLocation(this: void, node: RNode | undefined): SourceLocation | undefined {
 		return SourceLocation.fromNode(node);
 	},
 	/**
-	 * A helper function to retrieve the id of a given node, if available.
+	 * A helper function to retrieve the id of a given node, `undefined` if there is no node.
 	 */
-	getId(this: void, node: RNode<ParentInformation>): NodeId {
-		return node.info.id;
-	},
+	getId: ((node?: RNode<ParentInformation>) => node?.info.id) as Accessor<RNode<ParentInformation>, NodeId>,
 	/**
 	 * An identity for `node` that two analyses of the same source agree on, unlike {@link RNode.getId|the numeric
 	 * id}, which only means something within the analysis that handed it out. Made of the file the node came
@@ -298,9 +297,9 @@ export const RNode = {
 	 * This survives re-analyzing the same text, not editing it -- an edit above the node moves it.
 	 * `undefined` for a node that carries no location (an artificial node, e.g. a built-in).
 	 */
-	stableId(this: void, node: RNode<ParentInformation>): string | undefined {
-		const location = node.location;
-		return location === undefined ? undefined : `${node.info.file ?? ''}:${location[0]}:${location[1]}:${node.type}`;
+	stableId(this: void, node: RNode<ParentInformation> | undefined): string | undefined {
+		const location = node?.location;
+		return location === undefined ? undefined : `${node?.info.file ?? ''}:${location[0]}:${location[1]}:${node?.type}`;
 	},
 	/**
 	 * The source range the whole subtree of `node` covers, from the first position any of its nodes starts at to
@@ -356,9 +355,9 @@ export const RNode = {
 	},
 	/**
 	 * Visits all node ids within a tree given by a respective root node using a depth-first search with prefix order.
-	 * @param nodes          - The root id nodes to start collecting from
-	 * @param onVisit        - Called before visiting the subtree of each node. Can be used to stop visiting the subtree starting with this node (return `true` stop)
-	 * @param onExit         - Called after the subtree of a node has been visited, called for leafs too (even though their subtree is empty)
+	 * @param nodes   - The root id nodes to start collecting from
+	 * @param onVisit - Called before visiting the subtree of each node. Can be used to stop visiting the subtree starting with this node (return `true` stop)
+	 * @param onExit  - Called after the subtree of a node has been visited, called for leafs too (even though their subtree is empty)
 	 * @see {@link RProject.visitAst} - to visit all nodes in a project
 	 */
 	visitAst<OtherInfo = NoInfo>(this: void, nodes: SingleOrArrayOrNothing<RNode<OtherInfo>>, onVisit?: OnEnter<OtherInfo>, onExit?: OnExit<OtherInfo>): void {
@@ -445,7 +444,7 @@ export const RNode = {
 	 * <p>
 	 * This can be used to exclude certain subtrees from the collection, for example to exclude function bodies when collecting ids on the root level.
 	 * @param nodes - The root id nodes to start collecting from
-	 * @param stop - A function that determines whether to stop collecting at a given node, does not stop by default
+	 * @param stop  - A function that determines whether to stop collecting at a given node, does not stop by default
 	 * @see {@link collectAllIds} - to collect all ids without stopping
 	 * @see {@link RProject.collectAllIdsWithStop} - to collect all ids within a project with stopping
 	 */

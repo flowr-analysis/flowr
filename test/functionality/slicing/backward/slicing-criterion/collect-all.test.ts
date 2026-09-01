@@ -3,7 +3,8 @@ import { type TestLabel, label, decorateLabelContext } from '../../../_helper/la
 import type { RShell } from '../../../../../src/r-bridge/shell';
 import { decorateAst } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type SlicingCriteriaFilter, collectAllSlicingCriteria } from '../../../../../src/slicing/criterion/collect-all';
-import { SlicingCriteria } from '../../../../../src/slicing/criterion/parse';
+import type { SlicingCriteria } from '../../../../../src/slicing/criterion/parse';
+import { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { DefaultAllVariablesFilter } from '../../../../../src/slicing/criterion/filters/all-variables';
@@ -15,10 +16,10 @@ function assertRetrievedIdsWith(shell: RShell, name: string | TestLabel, input: 
 		const ast = await retrieveNormalizedAst(shell, input);
 		const decorated = decorateAst(ast.ast, {});
 		const got = [...collectAllSlicingCriteria(decorated.ast, filter)]
-			.flatMap(criteria => SlicingCriteria.decodeAll(criteria, decorated.idMap))
+			.flatMap(criteria => SlicingCriterion.decodeAll(criteria, decorated.idMap))
 			.map(m => ({ id: NodeId.normalize(m.id), name: decorated.idMap.get(NodeId.normalize(m.id))?.lexeme }));
 		const expectedMapped = expected
-			.flatMap(criteria => SlicingCriteria.decodeAll(criteria, decorated.idMap));
+			.flatMap(criteria => SlicingCriterion.decodeAll(criteria, decorated.idMap));
 
 		assert.deepStrictEqual(got, expectedMapped.map(m => ({ id: NodeId.normalize(m.id), name: decorated.idMap.get(NodeId.normalize(m.id))?.lexeme })), `mapped: ${JSON.stringify(expectedMapped)}`);
 	});
@@ -29,9 +30,9 @@ describe('Retrieve all slicing locations', { concurrent: false }, withShell(shel
 		function test(input: string, caps: SupportedFlowrCapabilityId[], ...expected: SlicingCriteria[]) {
 			assertRetrievedIdsWith(shell, label(`Retrieve all variables in ${JSON.stringify(input)}`, caps), input, DefaultAllVariablesFilter, ...expected);
 		}
-		test('x <- 1', [...OperatorDatabase['<-'].capabilities, 'name-normal', 'numbers'], [ '1@x' ]);
-		test('x <- 1\ny <- 2', [...OperatorDatabase['<-'].capabilities, 'name-normal', 'numbers', 'newlines'], [ '1@x' ], [ '2@y' ]);
-		test('library(foo)', ['unnamed-arguments', 'name-normal'], [ ]); // here, foo is not a variable but used as the library name
+		test('x <- 1', [...OperatorDatabase['<-'].capabilities, 'name-normal', 'numbers'], ['1@x']);
+		test('x <- 1\ny <- 2', [...OperatorDatabase['<-'].capabilities, 'name-normal', 'numbers', 'newlines'], ['1@x'], ['2@y']);
+		test('library(foo)', ['unnamed-arguments', 'name-normal'], []); // here, foo is not a variable but used as the library name
 		test(`a <- 52
 foo(a=3,b<-2,c=4)
 if(TRUE) {
@@ -44,13 +45,13 @@ if(TRUE) {
   a - 1 -> a
 }
 foo(5)`, [...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['='].capabilities, ...OperatorDatabase['-'].capabilities, ...OperatorDatabase['<<-'].capabilities, ...OperatorDatabase['->'].capabilities, ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['>'].capabilities, 'name-normal', 'numbers', 'newlines', 'if', 'while-loop', 'logical', 'named-arguments', 'side-effects-in-argument', 'formals-named', 'implicit-return'],
-		[ '1@a' ], [ '2@b' ], [ '4@a' ], [ '5@[1]a' ], [ '5@[2]a' ], [ '7@foo' ], [ '8@x' ], [ '10@[1]a' ], [ '10@[2]a' ]);
+		['1@a'], ['2@b'], ['4@a'], ['5@[1]a'], ['5@[2]a'], ['7@foo'], ['8@x'], ['10@[1]a'], ['10@[2]a']);
 		test(`x = NULL
 u <<- function(a = NULL, b = NA, c, d=7, e=x, f=TRUE, g=FALSE, ...) {
   g <- 12 * NaN - Inf
   h <- function(x) { x + 1 }
   return(h(a + b))
 }`, [...OperatorDatabase['<<-'].capabilities, ...OperatorDatabase['='].capabilities, 'name-normal', 'inf-and-nan', 'numbers', 'null', 'newlines', 'formals-default', 'formals-named', 'unnamed-arguments', ...OperatorDatabase['+'].capabilities, 'implicit-return', 'return'],
-		[ '1@x' ], [ '2@u' ], ['2@x'], [ '3@g' ], [ '4@h' ], [ '4@[2]x' ], [ '5@a' ], [ '5@b' ]);
+		['1@x'], ['2@u'], ['2@x'], ['3@g'], ['4@h'], ['4@[2]x'], ['5@a'], ['5@b']);
 	});
 }));

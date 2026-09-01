@@ -97,7 +97,7 @@ const ReusePattern = /^<<([^>]*)>>/;
 /**
  * Parse a Sweave file into joined content and blocks
  * @param raw - raw contents of file
- * @returns Joined Content and Blocks
+ * @returns   Joined Content and Blocks
  */
 export function parseSweave(raw: string): SweaveInfo {
 	const lines = raw.split(/\r?\n/);
@@ -173,7 +173,7 @@ const evalWithFlagPattern = /eval\s*=\s*(TRUE|FALSE)/i;
 /**
  * Parses a Sweave Code Block Start if it can find one
  * @param line - the line to parse
- * @returns info about options and name if code block start was found
+ * @returns    info about options and name if code block start was found
  */
 export function parseSweaveCodeblockStart(line: string): SweaveBlockOptions | SweaveReuseOptions | undefined {
 	const match = line.match(CodeBlockStartPattern);

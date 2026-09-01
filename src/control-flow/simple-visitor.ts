@@ -7,9 +7,9 @@ export type SimpleCfgVisitor = (graph: ControlFlowGraph, nodes: readonly NodeId[
 
 /**
  * Visit all nodes reachable from the start node in the control flow graph, traversing the dependencies but ignoring cycles.
- * @param graph     - The control flow graph.
+ * @param graph      - The control flow graph.
  * @param startNodes - The nodes to start the traversal from.
- * @param visitor   - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
+ * @param visitor    - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
  *
  * This function is of type {@link SimpleCfgVisitor}.
  * @see {@link visitCfgInOrder} for a traversal in order

@@ -13,7 +13,7 @@ import type { KillReference } from '../../../dataflow/info';
 import type { AstIdMap } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { SourceLocation } from '../../../util/range';
 
-function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInformation ): string {
+function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInformation): string {
 	return out.formatter.format(`Copied ${type} to clipboard (dataflow: ${meta['.meta'].timing + 'ms'}).`,
 		{ color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
 }
@@ -119,7 +119,7 @@ export const dataflowCommand: ReplCodeCommand = {
 	description:   'Get mermaid code for the dataflow graph',
 	isCodeCommand: true,
 	usageExample:  ':dataflow',
-	aliases:       [ 'd', 'df' ],
+	aliases:       ['d', 'df'],
 	script:        false,
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
@@ -133,7 +133,7 @@ export const dataflowStarCommand: ReplCodeCommand = {
 	description:   'Returns the URL to mermaid.live',
 	isCodeCommand: true,
 	usageExample:  ':dataflow*',
-	aliases:       [ 'd*', 'df*' ],
+	aliases:       ['d*', 'df*'],
 	script:        false,
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
@@ -147,7 +147,7 @@ export const dataflowAsciiCommand: ReplCodeCommand = {
 	description:   'Returns an ASCII representation of the dataflow graph',
 	isCodeCommand: true,
 	usageExample:  ':dataflowascii',
-	aliases:       [ 'df!' ],
+	aliases:       ['df!'],
 	script:        false,
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
@@ -160,7 +160,7 @@ export const dataflowSilentCommand: ReplCodeCommand = {
 	description:   'Just calculates the DFG, but only prints summary info',
 	isCodeCommand: true,
 	usageExample:  ':dataflowsilent',
-	aliases:       [ 'd#', 'df#' ],
+	aliases:       ['d#', 'df#'],
 	script:        false,
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
@@ -196,7 +196,7 @@ export const dataflowSimplifiedCommand: ReplCodeCommand = {
 	description:   'Get mermaid code for the simplified dataflow graph',
 	isCodeCommand: true,
 	usageExample:  ':dataflowsimple',
-	aliases:       [ 'ds', 'dfs' ],
+	aliases:       ['ds', 'dfs'],
 	script:        false,
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
@@ -210,7 +210,7 @@ export const dataflowSimpleStarCommand: ReplCodeCommand = {
 	description:   'Returns the URL to mermaid.live',
 	isCodeCommand: true,
 	usageExample:  ':dataflowsimple*',
-	aliases:       [ 'ds*', 'dfs*' ],
+	aliases:       ['ds*', 'dfs*'],
 	script:        false,
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {

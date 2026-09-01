@@ -116,8 +116,8 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 	// however, this read edge should not apply when the call happens within the same scope
 	// we have to separate on the exit points for this and re-resolve for each exit point
 	assertSliced(label('Nested Side-Effect For First', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'numbers', 'call-normal', 'newlines', 'side-effects-in-function-call']), shell, 'f <- function() {\n  a <- function() { x }\n  x <- 3\n  b <- a()\n  x <- 2\n  a()\n  b\n}\nb <- f()\n    ', ['9@b'], 'f <- function() {\n        a <- function() x\n        x <- 3\n        b <- a()\n        x <- 2\n        b\n    }\nb <- f()');
-	assertSliced(label('always dominating', ['name-normal', 'newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]), shell, 'x <- 2\nf <- function() x <<- 3\nf()\nprint(x)', ['4@x'], 'f <- function() x <<- 3\nf()\nx');
-	assertSliced(label('conditionally dominating', ['name-normal', 'newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]), shell, 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nprint(x)', ['4@x'], 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nx');
+	assertSliced(label('always dominating', ['name-normal', 'newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call']), shell, 'x <- 2\nf <- function() x <<- 3\nf()\nprint(x)', ['4@x'], 'f <- function() x <<- 3\nf()\nx');
+	assertSliced(label('conditionally dominating', ['name-normal', 'newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call']), shell, 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nprint(x)', ['4@x'], 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nx');
 	describe('Early return of function', () => {
 		const code = 'x <- (function() {\n  g <- function() { y }\n  y <- 5\n  if(z)\n  \treturn(g)\n  y <- 3\n  g\n})()\nres <- x()';
 		assertSliced(label('Double return points', ['name-normal', 'closures', ...OperatorDatabase['<-'].capabilities, 'call-anonymous', 'normal-definition', 'implicit-return', 'numbers', 'if', 'return', 'implicit-return', 'call-normal', 'newlines']), shell, code, ['9@res'], '\nx <- (function() {\n        g <- function() y\n        y <- 5\n        if(z) return(g)\n        y <- 3\n        g\n    })()\nres <- x()'.trim());
@@ -179,7 +179,7 @@ describe('Calls', { concurrent: false }, withShell(shell => {
 			shell, code, ['4:1'], 'pkg::"%a%" <- function(x, y) x + y\n"%a%" <- pkg::"%a%"\ncat(4 %a% 5)');
 	});
 	describe('Quotation', () => {
-		assertSliced(label('quote does not reference variables', ['name-normal', 'newlines', ...OperatorDatabase['<-'].capabilities, 'built-in-quoting' ]), shell, 'x <- 3\ny <- quote(x)', ['2@y'], 'y <- quote(x)');
+		assertSliced(label('quote does not reference variables', ['name-normal', 'newlines', ...OperatorDatabase['<-'].capabilities, 'built-in-quoting']), shell, 'x <- 3\ny <- quote(x)', ['2@y'], 'y <- quote(x)');
 	});
 	/** an S3 dispatch case: `caps` (shared per describe below) plus code/criterion/expected slice/output */
 	function s3Case(name: string, caps: SupportedFlowrCapabilityId[], code: string, criterion: SlicingCriterion, expected: string, out: string) {
@@ -281,7 +281,7 @@ a()`, { minRVersion: MIN_VERSION_LAMBDA });
 		shell, 'f <- function() {\n   x <- 2\n   `<-` <- `*`\n   x <- 3\n}\ny <- f()\nprint(y)', ['7@y'], 'f <- function() {\n        x <- 2\n        `<-` <- `*`\n        x <- 3\n    }\ny <- f()\ny' /* the formatting here seems wild, why five spaces */, { expectedOutput: '[1] 6' });
 	});
 	describe('Switch', () => {
-		assertSliced(label('Switch with named arguments', ['switch', ...OperatorDatabase['<-'].capabilities, 'numbers', 'strings', 'named-arguments', 'unnamed-arguments', 'switch', 'function-calls' ]), shell, 'x <- switch("a", a=1, b=2, c=3)', ['1@x'], 'x <- switch("a", a=1, b=2, c=3)');
+		assertSliced(label('Switch with named arguments', ['switch', ...OperatorDatabase['<-'].capabilities, 'numbers', 'strings', 'named-arguments', 'unnamed-arguments', 'switch', 'function-calls']), shell, 'x <- switch("a", a=1, b=2, c=3)', ['1@x'], 'x <- switch("a", a=1, b=2, c=3)');
 	});
 	describe('Separate Function Resolution', () => {
 		const resolutionCaps: SupportedFlowrCapabilityId[] = ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'call-normal', 'newlines', 'search-type'];

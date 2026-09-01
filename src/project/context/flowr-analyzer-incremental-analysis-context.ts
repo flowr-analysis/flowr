@@ -88,7 +88,7 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 
 				const mtimeChanged = !(lastMtime !== undefined && lastMtime === currentMtime);
 
-				if(mtimeChanged){
+				if(mtimeChanged) {
 					ctx.inc.setLastKnownMtime(filePath, currentMtime);
 				}
 

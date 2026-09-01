@@ -9,7 +9,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { isNotUndefined } from '../../util/assert';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
-import { FunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
+import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
@@ -28,14 +28,6 @@ export interface FunctionsMetadata extends MergeableRecord {
 	totalCalls:               number;
 	totalFunctionDefinitions: number;
 }
-
-export interface FunctionsToDetectConfig extends MergeableRecord {
-	/**
-	 * The list of function names that should be marked in the given context.
-	 */
-	fns: readonly Identifier[]
-}
-
 
 /**
  * This helper object collects utility functions used to create linting rules that search for specific functions.
@@ -120,7 +112,7 @@ export const functionFinderUtil = {
 		}
 
 		const vert = dataflow.graph.getVertex(element.node.info.id);
-		if(FunctionCallVertex.is(vert)) {
+		if(DfgVertex.isFunctionCall(vert)) {
 			return hasArgumentValue(requireValue, vert, analyzer, dataflow.graph, info.resolveValue, info.argName, info.argIdx);
 		}
 
@@ -149,9 +141,9 @@ export function hasArgumentValue(
 		analyzer.inspectContext());
 	// we obtain all values, at least one of them has to trigger for the request
 	const argValues: string[] = args ? args.values().flatMap(s => Array.from(s)).filter(isNotUndefined).toArray() : [];
-	if(argValues.length === 0){
+	if(argValues.length === 0) {
 		return Ternary.Maybe;
-	} else if(argValues.some(v => test instanceof RegExp ? test.test(v) : v === test)){
+	} else if(argValues.some(v => test instanceof RegExp ? test.test(v) : v === test)) {
 		return Ternary.Always;
 	} else if(argValues.includes(Unknown)) {
 		return Ternary.Maybe;

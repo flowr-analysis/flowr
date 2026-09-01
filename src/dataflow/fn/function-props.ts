@@ -1,16 +1,22 @@
+/**
+ * The `FunctionSemantics` facade wires these together, so a sibling here has to call the backing function
+ * directly; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own importers.
+ * @lintIgnore use-instead
+ */
 import type { DataflowGraph } from '../graph/graph';
+import { FunctionSemantics } from './function-semantics';
 import { EdgeType } from '../graph/edge';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexFunctionDefinition } from '../graph/vertex';
-import { FunctionCallVertex, FunctionDefinitionVertex } from '../graph/vertex';
+import { DfgVertex } from '../graph/vertex';
 import type { BuiltInFnInfo, StatedProps } from '../environments/built-in-props';
-import { ArgProp, CallProp, CallProps, DispatchCallees, FnSig as Sig, PropagatedProps } from '../environments/built-in-props';
+import { ArgProp, CallProp, DispatchCallees, FnSig as Sig, PropagatedProps } from '../environments/built-in-props';
 import { builtInLookup } from '../environments/query-fn-props';
 import { Identifier } from '../environments/identifier';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { happensInEveryBranch } from '../info';
-import { FunctionStrictnesses } from './strict-function';
-import { ArgumentRoles, type ArgumentRolesOptions, type FunctionArgumentRoles, type LookupState } from './argument-roles';
+import { strictnessOfEach } from './strict-function';
+import { argumentRolesOfFunctions, type ArgumentRolesOptions, type FunctionArgumentRoles, type LookupState } from './argument-roles';
 import { callsIn, edgeTargets, propagateToFixpoint } from './frame-reflection';
 import type { FunctionStrictness } from './strict-function';
 import { Ternary } from '../../util/logic';
@@ -18,7 +24,7 @@ import { Ternary } from '../../util/logic';
 /** @see {@link propagateToFixpoint}, re-exported from where it lives so nothing importing it from here needs to change. */
 export { propagateToFixpoint };
 
-/** What flowR infers about a set of definitions, see {@link FunctionProps.of}. */
+/** What flowR infers about a set of definitions, see {@link inferFunctions}. */
 export interface InferredFunctions {
 	/** per definition, what its body states about the function itself */
 	readonly props: Record<NodeId, StatedProps>
@@ -26,7 +32,7 @@ export interface InferredFunctions {
 	readonly roles: Record<NodeId, FunctionArgumentRoles>
 }
 
-/** What to ask for beyond the definitions themselves, see {@link FunctionProps.of}. */
+/** What to ask for beyond the definitions themselves, see {@link inferFunctions}. */
 export interface FunctionPropsOptions extends ArgumentRolesOptions {
 	/** infer only what the formals do, or only what the function does; both when left out */
 	readonly only?: 'arguments' | 'function'
@@ -36,11 +42,11 @@ export interface FunctionPropsOptions extends ArgumentRolesOptions {
  * What each of the `definitions` does, stated the way a built-in states it: {@link CallProp} bits for the
  * function ({@link PropagatedProps} bits its callees carry over included) and {@link ArgProp} bits per formal,
  * `Forced`/`Lazy` included. An unset bit reads as "nothing says so", never as "no".
- * @useInstead {@link FunctionProps.of}
+ * @useInstead {@link FunctionSemantics.props}
  */
-function inferFunctions(this: void, definitions: readonly NodeId[], graph: DataflowGraph, options: FunctionPropsOptions = {}): InferredFunctions {
+export function inferFunctions(this: void, definitions: readonly NodeId[], graph: DataflowGraph, options: FunctionPropsOptions = {}): InferredFunctions {
 	const { ctx, only } = options;
-	const strict = FunctionStrictnesses.of(definitions, graph, { ctx });
+	const strict = strictnessOfEach(definitions, graph, { ctx });
 	return {
 		props: only === 'arguments' ? {} : callProps(definitions, graph, strict, ctx),
 		roles: only === 'function' ? {} : argumentProps(definitions, graph, strict, options)
@@ -60,7 +66,7 @@ function callProps(definitions: readonly NodeId[], graph: DataflowGraph, strict:
 			continue;
 		}
 		const own = propsOf(id, state);
-		props.set(id, strict[id]?.strict === Ternary.Always ? CallProps.join(own.stated, { props: CallProp.Strict }) : own.stated);
+		props.set(id, strict[id]?.strict === Ternary.Always ? FunctionSemantics.call.props.join(own.stated, { props: CallProp.Strict }) : own.stated);
 		callees.set(id, own.callees);
 		toVisit.push(...own.callees);
 	}
@@ -68,7 +74,7 @@ function callProps(definitions: readonly NodeId[], graph: DataflowGraph, strict:
 	const all: Record<NodeId, StatedProps> = {};
 	for(const id of definitions) {
 		const found = props.get(id);
-		if(CallProps.hasAny(found)) {
+		if(FunctionSemantics.call.props.hasAny(found)) {
 			all[id] = found as StatedProps;
 		}
 	}
@@ -81,7 +87,7 @@ function propagateOverCalls(props: Map<NodeId, StatedProps>, callees: ReadonlyMa
 		const before = props.get(id);
 		let grown = before ?? {};
 		for(const callee of callees.get(id) ?? []) {
-			grown = CallProps.join(grown, CallProps.filter(props.get(callee), PropagatedProps));
+			grown = FunctionSemantics.call.props.join(grown, FunctionSemantics.call.props.filter(props.get(callee), PropagatedProps));
 		}
 		/* joining only ever adds, so nothing new means the same bits and the same number of tags */
 		if((grown.props ?? 0) === (before?.props ?? 0) && (grown.tags?.length ?? 0) === (before?.tags?.length ?? 0)) {
@@ -94,7 +100,7 @@ function propagateOverCalls(props: Map<NodeId, StatedProps>, callees: ReadonlyMa
 
 /** The {@link ArgProp} mask of each formal, `Forced`/`Lazy` included. */
 function argumentProps(definitions: readonly NodeId[], graph: DataflowGraph, strict: Record<NodeId, FunctionStrictness>, options: ArgumentRolesOptions): Record<NodeId, FunctionArgumentRoles> {
-	const all: Record<NodeId, FunctionArgumentRoles> = { ...ArgumentRoles.of(definitions, graph, options) };
+	const all: Record<NodeId, FunctionArgumentRoles> = { ...argumentRolesOfFunctions(definitions, graph, options) };
 	for(const [id, { parameters }] of Object.entries(strict)) {
 		const roles: FunctionArgumentRoles = { ...all[id] };
 		for(const [formal, forced] of Object.entries(parameters)) {
@@ -110,12 +116,6 @@ function argumentProps(definitions: readonly NodeId[], graph: DataflowGraph, str
 	return all;
 }
 
-/** What the functions of a program do, inferred from what their bodies show. */
-export const FunctionProps = {
-	name: 'FunctionProps',
-	/** What several definitions and their formals do; see {@link inferFunctions}. */
-	of:   inferFunctions
-} as const;
 
 function makeState(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext | undefined): LookupState {
 	return { graph, info: builtInLookup(ctx) };
@@ -130,32 +130,32 @@ interface OwnProps {
 
 function propsOf(id: NodeId, state: LookupState): OwnProps {
 	const definition = state.graph.getVertex(id);
-	if(!FunctionDefinitionVertex.is(definition)) {
+	if(!DfgVertex.isFunctionDefinition(definition)) {
 		return { stated: {}, callees: [] };
 	}
 	let stated: StatedProps = {};
 	const callees: NodeId[] = [];
 	for(const [node, vertex] of callsIn(definition, state.graph)) {
 		const info = state.info(vertex.name);
-		const carried = CallProps.filter(info, PropagatedProps);
-		stated = CallProps.join(stated, {
+		const carried = FunctionSemantics.call.props.filter(info, PropagatedProps);
+		stated = FunctionSemantics.call.props.join(stated, {
 			props: (carried.props ?? 0) & (bindsOutside(vertex, info) ? ~0 : ~CallProp.Scope),
 			tags:  carried.tags
 		});
 		if(DispatchCallees.has(Identifier.getName(vertex.name))) {
-			stated = CallProps.join(stated, { props: CallProp.Generic });
+			stated = FunctionSemantics.call.props.join(stated, { props: CallProp.Generic });
 		}
 		callees.push(...calledDefinitions(node, state));
 	}
 	if(returnsInvisibly(definition, state)) {
-		stated = CallProps.join(stated, { props: CallProp.Invisible });
+		stated = FunctionSemantics.call.props.join(stated, { props: CallProp.Invisible });
 	}
 	return { stated, callees };
 }
 
 /** The definitions of the program the call resolved to, which are the ones stating what the call does. */
 function calledDefinitions(node: NodeId, state: LookupState): NodeId[] {
-	return edgeTargets(state.graph, node, EdgeType.Calls).filter(target => FunctionDefinitionVertex.is(state.graph.getVertex(target)));
+	return edgeTargets(state.graph, node, EdgeType.Calls).filter(target => DfgVertex.isFunctionDefinition(state.graph.getVertex(target)));
 }
 
 /** the assignments binding in the frame they run in, which is a scope of the function's own */
@@ -187,7 +187,7 @@ const MaxDepth = 6;
 
 function yieldsInvisibly(node: NodeId, state: LookupState, depth: number): boolean {
 	const vertex = state.graph.getVertex(node);
-	if(FunctionCallVertex.is(vertex) && ((state.info(vertex.name)?.props ?? 0) & CallProp.Invisible) !== 0) {
+	if(DfgVertex.isFunctionCall(vertex) && ((state.info(vertex.name)?.props ?? 0) & CallProp.Invisible) !== 0) {
 		return true;
 	}
 	if(depth >= MaxDepth) {

@@ -134,7 +134,9 @@ function getTextualCommentsFromTypeScript(node: ts.Node): string[] {
 
 
 /**
- *
+ * The 1-based line a TypeScript node starts on, for the wiki pages that link into the source.
+ * @param node       - the node to locate
+ * @param sourceFile - the file it belongs to
  */
 export function getStartLineOfTypeScriptNode(node: ts.Node, sourceFile: ts.SourceFile): number {
 	const lineStart = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line;
@@ -402,7 +404,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 	if(node.kind === 'type') {
 		collect.nodeLines.push(`style ${node.name} opacity:.35,fill:#FAFAFA`);
 	}
-	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${Mermaid.escape(node.comments?.join('; ').replace(/\n/g, ' ') ?? '' )}"`);
+	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${Mermaid.escape(node.comments?.join('; ').replace(/\n/g, ' ') ?? '')}"`);
 	const inline = [...options.inlineTypes ?? [], ...defaultSkip];
 
 	let baseTypes = node.extends;
@@ -715,13 +717,13 @@ function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], f
 /**
  * Create a short link to a type in the documentation.
  * If you create a wiki, please refer to the functions provided by the {@link GeneralDocContext}.
- * @param name      - The name of the type, e.g. `MyType`, may include a container, e.g.,`MyContainer::MyType` (this works with function nestings too)
+ * @param name            - The name of the type, e.g. `MyType`, may include a container, e.g.,`MyContainer::MyType` (this works with function nestings too)
  *                    Use `:::` if you want to access a scoped function, but the name should be displayed without the scope
- * @param hierarchy - The hierarchy of types to search in
- * @param codeStyle - Whether to use code style for the link
+ * @param hierarchy       - The hierarchy of types to search in
+ * @param codeStyle       - Whether to use code style for the link
  * @param realNameWrapper - How to highlight the function in name in the `x::y` format?
- * @param fuzzy     - Whether to use fuzzy matching when searching for the type
- * @param type      - Optionally restrict to a certain type of element
+ * @param fuzzy           - Whether to use fuzzy matching when searching for the type
+ * @param type            - Optionally restrict to a certain type of element
  */
 export function shortLink(name: string, hierarchy: readonly TypeElementInSource[], codeStyle = true, realNameWrapper = 'b', fuzzy?: boolean, type?: TypeElementKind): string {
 	const res = retrieveNode(name, hierarchy, fuzzy, type);

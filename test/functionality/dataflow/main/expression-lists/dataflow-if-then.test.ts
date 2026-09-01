@@ -512,24 +512,22 @@ x`, emptyGraph()
 				.calls('3@<-', NodeId.toBuiltIn('<-'))
 				.constant('3@3')
 				.reads('7@x', '3@x')
-				.use('7@x')
-			, { resolveIdsAsCriterion: true });
+				.use('7@x'),
+			{ resolveIdsAsCriterion: true });
 	});
 	describe('ifelse function', () => {
 		assertDataflow(label('Traditional ifelse use', ['name-normal', 'if', 'unnamed-arguments']), shell,
 			'ifelse(u, a, b)', emptyGraph()
 				.reads('1@ifelse', '1@u')
 				.call('1@ifelse', 'ifelse', [argumentInCall('1@u'), argumentInCall('1@a'), argumentInCall('1@b')], { returns: ['1@a', '1@b'], reads: [NodeId.toBuiltIn('ifelse')], onlyBuiltIn: true })
-				.calls('1@ifelse', NodeId.toBuiltIn('ifelse'))
-			,
+				.calls('1@ifelse', NodeId.toBuiltIn('ifelse')),
 			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 		);
 		assertDataflow(label('ifelse with reordering', ['name-normal', 'if', 'named-arguments']), shell,
 			'ifelse(yes=a,test=u,no=b)', emptyGraph()
 				.reads('1@ifelse', '1@u')
 				.call('1@ifelse', 'ifelse', [argumentInCall('1@u'), argumentInCall('1@a'), argumentInCall('1@b')], { returns: ['1@a', '1@b'], reads: [NodeId.toBuiltIn('ifelse')], onlyBuiltIn: true })
-				.calls('1@ifelse', NodeId.toBuiltIn('ifelse'))
-			,
+				.calls('1@ifelse', NodeId.toBuiltIn('ifelse')),
 			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 		);
 	});

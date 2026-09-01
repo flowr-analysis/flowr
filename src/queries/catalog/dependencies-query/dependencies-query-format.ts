@@ -33,19 +33,19 @@ export const Constant = 'constant';
 
 export interface DependencyCategorySettings {
 	queryDisplayName?:   string
-	functions:           FunctionInfo[]
+	functions:           readonly FunctionInfo[]
 	/** this describes the global default value for this category, e.g., 'stdout' for write operations, please be aware, that this can be overwritten by a by-function default value */
 	defaultValue?:       string
 	/**
 	 * An optional additional analysis step that is executed after the main function-based analysis has been performed.
 	 * To add or modify dependency info entries, simply modify the `result` array.
-	 * @param data  - The basic query data.
+	 * @param data          - The basic query data.
 	 * @param ignoreDefault - Whether the default functions were ignored.
-	 * @param functions - The functions used for this category.
-	 * @param queryResults - The results of the call context query.
-	 * @param result - The current result array to which additional dependency info can be added.
+	 * @param functions     - The functions used for this category.
+	 * @param queryResults  - The results of the call context query.
+	 * @param result        - The current result array to which additional dependency info can be added.
 	 */
-	additionalAnalysis?: (data: BasicQueryData, ignoreDefault: boolean, functions: FunctionInfo[], queryResults: CallContextQueryResult, result: DependencyInfo[]) => AsyncOrSync<void>
+	additionalAnalysis?: (data: BasicQueryData, ignoreDefault: boolean, functions: readonly FunctionInfo[], queryResults: CallContextQueryResult, result: DependencyInfo[]) => AsyncOrSync<void>
 }
 
 export const DefaultDependencyCategories = {
@@ -133,9 +133,9 @@ export const DefaultDependencyCategories = {
 export type DefaultDependencyCategoryName = keyof typeof DefaultDependencyCategories;
 export type DependencyCategoryName = DefaultDependencyCategoryName | string;
 
-export interface DependenciesQuery extends BaseQueryFormat, Partial<Record<`${DefaultDependencyCategoryName}Functions`, FunctionInfo[]>> {
+export interface DependenciesQuery extends BaseQueryFormat, Partial<Record<`${DefaultDependencyCategoryName}Functions`, readonly FunctionInfo[]>> {
 	readonly type:                    'dependencies'
-	readonly enabledCategories?:      DependencyCategoryName[]
+	readonly enabledCategories?:      readonly DependencyCategoryName[]
 	readonly ignoreDefaultFunctions?: boolean
 	/** Naming a built-in category extends it; use `ignoreDefaultFunctions` to drop the built-in functions. */
 	readonly additionalCategories?:   Record<string, MarkOptional<DependencyCategorySettings, 'additionalAnalysis'>>
@@ -144,7 +144,7 @@ export interface DependenciesQuery extends BaseQueryFormat, Partial<Record<`${De
 export type DependenciesQueryResult = BaseQueryResult & { [C in DefaultDependencyCategoryName]: DependencyInfo[] } & { [S in string]?: DependencyInfo[] };
 
 
-export interface DependencyInfo extends Record<string, unknown>{
+export interface DependencyInfo extends Record<string, unknown> {
 	nodeId:              NodeId
 	/** the called name; an {@link Identifier}, so a namespaced call like `maps::map` keeps its package */
 	functionName:        Identifier

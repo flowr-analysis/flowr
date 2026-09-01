@@ -58,7 +58,7 @@ interface Selection {
 	inlineFull?:       InlineFull
 	/**
 	 * Maps a `source()` call node id to the index of the sourced file in `ast.ast.files`.
-	 * Only used together with {@link Selection#inlineSources} or {@link Selection#inlineFull}. Build it via {@link SourceInlineMap.build}.
+	 * Only used together with {@link Selection#inlineSources} or {@link Selection#inlineFull}. Build it via {@link buildSourceInlineMap}.
 	 */
 	sourceMap?:        ReadonlyMap<NodeId, number>
 }
@@ -642,7 +642,7 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 	const autoSelectIfWrapper = (node: RNode<ParentInformation>) => {
 		const result = autoSelectIf(node, ast);
 		if(result && node.location) {
-			for(let i = node.location[0]; i <= node.location[2]; i++){
+			for(let i = node.location[0]; i <= node.location[2]; i++) {
 				linesWithAutoSelected.add(i);
 			}
 		}

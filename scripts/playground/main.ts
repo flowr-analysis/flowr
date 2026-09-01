@@ -32,7 +32,7 @@ import { splitAtEscapeSensitive } from '../../src/util/text/args';
 import type { ReplOutput } from '../../src/cli/repl/commands/repl-main';
 import { packForUrl, toBase64, unpackFromUrl } from '../../src/util/text/url-encoding';
 import type { PlaygroundMark as Mark } from '../../src/util/text/playground-link';
-import { Playground, PlaygroundBox, PlaygroundMark } from '../../src/util/text/playground-link';
+import { Playground, PlaygroundBox } from '../../src/util/text/playground-link';
 import { baseRPackages } from '../../src/util/r-base-packages';
 import { DataflowMermaid } from '../../src/util/mermaid/dfg';
 import { cfgToMermaid } from '../../src/util/mermaid/cfg';
@@ -857,7 +857,7 @@ const shared = (() => {
 		split:      sized(split, '%'),
 		repl:       sized(repl, 'px'),
 		/* what the link points at, as `12`, `12-15`, `12@sum`, `12:5`, `lint:<rule>[@<line>]`, or a box */
-		marks:      PlaygroundMark.expand((params.get('h') ?? '').split(',').filter(mark => mark.length > 0)),
+		marks:      Playground.Mark.expand((params.get('h') ?? '').split(',').filter(mark => mark.length > 0)),
 		/* the rest of the script steps back for whoever opens the link, just as it did for whoever sent it */
 		dim:        flags.includes('d'),
 		/* the repl and the whole of a slice are as much a part of how the page was left as the panes are */
@@ -933,7 +933,7 @@ function shareFields(): [string, string][] {
 	if(view.length > 0) {
 		fields.push(['v', view.join(',')]);
 	}
-	const shortened = PlaygroundMark.compress(marks);
+	const shortened = Playground.Mark.compress(marks);
 	if(shortened.length > 0) {
 		fields.push(['h', shortened.join(',')]);
 	}
@@ -1177,7 +1177,7 @@ function clearMarks(): void {
  * It does not pile mark upon mark: holding shift as well is what adds one to those already there.
  */
 function toggleMark(mark: string | undefined, add = false): void {
-	if(!PlaygroundMark.isValid(mark)) {
+	if(!Playground.Mark.isValid(mark)) {
 		return;
 	}
 	const had = marks.includes(mark);

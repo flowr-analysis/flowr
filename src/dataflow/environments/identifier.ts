@@ -1,4 +1,5 @@
 import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './built-in';
+import type { Accessor } from '../../util/accessor';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
 import { startAndEndsWith } from '../../util/text/strings';
@@ -135,21 +136,19 @@ export const Identifier = {
 		return [str.slice(at + (internal ? 3 : 2)), str.slice(0, at), internal] as Identifier;
 	},
 	/**
-	 * Get the name part of the identifier
+	 * Get the name part of the identifier, `undefined` if there is no identifier.
 	 */
-	getName(this: void, id: Identifier): BrandedIdentifier {
-		return Array.isArray(id) ? id[0] : id;
-	},
+	getName: ((id?: Identifier) => Array.isArray(id) ? id[0] : id) as Accessor<Identifier, BrandedIdentifier>,
 	/**
-	 * Get the namespace part of the identifier, undefined if there is none
+	 * Get the namespace part of the identifier, `undefined` if there is none (or no identifier).
 	 */
-	getNamespace(this: void, id: Identifier): BrandedNamespace | undefined {
+	getNamespace(this: void, id: Identifier | undefined): BrandedNamespace | undefined {
 		return Array.isArray(id) ? id[1] : undefined;
 	},
 	/**
-	 * Check if the identifier accesses internal objects (`:::`)
+	 * Check if the identifier accesses internal objects (`:::`), `undefined` if it says nothing about it.
 	 */
-	accessesInternal(this: void, id: Identifier): boolean | undefined {
+	accessesInternal(this: void, id: Identifier | undefined): boolean | undefined {
 		return Array.isArray(id) ? id[2] : undefined;
 	},
 
@@ -163,8 +162,10 @@ export const Identifier = {
 	 * Identifier.toString(['a', 'pkg:::internal', true]) // '"pkg:::internal":::a'
 	 * ```
 	 */
-	toString(this: void, id: Identifier): string {
-		if(Array.isArray(id)) {
+	toString: ((id?: Identifier) => {
+		if(id === undefined) {
+			return undefined;
+		} else if(Array.isArray(id)) {
 			if(id[1].includes('::')) {
 				return `${JSON.stringify(id[1])}${id[2] ? ':::' : '::'}${id[0]}`;
 			}
@@ -175,7 +176,7 @@ export const Identifier = {
 			}
 			return id;
 		}
-	},
+	}) as Accessor<Identifier, string>,
 	/**
 	 * Check if two identifiers match.
 	 * This differs from eq!
@@ -264,8 +265,8 @@ export const Identifier = {
 	 * 1. a package export the {@link Origin|origins} resolve to (`map()` with `purrr` loaded yields `purrr::map`),
 	 * 2. an already-namespaced `name` returned unchanged (an explicit `pkg::fn` call),
 	 * 3. with `qualifyBaseR`, a bare base-R call qualified from its exporting package via {@link baseRExportOwner}
-	 *    (`sd` yields `stats::sd`), needing no loaded database or graph edge and skipped when the call resolves to
-	 *    a user definition, so a local `sd()` stays bare.
+	 * (`sd` yields `stats::sd`), needing no loaded database or graph edge and skipped when the call resolves to
+	 * a user definition, so a local `sd()` stays bare.
 	 *
 	 * Returns `undefined` when none apply. Steps 2 and 3 need the call's `name`.
 	 * @param origins      - the origins of the call to qualify
@@ -302,8 +303,103 @@ export const Identifier = {
 			}
 		}
 		return undefined;
-	}
+	},
+	/**
+	 * Wraps the identifier in an {@link IdentifierView|view} offering property access (`id.name`, `id.namespace`)
+	 * and methods. The view does not copy anything; see {@link IdentifierView} for when to use it.
+	 */
+	view: ((id?: Identifier) => id === undefined ? undefined : new IdentifierView(id)) as Accessor<Identifier, IdentifierView>
 } as const;
+
+/**
+ * An object-oriented read-only view on an {@link Identifier}.
+ *
+ * The view holds a reference to the identifier it was created from and copies nothing, so it costs one small
+ * object and every accessor is a plain read. {@link IdentifierView.toJSON|Serializing} it yields the identifier
+ * again, so a view may be handed to `JSON.stringify` in its place.
+ *
+ * The bare {@link Identifier} remains the representation that is stored and sent over the wire; create a view
+ * where you *read* one and drop it afterwards rather than keeping one per binding.
+ * @example
+ * ```ts
+ * const id = Identifier.view(Dataflow.qualify(callId, graph));
+ * console.log(id?.name, id?.namespace, id?.toString());
+ * ```
+ */
+export class IdentifierView {
+	/** The underlying identifier; use it whenever you need the plain representation back. */
+	readonly raw: Identifier;
+
+	constructor(id: Identifier) {
+		this.raw = id;
+	}
+
+	/** the name part, so the `fn` of a `pkg::fn` */
+	get name(): BrandedIdentifier {
+		return Identifier.getName(this.raw);
+	}
+
+	/** the namespace part, `undefined` for a name written without one */
+	get namespace(): BrandedNamespace | undefined {
+		return Identifier.getNamespace(this.raw);
+	}
+
+	/** whether the identifier reaches for an internal object (`:::`), `undefined` if it says nothing about it */
+	get isInternal(): boolean | undefined {
+		return Identifier.accessesInternal(this.raw);
+	}
+
+	/** whether the identifier names its package, i.e. whether it carries a namespace */
+	get isQualified(): boolean {
+		return Array.isArray(this.raw);
+	}
+
+	/** whether this is the `...` argument or one of its accesses (`..1`, `..2`, ...) */
+	get isDotDotDot(): boolean {
+		return Identifier.isDotDotDotAccess(this.raw);
+	}
+
+	/** @see {@link Identifier.matches} */
+	matches(target: IdentifierLike, s3 = false): boolean {
+		return Identifier.matches(this.raw, rawIdentifier(target), s3);
+	}
+
+	/** Whether both name the very same thing, namespace and `:::` flag included. */
+	equals(other: IdentifierLike): boolean {
+		const target = rawIdentifier(other);
+		return this.name === Identifier.getName(target)
+			&& this.namespace === Identifier.getNamespace(target)
+			&& (this.isInternal ?? false) === (Identifier.accessesInternal(target) ?? false);
+	}
+
+	/** @see {@link Identifier.mapName} */
+	mapName(fn: (name: BrandedIdentifier) => BrandedIdentifier): IdentifierView {
+		return new IdentifierView(Identifier.mapName(this.raw, fn));
+	}
+
+	/** @see {@link Identifier.mapNamespace} */
+	mapNamespace(fn: (ns: BrandedNamespace) => BrandedNamespace): IdentifierView {
+		return new IdentifierView(Identifier.mapNamespace(this.raw, fn));
+	}
+
+	/** @see {@link Identifier.toString} - the **valid R** spelling, so `pkg::fn` for a qualified name */
+	toString(): string {
+		return Identifier.toString(this.raw);
+	}
+
+	/** Serializes to the underlying identifier, so a view is interchangeable with one in JSON output. */
+	toJSON(): Identifier {
+		return this.raw;
+	}
+}
+
+/** An {@link Identifier} or a {@link IdentifierView} of one. Accepted wherever an identifier is only read. */
+export type IdentifierLike = Identifier | IdentifierView;
+
+/** Unwraps an {@link IdentifierView} to its identifier, passing bare identifiers through unchanged. */
+function rawIdentifier(of: IdentifierLike): Identifier {
+	return of instanceof IdentifierView ? of.raw : of;
+}
 
 /** The index of the `::` separating namespace from name, skipping backtick-quoted spans; `-1` if there is none. */
 function namespaceSeparatorAt(str: string): number {

@@ -79,7 +79,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	public override receive(event: InvalidationEvent): void {
 		super.receive(event);
 		const type = event.type;
-		if(type === InvalidationEventType.Full){
+		if(type === InvalidationEventType.Full) {
 			this.disposeParse();
 		}
 		switch(type) {

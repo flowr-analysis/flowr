@@ -23,8 +23,8 @@ export const RSymbol = {
 	name: 'RSymbol',
 	/**
 	 * Type guard for {@link RSymbol} nodes.
-	 * @see {@link RSymbol.isSpecial} - to check whether a symbol is a special symbol like `NA` or `NULL`
 	 * @lintIgnore node-is node-is-optional
+	 * @see {@link RSymbol.isSpecial} - to check whether a symbol is a special symbol like `NA` or `NULL`
 	 */
 	is<OtherInfo = NoInfo>(this: void, node: RNode<OtherInfo> | undefined): node is RSymbol<OtherInfo> {
 		return node?.type === RType.Symbol;

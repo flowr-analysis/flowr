@@ -47,7 +47,7 @@ export type QuadIgnoreIf = (key: string, value: unknown) => boolean;
 
 /**
  * Deterministically retrieve a unique id for a given object.
- * @param obj - The object to retrieve the id for
+ * @param obj     - The object to retrieve the id for
  * @param context - to provide unique ids even for different contexts, we add the context to the id.
  */
 export type QuadIdRetriever = (obj: unknown, context: ContextForQuad) => string;
@@ -62,7 +62,7 @@ export type QuadContextRetriever = ContextForQuad | ((obj: DataForQuad) => Conte
  */
 export function defaultQuadIdGenerator(): QuadIdRetriever {
 	let counter = 0;
-	const idMap = new DefaultMap<unknown, number>( () => counter++ );
+	const idMap = new DefaultMap<unknown, number>(() => counter++);
 	return (elem: unknown, context: ContextForQuad) => `${context}/${idMap.get(elem)}`;
 }
 
@@ -118,7 +118,7 @@ const writer = (): Writer => cachedWriter ??= new (n3().Writer)({ format: 'N-Qua
  * Serializes the given object or array to rdf quads.
  * @param obj    - The object to serialize (must be a Record and no array etc.)
  * @param config - Further configuration options
- * @returns the serialized quads
+ * @returns      the serialized quads
  * @see graph2quads
  */
 export function serialize2quads(obj: RecordForQuad, config: QuadSerializationConfiguration): string {

@@ -150,7 +150,7 @@ export class Package {
 		}
 	}
 
-	public static functionIdentifier(dependency: string, func: string): string{
+	public static functionIdentifier(dependency: string, func: string): string {
 		return NodeId.pkgFnName(dependency, func);
 	}
 }

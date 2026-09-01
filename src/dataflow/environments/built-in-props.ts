@@ -91,7 +91,14 @@ export enum CallProp {
 	 * runs its work in parallel (workers, a cluster, a future/promise backend); says nothing about purity, only
 	 * reproducibility and where an error surfaces.
 	 */
-	Concurrent = 1 << 13
+	Concurrent = 1 << 13,
+	/**
+	 * the R language itself provides it: a `.Primitive` or `.Internal` of a base package, `if` and `for` and the
+	 * operators included. Set from {@link RBasePrimitives}, which is read out of a real R, so it states what that
+	 * R has rather than what a definition assumes. No package's sources contain these, which is why a signature
+	 * database has no entry for them and flowR is the only thing that can answer.
+	 */
+	Primitive  = 1 << 14
 }
 
 /**
@@ -179,6 +186,13 @@ export interface PropMask {
 	readonly props: CallProps
 	readonly tags:  ReadonlySet<SemanticCallTag>
 }
+
+/**
+ * The properties that say where a definition comes from rather than what it does. A bare
+ * {@link CallProps.hasAny} ignores them, so a name flowR only knows the origin of still counts as stating
+ * nothing about its behavior.
+ */
+export const ProvenanceProps: CallProps = CallProp.Primitive;
 
 /**
  * The properties that state an effect beyond computing a result, so no {@link CallProp.Pure} definition may carry any of them.
@@ -277,15 +291,18 @@ function getPropMask(this: void, selector: PropSelector): PropMask {
  * All helpers use {@link PropSelector}s to identify call properties.
  */
 export const CallProps = {
-	name: 'CallProps',
 	/** Checks whether a {@link PropSelector} is a bitfield of {@link CallProp}s. */
 	isCallProp,
 	/** Checks whether a {@link PropSelector} is a {@link SemanticCallTag}. */
 	isSemanticTag,
-	/** Whether stated properties carry at least one property of a selector, or any property at all. */
+	/**
+	 * Whether stated properties carry at least one property of a selector, or state anything about their
+	 * behavior at all. {@link ProvenanceProps} do not count for the latter: where a definition comes from is
+	 * not something it does, and a caller asking "does this state what it does" must not be answered by it.
+	 */
 	hasAny(this: void, stated: StatedProps | undefined, selector?: PropSelector): boolean {
 		if(selector === undefined) {
-			return stated?.props !== undefined || stated?.tags !== undefined;
+			return ((stated?.props ?? 0) & ~ProvenanceProps) !== 0 || stated?.tags !== undefined;
 		}
 		const mask = getPropMask(selector);
 
@@ -377,7 +394,6 @@ const ForcingEvery: FnSig = [['...', ArgProp.Forced]];
  * Utility functions for {@link FnSig|function signatures}.
  */
 export const FnSig = {
-	name:    'FnSig',
 	/** The positional view of a signature; see {@link sigLayout}. */
 	layout:  sigLayout,
 	/** The roles of the argument at a position; see {@link argProp}. */
@@ -437,7 +453,8 @@ const CallPropLabels: Readonly<Record<CallProp, string>> = {
 	[CallProp.Ffi]:        'calls native code',
 	[CallProp.Lang]:       'produces language object',
 	[CallProp.Strict]:     'strict',
-	[CallProp.Concurrent]: 'concurrent'
+	[CallProp.Concurrent]: 'concurrent',
+	[CallProp.Primitive]:  'primitive'
 };
 
 /** The words for whichever of `mask`'s bits appear in `entries`, shared by {@link ArgProps.words} and {@link CallProps.words}. */
@@ -456,7 +473,6 @@ const ArgPropEntries = bitEntries(ArgPropNames);
  * Utility functions for {@link ArgProps|argument property bitfields}.
  */
 export const ArgProps = {
-	name:  'ArgProps',
 	/** the {@link ArgProp} bit to its name, in ascending bit order */
 	names: ArgPropNames,
 	/** What an argument is used for, as words; see {@link wordsOf}. */

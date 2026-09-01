@@ -14,7 +14,7 @@ import type { NamedJsonEntry } from '../../../json/format';
  * Probably directly called by the function definition parser as otherwise, we do not expect to find parameters.
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param objs - Either `[SYMBOL_FORMALS]` or `[SYMBOL_FORMALS, EQ_FORMALS, expr]`
- * @returns The parsed parameter or `undefined` if the given object is not a parameter.
+ * @returns    The parsed parameter or `undefined` if the given object is not a parameter.
  */
 export function tryNormalizeParameter(data: NormalizerData, objs: readonly NamedJsonEntry[]): RParameter | undefined {
 	if(objs.length !== 1 && objs.length !== 3) {

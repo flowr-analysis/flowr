@@ -1,4 +1,5 @@
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import { isArray } from '../../../util/collections/arrays';
 import type {
 	CallContextQuery,
 	CallContextQueryKindResult,
@@ -11,7 +12,7 @@ import type {
 } from './call-context-query-format';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
-import { FunctionCallVertex, VertexType } from '../../../dataflow/graph/vertex';
+import { DfgVertex, VertexType } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
@@ -109,7 +110,7 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
 					...q.fileFilter,
 					filter: promoteCallName(q.fileFilter.filter)
 				},
-				linkTo: q.linkTo ? Array.isArray(q.linkTo) ? q.linkTo.map(l => ({
+				linkTo: q.linkTo ? isArray<LinkTo>(q.linkTo) ? q.linkTo.map(l => ({
 					...l,
 					callName: promoteCallName(l.callName)
 				})) : {
@@ -166,7 +167,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 		}
 		const [info, outgoing] = vertex;
 
-		if(!FunctionCallVertex.is(info)) {
+		if(!DfgVertex.isFunctionCall(info)) {
 			const wantedTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 			const x = outgoing.entries()
 				.filter(([,e]) => DfEdge.includesType(e, wantedTypes))
@@ -265,7 +266,7 @@ function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
  * 1. Resolve all calls in the DF graph that match the respective {@link DefaultCallContextQueryFormat#callName} regex.
  * 2. If there is an alias attached, consider all call traces.
  * 3. Identify their respective call targets, if {@link DefaultCallContextQueryFormat#callTargets} is set to be non-any.
- *    This happens during the main resolution!
+ * This happens during the main resolution!
  * 4. Attach `linkTo` calls to the respective calls.
  */
 export async function executeCallContextQueries({ analyzer }: BasicQueryData, queries: readonly CallContextQuery[]): Promise<CallContextQueryResult> {
@@ -366,7 +367,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 			}
 			let linkedIds: Set<NodeId | { id: NodeId, info: object }> | undefined = undefined;
 			if(cfg && 'linkTo' in query && query.linkTo !== undefined) {
-				const linked = Array.isArray(query.linkTo) ? query.linkTo : [query.linkTo];
+				const linked = isArray<PromotedLinkTo>(query.linkTo) ? query.linkTo : [query.linkTo];
 				for(const link of linked) {
 					/* if we have a linkTo query, we have to find the last call */
 					const linkTos = await identifyLinkToRelation(nodeId, analyzer, link, calls);

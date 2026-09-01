@@ -28,7 +28,7 @@ export function formatNanoseconds(nanoseconds: bigint | number): string {
 	const wholeMillis = wholeNanos / BigInt(1e+6);
 	const millis = wholeMillis % BigInt(1000);
 	const wholeSeconds = wholeMillis / BigInt(1000);
-	if(wholeSeconds > 0){
+	if(wholeSeconds > 0) {
 		const nanoString = nanos > 0 ? `:${nanos}` : '';
 		return pad(`${wholeSeconds}.${String(millis).padStart(3, '0')}${nanoString} s`);
 	} else {
@@ -87,10 +87,10 @@ function printCountSummarizedMeasurements(stats: SummarizedMeasurement): string 
 const units = ['bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
 
 // based on https://stackoverflow.com/a/39906526
-function convertNumberToNiceBytes(x: number){
+function convertNumberToNiceBytes(x: number) {
 	let n = Math.abs(x);
 	let l = 0;
-	while(n >= 1024 && ++l){
+	while(n >= 1024 && ++l) {
 		n = n / 1024;
 	}
 	return pad((x < 0 ? '-' : '') + n.toFixed(n < 10 && l > 0 ? 1 : 0) + ' ' + units[l]);

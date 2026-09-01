@@ -15,7 +15,6 @@ import { DfEdge, EdgeType } from '../../graph/edge';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { toPosixPath } from '../../../util/files';
 import { platformDirname } from '../../internal/process/functions/call/built-in/built-in-source';
-import { NoEdges } from '../../graph/graph';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { uniqueArray } from '../../../util/collections/arrays';
 
@@ -177,7 +176,7 @@ function collect(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): Worki
 	// a function's setwd is propagated to its call sites; only a lone unconditional setwd has a site-independent effect
 	for(const [fn, setwds] of byFn.entries()) {
 		const net = setwds.length === 1 && setwds[0].cds.length === 0 && !setwds[0].iterated ? setwds[0].dir : undefined;
-		for(const [site, edge] of graph.ingoingEdges(fn) ?? NoEdges) {
+		for(const [site, edge] of graph.edgesTo(fn)) {
 			if(!DfEdge.includesType(edge, EdgeType.Calls)) {
 				continue;
 			}

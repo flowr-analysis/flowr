@@ -23,7 +23,8 @@ import type { KnownParser } from '../../../r-bridge/parser';
 
 
 /**
- *
+ * Documents every message the flowR server understands, in the order the wiki presents them.
+ * @param ctx - the documentation context to write into
  */
 export function documentAllServerMessages(ctx: GeneralDocContext) {
 

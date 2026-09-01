@@ -18,7 +18,7 @@ import { SigDbExt, FnProp, DepType } from '../../../../../src/project/sigdb/sche
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { Environment } from '../../../../../src/dataflow/environments/environment';
 import { EnvType, REnvironment } from '../../../../../src/dataflow/environments/environment';
-import { FunctionCallVertex } from '../../../../../src/dataflow/graph/vertex';
+import { DfgVertex } from '../../../../../src/dataflow/graph/vertex';
 import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 import { DfEdge, EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { FlowrAnalyzerPackageVersionsPlugin } from '../../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
@@ -74,7 +74,7 @@ async function analyze(ts: TreeSitterExecutor, code: string, db: PackageSignatur
 /** whether the call `callName` resolves via a `Calls` edge to the export `pkg::fn`'s built-in vertex */
 function callResolvesTo(df: Awaited<ReturnType<typeof analyze>>['df'], callName: string, pkg: string, fn: string): boolean {
 	const target = String(NodeId.fromPkgFn(pkg, fn));
-	const call = df.graph.vertices(true).find(([, v]) => FunctionCallVertex.is(v) && Identifier.getName(v.name) === callName);
+	const call = df.graph.vertices(true).find(([, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === callName);
 	const edges = call ? df.graph.outgoingEdges(call[0]) : undefined;
 	return edges !== undefined && edges.entries().some(([to, e]) => String(to) === target && DfEdge.includesType(e, EdgeType.Calls));
 }
@@ -82,7 +82,7 @@ function callResolvesTo(df: Awaited<ReturnType<typeof analyze>>['df'], callName:
 function qualifiedName(res: Awaited<ReturnType<typeof analyze>>, callName: string): string | undefined {
 	const dfg = res.df.graph;
 	for(const [id, v] of dfg.vertices(true)) {
-		if(FunctionCallVertex.is(v) && Identifier.getName(v.name) === callName) {
+		if(DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === callName) {
 			const q = Dataflow.qualify(id, dfg);
 			return q === undefined ? undefined : Identifier.toString(q);
 		}
@@ -93,7 +93,7 @@ function qualifiedName(res: Awaited<ReturnType<typeof analyze>>, callName: strin
 function originProcs(res: Awaited<ReturnType<typeof analyze>>, callName: string): string[] {
 	const dfg = res.df.graph;
 	for(const [id, v] of dfg.vertices(true)) {
-		if(FunctionCallVertex.is(v) && Identifier.getName(v.name) === callName) {
+		if(DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === callName) {
 			return (Dataflow.origin(dfg, id) ?? []).flatMap(o => 'proc' in o ? [o.proc] : []);
 		}
 	}

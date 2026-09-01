@@ -26,9 +26,10 @@ import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/n
 import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl } from '../../../src/util/mermaid/dfg';
+import type {
+	SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import {
-	SlicingCriterion,
-	SlicingCriteria,
+	SlicingCriterion
 } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
@@ -739,8 +740,8 @@ export function assertDiced(
 		analyzer.addRequest(input);
 		const ast  = await analyzer.normalize();
 		const df   = await analyzer.dataflow();
-		const startIds = SlicingCriteria.convertAll(from, ast.idMap);
-		const endIds   = SlicingCriteria.convertAll(to, ast.idMap);
+		const startIds = SlicingCriterion.convertAll(from, ast.idMap);
+		const endIds   = SlicingCriterion.convertAll(to, ast.idMap);
 		const slice    = staticDice(analyzer.inspectContext(), df, ast, startIds, endIds);
 		const rec      = reconstructToCode(ast, { nodes: slice.result }, doNotAutoSelect);
 		const code     = (Array.isArray(rec.code) ? rec.code.join('\n') : rec.code).trim();
@@ -764,10 +765,10 @@ export function assertDiced(
 		if(opts.maxSize !== undefined) {
 			assert.isAtMost(slice.result.size, opts.maxSize, 'result set must be at most this large');
 		}
-		for(const id of SlicingCriteria.convertAll(opts.hasNodes ?? [], ast.idMap)) {
+		for(const id of SlicingCriterion.convertAll(opts.hasNodes ?? [], ast.idMap)) {
 			assert.isTrue(slice.result.has(id), `expected node id ${id} to be in dice result`);
 		}
-		for(const id of SlicingCriteria.convertAll(opts.lacksNodes ?? [], ast.idMap)) {
+		for(const id of SlicingCriterion.convertAll(opts.lacksNodes ?? [], ast.idMap)) {
 			assert.isFalse(slice.result.has(id), `expected node id ${id} NOT to be in dice result`);
 		}
 	});

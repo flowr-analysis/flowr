@@ -4,9 +4,9 @@ import { NoEdges } from '../dataflow/graph/graph';
 import type { DFControlFlowEdge } from '../dataflow/graph/edge';
 import { ControlFlowEdgeTypes, DfEdge, EdgeType } from '../dataflow/graph/edge';
 import type { ControlDependency, DataflowInformation } from '../dataflow/info';
-import { ControlDependency as ControlDependencyHelper, ExitPointType  } from '../dataflow/info';
+import { ControlDependency as ControlDependencyHelper, ExitPointType } from '../dataflow/info';
 import type { DataflowGraphVertexFunctionDefinition } from '../dataflow/graph/vertex';
-import { FunctionCallVertex, FunctionDefinitionVertex } from '../dataflow/graph/vertex';
+import { DfgVertex } from '../dataflow/graph/vertex';
 import { graph2quads, type QuadSerializationConfiguration } from '../util/quads';
 import { ControlFlow } from '../dataflow/internal/control-flow';
 import type { MergeableRecord } from '../util/objects';
@@ -117,8 +117,8 @@ export const CfgVertex = {
 	},
 	/**
 	 * Create a new basic block vertex with the given id and elements.
-	 * @param id          - the id of the vertex, which should directly relate to the AST node
-	 * @param elems       - the vertices that are part of this block in the order they run, only connected by FDs; a vertex should never occur in multiple blocks
+	 * @param id    - the id of the vertex, which should directly relate to the AST node
+	 * @param elems - the vertices that are part of this block in the order they run, only connected by FDs; a vertex should never occur in multiple blocks
 	 * @see {@link CfgVertex#isBlock|isBlock()} - for a way to check whether a vertex is a basic block vertex
 	 */
 	makeBlock(this: void, id: NodeId, elems: readonly Exclude<CfgVertex, CfgBasicBlockVertex>[]): CfgBasicBlockVertex {
@@ -396,19 +396,33 @@ export interface ReadOnlyControlFlowGraph {
 	 */
 	readonly ingoingEdges:       (id: NodeId) => ReadonlyMap<NodeId, CfgEdge> | undefined
 	/**
+	 * The edges leaving the given vertex, i.e. what may be evaluated after it, answering with the shared empty
+	 * {@link NoEdges} rather than with `undefined` for a vertex that has none.
+	 * This is the pendant of {@link DataflowGraph#edgesFrom|edgesFrom()} on a {@link DataflowGraph}.
+	 * @see {@link ReadOnlyControlFlowGraph#edgesTo|edgesTo()} - for what may be evaluated before it
+	 */
+	readonly edgesFrom:          (id: NodeId) => ReadonlyMap<NodeId, CfgEdge>
+	/**
+	 * The edges leading into the given vertex, i.e. what may be evaluated before it, answering with the shared
+	 * empty {@link NoEdges} rather than with `undefined` for a vertex that has none.
+	 * This is the pendant of {@link DataflowGraph#edgesTo|edgesTo()} on a {@link DataflowGraph}.
+	 * @see {@link ReadOnlyControlFlowGraph#edgesFrom|edgesFrom()} - for what may be evaluated after it
+	 */
+	readonly edgesTo:            (id: NodeId) => ReadonlyMap<NodeId, CfgEdge>
+	/**
 	 * Retrieve a vertex by its id.
-	 * @param id - the id of the vertex to retrieve
+	 * @param id            - the id of the vertex to retrieve
 	 * @param includeBlocks - if true, the elements of basic block elements are included in the result, otherwise this will only the basic blocks themselves
 	 *
-	 * This is the pendant of {@link DataflowGraph#getVertex|getVertex()} on a {@link DataflowGraph}.
+	 *                      This is the pendant of {@link DataflowGraph#getVertex|getVertex()} on a {@link DataflowGraph}.
 	 */
 	readonly getVertex:          (id: NodeId, includeBlocks?: boolean) => CfgVertex | undefined
 	/**
 	 * Check if a vertex with the given id exists in the graph.
-	 * @param id - the id of the vertex to check
+	 * @param id            - the id of the vertex to check
 	 * @param includeBlocks - if true, the elements of basic block elements are included in the check, otherwise this will only check the basic blocks themselves
 	 *
-	 * This is the pendant of {@link DataflowGraph#hasVertex|hasVertex()} on a {@link DataflowGraph}.
+	 *                      This is the pendant of {@link DataflowGraph#hasVertex|hasVertex()} on a {@link DataflowGraph}.
 	 */
 	readonly hasVertex:          (id: NodeId, includeBlocks?: boolean) => boolean
 	/**
@@ -448,11 +462,11 @@ export interface ReadOnlyControlFlowGraph {
 	 *
 	 * Since a construct is reached only once its parts have run, standing on the condition is the moment
 	 * to ask what that condition is for.
+	 * @see {@link ReadOnlyControlFlowGraph#entryOf|entryOf()} - for the way back, from the construct to its condition
 	 * @example
 	 * ```r
 	 * if(u) a else b # decides(u) names the if, so `u` is known to be its condition
 	 * ```
-	 * @see {@link ReadOnlyControlFlowGraph#entryOf|entryOf()} - for the way back, from the construct to its condition
 	 */
 	readonly decides:            (id: NodeId) => readonly NodeId[]
 	/**
@@ -660,6 +674,16 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 		return this.reverse().get(node);
 	}
 
+	/** @see {@link ReadOnlyControlFlowGraph#edgesFrom|edgesFrom()} */
+	edgesFrom(node: NodeId): ReadonlyMap<NodeId, CfgEdge> {
+		return this.outgoingEdges(node) ?? NoEdges;
+	}
+
+	/** @see {@link ReadOnlyControlFlowGraph#edgesTo|edgesTo()} */
+	edgesTo(node: NodeId): ReadonlyMap<NodeId, CfgEdge> {
+		return this.ingoingEdges(node) ?? NoEdges;
+	}
+
 	rootIds(): ReadonlySet<NodeId> {
 		if(this.isView) {
 			const dfg = this.dfg as DataflowGraph;
@@ -760,14 +784,14 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 	childrenOf(id: NodeId): readonly NodeId[] | undefined {
 		if(this.isView) {
 			const vertex = (this.dfg as DataflowGraph).getVertex(id);
-			return FunctionDefinitionVertex.is(vertex) ? bodyOf(vertex) : undefined;
+			return DfgVertex.isFunctionDefinition(vertex) ? bodyOf(vertex) : undefined;
 		}
 		return CfgVertex.getChildren(this.getVertex(id));
 	}
 
 	decides(id: NodeId): readonly NodeId[] {
 		let result: NodeId[] | undefined = undefined;
-		for(const [, edge] of this.outgoingEdges(id) ?? NoEdges) {
+		for(const [, edge] of this.edgesFrom(id)) {
 			if(CfgEdge.isControlDependency(edge) && !result?.includes(edge.id)) {
 				(result ??= []).push(edge.id);
 			}
@@ -911,10 +935,10 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 	/**
 	 * **This Operation is in-place and modifies the current graph.**
 	 * Merge another control flow graph into this one.
-	 * @param other - the other control flow graph to merge into this one
+	 * @param other       - the other control flow graph to merge into this one
 	 * @param forceNested - should the other graph be assumed to be fully nested (e.g., within a function definition).
 	 *
-	 * This is the pendant of {@link DataflowGraph#mergeWith|mergeWith()} on a {@link DataflowGraph}.
+	 *                    This is the pendant of {@link DataflowGraph#mergeWith|mergeWith()} on a {@link DataflowGraph}.
 	 */
 	mergeWith(other: ControlFlowGraph<Vertex>, forceNested = false): this {
 		this.materialize();
@@ -1043,7 +1067,7 @@ function toCfgEdge(edge: DfEdge): CfgEdge | undefined {
 function makeCfgVertex(dfg: DataflowGraph, id: NodeId): CfgVertex {
 	const type = ControlFlow.isStatement(dfg, id) ? CfgVertexType.Statement : CfgVertexType.Expression;
 	const vertex = dfg.getVertex(id);
-	if(FunctionDefinitionVertex.is(vertex)) {
+	if(DfgVertex.isFunctionDefinition(vertex)) {
 		/*
 		 * The body is a region of its own: evaluating the definition produces the closure and does not run it,
 		 * so nothing flows from here into the body. Naming the body as children is what lets a traversal step
@@ -1062,11 +1086,11 @@ function makeCfgVertex(dfg: DataflowGraph, id: NodeId): CfgVertex {
  */
 function collectCallTargets(dfg: DataflowGraph, id: NodeId): Set<NodeId> | undefined {
 	const vertex = dfg.getVertex(id);
-	if(!FunctionCallVertex.is(vertex)) {
+	if(!DfgVertex.isFunctionCall(vertex)) {
 		return undefined;
 	}
 	let targets: Set<NodeId> | undefined = undefined;
-	for(const [target, edge] of dfg.outgoingEdges(id) ?? NoEdges) {
+	for(const [target, edge] of dfg.edgesFrom(id)) {
 		/* a built-in has no definition in the source, so there is nothing for the control flow to point at */
 		if(DfEdge.includesType(edge, EdgeType.Calls) && !NodeId.isBuiltIn(target)) {
 			targets ??= new Set<NodeId>();
@@ -1082,7 +1106,9 @@ function collectCallTargets(dfg: DataflowGraph, id: NodeId): Set<NodeId> | undef
  */
 
 /**
- *
+ * The control flow of a whole analysis: the graph of what may run after what, along with the exit points
+ * (`return`s, `break`s and `next`es) the traversal collected on the way.
+ * @param dataflow - the analysis to read the AST and the resolved calls from
  */
 export function extractCfg(dataflow: DataflowInformation): ControlFlowInformation {
 	const returns: NodeId[] = [];

@@ -1,27 +1,13 @@
 import { executeQueriesOfSameType } from '../../query';
-import {
-	DefaultDependencyCategories,
-	type DefaultDependencyCategoryName,
-	type DependenciesQuery,
-	type DependenciesQueryResult,
-	type DependencyCategoryName,
-	type DependencyInfo,
-	getAllCategories,
-	Constant,
-	Unknown
-} from './dependencies-query-format';
+import { DefaultDependencyCategories, type DefaultDependencyCategoryName, type DependenciesQuery, type DependenciesQueryResult, type DependencyCategoryName, type DependencyInfo, getAllCategories, Constant, Unknown } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
-import { FunctionCallVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
+import { DfgVertex, type DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { BasicQueryData } from '../../base-query-format';
 import { compactRecord } from '../../../util/objects';
-import {
-	type DependencyInfoLinkAttachedInfo,
-	DependencyInfoLinkConstraint,
-	type FunctionInfo
-} from './function-info/function-info';
+import { type DependencyInfoLinkAttachedInfo, DependencyInfoLinkConstraint, type FunctionInfo } from './function-info/function-info';
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
 import { getArgumentStringValue } from '../../../dataflow/eval/resolve/resolve-argument';
 import type { DataflowInformation } from '../../../dataflow/info';
@@ -70,7 +56,7 @@ export async function executeDependenciesQuery({
 	const functions = new Map<DependencyCategoryName, FunctionInfo[]>(Object.entries(DefaultDependencyCategories).map(([c, v]) => {
 		return [c, getFunctionsToCheck(query[`${c as DefaultDependencyCategoryName}Functions`], c, query.enabledCategories, ignoreDefault, v.functions)];
 	}));
-	if(query.additionalCategories !== undefined){
+	if(query.additionalCategories !== undefined) {
 		for(const [category, value] of Object.entries(query.additionalCategories)) {
 			// custom categories only use the "functions" collection and do not allow specifying additional functions in the object itself, so we "undefined" a lot here
 			const custom = getFunctionsToCheck(undefined, category, undefined, false, value.functions);
@@ -118,7 +104,7 @@ function makeCallContextQuery(this: void, [kind, functions]: [DependencyCategory
 	}));
 }
 
-function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: object })[] | undefined): NodeId[] | undefined{
+function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: object })[] | undefined): NodeId[] | undefined {
 	if(!linkedIds) {
 		return undefined;
 	}
@@ -308,7 +294,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | und
 		}
 		// collect this one!
 		const vertex = data.dataflow.graph.getVertex(linkedId.id);
-		if(!FunctionCallVertex.is(vertex)) {
+		if(!DfgVertex.isFunctionCall(vertex)) {
 			continue;
 		}
 		const args = getArgumentStringValue(data.config.solver.variables, data.dataflow.graph, vertex, info.argIdx, info.argName, info.resolveValue, data.ctx);
@@ -326,7 +312,7 @@ function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | und
 	return map.size ? map : undefined;
 }
 
-function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, functionFlag: DependencyCategoryName, enabled: DependencyCategoryName[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
+function getFunctionsToCheck(customFunctions: readonly FunctionInfo[] | undefined, functionFlag: DependencyCategoryName, enabled: readonly DependencyCategoryName[] | undefined, ignoreDefaultFunctions: boolean, defaultFunctions: readonly FunctionInfo[]): FunctionInfo[] {
 	// "If unset or empty, all function types are searched for."
 	if(enabled !== undefined && (enabled?.length === 0 || !enabled.includes(functionFlag))) {
 		return [];

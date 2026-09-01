@@ -298,7 +298,7 @@ This page describes the flowR linter, which is a tool that utilizes flowR's data
 Some rules also draw on the ${ctx.linkPage('wiki/Signature Database', 'signature database')}.
 For example:
 
-${await(async() => {
+${await (async() => {
 	const code = 'read.csv("/root/x.txt")';
 	const res = await showQuery(knownParser, code, [{ type: 'linter' }], { showCode: false, collapseQuery: true, collapseResult: false });
 	return await documentReplSession(knownParser, [{
@@ -322,7 +322,7 @@ ${block({
 
 The following linting rules are available:
 
-${await(async() => {
+${await (async() => {
 		let result = '';
 		for(const k of Object.keys(LintingRules).sort()) {
 			const rule = rules.get(k as LintingRuleNames);

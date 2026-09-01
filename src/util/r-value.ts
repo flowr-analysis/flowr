@@ -4,8 +4,8 @@ import { type ValueNull,
 	type ValueLogical,
 	type ValueNumber,
 	type ValueString,
-	type ValueVector
-	, isValue
+	type ValueVector,
+	isValue
 } from '../dataflow/eval/values/r-value';
 import type { RLogicalValue } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { RFalse, RTrue, type RNumberValue, type RStringValue } from '../r-bridge/lang-4.x/convert-values';

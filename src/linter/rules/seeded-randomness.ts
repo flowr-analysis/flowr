@@ -30,6 +30,7 @@ import { happensInEveryBranchSet } from '../../dataflow/info';
 import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 import { SemanticCallTag } from '../../dataflow/environments/built-in-props';
 import { BuiltInIndex } from '../../dataflow/environments/query-fn-props';
+import { Resolve } from '../../dataflow/environments/resolve-helper';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
@@ -45,7 +46,7 @@ export interface SeededRandomnessConfig extends MergeableRecord {
 	/**
 	 * A set of randomness consumer function names that require a seed to be set prior to invocation.
 	 */
-	randomnessConsumers: string[]
+	randomnessConsumers: readonly string[]
 }
 
 const RandomnessProducers: SeededRandomnessConfig['randomnessProducers'] = [
@@ -118,7 +119,7 @@ export const SEEDED_RANDOMNESS = {
 						if(isConstantArgument(dataflow.graph, f, 0, data.inspectContext())) {
 							const fCds = new Set(f.cds).difference(cds);
 							metadata.callsWithFunctionProducers++;
-							if(fCds.size <= 0 || happensInEveryBranchSet(fCds)){
+							if(fCds.size <= 0 || happensInEveryBranchSet(fCds)) {
 								return [];
 							} else {
 								for(const f of fCds) {
@@ -204,7 +205,7 @@ function getDefaultAssignments(): BuiltInFunctionDefinition<BuiltInProcName.Assi
 
 function isConstantArgument(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, argIndex: number, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	const args = call.args.filter(arg => arg !== EmptyArgument && !arg.name).map(FunctionArgument.getReference);
-	const values = NodeValue.inGraph.setOf(args[argIndex], graph, ctx, { resolve: VariableResolve.Alias });
+	const values = NodeValue.setOf(args[argIndex], Resolve.info(graph, ctx), { resolve: VariableResolve.Alias });
 	return values?.elements.every(v =>
 		v.type === 'number' ||
 		v.type === 'logical' ||

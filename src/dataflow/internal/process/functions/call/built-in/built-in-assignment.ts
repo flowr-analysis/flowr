@@ -1,7 +1,8 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
+import { FunctionSemantics } from '../../../../../fn/function-semantics';
 import type { DataflowInformation } from '../../../../../info';
 import { markArgumentsAsNonStandardEvaluation, NseArguments, NseKind, processKnownFunctionCall } from '../known-call-handling';
-import { Nse, Unquote } from '../nse';
+import { Unquote } from '../nse';
 import { DataMaskingFunctionNames } from '../../../../../environments/data-masking-functions';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { log, LogLevel } from '../../../../../../util/log';
@@ -19,19 +20,13 @@ import type { PotentiallyEmptyRArgument, EmptyArgument } from '../../../../../..
 import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import {
-	Identifier,
-	type IdentifierReference,
-	type InGraphIdentifierDefinition,
-	type InGraphReferenceType,
-	ReferenceType
-} from '../../../../../environments/identifier';
+import { Identifier, type IdentifierReference, type InGraphIdentifierDefinition, type InGraphReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
-import { FunctionCallVertex, FunctionDefinitionVertex, VertexType } from '../../../../../graph/vertex';
+import { DfgVertex, VertexType } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
@@ -47,7 +42,6 @@ import { resolveListToEnvState } from './built-in-list';
 import { resolveClassMethodsToEnvState, resolveConstructorInstanceEnvState } from './built-in-class-generator';
 import { stackEnvStateFromSource } from './built-in-stack-env';
 import { Resolve } from '../../../../../environments/resolve-helper';
-import { NoEdges } from '../../../../../graph/graph';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & RAstNodeBase<OtherInfo> & Location, prefix: Identifier, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -79,7 +73,7 @@ export interface AssignmentConfiguration {
 	readonly modesForFn?:          DataflowGraphVertexFunctionDefinition['mode']
 	/**
 	 * Name of the arg selecting the target env (e.g. `'envir'` for `assign`); if it resolves to a tracked
-	 *  {@link InGraphIdentifierDefinition#envState}, the assignment is routed there instead of the current scope.
+	 * {@link InGraphIdentifierDefinition#envState}, the assignment is routed there instead of the current scope.
 	 */
 	readonly environmentArg?:      string
 }
@@ -217,14 +211,14 @@ function processMaskedNamePair<OtherInfo>(
 	const target = args[0];
 	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, NseArguments.First, {
 		kind:      NseKind.DataMasked,
-		evaluated: Nse.unquoted(RArgument.isEmpty(target) ? undefined : target?.value, Unquote.Rlang)
+		evaluated: FunctionSemantics.call.nse.unquoted(RArgument.isEmpty(target) ? undefined : target?.value, Unquote.Rlang)
 	});
 	return information;
 }
 
 /**
  * Processes an assignment `<target> <- <source>` as the function call \`&lt;-\` `(<target>, <source>)`,
- *  including replacement functions (e.g., `names(x) <- ...` as \`names&lt;-\` `(x, ...)`).
+ * including replacement functions (e.g., `names(x) <- ...` as \`names&lt;-\` `(x, ...)`).
  */
 export function processAssignment<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -431,12 +425,12 @@ function checkTargetReferenceType(sourceInfo: DataflowInformation, fnModes: Data
  */
 function isEnvCreatorSource(sourceInfo: DataflowInformation): boolean {
 	const vert = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
-	return FunctionCallVertex.hasOrigin(vert, BuiltInProcName.NewEnv);
+	return DfgVertex.hasOrigin(vert, BuiltInProcName.NewEnv);
 }
 
 /**
  * When `e$x <- val` and `e` holds a tracked {@link InGraphIdentifierDefinition#envState}, adds field `x` into that
- *  envState instead of redefining `e`; returns `undefined` when routing is not applicable.
+ * envState instead of redefining `e`; returns `undefined` when routing is not applicable.
  */
 function tryRouteDollarEnvAssign<OtherInfo>(
 	rootId:      NodeId,
@@ -485,7 +479,7 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 
 /**
  * When `config.environmentArg` (e.g. `'envir'` for `assign`) resolves to a variable with a tracked
- *  {@link InGraphIdentifierDefinition#envState}, routes the written definitions there instead of the current scope; returns `undefined` if not possible.
+ * {@link InGraphIdentifierDefinition#envState}, routes the written definitions there instead of the current scope; returns `undefined` if not possible.
  */
 function tryRouteToCustomEnv<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -539,7 +533,7 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
 
 /**
  * Models a call like `Hmisc::getHdata(x)` that loads a dataset into the variable it is *given*: `x` is both
- *  **read** (its value comes from outside) and **defined** by the call; unlike {@link markAsAssignment} we keep the read edge.
+ * **read** (its value comes from outside) and **defined** by the call; unlike {@link markAsAssignment} we keep the read edge.
  */
 export function processDefineArgument<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -583,7 +577,7 @@ export function markAsAssignment<OtherInfo>(
 	}
 	information.graph.addEdge(nid, rootIdOfAssignment, EdgeType.DefinedBy);
 	// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
-	for(const [id] of information.graph.outgoingEdges(nodeToDefine.nodeId) ?? NoEdges) {
+	for(const [id] of information.graph.edgesFrom(nodeToDefine.nodeId)) {
 		information.graph.removeEdgeType(nodeToDefine.nodeId, id, EdgeType.Reads);
 	}
 }
@@ -620,13 +614,13 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 				?? findReturnsEnvState(defs);
 		} else {
 			const entryVertex = sourceArg.graph.getVertex(sourceArg.entryPoint);
-			if(FunctionCallVertex.hasOrigin(entryVertex, BuiltInProcName.List)) {
+			if(DfgVertex.hasOrigin(entryVertex, BuiltInProcName.List)) {
 				envState = resolveListToEnvState(source, data);
-			} else if(FunctionCallVertex.hasOrigin(entryVertex, BuiltInProcName.ClassGenerator)) {
+			} else if(DfgVertex.hasOrigin(entryVertex, BuiltInProcName.ClassGenerator)) {
 				returnsEnvState = resolveClassMethodsToEnvState(source, data);
-			} else if(FunctionDefinitionVertex.is(entryVertex) && entryVertex.returnEnvState !== undefined) {
+			} else if(DfgVertex.isFunctionDefinition(entryVertex) && entryVertex.returnEnvState !== undefined) {
 				returnsEnvState = entryVertex.returnEnvState;
-			} else if(FunctionCallVertex.is(entryVertex) && entryVertex.name) {
+			} else if(DfgVertex.isFunctionCall(entryVertex) && entryVertex.name) {
 				envState = findReturnsEnvState(Resolve.byNameAndType(entryVertex.name, data.environment, ReferenceType.Function));
 			}
 			envState ??= resolveConstructorInstanceEnvState(source, data);

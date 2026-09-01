@@ -85,12 +85,9 @@ export function reconstructS3Generics(exported: readonly string[]): Map<string, 
 	return generics;
 }
 
-/** the built {@link ExportIndex} of each source, see {@link ExportIndex.of} for why it is keyed by the source */
-const exportIndices = new WeakMap<PackageSignatureSource, ReadonlyMap<string, ExportIndexEntry>>();
-
 /**
  * `name -> packages of a source exporting it`, filled lazily per name and shared by every analyzer mounting that
- * source; unlike the eager {@link ExportIndex} (which scans all ~1.1M export names up front), this stays proportional to what a run actually asks about.
+ * source; this stays proportional to what a run actually asks about rather than scanning all ~1.1M export names up front.
  */
 const exportOwnersBySource = new WeakMap<PackageSignatureSource, DefaultMap<string, readonly string[]>>();
 
@@ -103,57 +100,6 @@ function exportOwners(src: PackageSignatureSource, name: string): readonly strin
 	}
 	return byName.get(name);
 }
-
-/**
- * The packages exporting one name: the sole exporter bare, rivals as an array. About 95% of names have exactly
- * one exporter, so wrapping those in an array too would cost more than the index itself.
- */
-export type ExportIndexEntry = string | string[];
-
-/**
- * The reverse `export name -> packages exporting it` view of a signature source, each entry ordered by download
- * count (descending, ties by name) so whoever has to pick one exporter starts with the package a script most likely means.
- */
-export const ExportIndex = {
-	name: 'ExportIndex',
-	/**
-	 * The index of `src`, built on first use and shared by every later caller. Reading it scans every package blob
-	 * of the bundle (~1.1M names for the shipped one) -- see {@link exportOwnersBySource} for the far cheaper per-name alternative {@link FlowrAnalyzerPackageVersionsSigDbPlugin.packagesExporting} actually uses.
-	 */
-	of(this: void, src: PackageSignatureSource): ReadonlyMap<string, ExportIndexEntry> {
-		const cached = exportIndices.get(src);
-		if(cached !== undefined) {
-			return cached;
-		}
-		const index = new Map<string, ExportIndexEntry>();
-		for(const pkg of src.packageNames()) {
-			for(const exp of src.lookup(pkg)?.exported ?? []) {
-				const owners = index.get(exp);
-				if(owners === undefined) {
-					index.set(exp, pkg);
-				} else if(typeof owners === 'string') {
-					if(owners !== pkg) {
-						index.set(exp, [owners, pkg]);
-					}
-				} else if(owners[owners.length - 1] !== pkg) {
-					owners.push(pkg);
-				}
-			}
-		}
-		// sorting once per name here beats sorting at every lookup
-		for(const owners of index.values()) {
-			if(typeof owners !== 'string') {
-				owners.sort((a, b) => src.downloads(b) - src.downloads(a) || a.localeCompare(b));
-			}
-		}
-		exportIndices.set(src, index);
-		return index;
-	},
-	/** The packages an {@link ExportIndexEntry} names, as a list; empty when no package exports the name. */
-	owners(this: void, entry: ExportIndexEntry | undefined): readonly string[] {
-		return entry === undefined ? [] : typeof entry === 'string' ? [entry] : entry;
-	}
-} as const;
 
 /**
  * Resolves `library(pkg)` / `use(pkg, fn)` from precomputed `flowr-sigdb` databases via the {@link PackageSignatureSource}

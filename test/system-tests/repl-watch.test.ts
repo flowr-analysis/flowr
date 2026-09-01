@@ -29,7 +29,7 @@ function flowrReplUntil(command: string, terminateOn: string, timeout = 90_000):
 	return new Promise<string>((resolve, reject) => {
 		let done = false;
 		const finish = (fn: () => void) => {
-			if(!done){
+			if(!done) {
 				done = true; clearTimeout(timer); fn();
 			}
 		};
@@ -70,7 +70,7 @@ function flowrReplWatchAndChange(command: string, filePath: string, contents: re
 		let done = false;
 		let writer: ReturnType<typeof setInterval> | undefined;
 		const finish = (fn: () => void) => {
-			if(!done){
+			if(!done) {
 				done = true; clearTimeout(timer); clearInterval(writer); fn();
 			}
 		};

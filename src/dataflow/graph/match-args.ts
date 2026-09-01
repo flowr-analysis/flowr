@@ -1,3 +1,9 @@
+/**
+ * `FunctionSemantics.call` is the entry point these members are reached through, and it is built on this file, so the backing
+ * functions are called directly here; going through `FunctionSemantics` would make `src/dataflow/fn/function-semantics.ts` import its own
+ * importers.
+ * @lintIgnore use-instead
+ */
 import { EmptyArgument, type PotentiallyEmptyRArgument, RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
@@ -41,14 +47,13 @@ function graphArgumentNames(args: readonly FunctionArgument[]): (string | undefi
  * ```
  */
 export const MatchArgs = {
-	name: 'MatchArgs',
 	/**
 	 * Binds a call's AST `args` to the formal `paramNames`. An empty argument (`f(1, ,3)`) takes its formal but
 	 * never appears here. Arguments falling to `...` share that key, so only the last survives; use
 	 * {@link MatchArgs.toSpec} to keep them all.
 	 * @param args       - The arguments as they stand in the normalized AST.
 	 * @param paramNames - The formals of the called function, in order.
-	 * @returns Per formal name the argument bound to it.
+	 * @returns          Per formal name the argument bound to it.
 	 * @see {@link RFunctionCall.matchArgsToParams} - the implementation, kept there to avoid a load-time import cycle.
 	 */
 	toNames<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], paramNames: readonly string[]): ReadonlyMap<string, RArgument<Info>> {
@@ -60,7 +65,7 @@ export const MatchArgs = {
 	 * really has none, as that is what collects arguments finding no formal of their own.
 	 * @param args   - The arguments as the graph holds them, see {@link convertFnArguments}.
 	 * @param params - Formal name to the target it stands for, or a signature whose names are the targets.
-	 * @returns Per target the ids bound to it.
+	 * @returns      Per target the ids bound to it.
 	 */
 	toSpec<Targets extends NodeId = string>(this: void, args: readonly FunctionArgument[], params: Record<string, Targets> | readonly SigParameter[]): Map<Targets, NodeId[]> {
 		let spec = params as Record<string, Targets>;
@@ -95,7 +100,7 @@ export const MatchArgs = {
 	 * @param args   - The arguments as the graph holds them.
 	 * @param params - The parameters of the called definition, in order.
 	 * @param graph  - The graph the edges are added to.
-	 * @returns The argument id to parameter id mapping the edges were drawn for.
+	 * @returns      The argument id to parameter id mapping the edges were drawn for.
 	 */
 	onCallAndLink(this: void, args: readonly FunctionArgument[], params: readonly RParameter<ParentInformation>[], graph: DataflowGraph): Map<NodeId, NodeId> {
 		const matched = matchArgumentsToParameters(graphArgumentNames(args), params.map(p => p?.special ? DotsParameterName : p?.name?.content));
@@ -131,7 +136,7 @@ export const MatchArgs = {
 	 * @param call  - The call whose arguments are to be bound.
 	 * @param graph - The finished graph the call was analyzed into.
 	 * @param ctx   - The analyzer context the database and the assumed versions come from.
-	 * @returns Per formal name the argument bound to it, `undefined` if the formals could not be found.
+	 * @returns     Per formal name the argument bound to it, `undefined` if the formals could not be found.
 	 */
 	toDefinition<Info>(this: void, call: RFunctionCall<Info & ParentInformation>, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): ReadonlyMap<string, RArgument<Info & ParentInformation>> | undefined {
 		const names = formalsOf(call, graph, ctx);
@@ -144,7 +149,7 @@ export const MatchArgs = {
 	 * @param args      - The function arguments as the graph holds them.
 	 * @param signature - The function signature whose names are the targets.
 	 * @param props     - The {@link ArgProp}s the function arguments should have.
-	 * @returns The value ids of the matching arguments.
+	 * @returns         The value ids of the matching arguments.
 	 */
 	findWithProps(this: void, args: readonly FunctionArgument[], signature: FnSig, props: ArgProps): NodeId[] {
 		const layout = FnSig.layout(signature);

@@ -2,10 +2,9 @@ import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { FunctionDefinitionVertex, VariableDefinitionVertex } from '../../dataflow/graph/vertex';
+import { DfgVertex } from '../../dataflow/graph/vertex';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { NoEdges } from '../../dataflow/graph/graph';
 import { RAccess } from '../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
@@ -24,7 +23,7 @@ const ResolveEdges: number = EdgeType.Reads | EdgeType.DefinedByOnCall;
  * constant such as `T`, `pi`). Broader than `Dataflow.origin`, which misses built-in constants.
  */
 export function useResolvesToDefinitionOrBuiltin(graph: DataflowGraph, id: NodeId): boolean {
-	for(const [target, edge] of graph.outgoingEdges(id) ?? NoEdges) {
+	for(const [target, edge] of graph.edgesFrom(id)) {
 		if(DfEdge.doesNotIncludeType(edge, ResolveEdges) || DfEdge.includesType(edge, EdgeType.NonStandardEvaluation)) {
 			continue;
 		}
@@ -32,7 +31,7 @@ export function useResolvesToDefinitionOrBuiltin(graph: DataflowGraph, id: NodeI
 			return true;
 		}
 		const targetVtx = graph.getVertex(target);
-		if(VariableDefinitionVertex.is(targetVtx) || FunctionDefinitionVertex.is(targetVtx)) {
+		if(DfgVertex.isVariableDefinition(targetVtx) || DfgVertex.isFunctionDefinition(targetVtx)) {
 			return true;
 		}
 	}
@@ -119,7 +118,7 @@ export function collectScopeDefinedNames(graph: DataflowGraph): ScopeDefinedName
 		return byScope;
 	}
 	for(const [id, vtx] of graph.vertices(true)) {
-		if(!VariableDefinitionVertex.is(vtx)) {
+		if(!DfgVertex.isVariableDefinition(vtx)) {
 			continue;   // function bindings/params surface as variable definitions of their name symbol
 		}
 		const name = idMap.get(id)?.lexeme;

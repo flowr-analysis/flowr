@@ -4,9 +4,8 @@ import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-
 import { Package } from '../../../../../src/project/plugins/package-version-plugins/package';
 import { DfEdge, EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { FunctionCallVertex } from '../../../../../src/dataflow/graph/vertex';
+import { DfgVertex } from '../../../../../src/dataflow/graph/vertex';
 import type { RShell } from '../../../../../src/r-bridge/shell';
-import { NoEdges } from '../../../../../src/dataflow/graph/graph';
 
 /** The nodes the `filter()` call resolves to in the dataflow graph (built-in package targets keep their `pkg:fn` id). */
 async function filterCallTargets(shell: RShell, code: string, register: [string, string[]][]): Promise<Set<string>> {
@@ -18,8 +17,8 @@ async function filterCallTargets(shell: RShell, code: string, register: [string,
 	const df = await analyzer.dataflow();
 	const targets = new Set<string>();
 	for(const [id, vertex] of df.graph.vertices(true)) {
-		if(FunctionCallVertex.is(vertex) && String(vertex.name) === 'filter') {
-			for(const [target, edge] of df.graph.outgoingEdges(id) ?? NoEdges) {
+		if(DfgVertex.isFunctionCall(vertex) && String(vertex.name) === 'filter') {
+			for(const [target, edge] of df.graph.edgesFrom(id)) {
 				if(DfEdge.includesType(edge, EdgeType.Reads) || DfEdge.includesType(edge, EdgeType.Calls)) {
 					targets.add(String(target));
 				}

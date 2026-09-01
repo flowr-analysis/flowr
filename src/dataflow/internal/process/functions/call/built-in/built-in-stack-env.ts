@@ -7,8 +7,8 @@ import { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-s
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { EnvType, REnvironment, SearchPathPackagePrefix, type Environment, type REnvironmentInformation } from '../../../../../environments/environment';
-import { FunctionCallVertex } from '../../../../../graph/vertex';
-import { RFunctionCall, EmptyArgument  } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { DfgVertex } from '../../../../../graph/vertex';
+import { RFunctionCall, EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { StackEnvBuiltins, StackEnvKind } from '../../../../../environments/default-builtin-config';
 import type { Identifier } from '../../../../../environments/identifier';
@@ -109,7 +109,7 @@ function asSearchPathEnv(name: string, data: StackEnvContext): REnvironmentInfor
 /** The stack environment `sourceInfo`'s entry call refers to (`e <- globalenv()`, `e <- environment()`), or `undefined`. */
 export function stackEnvStateFromSource(sourceInfo: DataflowInformation, data: StackEnvContext): REnvironmentInformation | undefined {
 	const vertex = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
-	if(!FunctionCallVertex.is(vertex) || vertex.name === undefined) {
+	if(!DfgVertex.isFunctionCall(vertex) || vertex.name === undefined) {
 		return undefined;
 	}
 	const kind = stackEnvKind(String(vertex.name));

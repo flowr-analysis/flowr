@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-23, 19:28:16 UTC (v2.14.3), please do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-29, 14:26:35 UTC (v2.15.8), please do not edit directly._
 <h2 id="unused-import">Unused Import&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that do not directly affect the semantics of the code, but are still considered bad practice."><a href='#smell'>![smell](https://img.shields.io/badge/smell-yellow) </a></span> <span title="This rule may provide quickfixes to automatically fix the issues it detects."><a href='#quickfix'>![quickfix](https://img.shields.io/badge/quickfix-lightgray) </a></span> <span title="This rule is used to detect issues that are related to the readability of the code. For example, complex expressions, long lines, or inconsistent formatting."><a href='#readability'>![readability](https://img.shields.io/badge/readability-teal) </a></span>
@@ -7,7 +7,7 @@ _<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter
 This rule is a `best-effort` rule.
  
 Highlights packages that are attached but never used, so the code runs just the same without them. Requires a signature database, and packages that only do their work on load should be whitelisted in the configuration.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-import.ts#L140">src/linter/rules/unused-import.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-import.ts#L132">src/linter/rules/unused-import.ts</a>._
 
 
 ### Configuration
@@ -15,7 +15,7 @@ _This linting rule is implemented in <a href="https://github.com/flowr-analysis/
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `unused-import` rule accepts the following configuration options:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-import.ts#L40"><code><span title="packages that do their work on load and hence should never be reported, however unused they look">whitelist</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/unused-import.ts#L32"><code><span title="packages that do their work on load and hence should never be reported, however unused they look">whitelist</span></code></a>\
 packages that do their work on load and hence should never be reported, however unused they look
 
 ### Examples
@@ -43,16 +43,16 @@ The linting query can be used to run this rule on the above example:
 
 _Results (prettified and summarized):_
 
-Query: **linter** (4 ms)\
+Query: **linter** (7 ms)\
 &nbsp;&nbsp;&nbsp;╰ **Unused Import** (unused-import):\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ uncertain:\
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Import of stats at 1.1-14 (1 quick fix(es) available)\
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnresolved: 0, totalMultiPackage: 0, totalUnused: 1, searchTimeMs: 3, processTimeMs: 1\
-_All queries together required ≈4 ms (1ms accuracy, total 5 ms)_
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnresolved: 0, totalMultiPackage: 0, totalUnused: 1, searchTimeMs: 6, processTimeMs: 1\
+_All queries together required ≈7 ms (1ms accuracy, total 7 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _4.5 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _7.2 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -96,17 +96,17 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Inte
           "totalUnresolved": 0,
           "totalMultiPackage": 0,
           "totalUnused": 1,
-          "searchTimeMs": 3,
+          "searchTimeMs": 6,
           "processTimeMs": 1
         }
       }
     },
     ".meta": {
-      "timing": 4
+      "timing": 7
     }
   },
   ".meta": {
-    "timing": 4
+    "timing": 7
   }
 }
 ```

@@ -171,7 +171,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 		describe('only deprecate when version constraint is satisfied', async() => {
 			const b = new SigDbBuilder();
 			b.addPackage('testPkg', { latest: '2.0.0', downloads: 5 });
-			b.addVersion('testPkg', '2.0.0', { dependencies: [{ name: 'base', type: 1, constraint: '>= 1.0.0' }], cran: true, functions: [fn('testFn', { file: 'R/paste.R', line: 10, params: [ { name: 'badArg' } ] })] });
+			b.addVersion('testPkg', '2.0.0', { dependencies: [{ name: 'base', type: 1, constraint: '>= 1.0.0' }], cran: true, functions: [fn('testFn', { file: 'R/paste.R', line: 10, params: [{ name: 'badArg' }] })] });
 			b.addPackage('base', { latest: '4.5.3', core: true });
 			const db = await writeAndOpen(sigTmpDir('dep-lint'), b.build({ date: '2026-05-23', generated: 0 }));
 

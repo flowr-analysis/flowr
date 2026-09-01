@@ -13,7 +13,7 @@ import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
  * @param data        - The data used by the parser (see {@link NormalizerData})
  * @param repeatToken - Token which represents the `repeat` keyword
  * @param bodyToken   - The `body` of the repeat-loop
- * @returns The parsed {@link RRepeatLoop} or `undefined` if the given construct is not a repeat-loop
+ * @returns           The parsed {@link RRepeatLoop} or `undefined` if the given construct is not a repeat-loop
  */
 export function tryNormalizeRepeat(data: NormalizerData, [repeatToken, bodyToken]: [NamedJsonEntry, NamedJsonEntry]): RRepeatLoop | undefined {
 	if(repeatToken.name !== RawRType.Repeat) {

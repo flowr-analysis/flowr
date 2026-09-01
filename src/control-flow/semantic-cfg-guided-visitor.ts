@@ -1,4 +1,5 @@
 import type { CfgExpressionVertex, CfgStatementVertex, ControlFlowInformation } from './control-flow-graph';
+import { Resolve } from '../dataflow/environments/resolve-helper';
 import { CfgVertex } from './control-flow-graph';
 import { DataflowAwareCfgGuidedVisitor, type DataflowCfgGuidedVisitorConfiguration } from './dfg-cfg-guided-visitor';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -96,7 +97,7 @@ export class SemanticCfgGuidedVisitor<
 			return undefined;
 		}
 
-		const value = NodeValue.inGraph.soleOf(data.call.args[0].nodeId, this.config.dfg, this.config.ctx, 'logical', { idMap: this.config.normalizedAst.idMap });
+		const value = NodeValue.soleOf(data.call.args[0].nodeId, Resolve.info(this.config.dfg, this.config.ctx), 'logical', { idMap: this.config.normalizedAst.idMap });
 		return value !== undefined && isValue(value.value) ? Boolean(value.value) : undefined;
 	}
 
@@ -194,8 +195,8 @@ export class SemanticCfgGuidedVisitor<
 	 * This function is responsible for dispatching the appropriate event
 	 * based on a given dataflow vertex. The default serves as a backend
 	 * for the event functions below, each of which relates to the corresponding {@link BuiltInProcessorMapper} handler.
-	 * @see {@link onDispatchFunctionCallOrigins} for the aggregation in case the function call target is ambiguous.
 	 * @protected
+	 * @see {@link onDispatchFunctionCallOrigins} for the aggregation in case the function call target is ambiguous.
 	 */
 	protected onDispatchFunctionCallOrigin(call: DataflowGraphVertexFunctionCall, origin: BuiltInProcName) {
 		switch(origin) {

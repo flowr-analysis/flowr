@@ -24,6 +24,17 @@ export type Tail2TypesOrUndefined<T extends AnyArray, U = undefined> = T extends
 export type LastOfArray<T extends AnyArray> = T extends [...infer _, infer L] ? L : never;
 
 /**
+ * Whether `value` is an array, narrowing a `readonly T[]` as such rather than to `any[]`.
+ *
+ * `Array.isArray` is declared as `arg is any[]`, which a `readonly T[] | Something` union does not survive:
+ * the array branch loses its element type and the other branch is not narrowed at all. This keeps both.
+ * @param value - what to check
+ */
+export function isArray<T>(value: readonly T[] | unknown): value is readonly T[] {
+	return Array.isArray(value);
+}
+
+/**
  * Splits the array every time the given predicate fires.
  * The element the split appears on will not be included!
  * @example with this we can split on all empty strings:
@@ -155,17 +166,6 @@ export function arraySum(arr: readonly number[]): number {
 }
 
 /**
- * Converts an array into a bag data-structure (in the form of a map mapping the entries/keys to their counts)
- */
-export function array2bag<T>(arr: T[]): Map<T, number> {
-	const result = new Map<T, number>();
-	for(const elem of arr) {
-		result.set(elem, (result.get(elem) ?? 0) + 1);
-	}
-	return result;
-}
-
-/**
  * Compares two arrays for equality, using the given comparison function for the elements.
  */
 export function arrayEqual<T>(
@@ -192,10 +192,10 @@ export function arrayEqual<T>(
  *
  * If the number of elements to sample is greater or equal to the number of elements in the list, the list is returned as is.
  * If the number of elements to sample is less than or equal to 0, an empty list is returned.
- * @param list - list of elements
+ * @param list        - list of elements
  * @param sampleCount - number of elements to sample
- * @param rounding - rounding mode to use for the index calculation
- * @returns - a list of elements equidistantly sampled from the input list
+ * @param rounding    - rounding mode to use for the index calculation
+ * @returns           - a list of elements equidistantly sampled from the input list
  */
 export function equidistantSampling<T>(list: readonly T[], sampleCount: number, rounding: 'floor' | 'ceil' = 'ceil'): T[] {
 	if(sampleCount >= list.length) {

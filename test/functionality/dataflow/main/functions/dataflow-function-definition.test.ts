@@ -47,7 +47,7 @@ describe('Function Definition', { concurrent: false }, withShell(shell => {
 					entryPoint:        '5',
 					graph:             new Set(['0', '4', '5']),
 					environment:       defaultEnv().pushEnv().defineParameter('x', '0', '1')
-				}, { readParams: [ [0, true] ] })
+				}, { readParams: [[0, true]] })
 		);
 		assertDataflow(label('read of parameter in return', ['formals-named', 'return', 'name-normal']),
 			shell, 'function(x) { return(x) }',  emptyGraph()
@@ -67,7 +67,7 @@ describe('Function Definition', { concurrent: false }, withShell(shell => {
 					entryPoint:        '8',
 					graph:             new Set(['0', '5', '7', '8']),
 					environment:       defaultEnv().pushEnv().defineParameter('x', '0', '1')
-				}, { readParams: [ [0, true] ] })
+				}, { readParams: [[0, true]] })
 		);
 
 		describe('x', () => {
@@ -77,7 +77,7 @@ describe('Function Definition', { concurrent: false }, withShell(shell => {
 					.reads('6', '0')
 					.use('7', 'x', undefined, false)
 					.reads('7', '6')
-					.call('8', 'return', [argumentInCall('7', { name: 'x' } )], { returns: ['7'], reads: [NodeId.toBuiltIn('return')], environment: defaultEnv().pushEnv().defineParameter('x', '0', '1'), origin: [BuiltInProcName.Return] }, false)
+					.call('8', 'return', [argumentInCall('7', { name: 'x' })], { returns: ['7'], reads: [NodeId.toBuiltIn('return')], environment: defaultEnv().pushEnv().defineParameter('x', '0', '1'), origin: [BuiltInProcName.Return] }, false)
 					.calls('8', NodeId.toBuiltIn('return'))
 					.argument('8', '7')
 					.call('9', '{', [argumentInCall('8')], { returns: ['8'], reads: [NodeId.toBuiltIn('{')], environment: defaultEnv().pushEnv().defineParameter('x', '0', '1') }, false)
@@ -90,7 +90,7 @@ describe('Function Definition', { concurrent: false }, withShell(shell => {
 						entryPoint:        '9',
 						graph:             new Set(['0', '6', '7', '8', '9']),
 						environment:       defaultEnv().pushEnv().defineParameter('x', '0', '1')
-					}, { readParams: [ [0, true] ] })
+					}, { readParams: [[0, true]] })
 			);
 		});
 
@@ -109,7 +109,7 @@ describe('Function Definition', { concurrent: false }, withShell(shell => {
 					entryPoint:        '8',
 					graph:             new Set(['0', '2', '4', '6']),
 					environment:       envWithXYZParam
-				}, { readParams: [ [0, false], [2, true], [4, false] ] })
+				}, { readParams: [[0, false], [2, true], [4, false]] })
 				.defineVariable('0', 'x', {},  false)
 				.defineVariable('2', 'y', {},  false)
 				.defineVariable('4', 'z', {},  false)
@@ -425,7 +425,7 @@ print(x)`,  emptyGraph()
 				entryPoint:        '18',
 				graph:             new Set(['0', '1', '3', '4', '9', '8', '10', '11', '13', '12', '14', '15', '16', '17', '18']),
 				environment:       defaultEnv().pushEnv().defineParameter('a', '0', '2').defineParameter('m', '3', '5').defineVariable('b', '12', '14')
-			}, { readParams: [ [0, true], [3, false] ] })
+			}, { readParams: [[0, true], [3, false]] })
 		);
 	});
 	describe('Using special argument', () => {
@@ -446,7 +446,7 @@ print(x)`,  emptyGraph()
 				entryPoint:        '10',
 				graph:             new Set(['0', '2', '7', '9', '10']),
 				environment:       defaultEnv().pushEnv().defineParameter('a', '0', '1').defineParameter('...', '2', '3')
-			}, { readParams: [ [0, false], [2, true] ] } )
+			}, { readParams: [[0, false], [2, true]] })
 		);
 	});
 	describe('Bind environment to correct exit point', () => {
@@ -559,7 +559,7 @@ print(x)`,  emptyGraph()
 				entryPoint:        '11',
 				graph:             new Set(['4', '9', '8', '10', '11']),
 				environment:       defaultEnv().pushEnv().pushEnv().defineVariable('x', '8', '10')
-			}, { environment: defaultEnv().pushEnv(), readParams: [ [4, false] ] }, false)
+			}, { environment: defaultEnv().pushEnv(), readParams: [[4, false]] }, false)
 			.defineVariable('3', 'x', { definedBy: ['12', '13'] }, false)
 			.defineFunction('16', ['14'], {
 				out:               [],
@@ -617,7 +617,7 @@ print(g())`, emptyGraph()
 					entryPoint:        '9',
 					graph:             new Set(['1', '2', '8', '9']),
 					environment:       defaultEnv().pushEnv().defineParameter('x', '1', '3')
-				}, { readParams: [ [1, true] ] })
+				}, { readParams: [[1, true]] })
 				.defineVariable('0', 'f', { definedBy: ['10', '11'] })
 				.constant(14)
 				.reads(16, 14)
@@ -683,7 +683,7 @@ print(g())`, emptyGraph()
 					entryPoint:        '18',
 					graph:             new Set(['11', '12', '14', '15', '16', '17', '18']),
 					environment:       defaultEnv().pushEnv().pushEnv().pushEnv().defineParameter('z', '11', '13')
-				}, { environment: defaultEnv().pushEnv().pushEnv(), readParams: [ [11, true] ] }, false)
+				}, { environment: defaultEnv().pushEnv().pushEnv(), readParams: [[11, true]] }, false)
 				.defineFunction('22', ['20'], {
 					out:               [],
 					in:                [],
@@ -691,7 +691,7 @@ print(g())`, emptyGraph()
 					entryPoint:        '20',
 					graph:             new Set(['8', '9', '20']),
 					environment:       defaultEnv().pushEnv().pushEnv().defineParameter('y', '8', '10')
-				}, { environment: defaultEnv().pushEnv(), readParams: [ [8, true] ] }, false)
+				}, { environment: defaultEnv().pushEnv(), readParams: [[8, true]] }, false)
 				.defineFunction('26', ['24'], {
 					out:               [],
 					in:                [{ nodeId: '24', name: `${UnnamedFunctionCallPrefix}24`, cds: [], type: ReferenceType.Argument }],
@@ -699,7 +699,7 @@ print(g())`, emptyGraph()
 					entryPoint:        '25',
 					graph:             new Set(['1', '2', '22', '23', '24', '25']),
 					environment:       defaultEnv().pushEnv().defineParameter('x', '1', '3')
-				}, { readParams: [ [1, true ] ] })
+				}, { readParams: [[1, true]] })
 				.defineVariable('0', 'f', { definedBy: ['26', '27'] })
 				.constant(30)
 				.reads(32, 30)
@@ -826,7 +826,7 @@ f(5)`, emptyGraph()
 					entryPoint:        '21',
 					graph:             new Set(['1', '6', '7', '8', '5', '9', '11', '13', '21']),
 					environment:       defaultEnv().pushEnv().defineVariable('x', '5', '9')
-				}, { readParams: [ [1, true ] ] })
+				}, { readParams: [[1, true]] })
 				.defineVariable(0, 'f', { definedBy: [22, 23] })
 				.constant(25)
 				.reads(27, 25)
@@ -890,7 +890,7 @@ f(5)`, emptyGraph()
 					entryPoint:        29,
 					graph:             new Set([1, 6, 7, 8, 5, 9, 10, 12, 14, 17, 19, 21, 29]),
 					environment:       defaultEnv().pushEnv().defineVariable('x', 5, 9)
-				}, { readParams: [ [1, true] ] })
+				}, { readParams: [[1, true]] })
 				.defineVariable('0', 'f', { definedBy: [30, 31] })
 				.constant(33)
 				.reads(35, 33)
@@ -951,7 +951,7 @@ f(3)`, emptyGraph()
 					entryPoint:        '5',
 					graph:             new Set(['1', '3', '4', '5']),
 					environment:       defaultEnv().pushEnv().defineParameter('x', '1', '2')
-				}, { readParams: [ [1, true] ] })
+				}, { readParams: [[1, true]] })
 				.defineVariable('0', 'f', { definedBy: ['7', '8'] })
 				.defineVariable('10', 'g', { definedBy: [] }, false)
 				.defineVariable('14', 'f', { definedBy: ['15', '16'] }, false)
@@ -963,7 +963,7 @@ f(3)`, emptyGraph()
 					entryPoint:        '17',
 					graph:             new Set(['10', '15', '14', '16', '17']),
 					environment:       defaultEnv().defineVariable('f', '14', '16').pushEnv().defineParameter('g', '10', '11')
-				}, { environment: defaultEnv().defineVariable('f', '14', '16'), readParams: [ [10, true] ] })
+				}, { environment: defaultEnv().defineVariable('f', '14', '16'), readParams: [[10, true]] })
 				.defineVariable('9', 'm', { definedBy: ['18', '19'] })
 				.defineVariable('21', 'x', { definedBy: [] }, false)
 				.constant('24', undefined, false)
@@ -974,7 +974,7 @@ f(3)`, emptyGraph()
 					entryPoint:        '25',
 					graph:             new Set(['21', '23', '24', '25']),
 					environment:       defaultEnv().pushEnv().defineParameter('x', '21', '22')
-				}, { readParams: [ [21, true] ] })
+				}, { readParams: [[21, true]] })
 				.definesOnCall(27, 10)
 				.definedByOnCall(10, 27)
 				.constant(31)
@@ -1005,8 +1005,7 @@ function() {
 				.defineVariable('1@x', undefined, undefined, false)
 				.defineVariable('3@x', undefined, { cds: [{ id: 12, when: true }] }, false)
 				.reads('4@x', '1@x')
-				.reads('4@x', '3@x')
-			,
+				.reads('4@x', '3@x'),
 			{
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true

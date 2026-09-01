@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../processor';
-import { FnSig } from '../../../../environments/built-in-props';
+import { FunctionSemantics } from '../../../../fn/function-semantics';
 import { DataflowInformation } from '../../../../info';
 import { processKnownFunctionCall } from './known-call-handling';
 import { appendEnvironment } from '../../../../environments/append';
@@ -14,7 +14,7 @@ import type { BuiltInIdentifierDefinition } from '../../../../environments/built
 import { EdgeType } from '../../../../graph/edge';
 import { attachExportVertex, loadNodesForNamespace } from './built-in/built-in-library';
 import type { DataflowGraph } from '../../../../graph/graph';
-import { FunctionCallVertex } from '../../../../graph/vertex';
+import { DfgVertex } from '../../../../graph/vertex';
 import { Resolve } from '../../../../environments/resolve-helper';
 import { isNotUndefined } from '../../../../../util/assert';
 
@@ -69,7 +69,7 @@ function builtInBehindExport<OtherInfo>(
  */
 export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId, keepEnvironment = false): void {
 	const v = graph.getVertex(rootId);
-	if(FunctionCallVertex.is(v)) {
+	if(DfgVertex.isFunctionCall(v)) {
 		v.onlyBuiltin = true;
 		if(!keepEnvironment) {
 			v.environment = undefined;
@@ -122,7 +122,7 @@ export function processNamedCall<OtherInfo>(
 
 	if(defaultProcessor) {
 		/* if we do not know where we land, we force! reuse `resolved`, data.environment did not change above */
-		const call = processKnownFunctionCall({ name, args, rootId, data, sig: resolved.length > 0 ? undefined : FnSig.every, origin: 'default' });
+		const call = processKnownFunctionCall({ name, args, rootId, data, sig: resolved.length > 0 ? undefined : FunctionSemantics.call.signature.every, origin: 'default' });
 		information = mergeInformation(information, call.information);
 	} else if(information && builtIn) {
 		// mark the function call as built in only

@@ -196,7 +196,7 @@ The following showcases the dependency view of the ${ctx.linkPage('flowr:vscode'
 
 	${prefixLines(details('Example: Linting code with flowR', `To lint your code, you can use the ${ctx.linkPage('wiki/Interface', 'REPL', 'using-the-repl')} or the ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')} (see [vscode-flowr#283](https://github.com/flowr-analysis/vscode-flowr/pull/283)).
 	
-${await(async() => {
+${await (async() => {
 	const code = 'read.csv("/root/x.txt")';
 	const res = await showQuery(treeSitter, code, [{ type: 'linter' }], { showCode: false, collapseQuery: true, collapseResult: false });
 	return await documentReplSession(treeSitter, [{

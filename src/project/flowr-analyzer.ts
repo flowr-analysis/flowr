@@ -114,8 +114,8 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	peekParse(): NonNullable<AnalyzerCacheType<Parser>['parse']> | undefined;
 	/**
 	 * Parse standalone R code provided as a string or via the `file://` protocol.
-	 * @note this method will always use the {@link TreeSitterExecutor} internally, make sure it is initialized!
 	 * @param data - The R code to parse, either as a string or as a `file://` URL.
+	 * @note this method will always use the {@link TreeSitterExecutor} internally, make sure it is initialized!
 	 */
 	parseStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): Tree;
 	/**
@@ -131,8 +131,8 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 
 	/**
 	 * Normalize standalone R code provided as a string or via the `file://` protocol.
-	 * @note this method will always use the {@link TreeSitterExecutor} internally, make sure it is initialized!
 	 * @param data - The R code to normalize, either as a string or as a `file://` URL.
+	 * @note this method will always use the {@link TreeSitterExecutor} internally, make sure it is initialized!
 	 */
 	normalizeStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): NormalizedAst;
 	/**

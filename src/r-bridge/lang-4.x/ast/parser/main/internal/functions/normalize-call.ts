@@ -21,7 +21,7 @@ import { RSymbol } from '../../../../model/nodes/r-symbol';
  * Tries to parse the given data as a function call.
  * @param data           - The data used by the parser (see {@link NormalizerData})
  * @param mappedWithName - The JSON object to extract the meta-information from
- * @returns The parsed {@link RFunctionCall} (either named or unnamed) or `undefined` if the given construct is not a function call
+ * @returns              The parsed {@link RFunctionCall} (either named or unnamed) or `undefined` if the given construct is not a function call
  * May return a {@link RNext} or {@link RBreak} as `next()` and `break()` work as such.
  */
 export function tryNormalizeFunctionCall(data: NormalizerData, mappedWithName: readonly NamedJsonEntry[]): RFunctionCall | RNext | RBreak | undefined {
@@ -44,7 +44,7 @@ export function tryNormalizeFunctionCall(data: NormalizerData, mappedWithName: r
 	if(namedSymbolContent.length === 1 && namedSymbolContent[0].name === RawRType.StringConst) {
 		// special handling when someone calls a function by string
 		return parseNamedFunctionCall(data, namedSymbolContent, mappedWithName, location, content);
-	} else if(!namedSymbolContent.some(x => x.name === RawRType.SymbolFunctionCall) ) {
+	} else if(!namedSymbolContent.some(x => x.name === RawRType.SymbolFunctionCall)) {
 		parseLog.trace(`is not named function call, as the name is not of type ${RType.FunctionCall}, but: ${namedSymbolContent.map(n => n.name).join(',')}`);
 		return tryParseUnnamedFunctionCall(data, mappedWithName, location, content);
 	} else {

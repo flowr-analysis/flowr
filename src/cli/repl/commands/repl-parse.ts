@@ -12,7 +12,7 @@ type DepthList =  { depth: number, node: JsonEntry, leaf: boolean }[];
 
 /** shared pre-order-to-depth-list traversal, `toEntry` converts a node and `children` reads its (mutable) child array */
 function toDepthList<T>(root: T, toEntry: (node: T) => JsonEntry, children: (node: T) => T[]): DepthList {
-	const visit: { depth: number, node: T }[] = [ { depth: 0, node: root } ];
+	const visit: { depth: number, node: T }[] = [{ depth: 0, node: root }];
 	const result: DepthList = [];
 
 	while(visit.length > 0) {
@@ -156,7 +156,7 @@ export const parseCommand: ReplCodeCommand = {
 	description:   'Prints ASCII Art of the parsed, unmodified AST',
 	isCodeCommand: true,
 	usageExample:  ':parse',
-	aliases:       [ 'p' ],
+	aliases:       ['p'],
 	script:        false,
 	argsParser:    (line: string) => {
 		return {
@@ -172,7 +172,7 @@ export const parseCommand: ReplCodeCommand = {
 		if(parserInfo.name === 'r-shell') {
 			for(const { parsed, filePath } of result as ParseStepOutputSingleFile<string>[]) {
 				if(filePath && filePath !== FlowrFile.INLINE_PATH) {
-					output.stdout(output.formatter.format(`File: ${filePath}\n`, { style: FontStyles.Underline }) );
+					output.stdout(output.formatter.format(`File: ${filePath}\n`, { style: FontStyles.Underline }));
 				}
 				const object = toDepthMap(convertPreparedParsedData(prepareParsedData(parsed)));
 				output.stdout(depthListToTextTree(object, output.formatter));
@@ -198,7 +198,7 @@ export const parseCommand: ReplCodeCommand = {
 						errorsByLine.get(line)?.push(error);
 					}
 					output.stdout(output.formatter.format('Errors by line:\n', { style: FontStyles.Bold }));
-					for(const [ line, nodes ] of Array.from(errorsByLine.entries()).sort((a, b) => a[0] - b[0])) {
+					for(const [line, nodes] of Array.from(errorsByLine.entries()).sort((a, b) => a[0] - b[0])) {
 						output.stdout(output.formatter.format(`  Line ${line}: ${nodes.map(n => n.type).join(', ')}`, { style: FontStyles.Italic }));
 					}
 				}

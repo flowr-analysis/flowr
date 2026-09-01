@@ -6,7 +6,7 @@ import type {
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../dataflow/info';
 import { type MergeableRecord, deepMergeObject } from '../../util/objects';
-import { FunctionCallVertex } from '../../dataflow/graph/vertex';
+import { DfgVertex } from '../../dataflow/graph/vertex';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { guard, isNotUndefined } from '../../util/assert';
 import { type Origin, OriginType } from '../../dataflow/origin/dfg-get-origin';
@@ -18,9 +18,7 @@ import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role'
 import type { AsyncOrSync, DeepWritable } from 'ts-essentials';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { promoteCallName } from '../../queries/catalog/call-context-query/call-context-query-executor';
-import {
-	identifyLinkToLastCallRelationSync
-} from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import { identifyLinkToLastCallRelationSync } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import type { KnownRoxygenTags, RoxygenTag } from '../../r-bridge/roxygen2/roxygen-ast';
@@ -111,7 +109,7 @@ export interface CfgInformationArguments extends MergeableRecord {
 	/** Whether to recalculate the CFG information if it already exists on the current search. Defaults to `false`. */
 	forceRefresh?:         boolean
 	/** The simplification passes that should be run on the extracted CFG. Defaults to the entries of {@link DefaultCfgSimplificationOrder}. */
-	simplificationPasses?: CfgSimplificationPassName[]
+	simplificationPasses?: readonly CfgSimplificationPassName[]
 	/** Whether to check nodes for reachability, and subsequently set {@link CfgInformationSearchContent.reachableNodes} and {@link CfgInformationElementContent.isReachable}. Defaults to `false`. */
 	checkReachable?:       boolean
 }
@@ -219,7 +217,7 @@ export const Enrichments = {
 			const df = shared?.dfg ?? await analyzer.dataflow();
 			const n = shared?.ast ?? await analyzer.normalize();
 			const callVertex = df.graph.getVertex(e.node.info.id);
-			if(FunctionCallVertex.is(callVertex)) {
+			if(DfgVertex.isFunctionCall(callVertex)) {
 				const origins = Dataflow.origin(df.graph, callVertex.id);
 				if(!origins || origins.length === 0) {
 					const name = NodeId.recoverName(callVertex.id, n.idMap);
@@ -292,7 +290,7 @@ export const Enrichments = {
 			const shared = s.enrichmentContent(Enrichment.LastCall) as LastCallSearchContent | undefined;
 			const df = (shared?.dfg ?? await analyzer.dataflow()).graph;
 			const vertex = df.getVertex(e.node.info.id);
-			if(FunctionCallVertex.is(vertex)) {
+			if(DfgVertex.isFunctionCall(vertex)) {
 				const n = shared?.ast ?? await analyzer.normalize();
 				const cfg = (shared?.cfg ?? await analyzer.controlflow(undefined)).graph;
 				for(const arg of args) {
@@ -377,7 +375,7 @@ export const Enrichments = {
 /**
  * Returns the content of the given enrichment type from a {@link FlowrSearchElement}.
  * If the search element is not enriched with the given enrichment, `undefined` is returned.
- * @param e - The search element whose enrichment content should be retrieved.
+ * @param e          - The search element whose enrichment content should be retrieved.
  * @param enrichment - The enrichment content, if present, else `undefined`.
  */
 export function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<ParentInformation>, enrichment: E): EnrichmentElementContent<E> {

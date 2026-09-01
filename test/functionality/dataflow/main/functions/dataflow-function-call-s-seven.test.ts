@@ -4,7 +4,7 @@ import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
-import { FunctionCallVertex, FunctionDefinitionVertex } from '../../../../../src/dataflow/graph/vertex';
+import { DfgVertex } from '../../../../../src/dataflow/graph/vertex';
 import { getAllFunctionCallTargets } from '../../../../../src/dataflow/internal/linker';
 import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 
@@ -18,8 +18,7 @@ describe('S7 Function Calls', withTreeSitter(ts => {
 sample(42)
 `, emptyGraph()
 			.addEdge('1@new_generic', '1@function', EdgeType.Returns | EdgeType.Argument)
-			.calls('4@sample', '1@function')
-		,
+			.calls('4@sample', '1@function'),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
 	assertDataflow(label('Registration with setGeneric', ['function-definitions', 'oop-r7-s7']), ts,
@@ -29,16 +28,14 @@ sample(42)
 sample(42)
 `, emptyGraph()
 			.addEdge('1@setGeneric', '1@function', EdgeType.Returns | EdgeType.Argument)
-			.calls('4@sample', '1@function')
-		,
+			.calls('4@sample', '1@function'),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
 	assertDataflow(label('Simple S7 Generic Registration with default fn', ['function-definitions', 'oop-r7-s7']), ts,
 		`sample <- new_generic("sample", dispatch_args="y")
 sample(42)
 `, emptyGraph()
-			.calls('2@sample', '7-s7-new-generic-fun-fdef')
-		,
+			.calls('2@sample', '7-s7-new-generic-fun-fdef'),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
 	assertDataflow(label('Simple S7 Generic Method  and Call', ['function-definitions', 'oop-r7-s7']), ts,
@@ -48,8 +45,7 @@ sample(42)
 		}
 		sample(42)`, emptyGraph()
 			.calls('5@sample', '1@function')
-			.calls('1@S7_dispatch', '2@function')
-		,
+			.calls('1@S7_dispatch', '2@function'),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
 
@@ -66,12 +62,12 @@ sample(42)
 			const analyzer = await applyAssumedPackages(new FlowrAnalyzerBuilder().setParser(ts), assumedPackagesOf(undefined)).build();
 			analyzer.addRequest(code);
 			const g = (await analyzer.dataflow()).graph;
-			const call = g.vertices(true).find(([, v]) => FunctionCallVertex.is(v) && Identifier.getName(v.name) === callName);
+			const call = g.vertices(true).find(([, v]) => DfgVertex.isFunctionCall(v) && Identifier.getName(v.name) === callName);
 			if(call === undefined) {
 				throw new Error(`${callName} call vertex not found`);
 			}
 			const targets = [...getAllFunctionCallTargets(call[0], g)];
-			const resolvesToFdef = targets.some(t => FunctionDefinitionVertex.is(g.getVertex(t) ?? { tag: undefined } as never));
+			const resolvesToFdef = targets.some(t => DfgVertex.isFunctionDefinition(g.getVertex(t) ?? { tag: undefined } as never));
 			expect(resolvesToFdef, `${callName}() resolves to a (synthetic) function definition`).toBe(true);
 		}
 	});

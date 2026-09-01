@@ -103,7 +103,7 @@ describe('Function Definition - On.Exit', { concurrent: false }, withShell(shell
 			emptyGraph()
 				.calls('1@function', '12-hook-fn')
 				// returns `on.exit`, no longer `return(x)`, but `return(x)` is **not** dead!
-				.defineFunction('1@function', [ { nodeId: 18, type: ExitPointType.Return }, { nodeId: 10, type: ExitPointType.Return, cds: [{ id: 12, when: true }] }], {
+				.defineFunction('1@function', [{ nodeId: 18, type: ExitPointType.Return }, { nodeId: 10, type: ExitPointType.Return, cds: [{ id: 12, when: true }] }], {
 					hooks: [{ type: KnownHooks.OnFnExit, id: '12-hook-fn', add: false, after: true }],
 					in:    [
 						{ nodeId: 4, name: '<-', type: ReferenceType.Function },
@@ -127,7 +127,7 @@ describe('Function Definition - On.Exit', { concurrent: false }, withShell(shell
 			shell, 'function() { x <- 2;\non.exit(return(x));\nx <- 3; }',
 			emptyGraph()
 				.calls('1@function', '9-hook-fn')
-				.defineFunction('1@function', [ { nodeId: 9, type: ExitPointType.Return }], {
+				.defineFunction('1@function', [{ nodeId: 9, type: ExitPointType.Return }], {
 					hooks: [{ type: KnownHooks.OnFnExit, id: '9-hook-fn', add: false, after: true }],
 					in:    [
 						{ nodeId: 4, name: '<-', type: ReferenceType.Function },
@@ -152,7 +152,7 @@ describe('Function Definition - On.Exit', { concurrent: false }, withShell(shell
 			shell, 'function() { x <- 2;\non.exit(return(x));\nx <- 3;\non.exit(return(y)); }',
 			emptyGraph()
 				.calls('1@function', '21-hook-fn')
-				.defineFunction('1@function', [ { nodeId: '21', type: ExitPointType.Return }], {
+				.defineFunction('1@function', [{ nodeId: '21', type: ExitPointType.Return }], {
 					hooks: [{ type: KnownHooks.OnFnExit, id: '21-hook-fn', add: false, after: true }],
 					in:    [
 						{ nodeId: 4, name: '<-', type: ReferenceType.Function },
@@ -179,7 +179,7 @@ describe('Function Definition - On.Exit', { concurrent: false }, withShell(shell
 			emptyGraph()
 				.calls('1@function', '18-hook-fn')
 				.calls('1@function', '6-hook-fn')
-				.defineFunction('1@function', [ { nodeId: '18', type: ExitPointType.Return }], {
+				.defineFunction('1@function', [{ nodeId: '18', type: ExitPointType.Return }], {
 					hooks: [{ type: KnownHooks.OnFnExit, id: '6-hook-fn', add: false, after: true }, { type: KnownHooks.OnFnExit, id: '18-hook-fn', add: true, after: true }],
 					in:    [
 						{ nodeId: 4, name: '<-', type: ReferenceType.Function },
@@ -206,7 +206,7 @@ describe('Function Definition - On.Exit', { concurrent: false }, withShell(shell
 			emptyGraph()
 				.calls('1@function', '18-hook-fn')
 				.calls('1@function', '6-hook-fn')
-				.defineFunction('1@function', [ { nodeId: '18', type: ExitPointType.Return }], {
+				.defineFunction('1@function', [{ nodeId: '18', type: ExitPointType.Return }], {
 					hooks: [{ type: KnownHooks.OnFnExit, id: '18-hook-fn', add: true, after: false }, { type: KnownHooks.OnFnExit, id: '6-hook-fn', add: false, after: true }],
 					in:    [
 						{ nodeId: 4, name: '<-', type: ReferenceType.Function },
@@ -233,7 +233,7 @@ describe('Function Definition - On.Exit', { concurrent: false }, withShell(shell
 			emptyGraph()
 				.calls('1@function', '21-hook-fn')
 				.calls('1@function', '9-hook-fn')
-				.defineFunction('1@function', [ { nodeId: '9', type: ExitPointType.Return }], {
+				.defineFunction('1@function', [{ nodeId: '9', type: ExitPointType.Return }], {
 					hooks: [{ type: KnownHooks.OnFnExit, id: '21-hook-fn', add: true, after: false }, { type: KnownHooks.OnFnExit, id: '9-hook-fn', add: false, after: true }],
 					in:    [
 						{ nodeId: 4, name: '<-', type: ReferenceType.Function },
@@ -259,7 +259,7 @@ describe('Function Definition - On.Exit', { concurrent: false }, withShell(shell
 			shell, 'function() { x <- 2;\non.exit(return(x));\nx <- 3;\non.exit(return(y), add=TRUE, after=TRUE); }',
 			emptyGraph()
 				.calls('1@function', '21-hook-fn')
-				.defineFunction('1@function', [ { nodeId: '21', type: ExitPointType.Return }], {
+				.defineFunction('1@function', [{ nodeId: '21', type: ExitPointType.Return }], {
 					hooks: [{ type: KnownHooks.OnFnExit, id: '9-hook-fn', add: false, after: true }, { type: KnownHooks.OnFnExit, id: '21-hook-fn', add: true, after: true }],
 					in:    [
 						{ nodeId: 4, name: '<-', type: ReferenceType.Function },

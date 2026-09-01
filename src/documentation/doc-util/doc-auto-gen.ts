@@ -9,7 +9,8 @@ export interface AutoGenHeaderArguments {
 }
 
 /**
- *
+ * The header every generated wiki page opens with: what generated it, from which file, and when.
+ * @param args - what to name in the header, see {@link AutoGenHeaderArguments}
  */
 export function autoGenHeader(
 	{ rVersion, filename, purpose, currentDateAndTime = new Date().toISOString().replace('T', ', ').replace(/\.\d+Z$/, ' UTC') }: AutoGenHeaderArguments
@@ -22,7 +23,8 @@ export function autoGenHeader(
 
 
 /**
- *
+ * The source path as the generated header spells it, shortened to start at `src/`.
+ * @param filename - the path to shorten
  */
 export function fileNameForGenHeader(filename: string): string {
 	const shortenFilename = filename.replace(/^.*src\//, 'src/');

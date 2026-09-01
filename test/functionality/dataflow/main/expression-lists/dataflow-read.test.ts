@@ -201,8 +201,7 @@ print(x)`, emptyGraph()
 		assertDataflow(label('reads within local expression', ['name-normal', 'newlines', 'dynamic-scope-changes']), shell,
 			'x <- 2\nlocal({ x <- 3\n x })\n x', emptyGraph()
 				.reads('3@x', '2@x')
-				.reads('4@x', '1@x')
-			,
+				.reads('4@x', '1@x'),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['4@x', '2@x']] }
 		);
 	});

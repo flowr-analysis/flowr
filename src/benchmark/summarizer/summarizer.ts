@@ -48,7 +48,7 @@ export class BenchmarkSummarizer extends Summarizer<UltimateSlicerStats, Benchma
 		let fileNum = 0;
 		const outputPathsPerRun = new DefaultMap<number, string[]>(() => []);
 		// recursively find all files in all the input path subdirectories
-		for await (const file of getAllFiles(this.config.inputPath)){
+		for await (const file of getAllFiles(this.config.inputPath)) {
 			const outputDir = path.join(this.config.intermediateOutputPath, path.relative(this.config.inputPath, file));
 			fs.mkdirSync(outputDir, { recursive: true });
 			const textOutputPath = path.join(outputDir, 'summary.log');

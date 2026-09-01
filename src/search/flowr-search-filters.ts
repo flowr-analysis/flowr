@@ -1,7 +1,8 @@
 import type { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import { FunctionSemantics } from '../dataflow/fn/function-semantics';
 import { ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
 import type { VertexType } from '../dataflow/graph/vertex';
-import { FunctionCallVertex, ValidVertexTypes } from '../dataflow/graph/vertex';
+import { DfgVertex, ValidVertexTypes } from '../dataflow/graph/vertex';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrSearchElement } from './flowr-search';
 import type { Enrichment } from './search-executor/search-enrichers';
@@ -13,7 +14,6 @@ import { looselyCompareObjects } from '../util/objects';
 import { searchLogger } from './search-executor/search-generators';
 import { callFnProps } from '../dataflow/environments/query-fn-props';
 import type { CallProp, PropSelector, SemanticCallTag } from '../dataflow/environments/built-in-props';
-import { CallProps } from '../dataflow/environments/built-in-props';
 import { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
@@ -72,7 +72,7 @@ export const FlowrFilters = {
 	}) satisfies FlowrFilterFunction<MatchesEnrichmentArgs<Enrichment>>,
 	[FlowrFilter.OriginKind]: ((e: FlowrSearchElement<ParentInformation>, args: OriginKindArgs, data: { dataflow: DataflowInformation }) => {
 		const dfgNode = data.dataflow.graph.getVertex(e.node.info.id);
-		if(!dfgNode || !FunctionCallVertex.is(dfgNode)) {
+		if(!dfgNode || !DfgVertex.isFunctionCall(dfgNode)) {
 			return args.keepNonFunctionCalls ?? false;
 		}
 		const match = typeof args.origin === 'string' ?
@@ -91,7 +91,7 @@ export const FlowrFilters = {
 	}) satisfies FlowrFilterFunction<FilePathFilterArgs>,
 	[FlowrFilter.CallProps]: ((e: FlowrSearchElement<ParentInformation>, args: CallPropsArgs, data: { dataflow: DataflowInformation }) => {
 		const props = callFnProps(e.node.info.id, data.dataflow);
-		return args.matchType === 'every' ? CallProps.hasAll(props, args.props) : CallProps.hasAny(props, args.props);
+		return args.matchType === 'every' ? FunctionSemantics.call.props.hasAll(props, args.props) : FunctionSemantics.call.props.hasAny(props, args.props);
 	}) satisfies FlowrFilterFunction<CallPropsArgs>
 } as const;
 export type FlowrFilterArgs<F extends FlowrFilter> = typeof FlowrFilters[F] extends FlowrFilterFunction<infer Args> ? Args : never;

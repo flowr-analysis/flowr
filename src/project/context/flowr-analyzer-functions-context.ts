@@ -7,12 +7,6 @@ import {
 	namespaceFileLog
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
 
-export enum FunctionTypes {
-	Function = 'function',
-	ExportTypes = 'exportTypes',
-	S3 = 'S3'
-}
-
 export interface FunctionInfo {
 	name:            string;
 	packageOrigin:   string;
@@ -40,7 +34,7 @@ export interface ReadOnlyFlowrAnalyzerFunctionsContext {
 
 	/**
 	 * Get the function information for the given function name and optional class name.
-	 * @param name - The name of the function to get information for.
+	 * @param name      - The name of the function to get information for.
 	 * @param className - The optional class name (e.g., for S3 generics).
 	 */
 	getFunctionInfo(name: string, className?: string): FunctionInfo | FunctionInfo[] | undefined;
@@ -105,7 +99,7 @@ export class FlowrAnalyzerFunctionsContext extends AbstractFlowrAnalyzerContext<
 	public getFunctionInfo(pkg: string, name: string, s3TypeDispatch?: string): FunctionInfo | FunctionInfo[] | undefined {
 		if(s3TypeDispatch) {
 			return this.functionInfo.get(name)?.find(e => e.packageOrigin === pkg && e.s3TypeDispatch === s3TypeDispatch);
-		} else if(name.includes('.')){
+		} else if(name.includes('.')) {
 			const parts = name.split('.');
 			s3TypeDispatch = parts.pop();
 			const splitName = parts.join('.');

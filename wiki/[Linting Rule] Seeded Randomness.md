@@ -1,4 +1,4 @@
-_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-20, 20:17:25 UTC (v2.14.1), please do not edit directly._
+_<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter.ts](https://github.com/flowr-analysis/flowr/tree/main/src/documentation/wiki-linter.ts "src/documentation/wiki-linter.ts")' on 2026-08-29, 14:26:35 UTC (v2.15.8), please do not edit directly._
 <h2 id="seeded-randomness">Seeded Randomness&emsp;<sup>[<a href="https://github.com/flowr-analysis/flowr/wiki/Linter">overview</a>]</sup></h2>
 
 <span title="This rule is used to detect issues that are related to the reproducibility of the code. For example, missing or incorrect random seeds, or missing data."><a href='#reproducibility'>![reproducibility](https://img.shields.io/badge/reproducibility-teal) </a></span> <span title="This rule is used to detect issues that are related to the portability of the code. For example, platform-specific code, or code that relies on specific R versions or packages."><a href='#robustness'>![robustness](https://img.shields.io/badge/robustness-teal) </a></span>
@@ -7,7 +7,7 @@ _<span title="an overview of flowR's linter">Generated</span> from '[wiki-linter
 This rule is a `best-effort` rule.
  
 Checks whether randomness-based function calls are preceded by a random seed generation function. For consistent reproducibility, functions that use randomness should only be called after a constant random seed is set using a function like `set.seed`.\
-_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/seeded-randomness.ts#L64">src/linter/rules/seeded-randomness.ts</a>._
+_This linting rule is implemented in <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/seeded-randomness.ts#L65">src/linter/rules/seeded-randomness.ts</a>._
 
 
 ### Configuration
@@ -15,9 +15,9 @@ _This linting rule is implemented in <a href="https://github.com/flowr-analysis/
 Linting rules can be configured by passing a configuration object to the linter query as shown in the example below.
 The `seeded-randomness` rule accepts the following configuration options:
 
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/seeded-randomness.ts#L48"><code><span title="A set of randomness consumer function names that require a seed to be set prior to invocation.">randomnessConsumers</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/seeded-randomness.ts#L49"><code><span title="A set of randomness consumer function names that require a seed to be set prior to invocation.">randomnessConsumers</span></code></a>\
 A set of randomness consumer function names that require a seed to be set prior to invocation.
-- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/seeded-randomness.ts#L44"><code><span title="A set of functions and variables whose invocation or assignment causes a random seeded to be set. Each entry has a type, which is either function or assignment, and a name, which is the name of the function or variable. The default value for this is the function set.seed and the variable .Random.seed.">randomnessProducers</span></code></a>\
+- <a href="https://github.com/flowr-analysis/flowr/tree/main/src/linter/rules/seeded-randomness.ts#L45"><code><span title="A set of functions and variables whose invocation or assignment causes a random seeded to be set. Each entry has a type, which is either function or assignment, and a name, which is the name of the function or variable. The default value for this is the function set.seed and the variable .Random.seed.">randomnessProducers</span></code></a>\
 A set of functions and variables whose invocation or assignment causes a random seeded to be set.
 Each entry has a `type`, which is either `function` or `assignment`, and a `name`, which is the name of the function or variable.
 The default value for this is the function `set.seed` and the variable `.Random.seed`.
@@ -55,7 +55,7 @@ _All queries together required ≈1 ms (1ms accuracy, total 1 ms)_
 
 <details> <summary style="color:gray">Show Detailed Results as Json</summary>
 
-The analysis required _0.8 ms_ (including parsing and normalization and the query) within the generation environment.
+The analysis required _1.1 ms_ (including parsing and normalization and the query) within the generation environment.
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
 Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.

@@ -236,7 +236,7 @@ export class FlowRServerConnection {
 
 	private async createAnalyzerForRequest(message: FileAnalysisRequestMessage, tempFile: string) {
 		let request: RParseRequests;
-		if(message.content !== undefined){
+		if(message.content !== undefined) {
 			// we store the code in a temporary file in case it's too big for the shell to handle
 			fs.writeFileSync(tempFile, message.content ?? '');
 			request = { request: 'file', content: tempFile };

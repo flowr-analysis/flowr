@@ -148,7 +148,7 @@ export class FlowrDescriptionFile extends FlowrWrappedFile<DeepReadonly<DCF>> {
 /**
  * Parses the 'License' field from an R DESCRIPTION file into SPDX license expressions.
  * @param licenseField - The 'License' field from the DESCRIPTION file as an array of strings.
- * @returns An array of SPDX license information objects if parsing was successful.
+ * @returns            An array of SPDX license information objects if parsing was successful.
  */
 export function parseRLicenseField(...licenseField: string[]): RLicenseElementInfo[] {
 	return licenseField.map(parseRLicense);
@@ -175,7 +175,7 @@ const dcfRecordBreakRegex = /^\s*\.?\s*$/;
 /**
  * Walks `content` in the 'Debian Control Format', emitting one {@link DCF} per record. Records are separated
  * by blank (or `.`-only) lines, which is what makes a repository `PACKAGES` index differ from a `DESCRIPTION`.
- * @param content     - The raw text to parse
+ * @param content      - The raw text to parse
  * @param singleRecord - Ignore the separators and fold everything into one record (what a `DESCRIPTION` wants)
  */
 function walkDCF(content: string, singleRecord: boolean): DCF[] {

@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { label } from '../_helper/label';
-import { Playground, PlaygroundMark } from '../../../src/util/text/playground-link';
+import { Playground, type PlaygroundMark } from '../../../src/util/text/playground-link';
 import { unpackFromUrl } from '../../../src/util/text/url-encoding';
 
 /** The links the README and `:playground` hand out, and what the page reads back out of them. */
@@ -27,10 +27,10 @@ describe('Playground links', () => {
 	});
 
 	test(label('a run of lines travels as one range, and back', ['name-normal'], ['other']), () => {
-		assert.deepStrictEqual(PlaygroundMark.compress(['4', '2', '3', '2', '9']), ['2-4', '9']);
-		assert.deepStrictEqual(PlaygroundMark.expand(['2-4', '9']), ['2', '3', '4', '9']);
+		assert.deepStrictEqual(Playground.Mark.compress(['4', '2', '3', '2', '9']), ['2-4', '9']);
+		assert.deepStrictEqual(Playground.Mark.expand(['2-4', '9']), ['2', '3', '4', '9']);
 		/* what a rule reported as a whole covers each of its findings, so those say nothing more */
-		assert.deepStrictEqual(PlaygroundMark.compress(['lint:x@1', 'lint:x', 'dep:library@2']),
+		assert.deepStrictEqual(Playground.Mark.compress(['lint:x@1', 'lint:x', 'dep:library@2']),
 			['lint:x', 'dep:library@2']);
 	});
 
@@ -38,7 +38,7 @@ describe('Playground links', () => {
 		/* the type says as much, but a link may also be written by hand or come from an older page */
 		const marks = ['nonsense', '@', ''] as unknown as PlaygroundMark[];
 		assert.isUndefined(fields(Playground.link({ code, marks })).h);
-		assert.deepStrictEqual(PlaygroundMark.expand(marks), []);
+		assert.deepStrictEqual(Playground.Mark.expand(marks), []);
 	});
 
 	test(label('a criterion becomes the position the cursor opens on', ['name-normal'], ['other']), () => {
@@ -119,10 +119,10 @@ describe('Playground links', () => {
 	test(label('a mark is what the page knows how to resolve', ['name-normal'], ['other']), () => {
 		for(const mark of ['12', '12:5', '12-15', '12@sum', 'lint:absolute-file-paths', 'lint:absolute-file-paths@12',
 			'dep:library', 'slice', 'repl', 'deps', 'lints']) {
-			assert.isTrue(PlaygroundMark.isValid(mark), mark);
+			assert.isTrue(Playground.Mark.isValid(mark), mark);
 		}
 		for(const mark of ['', 'sum', '@sum', 'twelve', '1,2']) {
-			assert.isFalse(PlaygroundMark.isValid(mark), mark);
+			assert.isFalse(Playground.Mark.isValid(mark), mark);
 		}
 	});
 });

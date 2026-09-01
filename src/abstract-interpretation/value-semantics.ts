@@ -1,7 +1,7 @@
 import type { IdentifierString } from '../dataflow/environments/identifier';
 import { Identifier } from '../dataflow/environments/identifier';
 import { Dataflow } from '../dataflow/graph/df-helper';
-import { FunctionCallVertex, type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexValue } from '../dataflow/graph/vertex';
+import { DfgVertex, type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import type { RLogicalValue } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RNull, RNumberValue, RStringValue, RFalse, RTrue  } from '../r-bridge/lang-4.x/convert-values';
@@ -60,7 +60,7 @@ interface CallSemantics<Domain extends StateDomain> {
 export interface SemanticsDefinition<Domain extends StateDomain> extends CallSemantics<Domain> {
 	/** The abstract semantics of the different types of R constants */
 	readonly constants?: ConstantSemantics<Domain>;
-};
+}
 
 /**
  * The type of the function applying the semantics of a {@link CallSemantics} entry.
@@ -178,7 +178,7 @@ export class ValueSemantics<Domain extends StateDomain<AnyAbstractDomain>> imple
 
 	/** Applies the abstract semantics defined for the function call guarding a branch, if the called function is supported (see {@link CallSemantics}) */
 	public handleConditionBranch(state: Domain, vertex: DataflowGraphVertexArgument, ctx: AbsintContext<Domain>, branch: typeof RTrue | typeof RFalse): void {
-		if(FunctionCallVertex.is(vertex)) {
+		if(DfgVertex.isFunctionCall(vertex)) {
 			const applySemantics = this.getSemantics('conditionSemantics', vertex, ctx);
 			applySemantics?.(state, vertex, ctx, branch);
 		} else {
@@ -192,7 +192,7 @@ export class ValueSemantics<Domain extends StateDomain<AnyAbstractDomain>> imple
 	 * @param type   - The type of the call semantics to get the applier function for
 	 * @param vertex - The dataflow graph vertex of the function call
 	 * @param ctx    - The context of the abstract interpretation analysis
-	 * @returns The applier function of the defined semantics, or `undefined` if the called function is not supported
+	 * @returns      The applier function of the defined semantics, or `undefined` if the called function is not supported
 	 */
 	protected getSemantics<Key extends keyof CallSemantics<Domain>>(type: Key, vertex: DataflowGraphVertexFunctionCall, ctx: AbsintContext<Domain>): CallSemanticsApplier<CallSemantics<Domain>[Key]> | undefined {
 		const name = Dataflow.qualify(vertex.id, ctx.dfg, false) ?? vertex.name;

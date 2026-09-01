@@ -170,7 +170,8 @@ export function linkToQueryOfName(id: SupportedQueryTypes | SupportedVirtualQuer
 
 
 /**
- *
+ * The table of contents for one kind of query, its entries sorted by the title they are shown under.
+ * @param type - whether to list the active or the virtual queries
  */
 export function tocForQueryType(type: 'active' | 'virtual') {
 	const queries = [...RegisteredQueries[type].keys()].sort((a, b) => getQueryTitle(a).localeCompare(getQueryTitle(b)));

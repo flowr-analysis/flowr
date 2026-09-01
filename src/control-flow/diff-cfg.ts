@@ -1,5 +1,11 @@
+/**
+ * `Dataflow` spreads {@link GraphHelper} in, and it is built on this file, so the diff pieces are reached
+ * through the helper itself here; going through `Dataflow` would be a cycle.
+ * @lintIgnore use-instead
+ */
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type GraphDiffContext, type NamedGraph, initDiffContext, GraphDifferenceReport, GraphDiff } from '../util/diff-graph';
+import { GraphHelper } from '../dataflow/graph/graph-helper';
+import { type GraphDiffContext, type NamedGraph, initDiffContext, GraphDifferenceReport } from '../util/diff-graph';
 import { type GenericDiffConfiguration, setDifference } from '../util/diff';
 import { CfgEdge, CfgVertex, type ControlFlowGraph } from './control-flow-graph';
 import { arrayEqual } from '../util/collections/arrays';
@@ -24,7 +30,7 @@ export function diffOfControlFlowGraphs(left: NamedGraph<ControlFlowGraph>, righ
 function diffDataflowGraphs(ctx: GraphDiffContext<ControlFlowGraph>): void {
 	diffRootVertices(ctx);
 	diffVertices(ctx);
-	GraphDiff.outgoingEdges(ctx, diffEdges);
+	GraphHelper.diff.outgoingEdges(ctx, diffEdges);
 }
 
 function diffRootVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
@@ -131,5 +137,5 @@ function diffEdge(edge: CfgEdge, otherEdge: CfgEdge, ctx: GraphDiffContext<Contr
 }
 
 function diffEdges(ctx: GraphDiffContext<ControlFlowGraph>, id: NodeId, lEdges: ReadonlyMap<NodeId, CfgEdge> | undefined, rEdges: ReadonlyMap<NodeId, CfgEdge> | undefined): void {
-	GraphDiff.edges(ctx, id, lEdges, rEdges, diffEdge);
+	GraphHelper.diff.edges(ctx, id, lEdges, rEdges, diffEdge);
 }

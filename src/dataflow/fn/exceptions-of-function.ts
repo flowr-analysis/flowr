@@ -4,8 +4,7 @@ import { ExitPointType } from '../info';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
 import type { CallGraph } from '../graph/call-graph';
 import type { DataflowGraphVertexArgument } from '../graph/vertex';
-import { FunctionCallVertex, FunctionDefinitionVertex } from '../graph/vertex';
-import { NoEdges } from '../graph/graph';
+import { DfgVertex } from '../graph/vertex';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -40,7 +39,7 @@ export type ExceptionsByFunction = Record<NodeId, ExceptionPoint[]>;
  * (`tryCatch`) catches only what the names written for it say.
  */
 function catches(vertex: DataflowGraphVertexArgument | undefined, graph: CallGraph, info: BuiltInLookup): boolean {
-	if(!FunctionCallVertex.is(vertex) || vertex.origin === 'unnamed' || !vertex.origin.some(c => CatchHandlers.has(c))) {
+	if(!DfgVertex.isFunctionCall(vertex) || vertex.origin === 'unnamed' || !vertex.origin.some(c => CatchHandlers.has(c))) {
 		return false;
 	}
 	const sig = info(vertex.name)?.sig;
@@ -94,12 +93,12 @@ function reach(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction)
 			calls.set(current, []);
 			continue;
 		}
-		if(FunctionDefinitionVertex.is(vertex)) {
+		if(DfgVertex.isFunctionDefinition(vertex)) {
 			defs.add(current);
 			own.set(current, vertex.exitPoints.filter(e => e.type === ExitPointType.Error).map(e => ({ id: e.nodeId, cds: e.cds })));
 		}
 		/* a guarded call is only ever reached through the construct guarding it, which ends the walk of its own */
-		const next = [...(graph.outgoingEdges(current) ?? NoEdges).keys()].filter(n => {
+		const next = [...(graph.edgesFrom(current)).keys()].filter(n => {
 			let known = isGuarded.get(n);
 			if(known === undefined) {
 				known = guarded(n, graph, info);
@@ -117,7 +116,7 @@ function reach(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction)
 	return { calls, own, defs };
 }
 
-/** What to ask for beyond the definition itself, see {@link FunctionExceptions.of}. */
+/** What to ask for beyond the definition itself, see {@link exceptionsOfFunction}. */
 export interface FunctionExceptionsOptions {
 	/** seeds additional throwers, e.g. the result of an earlier call, so their callees are counted too */
 	readonly knownThrower?: ExceptionsByFunction
@@ -126,9 +125,9 @@ export interface FunctionExceptionsOptions {
 /**
  * The `NodeId`s of functions that may throw exceptions when called by `id`, restricted to functions known by
  * flowR. `knownThrower` seeds additional throwers, e.g. the result of an earlier call, counting its callees.
- * @useInstead {@link FunctionExceptions.of}
+ * @useInstead {@link FunctionSemantics.exceptions}
  */
-function exceptionsOfFunction(this: void, id: NodeId, graph: CallGraph, { knownThrower = {} }: FunctionExceptionsOptions = {}): ExceptionsByFunction {
+export function exceptionsOfFunction(this: void, id: NodeId, graph: CallGraph, { knownThrower = {} }: FunctionExceptionsOptions = {}): ExceptionsByFunction {
 	const { calls, own, defs } = reach(id, graph, knownThrower);
 
 	const raised = new Map<NodeId, Map<NodeId, ExceptionPoint>>();
@@ -158,20 +157,14 @@ function exceptionsOfFunction(this: void, id: NodeId, graph: CallGraph, { knownT
 	return result;
 }
 
-/** What the functions of a program may raise, following the calls their bodies reach. */
-export const FunctionExceptions = {
-	name: 'FunctionExceptions',
-	/** The exceptions a definition may raise; see {@link exceptionsOfFunction}. */
-	of:   exceptionsOfFunction
-} as const;
 
 /**
  * The `NodeId`s of functions that may throw exceptions when called by `id`, restricted to functions known by
  * flowR. `knownThrower` seeds additional throwers, e.g. the result of an earlier call, counting its callees.
- * @deprecated use {@link FunctionExceptions.of} instead
+ * @deprecated use {@link exceptionsOfFunction} instead
  */
 export function calculateExceptionsOfFunction(id: NodeId, graph: CallGraph, knownThrower: ExceptionsByFunction = {}): ExceptionsByFunction {
-	return FunctionExceptions.of(id, graph, { knownThrower });
+	return exceptionsOfFunction(id, graph, { knownThrower });
 }
 
 const NoPoints: ReadonlyMap<NodeId, ExceptionPoint> = new Map();

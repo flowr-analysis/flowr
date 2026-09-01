@@ -6,8 +6,7 @@ import { guard, isNotUndefined } from '../../../util/assert';
 import {
 	type BenchmarkMemoryMeasurement,
 	type SlicerStatsDataflow,
-	type SlicerStatsInput
-	,
+	type SlicerStatsInput,
 	AdditionalSlicerMeasurements,
 	CommonSlicerMeasurements,
 	PerSliceMeasurements

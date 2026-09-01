@@ -6,7 +6,7 @@ import type { ControlDependency } from '../info';
 import { appendCds, withCds } from '../info';
 import type { Environment, REnvironmentInformation } from './environment';
 import { S7DispatchSeparator } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
-import { ValueVertex } from '../graph/vertex';
+import { DfgVertex } from '../graph/vertex';
 import { Resolve } from './resolve-helper';
 
 /** copy of the definition with the given cds attached, marking it as maybe */
@@ -105,7 +105,7 @@ export function makeAllMaybe(references: readonly IdentifierReference[] | undefi
  */
 export function applyCdsToAllInGraphButConstants(graph: DataflowGraph, references: readonly IdentifierReference[], cds: readonly ControlDependency[]): void {
 	for(const [,v] of graph.vertices(true)) {
-		if(ValueVertex.is(v)) {
+		if(DfgVertex.isValue(v)) {
 			continue;
 		}
 		if(v.cds) {

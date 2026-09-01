@@ -1,4 +1,5 @@
 import type { RAstNodeBase, Location, NoInfo } from '../model';
+import { FunctionSemantics } from '../../../../../dataflow/fn/function-semantics';
 import { RNode } from '../model';
 import { RType } from '../type';
 import type { RSymbol } from './r-symbol';
@@ -66,9 +67,9 @@ export const RFunctionCall = {
 	/**
 	 * Bind a call's `arguments` to the formal `paramNames`, R's argument matching.
 	 *
-	 * Kept here rather than forwarding to {@link MatchArgs.toNames}: this module is loaded before the dataflow
+	 * Kept here rather than forwarding to {@link FunctionSemantics.call.match.toNames}: this module is loaded before the dataflow
 	 * layer exists, so importing the wall from here would drag it into the AST model at load time.
-	 * @useInstead {@link MatchArgs.toNames}
+	 * @useInstead {@link FunctionSemantics.call.match.toNames}
 	 */
 	matchArgsToParams<Info = NoInfo>(this: void, args: readonly PotentiallyEmptyRArgument<Info>[], paramNames: readonly string[]): ReadonlyMap<string, RArgument<Info>> {
 		const matched = matchArgumentsToParameters(args.map(a => a === EmptyArgument ? undefined : a.name?.content), paramNames);

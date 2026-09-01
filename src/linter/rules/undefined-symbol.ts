@@ -1,4 +1,4 @@
-import { UseVertex, VertexType, FunctionCallVertex } from '../../dataflow/graph/vertex';
+import { DfgVertex, VertexType } from '../../dataflow/graph/vertex';
 import { UnknownSideEffect } from '../../dataflow/graph/graph';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Q } from '../../search/flowr-search-builder';
@@ -13,14 +13,7 @@ import type { FlowrSearchElement } from '../../search/flowr-search';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type LintingResult, type LintingRule, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
-import {
-	collectScopeDefinedNames,
-	isDefinedInEnclosingScope,
-	isInstalledResourceFile,
-	isInSubscript,
-	isNonStandardEvaluated,
-	useResolvesToDefinitionOrBuiltin
-} from './undefined-symbol-util';
+import { collectScopeDefinedNames, isDefinedInEnclosingScope, isInstalledResourceFile, isInSubscript, isNonStandardEvaluated, useResolvesToDefinitionOrBuiltin } from './undefined-symbol-util';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
@@ -173,7 +166,7 @@ export const UNDEFINED_SYMBOL = {
 			}
 			const inInstalledFile = isInstalledFile(element.node.info.file);
 
-			if(FunctionCallVertex.is(vtx)) {
+			if(DfgVertex.isFunctionCall(vtx)) {
 				if(vtx.origin === 'unnamed' || !config.checkFunctions) {
 					return undefined;
 				}
@@ -186,7 +179,7 @@ export const UNDEFINED_SYMBOL = {
 			}
 
 			// variable use: only plain symbols (not argument names, `...`, or empty)
-			if(UseVertex.is(vtx) && config.checkVariables) {
+			if(DfgVertex.isUse(vtx) && config.checkVariables) {
 				const node = element.node;
 				if(!RSymbol.is(node) || node.lexeme === '...' || node.lexeme === undefined) {
 					return undefined;

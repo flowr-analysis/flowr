@@ -73,4 +73,66 @@ describe('Taint Analysis Scale', () => {
 			'1@x': MinMax,
 		});
 	});
+
+	test('interprocedural tracking: passing a scaled value into a user-defined function and returning it keeps the taint', async() => {
+		await testScaleAnalysis(`
+				f <- function(v) { v }
+				x <- scale(x)
+				y <- f(x)`,
+		{
+			'2@x': ZScore,
+			'3@y': ZScore,
+		});
+	});
+
+	describe('Untracked Operations Mapped to Top', () => {
+		test('arithmetic on a scaled value breaks the chain (untracked, not Top)', async() => {
+			await testScaleAnalysis(`
+				x <- scale(x)
+				y <- x + 1`,
+			{
+				'1@x': ZScore,
+				'2@y': undefined,
+			});
+		});
+
+		test('indexing a scaled value breaks the chain (untracked, not Top)', async() => {
+			await testScaleAnalysis(`
+				x <- scale(df$col)
+				y <- x[1]`,
+			{
+				'1@x': ZScore,
+				'2@y': undefined,
+			});
+		});
+
+		test('subassignment into a scaled value breaks the chain (untracked, not Top)', async() => {
+			await testScaleAnalysis(`
+				x <- scale(x)
+				x[1] <- 0
+				y <- x`,
+			{
+				'1@x': ZScore,
+				'3@y': undefined,
+			});
+		});
+
+		test('do.call does not forward the scale() mapping', async() => {
+			await testScaleAnalysis(`
+				x <- do.call(scale, list(x))`,
+			{
+				'1@x': Top,
+			});
+		});
+
+		test('sapply over a scaled vector does not forward the mapping into its result', async() => {
+			await testScaleAnalysis(`
+				x <- scale(x)
+				y <- sapply(x, abs)`,
+			{
+				'1@x': ZScore,
+				'2@y': Top,
+			});
+		});
+	});
 });

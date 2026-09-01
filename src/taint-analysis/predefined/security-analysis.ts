@@ -19,7 +19,7 @@ export const securityDomain = new FiniteDomainBuilder<Top, Bottom, [Top, Bottom,
 	.addLeqOrder(FileInput, Top)
 	.build();
 
-/** Matches network protocols in a path argument (mirrors the network-functions linter rule). */
+/** Matches network protocols in a path argument. */
 const NetworkProtocolRegex = /^(https?|ftps?):\/\//;
 
 /** Maps a resolved path argument to a network or file taint depending on its protocol. */
